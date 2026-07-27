@@ -276,6 +276,9 @@ pub struct PlayerSnapshot {
     pub star_fly_hitbox_preserved: bool,
     pub last_bounce_target: Vec2,
     pub bounce_reuse_timer: f32,
+    /// A PlayerCollider top-bounce observed after Player.Update. The portable
+    /// trace exposes it on the following player frame, so retain the source Y.
+    pub pending_bounce_from_y: Option<f32>,
     pub explode_launch_boost_timer: f32,
     pub explode_launch_boost_speed: f32,
     pub badeline_boost_active: bool,
@@ -405,6 +408,7 @@ impl Default for PlayerSnapshot {
             star_fly_hitbox_preserved: false,
             last_bounce_target: Vec2::default(),
             bounce_reuse_timer: 0.0,
+            pending_bounce_from_y: None,
             explode_launch_boost_timer: 0.0,
             explode_launch_boost_speed: 0.0,
             badeline_boost_active: false,
