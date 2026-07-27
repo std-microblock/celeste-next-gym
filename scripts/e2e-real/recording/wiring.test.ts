@@ -8,7 +8,7 @@ import { afterEach, describe, it } from 'node:test'
 import { parseConfig } from '../config.js'
 import { buildRegistry } from '../registry.js'
 import { scenarios } from '../scenarios/index.js'
-import { runRecordingHarness } from '../runtime/runner.js'
+import { collectorOwnershipEnvironment, runRecordingHarness } from '../runtime/runner.js'
 import { validateRecordingStatus, type RecordingStatus } from '../runtime/collector-client.js'
 import { captureScenario } from './runner.js'
 import { createRecordingPlan } from './plan.js'
@@ -24,6 +24,15 @@ const repoRoot = path.resolve(import.meta.dirname, '..', '..', '..')
 afterEach(async () => await Promise.all(roots.splice(0).map(async (root) => await rm(root, { recursive: true, force: true }))))
 
 describe('recording planning and lifecycle orchestration', () => {
+  it('passes the authenticated game ownership into the Everest collector backend', () => {
+    assert.deepEqual(collectorOwnershipEnvironment('nonce-1', 42), {
+      EVEREST_RUN_NONCE: 'nonce-1',
+      EVEREST_PROCESS_ID: '42',
+    })
+    assert.throws(() => collectorOwnershipEnvironment('', 42), /run nonce/)
+    assert.throws(() => collectorOwnershipEnvironment('nonce-1', 0), /positive process id/)
+  })
+
   it('validates all 52 handbook primaries before running one isolated lifecycle per target', async () => {
     const config = parseConfig(['--record-all'], {
       FFMPEG_PATH: path.resolve(repoRoot, 'fake-ffmpeg'),

@@ -131,6 +131,7 @@ export async function runHarness(
         COLLECTOR_PORT: String(httpPortReservation.port),
         COLLECTOR_TIMEOUT_MS: '60000',
         EVEREST_COLLECTOR_PORT: String(modPortReservation.port),
+        ...collectorOwnershipEnvironment(runContext.runNonce, gameIdentity.processId),
         EVEREST_AREA_ID: String(scenarioTarget.areaId),
         ...(scenarioTarget.kind === 'playground'
           ? { EVEREST_AREA_SID: scenarioTarget.areaSid }
@@ -214,6 +215,12 @@ export async function runHarness(
       cleanup,
     })
   }
+}
+
+export function collectorOwnershipEnvironment(runNonce: string, processId: number): Readonly<Record<string, string>> {
+  if (!runNonce) throw new Error('collector ownership requires a run nonce')
+  if (!Number.isSafeInteger(processId) || processId <= 0) throw new Error('collector ownership requires a positive process id')
+  return Object.freeze({ EVEREST_RUN_NONCE: runNonce, EVEREST_PROCESS_ID: String(processId) })
 }
 
 function requireMediaPaths(config: HarnessConfig): { ffmpegPath: string; ffprobePath: string } {
