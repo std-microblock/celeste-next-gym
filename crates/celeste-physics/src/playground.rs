@@ -163,6 +163,17 @@ pub fn mechanics_playground() -> Map {
                 nodes: vec![],
                 name: "infiniteStar".to_owned(),
             },
+            // Feather aligned above the stationary Ice Ball for the
+            // Player.Bounce StarFly-collider preservation setup.
+            Entity {
+                kind: EntityKind::FlyFeather,
+                bounds: Rect::new(310.0, 110.0, 20.0, 20.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "infiniteStar".to_owned(),
+            },
             // Grounded feather booth for Feather Super without injecting a
             // StarFly state into the initial snapshot.
             Entity {
@@ -182,6 +193,17 @@ pub fn mechanics_playground() -> Map {
                 single_use: false,
                 nodes: vec![],
                 name: "bigSpinner".to_owned(),
+            },
+            // Stationary cold Core fireball. The zero path speed keeps its
+            // top-bounce position deterministic across fresh E2E room loads.
+            Entity {
+                kind: EntityKind::IceBall,
+                bounds: Rect::new(314.0, 154.0, 12.0, 12.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: true,
+                nodes: vec![Vec2::new(336.0, 160.0)],
+                name: "fireBall".to_owned(),
             },
             Entity {
                 kind: EntityKind::BadelineBoost,

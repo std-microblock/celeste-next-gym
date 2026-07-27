@@ -44,7 +44,7 @@ const mapBytes = await readFile(new URL('../public/assets/original/maps/CelesteG
 const decodedMap = decode(decode_celeste_map_msgpack(mapBytes, 'playground'))
 if (!decodedMap.map || decodedMap.map.source_package !== 'CelesteGymPlayground') throw new Error(decodedMap.error ?? 'WASM map decode failed')
 const decodedKinds = new Set(decodedMap.map.entities.map((entity) => entity.kind))
-for (const required of ['water', 'dream_block', 'booster', 'red_booster', 'fly_feather', 'bumper', 'badeline_boost', 'wind']) {
+for (const required of ['water', 'dream_block', 'booster', 'red_booster', 'fly_feather', 'bumper', 'ice_ball', 'badeline_boost', 'wind']) {
   if (!decodedKinds.has(required)) throw new Error(`Decoded playground is missing ${required}`)
 }
 const playgroundState = { ...state, pos: decodedMap.map.spawn }

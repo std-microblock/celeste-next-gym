@@ -302,6 +302,21 @@ try {
         })),
       },
       {
+        name: 'entity-4.5-iceball-jump',
+        initial: { pos: [317, 155], speed: [0, 0] },
+        inputs: Array.from({ length: 24 }, (_, frame) => input({
+          move_x: 1,
+          move_y: 1,
+          jump_held: true,
+          dash_pressed: frame === 0,
+        })),
+      },
+      {
+        name: 'entity-4.15.2-feather-hitbox-preservation',
+        initial: { pos: [320, 120], speed: [0, 0] },
+        inputs: Array.from({ length: 60 }, () => input({ move_y: 1 })),
+      },
+      {
         name: 'playground-green-booster-auto',
         initial: { pos: [760, 440], speed: [0, 0] },
         inputs: Array.from({ length: 30 }, () => input()),

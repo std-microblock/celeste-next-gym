@@ -45,6 +45,9 @@ export interface SimState {
   feather_reuse_timer?: number
   last_bumper_target?: Vec2
   bumper_reuse_timer?: number
+  star_fly_hitbox_preserved?: boolean
+  last_bounce_target?: Vec2
+  bounce_reuse_timer?: number
   badeline_boost_active?: boolean
   badeline_boost_entity_origin?: Vec2
   badeline_boost_current_position?: Vec2
@@ -52,7 +55,7 @@ export interface SimState {
   [key: string]: unknown
 }
 
-export type EntityKind = 'jump_thru' | 'spikes' | 'water' | 'dream_block' | 'booster' | 'red_booster' | 'fly_feather' | 'bumper' | 'badeline_boost' | 'wind' | 'unknown'
+export type EntityKind = 'jump_thru' | 'spikes' | 'water' | 'dream_block' | 'booster' | 'red_booster' | 'fly_feather' | 'bumper' | 'ice_ball' | 'badeline_boost' | 'wind' | 'unknown'
 
 export interface MapEntity {
   kind: EntityKind

@@ -49,6 +49,7 @@ pub enum EntityKind {
     RedBooster,
     FlyFeather,
     Bumper,
+    IceBall,
     BadelineBoost,
     Wind,
     Unknown,
@@ -247,6 +248,26 @@ pub fn encode_celeste_map(map: &Map, package: &str, room: &str) -> Result<Vec<u8
                     ("y", BinaryValue::Int(y + height / 2)),
                 ],
                 vec![],
+            )),
+            EntityKind::IceBall => Some(element(
+                "fireBall",
+                [
+                    ("amount", BinaryValue::Int(1)),
+                    ("id", BinaryValue::Int(id)),
+                    ("notCoreMode", BinaryValue::Bool(true)),
+                    ("offset", BinaryValue::Float(0.0)),
+                    ("speed", BinaryValue::Float(0.0)),
+                    ("x", BinaryValue::Int(x + width / 2)),
+                    ("y", BinaryValue::Int(y + height / 2)),
+                ],
+                vec![element(
+                    "node",
+                    [
+                        ("x", BinaryValue::Int(x + width / 2 + 16)),
+                        ("y", BinaryValue::Int(y + height / 2)),
+                    ],
+                    vec![],
+                )],
             )),
             EntityKind::BadelineBoost => Some(element(
                 "badelineBoost",
@@ -542,6 +563,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 "redBooster" => EntityKind::RedBooster,
                 "infiniteStar" | "flyFeather" => EntityKind::FlyFeather,
                 "bigSpinner" => EntityKind::Bumper,
+                "fireBall" if attr_bool(el, "notCoreMode", false) => EntityKind::IceBall,
                 "badelineBoost" => EntityKind::BadelineBoost,
                 "windTrigger" => EntityKind::Wind,
                 _ => EntityKind::Unknown,
@@ -550,6 +572,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 EntityKind::Booster | EntityKind::RedBooster => 16.0,
                 EntityKind::FlyFeather => 20.0,
                 EntityKind::Bumper => 24.0,
+                EntityKind::IceBall => 12.0,
                 EntityKind::BadelineBoost => 32.0,
                 _ => 8.0,
             };
@@ -568,7 +591,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 ),
                 "spikesRight" => (Rect::new(ex, ey, 3.0, raw_height), Vec2::new(1.0, 0.0)),
                 "booster" | "redBooster" | "infiniteStar" | "flyFeather" | "bigSpinner"
-                | "badelineBoost" => (
+                | "fireBall" | "badelineBoost" => (
                     Rect::new(
                         ex - raw_width * 0.5,
                         ey - raw_height * 0.5,

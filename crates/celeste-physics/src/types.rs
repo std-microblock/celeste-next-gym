@@ -152,6 +152,11 @@ pub struct PlayerSnapshot {
     pub feather_reuse_timer: f32,
     pub last_bumper_target: Vec2,
     pub bumper_reuse_timer: f32,
+    /// `Player.Bounce` can restore the cached StarFly collider after
+    /// `StarFlyEnd` has already restored the normal hurtbox.
+    pub star_fly_hitbox_preserved: bool,
+    pub last_bounce_target: Vec2,
+    pub bounce_reuse_timer: f32,
     pub explode_launch_boost_timer: f32,
     pub explode_launch_boost_speed: f32,
     pub badeline_boost_active: bool,
@@ -250,6 +255,9 @@ impl Default for PlayerSnapshot {
             feather_reuse_timer: 0.0,
             last_bumper_target: Vec2::default(),
             bumper_reuse_timer: 0.0,
+            star_fly_hitbox_preserved: false,
+            last_bounce_target: Vec2::default(),
+            bounce_reuse_timer: 0.0,
             explode_launch_boost_timer: 0.0,
             explode_launch_boost_speed: 0.0,
             badeline_boost_active: false,
