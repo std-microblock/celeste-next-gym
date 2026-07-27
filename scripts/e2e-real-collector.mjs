@@ -145,6 +145,16 @@ try {
         dash_pressed: frame === 0,
       })),
     },
+    {
+      name: 'mechanics-directional-spikes-away',
+      initial: { pos: [360, 496], speed: [0, -60] },
+      inputs: Array.from({ length: 4 }, () => input()),
+    },
+    {
+      name: 'mechanics-directional-spikes-into',
+      initial: { pos: [360, 496], speed: [0, 60] },
+      inputs: Array.from({ length: 4 }, () => input()),
+    },
     ...(includePlaygroundSwim ? [
       {
         name: 'playground-swim-idle',
@@ -615,16 +625,6 @@ try {
       name: 'fastfall',
       initial: { pos: [120, 60], speed: [0, 160] },
       inputs: Array.from({ length: 24 }, () => input({ move_y: 1 })),
-    },
-    {
-      name: 'mechanics-directional-spikes-away',
-      initial: { pos: [269, 88], speed: [0, -60] },
-      inputs: Array.from({ length: 4 }, () => input()),
-    },
-    {
-      name: 'mechanics-directional-spikes-into',
-      initial: { pos: [269, 88], speed: [0, 60] },
-      inputs: Array.from({ length: 4 }, () => input()),
     },
     {
       name: 'wall-slide',
