@@ -137,6 +137,14 @@ try {
       initial: { pos: [477, 275], speed: [0, -105] },
       inputs: Array.from({ length: 8 }, () => input()),
     },
+    {
+      name: 'mechanics-corner-correction-horizontal',
+      initial: { pos: [392, 82], speed: [0, 0] },
+      inputs: Array.from({ length: 12 }, (_, frame) => input({
+        move_x: 1,
+        dash_pressed: frame === 0,
+      })),
+    },
     ...(includePlaygroundSwim ? [
       {
         name: 'playground-swim-idle',

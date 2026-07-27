@@ -1337,6 +1337,26 @@ fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount:
                 break;
             }
             if horizontal {
+                if matches!(p.state, PlayerState::Dash | PlayerState::RedDash)
+                    && p.speed.y == 0.0
+                    && p.speed.x != 0.0
+                {
+                    for correction in 1..=4 {
+                        for direction in [1.0, -1.0] {
+                            let offset = correction as f32 * direction;
+                            let corrected = current_player_rect(
+                                p,
+                                p.pos.x + sign as f32,
+                                p.pos.y + offset,
+                            );
+                            if !map.solid_at(corrected) {
+                                p.pos.y += offset;
+                                p.pos.x += sign as f32;
+                                return;
+                            }
+                        }
+                    }
+                }
                 if p.state == PlayerState::StarFly {
                     if p.star_fly_timer < STAR_FLY_END_NO_BOUNCE_TIME {
                         p.speed.x = 0.0;
@@ -2601,6 +2621,24 @@ mod tests {
         let p = simulate(p, &[InputState::default()], &map, 1).unwrap();
         assert_eq!(p.pos, Vec2::new(36.0, 58.0));
         assert!(p.speed.y < 0.0);
+    }
+    #[test]
+    fn horizontal_dash_corner_correction_moves_over_a_two_pixel_ledge_overlap() {
+        let map = Map {
+            solids: vec![Rect::new(40.0, 80.0, 40.0, 80.0)],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(36.0, 82.0),
+            speed: Vec2::new(DASH_SPEED, 0.0),
+            state: PlayerState::Dash,
+            dash_dir: Vec2::new(1.0, 0.0),
+            state_timer: DASH_TIME,
+            ..PlayerSnapshot::default()
+        };
+        let p = simulate(p, &[InputState::default()], &map, 1).unwrap();
+        assert_eq!(p.pos, Vec2::new(37.0, 80.0));
+        assert_eq!(p.speed, Vec2::new(DASH_SPEED, 0.0));
     }
     #[test]
     fn dash_attack_survives_dash_end_and_breaks_a_late_feather_shield() {
