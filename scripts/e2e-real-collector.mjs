@@ -228,21 +228,25 @@ try {
       name: 'mechanics-directional-spikes-away',
       initial: { pos: [360, 496], speed: [0, -60] },
       inputs: Array.from({ length: 4 }, () => input()),
+      verify: verifyDirectionalSpikesAway,
     },
     {
       name: 'mechanics-directional-spikes-into',
       initial: { pos: [360, 496], speed: [0, 60] },
       inputs: Array.from({ length: 4 }, () => input()),
+      verify: verifyDirectionalSpikesInto,
     },
     {
       name: 'mechanics-berry-train',
       initial: { pos: [160, 468], speed: [0, 0] },
       inputs: Array.from({ length: 64 }, () => input()),
+      verify: verifyBerryTrain,
     },
     {
       name: 'mechanics-screen-transition-up',
       initial: { pos: [640, 4], speed: [80, -160], dashes: 0, stamina: 20 },
       inputs: Array.from({ length: 42 }, () => input()),
+      verify: verifyUpwardScreenTransition,
     },
     {
       name: 'dash-spring-cancel',
@@ -250,6 +254,7 @@ try {
       inputs: Array.from({ length: 16 }, (_, frame) => input({
         dash_pressed: frame === 0,
       })),
+      verify: verifySpringCancel,
     },
     {
       name: 'dash-spiked-wallbounce',
@@ -260,6 +265,18 @@ try {
         jump_held: frame >= 4 && frame < 12,
         dash_pressed: frame === 0,
       })),
+      verify: verifySpikedWallbounce,
+    },
+    {
+      name: 'dash-spiked-wallbounce-late',
+      initial: { pos: [396, 203], speed: [0, 0] },
+      inputs: Array.from({ length: 6 }, (_, frame) => input({
+        move_y: -1,
+        jump_pressed: frame === 5,
+        jump_held: frame === 5,
+        dash_pressed: frame === 0,
+      })),
+      verify: verifyLateSpikedWallbounce,
     },
     {
       name: 'dash-superwave',
@@ -271,6 +288,7 @@ try {
         jump_held: frame === 10 || frame === 26,
         dash_pressed: frame === 0 || frame === 11,
       })),
+      verify: verifySuperwave,
     },
     {
       name: 'dash-demodash-gap',
@@ -279,6 +297,7 @@ try {
         move_x: 1,
         crouch_dash_pressed: frame === 0,
       })),
+      verify: verifyDemodashGap,
     },
     {
       name: 'dash-grounded-ultra',
@@ -288,6 +307,7 @@ try {
         move_y: 1,
         dash_pressed: frame === 0,
       })),
+      verify: verifyGroundedUltra,
     },
     {
       name: 'dash-delayed-ultra',
@@ -297,6 +317,7 @@ try {
         move_y: 1,
         dash_pressed: frame === 0,
       })),
+      verify: verifyDelayedUltra,
     },
     {
       name: 'dash-chained-ultras',
@@ -306,6 +327,7 @@ try {
         move_y: 1,
         dash_pressed: frame === 0 || frame === 16,
       })),
+      verify: verifyChainedUltras,
     },
     ...(includePlaygroundSwim ? [
       {
@@ -889,6 +911,7 @@ try {
     if (!body.states[0]._everest_fields || Object.keys(body.states[0]._everest_fields).length < 100) {
       throw new Error(`${scenario.name}: real reflected Everest fields are missing`)
     }
+    scenario.verify?.(body.states)
     const tracePath = resolve(root, '.tmp', `e2e-${scenario.name}-trace.json`)
     writeFileSync(tracePath, JSON.stringify({ inputs: request.inputs, states: body.states }))
     if (!collectOnly) {
@@ -951,4 +974,94 @@ function input(overrides = {}) {
     grab_held: false,
     ...overrides,
   }
+}
+
+function semanticAssert(condition, scenario, message) {
+  if (!condition) throw new Error(`${scenario}: semantic verification failed: ${message}`)
+}
+
+function field(state, name) {
+  return state?._everest_fields?.[name]
+}
+
+function near(actual, expected, tolerance = 0.01) {
+  return Math.abs(actual - expected) <= tolerance
+}
+
+function verifyDirectionalSpikesAway(states) {
+  semanticAssert(states.every((state) => !state.dead), 'mechanics-directional-spikes-away', 'moving away from upward spikes must remain alive')
+}
+
+function verifyDirectionalSpikesInto(states) {
+  semanticAssert(states[1]?.dead === true, 'mechanics-directional-spikes-into', 'moving into upward spikes must die on frame 1')
+}
+
+function verifyBerryTrain(states) {
+  const first = states.findIndex((state) => Number(field(state, 'StrawberryCollectIndex')) >= 1)
+  const second = states.findIndex((state) => Number(field(state, 'StrawberryCollectIndex')) >= 2)
+  semanticAssert(first >= 27, 'mechanics-berry-train', `first berry collected too early at frame ${first}; follower delay plus nine safe-ground frames were not observed`)
+  semanticAssert(second > first, 'mechanics-berry-train', 'second berry never collected')
+  semanticAssert(second - first === 18, 'mechanics-berry-train', `later berry queue offset was ${second - first} frames instead of 18`)
+}
+
+function verifyUpwardScreenTransition(states) {
+  semanticAssert(near(states[1].speed[0], 0) && near(states[1].speed[1], -105), 'mechanics-screen-transition-up', 'BeforeUpTransition did not apply 0/-105')
+  semanticAssert(states[1].dashes === 0 && near(states[1].stamina, 20), 'mechanics-screen-transition-up', 'resources refilled before transition completion')
+  const completed = states.findIndex((state, frame) => frame > 1 && state.dashes >= 1 && near(state.stamina, 110))
+  semanticAssert(completed >= 39, 'mechanics-screen-transition-up', `0.65 second transition completed too early at frame ${completed}`)
+  semanticAssert(completed > 0 && states[completed].pos[1] <= -13, 'mechanics-screen-transition-up', 'player never crossed into the upper room target bounds')
+}
+
+function verifySpringCancel(states) {
+  const dash = states.find((state) => state.state === 2)
+  const beforeDashSpeed = field(dash, 'beforeDashSpeed')
+  semanticAssert(Array.isArray(beforeDashSpeed), 'dash-spring-cancel', 'Dash did not expose beforeDashSpeed')
+  semanticAssert(near(beforeDashSpeed[0], 0) && near(beforeDashSpeed[1], -185), 'dash-spring-cancel', `Dash replaced ${JSON.stringify(beforeDashSpeed)} instead of the floor spring 0/-185 velocity`)
+  semanticAssert(dash.dashes === 0, 'dash-spring-cancel', 'buffered Dash did not spend the spring-refilled dash')
+}
+
+function verifySpikedWallbounce(states) {
+  const launch = states[5]
+  semanticAssert(states.every((state) => !state.dead), 'dash-spiked-wallbounce', 'on-time wallbounce touched the directional spikes lethally')
+  semanticAssert(launch?.state === 0 && near(launch.speed[0], -170) && near(launch.speed[1], -160), 'dash-spiked-wallbounce', `entry-frame launch was ${JSON.stringify(launch?.speed)}`)
+}
+
+function verifyLateSpikedWallbounce(states) {
+  semanticAssert(states.some((state) => state.dead), 'dash-spiked-wallbounce-late', 'one-frame-late input unexpectedly survived')
+}
+
+function verifySuperwave(states) {
+  semanticAssert(near(states[11].speed[0], 260) && near(states[11].speed[1], -105) && states[11].dashes >= 1, 'dash-superwave', 'extended Super keyframe is missing')
+  semanticAssert(states[22].on_ground && states[22].ducking && states[22].speed[0] < -200, 'dash-superwave', 'reverse down-diagonal landing keyframe is missing')
+  semanticAssert(near(states[27].speed[0], -325) && near(states[27].speed[1], -52.5) && states[27].dashes >= 1, 'dash-superwave', 'reverse Hyper keyframe is missing')
+}
+
+function verifyDemodashGap(states) {
+  semanticAssert(states.some((state) => state.ducking && state.pos[0] > 720), 'dash-demodash-gap', 'crouched dash never entered the six-pixel tunnel')
+  semanticAssert(states.at(-1).pos[0] > 760 && !states.at(-1).dead, 'dash-demodash-gap', 'demo did not progress through the low tunnel')
+}
+
+function ultraLandingFrames(states) {
+  const frames = []
+  for (let frame = 1; frame < states.length; frame++) {
+    const before = states[frame - 1]
+    const after = states[frame]
+    if (!before.ducking && after.ducking && after.speed[0] > before.speed[0] * 1.19) frames.push(frame)
+  }
+  return frames
+}
+
+function verifyGroundedUltra(states) {
+  semanticAssert(states.some((state) => state.ducking && state.speed[0] >= 359.99), 'dash-grounded-ultra', 'grounded landing never preserved 300 entry speed and applied 1.2')
+}
+
+function verifyDelayedUltra(states) {
+  const landing = ultraLandingFrames(states).find((frame) => states[frame].state !== 2)
+  semanticAssert(landing !== undefined, 'dash-delayed-ultra', 'no post-Dash landing applied the delayed 1.2 multiplier')
+}
+
+function verifyChainedUltras(states) {
+  const landings = ultraLandingFrames(states)
+  semanticAssert(landings.length >= 2, 'dash-chained-ultras', `only ${landings.length} multiplicative landings were observed`)
+  semanticAssert(states[landings[1]].speed[0] > states[landings[0]].speed[0], 'dash-chained-ultras', 'second Ultra did not compound the first')
 }
