@@ -262,6 +262,17 @@ try {
       })),
     },
     {
+      name: 'dash-superwave',
+      initial: { pos: [240, 496], speed: [0, 0] },
+      inputs: Array.from({ length: 30 }, (_, frame) => input({
+        move_x: frame <= 10 ? 1 : -1,
+        move_y: frame >= 11 ? 1 : 0,
+        jump_pressed: frame === 10 || frame === 26,
+        jump_held: frame === 10 || frame === 26,
+        dash_pressed: frame === 0 || frame === 11,
+      })),
+    },
+    {
       name: 'dash-demodash-gap',
       initial: { pos: [712, 320], speed: [0, 0] },
       inputs: Array.from({ length: 30 }, (_, frame) => input({
