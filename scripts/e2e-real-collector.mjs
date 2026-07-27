@@ -784,9 +784,9 @@ try {
     },
     {
       name: 'five-jump',
-      initial: { pos: [36, 156], speed: [0, 0], state: 'Climb' },
+      initial: { pos: [44, 156], speed: [0, 0], state: 'Climb', facing: 'Left' },
       inputs: Array.from({ length: 48 }, (_, frame) => input({
-        move_x: frame >= 5 ? 1 : 0,
+        move_x: frame >= 6 ? 1 : 0,
         jump_pressed: frame === 0 || frame === 5,
         jump_held: frame <= 17,
         grab_held: frame === 0 || frame === 5,

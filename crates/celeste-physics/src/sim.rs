@@ -3339,21 +3339,21 @@ mod tests {
     fn five_jump_chains_neutral_and_lip_climb_jumps_across_five_tiles() {
         let map = Map {
             solids: vec![
-                Rect::new(40.0, 40.0, 8.0, 80.0),
+                Rect::new(0.0, 40.0, 40.0, 80.0),
                 Rect::new(80.0, 40.0, 40.0, 8.0),
             ],
             ..Map::default()
         };
         let player = PlayerSnapshot {
-            pos: Vec2::new(36.0, 52.0),
+            pos: Vec2::new(44.0, 52.0),
             state: PlayerState::Climb,
-            facing: true,
+            facing: false,
             stamina: 110.0,
             ..PlayerSnapshot::default()
         };
         let inputs = (0..48)
             .map(|frame| InputState {
-                move_x: if frame >= 5 { 1 } else { 0 },
+                move_x: if frame >= 6 { 1 } else { 0 },
                 jump_pressed: frame == 0 || frame == 5,
                 jump_held: frame <= 17,
                 grab_held: frame == 0 || frame == 5,
