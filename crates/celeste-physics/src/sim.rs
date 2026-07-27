@@ -2655,9 +2655,17 @@ mod tests {
         let trace = simulate_trace(player, &inputs, &map, 60).unwrap();
         for jump_state in [1, second_jump_frame + 1] {
             assert_eq!(trace.states[jump_state].speed.x, -WALL_JUMP_H);
+            assert_eq!(trace.states[jump_state].speed.y, JUMP_SPEED);
+            assert_eq!(trace.states[jump_state].state, PlayerState::Normal);
+            assert!(trace.states[jump_state].facing);
+            assert_eq!(trace.states[jump_state].dashes, 1);
             assert_eq!(trace.states[jump_state].stamina, 80.0);
+            assert!(!trace.states[jump_state].on_ground);
+            assert!(!trace.states[jump_state].ducking);
+            assert!(!trace.states[jump_state].dead);
             assert_eq!(trace.states[jump_state].force_move_x_timer, 0.0);
         }
+        assert!(trace.states[second_jump_frame + 1].pos.y < trace.states[1].pos.y);
     }
 
     #[test]
