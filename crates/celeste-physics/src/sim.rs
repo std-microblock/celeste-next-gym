@@ -21,6 +21,7 @@ const JUMP_SPEED: f32 = -105.0;
 const JUMP_H_BOOST: f32 = 40.0;
 const VAR_JUMP_TIME: f32 = 0.2;
 const WALL_JUMP_H: f32 = 130.0;
+const WALL_JUMP_CHECK_DIST: f32 = 3.0;
 const WALL_SLIDE_START_MAX: f32 = 20.0;
 const WALL_SLIDE_TIME: f32 = 1.2;
 const DASH_SPEED: f32 = 240.0;
@@ -523,16 +524,26 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
             p.wall_boost_timer = 0.0;
             p.var_jump_speed = p.speed.y;
             p.var_jump_timer = VAR_JUMP_TIME;
-        } else if wall != 0 {
+        } else {
+            let jump_wall = if wall_jump_check(p, map, 1) {
+                1
+            } else if wall_jump_check(p, map, -1) {
+                -1
+            } else {
+                0
+            };
+            if jump_wall == 0 {
+                return;
+            }
             p.jump_buffer_timer = 0.0;
-            p.speed.x = -(wall as f32) * WALL_JUMP_H;
+            p.speed.x = -(jump_wall as f32) * WALL_JUMP_H;
             p.speed.y = JUMP_SPEED;
             p.auto_jump = false;
             p.dash_attack_timer = 0.0;
             p.wall_slide_timer = WALL_SLIDE_TIME;
             p.wall_boost_timer = 0.0;
             if move_x != 0 {
-                p.force_move_x = -wall;
+                p.force_move_x = -jump_wall;
                 p.force_move_x_timer = 0.16;
             }
             p.var_jump_speed = p.speed.y;
@@ -1269,6 +1280,15 @@ fn climb_check(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
         && map.solid_at(current_player_rect(
             p,
             p.pos.x + dir as f32 * CLIMB_CHECK_DIST,
+            p.pos.y,
+        ))
+}
+
+fn wall_jump_check(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
+    climb_bounds_check(p, map, dir)
+        && map.solid_at(current_player_rect(
+            p,
+            p.pos.x + dir as f32 * WALL_JUMP_CHECK_DIST,
             p.pos.y,
         ))
 }
@@ -2592,6 +2612,52 @@ mod tests {
         assert_eq!(trace.states[3].stamina, 80.0);
         assert_eq!(trace.states[3].wall_boost_timer, 0.0);
         assert!(trace.states[3].speed.x < -110.0);
+    }
+
+    #[test]
+    fn neutral_wall_jumps_return_for_a_second_stamina_free_jump() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 300.0),
+            solids: vec![Rect::new(40.0, 0.0, 8.0, 300.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(34.0, 240.0),
+            speed: Vec2::new(0.0, 30.0),
+            facing: true,
+            stamina: 80.0,
+            ..PlayerSnapshot::default()
+        };
+        let first_cycle = std::array::from_fn::<_, 60, _>(|frame| InputState {
+            move_x: if frame >= 1 { 1 } else { 0 },
+            jump_pressed: frame == 0,
+            jump_held: frame < 10,
+            ..InputState::default()
+        });
+        let first_trace = simulate_trace(player.clone(), &first_cycle, &map, 60).unwrap();
+        let second_jump_frame = (10..60)
+            .find(|&frame| {
+                first_trace.states[frame].speed.x >= 0.0
+                    && wall_jump_check(&first_trace.states[frame], &map, 1)
+            })
+            .expect("neutral air control returns within wall-jump range");
+        assert_eq!(second_jump_frame, 26);
+        let inputs = std::array::from_fn::<_, 60, _>(|frame| InputState {
+            move_x: if frame == 0 || frame == second_jump_frame {
+                0
+            } else {
+                1
+            },
+            jump_pressed: frame == 0 || frame == second_jump_frame,
+            jump_held: frame < 10 || (second_jump_frame..second_jump_frame + 10).contains(&frame),
+            ..InputState::default()
+        });
+        let trace = simulate_trace(player, &inputs, &map, 60).unwrap();
+        for jump_state in [1, second_jump_frame + 1] {
+            assert_eq!(trace.states[jump_state].speed.x, -WALL_JUMP_H);
+            assert_eq!(trace.states[jump_state].stamina, 80.0);
+            assert_eq!(trace.states[jump_state].force_move_x_timer, 0.0);
+        }
     }
 
     #[test]
