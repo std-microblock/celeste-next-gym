@@ -15,6 +15,6 @@
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/types.rs; crates/celeste-physics/src/sim.rs], symbol: [PlayerSnapshot.movement_remainder; move_axis_amount], note: [Rust 快照保存双轴余数，move_axis_amount 使用 round_ties_even 后逐像素碰撞，保持分段模拟闭包。]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [subpixel_manipulation_accumulates_air_control_until_a_pixel_crossing], note: [五帧交替输入依次断言 X 余数 0.180556、0.361113，随后整数位置从 160 变 161、余数变为 -0.458331，并覆盖其余核心字段。]),
-  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/playground/other-5.12-subpixel-manipulation.ts], symbol: [other-5.12-subpixel-manipulation; verifySubpixelManipulation], note: [独立 MapPart 读取真实 Everest movementCounter，逐帧验证两次纯子像素累积和第三次半像素越界；九类核心字段比较容差不超过 0.01。]),
+  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/playground/other-5.12-subpixel-manipulation.ts], symbol: [other-5.12-subpixel-manipulation; verifySubpixelManipulation], note: [独立 MapPart 记录 6 个真实状态并读取 Everest movementCounter，逐帧验证两次纯子像素累积和第三次半像素越界；九类核心字段一致，最大位置误差 0、速度误差 0.000001。]),
   candidate-e2e: none,
 )
