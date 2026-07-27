@@ -33,7 +33,7 @@ describe('recording planning and lifecycle orchestration', () => {
     assert.throws(() => collectorOwnershipEnvironment('nonce-1', 0), /positive process id/)
   })
 
-  it('validates all 54 handbook primaries before running one isolated lifecycle per target', async () => {
+  it('validates all 55 handbook primaries before running one isolated lifecycle per target', async () => {
     const config = parseConfig(['--record-all'], {
       FFMPEG_PATH: path.resolve(repoRoot, 'fake-ffmpeg'),
       FFPROBE_PATH: path.resolve(repoRoot, 'fake-ffprobe'),
@@ -41,8 +41,8 @@ describe('recording planning and lifecycle orchestration', () => {
     const catalog = loadTechniqueCatalog(repoRoot)
     const registry = buildRegistry(scenarios, { implementedTechniqueIds: catalog.implementedIds })
     const plan = createRecordingPlan(config, registry, catalog)
-    assert.equal(plan.techniqueCount, 54)
-    assert.ok(plan.scenarioCount <= 54)
+    assert.equal(plan.techniqueCount, 55)
+    assert.ok(plan.scenarioCount <= 55)
     assert.deepEqual(plan.groups.map((group) => group.target.id), ['playground', 'area-1', 'area-2'])
 
     const calls: string[] = []
@@ -54,7 +54,7 @@ describe('recording planning and lifecycle orchestration', () => {
       },
     })
     assert.deepEqual(calls, ['playground', 'area-1', 'area-2'])
-    assert.equal(summary.techniqueCount, 54)
+    assert.equal(summary.techniqueCount, 55)
   })
 
   it('rejects unknown, unimplemented, and candidate selections while deduplicating multi-primary scenarios', () => {
