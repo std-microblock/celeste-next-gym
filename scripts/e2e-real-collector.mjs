@@ -132,7 +132,10 @@ try {
   const codec = requireFromService('@msgpack/msgpack')
   encode = codec.encode
   decode = codec.decode
-  run('dotnet', ['build', resolve(modRoot, 'Source', 'CelesteGymCollector.csproj'), '-c', 'Release'])
+  run('dotnet', [
+    'build', resolve(modRoot, 'Source', 'CelesteGymCollector.csproj'), '-c', 'Release',
+    `-p:CelesteRoot=${gameRoot}`,
+  ])
   const installedMod = resolve(gameInstall.gameRoot, 'Mods', 'CelesteGymCollector')
   mkdirSync(resolve(installedMod, 'Code'), { recursive: true })
   copyFileSync(resolve(modRoot, 'everest.yaml'), resolve(installedMod, 'everest.yaml'))
