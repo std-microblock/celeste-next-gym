@@ -1694,7 +1694,7 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
     for (entity_index, entity) in map.entities.iter().enumerate() {
         let player_box = if matches!(
             entity.kind,
-            EntityKind::Spikes | EntityKind::FlyFeather | EntityKind::Bumper
+            EntityKind::Spikes | EntityKind::FlyFeather | EntityKind::Bumper | EntityKind::Spring
         ) {
             current_player_hurt_rect(p)
         } else {
@@ -4158,16 +4158,22 @@ mod tests {
             },
             InputState::default(),
             InputState::default(),
+            InputState::default(),
         ];
-        let trace = simulate_trace(p, &inputs, &spring_map(Vec2::new(0.0, -1.0)), 3).unwrap();
+        let trace = simulate_trace(p, &inputs, &spring_map(Vec2::new(0.0, -1.0)), 4).unwrap();
         assert_eq!(trace.states[2].state, PlayerState::Normal);
-        assert_eq!(trace.states[2].dashes, 1);
-        assert_eq!(trace.states[2].speed, Vec2::new(0.0, SUPER_BOUNCE_SPEED));
-        assert!(trace.states[2].dash_buffer_timer > 0.0);
-        assert_eq!(trace.states[3].state, PlayerState::Dash);
-        assert_eq!(trace.states[3].dashes, 0);
-        assert_eq!(trace.states[3].speed, Vec2::default());
-        assert_eq!(trace.states[3].dash_buffer_timer, 0.0);
+        assert_eq!(trace.states[2].pos, Vec2::new(80.0, 96.0));
+        assert!((trace.states[2].speed.y - 130.0).abs() < 0.001);
+        assert_eq!(trace.states[2].dashes, 0);
+        assert_eq!(trace.states[3].state, PlayerState::Normal);
+        assert_eq!(trace.states[3].pos, Vec2::new(80.0, 94.0));
+        assert_eq!(trace.states[3].dashes, 1);
+        assert_eq!(trace.states[3].speed, Vec2::new(0.0, SUPER_BOUNCE_SPEED));
+        assert!(trace.states[3].dash_buffer_timer > 0.0);
+        assert_eq!(trace.states[4].state, PlayerState::Dash);
+        assert_eq!(trace.states[4].dashes, 0);
+        assert_eq!(trace.states[4].speed, Vec2::default());
+        assert_eq!(trace.states[4].dash_buffer_timer, 0.0);
     }
 
     #[test]
