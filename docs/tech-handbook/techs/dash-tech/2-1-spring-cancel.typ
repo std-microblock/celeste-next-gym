@@ -4,7 +4,7 @@
   id: "2.1",
   title-zh: "弹簧取消",
   title-en: "Spring Cancel",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [接触普通或侧向弹簧后立刻冲刺，会用冲刺速度覆盖弹簧赋予的动量；输入也可以预缓冲。],
   description-en: [Dashing immediately after a normal or sideways spring replaces the spring momentum, and the dash input may be buffered.],
   source-evidence: evidence(
@@ -15,6 +15,6 @@
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/map.rs; crates/celeste-physics/src/sim.rs], symbol: [EntityKind.Spring; super_bounce; side_bounce; PlayerSnapshot.dash_buffer_timer]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [spring_cancel_uses_the_buffered_dash_after_the_spring_refills_it; wall_spring_uses_source_side_bounce_speed_and_force_move]),
-  e2e-evidence: none,
-  candidate-e2e: "dash-spring-cancel",
+  e2e-evidence: evidence(path: [scripts/e2e-real-collector.mjs], symbol: [dash-spring-cancel], note: [真实游戏与模拟器均在 hurtbox 进入弹簧后的 frame 3 得到 0/-185 与一次 Dash 回填，下一帧消费预缓冲进入 Dash；17 帧九类核心字段的最大位置与速度误差均为 0。]),
+  candidate-e2e: none,
 )
