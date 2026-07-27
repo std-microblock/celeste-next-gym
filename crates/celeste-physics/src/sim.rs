@@ -2675,6 +2675,58 @@ mod tests {
         assert_eq!(p.var_jump_timer, 0.25);
     }
     #[test]
+    fn spiked_wallbounce_is_safe_on_the_entry_frame_but_dies_one_frame_late() {
+        let map = Map {
+            solids: vec![Rect::new(100.0, 0.0, 8.0, 180.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::Spikes,
+                bounds: Rect::new(97.0, 60.0, 3.0, 20.0),
+                direction: Vec2::new(-1.0, 0.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "spikesLeft".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(96.0, 91.0),
+            dashes: 1,
+            ..PlayerSnapshot::default()
+        };
+        let mut on_time = [InputState::default(); 6];
+        on_time[0] = InputState {
+            move_y: -1,
+            dash_pressed: true,
+            ..InputState::default()
+        };
+        on_time[4] = InputState {
+            move_y: -1,
+            jump_pressed: true,
+            jump_held: true,
+            ..InputState::default()
+        };
+        let on_time = simulate_trace(p.clone(), &on_time, &map, on_time.len() as u32).unwrap();
+        assert!(!on_time.states.last().unwrap().dead);
+        assert_eq!(on_time.states[5].state, PlayerState::Normal);
+        assert_eq!(on_time.states[5].speed, Vec2::new(-170.0, -160.0));
+
+        let mut late = [InputState::default(); 6];
+        late[0] = InputState {
+            move_y: -1,
+            dash_pressed: true,
+            ..InputState::default()
+        };
+        late[5] = InputState {
+            move_y: -1,
+            jump_pressed: true,
+            jump_held: true,
+            ..InputState::default()
+        };
+        let late = simulate(p, &late, &map, late.len() as u32).unwrap();
+        assert!(late.dead);
+    }
+    #[test]
     fn fastfall_approaches_source_240_terminal_speed() {
         let p = PlayerSnapshot {
             pos: Vec2::new(32.0, 32.0),

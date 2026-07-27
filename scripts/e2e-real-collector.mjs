@@ -242,6 +242,16 @@ try {
       })),
     },
     {
+      name: 'dash-spiked-wallbounce',
+      initial: { pos: [396, 203], speed: [0, 0] },
+      inputs: Array.from({ length: 14 }, (_, frame) => input({
+        move_y: -1,
+        jump_pressed: frame === 4,
+        jump_held: frame >= 4 && frame < 12,
+        dash_pressed: frame === 0,
+      })),
+    },
+    {
       name: 'dash-demodash-gap',
       initial: { pos: [712, 320], speed: [0, 0] },
       inputs: Array.from({ length: 30 }, (_, frame) => input({
