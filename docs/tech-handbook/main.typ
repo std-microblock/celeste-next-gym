@@ -1,4 +1,4 @@
-#import "template.typ": evidence, coverage-summary
+#import "template.typ": badge, coverage-summary
 
 #set document(
   title: "Celeste Next Gym 技巧手册 / Tech Handbook",
@@ -7,7 +7,7 @@
 #set page(
   paper: "a4",
   margin: (x: 22mm, y: 20mm),
-  numbering: "1 / 1",
+  numbering: "1 · 1",
   number-align: center + bottom,
 )
 #set text(
@@ -27,9 +27,11 @@
   #v(4pt)
   #text(size: 17pt, fill: rgb("#475569"))[Tech Handbook]
   #v(16pt)
-  #text(size: 11pt)[固定基线：Celeste Wiki Tech 页面 2026-05-28 文本快照]
-  #v(3pt)
-  #text(size: 10pt, fill: rgb("#64748b"))[Pinned baseline: Celeste Wiki Tech snapshot revised 2026-05-28]
+  #badge([固定基线], fill: rgb("#e2e8f0"), color: rgb("#334155"))
+  #h(5pt)
+  #badge([PINNED BASELINE], fill: rgb("#e2e8f0"), color: rgb("#334155"))
+  #v(7pt)
+  #text(size: 10pt)[Celeste Wiki Tech · 2026-05-28]
   #v(20pt)
   #box(
     width: 72%,
@@ -38,8 +40,11 @@
     fill: rgb("#f8fafc"),
     stroke: 0.8pt + rgb("#94a3b8"),
     [
-      *当前覆盖 / Current coverage*
+      #badge([当前覆盖], fill: rgb("#e2e8f0"), color: rgb("#334155"))
+      #h(5pt)
+      #badge([CURRENT COVERAGE], fill: rgb("#e2e8f0"), color: rgb("#334155"))
 
+      #v(9pt)
       #text(size: 19pt, weight: "bold", fill: rgb("#991b1b"))[#coverage-summary()]
 
       所有技巧在四类证据齐全前均明确标记为“未实现”。
@@ -50,7 +55,7 @@
 ]
 
 #pagebreak()
-= 阅读与维护说明 / Reading and maintenance
+= 阅读与维护说明 #h(5pt) #badge([READING AND MAINTENANCE])
 
 本手册既是面向玩家的双语技巧说明，也是实现覆盖审计。每个技巧独立存放在一个 Typst 文件中，并由本入口统一包含。来源描述经过摘要和双语改写；实现结论只以代码与真实游戏证据为准。
 
@@ -65,7 +70,7 @@ This handbook is both a bilingual player-facing guide and an implementation audi
 
 候选场景只是一条待核证线索，不计入完成数。`FinalBoss` 与玩家 `Attract` 状态是明确产品排除项，不进入 120 项分母。
 
-#outline(title: [目录 / Contents], depth: 2, indent: auto)
+#outline(title: [目录 #h(5pt) #badge([CONTENTS])], depth: 2, indent: auto)
 
 #pagebreak()
 #include "techs.typ"
