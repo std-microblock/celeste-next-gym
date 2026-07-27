@@ -51,6 +51,7 @@ pub enum EntityKind {
     Bumper,
     BadelineBoost,
     Spring,
+    Strawberry,
     Wind,
     Unknown,
 }
@@ -292,6 +293,17 @@ pub fn encode_celeste_map(map: &Map, package: &str, room: &str) -> Result<Vec<u8
                     vec![],
                 ))
             }
+            EntityKind::Strawberry => Some(element(
+                "strawberry",
+                [
+                    ("id", BinaryValue::Int(id)),
+                    ("moon", BinaryValue::Bool(false)),
+                    ("winged", BinaryValue::Bool(false)),
+                    ("x", BinaryValue::Int(x + width / 2)),
+                    ("y", BinaryValue::Int(y + height / 2)),
+                ],
+                vec![],
+            )),
             EntityKind::Wind => {
                 triggers.push(element(
                     "windTrigger",
@@ -564,6 +576,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 "bigSpinner" => EntityKind::Bumper,
                 "badelineBoost" => EntityKind::BadelineBoost,
                 "spring" | "wallSpringLeft" | "wallSpringRight" => EntityKind::Spring,
+                "strawberry" => EntityKind::Strawberry,
                 "windTrigger" => EntityKind::Wind,
                 _ => EntityKind::Unknown,
             };
@@ -572,6 +585,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 EntityKind::FlyFeather => 20.0,
                 EntityKind::Bumper => 24.0,
                 EntityKind::BadelineBoost => 32.0,
+                EntityKind::Strawberry => 14.0,
                 _ => 8.0,
             };
             let default_h = default_w;
@@ -589,7 +603,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 ),
                 "spikesRight" => (Rect::new(ex, ey, 3.0, raw_height), Vec2::new(1.0, 0.0)),
                 "booster" | "redBooster" | "infiniteStar" | "flyFeather" | "bigSpinner"
-                | "badelineBoost" => (
+                | "badelineBoost" | "strawberry" => (
                     Rect::new(
                         ex - raw_width * 0.5,
                         ey - raw_height * 0.5,
@@ -789,5 +803,26 @@ mod tests {
         let bytes = encode_celeste_map(&map, "CelesteGymPlayground", "springs").unwrap();
         let decoded = decode_map_room(&bytes, Some("springs")).unwrap();
         assert_eq!(decoded.entities, springs);
+    }
+
+    #[test]
+    fn celeste_strawberry_round_trips_with_its_fourteen_pixel_collider() {
+        let berry = Entity {
+            kind: EntityKind::Strawberry,
+            bounds: Rect::new(153.0, 81.0, 14.0, 14.0),
+            direction: Vec2::default(),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "strawberry".to_owned(),
+        };
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            entities: vec![berry.clone()],
+            ..Map::default()
+        };
+        let bytes = encode_celeste_map(&map, "CelesteGymPlayground", "berry").unwrap();
+        let decoded = decode_map_room(&bytes, Some("berry")).unwrap();
+        assert_eq!(decoded.entities, vec![berry]);
     }
 }

@@ -166,6 +166,9 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         s.last_feather_target.y,
         s.feather_reuse_timer,
         s.bumper_reuse_timer,
+        s.strawberry_follow_delay_timer,
+        s.strawberry_collect_timer,
+        s.strawberry_collect_reset_timer,
         s.explode_launch_boost_timer,
         s.explode_launch_boost_speed,
         s.badeline_boost_start.x,
@@ -278,6 +281,14 @@ fn step(p: &mut PlayerSnapshot, mut input: InputState, map: &Map) -> Result<(), 
         p.wall_slide_timer = (p.wall_slide_timer - DT).max(0.0);
     }
     p.wall_slide_dir = 0;
+    if p.strawberry_collect_reset_timer > 0.0 {
+        p.strawberry_collect_reset_timer = (p.strawberry_collect_reset_timer - DT).max(0.0);
+        if p.strawberry_collect_reset_timer <= 0.0 {
+            p.strawberry_collect_index = 0;
+        }
+    } else {
+        p.strawberry_collect_index = 0;
+    }
     p.on_ground = p.state != PlayerState::DreamDash && grounded(p, map);
     if p.on_ground {
         p.auto_jump = false;
@@ -356,6 +367,7 @@ fn step(p: &mut PlayerSnapshot, mut input: InputState, map: &Map) -> Result<(), 
     move_axis(p, map, true);
     move_axis(p, map, false);
     interact(p, map, input);
+    update_strawberry_train(p);
     try_begin_badeline_boost(p, map);
     enforce_level_bounds(p, map);
     p.on_ground = grounded(p, map);
@@ -1520,7 +1532,7 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
         }
     }
     let hitbox = current_player_rect(p, p.pos.x, p.pos.y);
-    for entity in &map.entities {
+    for (entity_index, entity) in map.entities.iter().enumerate() {
         let player_box = if matches!(
             entity.kind,
             EntityKind::Spikes | EntityKind::FlyFeather | EntityKind::Bumper
@@ -1632,6 +1644,17 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                     side_bounce(p, entity.direction.x.signum() as i8, entity.bounds);
                 }
             }
+            EntityKind::Strawberry if entity_index < u64::BITS as usize => {
+                let mask = 1_u64 << entity_index;
+                if p.strawberry_picked_mask & mask == 0 {
+                    p.strawberry_picked_mask |= mask;
+                    if p.carried_strawberries == 0 {
+                        p.strawberry_follow_delay_timer = 0.3;
+                        p.strawberry_collect_timer = 0.0;
+                    }
+                    p.carried_strawberries = p.carried_strawberries.saturating_add(1);
+                }
+            }
             EntityKind::Wind => {
                 // WindTrigger changes the global WindController pattern. It
                 // does not apply a local force and leaving the trigger does
@@ -1640,6 +1663,35 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
             }
             _ => {}
         }
+    }
+}
+
+fn update_strawberry_train(p: &mut PlayerSnapshot) {
+    if p.carried_strawberries == 0 {
+        return;
+    }
+    if p.strawberry_follow_delay_timer > 0.0 {
+        p.strawberry_follow_delay_timer = (p.strawberry_follow_delay_timer - DT).max(0.0);
+        return;
+    }
+
+    // Strawberry.Update uses Player.OnSafeGround. Normal solids and
+    // jumpthroughs are safe in the supported map subset, and Swim is always
+    // treated as safe ground by Player.Update.
+    if p.on_ground || p.state == PlayerState::Swim {
+        p.strawberry_collect_timer += DT;
+        if p.strawberry_collect_timer > 0.15 {
+            p.carried_strawberries -= 1;
+            p.strawberry_collect_index = p.strawberry_collect_index.saturating_add(1);
+            p.strawberry_collect_reset_timer = 2.5;
+            p.strawberry_collect_timer = if p.carried_strawberries > 0 {
+                -0.15
+            } else {
+                0.0
+            };
+        }
+    } else {
+        p.strawberry_collect_timer = p.strawberry_collect_timer.min(0.0);
     }
 }
 
@@ -2292,6 +2344,24 @@ mod tests {
                 nodes: vec![],
                 name: "spring".to_owned(),
             }],
+            ..Map::default()
+        }
+    }
+    fn berry_map(count: usize) -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            solids: vec![Rect::new(0.0, 100.0, 320.0, 80.0)],
+            entities: (0..count)
+                .map(|_| crate::Entity {
+                    kind: EntityKind::Strawberry,
+                    bounds: Rect::new(73.0, 86.0, 14.0, 14.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "strawberry".to_owned(),
+                })
+                .collect(),
             ..Map::default()
         }
     }
@@ -3588,6 +3658,55 @@ mod tests {
         assert_eq!(trace.states[3].dashes, 0);
         assert_eq!(trace.states[3].speed, Vec2::default());
         assert_eq!(trace.states[3].dash_buffer_timer, 0.0);
+    }
+
+    #[test]
+    fn first_berry_collects_after_nine_consecutive_safe_ground_frames() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(80.0, 100.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(p, &[InputState::default(); 30], &berry_map(1), 30).unwrap();
+        assert_eq!(trace.states[1].carried_strawberries, 1);
+        let ready = trace
+            .states
+            .iter()
+            .position(|state| {
+                state.carried_strawberries > 0 && state.strawberry_follow_delay_timer <= 0.0
+            })
+            .unwrap();
+        let collected = trace
+            .states
+            .iter()
+            .position(|state| state.strawberry_collect_index == 1)
+            .unwrap();
+        assert_eq!(collected - ready, 9);
+        assert_eq!(trace.states[collected - 1].carried_strawberries, 1);
+        assert_eq!(trace.states[collected].carried_strawberries, 0);
+    }
+
+    #[test]
+    fn later_berry_in_the_train_waits_through_the_negative_collection_offset() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(80.0, 100.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(p, &[InputState::default(); 60], &berry_map(2), 60).unwrap();
+        let first = trace
+            .states
+            .iter()
+            .position(|state| state.strawberry_collect_index == 1)
+            .unwrap();
+        let second = trace
+            .states
+            .iter()
+            .position(|state| state.strawberry_collect_index == 2)
+            .unwrap();
+        assert_eq!(second - first, 18);
+        assert_eq!(trace.states[first].strawberry_collect_timer, -0.15);
+        assert_eq!(trace.states[second].carried_strawberries, 0);
     }
 
     #[test]

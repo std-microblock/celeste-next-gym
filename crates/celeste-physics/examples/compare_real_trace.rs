@@ -245,6 +245,9 @@ fn to_snapshot(value: &PortableSnapshot) -> PlayerSnapshot {
     snapshot.star_fly_transforming = bool_field(&value.fields, "starFlyTransforming");
     snapshot.star_fly_speed_lerp = float_field(&value.fields, "starFlySpeedLerp");
     snapshot.star_fly_last_dir = vector_field(&value.fields, "starFlyLastDir");
+    snapshot.strawberry_collect_index = int_field(&value.fields, "StrawberryCollectIndex") as u16;
+    snapshot.strawberry_collect_reset_timer =
+        float_field(&value.fields, "StrawberryCollectResetTimer");
     snapshot
 }
 

@@ -235,6 +235,11 @@ try {
       inputs: Array.from({ length: 4 }, () => input()),
     },
     {
+      name: 'mechanics-berry-train',
+      initial: { pos: [160, 468], speed: [0, 0] },
+      inputs: Array.from({ length: 64 }, () => input()),
+    },
+    {
       name: 'dash-spring-cancel',
       initial: { pos: [80, 488], speed: [0, 100], dashes: 0 },
       inputs: Array.from({ length: 16 }, (_, frame) => input({

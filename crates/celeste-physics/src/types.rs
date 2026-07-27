@@ -156,6 +156,16 @@ pub struct PlayerSnapshot {
     pub feather_reuse_timer: f32,
     pub last_bumper_target: Vec2,
     pub bumper_reuse_timer: f32,
+    /// Bitset of ordinary strawberries already attached to the player's
+    /// follower train. The bit index is the map entity index.
+    pub strawberry_picked_mask: u64,
+    pub carried_strawberries: u8,
+    /// Follower.DelayTimer for the first ordinary strawberry in the train.
+    pub strawberry_follow_delay_timer: f32,
+    /// Strawberry.collectTimer for the first ordinary strawberry in the train.
+    pub strawberry_collect_timer: f32,
+    pub strawberry_collect_index: u16,
+    pub strawberry_collect_reset_timer: f32,
     pub explode_launch_boost_timer: f32,
     pub explode_launch_boost_speed: f32,
     pub badeline_boost_active: bool,
@@ -256,6 +266,12 @@ impl Default for PlayerSnapshot {
             feather_reuse_timer: 0.0,
             last_bumper_target: Vec2::default(),
             bumper_reuse_timer: 0.0,
+            strawberry_picked_mask: 0,
+            carried_strawberries: 0,
+            strawberry_follow_delay_timer: 0.0,
+            strawberry_collect_timer: 0.0,
+            strawberry_collect_index: 0,
+            strawberry_collect_reset_timer: 0.0,
             explode_launch_boost_timer: 0.0,
             explode_launch_boost_speed: 0.0,
             badeline_boost_active: false,
