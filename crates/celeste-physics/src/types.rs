@@ -68,6 +68,27 @@ impl InputState {
     }
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ZipMoverSnapshot {
+    /// Source coroutine phase: waiting, start delay, outbound, target delay,
+    /// return, or start delay.
+    pub phase: u8,
+    /// Coroutine float-yield timer. Like Monocle.Coroutine, a frame that
+    /// crosses zero only resumes the iterator on the following update.
+    pub wait_timer: f32,
+    /// Current outbound/return interpolation cursor before Ease.SineIn.
+    pub at: f32,
+    /// Integer Platform.Position used for collision and carrying.
+    pub position: Vec2,
+    /// Platform movementCounter retained by MoveTo across frames.
+    pub remainder: Vec2,
+    /// Platform.LiftSpeed components last written by MoveToX/MoveToY.
+    pub lift_speed: Vec2,
+    /// Original entity position captured before the runtime map is moved.
+    pub start: Vec2,
+}
+
 fn default_stamina() -> f32 {
     110.0
 }
@@ -157,6 +178,9 @@ pub struct PlayerSnapshot {
     /// moving solids. Keeping it in the snapshot makes split simulations
     /// resume from the same platform positions.
     pub moving_solid_time: f32,
+    /// Per-entity vanilla ZipMover coroutine and Platform movement state, in
+    /// map entity order. This keeps segmented simulation composable.
+    pub zip_movers: Vec<ZipMoverSnapshot>,
     pub climb_no_move_timer: f32,
     pub dream_dash_can_end_timer: f32,
     pub launch_approach_x: Option<f32>,
@@ -278,6 +302,7 @@ impl Default for PlayerSnapshot {
             last_lift_speed: Vec2::default(),
             lift_speed_timer: 0.0,
             moving_solid_time: 0.0,
+            zip_movers: vec![],
             climb_no_move_timer: 0.0,
             dream_dash_can_end_timer: 0.0,
             launch_approach_x: None,

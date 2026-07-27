@@ -128,6 +128,7 @@ pub fn simulate_trace(
     }
     validate_snapshot(&snapshot)?;
     let mut runtime_map = map.clone();
+    initialize_zip_movers(&mut snapshot, &mut runtime_map);
     position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
     let mut states = Vec::with_capacity(frames + 1);
     states.push(snapshot.clone());
@@ -222,10 +223,50 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         s.movement_remainder.x,
         s.movement_remainder.y,
     ];
-    if values.iter().all(|x| x.is_finite()) {
+    let zip_movers_are_finite = s.zip_movers.iter().all(|zip| {
+        [
+            zip.wait_timer,
+            zip.at,
+            zip.position.x,
+            zip.position.y,
+            zip.remainder.x,
+            zip.remainder.y,
+            zip.lift_speed.x,
+            zip.lift_speed.y,
+            zip.start.x,
+            zip.start.y,
+        ]
+        .iter()
+        .all(|value| value.is_finite())
+    });
+    if values.iter().all(|x| x.is_finite()) && zip_movers_are_finite {
         Ok(())
     } else {
         Err(SimulationError::NonFinite)
+    }
+}
+
+fn initialize_zip_movers(p: &mut PlayerSnapshot, map: &mut Map) {
+    let zip_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::ZipMover).then_some(index))
+        .collect();
+    p.zip_movers.truncate(zip_indices.len());
+    for (zip_index, entity_index) in zip_indices.into_iter().enumerate() {
+        let entity = &mut map.entities[entity_index];
+        if zip_index == p.zip_movers.len() {
+            let start = Vec2::new(entity.bounds.x, entity.bounds.y);
+            p.zip_movers.push(crate::ZipMoverSnapshot {
+                position: start,
+                start,
+                ..crate::ZipMoverSnapshot::default()
+            });
+        }
+        let state = &p.zip_movers[zip_index];
+        entity.bounds.x = state.position.x;
+        entity.bounds.y = state.position.y;
     }
 }
 
@@ -243,6 +284,160 @@ fn set_lift_speed(p: &mut PlayerSnapshot, speed: Vec2) {
     if speed != Vec2::default() {
         p.last_lift_speed = speed;
         p.lift_speed_timer = 0.16;
+    }
+}
+
+fn sine_in(value: f32) -> f32 {
+    1.0 - (std::f32::consts::FRAC_PI_2 * value).cos()
+}
+
+fn player_riding_solid(p: &PlayerSnapshot, bounds: Rect) -> bool {
+    bounds.intersects(current_player_rect(p, p.pos.x, p.pos.y + 1.0))
+}
+
+fn move_runtime_solid_exact(
+    p: &mut PlayerSnapshot,
+    bounds: &mut Rect,
+    horizontal: bool,
+    amount: f32,
+    lift_speed: Vec2,
+) {
+    if amount == 0.0 {
+        return;
+    }
+    let riding = player_riding_solid(p, *bounds);
+    if horizontal {
+        bounds.x += amount;
+    } else {
+        bounds.y += amount;
+    }
+
+    let player = current_player_rect(p, p.pos.x, p.pos.y);
+    if bounds.intersects(player) {
+        if horizontal {
+            if amount > 0.0 {
+                p.pos.x += bounds.right() - player.x;
+            } else {
+                p.pos.x += bounds.x - player.right();
+            }
+        } else if amount > 0.0 {
+            p.pos.y += bounds.bottom() - player.y;
+        } else {
+            p.pos.y += bounds.y - player.bottom();
+        }
+        set_lift_speed(p, lift_speed);
+    } else if riding {
+        if horizontal {
+            p.pos.x += amount;
+        } else {
+            p.pos.y += amount;
+        }
+        set_lift_speed(p, lift_speed);
+    }
+}
+
+fn move_zip_mover_to(
+    p: &mut PlayerSnapshot,
+    entity: &mut crate::Entity,
+    state: &mut crate::ZipMoverSnapshot,
+    target: Vec2,
+) {
+    let exact_x = state.position.x + state.remainder.x;
+    let move_x = target.x - exact_x;
+    state.lift_speed.x = move_x / DT;
+    state.remainder.x += move_x;
+    let exact_move_x = state.remainder.x.round_ties_even();
+    state.remainder.x -= exact_move_x;
+    move_runtime_solid_exact(p, &mut entity.bounds, true, exact_move_x, state.lift_speed);
+    state.position.x += exact_move_x;
+
+    let exact_y = state.position.y + state.remainder.y;
+    let move_y = target.y - exact_y;
+    state.lift_speed.y = move_y / DT;
+    state.remainder.y += move_y;
+    let exact_move_y = state.remainder.y.round_ties_even();
+    state.remainder.y -= exact_move_y;
+    move_runtime_solid_exact(p, &mut entity.bounds, false, exact_move_y, state.lift_speed);
+    state.position.y += exact_move_y;
+}
+
+fn advance_zip_movers(p: &mut PlayerSnapshot, map: &mut Map) {
+    let zip_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::ZipMover).then_some(index))
+        .collect();
+    for (zip_index, entity_index) in zip_indices.into_iter().enumerate() {
+        let mut state = p.zip_movers[zip_index].clone();
+        let entity = &mut map.entities[entity_index];
+        let target = entity.nodes.first().copied().unwrap_or(state.start);
+        match state.phase {
+            0 => {
+                if player_riding_solid(p, entity.bounds) {
+                    state.phase = 1;
+                    state.wait_timer = 0.1;
+                }
+            }
+            1 => {
+                if state.wait_timer > 0.0 {
+                    state.wait_timer -= DT;
+                } else {
+                    state.phase = 2;
+                    state.at = 0.0;
+                }
+            }
+            2 => {
+                state.at = approach(state.at, 1.0, 2.0 * DT);
+                let eased = sine_in(state.at);
+                let desired = Vec2::new(
+                    state.start.x + (target.x - state.start.x) * eased,
+                    state.start.y + (target.y - state.start.y) * eased,
+                );
+                move_zip_mover_to(p, entity, &mut state, desired);
+                if state.at >= 1.0 {
+                    state.phase = 3;
+                    state.wait_timer = 0.5;
+                }
+            }
+            3 => {
+                if state.wait_timer > 0.0 {
+                    state.wait_timer -= DT;
+                } else {
+                    state.phase = 4;
+                    state.at = 0.0;
+                }
+            }
+            4 => {
+                state.at = approach(state.at, 1.0, 0.5 * DT);
+                let eased = sine_in(state.at);
+                let desired = Vec2::new(
+                    target.x + (state.start.x - target.x) * eased,
+                    target.y + (state.start.y - target.y) * eased,
+                );
+                move_zip_mover_to(p, entity, &mut state, desired);
+                if state.at >= 1.0 {
+                    state.phase = 5;
+                    state.wait_timer = 0.5;
+                }
+            }
+            5 => {
+                if state.wait_timer > 0.0 {
+                    state.wait_timer -= DT;
+                } else if player_riding_solid(p, entity.bounds) {
+                    state.phase = 1;
+                    state.wait_timer = 0.1;
+                } else {
+                    state.phase = 0;
+                }
+            }
+            _ => {
+                state.phase = 0;
+                state.wait_timer = 0.0;
+                state.at = 0.0;
+            }
+        }
+        p.zip_movers[zip_index] = state;
     }
 }
 
@@ -356,6 +551,7 @@ fn step(
         p.freeze_timer = (p.freeze_timer - DT).max(0.0);
         return Ok(());
     }
+    advance_zip_movers(p, map);
     advance_moving_solids(p, map);
     if p.transition_timer > 0.0 {
         update_transition(p);
@@ -2528,6 +2724,21 @@ mod tests {
             ..Map::default()
         }
     }
+    fn zip_mover_map() -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 544.0),
+            entities: vec![crate::Entity {
+                kind: EntityKind::ZipMover,
+                bounds: Rect::new(32.0, 440.0, 64.0, 16.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![Vec2::new(32.0, 320.0)],
+                name: "zipMover".to_owned(),
+            }],
+            ..Map::default()
+        }
+    }
     fn water_map() -> Map {
         Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
@@ -2799,6 +3010,78 @@ mod tests {
 
         assert_eq!(p.pos.x, 33.0);
         assert_eq!(p.last_lift_speed, Vec2::default());
+    }
+    #[test]
+    fn zip_mover_uses_source_wait_yield_and_sine_outbound_phases() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(64.0, 440.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [InputState::default(); 12];
+        let trace = simulate_trace(p, &inputs, &zip_mover_map(), 12).unwrap();
+
+        assert_eq!(trace.states[1].zip_movers[0].phase, 1);
+        assert_eq!(trace.states[1].zip_movers[0].wait_timer, 0.1);
+        let first_outbound = trace
+            .states
+            .iter()
+            .position(|state| state.zip_movers[0].phase == 2)
+            .unwrap();
+        assert_eq!(trace.states[first_outbound].zip_movers[0].at, 0.0);
+        assert_eq!(trace.states[first_outbound].zip_movers[0].position.y, 440.0);
+        assert!(trace.states[12].zip_movers[0].at > 0.0);
+        assert!(trace.states[12].zip_movers[0].position.y < 440.0);
+        assert_eq!(
+            trace.states[12].pos.y,
+            trace.states[12].zip_movers[0].position.y
+        );
+        assert!(trace.states[12].last_lift_speed.y < 0.0);
+    }
+
+    #[test]
+    fn zip_mover_runtime_keeps_split_simulation_composable() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(64.0, 440.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [InputState::default(); 40];
+        let direct = simulate(p.clone(), &inputs, &zip_mover_map(), 40).unwrap();
+        let first = simulate(p, &inputs[..17], &zip_mover_map(), 17).unwrap();
+        let split = simulate(first, &inputs[17..], &zip_mover_map(), 23).unwrap();
+
+        assert_eq!(split, direct);
+        assert_eq!(direct.zip_movers.len(), 1);
+        assert_eq!(direct.zip_movers[0].phase, 3);
+    }
+
+    #[test]
+    fn zip_mover_pixel_carry_writes_lift_speed_for_same_frame_jump() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(64.0, 440.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let idle = [InputState::default(); 20];
+        let idle_trace = simulate_trace(p.clone(), &idle, &zip_mover_map(), 20).unwrap();
+        let lift_state = idle_trace
+            .states
+            .iter()
+            .position(|state| state.last_lift_speed.y < 0.0)
+            .unwrap();
+        let mut inputs = idle;
+        inputs[lift_state - 1] = InputState {
+            jump_pressed: true,
+            jump_held: true,
+            ..InputState::default()
+        };
+        let trace = simulate_trace(p, &inputs, &zip_mover_map(), 20).unwrap();
+        let jumped = &trace.states[lift_state];
+
+        assert!(jumped.speed.y < JUMP_SPEED);
+        assert_eq!(jumped.var_jump_speed, jumped.speed.y);
+        assert!(jumped.last_lift_speed.y < 0.0);
     }
     #[test]
     fn jump_adds_retained_lift_boost_before_caching_variable_jump_speed() {

@@ -76,6 +76,7 @@ export interface PlayerSnapshot {
   last_lift_speed?: Vector2;
   lift_speed_timer?: number;
   moving_solid_time?: number;
+  zip_movers?: ZipMoverSnapshot[];
   climb_no_move_timer?: number;
   dream_dash_can_end_timer?: number;
   launch_approach_x?: number | null;
@@ -120,6 +121,16 @@ export interface PlayerSnapshot {
   ignore_jump_thrus?: boolean;
   launched?: boolean;
   [key: string]: unknown;
+}
+
+export interface ZipMoverSnapshot {
+  phase: number;
+  wait_timer: number;
+  at: number;
+  position: Vector2;
+  remainder: Vector2;
+  lift_speed: Vector2;
+  start: Vector2;
 }
 
 export interface SimulateRequest {

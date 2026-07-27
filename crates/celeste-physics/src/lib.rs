@@ -22,4 +22,4 @@ pub use sim::{
     DT, Fidelity, INTENTIONALLY_UNSUPPORTED_STATES, SimulationError, SimulationResult, fidelity,
     simulate, simulate_trace,
 };
-pub use types::{InputState, PlayerSnapshot, PlayerState, Vec2};
+pub use types::{InputState, PlayerSnapshot, PlayerState, Vec2, ZipMoverSnapshot};
