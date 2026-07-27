@@ -9,7 +9,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'candidate',
   tags: ["feature:booster"],
-  techniqueIds: [],
+  techniqueIds: ['4.5'],
   mapParts,
   name: 'entity-4.5-iceball-jump',
     initial: { pos: [317, 155], speed: [0, 0] },

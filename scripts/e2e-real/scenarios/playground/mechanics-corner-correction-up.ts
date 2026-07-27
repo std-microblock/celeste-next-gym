@@ -9,7 +9,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: [],
-  techniqueIds: [],
+  techniqueIds: ['1.3'],
   mapParts,
   name: 'mechanics-corner-correction-up',
     initial: { pos: [477, 275], speed: [0, -105] },

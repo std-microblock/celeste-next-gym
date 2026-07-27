@@ -9,7 +9,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'candidate',
   tags: ["feature:booster"],
-  techniqueIds: [],
+  techniqueIds: ['4.15.2'],
   mapParts,
   name: 'entity-4.15.2-feather-hitbox-preservation',
     initial: { pos: [320, 120], speed: [0, 0] },

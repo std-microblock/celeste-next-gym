@@ -11,7 +11,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: [],
-  techniqueIds: [],
+  techniqueIds: ['2.10.1'],
   mapParts,
   name: 'dash-spiked-wallbounce-late',
     initial: { pos: [396, 207], speed: [0, 0] },

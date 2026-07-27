@@ -10,7 +10,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: ["feature:booster"],
-  techniqueIds: [],
+  techniqueIds: ['4.2'],
   mapParts,
   name: 'entity-4.2-bubble-demohyper',
     initial: { pos: [220, 400], speed: [90, 0] },

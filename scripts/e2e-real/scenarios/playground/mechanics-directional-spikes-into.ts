@@ -11,7 +11,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: [],
-  techniqueIds: [],
+  techniqueIds: ['1.6'],
   mapParts,
   name: 'mechanics-directional-spikes-into',
     initial: { pos: [360, 496], speed: [0, 60] },

@@ -10,7 +10,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: ["feature:bounce-block"],
-  techniqueIds: [],
+  techniqueIds: ['4.7'],
   mapParts,
   name: 'entity-4.7-core-hyper',
     initial: { pos: [384, 360], speed: [0, 0] },

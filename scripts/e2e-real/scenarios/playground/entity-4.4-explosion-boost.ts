@@ -9,7 +9,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'candidate',
   tags: ["feature:bumper"],
-  techniqueIds: [],
+  techniqueIds: ['4.4'],
   mapParts,
   name: 'entity-4.4-explosion-boost',
     initial: { pos: [589, 206], speed: [0, 0] },

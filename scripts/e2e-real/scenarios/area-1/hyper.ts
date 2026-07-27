@@ -8,7 +8,8 @@ export const scenario = defineScenario({
   target: AREA_1_TARGET,
   status: 'active',
   tags: [],
-  techniqueIds: [],
+  techniqueIds: ['2.3'],
+  recording: { primaryFor: ['2.3'], startFrame: 0, endFrame: 12 },
   mapParts,
   name: 'hyper',
     inputs: Array.from({ length: 12 }, (_, frame) => input({
