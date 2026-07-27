@@ -468,6 +468,47 @@ try {
         dash_pressed: frame === 0,
       })),
     },
+    {
+      name: 'entity-4.9-dream-grab',
+      initial: { pos: [776, -50], speed: [0, 0] },
+      inputs: Array.from({ length: 28 }, (_, frame) => input({
+        move_x: frame < 15 ? 1 : -1,
+        dash_pressed: frame === 0,
+        grab_held: frame >= 15,
+      })),
+    },
+    {
+      name: 'entity-4.10-dream-jump',
+      initial: { pos: [776, -50], speed: [0, 0] },
+      inputs: Array.from({ length: 32 }, (_, frame) => input({
+        move_x: 1,
+        jump_pressed: frame === 15,
+        jump_held: frame >= 15 && frame < 25,
+        dash_pressed: frame === 0,
+      })),
+    },
+    {
+      name: 'entity-4.10.1-dream-double-jump',
+      initial: { pos: [776, -50], speed: [0, 0] },
+      inputs: Array.from({ length: 36 }, (_, frame) => input({
+        move_x: 1,
+        jump_pressed: frame === 15 || frame === 17,
+        jump_held: frame >= 15 && frame < 29,
+        dash_pressed: frame === 0,
+      })),
+    },
+    {
+      name: 'entity-4.10.2-dream-hyper',
+      initial: { pos: [776, -50], speed: [0, 0] },
+      inputs: Array.from({ length: 38 }, (_, frame) => input({
+        move_x: 1,
+        move_y: frame >= 17 && frame <= 24 ? 1 : 0,
+        jump_pressed: frame === 24,
+        jump_held: frame >= 24 && frame < 34,
+        dash_pressed: frame === 0,
+        crouch_dash_pressed: frame === 17,
+      })),
+    },
   ] : areaId === 4 ? [
     {
       name: 'swim-idle',
