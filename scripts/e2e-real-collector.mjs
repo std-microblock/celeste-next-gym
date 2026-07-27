@@ -292,22 +292,36 @@ try {
       {
         name: 'entity-4.2-bubble-super',
         initial: { pos: [220, 400], speed: [90, 0] },
-        inputs: Array.from({ length: 16 }, (_, frame) => input({
+        inputs: Array.from({ length: 10 }, (_, frame) => input({
           move_x: 1,
           dash_pressed: frame === 5,
           jump_pressed: frame === 9,
-          jump_held: frame >= 9 && frame < 15,
+          jump_held: frame >= 9,
         })),
+        verify(states) {
+          const last = states.at(-1)
+          if (last?.state !== 0 || Math.abs(last.speed[0] - 260) > 0.01
+            || Math.abs(last.speed[1] + 105) > 0.01 || last.dashes !== 1) {
+            throw new Error('entity-4.2-bubble-super: did not end on the expected 260/-105 super with the booster dash retained')
+          }
+        },
       },
       {
         name: 'entity-4.2-bubble-demohyper',
         initial: { pos: [220, 400], speed: [90, 0] },
-        inputs: Array.from({ length: 16 }, (_, frame) => input({
+        inputs: Array.from({ length: 10 }, (_, frame) => input({
           move_x: 1,
           crouch_dash_pressed: frame === 5,
           jump_pressed: frame === 9,
-          jump_held: frame >= 9 && frame < 15,
+          jump_held: frame >= 9,
         })),
+        verify(states) {
+          const last = states.at(-1)
+          if (last?.state !== 0 || Math.abs(last.speed[0] - 325) > 0.01
+            || Math.abs(last.speed[1] + 52.5) > 0.01 || last.dashes !== 1) {
+            throw new Error('entity-4.2-bubble-demohyper: did not end on the expected 325/-52.5 demohyper with the booster dash retained')
+          }
+        },
       },
       {
         name: 'entity-4.5-iceball-jump',
