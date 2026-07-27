@@ -103,6 +103,18 @@ pub struct BounceBlockSnapshot {
     pub start: Vec2,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct TheoCrystalSnapshot {
+    /// Actor.Position: bottom-center of the 8x10 body collider.
+    pub position: Vec2,
+    pub speed: Vec2,
+    pub remainder: Vec2,
+    pub held: bool,
+    pub cannot_hold_timer: f32,
+    pub gravity_timer: f32,
+}
+
 fn default_stamina() -> f32 {
     110.0
 }
@@ -196,6 +208,15 @@ pub struct PlayerSnapshot {
     pub zip_movers: Vec<ZipMoverSnapshot>,
     /// Per-entity hot BounceBlock state, in map entity order.
     pub bounce_blocks: Vec<BounceBlockSnapshot>,
+    /// Per-entity vanilla TheoCrystal actor and Holdable state.
+    pub theo_crystals: Vec<TheoCrystalSnapshot>,
+    /// Map-order TheoCrystal index currently held by Player.
+    pub holding_theo: Option<u16>,
+    pub min_hold_timer: f32,
+    /// PickupCoroutine state needed to resume the 0.16 second lift tween.
+    pub pickup_old_speed: Vec2,
+    pub pickup_old_var_jump_timer: f32,
+    pub pickup_timer: f32,
     pub climb_no_move_timer: f32,
     pub dream_dash_can_end_timer: f32,
     pub launch_approach_x: Option<f32>,
@@ -309,6 +330,12 @@ impl Default for PlayerSnapshot {
             moving_solid_time: 0.0,
             zip_movers: vec![],
             bounce_blocks: vec![],
+            theo_crystals: vec![],
+            holding_theo: None,
+            min_hold_timer: 0.0,
+            pickup_old_speed: Vec2::default(),
+            pickup_old_var_jump_timer: 0.0,
+            pickup_timer: 0.0,
             climb_no_move_timer: 0.0,
             dream_dash_can_end_timer: 0.0,
             launch_approach_x: None,

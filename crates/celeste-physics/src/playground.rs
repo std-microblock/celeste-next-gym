@@ -238,6 +238,17 @@ pub fn mechanics_playground() -> Map {
                 nodes: vec![],
                 name: "badelineBoost".to_owned(),
             },
+            // Grounded-Ultra Cancel booth. TheoCrystal entity Position is the
+            // bottom-center (850, 496); bounds store its 8x10 body collider.
+            Entity {
+                kind: EntityKind::TheoCrystal,
+                bounds: Rect::new(846.0, 486.0, 8.0, 10.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "theoCrystal".to_owned(),
+            },
             Entity {
                 kind: EntityKind::Wind,
                 bounds: Rect::new(640.0, 128.0, 280.0, 120.0),
