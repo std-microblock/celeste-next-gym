@@ -209,6 +209,11 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         s.wall_speed_retained,
         s.wall_boost_timer,
         s.hop_wait_x_speed,
+        s.current_lift_speed.x,
+        s.current_lift_speed.y,
+        s.last_lift_speed.x,
+        s.last_lift_speed.y,
+        s.lift_speed_timer,
         s.dash_buffer_timer,
         s.crouch_dash_buffer_timer,
         s.movement_remainder.x,
@@ -308,6 +313,7 @@ fn step(p: &mut PlayerSnapshot, mut input: InputState, map: &Map) -> Result<(), 
     } else {
         p.strawberry_collect_index = 0;
     }
+    let was_on_ground = p.on_ground;
     p.on_ground = p.state != PlayerState::DreamDash && grounded(p, map);
     if p.on_ground {
         p.auto_jump = false;
@@ -357,12 +363,12 @@ fn step(p: &mut PlayerSnapshot, mut input: InputState, map: &Map) -> Result<(), 
     }
 
     match p.state {
-        PlayerState::Normal => normal_update(p, input, map),
+        PlayerState::Normal => normal_update(p, input, map, was_on_ground),
         PlayerState::Dash => dash_update(p, input, map),
         PlayerState::Climb => climb_update(p, input, map),
         PlayerState::Swim => swim_update(p, input, map),
         PlayerState::Boost => boost_update(p, input, map),
-        PlayerState::RedDash => red_dash_update(p, input),
+        PlayerState::RedDash => red_dash_update(p, input, map),
         PlayerState::HitSquash => hit_squash_update(p),
         PlayerState::Launch => launch_update(p, input, map),
         PlayerState::DreamDash => dream_dash_update(p),
@@ -375,6 +381,12 @@ fn step(p: &mut PlayerSnapshot, mut input: InputState, map: &Map) -> Result<(), 
         PlayerState::IntroRespawn => return Ok(()),
         other => return Err(SimulationError::UnsupportedState(other)),
     }
+
+    // Actor.Update runs after the StateMachine component callback. Moving
+    // platforms have already written currentLiftSpeed before Player.Update;
+    // actions above can consume it, then Actor clears current and advances the
+    // retained 0.16-second grace window before player movement.
+    tick_lift_speed(p);
 
     // After components/coroutines update but before movement, Player.Update
     // restores the normal collider while rising/falling in open air. A
@@ -414,6 +426,36 @@ fn tick_timers(p: &mut PlayerSnapshot) {
     }
 }
 
+fn lift_speed(p: &PlayerSnapshot) -> Vec2 {
+    if p.current_lift_speed == Vec2::default() {
+        p.last_lift_speed
+    } else {
+        p.current_lift_speed
+    }
+}
+
+fn lift_boost(p: &PlayerSnapshot) -> Vec2 {
+    let speed = lift_speed(p);
+    Vec2::new(speed.x.clamp(-250.0, 250.0), speed.y.clamp(-130.0, 0.0))
+}
+
+fn add_lift_boost(p: &mut PlayerSnapshot) {
+    let boost = lift_boost(p);
+    p.speed.x += boost.x;
+    p.speed.y += boost.y;
+}
+
+fn tick_lift_speed(p: &mut PlayerSnapshot) {
+    p.current_lift_speed = Vec2::default();
+    if p.lift_speed_timer > 0.0 {
+        p.lift_speed_timer -= DT;
+        if p.lift_speed_timer <= 0.0 {
+            p.lift_speed_timer = 0.0;
+            p.last_lift_speed = Vec2::default();
+        }
+    }
+}
+
 fn update_wall_boost(p: &mut PlayerSnapshot) {
     if p.wall_boost_timer <= 0.0 {
         return;
@@ -444,12 +486,17 @@ fn update_wall_speed_retention(p: &mut PlayerSnapshot, map: &Map) {
     }
 }
 
-fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
+fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_ground: bool) {
+    let boost = lift_boost(p);
+    if boost.y < 0.0 && was_on_ground && !p.on_ground && p.speed.y >= 0.0 {
+        p.speed.y = boost.y;
+    }
     if (input.dash_pressed || input.crouch_dash_pressed)
         && p.dashes > 0
         && p.dash_cooldown_timer <= 0.0
     {
-        begin_dash(p, input, true, false);
+        add_lift_boost(p);
+        begin_dash(p, input, true, false, map);
         return;
     }
 
@@ -545,6 +592,7 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
             p.jump_grace_timer = 0.0;
             p.speed.y = JUMP_SPEED;
             p.speed.x += p.move_x as f32 * JUMP_H_BOOST;
+            add_lift_boost(p);
             p.auto_jump = false;
             p.dash_attack_timer = 0.0;
             p.wall_slide_timer = WALL_SLIDE_TIME;
@@ -555,6 +603,7 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
             p.jump_buffer_timer = 0.0;
             p.speed.x = -(wall as f32) * WALL_JUMP_H;
             p.speed.y = JUMP_SPEED;
+            add_lift_boost(p);
             p.auto_jump = false;
             p.dash_attack_timer = 0.0;
             p.wall_slide_timer = WALL_SLIDE_TIME;
@@ -574,6 +623,7 @@ fn begin_dash(
     input: InputState,
     consume_dash: bool,
     delayed_coroutine: bool,
+    map: &Map,
 ) {
     p.dash_buffer_timer = 0.0;
     p.crouch_dash_buffer_timer = 0.0;
@@ -594,7 +644,9 @@ fn begin_dash(
     if consume_dash {
         p.dashes = p.dashes.saturating_sub(1);
     }
-    if p.demo_dashed || (!p.ducking && input.move_y > 0) {
+    if !p.on_ground && p.ducking && can_unduck(p, map) {
+        p.ducking = false;
+    } else if !p.ducking && (p.demo_dashed || input.move_y > 0) {
         p.ducking = true;
     }
     if x != 0.0 {
@@ -679,6 +731,7 @@ fn super_jump(p: &mut PlayerSnapshot) {
         },
         JUMP_SPEED,
     );
+    add_lift_boost(p);
     if p.ducking {
         p.ducking = false;
         p.speed.x *= 1.25;
@@ -699,6 +752,7 @@ fn super_wall_jump(p: &mut PlayerSnapshot, dir: i8) {
     p.wall_slide_timer = WALL_SLIDE_TIME;
     p.wall_boost_timer = 0.0;
     p.speed = Vec2::new(170.0 * dir as f32, -160.0);
+    add_lift_boost(p);
     p.var_jump_speed = p.speed.y;
     p.launched = true;
 }
@@ -737,6 +791,7 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
                 p.wall_boost_timer = 0.2;
             }
         }
+        add_lift_boost(p);
         p.var_jump_speed = p.speed.y;
         p.var_jump_timer = VAR_JUMP_TIME;
         return;
@@ -816,7 +871,7 @@ fn swim_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         && p.dashes > 0
         && p.dash_cooldown_timer <= 0.0
     {
-        begin_dash(p, input, false, false);
+        begin_dash(p, input, false, false, map);
         return;
     }
 
@@ -887,7 +942,7 @@ fn boost_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     if p.boost_red {
         begin_red_dash(p, manual.then_some(input), !manual);
     } else {
-        begin_dash(p, input, false, !manual);
+        begin_dash(p, input, false, !manual, map);
     }
 }
 
@@ -908,12 +963,12 @@ fn begin_red_dash(p: &mut PlayerSnapshot, input: Option<InputState>, delayed_cor
     p.ducking = false;
 }
 
-fn red_dash_update(p: &mut PlayerSnapshot, input: InputState) {
+fn red_dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     if (input.dash_pressed || input.crouch_dash_pressed)
         && p.dashes > 0
         && p.dash_cooldown_timer <= 0.0
     {
-        begin_dash(p, input, true, false);
+        begin_dash(p, input, true, false, map);
         return;
     }
     if p.dash_dir == Vec2::default() {
@@ -946,7 +1001,7 @@ fn launch_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         && p.dashes > 0
         && p.dash_cooldown_timer <= 0.0
     {
-        begin_dash(p, input, true, false);
+        begin_dash(p, input, true, false, map);
         return;
     }
     p.speed.y = approach(
@@ -1185,7 +1240,7 @@ fn star_fly_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         && p.dash_cooldown_timer <= 0.0
     {
         end_star_fly(p, map);
-        begin_dash(p, input, true, false);
+        begin_dash(p, input, true, false, map);
         return;
     }
 
@@ -2548,6 +2603,105 @@ mod tests {
         assert_eq!(p.state, PlayerState::Normal);
         assert!(p.speed.y <= JUMP_SPEED);
         assert!(p.pos.y < 100.0);
+    }
+    #[test]
+    fn lift_boost_prefers_current_speed_and_uses_player_clamps() {
+        let mut p = PlayerSnapshot {
+            current_lift_speed: Vec2::new(500.0, 80.0),
+            last_lift_speed: Vec2::new(-400.0, -200.0),
+            lift_speed_timer: 0.16,
+            ..PlayerSnapshot::default()
+        };
+
+        assert_eq!(lift_boost(&p), Vec2::new(250.0, 0.0));
+        tick_lift_speed(&mut p);
+        assert_eq!(p.current_lift_speed, Vec2::default());
+        assert_eq!(lift_boost(&p), Vec2::new(-250.0, -130.0));
+    }
+    #[test]
+    fn lift_speed_grace_clears_after_the_source_point_sixteen_seconds() {
+        let mut p = PlayerSnapshot {
+            last_lift_speed: Vec2::new(90.0, -60.0),
+            lift_speed_timer: 0.16,
+            ..PlayerSnapshot::default()
+        };
+
+        for _ in 0..9 {
+            tick_lift_speed(&mut p);
+        }
+        assert_eq!(p.last_lift_speed, Vec2::new(90.0, -60.0));
+        assert!(p.lift_speed_timer > 0.0);
+
+        tick_lift_speed(&mut p);
+        assert_eq!(p.last_lift_speed, Vec2::default());
+        assert_eq!(p.lift_speed_timer, 0.0);
+    }
+    #[test]
+    fn jump_adds_retained_lift_boost_before_caching_variable_jump_speed() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 100.0),
+            on_ground: true,
+            last_lift_speed: Vec2::new(40.0, -80.0),
+            lift_speed_timer: 0.16,
+            ..PlayerSnapshot::default()
+        };
+        let input = InputState {
+            jump_pressed: true,
+            jump_held: true,
+            ..InputState::default()
+        };
+
+        let p = simulate(p, &[input], &floor_map(), 1).unwrap();
+        assert_eq!(p.speed, Vec2::new(40.0, -185.0));
+        assert_eq!(p.var_jump_speed, -185.0);
+    }
+    #[test]
+    fn dash_caches_lift_boost_in_before_dash_speed() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 100.0),
+            speed: Vec2::new(20.0, 0.0),
+            on_ground: true,
+            last_lift_speed: Vec2::new(300.0, -80.0),
+            lift_speed_timer: 0.16,
+            ..PlayerSnapshot::default()
+        };
+        let input = InputState {
+            move_x: 1,
+            dash_pressed: true,
+            ..InputState::default()
+        };
+
+        let p = simulate(p, &[input], &floor_map(), 1).unwrap();
+        assert_eq!(p.state, PlayerState::Dash);
+        assert_eq!(p.before_dash_speed, Vec2::new(270.0, -80.0));
+    }
+    #[test]
+    fn delayed_climb_wall_jump_uses_retained_lift_speed() {
+        let map = Map {
+            solids: vec![Rect::new(36.0, 0.0, 8.0, 180.0)],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 80.0),
+            state: PlayerState::Climb,
+            facing: true,
+            stamina: 110.0,
+            last_lift_speed: Vec2::new(20.0, -30.0),
+            lift_speed_timer: 0.16,
+            ..PlayerSnapshot::default()
+        };
+        let input = InputState {
+            move_x: -1,
+            jump_pressed: true,
+            jump_held: true,
+            grab_held: true,
+            ..InputState::default()
+        };
+
+        let p = simulate(p, &[input], &map, 1).unwrap();
+        assert_eq!(p.state, PlayerState::Normal);
+        assert_eq!(p.speed, Vec2::new(-110.0, -135.0));
+        assert_eq!(p.var_jump_speed, -135.0);
     }
     #[test]
     fn coyote_jump_consumes_source_grace_window_after_leaving_a_ledge() {

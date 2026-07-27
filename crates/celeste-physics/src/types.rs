@@ -147,6 +147,12 @@ pub struct PlayerSnapshot {
     /// body is still overlapping the ledge wall.
     pub hop_wait_x: i8,
     pub hop_wait_x_speed: f32,
+    /// `Actor.LiftSpeed` written by a moving platform before Player.Update.
+    /// Actor.Update clears this after the state callback every frame.
+    pub current_lift_speed: Vec2,
+    /// Last non-zero lift speed retained for `LiftSpeedGraceTime` (0.16 s).
+    pub last_lift_speed: Vec2,
+    pub lift_speed_timer: f32,
     pub climb_no_move_timer: f32,
     pub dream_dash_can_end_timer: f32,
     pub launch_approach_x: Option<f32>,
@@ -264,6 +270,9 @@ impl Default for PlayerSnapshot {
             wall_boost_dir: 0,
             hop_wait_x: 0,
             hop_wait_x_speed: 0.0,
+            current_lift_speed: Vec2::default(),
+            last_lift_speed: Vec2::default(),
+            lift_speed_timer: 0.0,
             climb_no_move_timer: 0.0,
             dream_dash_can_end_timer: 0.0,
             launch_approach_x: None,
