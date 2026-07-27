@@ -14,7 +14,7 @@ export const scenario = defineScenario({
   name: 'entity-4.10.3.1-dream-grab-hyper',
   initial: { pos: [208, 496], speed: [0, 0], can_dream_dash: true },
   inputs: inputFrames(75, (frame) => ({
-    move_x: frame >= 28 && frame <= 36 ? -1 : 1,
+    move_x: frame >= 28 && frame < 45 ? -1 : 1,
     move_y: 0,
     jump_pressed: frame === 45,
     jump_held: frame === 45,
