@@ -443,8 +443,12 @@ fn step(
         p.ducking = false;
     }
 
-    move_axis(p, map, true);
-    move_axis(p, map, false);
+    if p.state != PlayerState::DreamDash {
+        move_axis(p, map, true);
+    }
+    if p.state != PlayerState::DreamDash {
+        move_axis(p, map, false);
+    }
     interact(p, map, input);
     try_begin_badeline_boost(p, map);
     enforce_level_bounds(p, map);
@@ -926,6 +930,7 @@ fn swim_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
 
 fn dream_dash_update(p: &mut PlayerSnapshot) {
     p.on_ground = false;
+    naive_move(p, Vec2::new(p.speed.x * DT, p.speed.y * DT));
 }
 
 fn boost_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
@@ -1398,6 +1403,17 @@ fn move_axis(p: &mut PlayerSnapshot, map: &Map, horizontal: bool) {
     move_axis_amount(p, map, horizontal, speed * DT);
 }
 
+fn naive_move(p: &mut PlayerSnapshot, amount: Vec2) {
+    p.movement_remainder.x += amount.x;
+    p.movement_remainder.y += amount.y;
+    let move_x = p.movement_remainder.x.round_ties_even();
+    let move_y = p.movement_remainder.y.round_ties_even();
+    p.movement_remainder.x -= move_x;
+    p.movement_remainder.y -= move_y;
+    p.pos.x += move_x;
+    p.pos.y += move_y;
+}
+
 fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount: f32) {
     let remainder = if horizontal {
         &mut p.movement_remainder.x
@@ -1421,12 +1437,19 @@ fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount:
                 && map.jump_thru_at(next, current_player_rect(p, p.pos.x, p.pos.y).bottom()));
         if collided {
             if dream_block
-                && p.state == PlayerState::Dash
                 && p.can_dream_dash
-                && p.dash_attack_timer > 0.0
+                && (p.dash_attack_timer > 0.0 || p.state == PlayerState::RedDash)
             {
+                if horizontal {
+                    p.movement_remainder.x = 0.0;
+                } else {
+                    p.movement_remainder.y = 0.0;
+                }
                 p.state = PlayerState::DreamDash;
+                p.speed = Vec2::new(p.dash_dir.x * DASH_SPEED, p.dash_dir.y * DASH_SPEED);
                 p.dream_dash_can_end_timer = 0.1;
+                p.stamina = 110.0;
+                p.dash_attack_timer = 0.0;
                 p.dash_end_pending = false;
                 break;
             }
@@ -3346,6 +3369,58 @@ mod tests {
         assert_eq!(p.state, PlayerState::DreamDash);
         assert_eq!(p.speed, Vec2::new(240.0, 0.0));
     }
+
+    #[test]
+    fn dream_dash_check_uses_lingering_attack_and_then_moves_naively() {
+        let map = Map {
+            bounds: Rect::new(0.0, -100.0, 960.0, 280.0),
+            entities: vec![crate::Entity {
+                kind: EntityKind::DreamBlock,
+                bounds: Rect::new(880.0, -32.0, 32.0, 40.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "dreamBlock".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let diagonal = std::f32::consts::FRAC_1_SQRT_2;
+        let p = PlayerSnapshot {
+            pos: Vec2::new(876.0, -14.0),
+            speed: Vec2::new(231.333_31, 160.0),
+            state: PlayerState::Normal,
+            facing: true,
+            dashes: 0,
+            stamina: 110.0,
+            on_ground: false,
+            dash_dir: Vec2::new(diagonal, diagonal),
+            dash_attack_timer: 0.1,
+            can_dream_dash: true,
+            movement_remainder: Vec2::new(-0.216, 0.446),
+            ..PlayerSnapshot::default()
+        };
+        let input = InputState {
+            move_x: 1,
+            ..InputState::default()
+        };
+        let trace = simulate_trace(p, &[input; 2], &map, 2).unwrap();
+
+        let entered = &trace.states[1];
+        assert_eq!(entered.state, PlayerState::DreamDash);
+        assert_eq!(entered.pos, Vec2::new(876.0, -14.0));
+        assert!((entered.speed.x - 169.705_63).abs() < 0.000_1);
+        assert!((entered.speed.y - 169.705_63).abs() < 0.000_1);
+        assert_eq!(entered.dream_dash_can_end_timer, 0.1);
+        assert_eq!(entered.dash_attack_timer, 0.0);
+
+        let travelled = &trace.states[2];
+        assert_eq!(travelled.state, PlayerState::DreamDash);
+        assert_eq!(travelled.pos, Vec2::new(879.0, -11.0));
+        assert!((travelled.speed.x - 169.705_63).abs() < 0.000_1);
+        assert!((travelled.speed.y - 169.705_63).abs() < 0.000_1);
+    }
+
     #[test]
     fn dream_jump_runs_on_exit_and_restores_horizontal_exit_grace() {
         let p = PlayerSnapshot {
