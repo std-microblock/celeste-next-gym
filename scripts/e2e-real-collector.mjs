@@ -240,6 +240,11 @@ try {
       })),
     },
     {
+      name: 'mechanics-screen-transition-up',
+      initial: { pos: [640, 4], speed: [80, -160], dashes: 0, stamina: 20 },
+      inputs: Array.from({ length: 42 }, () => input()),
+    },
+    {
       name: 'nine-jump',
       initial: { pos: [755, 120], speed: [0, 0], on_ground: true },
       inputs: Array.from({ length: 120 }, (_, frame) => input({

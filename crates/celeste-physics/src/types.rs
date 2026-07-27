@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::Rect;
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[repr(C)]
 pub struct Vec2 {
@@ -92,6 +94,11 @@ pub struct PlayerSnapshot {
     pub dead: bool,
     pub death_freeze_pending: bool,
     pub respawn_frames: u16,
+    pub current_room_bounds: Option<Rect>,
+    pub transition_room_bounds: Option<Rect>,
+    pub transition_direction: Vec2,
+    pub transition_target: Vec2,
+    pub transition_timer: f32,
     pub dash_dir: Vec2,
     pub last_aim: Vec2,
     pub before_dash_speed: Vec2,
@@ -204,6 +211,11 @@ impl Default for PlayerSnapshot {
             dead: false,
             death_freeze_pending: false,
             respawn_frames: 0,
+            current_room_bounds: None,
+            transition_room_bounds: None,
+            transition_direction: Vec2::default(),
+            transition_target: Vec2::default(),
+            transition_timer: 0.0,
             dash_dir: Vec2::default(),
             last_aim: Vec2::new(1.0, 0.0),
             before_dash_speed: Vec2::default(),
