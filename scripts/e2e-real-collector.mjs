@@ -1082,6 +1082,19 @@ function ultraLandingFrames(states) {
   return frames
 }
 
+function ultraMultiplierFrames(states) {
+  const frames = []
+  for (let frame = 1; frame < states.length; frame++) {
+    const beforeDir = field(states[frame - 1], 'DashDir')
+    const afterDir = field(states[frame], 'DashDir')
+    if (Array.isArray(beforeDir) && Array.isArray(afterDir)
+      && beforeDir[1] > 0 && near(afterDir[0], Math.sign(beforeDir[0])) && near(afterDir[1], 0)
+      && states[frame].on_ground && states[frame].ducking
+      && states[frame].speed[0] > states[frame - 1].speed[0]) frames.push(frame)
+  }
+  return frames
+}
+
 function verifyUltra(states) {
   const landing = ultraLandingFrames(states).find((frame) => states[frame].state === 2)
   semanticAssert(landing !== undefined, 'dash-ultra', 'no in-Dash landing applied the 1.2 multiplier')
@@ -1106,7 +1119,7 @@ function verifyDelayedUltra(states) {
 }
 
 function verifyChainedUltras(states) {
-  const landings = ultraLandingFrames(states)
-  semanticAssert(landings.length >= 2, 'dash-chained-ultras', `only ${landings.length} multiplicative landings were observed`)
+  const landings = ultraMultiplierFrames(states)
+  semanticAssert(landings.length >= 2, 'dash-chained-ultras', `only ${landings.length} DashDir-flattening multiplicative landings were observed: ${JSON.stringify(states.map(pickCore))}`)
   semanticAssert(states[landings[1]].speed[0] > states[landings[0]].speed[0], 'dash-chained-ultras', 'second Ultra did not compound the first')
 }
