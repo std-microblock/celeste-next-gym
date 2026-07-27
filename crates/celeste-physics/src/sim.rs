@@ -2912,29 +2912,29 @@ mod tests {
     #[test]
     fn delayed_blockboost_uses_zip_lift_on_a_later_static_wall_jump() {
         let p = PlayerSnapshot {
-            pos: Vec2::new(36.0, 440.0),
+            pos: Vec2::new(92.0, 440.0),
             on_ground: true,
             ..PlayerSnapshot::default()
         };
         let inputs: Vec<_> = (0..25)
             .map(|frame| InputState {
-                move_x: if frame >= 8 { -1 } else { 0 },
+                move_x: if frame >= 8 { 1 } else { 0 },
                 jump_pressed: frame == 24,
                 jump_held: frame == 24,
                 ..InputState::default()
             })
             .collect();
         let mut map = zip_mover_map();
-        map.solids.push(Rect::new(0.0, 0.0, 24.0, 544.0));
+        map.solids.push(Rect::new(112.0, 416.0, 8.0, 80.0));
         let trace = simulate_trace(p, &inputs, &map, 25).unwrap();
         let before = &trace.states[24];
         let jumped = &trace.states[25];
 
-        assert_eq!(before.pos.x, 28.0);
+        assert_eq!(before.pos.x, 108.0);
         assert!(!before.on_ground);
         assert!(before.last_lift_speed.y < -120.0);
         assert!(before.lift_speed_timer > 0.0);
-        assert_eq!(jumped.speed.x, 130.0);
+        assert_eq!(jumped.speed.x, -130.0);
         assert!((jumped.speed.y + 230.828).abs() < 0.000_1);
         assert_eq!(jumped.state, PlayerState::Normal);
     }

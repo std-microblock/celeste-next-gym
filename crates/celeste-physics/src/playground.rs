@@ -12,6 +12,10 @@ pub fn mechanics_playground() -> Map {
             Rect::new(0.0, 496.0, 960.0, 48.0),
             Rect::new(0.0, 0.0, 24.0, 496.0),
             Rect::new(936.0, 0.0, 24.0, 496.0),
+            // Isolated wall for Delayed Blockboost. Its eight-pixel gap from
+            // the ZipMover keeps the later wall jump clear of the platform's
+            // own side collider.
+            Rect::new(112.0, 416.0, 8.0, 80.0),
             Rect::new(272.0, 304.0, 32.0, 192.0),
             Rect::new(688.0, 360.0, 24.0, 136.0),
             Rect::new(864.0, 240.0, 24.0, 256.0),
