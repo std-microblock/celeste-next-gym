@@ -1,5 +1,5 @@
 #let status-style(status) = if status == "implemented" {
-  (label: "已实现 / Implemented", color: rgb("#166534"), background: rgb("#dcfce7"))
+  (label: "已实现", color: rgb("#166534"), background: rgb("#dcfce7"))
 } else {
   (label: "未实现 / Not implemented", color: rgb("#991b1b"), background: rgb("#fee2e2"))
 }
@@ -26,9 +26,9 @@
   fill: rgb("#f8fafc"),
   stroke: 0.5pt + rgb("#cbd5e1"),
   [
-    #if path != none [*文件 / File:* #path #linebreak()]
-    #if symbol != none [*符号 / Symbol:* #symbol #linebreak()]
-    #if note != none [*说明 / Note:* #note]
+    #if path != none [*文件:* #path #linebreak()]
+    #if symbol != none [*符号:* #symbol #linebreak()]
+    #if note != none [*说明:* #note]
     #if snippet != none [#v(5pt)#snippet]
   ],
 )
@@ -91,14 +91,14 @@
     === English description
     #description-en
 
-    === 实现与核验证据 / Implementation evidence
+    === 来源
     #grid(
-      columns: (1fr, 1fr),
+      columns: (1fr),
       gutter: 8pt,
-      evidence-cell([上游源码 / Upstream source], source-evidence),
-      evidence-cell([Rust 实现 / Rust implementation], rust-evidence),
-      evidence-cell([回归测试 / Regression test], test-evidence),
-      evidence-cell([真实 E2E / Real Everest E2E], e2e-evidence),
+      evidence-cell([源码], source-evidence),
+      evidence-cell([Rust 实现], rust-evidence),
+      evidence-cell([回归测试], test-evidence),
+      evidence-cell([真实 E2E], e2e-evidence),
     )
 
     #if status != "implemented" [
