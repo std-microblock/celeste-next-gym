@@ -6458,6 +6458,33 @@ mod tests {
         assert_eq!(p.dashes, 0);
         assert!((p.speed.x.abs() - 169.70563).abs() < 0.01);
     }
+
+    #[test]
+    fn subpixel_manipulation_accumulates_air_control_until_a_pixel_crossing() {
+        let player = PlayerSnapshot {
+            pos: Vec2::new(160.0, 80.0),
+            ..PlayerSnapshot::default()
+        };
+        let inputs = std::array::from_fn::<_, 5, _>(|frame| InputState {
+            move_x: if frame % 2 == 0 { 1 } else { -1 },
+            ..InputState::default()
+        });
+        let trace = simulate_trace(player, &inputs, &Map::default(), inputs.len() as u32).unwrap();
+
+        assert_eq!(trace.states[1].pos.x, 160.0);
+        assert!((trace.states[1].movement_remainder.x - 0.180_556_27).abs() < 0.000_001);
+        assert_eq!(trace.states[3].pos.x, 160.0);
+        assert!((trace.states[3].movement_remainder.x - 0.361_112_53).abs() < 0.000_001);
+        assert_eq!(trace.states[5].pos.x, 161.0);
+        assert!((trace.states[5].movement_remainder.x + 0.458_331_23).abs() < 0.000_001);
+        assert_eq!(trace.states[5].state, PlayerState::Normal);
+        assert!(trace.states[5].facing);
+        assert_eq!(trace.states[5].dashes, 1);
+        assert_eq!(trace.states[5].stamina, 110.0);
+        assert!(!trace.states[5].on_ground);
+        assert!(!trace.states[5].ducking);
+        assert!(!trace.states[5].dead);
+    }
     #[test]
     fn crouch_dash_starts_a_demo_dash() {
         let input = InputState {

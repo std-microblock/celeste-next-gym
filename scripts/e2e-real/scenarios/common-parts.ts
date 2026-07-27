@@ -148,6 +148,7 @@ export const PLAYGROUND_OTHER_KERMIT = defineMapPart({
   sid: SID,
   rooms: [{ name: 'transition_0' }],
 })
+export const PLAYGROUND_OTHER_SUBPIXEL = fixturePart('playground.other-subpixel')
 
 export const COMMON_MAP_PARTS = new Map<string, MapPart>([
   PLAYGROUND_BASE, PLAYGROUND_JUMP_THRU, PLAYGROUND_ZIP_MOVER, PLAYGROUND_BOOSTER, PLAYGROUND_SPIKES,
@@ -159,4 +160,5 @@ export const COMMON_MAP_PARTS = new Map<string, MapPart>([
   PLAYGROUND_LAUNCH, PLAYGROUND_MISC, PLAYGROUND_TRANSITION,
   PLAYGROUND_OTHER_HALF_STAMINA,
   PLAYGROUND_OTHER_KERMIT,
+  PLAYGROUND_OTHER_SUBPIXEL,
 ].map((part) => [part.id, part]))
