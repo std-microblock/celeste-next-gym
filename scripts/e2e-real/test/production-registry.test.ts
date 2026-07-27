@@ -8,12 +8,12 @@ describe('production scenario registry', () => {
   const registry = buildRegistry(scenarios)
 
   it('derives all target and status counts from explicit indexes', () => {
-    assert.equal(registry.scenarios.length, 136)
-    assert.equal(registry.byTarget.get('playground')?.length, 94)
+    assert.equal(registry.scenarios.length, 142)
+    assert.equal(registry.byTarget.get('playground')?.length, 100)
     assert.equal(registry.byTarget.get('area-1')?.length, 36)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 128, candidate: 8 })
+    assert.deepEqual(registry.counts, { active: 134, candidate: 8 })
   })
 
   it('keeps evidence-less entity scenarios as opt-in candidates', () => {
@@ -53,6 +53,25 @@ describe('production scenario registry', () => {
       'tech.3.7.8.reverse-cornerboost',
       'tech.3.7.9.neutral-reverse-cornerboost',
       'tech.3.7.10.spiked-cornerboost',
+    ])
+  })
+
+  it('keeps every dashless spike proof in an independently named map part', () => {
+    const techniqueIds = ['3.8', '3.8.1', '3.9', '3.10', '3.12.1', '3.13']
+    const parts = techniqueIds.map((techniqueId) => {
+      const scenario = registry.scenarios.find((candidate) => candidate.techniqueIds.includes(techniqueId))
+      assert.ok(scenario, `missing scenario for ${techniqueId}`)
+      assert.equal(scenario.mapParts.length, 1)
+      return scenario.mapParts[0]?.id
+    })
+    assert.equal(new Set(parts).size, techniqueIds.length)
+    assert.deepEqual(parts, [
+      'tech.3.8.spike-climb',
+      'tech.3.8.1.narrow-spiked-climb',
+      'tech.3.9.spike-clip',
+      'tech.3.10.spike-jump',
+      'tech.3.12.1.cornerboost-wallboost',
+      'tech.3.13.cornerslip',
     ])
   })
 })

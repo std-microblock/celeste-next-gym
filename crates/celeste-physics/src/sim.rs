@@ -3623,7 +3623,7 @@ fn spike_is_lethal(p: &PlayerSnapshot, direction: Vec2, bounds: Rect) -> bool {
         // Spikes.OnCollide additionally checks Player.Bottom against the
         // three-pixel upward spike collider, so touching it from below is not
         // lethal even while falling.
-        p.speed.y >= 0.0 && p.pos.y <= bounds.bottom()
+        p.speed.y >= 0.0 && current_player_hurt_rect(p).bottom() <= bounds.bottom()
     } else if direction.y > 0.0 {
         p.speed.y <= 0.0
     } else if direction.x < 0.0 {
@@ -6558,7 +6558,7 @@ mod tests {
 
         let falling = simulate(
             PlayerSnapshot {
-                pos: Vec2::new(35.0, 39.0),
+                pos: Vec2::new(35.0, 41.0),
                 speed: Vec2::new(0.0, 30.0),
                 ..player
             },
@@ -6568,6 +6568,329 @@ mod tests {
         )
         .unwrap();
         assert!(falling.dead);
+    }
+
+    #[test]
+    fn spike_climb_wall_jump_sets_away_speed_before_the_spike_check() {
+        let spikes = crate::Entity {
+            kind: EntityKind::Spikes,
+            bounds: Rect::new(61.0, 40.0, 3.0, 120.0),
+            direction: Vec2::new(-1.0, 0.0),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "spikesLeft".to_owned(),
+        };
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            solids: vec![Rect::new(64.0, 40.0, 8.0, 144.0)],
+            entities: vec![spikes],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(59.0, 140.0),
+            facing: true,
+            ..PlayerSnapshot::default()
+        };
+        let climbed = simulate(
+            player.clone(),
+            &[InputState {
+                move_x: -1,
+                jump_pressed: true,
+                jump_held: true,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert!(!climbed.dead);
+        assert_eq!(climbed.speed, Vec2::new(-WALL_JUMP_H, JUMP_SPEED));
+        assert!(climbed.pos.y < player.pos.y);
+
+        let stalled = simulate(player, &[InputState::default()], &map, 1).unwrap();
+        assert!(stalled.dead);
+    }
+
+    #[test]
+    fn narrow_spiked_climb_alternates_away_facing_wall_jumps() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            solids: vec![
+                Rect::new(40.0, 24.0, 8.0, 160.0),
+                Rect::new(64.0, 24.0, 8.0, 160.0),
+            ],
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::Spikes,
+                    bounds: Rect::new(48.0, 146.0, 3.0, 22.0),
+                    direction: Vec2::new(1.0, 0.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "spikesRight".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::Spikes,
+                    bounds: Rect::new(61.0, 140.0, 3.0, 28.0),
+                    direction: Vec2::new(-1.0, 0.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "spikesLeft".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(59.0, 152.0),
+            facing: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [
+            InputState {
+                jump_pressed: true,
+                jump_held: true,
+                ..InputState::default()
+            },
+            InputState {
+                jump_held: true,
+                ..InputState::default()
+            },
+            InputState {
+                jump_held: true,
+                ..InputState::default()
+            },
+            InputState {
+                jump_pressed: true,
+                jump_held: true,
+                ..InputState::default()
+            },
+            InputState {
+                jump_held: true,
+                ..InputState::default()
+            },
+        ];
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+
+        assert!(
+            trace.states.iter().all(|state| !state.dead),
+            "timeline={:?}",
+            trace
+                .states
+                .iter()
+                .map(|state| (state.pos, state.speed, state.dead))
+                .collect::<Vec<_>>(),
+        );
+        assert_eq!(trace.states[1].speed.x, -WALL_JUMP_H);
+        assert!(trace.states[4].speed.x > 0.0);
+        assert!(trace.states[5].pos.y < trace.states[1].pos.y - 6.0);
+    }
+
+    #[test]
+    fn spike_clip_requires_the_hurtbox_bottom_to_skip_past_unsupported_spikes() {
+        let spikes = crate::Entity {
+            kind: EntityKind::Spikes,
+            bounds: Rect::new(80.0, 100.0, 24.0, 3.0),
+            direction: Vec2::new(0.0, -1.0),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "spikesUp".to_owned(),
+        };
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            entities: vec![spikes],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(92.0, 103.0),
+            ..PlayerSnapshot::default()
+        };
+        let slow = simulate(
+            PlayerSnapshot {
+                speed: Vec2::new(0.0, 30.0),
+                ..player.clone()
+            },
+            &[InputState::default()],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert!(slow.dead);
+
+        let clipped = simulate(
+            PlayerSnapshot {
+                speed: Vec2::new(0.0, 240.0),
+                ..player
+            },
+            &[InputState {
+                move_y: 1,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert!(!clipped.dead);
+        assert_eq!(clipped.pos.y, 107.0);
+        assert!(current_player_hurt_rect(&clipped).bottom() > 103.0);
+    }
+
+    #[test]
+    fn spike_jump_uses_the_frame_after_zip_carry_bypasses_player_colliders() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::ZipMover,
+                    bounds: Rect::new(32.0, 120.0, 32.0, 16.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![Vec2::new(64.0, 120.0)],
+                    name: "zipMover".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::Spikes,
+                    bounds: Rect::new(65.0, 117.0, 16.0, 3.0),
+                    direction: Vec2::new(0.0, -1.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "spikesUp".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(48.0, 120.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let idle_inputs = [InputState::default(); 45];
+        let idle = simulate_trace(player.clone(), &idle_inputs, &map, 45).unwrap();
+        let lethal_state = idle
+            .states
+            .iter()
+            .position(|state| state.dead)
+            .expect("ZipMover should carry the idle player into the fixed spikes");
+        assert!(lethal_state > 1);
+        assert!(!idle.states[lethal_state - 1].dead);
+
+        let mut jump_inputs = idle_inputs;
+        jump_inputs[lethal_state - 1] = InputState {
+            jump_pressed: true,
+            jump_held: true,
+            ..InputState::default()
+        };
+        let jumped = simulate_trace(player, &jump_inputs, &map, 45).unwrap();
+        let proof_end = (lethal_state + 8).min(jumped.states.len());
+        assert!(
+            jumped.states[..proof_end].iter().all(|state| !state.dead),
+            "lethal_state={lethal_state}, first jumped death={:?}",
+            jumped.states.iter().position(|state| state.dead),
+        );
+        assert_eq!(jumped.states[lethal_state].speed.y, JUMP_SPEED);
+        assert!(!jumped.states[lethal_state].on_ground);
+    }
+
+    #[test]
+    fn cornerboost_wallboost_overwrites_retained_speed_with_wallkick_speed() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            solids: vec![Rect::new(40.0, 40.0, 8.0, 64.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(35.0, 46.0),
+            speed: Vec2::new(160.0, -30.0),
+            facing: true,
+            stamina: 110.0,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [
+            InputState {
+                jump_pressed: true,
+                jump_held: true,
+                grab_held: true,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: -1,
+                jump_held: true,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: -1,
+                jump_held: true,
+                ..InputState::default()
+            },
+        ];
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+
+        assert!(trace.states[1].wall_speed_retained > 140.0);
+        assert_eq!(trace.states[1].wall_boost_dir, -1);
+        assert_eq!(trace.states[1].stamina, 82.5);
+        assert!(trace.states[3].speed.x < -120.0);
+        assert!(trace.states[3].speed.x > -130.0);
+        assert_eq!(trace.states[3].stamina, 110.0);
+        assert_eq!(trace.states[3].wall_boost_timer, 0.0);
+        assert!(trace.states[3].speed.x.abs() < trace.states[1].wall_speed_retained);
+    }
+
+    #[test]
+    fn cornerslip_over_disabled_dream_block_refills_without_vertical_collision() {
+        let dream_block = crate::Entity {
+            kind: EntityKind::DreamBlock,
+            bounds: Rect::new(40.0, 40.0, 32.0, 32.0),
+            direction: Vec2::default(),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "dreamBlock".to_owned(),
+        };
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            entities: vec![dream_block],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(37.0, 40.0),
+            speed: Vec2::new(-90.0, 60.0),
+            dashes: 0,
+            can_dream_dash: false,
+            ..PlayerSnapshot::default()
+        };
+        let slipped = simulate(
+            player.clone(),
+            &[InputState {
+                move_x: -1,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+
+        assert_eq!(slipped.pos, Vec2::new(35.0, 41.0));
+        assert_eq!(slipped.speed, Vec2::new(-90.0, 60.0));
+        assert_eq!(slipped.dashes, 1);
+        assert!(!slipped.on_ground);
+        assert_eq!(slipped.jump_grace_timer, JUMP_GRACE);
+
+        let collided = simulate(
+            PlayerSnapshot {
+                speed: Vec2::new(0.0, 60.0),
+                ..player
+            },
+            &[InputState::default()],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert_eq!(collided.pos.y, 40.0);
+        assert_eq!(collided.speed.y, 0.0);
     }
 
     #[test]
