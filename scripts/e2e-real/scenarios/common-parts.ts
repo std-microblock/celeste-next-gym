@@ -95,6 +95,22 @@ export const PLAYGROUND_BUMPER = fixturePart('playground.bumper', {
 export const PLAYGROUND_ICE_BALL = fixturePart('playground.ice-ball', {
   entities: [{ id: 'entity-0023', kind: 'ice_ball', bounds: [314, 154, 12, 12], nodes: [[336, 160]], singleUse: true, name: 'fireBall' }],
 })
+export const TECH_ENTITY_4_3_BUMPER_CLIP = fixturePart('tech.entity-4.3-bumper-clip', {
+  solids: [[560, 176, 16, 48]],
+  entities: [{ id: 'tech-4.3-bumper', kind: 'bumper', bounds: [588, 188, 24, 24], name: 'bigSpinner' }],
+})
+export const TECH_ENTITY_4_4_EXPLOSION_BOOST = fixturePart('tech.entity-4.4-explosion-boost', {
+  entities: [{ id: 'tech-4.4-bumper', kind: 'bumper', bounds: [588, 188, 24, 24], name: 'bigSpinner' }],
+})
+export const TECH_ENTITY_4_5_BOUNCE_JUMP = fixturePart('tech.entity-4.5-bounce-jump', {
+  entities: [{ id: 'tech-4.5-ice-ball', kind: 'ice_ball', bounds: [314, 154, 12, 12], nodes: [[336, 160]], singleUse: true, name: 'fireBall' }],
+})
+export const TECH_ENTITY_4_6_CLOUD_JUMP = fixturePart('tech.entity-4.6-cloud-jump', {
+  entities: [
+    { id: 'tech-4.6-cloud', kind: 'cloud', bounds: [600, 440, 32, 5], name: 'cloud' },
+    { id: 'tech-4.6-spikes', kind: 'spikes', bounds: [600, 493, 32, 3], direction: [0, -1], name: 'spikesUp' },
+  ],
+})
 export const PLAYGROUND_BADELINE = fixturePart('playground.badeline', {
   entities: [
     { id: 'entity-0024', kind: 'badeline_boost', bounds: [304, 384, 32, 32], nodes: [[320, 288]], name: 'badelineBoost' },
@@ -122,11 +138,25 @@ export const PLAYGROUND_TRANSITION = defineMapPart({
   sid: SID,
   rooms: [{ name: 'transition_0', bounds: [0, -544, 960, 544], spawn: [24, -16] }],
 })
+export const PLAYGROUND_OTHER_HALF_STAMINA = fixturePart('playground.other-half-stamina', {
+  solids: [[624, 272, 8, 184]],
+})
+export const PLAYGROUND_OTHER_KERMIT = defineMapPart({
+  id: 'playground.other-kermit',
+  dependencies: ['playground.base', 'playground.transition'],
+  package: PACKAGE,
+  sid: SID,
+  rooms: [{ name: 'transition_0' }],
+})
 
 export const COMMON_MAP_PARTS = new Map<string, MapPart>([
   PLAYGROUND_BASE, PLAYGROUND_JUMP_THRU, PLAYGROUND_ZIP_MOVER, PLAYGROUND_BOOSTER, PLAYGROUND_SPIKES,
   PLAYGROUND_SPRING, PLAYGROUND_BERRY, PLAYGROUND_SWIM, PLAYGROUND_DREAM_BLOCK,
   PLAYGROUND_STAR_FLY, PLAYGROUND_BUMPER, PLAYGROUND_ICE_BALL, PLAYGROUND_BADELINE,
+  TECH_ENTITY_4_3_BUMPER_CLIP, TECH_ENTITY_4_4_EXPLOSION_BOOST,
+  TECH_ENTITY_4_5_BOUNCE_JUMP, TECH_ENTITY_4_6_CLOUD_JUMP,
   PLAYGROUND_THEO, PLAYGROUND_BOUNCE_BLOCK, PLAYGROUND_WIND, PLAYGROUND_DASHLESS,
   PLAYGROUND_LAUNCH, PLAYGROUND_MISC, PLAYGROUND_TRANSITION,
+  PLAYGROUND_OTHER_HALF_STAMINA,
+  PLAYGROUND_OTHER_KERMIT,
 ].map((part) => [part.id, part]))

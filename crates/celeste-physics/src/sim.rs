@@ -141,6 +141,7 @@ pub fn simulate_trace(
     initialize_zip_movers(&mut snapshot, &mut runtime_map);
     initialize_bounce_blocks(&mut snapshot, &mut runtime_map);
     initialize_theo_crystals(&mut snapshot, &mut runtime_map);
+    initialize_clouds(&mut snapshot, &mut runtime_map);
     position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
     let mut states = Vec::with_capacity(frames + 1);
     states.push(snapshot.clone());
@@ -200,6 +201,7 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         s.strawberry_collect_timer,
         s.strawberry_collect_reset_timer,
         s.bounce_reuse_timer,
+        s.pending_bounce_from_y.unwrap_or(0.0),
         s.explode_launch_boost_timer,
         s.explode_launch_boost_speed,
         s.badeline_boost_start.x,
@@ -292,10 +294,23 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         .iter()
         .all(|value| value.is_finite())
     });
+    let clouds_are_finite = s.clouds.iter().all(|cloud| {
+        [
+            cloud.speed,
+            cloud.position.x,
+            cloud.position.y,
+            cloud.remainder_y,
+            cloud.start.x,
+            cloud.start.y,
+        ]
+        .iter()
+        .all(|value| value.is_finite())
+    });
     if values.iter().all(|x| x.is_finite())
         && zip_movers_are_finite
         && bounce_blocks_are_finite
         && theo_crystals_are_finite
+        && clouds_are_finite
     {
         Ok(())
     } else {
@@ -330,6 +345,30 @@ fn initialize_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
         .is_some_and(|index| index as usize >= p.theo_crystals.len())
     {
         p.holding_theo = None;
+    }
+}
+
+fn initialize_clouds(p: &mut PlayerSnapshot, map: &mut Map) {
+    let cloud_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::Cloud).then_some(index))
+        .collect();
+    p.clouds.truncate(cloud_indices.len());
+    for (cloud_index, entity_index) in cloud_indices.into_iter().enumerate() {
+        let entity = &mut map.entities[entity_index];
+        if cloud_index == p.clouds.len() {
+            let start = Vec2::new(entity.bounds.x, entity.bounds.y);
+            p.clouds.push(crate::CloudSnapshot {
+                position: start,
+                start,
+                ..crate::CloudSnapshot::default()
+            });
+        }
+        let state = &p.clouds[cloud_index];
+        entity.bounds.x = state.position.x;
+        entity.bounds.y = state.position.y;
     }
 }
 
@@ -395,6 +434,106 @@ fn position_moving_solids(map: &mut Map, time: f32) {
             entity.bounds.x += (entity.direction.x * time).round_ties_even();
             entity.bounds.y += (entity.direction.y * time).round_ties_even();
         }
+    }
+}
+
+fn player_riding_jump_thru(p: &PlayerSnapshot, bounds: Rect) -> bool {
+    let player = current_player_rect(p, p.pos.x, p.pos.y);
+    player.x < bounds.right()
+        && player.right() > bounds.x
+        && player.bottom() <= bounds.y + 1.0
+        && player.bottom() + 1.0 > bounds.y
+}
+
+fn move_cloud_v(
+    p: &mut PlayerSnapshot,
+    entity: &mut crate::Entity,
+    state: &mut crate::CloudSnapshot,
+    amount: f32,
+    lift_y: f32,
+) {
+    let riding = player_riding_jump_thru(p, entity.bounds);
+    state.remainder_y += amount;
+    let move_y = state.remainder_y.round_ties_even();
+    state.remainder_y -= move_y;
+    if move_y == 0.0 {
+        return;
+    }
+    entity.bounds.y += move_y;
+    state.position.y += move_y;
+    if riding {
+        p.pos.y += move_y;
+        set_lift_speed(p, Vec2::new(0.0, lift_y));
+    } else if move_y < 0.0 {
+        let player = current_player_rect(p, p.pos.x, p.pos.y);
+        if entity.bounds.intersects(player) && player.bottom() > entity.bounds.y {
+            p.pos.y += entity.bounds.y - player.bottom();
+            set_lift_speed(p, Vec2::new(0.0, lift_y));
+        }
+    }
+}
+
+fn advance_clouds(p: &mut PlayerSnapshot, map: &mut Map) {
+    let cloud_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::Cloud).then_some(index))
+        .collect();
+    for (cloud_index, entity_index) in cloud_indices.into_iter().enumerate() {
+        let mut state = p.clouds[cloud_index].clone();
+        let entity = &mut map.entities[entity_index];
+        match state.phase {
+            0 => {
+                if player_riding_jump_thru(p, entity.bounds) && p.speed.y >= 0.0 {
+                    // Cloud.Update starts the depression with 180 px/s but
+                    // does not enter the movement branch until the next frame.
+                    state.speed = 180.0;
+                    state.phase = 1;
+                }
+            }
+            1 => {
+                if state.position.y >= state.start.y {
+                    state.speed -= 1200.0 * DT;
+                } else {
+                    state.speed += 1200.0 * DT;
+                    if state.speed >= -100.0 {
+                        if player_riding_jump_thru(p, entity.bounds) && p.speed.y >= 0.0 {
+                            p.speed.y = -200.0;
+                        }
+                        state.phase = 2;
+                    }
+                }
+                let lift_y = if state.speed < 0.0 {
+                    -220.0
+                } else {
+                    state.speed
+                };
+                let speed = state.speed;
+                move_cloud_v(p, entity, &mut state, speed * DT, lift_y);
+            }
+            2 => {
+                state.speed = approach(state.speed, 180.0, 600.0 * DT);
+                let exact_y = state.position.y + state.remainder_y;
+                let desired_y = approach(exact_y, state.start.y, state.speed * DT);
+                let amount = desired_y - exact_y;
+                let speed = state.speed;
+                move_cloud_v(p, entity, &mut state, amount, speed);
+                if state.position.y + state.remainder_y == state.start.y {
+                    state.phase = 0;
+                    state.speed = 0.0;
+                }
+            }
+            _ => {
+                state.phase = 0;
+                state.speed = 0.0;
+                state.position = state.start;
+                state.remainder_y = 0.0;
+                entity.bounds.x = state.start.x;
+                entity.bounds.y = state.start.y;
+            }
+        }
+        p.clouds[cloud_index] = state;
     }
 }
 
@@ -1156,6 +1295,7 @@ fn step(
         advance_zip_movers(p, map);
         advance_bounce_blocks(p, map);
         advance_theo_crystals(p, map);
+        advance_clouds(p, map);
         p.on_ground = grounded(p, map);
         return Ok(());
     }
@@ -1182,6 +1322,7 @@ fn step(
             advance_zip_movers(p, map);
             advance_bounce_blocks(p, map);
             advance_theo_crystals(p, map);
+            advance_clouds(p, map);
             p.on_ground = grounded(p, map);
             return Ok(());
         }
@@ -1231,6 +1372,7 @@ fn step(
     advance_zip_movers(p, map);
     advance_bounce_blocks(p, map);
     advance_theo_crystals(p, map);
+    advance_clouds(p, map);
     p.on_ground = grounded(p, map);
     Ok(())
 }
@@ -2284,8 +2426,12 @@ fn check_stamina(p: &PlayerSnapshot) -> f32 {
 
 fn climb_bounds_check(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
     let rect = current_player_rect(p, p.pos.x, p.pos.y);
-    rect.x + dir as f32 * CLIMB_CHECK_DIST >= map.bounds.x
-        && rect.right() + dir as f32 * CLIMB_CHECK_DIST < map.bounds.right()
+    // Player.ClimbBoundsCheck reads Level.Bounds, which switches to the
+    // destination room in OnTransition. Using the map's source bounds here
+    // incorrectly disables every wall probe after a horizontal transition.
+    let bounds = p.current_room_bounds.unwrap_or(map.bounds);
+    rect.x + dir as f32 * CLIMB_CHECK_DIST >= bounds.x
+        && rect.right() + dir as f32 * CLIMB_CHECK_DIST < bounds.right()
 }
 
 fn climb_check(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
@@ -2502,6 +2648,13 @@ fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount:
 }
 
 fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
+    if let Some(from_y) = p.pending_bounce_from_y.take() {
+        // FireBall's PlayerCollider runs after the player has entered its top
+        // collider. Collector snapshots expose that callback on the next
+        // player frame, after one final movement using the previous state.
+        bounce(p, map, from_y);
+        return;
+    }
     if p.state == PlayerState::DreamDash {
         if !map.dream_block_at(current_player_rect(p, p.pos.x, p.pos.y))
             && p.dream_dash_can_end_timer <= 0.0
@@ -2644,13 +2797,34 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                 );
                 Rect::new(center.x - 8.0, center.y - 3.0, 16.0, 6.0).intersects(player_box)
             }
+            EntityKind::Puffer
+            | EntityKind::AngryOshiro
+            | EntityKind::Seeker
+            | EntityKind::Snowball => {
+                let center = Vec2::new(
+                    entity.bounds.x + entity.bounds.width * 0.5,
+                    entity.bounds.y + entity.bounds.height * 0.5,
+                );
+                let bounce_height = if entity.kind == EntityKind::Seeker {
+                    4.0
+                } else {
+                    6.0
+                };
+                let bounce = Rect::new(
+                    center.x - 8.0,
+                    entity.bounds.y - 2.0,
+                    16.0,
+                    bounce_height + 2.0,
+                );
+                bounce.intersects(player_box) || entity.bounds.intersects(player_box)
+            }
             _ => entity.bounds.intersects(player_box),
         };
         if !intersects {
             continue;
         }
         match entity.kind {
-            EntityKind::Spikes if spike_is_lethal(p, entity.direction) => {
+            EntityKind::Spikes if spike_is_lethal(p, entity.direction, entity.bounds) => {
                 p.dead = true;
                 p.speed = Vec2::default();
                 p.death_freeze_pending = true;
@@ -2750,10 +2924,53 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                     && p.speed.y >= 0.0
                     && current_player_rect(p, p.pos.x, p.pos.y).bottom() <= target.y + 4.0
                 {
-                    bounce(p, map, target.y - 2.0);
                     p.last_bounce_target = target;
                     // A cold FireBall becomes non-collidable after the bounce.
                     p.bounce_reuse_timer = f32::MAX;
+                    p.pending_bounce_from_y = Some(target.y - 2.0);
+                }
+            }
+            EntityKind::Puffer
+            | EntityKind::AngryOshiro
+            | EntityKind::Seeker
+            | EntityKind::Snowball => {
+                let target = Vec2::new(
+                    entity.bounds.x + entity.bounds.width * 0.5,
+                    entity.bounds.y + entity.bounds.height * 0.5,
+                );
+                let player_bottom = current_player_rect(p, p.pos.x, p.pos.y).bottom();
+                let top_limit = match entity.kind {
+                    EntityKind::Puffer => target.y + 3.0,
+                    EntityKind::AngryOshiro => entity.bounds.y + 6.0,
+                    EntityKind::Seeker => entity.bounds.y + 4.0,
+                    EntityKind::Snowball => entity.bounds.y + 6.0,
+                    _ => unreachable!(),
+                };
+                if player_bottom <= top_limit && p.speed.y >= 0.0 {
+                    let from_y = match entity.kind {
+                        EntityKind::AngryOshiro => entity.bounds.y + 2.0,
+                        EntityKind::Snowball => entity.bounds.y - 2.0,
+                        _ => entity.bounds.y,
+                    };
+                    bounce(p, map, from_y);
+                    p.last_bounce_target = target;
+                    p.bounce_reuse_timer = 0.1;
+                    p.freeze_timer = match entity.kind {
+                        EntityKind::AngryOshiro => 0.2,
+                        EntityKind::Seeker => 0.15,
+                        EntityKind::Snowball => 0.1,
+                        _ => 0.0,
+                    };
+                } else if entity.kind == EntityKind::Puffer {
+                    explode_launch(p, input, target, false, true);
+                    p.last_bounce_target = target;
+                    p.bounce_reuse_timer = 2.5;
+                } else {
+                    p.dead = true;
+                    p.speed = Vec2::default();
+                    p.death_freeze_pending = true;
+                    p.respawn_frames = 95;
+                    return;
                 }
             }
             EntityKind::Wind => {
@@ -3270,10 +3487,15 @@ fn update_transition(p: &mut PlayerSnapshot) {
     p.pos.y = approach(p.pos.y, p.transition_target.y, max_move);
     p.transition_timer = (p.transition_timer - DT).max(0.0);
     p.on_ground = false;
-    if p.transition_timer <= 0.0 && p.pos == p.transition_target {
+    // Player.TransitionTo rounds speed and clears Actor remainders as soon as
+    // the player reaches the transfer target; the camera coroutine can keep
+    // the room transition open for many more frames after that return value.
+    if p.pos == p.transition_target {
         p.movement_remainder = Vec2::default();
         p.speed.x = p.speed.x.round();
         p.speed.y = p.speed.y.round();
+    }
+    if p.transition_timer <= 0.0 && p.pos == p.transition_target {
         p.wall_slide_timer = WALL_SLIDE_TIME;
         p.jump_grace_timer = 0.0;
         p.force_move_x_timer = 0.0;
@@ -3396,9 +3618,12 @@ fn player_in_control(state: PlayerState) -> bool {
     )
 }
 
-fn spike_is_lethal(p: &PlayerSnapshot, direction: Vec2) -> bool {
+fn spike_is_lethal(p: &PlayerSnapshot, direction: Vec2, bounds: Rect) -> bool {
     if direction.y < 0.0 {
-        p.speed.y >= 0.0
+        // Spikes.OnCollide additionally checks Player.Bottom against the
+        // three-pixel upward spike collider, so touching it from below is not
+        // lethal even while falling.
+        p.speed.y >= 0.0 && p.pos.y <= bounds.bottom()
     } else if direction.y > 0.0 {
         p.speed.y <= 0.0
     } else if direction.x < 0.0 {
@@ -3619,6 +3844,11 @@ mod tests {
             ..Map::default()
         }
     }
+    fn bumper_clip_map() -> Map {
+        let mut map = bumper_map();
+        map.solids.push(Rect::new(560.0, 176.0, 16.0, 48.0));
+        map
+    }
     fn ice_ball_map() -> Map {
         Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
@@ -3631,6 +3861,55 @@ mod tests {
                 nodes: vec![Vec2::new(116.0, 100.0)],
                 name: "fireBall".to_owned(),
             }],
+            ..Map::default()
+        }
+    }
+    fn bounce_actor_map(kind: EntityKind) -> Map {
+        let bounds = match kind {
+            EntityKind::Puffer => Rect::new(94.0, 94.0, 12.0, 10.0),
+            EntityKind::AngryOshiro => Rect::new(86.0, 94.0, 28.0, 28.0),
+            EntityKind::Seeker => Rect::new(94.0, 96.0, 12.0, 12.0),
+            EntityKind::Snowball => Rect::new(94.0, 94.0, 12.0, 9.0),
+            _ => panic!("not a top-bounce actor"),
+        };
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            entities: vec![crate::Entity {
+                kind,
+                bounds,
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: String::new(),
+            }],
+            ..Map::default()
+        }
+    }
+    fn cloud_map(with_spikes: bool) -> Map {
+        let mut entities = vec![crate::Entity {
+            kind: EntityKind::Cloud,
+            bounds: Rect::new(84.0, 100.0, 32.0, 5.0),
+            direction: Vec2::default(),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "cloud".to_owned(),
+        }];
+        if with_spikes {
+            entities.push(crate::Entity {
+                kind: EntityKind::Spikes,
+                bounds: Rect::new(84.0, 153.0, 32.0, 3.0),
+                direction: Vec2::new(0.0, -1.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "spikesUp".to_owned(),
+            });
+        }
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            entities,
             ..Map::default()
         }
     }
@@ -5142,6 +5421,57 @@ mod tests {
     }
 
     #[test]
+    fn half_stamina_climbing_chains_wallboost_into_close_wall_climb_jump() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            solids: vec![Rect::new(40.0, 0.0, 8.0, 184.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(36.0, 120.0),
+            state: PlayerState::Climb,
+            facing: true,
+            stamina: 80.0,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [
+            InputState {
+                jump_pressed: true,
+                jump_held: true,
+                grab_held: true,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: -1,
+                jump_held: true,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: 1,
+                jump_pressed: true,
+                jump_held: true,
+                grab_held: true,
+                ..InputState::default()
+            },
+        ];
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+
+        assert_eq!(trace.states[1].stamina, 52.5);
+        assert!(trace.states[1].wall_boost_timer > 0.19);
+        assert_eq!(trace.states[2].stamina, 52.5);
+        assert_eq!(trace.states[3].stamina, 52.5);
+        assert_eq!(trace.states[3].wall_boost_timer, 0.0);
+        assert!((trace.states[3].speed.x + 79.166_64).abs() < 0.000_1);
+        assert_eq!(trace.states[3].speed.y, JUMP_SPEED);
+        assert_eq!(trace.states[3].state, PlayerState::Normal);
+        assert!(trace.states[3].facing);
+        assert_eq!(trace.states[3].dashes, 1);
+        assert!(!trace.states[3].on_ground);
+        assert!(!trace.states[3].ducking);
+        assert!(!trace.states[3].dead);
+    }
+
+    #[test]
     fn neutral_wall_jumps_return_for_a_second_stamina_free_jump() {
         let map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 300.0),
@@ -5928,6 +6258,188 @@ mod tests {
     }
 
     #[test]
+    fn eleven_jump_buffers_three_climb_jumps_across_a_room_transition() {
+        let next_room = Rect::new(320.0, 0.0, 320.0, 184.0);
+        let wall_x = 328.0;
+        let target_x = wall_x + 11.0 * 8.0;
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            transition_rooms: vec![next_room],
+            solids: vec![
+                Rect::new(wall_x, 80.0, 8.0, 16.0),
+                Rect::new(target_x, 128.0, 80.0, 8.0),
+            ],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(316.0, 86.0),
+            speed: Vec2::new(160.0, -30.0),
+            stamina: 20.0,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = (0..120)
+            .map(|frame| InputState {
+                move_x: 1,
+                jump_pressed: frame == 37 || frame == 42 || frame == 43,
+                jump_held: (37..60).contains(&frame),
+                grab_held: (37..=43).contains(&frame),
+                ..InputState::default()
+            })
+            .collect::<Vec<_>>();
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+
+        assert_eq!(trace.states[41].current_room_bounds, Some(next_room));
+        assert_eq!(trace.states[6].speed.x, 156.0);
+        assert_eq!(trace.states[42].stamina, 82.5);
+        assert_eq!(trace.states[43].stamina, 55.0);
+        assert_eq!(trace.states[44].stamina, 27.5);
+        assert!(trace.states[44].wall_speed_retained > 190.0);
+        assert!(
+            trace
+                .states
+                .iter()
+                .any(|state| state.on_ground && state.pos.x >= target_x - 4.0),
+            "last={:?}, max_x={}",
+            trace.states.last().unwrap(),
+            trace
+                .states
+                .iter()
+                .map(|state| state.pos.x)
+                .fold(f32::NEG_INFINITY, f32::max),
+        );
+    }
+
+    #[test]
+    fn reverse_cornerboost_preserves_forward_momentum_minus_backward_jump_boost() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            solids: vec![Rect::new(104.0, 120.0, 8.0, 64.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(116.0, 122.0),
+            speed: Vec2::new(160.0, -30.0),
+            facing: false,
+            stamina: 110.0,
+            dash_attack_timer: 0.3,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(
+            player,
+            &[InputState {
+                move_x: -1,
+                jump_pressed: true,
+                jump_held: true,
+                grab_held: true,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+
+        assert_eq!(trace.states[1].state, PlayerState::Normal);
+        assert_eq!(trace.states[1].stamina, 82.5);
+        assert_eq!(trace.states[1].dash_attack_timer, 0.0);
+        assert!((trace.states[1].speed.x - 109.166_664).abs() < 0.001);
+        assert_eq!(trace.states[1].facing, false);
+    }
+
+    #[test]
+    fn neutral_reverse_cornerboost_keeps_speed_then_converts_within_wallboost_window() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            solids: vec![Rect::new(104.0, 120.0, 8.0, 64.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(116.0, 122.0),
+            speed: Vec2::new(160.0, -30.0),
+            facing: false,
+            stamina: 110.0,
+            dash_attack_timer: 0.3,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [
+            InputState {
+                jump_pressed: true,
+                jump_held: true,
+                grab_held: true,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: 1,
+                jump_held: true,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: 1,
+                jump_held: true,
+                ..InputState::default()
+            },
+        ];
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+
+        assert!((trace.states[1].speed.x - 149.166_64).abs() < 0.001);
+        assert_eq!(trace.states[1].wall_boost_dir, 1);
+        assert!(trace.states[1].wall_boost_timer > 0.19);
+        assert_eq!(trace.states[1].stamina, 82.5);
+        assert!((trace.states[3].speed.x - 125.666_66).abs() < 0.001);
+        assert_eq!(trace.states[3].stamina, 110.0);
+        assert_eq!(trace.states[3].wall_boost_timer, 0.0);
+    }
+
+    #[test]
+    fn spiked_cornerboost_survives_only_while_rising_away_from_top_spikes() {
+        let spikes = crate::Entity {
+            kind: EntityKind::Spikes,
+            bounds: Rect::new(36.0, 37.0, 12.0, 3.0),
+            direction: Vec2::new(0.0, -1.0),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "spikesUp".to_owned(),
+        };
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            solids: vec![Rect::new(40.0, 40.0, 8.0, 64.0)],
+            entities: vec![spikes],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(35.0, 46.0),
+            speed: Vec2::new(90.0, -30.0),
+            facing: true,
+            stamina: 110.0,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = std::array::from_fn::<_, 5, _>(|frame| InputState {
+            move_x: 1,
+            jump_pressed: frame == 0,
+            jump_held: true,
+            grab_held: frame == 0,
+            ..InputState::default()
+        });
+        let cornerboost =
+            simulate_trace(player.clone(), &inputs, &map, inputs.len() as u32).unwrap();
+        assert!(cornerboost.states.iter().all(|state| !state.dead));
+        assert!(cornerboost.states[1].wall_speed_retained > 120.0);
+
+        let falling = simulate(
+            PlayerSnapshot {
+                pos: Vec2::new(35.0, 39.0),
+                speed: Vec2::new(0.0, 30.0),
+                ..player
+            },
+            &[InputState::default()],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert!(falling.dead);
+    }
+
+    #[test]
     fn dash_spends_dash_and_is_diagonal_normalized() {
         let input = InputState {
             move_x: 1,
@@ -6591,6 +7103,62 @@ mod tests {
     }
 
     #[test]
+    fn kermit_dash_preserves_attack_and_direction_through_vertical_transition() {
+        let upper = Rect::new(0.0, -184.0, 320.0, 184.0);
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            transition_rooms: vec![upper],
+            entities: vec![crate::Entity {
+                kind: EntityKind::FlyFeather,
+                bounds: Rect::new(150.0, -40.0, 20.0, 20.0),
+                direction: Vec2::default(),
+                shielded: true,
+                single_use: false,
+                nodes: vec![],
+                name: "infiniteStar".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(160.0, 4.0),
+            speed: Vec2::new(0.0, -240.0),
+            state: PlayerState::Dash,
+            dash_dir: Vec2::new(0.0, -1.0),
+            dash_attack_timer: 0.3,
+            state_timer: 0.1,
+            dashes: 0,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(player, &[InputState::default(); 48], &map, 48).unwrap();
+
+        assert_eq!(trace.states[1].state, PlayerState::Normal);
+        assert_eq!(trace.states[1].transition_direction, Vec2::new(0.0, -1.0));
+        assert_eq!(trace.states[1].dash_dir, Vec2::new(0.0, -1.0));
+        assert!(trace.states[1].dash_attack_timer > 0.28);
+        let completed = trace
+            .states
+            .iter()
+            .position(|state| state.current_room_bounds == Some(upper))
+            .unwrap();
+        assert_eq!(completed, 41);
+        assert_eq!(trace.states[completed].dash_dir, Vec2::new(0.0, -1.0));
+        assert!(trace.states[completed].dash_attack_timer > 0.28);
+        let hit_index = trace
+            .states
+            .iter()
+            .position(|state| state.state == PlayerState::StarFly)
+            .unwrap();
+        assert!(hit_index > completed);
+        let hit = &trace.states[hit_index];
+        assert_eq!(hit.state, PlayerState::StarFly);
+        assert_eq!(hit.dashes, 1);
+        assert_eq!(hit.stamina, 110.0);
+        assert!(!hit.on_ground);
+        assert!(!hit.ducking);
+        assert!(!hit.dead);
+    }
+
+    #[test]
     fn downward_screen_transition_clamps_upward_speed_before_transfer() {
         let map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
@@ -6800,6 +7368,35 @@ mod tests {
     }
 
     #[test]
+    fn bumper_clip_dashes_back_through_during_the_point_six_second_reuse_window() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(589.0, 206.0),
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..50)
+            .map(|frame| InputState {
+                move_x: 1,
+                dash_pressed: frame == 20,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &bumper_clip_map(), inputs.len() as u32).unwrap();
+        assert_eq!(trace.states[1].state, PlayerState::Launch);
+        assert!(
+            trace
+                .states
+                .iter()
+                .any(|state| state.state == PlayerState::Dash)
+        );
+        assert!(trace.states.iter().skip(20).any(|state| {
+            state.pos.x > 600.0
+                && state.bumper_reuse_timer > 0.0
+                && state.state != PlayerState::Launch
+        }));
+        assert!(trace.states.iter().all(|state| !state.dead));
+    }
+
+    #[test]
     fn spring_cancel_uses_the_buffered_dash_after_the_spring_refills_it() {
         let p = PlayerSnapshot {
             pos: Vec2::new(80.0, 92.0),
@@ -6908,7 +7505,7 @@ mod tests {
 
     #[test]
     fn ice_ball_bounce_cancels_dash_and_preserves_horizontal_speed() {
-        let p = PlayerSnapshot {
+        let mut bounced = PlayerSnapshot {
             pos: Vec2::new(96.0, 100.0),
             speed: Vec2::new(240.0, 0.0),
             state: PlayerState::Dash,
@@ -6916,18 +7513,13 @@ mod tests {
             dash_attack_timer: DASH_ATTACK_TIME,
             ..PlayerSnapshot::default()
         };
-        let bounced = simulate(
-            p,
-            &[InputState {
-                jump_held: true,
-                ..InputState::default()
-            }],
-            &ice_ball_map(),
-            1,
-        )
-        .unwrap();
+        let map = ice_ball_map();
+        interact(&mut bounced, &map, InputState::default());
+        assert_eq!(bounced.state, PlayerState::Dash);
+        assert_eq!(bounced.pending_bounce_from_y, Some(98.0));
+        interact(&mut bounced, &map, InputState::default());
         assert_eq!(bounced.state, PlayerState::Normal);
-        assert_eq!(bounced.pos, Vec2::new(100.0, 98.0));
+        assert_eq!(bounced.pos, Vec2::new(96.0, 98.0));
         assert_eq!(bounced.speed, Vec2::new(240.0, -140.0));
         assert_eq!(bounced.dashes, 1);
         assert_eq!(bounced.stamina, 110.0);
@@ -6953,14 +7545,115 @@ mod tests {
     }
 
     #[test]
-    fn ice_ball_feather_cancel_restores_star_fly_collider_after_normal_hurtbox() {
+    fn ice_ball_pending_callback_keeps_split_simulation_composable() {
+        let initial = PlayerSnapshot {
+            pos: Vec2::new(317.0, 155.0),
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..24)
+            .map(|frame| InputState {
+                move_x: 1,
+                move_y: 1,
+                jump_held: true,
+                dash_pressed: frame == 0,
+                ..InputState::default()
+            })
+            .collect();
+        let map = crate::mechanics_playground();
+        let whole = simulate(initial.clone(), &inputs, &map, inputs.len() as u32).unwrap();
+        let pending = simulate(initial, &inputs[..5], &map, 5).unwrap();
+        assert_eq!(pending.pending_bounce_from_y, Some(158.0));
+        assert_eq!(pending.state, PlayerState::Dash);
+        let split = simulate(pending, &inputs[5..], &map, (inputs.len() - 5) as u32).unwrap();
+        assert_eq!(split, whole);
+    }
+
+    #[test]
+    fn fish_oshiro_seeker_and_snowball_top_callbacks_share_player_bounce_semantics() {
+        for kind in [
+            EntityKind::Puffer,
+            EntityKind::AngryOshiro,
+            EntityKind::Seeker,
+            EntityKind::Snowball,
+        ] {
+            let mut p = PlayerSnapshot {
+                pos: Vec2::new(100.0, 100.0),
+                speed: Vec2::new(240.0, 0.0),
+                state: PlayerState::Dash,
+                dashes: 0,
+                stamina: 5.0,
+                dash_attack_timer: DASH_ATTACK_TIME,
+                ..PlayerSnapshot::default()
+            };
+            let map = bounce_actor_map(kind.clone());
+            interact(&mut p, &map, InputState::default());
+            assert_eq!(p.state, PlayerState::Normal, "kind={kind:?}");
+            assert_eq!(p.speed, Vec2::new(240.0, BOUNCE_SPEED), "kind={kind:?}");
+            assert_eq!(p.dashes, 1, "kind={kind:?}");
+            assert_eq!(p.stamina, 110.0, "kind={kind:?}");
+            assert_eq!(p.dash_attack_timer, 0.0, "kind={kind:?}");
+            assert_eq!(p.var_jump_timer, VAR_JUMP_TIME, "kind={kind:?}");
+        }
+    }
+
+    #[test]
+    fn cloud_depresses_then_launches_the_rider_at_the_source_threshold() {
         let p = PlayerSnapshot {
+            pos: Vec2::new(100.0, 100.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(p, &[InputState::default(); 70], &cloud_map(false), 70).unwrap();
+        assert_eq!(trace.states[1].clouds[0].phase, 1);
+        assert_eq!(trace.states[1].clouds[0].speed, 180.0);
+        let launched = trace
+            .states
+            .iter()
+            .find(|state| state.speed.y == -200.0)
+            .expect("cloud should launch its rider when rebound speed reaches -100");
+        assert_eq!(launched.state, PlayerState::Normal);
+        assert!(launched.clouds[0].position.y < launched.clouds[0].start.y);
+        assert!(trace.states.iter().all(|state| !state.dead));
+    }
+
+    #[test]
+    fn spiked_cloud_jump_keeps_the_rider_clear_of_the_hazard_below() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(100.0, 100.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(p, &[InputState::default(); 70], &cloud_map(true), 70).unwrap();
+        assert!(trace.states.iter().any(|state| state.speed.y == -200.0));
+        assert!(trace.states.iter().all(|state| !state.dead));
+    }
+
+    #[test]
+    fn cloud_runtime_keeps_split_simulation_composable() {
+        let initial = PlayerSnapshot {
+            pos: Vec2::new(100.0, 100.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [InputState::default(); 70];
+        let map = cloud_map(false);
+        let whole = simulate(initial.clone(), &inputs, &map, 70).unwrap();
+        let first = simulate(initial, &inputs[..35], &map, 35).unwrap();
+        let split = simulate(first, &inputs[35..], &map, 35).unwrap();
+        assert_eq!(split, whole);
+    }
+
+    #[test]
+    fn ice_ball_feather_cancel_restores_star_fly_collider_after_normal_hurtbox() {
+        let mut bounced = PlayerSnapshot {
             pos: Vec2::new(100.0, 100.0),
             state: PlayerState::StarFly,
             star_fly_timer: 1.0,
             ..PlayerSnapshot::default()
         };
-        let bounced = simulate(p, &[InputState::default()], &ice_ball_map(), 1).unwrap();
+        let map = ice_ball_map();
+        interact(&mut bounced, &map, InputState::default());
+        interact(&mut bounced, &map, InputState::default());
         assert_eq!(bounced.state, PlayerState::Normal);
         assert!(bounced.star_fly_hitbox_preserved);
         assert!(!bounced.ducking);
@@ -6998,7 +7691,7 @@ mod tests {
         let bounced = trace
             .states
             .iter()
-            .find(|state| state.bounce_reuse_timer > 0.0)
+            .find(|state| state.state == PlayerState::Normal && state.speed.y == -140.0)
             .expect("down-right dash should top-bounce from the stationary ice ball");
         assert_eq!(bounced.state, PlayerState::Normal);
         assert_eq!(bounced.dashes, 1);

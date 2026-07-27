@@ -1,7 +1,9 @@
 // Pinned authoritative 120-item coverage order. Do not regenerate from the
 // online Wiki unless the user explicitly requests a baseline refresh.
 
-= 基础机制 / Mechanics
+#import "template.typ": badge
+
+= 基础机制 #h(6pt) #badge([MECHANICS])
 
 #include "techs/mechanics/1-1-berry-mechanics.typ"
 
@@ -29,7 +31,7 @@
 
 #pagebreak()
 
-= 冲刺技巧 / Dash Tech
+= 冲刺技巧 #h(6pt) #badge([DASH TECH])
 
 #include "techs/dash-tech/2-1-spring-cancel.typ"
 
@@ -67,7 +69,7 @@
 
 #pagebreak()
 
-= 无冲刺技巧 / Dashless Tech
+= 无冲刺技巧 #h(6pt) #badge([DASHLESS TECH])
 
 #include "techs/dashless-tech/3-1-bunnyhop-bhop.typ"
 
@@ -125,7 +127,7 @@
 
 #pagebreak()
 
-= 实体技巧 / Entity Tech
+= 实体技巧 #h(6pt) #badge([ENTITY TECH])
 
 #include "techs/entity-tech/4-1-archie.typ"
 
@@ -223,7 +225,7 @@
 
 #pagebreak()
 
-= 其他技巧 / Other Tech
+= 其他技巧 #h(6pt) #badge([OTHER TECH])
 
 #include "techs/other-tech/5-1-bino-tech.typ"
 

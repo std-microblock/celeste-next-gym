@@ -107,6 +107,7 @@ function mergeScalar<T>(label: string, previous: T | undefined, next: T): T {
 const ENTITY_KINDS = new Set<FixtureEntity['kind']>([
   'jump_thru', 'dream_block', 'spikes', 'water', 'booster', 'red_booster',
   'fly_feather', 'bumper', 'ice_ball', 'badeline_boost', 'spring', 'strawberry',
+  'puffer', 'angry_oshiro', 'seeker', 'snowball', 'cloud',
   'wind', 'bounce_block', 'theo_crystal', 'zip_mover', 'moving_solid',
 ])
 
