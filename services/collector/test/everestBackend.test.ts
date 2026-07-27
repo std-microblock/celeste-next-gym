@@ -55,6 +55,58 @@ describe("Everest TCP backend", () => {
     assert.equal(health.ready, true);
     assert.match(health.detail ?? "", /test/);
   });
+
+  it("injects authenticated ownership into constrained recording commands", async () => {
+    const token = "capture_token_abcdefghijklmnopqrstuvwxyz";
+    const { port } = await startFakeEverest((request) => {
+      assert.equal(request.command, "capture_start");
+      assert.equal(request.run_nonce, "run-nonce");
+      assert.equal(request.process_id, 4242);
+      assert.equal(request.capture_token, token);
+      assert.equal(request.scenario_id, "scenario-1");
+      assert.equal("recording_root" in request, false);
+      assert.equal("output_path" in request, false);
+      return {
+        success: true,
+        recording: {
+          state: "active",
+          scenario_id: "scenario-1",
+          start_state_index: 0,
+          end_state_index: 1,
+          latest_state_index: -1,
+          render_frame_count: 0,
+          final_state_presented: false,
+          repeated_presentation_count: 0,
+          unpresented_update_ranges: [],
+        },
+      };
+    });
+    const backend = new EverestTcpBackend({
+      port,
+      runNonce: "run-nonce",
+      processId: 4242,
+    });
+    const status = await backend.recordingStart({
+      capture_token: token,
+      scenario_id: "scenario-1",
+      start_state_index: 0,
+      end_state_index: 1,
+      timeout_ms: 30_000,
+    }, new AbortController().signal);
+
+    assert.equal(status.state, "active");
+  });
+
+  it("refuses recording without an authenticated nonce and child pid", async () => {
+    const backend = new EverestTcpBackend({ port: 1 });
+    await assert.rejects(
+      () => backend.recordingStatus(
+        { capture_token: "c".repeat(32) },
+        new AbortController().signal,
+      ),
+      /authenticated runNonce and exact processId/,
+    );
+  });
 });
 
 function validRequest(): SimulateRequest {
