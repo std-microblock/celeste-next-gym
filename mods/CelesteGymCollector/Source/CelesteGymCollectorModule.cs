@@ -108,9 +108,17 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         int beforeState = self.StateMachine.State;
         float beforeSpeedY = self.Speed.Y;
         orig(self);
+        // Jump/WallJump/ClimbJump all consume the same virtual-button buffer.
+        // A Normal-state ClimbJump may start while Speed.Y is already negative,
+        // so state transition and sign-crossing alone do not detect it.
+        bool normalJumpStarted = self.StateMachine.State == Player.StNormal
+            && MathF.Abs(self.Speed.Y - -105f) < 0.001f
+            && MathF.Abs(beforeSpeedY - self.Speed.Y) > 0.001f;
         if (job is { JumpBufferFrames: > 0 }
             && self.Speed.Y < 0f
-            && (beforeSpeedY >= 0f || (beforeState != 0 && self.StateMachine.State == 0))) {
+            && (beforeSpeedY >= 0f
+                || (beforeState != Player.StNormal && self.StateMachine.State == Player.StNormal)
+                || normalJumpStarted)) {
             job.JumpBufferFrames = 0;
         }
         if (job is not null && beforeState != self.StateMachine.State
