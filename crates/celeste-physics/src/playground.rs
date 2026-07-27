@@ -115,6 +115,18 @@ pub fn mechanics_playground() -> Map {
                 nodes: vec![],
                 name: "infiniteStar".to_owned(),
             },
+            // High isolated feather aligned with the long jumpthrough below;
+            // a downward flight reaches it close to StarFly expiry for the
+            // Feather Clip setup without drifting into the booster booths.
+            Entity {
+                kind: EntityKind::FlyFeather,
+                bounds: Rect::new(150.0, 30.0, 20.0, 20.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "infiniteStar".to_owned(),
+            },
             Entity {
                 kind: EntityKind::FlyFeather,
                 bounds: Rect::new(110.0, 110.0, 20.0, 20.0),

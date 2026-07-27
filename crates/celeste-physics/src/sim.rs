@@ -3043,6 +3043,74 @@ mod tests {
     }
 
     #[test]
+    fn featherboost_uses_the_first_live_diagonal_for_the_250_start_speed() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(120.0, 200.0),
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = [InputState::default(); 28];
+        inputs[27].move_x = 1;
+        inputs[27].move_y = -1;
+        let trace = simulate_trace(p, &inputs, &feather_map(false), 28).unwrap();
+        let launched = &trace.states[28];
+        assert_eq!(launched.state, PlayerState::StarFly);
+        assert!(!launched.star_fly_transforming);
+        assert!((length(launched.speed) - STAR_FLY_START_SPEED).abs() < 0.001);
+        assert!((launched.speed.x - 176.776_69).abs() < 0.001);
+        assert!((launched.speed.y + 176.776_69).abs() < 0.001);
+    }
+
+    #[test]
+    fn feather_super_jumps_from_grounded_horizontal_starfly_speed() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(900.0, 496.0),
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = [InputState::default(); 50];
+        for (frame, input) in inputs.iter_mut().enumerate() {
+            input.move_x = 1;
+            input.jump_pressed = frame == 28;
+            input.jump_held = (28..40).contains(&frame);
+        }
+        let trace = simulate_trace(p, &inputs, &crate::mechanics_playground(), 50).unwrap();
+        let jumped = &trace.states[29];
+        assert_eq!(jumped.state, PlayerState::Normal);
+        assert!((jumped.speed.x - 273.333_34).abs() < 0.001);
+        assert_eq!(jumped.speed.y, JUMP_SPEED);
+        assert_eq!(jumped.var_jump_timer, VAR_JUMP_TIME);
+    }
+
+    #[test]
+    fn feather_clip_exits_below_the_jumpthrough_top() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(160.0, 40.0),
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [InputState {
+            move_y: 1,
+            ..InputState::default()
+        }; 180];
+        let trace = simulate_trace(p, &inputs, &crate::mechanics_playground(), 180).unwrap();
+        let (frame, exit) = trace
+            .states
+            .windows(2)
+            .enumerate()
+            .find(|states| {
+                states.1[0].state == PlayerState::StarFly
+                    && states.1[1].state == PlayerState::Normal
+            })
+            .expect("StarFly should expire into Normal");
+        assert!(
+            exit[1].pos.y >= 402.0,
+            "exit frame={} pos={:?} speed={:?}",
+            frame + 1,
+            exit[1].pos,
+            exit[1].speed
+        );
+        assert!(!exit[1].on_ground);
+    }
+
+    #[test]
     fn star_fly_wall_collision_uses_half_speed_bounce() {
         let map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
