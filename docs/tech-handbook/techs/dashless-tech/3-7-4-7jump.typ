@@ -21,7 +21,7 @@
   test-evidence: evidence(
     path: [crates/celeste-physics/src/sim.rs],
     symbol: [seven_jump_lands_on_a_target_seven_tiles_from_the_double_cornerboost_wall],
-    note: [独立测试从地面零速起跑，第 38 状态帧以 90 空速进入双 Cornerboost，体力依次降至 82.5 和 55，保存 165.66666，并在第 74 状态帧落到墙角外 56 像素的目标平台。],
+    note: [独立测试从地面零速起跑，第 44 状态帧以 90 空速进入双 Cornerboost，体力依次降至 82.5 和 55，保存 165.66666，并在第 80 状态帧落到墙角外 56 像素的目标平台；全部固体均按 Celeste 的 8px tile 网格对齐。],
   ),
   e2e-evidence: none,
   candidate-e2e: "seven-jump",

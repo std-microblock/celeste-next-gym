@@ -151,8 +151,8 @@ export const PLAYGROUND: GymMap = {
     { x: 480, y: 240, width: 96, height: 24 },
     { x: 800, y: 248, width: 120, height: 16 },
     { x: 160, y: 120, width: 80, height: 64 },
-    { x: 240, y: 111, width: 8, height: 9 },
-    { x: 296, y: 119, width: 80, height: 8 },
+    { x: 240, y: 112, width: 8, height: 8 },
+    { x: 296, y: 120, width: 80, height: 8 },
   ],
   entities: [
     { kind: 'jump_thru', bounds: { x: 112, y: 400, width: 112, height: 8 }, direction: { x: 0, y: 0 }, name: 'jumpThru' },

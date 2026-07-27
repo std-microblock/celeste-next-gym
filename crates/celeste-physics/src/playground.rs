@@ -21,8 +21,8 @@ pub fn mechanics_playground() -> Map {
             // Dedicated seven-tile Double Cornerboost booth. The wall corner
             // and target leading edge are exactly 56 pixels apart.
             Rect::new(160.0, 120.0, 80.0, 64.0),
-            Rect::new(240.0, 111.0, 8.0, 9.0),
-            Rect::new(296.0, 119.0, 80.0, 8.0),
+            Rect::new(240.0, 112.0, 8.0, 8.0),
+            Rect::new(296.0, 120.0, 80.0, 8.0),
         ],
         entities: vec![
             Entity {

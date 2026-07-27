@@ -3463,13 +3463,13 @@ mod tests {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
             solids: vec![
                 Rect::new(0.0, 120.0, wall_x, 64.0),
-                Rect::new(wall_x, 111.0, 8.0, 9.0),
-                Rect::new(target_x, 119.0, 80.0, 8.0),
+                Rect::new(wall_x, 112.0, 8.0, 8.0),
+                Rect::new(target_x, 120.0, 80.0, 8.0),
             ],
             ..Map::default()
         };
         let player = PlayerSnapshot {
-            pos: Vec2::new(17.0, 120.0),
+            pos: Vec2::new(8.0, 120.0),
             state: PlayerState::Normal,
             on_ground: true,
             ..PlayerSnapshot::default()
@@ -3477,28 +3477,28 @@ mod tests {
         let inputs = (0..120)
             .map(|frame| InputState {
                 move_x: 1,
-                jump_pressed: frame == 5 || frame == 38 || frame == 39,
-                jump_held: (5..17).contains(&frame) || (38..52).contains(&frame),
-                grab_held: frame == 38 || frame == 39,
+                jump_pressed: frame == 11 || frame == 44 || frame == 45,
+                jump_held: (11..23).contains(&frame) || (44..58).contains(&frame),
+                grab_held: frame == 44 || frame == 45,
                 ..InputState::default()
             })
             .collect::<Vec<_>>();
         let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
 
-        assert_eq!(trace.states[38].pos, Vec2::new(74.0, 118.0));
-        assert_eq!(trace.states[38].speed.x, MAX_RUN);
-        assert_eq!(trace.states[39].stamina, 82.5);
-        assert_eq!(trace.states[40].stamina, 55.0);
-        assert!((trace.states[40].wall_speed_retained - 165.66666).abs() < 0.001);
-        assert!(trace.states[43].speed.x > 160.0);
+        assert_eq!(trace.states[44].pos, Vec2::new(74.0, 118.0));
+        assert_eq!(trace.states[44].speed.x, MAX_RUN);
+        assert_eq!(trace.states[45].stamina, 82.5);
+        assert_eq!(trace.states[46].stamina, 55.0);
+        assert!((trace.states[46].wall_speed_retained - 165.66666).abs() < 0.001);
+        assert!(trace.states[49].speed.x > 160.0);
         assert!(
             trace
                 .states
                 .iter()
                 .any(|state| { state.on_ground && state.pos.x >= target_x - 4.0 })
         );
-        assert_eq!(trace.states[74].pos, Vec2::new(134.0, 119.0));
-        assert!(trace.states[74].on_ground);
+        assert_eq!(trace.states[80].pos, Vec2::new(134.0, 120.0));
+        assert!(trace.states[80].on_ground);
     }
 
     #[test]
