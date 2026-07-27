@@ -17,10 +17,12 @@ const RUN_REDUCE: f32 = 400.0;
 const DUCK_FRICTION: f32 = 500.0;
 const AIR_MULT: f32 = 0.65;
 const JUMP_GRACE: f32 = 0.1;
+const JUMP_BUFFER_TIME: f32 = 0.08;
 const JUMP_SPEED: f32 = -105.0;
 const JUMP_H_BOOST: f32 = 40.0;
 const VAR_JUMP_TIME: f32 = 0.2;
 const WALL_JUMP_H: f32 = 130.0;
+const WALL_JUMP_CHECK_DIST: f32 = 3.0;
 const WALL_SLIDE_START_MAX: f32 = 20.0;
 const WALL_SLIDE_TIME: f32 = 1.2;
 const DASH_SPEED: f32 = 240.0;
@@ -29,9 +31,21 @@ const DASH_TIME: f32 = 0.15;
 const DASH_COOLDOWN: f32 = 0.2;
 const DASH_ATTACK_TIME: f32 = 0.3;
 const SUPER_JUMP_H: f32 = 260.0;
+const SUPER_BOUNCE_SPEED: f32 = -185.0;
+const BOUNCE_SPEED: f32 = -140.0;
+const SIDE_BOUNCE_SPEED: f32 = 240.0;
+const SIDE_BOUNCE_FORCE_MOVE_X_TIME: f32 = 0.3;
+const CLIMB_HOP_Y: f32 = -120.0;
+const CLIMB_HOP_X: f32 = 100.0;
+const CLIMB_HOP_FORCE_TIME: f32 = 0.2;
+const CLIMB_HOP_NO_WIND_TIME: f32 = 0.3;
 const CLIMB_UP_SPEED: f32 = -45.0;
 const CLIMB_DOWN_SPEED: f32 = 80.0;
+const CLIMB_SLIP_SPEED: f32 = 30.0;
 const CLIMB_ACCEL: f32 = 900.0;
+const CLIMB_CHECK_DIST: f32 = 2.0;
+const CLIMB_TIRED_THRESHOLD: f32 = 20.0;
+const CLIMB_JUMP_COST: f32 = 27.5;
 const CLIMB_UP_COST: f32 = 45.454_544;
 const CLIMB_STILL_COST: f32 = 10.0;
 const SWIM_Y_SPEED_MULT: f32 = 0.5;
@@ -59,6 +73,8 @@ const STAR_FLY_EXIT_UP: f32 = -100.0;
 const STAR_FLY_TRANSFORM_FRAMES: u8 = 27;
 const FEATHER_RESPAWN_TIME: f32 = 3.0;
 const LAUNCH_CANCEL_THRESHOLD: f32 = 220.0;
+const TRANSITION_TIME: f32 = 0.65;
+const TRANSITION_MOVE_SPEED: f32 = 60.0;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -117,10 +133,19 @@ pub fn simulate_trace(
         });
     }
     validate_snapshot(&snapshot)?;
+    if !snapshot.player_on_ground_initialized {
+        snapshot.player_on_ground = snapshot.on_ground;
+        snapshot.player_on_ground_initialized = true;
+    }
+    let mut runtime_map = map.clone();
+    initialize_zip_movers(&mut snapshot, &mut runtime_map);
+    initialize_bounce_blocks(&mut snapshot, &mut runtime_map);
+    initialize_theo_crystals(&mut snapshot, &mut runtime_map);
+    position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
     let mut states = Vec::with_capacity(frames + 1);
     states.push(snapshot.clone());
     for input in &inputs[..frames] {
-        step(&mut snapshot, input.normalized(), map)?;
+        step(&mut snapshot, input.normalized(), &mut runtime_map)?;
         states.push(snapshot.clone());
     }
     Ok(SimulationResult {
@@ -139,6 +164,19 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         s.dash_attack_timer,
         s.dash_cooldown_timer,
         s.freeze_timer,
+        s.current_room_bounds.map_or(0.0, |bounds| bounds.x),
+        s.current_room_bounds.map_or(0.0, |bounds| bounds.y),
+        s.current_room_bounds.map_or(0.0, |bounds| bounds.width),
+        s.current_room_bounds.map_or(0.0, |bounds| bounds.height),
+        s.transition_room_bounds.map_or(0.0, |bounds| bounds.x),
+        s.transition_room_bounds.map_or(0.0, |bounds| bounds.y),
+        s.transition_room_bounds.map_or(0.0, |bounds| bounds.width),
+        s.transition_room_bounds.map_or(0.0, |bounds| bounds.height),
+        s.transition_direction.x,
+        s.transition_direction.y,
+        s.transition_target.x,
+        s.transition_target.y,
+        s.transition_timer,
         s.state_timer,
         s.boost_target.x,
         s.boost_target.y,
@@ -158,6 +196,10 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         s.last_feather_target.y,
         s.feather_reuse_timer,
         s.bumper_reuse_timer,
+        s.strawberry_follow_delay_timer,
+        s.strawberry_collect_timer,
+        s.strawberry_collect_reset_timer,
+        s.bounce_reuse_timer,
         s.explode_launch_boost_timer,
         s.explode_launch_boost_speed,
         s.badeline_boost_start.x,
@@ -182,23 +224,803 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         s.wall_speed_retention_timer,
         s.wall_speed_retained,
         s.wall_boost_timer,
+        s.hop_wait_x_speed,
+        s.current_lift_speed.x,
+        s.current_lift_speed.y,
+        s.last_lift_speed.x,
+        s.last_lift_speed.y,
+        s.lift_speed_timer,
+        s.moving_solid_time,
         s.dash_buffer_timer,
         s.crouch_dash_buffer_timer,
         s.movement_remainder.x,
         s.movement_remainder.y,
+        s.min_hold_timer,
+        s.pickup_old_speed.x,
+        s.pickup_old_speed.y,
+        s.pickup_old_var_jump_timer,
+        s.pickup_timer,
     ];
-    if values.iter().all(|x| x.is_finite()) {
+    let zip_movers_are_finite = s.zip_movers.iter().all(|zip| {
+        [
+            zip.wait_timer,
+            zip.at,
+            zip.position.x,
+            zip.position.y,
+            zip.remainder.x,
+            zip.remainder.y,
+            zip.lift_speed.x,
+            zip.lift_speed.y,
+            zip.start.x,
+            zip.start.y,
+        ]
+        .iter()
+        .all(|value| value.is_finite())
+    });
+    let bounce_blocks_are_finite = s.bounce_blocks.iter().all(|block| {
+        [
+            block.move_speed,
+            block.bounce_dir.x,
+            block.bounce_dir.y,
+            block.bounce_lift.x,
+            block.bounce_lift.y,
+            block.bounce_end_timer,
+            block.respawn_timer,
+            block.position.x,
+            block.position.y,
+            block.remainder.x,
+            block.remainder.y,
+            block.lift_speed.x,
+            block.lift_speed.y,
+            block.start.x,
+            block.start.y,
+        ]
+        .iter()
+        .all(|value| value.is_finite())
+    });
+    let theo_crystals_are_finite = s.theo_crystals.iter().all(|theo| {
+        [
+            theo.position.x,
+            theo.position.y,
+            theo.speed.x,
+            theo.speed.y,
+            theo.remainder.x,
+            theo.remainder.y,
+            theo.cannot_hold_timer,
+            theo.gravity_timer,
+        ]
+        .iter()
+        .all(|value| value.is_finite())
+    });
+    if values.iter().all(|x| x.is_finite())
+        && zip_movers_are_finite
+        && bounce_blocks_are_finite
+        && theo_crystals_are_finite
+    {
         Ok(())
     } else {
         Err(SimulationError::NonFinite)
     }
 }
 
-fn step(p: &mut PlayerSnapshot, mut input: InputState, map: &Map) -> Result<(), SimulationError> {
-    // Input.Dash and Input.CrouchDash use a 0.08 second VirtualButton buffer.
-    // Input keeps advancing during Celeste.Freeze even though Scene.Update and
-    // Player.Update are skipped, which is the timing window used by a bumper
-    // clip to carry a press out of the hit freeze.
+fn initialize_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
+    let theo_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::TheoCrystal).then_some(index))
+        .collect();
+    p.theo_crystals.truncate(theo_indices.len());
+    for (theo_index, entity_index) in theo_indices.into_iter().enumerate() {
+        let entity = &mut map.entities[entity_index];
+        if theo_index == p.theo_crystals.len() {
+            p.theo_crystals.push(crate::TheoCrystalSnapshot {
+                position: Vec2::new(entity.bounds.x + 4.0, entity.bounds.y + 10.0),
+                ..crate::TheoCrystalSnapshot::default()
+            });
+        }
+        let state = &mut p.theo_crystals[theo_index];
+        state.held = p.holding_theo == Some(theo_index as u16);
+        entity.bounds.x = state.position.x - 4.0;
+        entity.bounds.y = state.position.y - 10.0;
+        entity.bounds.width = 8.0;
+        entity.bounds.height = 10.0;
+    }
+    if p.holding_theo
+        .is_some_and(|index| index as usize >= p.theo_crystals.len())
+    {
+        p.holding_theo = None;
+    }
+}
+
+fn initialize_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
+    let block_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::BounceBlock).then_some(index))
+        .collect();
+    p.bounce_blocks.truncate(block_indices.len());
+    for (block_index, entity_index) in block_indices.into_iter().enumerate() {
+        let entity = &mut map.entities[entity_index];
+        if block_index == p.bounce_blocks.len() {
+            let start = Vec2::new(entity.bounds.x, entity.bounds.y);
+            p.bounce_blocks.push(crate::BounceBlockSnapshot {
+                position: start,
+                start,
+                ..crate::BounceBlockSnapshot::default()
+            });
+        }
+        let state = &p.bounce_blocks[block_index];
+        if state.phase == 4 {
+            // Broken BounceBlocks remain in the scene but are non-collidable.
+            // Runtime maps do not carry a separate Collidable bit, so park the
+            // collision rectangle outside the room until the reform succeeds.
+            entity.bounds.x = -1_000_000.0;
+            entity.bounds.y = -1_000_000.0;
+        } else {
+            entity.bounds.x = state.position.x;
+            entity.bounds.y = state.position.y;
+        }
+    }
+}
+
+fn initialize_zip_movers(p: &mut PlayerSnapshot, map: &mut Map) {
+    let zip_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::ZipMover).then_some(index))
+        .collect();
+    p.zip_movers.truncate(zip_indices.len());
+    for (zip_index, entity_index) in zip_indices.into_iter().enumerate() {
+        let entity = &mut map.entities[entity_index];
+        if zip_index == p.zip_movers.len() {
+            let start = Vec2::new(entity.bounds.x, entity.bounds.y);
+            p.zip_movers.push(crate::ZipMoverSnapshot {
+                position: start,
+                start,
+                ..crate::ZipMoverSnapshot::default()
+            });
+        }
+        let state = &p.zip_movers[zip_index];
+        entity.bounds.x = state.position.x;
+        entity.bounds.y = state.position.y;
+    }
+}
+
+fn position_moving_solids(map: &mut Map, time: f32) {
+    for entity in &mut map.entities {
+        if entity.kind == EntityKind::MovingSolid {
+            entity.bounds.x += (entity.direction.x * time).round_ties_even();
+            entity.bounds.y += (entity.direction.y * time).round_ties_even();
+        }
+    }
+}
+
+fn set_lift_speed(p: &mut PlayerSnapshot, speed: Vec2) {
+    p.current_lift_speed = speed;
+    if speed != Vec2::default() {
+        p.last_lift_speed = speed;
+        p.lift_speed_timer = 0.16;
+    }
+}
+
+fn sine_in(value: f32) -> f32 {
+    1.0 - (std::f32::consts::FRAC_PI_2 * value).cos()
+}
+
+fn player_riding_solid(p: &PlayerSnapshot, bounds: Rect) -> bool {
+    bounds.intersects(current_player_rect(p, p.pos.x, p.pos.y + 1.0))
+}
+
+fn move_runtime_solid_exact(
+    p: &mut PlayerSnapshot,
+    bounds: &mut Rect,
+    horizontal: bool,
+    amount: f32,
+    lift_speed: Vec2,
+) {
+    if amount == 0.0 {
+        return;
+    }
+    let riding = player_riding_solid(p, *bounds);
+    if horizontal {
+        bounds.x += amount;
+    } else {
+        bounds.y += amount;
+    }
+
+    let player = current_player_rect(p, p.pos.x, p.pos.y);
+    if bounds.intersects(player) {
+        if horizontal {
+            if amount > 0.0 {
+                p.pos.x += bounds.right() - player.x;
+            } else {
+                p.pos.x += bounds.x - player.right();
+            }
+        } else if amount > 0.0 {
+            p.pos.y += bounds.bottom() - player.y;
+        } else {
+            p.pos.y += bounds.y - player.bottom();
+        }
+        set_lift_speed(p, lift_speed);
+    } else if riding {
+        if horizontal {
+            p.pos.x += amount;
+        } else {
+            p.pos.y += amount;
+        }
+        set_lift_speed(p, lift_speed);
+    }
+}
+
+fn move_zip_mover_to(
+    p: &mut PlayerSnapshot,
+    entity: &mut crate::Entity,
+    state: &mut crate::ZipMoverSnapshot,
+    target: Vec2,
+) {
+    // Platform.Update clears LiftSpeed before the entity calls MoveTo.
+    state.lift_speed = Vec2::default();
+    let exact_x = state.position.x + state.remainder.x;
+    let move_x = target.x - exact_x;
+    state.lift_speed.x = move_x / DT;
+    state.remainder.x += move_x;
+    let exact_move_x = state.remainder.x.round_ties_even();
+    state.remainder.x -= exact_move_x;
+    move_runtime_solid_exact(p, &mut entity.bounds, true, exact_move_x, state.lift_speed);
+    state.position.x += exact_move_x;
+
+    let exact_y = state.position.y + state.remainder.y;
+    let move_y = target.y - exact_y;
+    state.lift_speed.y = move_y / DT;
+    state.remainder.y += move_y;
+    let exact_move_y = state.remainder.y.round_ties_even();
+    state.remainder.y -= exact_move_y;
+    move_runtime_solid_exact(p, &mut entity.bounds, false, exact_move_y, state.lift_speed);
+    state.position.y += exact_move_y;
+}
+
+fn vector_length(value: Vec2) -> f32 {
+    (value.x * value.x + value.y * value.y).sqrt()
+}
+
+fn safe_normalize(value: Vec2, length: f32) -> Vec2 {
+    let magnitude = vector_length(value);
+    if magnitude == 0.0 {
+        Vec2::default()
+    } else {
+        Vec2::new(value.x / magnitude * length, value.y / magnitude * length)
+    }
+}
+
+fn approach_vec(value: Vec2, target: Vec2, max_move: f32) -> Vec2 {
+    if max_move == 0.0 || value == target {
+        return value;
+    }
+    let delta = Vec2::new(target.x - value.x, target.y - value.y);
+    if vector_length(delta) < max_move {
+        target
+    } else {
+        let move_by = safe_normalize(delta, max_move);
+        Vec2::new(value.x + move_by.x, value.y + move_by.y)
+    }
+}
+
+fn bounce_block_player_check(p: &PlayerSnapshot, bounds: Rect) -> bool {
+    let player = current_player_rect(p, p.pos.x, p.pos.y);
+    let above = Rect::new(bounds.x, bounds.y - 1.0, bounds.width, bounds.height);
+    if above.intersects(player) && p.speed.y >= 0.0 {
+        return true;
+    }
+    let right = Rect::new(bounds.x + 1.0, bounds.y, bounds.width, bounds.height);
+    if right.intersects(player) && p.state == PlayerState::Climb && !p.facing {
+        return true;
+    }
+    let left = Rect::new(bounds.x - 1.0, bounds.y, bounds.width, bounds.height);
+    left.intersects(player) && p.state == PlayerState::Climb && p.facing
+}
+
+fn move_bounce_block_to(
+    p: &mut PlayerSnapshot,
+    entity: &mut crate::Entity,
+    state: &mut crate::BounceBlockSnapshot,
+    target: Vec2,
+    lift_speed: Vec2,
+) {
+    // Platform.Update clears LiftSpeed before BounceBlock.Update calls MoveTo.
+    state.lift_speed = Vec2::default();
+    let exact_x = state.position.x + state.remainder.x;
+    state.lift_speed.x = lift_speed.x;
+    state.remainder.x += target.x - exact_x;
+    let move_x = state.remainder.x.round_ties_even();
+    state.remainder.x -= move_x;
+    move_runtime_solid_exact(p, &mut entity.bounds, true, move_x, state.lift_speed);
+    state.position.x += move_x;
+
+    let exact_y = state.position.y + state.remainder.y;
+    state.lift_speed.y = lift_speed.y;
+    state.remainder.y += target.y - exact_y;
+    let move_y = state.remainder.y.round_ties_even();
+    state.remainder.y -= move_y;
+    move_runtime_solid_exact(p, &mut entity.bounds, false, move_y, state.lift_speed);
+    state.position.y += move_y;
+}
+
+fn bounce_block_exact_position(state: &crate::BounceBlockSnapshot) -> Vec2 {
+    Vec2::new(
+        state.position.x + state.remainder.x,
+        state.position.y + state.remainder.y,
+    )
+}
+
+fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
+    let block_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::BounceBlock).then_some(index))
+        .collect();
+    for (block_index, entity_index) in block_indices.into_iter().enumerate() {
+        let mut state = p.bounce_blocks[block_index].clone();
+        let reform_blocked = if state.phase == 4 && state.respawn_timer <= 0.0 {
+            let source_bounds = map.entities[entity_index].bounds;
+            let restored = Rect::new(
+                state.start.x,
+                state.start.y,
+                source_bounds.width,
+                source_bounds.height,
+            );
+            Some(
+                restored.intersects(current_player_rect(p, p.pos.x, p.pos.y))
+                    || map.static_solid_at(restored)
+                    || map.entities.iter().enumerate().any(|(other_index, other)| {
+                        other_index != entity_index
+                            && matches!(
+                                other.kind,
+                                EntityKind::BounceBlock
+                                    | EntityKind::DreamBlock
+                                    | EntityKind::MovingSolid
+                                    | EntityKind::ZipMover
+                            )
+                            && other.bounds.intersects(restored)
+                    }),
+            )
+        } else {
+            None
+        };
+        let entity = &mut map.entities[entity_index];
+        match state.phase {
+            0 => {
+                state.move_speed = approach(state.move_speed, 100.0, 400.0 * DT);
+                let exact = bounce_block_exact_position(&state);
+                let desired = approach_vec(exact, state.start, state.move_speed * DT);
+                let delta = Vec2::new(desired.x - exact.x, desired.y - exact.y);
+                let mut lift = safe_normalize(delta, state.move_speed);
+                lift.x *= 0.75;
+                move_bounce_block_to(p, entity, &mut state, desired, lift);
+                if bounce_block_player_check(p, entity.bounds) {
+                    state.move_speed = 80.0;
+                    let player_center = Vec2::new(
+                        p.pos.x,
+                        current_player_rect(p, p.pos.x, p.pos.y).y
+                            + current_player_rect(p, p.pos.x, p.pos.y).height * 0.5,
+                    );
+                    let block_center = Vec2::new(
+                        entity.bounds.x + entity.bounds.width * 0.5,
+                        entity.bounds.y + entity.bounds.height * 0.5,
+                    );
+                    state.bounce_dir = safe_normalize(
+                        Vec2::new(
+                            player_center.x - block_center.x,
+                            player_center.y - block_center.y,
+                        ),
+                        1.0,
+                    );
+                    state.phase = 1;
+                }
+            }
+            1 => {
+                if bounce_block_player_check(p, entity.bounds) {
+                    let player_rect = current_player_rect(p, p.pos.x, p.pos.y);
+                    let player_center = Vec2::new(
+                        player_rect.x + player_rect.width * 0.5,
+                        player_rect.y + player_rect.height * 0.5,
+                    );
+                    let block_center = Vec2::new(
+                        entity.bounds.x + entity.bounds.width * 0.5,
+                        entity.bounds.y + entity.bounds.height * 0.5,
+                    );
+                    state.bounce_dir = safe_normalize(
+                        Vec2::new(
+                            player_center.x - block_center.x,
+                            player_center.y - block_center.y,
+                        ),
+                        1.0,
+                    );
+                }
+                state.move_speed = approach(state.move_speed, 40.0, 600.0 * DT);
+                let target = Vec2::new(
+                    state.start.x - state.bounce_dir.x * 10.0,
+                    state.start.y - state.bounce_dir.y * 10.0,
+                );
+                let exact = bounce_block_exact_position(&state);
+                let desired = approach_vec(exact, target, state.move_speed * DT);
+                let delta = Vec2::new(desired.x - exact.x, desired.y - exact.y);
+                let mut lift = safe_normalize(delta, state.move_speed);
+                lift.x *= 0.75;
+                move_bounce_block_to(p, entity, &mut state, desired, lift);
+                let remaining = Vec2::new(
+                    bounce_block_exact_position(&state).x - target.x,
+                    bounce_block_exact_position(&state).y - target.y,
+                );
+                if remaining.x * remaining.x + remaining.y * remaining.y <= 2.0 {
+                    state.phase = 2;
+                    state.move_speed = 0.0;
+                }
+            }
+            2 => {
+                state.move_speed = approach(state.move_speed, 140.0, 800.0 * DT);
+                let target = Vec2::new(
+                    state.start.x + state.bounce_dir.x * 24.0,
+                    state.start.y + state.bounce_dir.y * 24.0,
+                );
+                let exact = bounce_block_exact_position(&state);
+                let desired = approach_vec(exact, target, state.move_speed * DT);
+                let delta = Vec2::new(desired.x - exact.x, desired.y - exact.y);
+                state.bounce_lift = safe_normalize(delta, (state.move_speed * 3.0).min(200.0));
+                state.bounce_lift.x *= 0.75;
+                let lift = state.bounce_lift;
+                move_bounce_block_to(p, entity, &mut state, desired, lift);
+                if bounce_block_exact_position(&state) == target
+                    || !bounce_block_player_check(p, entity.bounds)
+                {
+                    state.phase = 3;
+                    state.move_speed = 0.0;
+                    state.bounce_end_timer = 0.05;
+                    if bounce_block_player_check(p, entity.bounds) {
+                        p.state = PlayerState::Normal;
+                        p.speed = state.bounce_lift;
+                        p.jump_grace_timer = JUMP_GRACE;
+                    }
+                }
+            }
+            3 => {
+                state.bounce_end_timer -= DT;
+                if state.bounce_end_timer <= 0.0 {
+                    state.phase = 4;
+                    state.respawn_timer = 1.6;
+                    entity.bounds.x = -1_000_000.0;
+                    entity.bounds.y = -1_000_000.0;
+                }
+            }
+            4 => {
+                if state.respawn_timer > 0.0 {
+                    state.respawn_timer -= DT;
+                } else if reform_blocked == Some(false) {
+                    entity.bounds.x = state.start.x;
+                    entity.bounds.y = state.start.y;
+                    state.position = state.start;
+                    state.remainder = Vec2::default();
+                    state.lift_speed = Vec2::default();
+                    state.phase = 0;
+                }
+            }
+            _ => {
+                state.phase = 0;
+                state.move_speed = 0.0;
+                state.position = state.start;
+                state.remainder = Vec2::default();
+                entity.bounds.x = state.start.x;
+                entity.bounds.y = state.start.y;
+            }
+        }
+        p.bounce_blocks[block_index] = state;
+    }
+}
+
+fn theo_body_rect(position: Vec2) -> Rect {
+    Rect::new(position.x - 4.0, position.y - 10.0, 8.0, 10.0)
+}
+
+fn theo_pickup_rect(position: Vec2) -> Rect {
+    Rect::new(position.x - 8.0, position.y - 16.0, 16.0, 22.0)
+}
+
+fn try_pickup_theo(p: &mut PlayerSnapshot) -> bool {
+    let player = current_player_rect(p, p.pos.x, p.pos.y);
+    let Some(index) = p.theo_crystals.iter().position(|theo| {
+        !theo.held
+            && theo.cannot_hold_timer <= 0.0
+            && theo_pickup_rect(theo.position).intersects(player)
+    }) else {
+        return false;
+    };
+    let theo = &mut p.theo_crystals[index];
+    theo.held = true;
+    theo.speed = Vec2::default();
+    p.holding_theo = Some(index as u16);
+    p.min_hold_timer = 0.35;
+    p.ducking = false;
+    p.pickup_old_speed = p.speed;
+    p.pickup_old_var_jump_timer = p.var_jump_timer;
+    p.pickup_timer = 0.16;
+    p.speed = Vec2::default();
+    p.demo_dashed = false;
+    p.dash_end_pending = false;
+    p.state = PlayerState::Pickup;
+    true
+}
+
+fn release_theo(p: &mut PlayerSnapshot, input: InputState) {
+    let Some(index) = p.holding_theo.take().map(usize::from) else {
+        return;
+    };
+    let Some(theo) = p.theo_crystals.get_mut(index) else {
+        return;
+    };
+    theo.held = false;
+    theo.gravity_timer = 0.1;
+    theo.cannot_hold_timer = 0.1;
+    if input.move_y > 0 {
+        theo.speed = Vec2::default();
+    } else {
+        let facing = if p.facing { 1.0 } else { -1.0 };
+        theo.speed = Vec2::new(facing * 200.0, -80.0);
+        p.speed.x -= facing * 80.0;
+    }
+}
+
+fn pickup_update(p: &mut PlayerSnapshot) {
+    if p.pickup_timer > 0.0 {
+        return;
+    }
+    p.speed = p.pickup_old_speed;
+    p.speed.y = p.speed.y.min(0.0);
+    p.var_jump_timer = p.pickup_old_var_jump_timer;
+    p.state = PlayerState::Normal;
+}
+
+fn theo_collides(map: &Map, position: Vec2) -> bool {
+    map.solid_at(theo_body_rect(position))
+}
+
+fn move_theo_axis(theo: &mut crate::TheoCrystalSnapshot, map: &Map, horizontal: bool) {
+    let amount = if horizontal {
+        theo.speed.x * DT
+    } else {
+        theo.speed.y * DT
+    };
+    let remainder = if horizontal {
+        &mut theo.remainder.x
+    } else {
+        &mut theo.remainder.y
+    };
+    *remainder += amount;
+    let pixels = remainder.round_ties_even() as i32;
+    *remainder -= pixels as f32;
+    let sign = pixels.signum();
+    for _ in 0..pixels.unsigned_abs() {
+        let next = Vec2::new(
+            theo.position.x + if horizontal { sign as f32 } else { 0.0 },
+            theo.position.y + if horizontal { 0.0 } else { sign as f32 },
+        );
+        if theo_collides(map, next) {
+            if horizontal {
+                theo.speed.x *= -0.4;
+                theo.remainder.x = 0.0;
+            } else if sign > 0 && theo.speed.y > 140.0 {
+                theo.speed.y *= -0.6;
+                theo.remainder.y = 0.0;
+            } else {
+                theo.speed.y = 0.0;
+                theo.remainder.y = 0.0;
+            }
+            break;
+        }
+        theo.position = next;
+    }
+}
+
+fn advance_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
+    let entity_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::TheoCrystal).then_some(index))
+        .collect();
+    for (theo_index, entity_index) in entity_indices.into_iter().enumerate() {
+        let mut theo = p.theo_crystals[theo_index].clone();
+        theo.cannot_hold_timer = (theo.cannot_hold_timer - DT).max(0.0);
+        theo.gravity_timer = (theo.gravity_timer - DT).max(0.0);
+        if p.holding_theo == Some(theo_index as u16) {
+            theo.held = true;
+            theo.position = Vec2::new(p.pos.x, p.pos.y - 12.0);
+            theo.speed = Vec2::default();
+            theo.remainder = Vec2::default();
+        } else {
+            theo.held = false;
+            let on_ground = theo_collides(map, Vec2::new(theo.position.x, theo.position.y + 1.0));
+            if on_ground {
+                theo.speed.x = approach(theo.speed.x, 0.0, 800.0 * DT);
+            } else if theo.gravity_timer <= 0.0 {
+                let gravity = if theo.speed.y.abs() <= 30.0 {
+                    400.0
+                } else {
+                    800.0
+                };
+                theo.speed.x = approach(
+                    theo.speed.x,
+                    0.0,
+                    if theo.speed.y < 0.0 { 175.0 } else { 350.0 } * DT,
+                );
+                theo.speed.y = approach(theo.speed.y, 200.0, gravity * DT);
+            }
+            move_theo_axis(&mut theo, map, true);
+            move_theo_axis(&mut theo, map, false);
+        }
+        let entity = &mut map.entities[entity_index];
+        entity.bounds.x = theo.position.x - 4.0;
+        entity.bounds.y = theo.position.y - 10.0;
+        p.theo_crystals[theo_index] = theo;
+    }
+}
+
+fn advance_zip_movers(p: &mut PlayerSnapshot, map: &mut Map) {
+    let zip_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::ZipMover).then_some(index))
+        .collect();
+    for (zip_index, entity_index) in zip_indices.into_iter().enumerate() {
+        let mut state = p.zip_movers[zip_index].clone();
+        let entity = &mut map.entities[entity_index];
+        let target = entity.nodes.first().copied().unwrap_or(state.start);
+        match state.phase {
+            0 => {
+                if player_riding_solid(p, entity.bounds) {
+                    state.phase = 1;
+                    state.wait_timer = 0.1;
+                }
+            }
+            1 => {
+                if state.wait_timer > 0.0 {
+                    state.wait_timer -= DT;
+                } else {
+                    state.phase = 2;
+                    state.at = 0.0;
+                }
+            }
+            2 => {
+                state.at = approach(state.at, 1.0, 2.0 * DT);
+                let eased = sine_in(state.at);
+                let desired = Vec2::new(
+                    state.start.x + (target.x - state.start.x) * eased,
+                    state.start.y + (target.y - state.start.y) * eased,
+                );
+                move_zip_mover_to(p, entity, &mut state, desired);
+                if state.at >= 1.0 {
+                    state.phase = 3;
+                    state.wait_timer = 0.5;
+                }
+            }
+            3 => {
+                if state.wait_timer > 0.0 {
+                    state.wait_timer -= DT;
+                } else {
+                    state.phase = 4;
+                    state.at = 0.0;
+                }
+            }
+            4 => {
+                state.at = approach(state.at, 1.0, 0.5 * DT);
+                let eased = sine_in(state.at);
+                let desired = Vec2::new(
+                    target.x + (state.start.x - target.x) * eased,
+                    target.y + (state.start.y - target.y) * eased,
+                );
+                move_zip_mover_to(p, entity, &mut state, desired);
+                if state.at >= 1.0 {
+                    state.phase = 5;
+                    state.wait_timer = 0.5;
+                }
+            }
+            5 => {
+                if state.wait_timer > 0.0 {
+                    state.wait_timer -= DT;
+                } else if player_riding_solid(p, entity.bounds) {
+                    state.phase = 1;
+                    state.wait_timer = 0.1;
+                } else {
+                    state.phase = 0;
+                }
+            }
+            _ => {
+                state.phase = 0;
+                state.wait_timer = 0.0;
+                state.at = 0.0;
+            }
+        }
+        p.zip_movers[zip_index] = state;
+    }
+}
+
+fn advance_moving_solids(p: &mut PlayerSnapshot, map: &mut Map) {
+    let old_time = p.moving_solid_time;
+    let new_time = old_time + DT;
+    for entity in &mut map.entities {
+        if entity.kind != EntityKind::MovingSolid {
+            continue;
+        }
+        let old_offset = Vec2::new(
+            (entity.direction.x * old_time).round_ties_even(),
+            (entity.direction.y * old_time).round_ties_even(),
+        );
+        let new_offset = Vec2::new(
+            (entity.direction.x * new_time).round_ties_even(),
+            (entity.direction.y * new_time).round_ties_even(),
+        );
+        let delta = Vec2::new(new_offset.x - old_offset.x, new_offset.y - old_offset.y);
+        let riding = entity
+            .bounds
+            .intersects(current_player_rect(p, p.pos.x, p.pos.y + 1.0));
+        if riding {
+            set_lift_speed(p, entity.direction);
+        }
+
+        if delta.x != 0.0 {
+            entity.bounds.x += delta.x;
+            if riding {
+                p.pos.x += delta.x;
+            } else {
+                let player = current_player_rect(p, p.pos.x, p.pos.y);
+                if entity.bounds.intersects(player) {
+                    if delta.x > 0.0 {
+                        p.pos.x += entity.bounds.right() - player.x;
+                    } else {
+                        p.pos.x -= player.right() - entity.bounds.x;
+                    }
+                }
+            }
+        }
+        if delta.y != 0.0 {
+            entity.bounds.y += delta.y;
+            if riding {
+                p.pos.y += delta.y;
+            } else {
+                let player = current_player_rect(p, p.pos.x, p.pos.y);
+                if entity.bounds.intersects(player) {
+                    if delta.y > 0.0 {
+                        p.pos.y += entity.bounds.bottom() - player.y;
+                    } else {
+                        p.pos.y -= player.bottom() - entity.bounds.y;
+                    }
+                }
+            }
+        }
+    }
+    p.moving_solid_time = new_time;
+}
+
+fn step(
+    p: &mut PlayerSnapshot,
+    mut input: InputState,
+    map: &mut Map,
+) -> Result<(), SimulationError> {
+    // VirtualButton.Update runs in MInput before Celeste.Freeze can skip the
+    // Scene. It subtracts DeltaTime first, then a new press restores the full
+    // buffer; Jump also clears its buffer as soon as the binding is not held.
+    p.jump_buffer_timer -= DT;
+    if input.jump_pressed {
+        p.jump_buffer_timer = JUMP_BUFFER_TIME;
+    } else if !input.jump_held {
+        p.jump_buffer_timer = 0.0;
+    }
+    // Dash and CrouchDash use a 0.08 second VirtualButton buffer. Their
+    // portable input contract only records press edges, so keep the existing
+    // press buffer alive across freeze until it is consumed or expires.
     p.dash_buffer_timer = (p.dash_buffer_timer - DT).max(0.0);
     p.crouch_dash_buffer_timer = (p.crouch_dash_buffer_timer - DT).max(0.0);
     if input.dash_pressed {
@@ -219,6 +1041,8 @@ fn step(p: &mut PlayerSnapshot, mut input: InputState, map: &Map) -> Result<(), 
             p.speed = Vec2::default();
             p.state = PlayerState::IntroRespawn;
             p.on_ground = grounded(p, map);
+            p.player_on_ground = p.on_ground;
+            p.player_on_ground_initialized = true;
             p.dashes = p.dashes.max(1);
             p.stamina = 110.0;
             p.movement_remainder = Vec2::default();
@@ -226,6 +1050,7 @@ fn step(p: &mut PlayerSnapshot, mut input: InputState, map: &Map) -> Result<(), 
         }
         p.respawn_frames -= 1;
         p.on_ground = false;
+        p.player_on_ground = false;
         if p.death_freeze_pending {
             p.death_freeze_pending = false;
             p.freeze_timer = 0.05;
@@ -241,6 +1066,11 @@ fn step(p: &mut PlayerSnapshot, mut input: InputState, map: &Map) -> Result<(), 
     // part of the portable snapshot for engine-frame-accurate replay.
     if p.freeze_timer > 0.0 {
         p.freeze_timer = (p.freeze_timer - DT).max(0.0);
+        return Ok(());
+    }
+    advance_moving_solids(p, map);
+    if p.transition_timer > 0.0 {
+        update_transition(p);
         return Ok(());
     }
     advance_badeline_boost_relocation(p);
@@ -269,7 +1099,20 @@ fn step(p: &mut PlayerSnapshot, mut input: InputState, map: &Map) -> Result<(), 
         p.wall_slide_timer = (p.wall_slide_timer - DT).max(0.0);
     }
     p.wall_slide_dir = 0;
-    p.on_ground = p.state != PlayerState::DreamDash && grounded(p, map);
+    if p.strawberry_collect_reset_timer > 0.0 {
+        p.strawberry_collect_reset_timer = (p.strawberry_collect_reset_timer - DT).max(0.0);
+        if p.strawberry_collect_reset_timer <= 0.0 {
+            p.strawberry_collect_index = 0;
+        }
+    } else {
+        p.strawberry_collect_index = 0;
+    }
+    let was_on_ground = p.player_on_ground;
+    // Player.Update only probes the platform below while Speed.Y >= 0.
+    // Upward motion is airborne even when the player starts flush with a
+    // floor, so NormalUpdate must apply gravity on that same frame.
+    p.player_on_ground = p.state != PlayerState::DreamDash && p.speed.y >= 0.0 && grounded(p, map);
+    p.on_ground = p.player_on_ground;
     if p.on_ground {
         p.auto_jump = false;
         p.jump_grace_timer = JUMP_GRACE;
@@ -281,9 +1124,6 @@ fn step(p: &mut PlayerSnapshot, mut input: InputState, map: &Map) -> Result<(), 
     }
     if p.state == PlayerState::Swim && !dash_refill_cooldown_active {
         p.dashes = p.dashes.max(1);
-    }
-    if input.jump_pressed {
-        p.jump_buffer_timer = 0.1;
     }
     update_wall_boost(p);
     p.move_x = if force_move_x_active {
@@ -309,21 +1149,27 @@ fn step(p: &mut PlayerSnapshot, mut input: InputState, map: &Map) -> Result<(), 
     // NormalUpdate accelerates it, and retained wall speed is restored before
     // the same callback applies air control.
     update_wall_speed_retention(p, map);
+    update_climb_hop_wait(p, map);
 
     if p.badeline_boost_active {
         update_badeline_boost(p, map);
+        advance_zip_movers(p, map);
+        advance_bounce_blocks(p, map);
+        advance_theo_crystals(p, map);
         p.on_ground = grounded(p, map);
         return Ok(());
     }
 
+    let was_pickup = p.state == PlayerState::Pickup;
     match p.state {
-        PlayerState::Normal => normal_update(p, input, map),
+        PlayerState::Normal => normal_update(p, input, map, was_on_ground),
         PlayerState::Dash => dash_update(p, input, map),
         PlayerState::Climb => climb_update(p, input, map),
         PlayerState::Swim => swim_update(p, input, map),
         PlayerState::Boost => boost_update(p, input, map),
-        PlayerState::RedDash => red_dash_update(p, input),
+        PlayerState::RedDash => red_dash_update(p, input, map),
         PlayerState::HitSquash => hit_squash_update(p),
+        PlayerState::Pickup => pickup_update(p),
         PlayerState::Launch => launch_update(p, input, map),
         PlayerState::DreamDash => dream_dash_update(p),
         PlayerState::SummitLaunch => summit_launch_update(p, map),
@@ -332,27 +1178,69 @@ fn step(p: &mut PlayerSnapshot, mut input: InputState, map: &Map) -> Result<(), 
         PlayerState::Frozen => {}
         PlayerState::TempleFall => temple_fall_update(p, map),
         PlayerState::ReflectionFall => reflection_fall_update(p, map),
-        PlayerState::IntroRespawn => return Ok(()),
+        PlayerState::IntroRespawn => {
+            advance_zip_movers(p, map);
+            advance_bounce_blocks(p, map);
+            advance_theo_crystals(p, map);
+            p.on_ground = grounded(p, map);
+            return Ok(());
+        }
         other => return Err(SimulationError::UnsupportedState(other)),
     }
 
+    // PickupCoroutine observes the tween before Tween.Update. The pickup
+    // frame only creates it; following Pickup frames decrement it here, and
+    // the coroutine restores speed on the frame after it becomes inactive.
+    if was_pickup && p.state == PlayerState::Pickup {
+        p.pickup_timer -= DT;
+    }
+
+    // Actor.Update runs after the StateMachine component callback. Moving
+    // platforms have already written currentLiftSpeed before Player.Update;
+    // actions above can consume it, then Actor clears current and advances the
+    // retained 0.16-second grace window before player movement.
+    tick_lift_speed(p);
+
     // After components/coroutines update but before movement, Player.Update
-    // restores the normal collider while rising/falling in open air. A
-    // downward air dash therefore only becomes crouched again when it lands.
-    if p.ducking && p.speed.y > 0.0 && !p.on_ground && p.jump_grace_timer <= 0.0 {
+    // restores the normal collider while falling in open air when CanUnDuck
+    // succeeds. A downward air dash therefore only becomes crouched again
+    // when it lands.
+    if p.ducking && p.speed.y > 0.0 && !p.on_ground && can_unduck(p, map) {
         p.ducking = false;
     }
 
-    move_axis(p, map, true);
-    move_axis(p, map, false);
+    if p.state != PlayerState::DreamDash {
+        move_axis(p, map, true);
+    }
+    if p.state != PlayerState::DreamDash {
+        move_axis(p, map, false);
+    }
     interact(p, map, input);
+    update_strawberry_train(p);
     try_begin_badeline_boost(p, map);
     enforce_level_bounds(p, map);
+    // The map loader adds Player before vanilla room entities, so ZipMover's
+    // coroutine and Solid carry/push run after Player.Update. A lift speed
+    // written by the previous ZipMover update is therefore visible to the
+    // player's next action before the platform advances again.
+    advance_zip_movers(p, map);
+    advance_bounce_blocks(p, map);
+    advance_theo_crystals(p, map);
     p.on_ground = grounded(p, map);
     Ok(())
 }
 
 fn tick_timers(p: &mut PlayerSnapshot) {
+    if p.auto_jump_timer > 0.0 {
+        if p.auto_jump {
+            p.auto_jump_timer = (p.auto_jump_timer - DT).max(0.0);
+            if p.auto_jump_timer <= 0.0 {
+                p.auto_jump = false;
+            }
+        } else {
+            p.auto_jump_timer = 0.0;
+        }
+    }
     for timer in [
         &mut p.dash_attack_timer,
         &mut p.dash_cooldown_timer,
@@ -360,16 +1248,46 @@ fn tick_timers(p: &mut PlayerSnapshot) {
         &mut p.booster_reuse_timer,
         &mut p.feather_reuse_timer,
         &mut p.bumper_reuse_timer,
+        &mut p.min_hold_timer,
         &mut p.no_wind_timer,
         &mut p.jump_grace_timer,
-        &mut p.jump_buffer_timer,
-        &mut p.auto_jump_timer,
+        &mut p.bounce_reuse_timer,
         &mut p.var_jump_timer,
         &mut p.force_move_x_timer,
         &mut p.climb_no_move_timer,
         &mut p.dream_dash_can_end_timer,
     ] {
         *timer = (*timer - DT).max(0.0);
+    }
+}
+
+fn lift_speed(p: &PlayerSnapshot) -> Vec2 {
+    if p.current_lift_speed == Vec2::default() {
+        p.last_lift_speed
+    } else {
+        p.current_lift_speed
+    }
+}
+
+fn lift_boost(p: &PlayerSnapshot) -> Vec2 {
+    let speed = lift_speed(p);
+    Vec2::new(speed.x.clamp(-250.0, 250.0), speed.y.clamp(-130.0, 0.0))
+}
+
+fn add_lift_boost(p: &mut PlayerSnapshot) {
+    let boost = lift_boost(p);
+    p.speed.x += boost.x;
+    p.speed.y += boost.y;
+}
+
+fn tick_lift_speed(p: &mut PlayerSnapshot) {
+    p.current_lift_speed = Vec2::default();
+    if p.lift_speed_timer > 0.0 {
+        p.lift_speed_timer -= DT;
+        if p.lift_speed_timer <= 0.0 {
+            p.lift_speed_timer = 0.0;
+            p.last_lift_speed = Vec2::default();
+        }
     }
 }
 
@@ -403,25 +1321,60 @@ fn update_wall_speed_retention(p: &mut PlayerSnapshot, map: &Map) {
     }
 }
 
-fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
-    if (input.dash_pressed || input.crouch_dash_pressed)
+fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_ground: bool) {
+    let boost = lift_boost(p);
+    if boost.y < 0.0 && was_on_ground && !p.on_ground && p.speed.y >= 0.0 {
+        p.speed.y = boost.y;
+    }
+    if p.holding_theo.is_none() {
+        if input.grab_held && p.stamina >= 20.0 && !p.ducking && try_pickup_theo(p) {
+            return;
+        }
+    } else if !input.grab_held && p.min_hold_timer <= 0.0 {
+        release_theo(p, input);
+    }
+    if p.holding_theo.is_none()
+        && (input.dash_pressed || input.crouch_dash_pressed)
         && p.dashes > 0
         && p.dash_cooldown_timer <= 0.0
     {
-        begin_dash(p, input, true, false);
+        add_lift_boost(p);
+        begin_dash(p, input, true, false, map);
         return;
     }
 
     let wall = wall_dir(p, map);
-    if input.grab_held && !p.on_ground && wall != 0 && p.stamina > 0.0 {
+    let facing_dir = if p.facing { 1 } else { -1 };
+    if p.holding_theo.is_none()
+        && input.grab_held
+        && !p.on_ground
+        && !p.ducking
+        && p.speed.y >= 0.0
+        && p.speed.x.signum() != -(facing_dir as f32)
+        && check_stamina(p) >= CLIMB_TIRED_THRESHOLD
+        && climb_check(p, map, facing_dir)
+    {
+        // StateMachine invokes NormalEnd before ClimbBegin. Entering the
+        // actual grab state therefore destroys any pending cornerboost speed.
+        p.wall_speed_retention_timer = 0.0;
+        p.wall_boost_timer = 0.0;
+        p.hop_wait_x = 0;
         p.state = PlayerState::Climb;
-        p.facing = wall > 0;
         p.auto_jump = false;
         p.speed.x = 0.0;
         p.speed.y *= 0.2;
         p.wall_slide_timer = WALL_SLIDE_TIME;
         p.climb_no_move_timer = 0.1;
         p.wall_boost_timer = 0.0;
+        // ClimbBegin closes a one-pixel gap when ClimbCheck found the wall at
+        // its full two-pixel probe distance. MoveHExact leaves the sub-pixel
+        // movement counter unchanged.
+        for _ in 0..CLIMB_CHECK_DIST as u8 {
+            if map.solid_at(current_player_rect(p, p.pos.x + facing_dir as f32, p.pos.y)) {
+                break;
+            }
+            p.pos.x += facing_dir as f32;
+        }
         return;
     }
 
@@ -441,9 +1394,14 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     if p.ducking && p.on_ground {
         p.speed.x = approach(p.speed.x, 0.0, DUCK_FRICTION * DT);
     } else {
-        let target = move_x as f32 * MAX_RUN;
+        let max_run = if p.holding_theo.is_some() {
+            70.0
+        } else {
+            MAX_RUN
+        };
+        let target = move_x as f32 * max_run;
         let same_direction_over_max = move_x != 0
-            && p.speed.x.abs() > MAX_RUN
+            && p.speed.x.abs() > max_run
             && p.speed.x.signum() == (move_x as f32).signum();
         p.speed.x = approach(
             p.speed.x,
@@ -460,7 +1418,7 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         p.facing = move_x > 0;
     }
 
-    let target_max_fall = if input.move_y > 0 {
+    let target_max_fall = if input.move_y > 0 && p.speed.y >= MAX_FALL {
         FAST_MAX_FALL
     } else {
         MAX_FALL
@@ -498,26 +1456,42 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
             p.jump_grace_timer = 0.0;
             p.speed.y = JUMP_SPEED;
             p.speed.x += p.move_x as f32 * JUMP_H_BOOST;
+            add_lift_boost(p);
             p.auto_jump = false;
             p.dash_attack_timer = 0.0;
             p.wall_slide_timer = WALL_SLIDE_TIME;
             p.wall_boost_timer = 0.0;
             p.var_jump_speed = p.speed.y;
             p.var_jump_timer = VAR_JUMP_TIME;
-        } else if wall != 0 {
-            p.jump_buffer_timer = 0.0;
-            p.speed.x = -(wall as f32) * WALL_JUMP_H;
-            p.speed.y = JUMP_SPEED;
-            p.auto_jump = false;
-            p.dash_attack_timer = 0.0;
-            p.wall_slide_timer = WALL_SLIDE_TIME;
-            p.wall_boost_timer = 0.0;
-            if move_x != 0 {
-                p.force_move_x = -wall;
-                p.force_move_x_timer = 0.16;
+        } else {
+            let jump_wall = if wall_jump_check(p, map, 1) {
+                1
+            } else if wall_jump_check(p, map, -1) {
+                -1
+            } else {
+                0
+            };
+            if jump_wall == 0 {
+                return;
             }
-            p.var_jump_speed = p.speed.y;
-            p.var_jump_timer = VAR_JUMP_TIME;
+            if input.grab_held && p.stamina > 0.0 && facing_dir == jump_wall {
+                climb_jump(p, jump_wall);
+            } else {
+                p.jump_buffer_timer = 0.0;
+                p.speed.x = -(jump_wall as f32) * WALL_JUMP_H;
+                p.speed.y = JUMP_SPEED;
+                add_lift_boost(p);
+                p.auto_jump = false;
+                p.dash_attack_timer = 0.0;
+                p.wall_slide_timer = WALL_SLIDE_TIME;
+                p.wall_boost_timer = 0.0;
+                if move_x != 0 {
+                    p.force_move_x = -jump_wall;
+                    p.force_move_x_timer = 0.16;
+                }
+                p.var_jump_speed = p.speed.y;
+                p.var_jump_timer = VAR_JUMP_TIME;
+            }
         }
     }
 }
@@ -527,6 +1501,7 @@ fn begin_dash(
     input: InputState,
     consume_dash: bool,
     delayed_coroutine: bool,
+    map: &Map,
 ) {
     p.dash_buffer_timer = 0.0;
     p.crouch_dash_buffer_timer = 0.0;
@@ -547,7 +1522,9 @@ fn begin_dash(
     if consume_dash {
         p.dashes = p.dashes.saturating_sub(1);
     }
-    if p.demo_dashed || (!p.ducking && input.move_y > 0) {
+    if !p.on_ground && p.ducking && can_unduck(p, map) {
+        p.ducking = false;
+    } else if !p.ducking && (p.demo_dashed || input.move_y > 0) {
         p.ducking = true;
     }
     if x != 0.0 {
@@ -556,6 +1533,15 @@ fn begin_dash(
 }
 
 fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
+    if p.holding_theo.is_none()
+        && p.dash_dir != Vec2::default()
+        && input.grab_held
+        && p.stamina >= 20.0
+        && can_unduck(p, map)
+        && try_pickup_theo(p)
+    {
+        return;
+    }
     p.state_timer = (p.state_timer - DT).max(0.0);
     if (p.state_timer - DASH_TIME).abs() <= DT * 0.5 {
         p.speed = Vec2::new(p.dash_dir.x * DASH_SPEED, p.dash_dir.y * DASH_SPEED);
@@ -632,6 +1618,7 @@ fn super_jump(p: &mut PlayerSnapshot) {
         },
         JUMP_SPEED,
     );
+    add_lift_boost(p);
     if p.ducking {
         p.ducking = false;
         p.speed.x *= 1.25;
@@ -652,61 +1639,114 @@ fn super_wall_jump(p: &mut PlayerSnapshot, dir: i8) {
     p.wall_slide_timer = WALL_SLIDE_TIME;
     p.wall_boost_timer = 0.0;
     p.speed = Vec2::new(170.0 * dir as f32, -160.0);
+    add_lift_boost(p);
     p.var_jump_speed = p.speed.y;
     p.launched = true;
 }
 
+fn enter_normal(p: &mut PlayerSnapshot) {
+    p.state = PlayerState::Normal;
+    p.max_fall = MAX_FALL;
+}
+
+fn climb_jump(p: &mut PlayerSnapshot, wall: i8) {
+    p.jump_buffer_timer = 0.0;
+    p.jump_grace_timer = 0.0;
+    p.auto_jump = false;
+    p.dash_attack_timer = 0.0;
+    p.wall_slide_timer = WALL_SLIDE_TIME;
+    p.wall_boost_timer = 0.0;
+    p.speed.x += p.move_x as f32 * JUMP_H_BOOST;
+    p.speed.y = JUMP_SPEED;
+    add_lift_boost(p);
+    if !p.on_ground {
+        p.stamina = (p.stamina - CLIMB_JUMP_COST).max(0.0);
+    }
+    if p.move_x == 0 {
+        p.wall_boost_dir = -wall;
+        p.wall_boost_timer = 0.2;
+    }
+    p.var_jump_speed = p.speed.y;
+    p.var_jump_timer = VAR_JUMP_TIME;
+}
+
 fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     let wall = if p.facing { 1 } else { -1 };
-    if !input.grab_held || p.stamina <= 0.0 || !touching_wall(p, map, wall) {
-        p.state = PlayerState::Normal;
-        return;
-    }
-    if input.jump_pressed {
-        p.state = PlayerState::Normal;
-        p.jump_buffer_timer = 0.0;
-        p.jump_grace_timer = 0.0;
-        p.auto_jump = false;
-        p.dash_attack_timer = 0.0;
-        p.wall_slide_timer = WALL_SLIDE_TIME;
-        p.wall_boost_timer = 0.0;
+    // Player.ClimbUpdate checks jump and dash before letting go or checking
+    // whether the one-pixel wall contact still exists. Ceiling pops rely on
+    // that ordering for the first Climb frame just below a wall's bottom edge.
+    if input.jump_pressed && (!p.ducking || can_unduck(p, map)) {
+        enter_normal(p);
         if p.move_x == -wall {
+            p.jump_buffer_timer = 0.0;
+            p.jump_grace_timer = 0.0;
+            p.auto_jump = false;
+            p.dash_attack_timer = 0.0;
+            p.wall_slide_timer = WALL_SLIDE_TIME;
+            p.wall_boost_timer = 0.0;
+            p.ducking = false;
             p.speed = Vec2::new(-(wall as f32) * WALL_JUMP_H, JUMP_SPEED);
+            add_lift_boost(p);
+            p.var_jump_speed = p.speed.y;
+            p.var_jump_timer = VAR_JUMP_TIME;
         } else {
-            p.speed.x += p.move_x as f32 * JUMP_H_BOOST;
-            p.speed.y = JUMP_SPEED;
-            if !p.on_ground {
-                p.stamina = (p.stamina - 27.5).max(0.0);
-            }
-            if p.move_x == 0 {
-                p.wall_boost_dir = -wall;
-                p.wall_boost_timer = 0.2;
-            }
+            climb_jump(p, wall);
         }
-        p.var_jump_speed = p.speed.y;
-        p.var_jump_timer = VAR_JUMP_TIME;
         return;
     }
+    if (input.dash_pressed || input.crouch_dash_pressed)
+        && p.dashes > 0
+        && p.dash_cooldown_timer <= 0.0
+    {
+        begin_dash(p, input, true, false, map);
+        return;
+    }
+    if !input.grab_held {
+        enter_normal(p);
+        return;
+    }
+    if !touching_wall(p, map, wall) {
+        if p.speed.y < 0.0 {
+            climb_hop(p, map, wall);
+        }
+        enter_normal(p);
+        return;
+    }
+    let slipping = slip_check(p, map, 0.0);
     let target = if p.climb_no_move_timer > 0.0 {
-        0.0
+        if slipping { CLIMB_SLIP_SPEED } else { 0.0 }
     } else {
         match input.move_y {
+            -1 if slipping => {
+                climb_hop(p, map, wall);
+                enter_normal(p);
+                return;
+            }
             -1 => CLIMB_UP_SPEED,
             1 => CLIMB_DOWN_SPEED,
-            // Player.cs only targets 30 when SlipCheck succeeds (the wall no
-            // longer supports the lower probe). A full wall holds at zero.
-            _ => 0.0,
+            _ => {
+                if slipping {
+                    CLIMB_SLIP_SPEED
+                } else {
+                    0.0
+                }
+            }
         }
     };
     p.speed.y = approach(p.speed.y, target, CLIMB_ACCEL * DT);
     p.speed.x = 0.0;
     if p.climb_no_move_timer <= 0.0 {
-        let cost = if input.move_y < 0 {
+        let cost = if target < 0.0 {
             CLIMB_UP_COST
-        } else {
+        } else if target == 0.0 {
             CLIMB_STILL_COST
+        } else {
+            0.0
         };
         p.stamina = (p.stamina - cost * DT).max(0.0);
+    }
+    if p.stamina <= 0.0 {
+        enter_normal(p);
     }
 }
 
@@ -722,7 +1762,7 @@ fn swim_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         && p.dashes > 0
         && p.dash_cooldown_timer <= 0.0
     {
-        begin_dash(p, input, false, false);
+        begin_dash(p, input, false, false, map);
         return;
     }
 
@@ -774,6 +1814,7 @@ fn swim_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
 
 fn dream_dash_update(p: &mut PlayerSnapshot) {
     p.on_ground = false;
+    naive_move(p, Vec2::new(p.speed.x * DT, p.speed.y * DT));
 }
 
 fn boost_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
@@ -781,7 +1822,7 @@ fn boost_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     let aim = input_vector(input);
     let target = Vec2::new(
         p.boost_target.x + aim.x * 3.0,
-        p.boost_target.y + if p.ducking { 3.0 } else { 5.0 } + aim.y * 3.0,
+        p.boost_target.y + if p.ducking { 3.0 } else { 5.5 } + aim.y * 3.0,
     );
     approach_exact_position(p, map, target, 80.0 * DT);
     p.state_timer = (p.state_timer - DT).max(0.0);
@@ -793,7 +1834,7 @@ fn boost_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     if p.boost_red {
         begin_red_dash(p, manual.then_some(input), !manual);
     } else {
-        begin_dash(p, input, false, !manual);
+        begin_dash(p, input, false, !manual, map);
     }
 }
 
@@ -814,12 +1855,12 @@ fn begin_red_dash(p: &mut PlayerSnapshot, input: Option<InputState>, delayed_cor
     p.ducking = false;
 }
 
-fn red_dash_update(p: &mut PlayerSnapshot, input: InputState) {
+fn red_dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     if (input.dash_pressed || input.crouch_dash_pressed)
         && p.dashes > 0
         && p.dash_cooldown_timer <= 0.0
     {
-        begin_dash(p, input, true, false);
+        begin_dash(p, input, true, false, map);
         return;
     }
     if p.dash_dir == Vec2::default() {
@@ -852,7 +1893,7 @@ fn launch_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         && p.dashes > 0
         && p.dash_cooldown_timer <= 0.0
     {
-        begin_dash(p, input, true, false);
+        begin_dash(p, input, true, false, map);
         return;
     }
     p.speed.y = approach(
@@ -981,6 +2022,7 @@ fn reflection_fall_update(p: &mut PlayerSnapshot, map: &Map) {
 
 fn begin_star_fly(p: &mut PlayerSnapshot) {
     p.state = PlayerState::StarFly;
+    p.star_fly_hitbox_preserved = false;
     p.star_fly_transforming = true;
     p.star_fly_transform_frames = STAR_FLY_TRANSFORM_FRAMES;
     p.star_fly_timer = STAR_FLY_TIME;
@@ -1091,7 +2133,7 @@ fn star_fly_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         && p.dash_cooldown_timer <= 0.0
     {
         end_star_fly(p, map);
-        begin_dash(p, input, true, false);
+        begin_dash(p, input, true, false, map);
         return;
     }
 
@@ -1116,6 +2158,7 @@ fn star_fly_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
 fn end_star_fly(p: &mut PlayerSnapshot, map: &Map) {
     p.star_fly_transforming = false;
     p.star_fly_transform_frames = 0;
+    p.star_fly_hitbox_preserved = false;
     let normal = player_rect(p.pos.x, p.pos.y);
     if map.solid_at(normal) {
         let start_y = p.pos.y;
@@ -1143,7 +2186,7 @@ fn star_fly_rect(x: f32, y: f32) -> Rect {
 }
 
 fn current_player_rect(p: &PlayerSnapshot, x: f32, y: f32) -> Rect {
-    if p.state == PlayerState::StarFly {
+    if p.state == PlayerState::StarFly || p.star_fly_hitbox_preserved {
         star_fly_rect(x, y)
     } else if p.ducking {
         duck_player_rect(x, y)
@@ -1229,6 +2272,72 @@ fn enter_swim(p: &mut PlayerSnapshot) {
 fn touching_wall(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
     map.solid_at(current_player_rect(p, p.pos.x + dir as f32, p.pos.y))
 }
+
+fn check_stamina(p: &PlayerSnapshot) -> f32 {
+    p.stamina + if p.wall_boost_timer > 0.0 { 27.5 } else { 0.0 }
+}
+
+fn climb_bounds_check(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
+    let rect = current_player_rect(p, p.pos.x, p.pos.y);
+    rect.x + dir as f32 * CLIMB_CHECK_DIST >= map.bounds.x
+        && rect.right() + dir as f32 * CLIMB_CHECK_DIST < map.bounds.right()
+}
+
+fn climb_check(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
+    climb_bounds_check(p, map, dir)
+        && map.solid_at(current_player_rect(
+            p,
+            p.pos.x + dir as f32 * CLIMB_CHECK_DIST,
+            p.pos.y,
+        ))
+}
+
+fn wall_jump_check(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
+    climb_bounds_check(p, map, dir)
+        && map.solid_at(current_player_rect(
+            p,
+            p.pos.x + dir as f32 * WALL_JUMP_CHECK_DIST,
+            p.pos.y,
+        ))
+}
+
+fn slip_check(p: &PlayerSnapshot, map: &Map, add_y: f32) -> bool {
+    let rect = current_player_rect(p, p.pos.x, p.pos.y);
+    let x = if p.facing { rect.right() } else { rect.x - 1.0 };
+    let lower_y = rect.y + 4.0 + add_y;
+    !map.solid_at(Rect::new(x, lower_y, 1.0, 1.0))
+        && !map.solid_at(Rect::new(x, lower_y - 4.0 + add_y, 1.0, 1.0))
+}
+
+fn climb_hop(p: &mut PlayerSnapshot, map: &Map, wall: i8) {
+    if touching_wall(p, map, wall) {
+        p.hop_wait_x = wall;
+        p.hop_wait_x_speed = wall as f32 * CLIMB_HOP_X;
+    } else {
+        p.hop_wait_x = 0;
+        p.hop_wait_x_speed = 0.0;
+        p.speed.x = wall as f32 * CLIMB_HOP_X;
+    }
+    p.speed.y = p.speed.y.min(CLIMB_HOP_Y);
+    p.force_move_x = 0;
+    p.force_move_x_timer = CLIMB_HOP_FORCE_TIME;
+    p.no_wind_timer = CLIMB_HOP_NO_WIND_TIME;
+}
+
+fn update_climb_hop_wait(p: &mut PlayerSnapshot, map: &Map) {
+    if p.hop_wait_x == 0 {
+        return;
+    }
+    if p.speed.x.signum() == -(p.hop_wait_x as f32) || p.speed.y > 0.0 {
+        p.hop_wait_x = 0;
+        p.hop_wait_x_speed = 0.0;
+    } else if !touching_wall(p, map, p.hop_wait_x) {
+        p.speed.x = p.hop_wait_x_speed;
+        p.hop_wait_x = 0;
+        p.hop_wait_x_speed = 0.0;
+    }
+}
+
 fn wall_dir(p: &PlayerSnapshot, map: &Map) -> i8 {
     if touching_wall(p, map, -1) {
         -1
@@ -1242,6 +2351,17 @@ fn wall_dir(p: &PlayerSnapshot, map: &Map) -> i8 {
 fn move_axis(p: &mut PlayerSnapshot, map: &Map, horizontal: bool) {
     let speed = if horizontal { p.speed.x } else { p.speed.y };
     move_axis_amount(p, map, horizontal, speed * DT);
+}
+
+fn naive_move(p: &mut PlayerSnapshot, amount: Vec2) {
+    p.movement_remainder.x += amount.x;
+    p.movement_remainder.y += amount.y;
+    let move_x = p.movement_remainder.x.round_ties_even();
+    let move_y = p.movement_remainder.y.round_ties_even();
+    p.movement_remainder.x -= move_x;
+    p.movement_remainder.y -= move_y;
+    p.pos.x += move_x;
+    p.pos.y += move_y;
 }
 
 fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount: f32) {
@@ -1259,7 +2379,7 @@ fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount:
         let next_y = p.pos.y + if horizontal { 0.0 } else { sign as f32 };
         let next = current_player_rect(p, next_x, next_y);
         let dream_block = map.dream_block_at(next);
-        let collided = map.static_solid_at(next)
+        let collided = map.non_dream_solid_at(next)
             || (dream_block && p.state != PlayerState::DreamDash)
             || (!horizontal
                 && sign > 0
@@ -1267,16 +2387,40 @@ fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount:
                 && map.jump_thru_at(next, current_player_rect(p, p.pos.x, p.pos.y).bottom()));
         if collided {
             if dream_block
-                && p.state == PlayerState::Dash
                 && p.can_dream_dash
-                && p.dash_attack_timer > 0.0
+                && (p.dash_attack_timer > 0.0 || p.state == PlayerState::RedDash)
             {
+                if horizontal {
+                    p.movement_remainder.x = 0.0;
+                } else {
+                    p.movement_remainder.y = 0.0;
+                }
                 p.state = PlayerState::DreamDash;
+                p.speed = Vec2::new(p.dash_dir.x * DASH_SPEED, p.dash_dir.y * DASH_SPEED);
                 p.dream_dash_can_end_timer = 0.1;
+                p.stamina = 110.0;
+                p.dash_attack_timer = 0.0;
                 p.dash_end_pending = false;
                 break;
             }
             if horizontal {
+                if matches!(p.state, PlayerState::Dash | PlayerState::RedDash)
+                    && p.speed.y == 0.0
+                    && p.speed.x != 0.0
+                {
+                    for correction in 1..=4 {
+                        for direction in [1.0, -1.0] {
+                            let offset = correction as f32 * direction;
+                            let corrected =
+                                current_player_rect(p, p.pos.x + sign as f32, p.pos.y + offset);
+                            if !map.solid_at(corrected) {
+                                p.pos.y += offset;
+                                p.pos.x += sign as f32;
+                                return;
+                            }
+                        }
+                    }
+                }
                 if p.state == PlayerState::StarFly {
                     if p.star_fly_timer < STAR_FLY_END_NO_BOUNCE_TIME {
                         p.speed.x = 0.0;
@@ -1358,8 +2502,23 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
             && p.dream_dash_can_end_timer <= 0.0
         {
             let horizontal_exit = p.dash_dir.x != 0.0;
-            let wall = wall_dir(p, map);
             let dream_jump = input.jump_pressed && horizontal_exit;
+            if !dream_jump && (p.dash_dir.y >= 0.0 || horizontal_exit) {
+                // Celeste 1.4 pulls a horizontal exit five pixels back toward
+                // the DreamBlock before its two-sided ClimbCheck. DreamDash is
+                // still the active state here, so this is the source's naive
+                // MoveHExact correction rather than normal solid movement.
+                if p.dash_dir.x > 0.0
+                    && map.non_dream_solid_at(current_player_rect(p, p.pos.x - 5.0, p.pos.y))
+                {
+                    p.pos.x -= 5.0;
+                } else if p.dash_dir.x < 0.0
+                    && map.non_dream_solid_at(current_player_rect(p, p.pos.x + 5.0, p.pos.y))
+                {
+                    p.pos.x += 5.0;
+                }
+            }
+            let wall = wall_dir(p, map);
             let dream_grab = input.grab_held
                 && (p.dash_dir.y >= 0.0 || horizontal_exit)
                 && ((input.move_x == 1 && wall == 1) || (input.move_x == -1 && wall == -1));
@@ -1397,6 +2556,13 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
             p.stamina = 110.0;
             p.dash_attack_timer = 0.0;
             p.freeze_timer = 0.05;
+
+            // DreamDashUpdate performs its naive 240 px/s move before
+            // returning the next state. Player.Update then performs the
+            // ordinary movement pass in that resulting state on the same
+            // frame, which is visible as a second displacement in Everest.
+            move_axis(p, map, true);
+            move_axis(p, map, false);
         }
         return;
     }
@@ -1440,10 +2606,10 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
         }
     }
     let hitbox = current_player_rect(p, p.pos.x, p.pos.y);
-    for entity in &map.entities {
+    for (entity_index, entity) in map.entities.iter().enumerate() {
         let player_box = if matches!(
             entity.kind,
-            EntityKind::Spikes | EntityKind::FlyFeather | EntityKind::Bumper
+            EntityKind::Spikes | EntityKind::FlyFeather | EntityKind::Bumper | EntityKind::Spring
         ) {
             current_player_hurt_rect(p)
         } else {
@@ -1466,6 +2632,13 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                 entity.bounds.width * 0.5,
                 player_box,
             ),
+            EntityKind::IceBall => {
+                let center = Vec2::new(
+                    entity.bounds.x + entity.bounds.width * 0.5,
+                    entity.bounds.y + entity.bounds.height * 0.5,
+                );
+                Rect::new(center.x - 8.0, center.y - 3.0, 16.0, 6.0).intersects(player_box)
+            }
             _ => entity.bounds.intersects(player_box),
         };
         if !intersects {
@@ -1543,6 +2716,41 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                     p.bumper_reuse_timer = 0.6;
                 }
             }
+            EntityKind::Spring if p.state != PlayerState::DreamDash => {
+                if entity.direction.y < 0.0 {
+                    if p.speed.y >= 0.0 {
+                        super_bounce(p, entity.bounds.y);
+                    }
+                } else if entity.direction.x != 0.0 {
+                    side_bounce(p, entity.direction.x.signum() as i8, entity.bounds);
+                }
+            }
+            EntityKind::Strawberry if entity_index < u64::BITS as usize => {
+                let mask = 1_u64 << entity_index;
+                if p.strawberry_picked_mask & mask == 0 {
+                    p.strawberry_picked_mask |= mask;
+                    if p.carried_strawberries == 0 {
+                        p.strawberry_follow_delay_timer = 0.3;
+                        p.strawberry_collect_timer = 0.0;
+                    }
+                    p.carried_strawberries = p.carried_strawberries.saturating_add(1);
+                }
+            }
+            EntityKind::IceBall => {
+                let target = Vec2::new(
+                    entity.bounds.x + entity.bounds.width * 0.5,
+                    entity.bounds.y + entity.bounds.height * 0.5,
+                );
+                if (p.bounce_reuse_timer <= 0.0 || p.last_bounce_target != target)
+                    && p.speed.y >= 0.0
+                    && current_player_rect(p, p.pos.x, p.pos.y).bottom() <= target.y + 4.0
+                {
+                    bounce(p, map, target.y - 2.0);
+                    p.last_bounce_target = target;
+                    // A cold FireBall becomes non-collidable after the bounce.
+                    p.bounce_reuse_timer = f32::MAX;
+                }
+            }
             EntityKind::Wind => {
                 // WindTrigger changes the global WindController pattern. It
                 // does not apply a local force and leaving the trigger does
@@ -1552,6 +2760,82 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
             _ => {}
         }
     }
+}
+
+fn update_strawberry_train(p: &mut PlayerSnapshot) {
+    if p.carried_strawberries == 0 {
+        return;
+    }
+    if p.strawberry_follow_delay_timer > 0.0 {
+        p.strawberry_follow_delay_timer = (p.strawberry_follow_delay_timer - DT).max(0.0);
+        return;
+    }
+
+    // Strawberry.Update uses Player.OnSafeGround. Normal solids and
+    // jumpthroughs are safe in the supported map subset, and Swim is always
+    // treated as safe ground by Player.Update.
+    if p.on_ground || p.state == PlayerState::Swim {
+        p.strawberry_collect_timer += DT;
+        if p.strawberry_collect_timer > 0.15 {
+            p.carried_strawberries -= 1;
+            p.strawberry_collect_index = p.strawberry_collect_index.saturating_add(1);
+            p.strawberry_collect_reset_timer = 2.5;
+            p.strawberry_collect_timer = if p.carried_strawberries > 0 {
+                // Followers update in train order. Once the first berry calls
+                // OnCollect, the next berry becomes FollowIndex 0 and runs its
+                // own Update later in the same frame, advancing -0.15 by DT.
+                -0.15 + DT
+            } else {
+                0.0
+            };
+        }
+    } else {
+        p.strawberry_collect_timer = p.strawberry_collect_timer.min(0.0);
+    }
+}
+
+fn reset_for_spring_bounce(p: &mut PlayerSnapshot) {
+    p.dashes = p.dashes.max(1);
+    p.stamina = 110.0;
+    p.state = PlayerState::Normal;
+    p.jump_grace_timer = 0.0;
+    p.var_jump_timer = VAR_JUMP_TIME;
+    p.auto_jump = true;
+    p.auto_jump_timer = 0.0;
+    p.dash_attack_timer = 0.0;
+    p.wall_slide_timer = WALL_SLIDE_TIME;
+    p.wall_boost_timer = 0.0;
+    p.launched = false;
+}
+
+fn super_bounce(p: &mut PlayerSnapshot, from_y: f32) {
+    // Player.SuperBounce temporarily uses the normal collider and moves the
+    // player's bottom onto the spring before applying the launch.
+    p.pos.y = from_y;
+    p.movement_remainder.y = 0.0;
+    reset_for_spring_bounce(p);
+    p.speed.x = 0.0;
+    p.speed.y = SUPER_BOUNCE_SPEED;
+    p.var_jump_speed = p.speed.y;
+}
+
+fn side_bounce(p: &mut PlayerSnapshot, dir: i8, spring: Rect) {
+    // SideBounce aligns the normal collider to the spring face and only
+    // corrects vertically by at most four pixels.
+    let from_y = spring.y + spring.height * 0.5;
+    p.pos.y += (from_y - p.pos.y).clamp(-4.0, 4.0);
+    p.pos.x = if dir > 0 {
+        spring.right() + 4.0
+    } else {
+        spring.x - 4.0
+    };
+    p.movement_remainder = Vec2::default();
+    reset_for_spring_bounce(p);
+    p.force_move_x = dir;
+    p.force_move_x_timer = SIDE_BOUNCE_FORCE_MOVE_X_TIME;
+    p.speed.x = SIDE_BOUNCE_SPEED * dir as f32;
+    p.speed.y = BOUNCE_SPEED;
+    p.var_jump_speed = p.speed.y;
 }
 
 fn explode_launch(
@@ -1603,6 +2887,48 @@ fn explode_launch(
     p.state = PlayerState::Launch;
     p.launched = true;
     direction
+}
+
+fn bounce(p: &mut PlayerSnapshot, map: &Map, from_y: f32) {
+    let restore_star_fly_hitbox = p.state == PlayerState::StarFly || p.star_fly_hitbox_preserved;
+    let restore_duck_hitbox = !restore_star_fly_hitbox && p.ducking;
+
+    // Player.Bounce temporarily assigns normalHitbox before MoveVExact, so
+    // the correction uses Madeline's ordinary 8x11 body even when a feather
+    // or crouched collider entered the callback.
+    let move_y = (from_y - p.pos.y) as i32;
+    let sign = move_y.signum();
+    for _ in 0..move_y.unsigned_abs() {
+        let next_y = p.pos.y + sign as f32;
+        if map.non_dream_solid_at(player_rect(p.pos.x, next_y))
+            || map.dream_block_at(player_rect(p.pos.x, next_y))
+        {
+            p.movement_remainder.y = 0.0;
+            break;
+        }
+        p.pos.y = next_y;
+    }
+
+    p.dashes = p.dashes.max(1);
+    p.stamina = 110.0;
+    if p.state == PlayerState::StarFly {
+        // Setting StateMachine.State to Normal invokes StarFlyEnd first. The
+        // cached collider is restored only after that callback returns.
+        end_star_fly(p, map);
+    }
+    p.state = PlayerState::Normal;
+    p.star_fly_hitbox_preserved = restore_star_fly_hitbox;
+    p.ducking = restore_duck_hitbox;
+    p.jump_grace_timer = 0.0;
+    p.var_jump_timer = VAR_JUMP_TIME;
+    p.auto_jump = true;
+    p.auto_jump_timer = 0.1;
+    p.dash_attack_timer = 0.0;
+    p.wall_slide_timer = WALL_SLIDE_TIME;
+    p.wall_boost_timer = 0.0;
+    p.var_jump_speed = -140.0;
+    p.speed.y = -140.0;
+    p.launched = false;
 }
 
 fn try_begin_badeline_boost(p: &mut PlayerSnapshot, map: &Map) -> bool {
@@ -1818,33 +3144,138 @@ fn enforce_level_bounds(p: &mut PlayerSnapshot, map: &Map) {
     if p.dead || p.state == PlayerState::DreamDash || !player_in_control(p.state) {
         return;
     }
+    let bounds = p.current_room_bounds.unwrap_or(map.bounds);
     let mut collider = current_player_rect(p, p.pos.x, p.pos.y);
-    if collider.x < map.bounds.x {
-        p.pos.x += map.bounds.x - collider.x;
+    if collider.x < bounds.x {
+        let center = Vec2::new(p.pos.x, collider.y + collider.height * 0.5);
+        if let Some(next) = transition_room_at(map, p, Vec2::new(center.x - 8.0, center.y)) {
+            begin_transition(p, next, Vec2::new(-1.0, 0.0));
+            return;
+        }
+        p.pos.x += bounds.x - collider.x;
         p.speed.x = 0.0;
         collider = current_player_rect(p, p.pos.x, p.pos.y);
     }
-    let right = map.bounds.x + map.bounds.width;
+    let right = bounds.right();
     if collider.x + collider.width > right {
+        let center = Vec2::new(p.pos.x, collider.y + collider.height * 0.5);
+        if let Some(next) = transition_room_at(map, p, Vec2::new(center.x + 8.0, center.y)) {
+            begin_transition(p, next, Vec2::new(1.0, 0.0));
+            return;
+        }
         p.pos.x -= collider.x + collider.width - right;
         p.speed.x = 0.0;
         collider = current_player_rect(p, p.pos.x, p.pos.y);
     }
 
-    let top = map.bounds.y;
+    let top = bounds.y;
     let center_y = collider.y + collider.height * 0.5;
+    if center_y < top {
+        let center = Vec2::new(p.pos.x, center_y);
+        if let Some(next) = transition_room_at(map, p, Vec2::new(center.x, center.y - 12.0)) {
+            begin_transition(p, next, Vec2::new(0.0, -1.0));
+            return;
+        }
+    }
     if center_y < top && collider.y < top - 24.0 {
         p.pos.y += top - 24.0 - collider.y;
         p.speed.y = 0.0;
         collider = current_player_rect(p, p.pos.x, p.pos.y);
     }
 
-    let bottom = map.bounds.y + map.bounds.height;
+    let bottom = bounds.bottom();
+    if collider.bottom() > bottom {
+        let center = Vec2::new(p.pos.x, collider.y + collider.height * 0.5);
+        if let Some(next) = transition_room_at(map, p, Vec2::new(center.x, center.y + 12.0)) {
+            begin_transition(p, next, Vec2::new(0.0, 1.0));
+            return;
+        }
+    }
     if collider.y > bottom + 4.0 {
         p.dead = true;
         p.speed = Vec2::default();
         p.death_freeze_pending = true;
         p.respawn_frames = 95;
+    }
+}
+
+fn transition_room_at(map: &Map, p: &PlayerSnapshot, point: Vec2) -> Option<Rect> {
+    let current = p.current_room_bounds.unwrap_or(map.bounds);
+    std::iter::once(map.bounds)
+        .chain(map.transition_rooms.iter().copied())
+        .filter(|room| *room != current)
+        .find(|room| {
+            point.x >= room.x
+                && point.x < room.right()
+                && point.y >= room.y
+                && point.y < room.bottom()
+        })
+}
+
+fn begin_transition(p: &mut PlayerSnapshot, next: Rect, direction: Vec2) {
+    if direction.y > 0.0
+        && !matches!(
+            p.state,
+            PlayerState::RedDash | PlayerState::ReflectionFall | PlayerState::StarFly
+        )
+    {
+        p.state = PlayerState::Normal;
+        p.speed.y = p.speed.y.max(0.0);
+        p.auto_jump = false;
+        p.var_jump_timer = 0.0;
+    } else if direction.y < 0.0 {
+        p.speed.x = 0.0;
+        if !matches!(
+            p.state,
+            PlayerState::RedDash | PlayerState::ReflectionFall | PlayerState::StarFly
+        ) {
+            p.state = PlayerState::Normal;
+            p.speed.y = JUMP_SPEED;
+            p.var_jump_speed = p.speed.y;
+            p.auto_jump = true;
+            p.auto_jump_timer = 0.0;
+            p.var_jump_timer = VAR_JUMP_TIME;
+        }
+        p.dash_cooldown_timer = 0.2;
+    }
+
+    let mut target = p.pos;
+    if direction.x > 0.0 {
+        target.x = next.x + 4.0;
+    } else if direction.x < 0.0 {
+        target.x = next.right() - 5.0;
+    } else if direction.y > 0.0 {
+        target.y = next.y + 12.0;
+    } else {
+        target.y = next.bottom() - 5.0;
+    }
+    p.transition_room_bounds = Some(next);
+    p.transition_direction = direction;
+    p.transition_target = target;
+    // TransitionRoutine updates cameraAt after yielding, then resumes once
+    // more to observe cameraAt == 1 and run OnTransition. Preserve that final
+    // coroutine-resume frame in addition to the 0.65-second camera duration.
+    p.transition_timer = TRANSITION_TIME + DT;
+    p.on_ground = false;
+}
+
+fn update_transition(p: &mut PlayerSnapshot) {
+    let max_move = TRANSITION_MOVE_SPEED * DT;
+    p.pos.x = approach(p.pos.x, p.transition_target.x, max_move);
+    p.pos.y = approach(p.pos.y, p.transition_target.y, max_move);
+    p.transition_timer = (p.transition_timer - DT).max(0.0);
+    p.on_ground = false;
+    if p.transition_timer <= 0.0 && p.pos == p.transition_target {
+        p.movement_remainder = Vec2::default();
+        p.speed.x = p.speed.x.round();
+        p.speed.y = p.speed.y.round();
+        p.wall_slide_timer = WALL_SLIDE_TIME;
+        p.jump_grace_timer = 0.0;
+        p.force_move_x_timer = 0.0;
+        p.dashes = p.dashes.max(1);
+        p.stamina = 110.0;
+        p.current_room_bounds = p.transition_room_bounds.take();
+        p.transition_direction = Vec2::default();
     }
 }
 
@@ -1890,7 +3321,7 @@ fn move_exact(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, sign: i32) ->
     let next_x = p.pos.x + if horizontal { sign as f32 } else { 0.0 };
     let next_y = p.pos.y + if horizontal { 0.0 } else { sign as f32 };
     let next = current_player_rect(p, next_x, next_y);
-    let collided = map.static_solid_at(next)
+    let collided = map.non_dream_solid_at(next)
         || (map.dream_block_at(next) && p.state != PlayerState::DreamDash)
         || (!horizontal
             && sign > 0
@@ -2062,6 +3493,66 @@ mod tests {
             ..PlayerSnapshot::default()
         }
     }
+    fn moving_solid_map(direction: Vec2) -> Map {
+        Map {
+            entities: vec![crate::Entity {
+                kind: EntityKind::MovingSolid,
+                bounds: Rect::new(16.0, 100.0, 64.0, 8.0),
+                direction,
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "celesteGymMovingSolid".to_owned(),
+            }],
+            ..Map::default()
+        }
+    }
+    fn zip_mover_map() -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 544.0),
+            entities: vec![crate::Entity {
+                kind: EntityKind::ZipMover,
+                bounds: Rect::new(32.0, 440.0, 64.0, 16.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![Vec2::new(32.0, 320.0)],
+                name: "zipMover".to_owned(),
+            }],
+            ..Map::default()
+        }
+    }
+    fn bounce_block_map() -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 240.0),
+            entities: vec![crate::Entity {
+                kind: EntityKind::BounceBlock,
+                bounds: Rect::new(32.0, 160.0, 64.0, 16.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "bounceBlock".to_owned(),
+            }],
+            ..Map::default()
+        }
+    }
+    fn theo_crystal_map() -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 240.0),
+            solids: vec![Rect::new(0.0, 160.0, 320.0, 80.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::TheoCrystal,
+                bounds: Rect::new(64.0, 150.0, 8.0, 10.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "theoCrystal".to_owned(),
+            }],
+            ..Map::default()
+        }
+    }
     fn water_map() -> Map {
         Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
@@ -2123,6 +3614,21 @@ mod tests {
             ..Map::default()
         }
     }
+    fn ice_ball_map() -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            entities: vec![crate::Entity {
+                kind: EntityKind::IceBall,
+                bounds: Rect::new(94.0, 94.0, 12.0, 12.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: true,
+                nodes: vec![Vec2::new(116.0, 100.0)],
+                name: "fireBall".to_owned(),
+            }],
+            ..Map::default()
+        }
+    }
     fn booster_map() -> Map {
         Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
@@ -2136,6 +3642,47 @@ mod tests {
                 nodes: vec![],
                 name: "booster".to_owned(),
             }],
+            ..Map::default()
+        }
+    }
+    fn spring_map(direction: Vec2) -> Map {
+        let bounds = if direction.y < 0.0 {
+            Rect::new(72.0, 94.0, 16.0, 6.0)
+        } else if direction.x > 0.0 {
+            Rect::new(100.0, 72.0, 6.0, 16.0)
+        } else {
+            Rect::new(94.0, 72.0, 6.0, 16.0)
+        };
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            solids: vec![Rect::new(0.0, 100.0, 320.0, 80.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::Spring,
+                bounds,
+                direction,
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "spring".to_owned(),
+            }],
+            ..Map::default()
+        }
+    }
+    fn berry_map(count: usize) -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            solids: vec![Rect::new(0.0, 100.0, 320.0, 80.0)],
+            entities: (0..count)
+                .map(|_| crate::Entity {
+                    kind: EntityKind::Strawberry,
+                    bounds: Rect::new(73.0, 86.0, 14.0, 14.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "strawberry".to_owned(),
+                })
+                .collect(),
             ..Map::default()
         }
     }
@@ -2203,6 +3750,522 @@ mod tests {
         assert!(p.pos.y < 100.0);
     }
     #[test]
+    fn lift_boost_prefers_current_speed_and_uses_player_clamps() {
+        let mut p = PlayerSnapshot {
+            current_lift_speed: Vec2::new(500.0, 80.0),
+            last_lift_speed: Vec2::new(-400.0, -200.0),
+            lift_speed_timer: 0.16,
+            ..PlayerSnapshot::default()
+        };
+
+        assert_eq!(lift_boost(&p), Vec2::new(250.0, 0.0));
+        tick_lift_speed(&mut p);
+        assert_eq!(p.current_lift_speed, Vec2::default());
+        assert_eq!(lift_boost(&p), Vec2::new(-250.0, -130.0));
+    }
+    #[test]
+    fn lift_speed_grace_clears_after_the_source_point_sixteen_seconds() {
+        let mut p = PlayerSnapshot {
+            last_lift_speed: Vec2::new(90.0, -60.0),
+            lift_speed_timer: 0.16,
+            ..PlayerSnapshot::default()
+        };
+
+        for _ in 0..9 {
+            tick_lift_speed(&mut p);
+        }
+        assert_eq!(p.last_lift_speed, Vec2::new(90.0, -60.0));
+        assert!(p.lift_speed_timer > 0.0);
+
+        tick_lift_speed(&mut p);
+        assert_eq!(p.last_lift_speed, Vec2::default());
+        assert_eq!(p.lift_speed_timer, 0.0);
+    }
+    #[test]
+    fn moving_solid_carries_its_rider_and_records_lift_speed() {
+        let map = moving_solid_map(Vec2::new(60.0, -120.0));
+        let p = simulate(grounded_player(), &[InputState::default()], &map, 1).unwrap();
+
+        assert_eq!(p.pos, Vec2::new(33.0, 98.0));
+        assert!(p.on_ground);
+        assert_eq!(p.current_lift_speed, Vec2::default());
+        assert_eq!(p.last_lift_speed, Vec2::new(60.0, -120.0));
+        assert!((p.lift_speed_timer - (0.16 - DT)).abs() < 0.000_001);
+    }
+    #[test]
+    fn moving_solid_jump_combines_carrying_with_same_frame_lift_boost() {
+        let map = moving_solid_map(Vec2::new(60.0, -120.0));
+        let input = InputState {
+            jump_pressed: true,
+            jump_held: true,
+            ..InputState::default()
+        };
+        let p = simulate(grounded_player(), &[input], &map, 1).unwrap();
+
+        assert_eq!(p.speed, Vec2::new(60.0, -225.0));
+        assert_eq!(p.var_jump_speed, -225.0);
+        assert_eq!(p.pos, Vec2::new(34.0, 94.0));
+    }
+    #[test]
+    fn moving_solid_clock_keeps_split_simulation_composable() {
+        let map = moving_solid_map(Vec2::new(60.0, 0.0));
+        let inputs = [InputState::default(); 2];
+        let direct = simulate(grounded_player(), &inputs, &map, 2).unwrap();
+        let first = simulate(grounded_player(), &inputs[..1], &map, 1).unwrap();
+        let split = simulate(first, &inputs[1..], &map, 1).unwrap();
+
+        assert_eq!(split, direct);
+        assert_eq!(direct.pos.x, 34.0);
+    }
+    #[test]
+    fn moving_solid_pushes_an_actor_without_granting_rider_lift_speed() {
+        let map = Map {
+            entities: vec![crate::Entity {
+                kind: EntityKind::MovingSolid,
+                bounds: Rect::new(20.0, 70.0, 8.0, 40.0),
+                direction: Vec2::new(60.0, 0.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "celesteGymMovingSolid".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 90.0),
+            ..PlayerSnapshot::default()
+        };
+        let p = simulate(p, &[InputState::default()], &map, 1).unwrap();
+
+        assert_eq!(p.pos.x, 33.0);
+        assert_eq!(p.last_lift_speed, Vec2::default());
+    }
+    #[test]
+    fn zip_mover_uses_source_wait_yield_and_sine_outbound_phases() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(64.0, 440.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [InputState::default(); 12];
+        let trace = simulate_trace(p, &inputs, &zip_mover_map(), 12).unwrap();
+
+        assert_eq!(trace.states[1].zip_movers[0].phase, 1);
+        assert_eq!(trace.states[1].zip_movers[0].wait_timer, 0.1);
+        let first_outbound = trace
+            .states
+            .iter()
+            .position(|state| state.zip_movers[0].phase == 2)
+            .unwrap();
+        assert_eq!(trace.states[first_outbound].zip_movers[0].at, 0.0);
+        assert_eq!(trace.states[first_outbound].zip_movers[0].position.y, 440.0);
+        assert!(trace.states[12].zip_movers[0].at > 0.0);
+        assert!(trace.states[12].zip_movers[0].position.y < 440.0);
+        assert_eq!(
+            trace.states[12].pos.y,
+            trace.states[12].zip_movers[0].position.y
+        );
+        assert!(trace.states[12].last_lift_speed.y < 0.0);
+    }
+
+    #[test]
+    fn zip_mover_runtime_keeps_split_simulation_composable() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(64.0, 440.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [InputState::default(); 40];
+        let direct = simulate(p.clone(), &inputs, &zip_mover_map(), 40).unwrap();
+        let first = simulate(p, &inputs[..17], &zip_mover_map(), 17).unwrap();
+        let split = simulate(first, &inputs[17..], &zip_mover_map(), 23).unwrap();
+
+        assert_eq!(split, direct);
+        assert_eq!(direct.zip_movers.len(), 1);
+        assert_eq!(direct.zip_movers[0].phase, 3);
+    }
+
+    #[test]
+    fn zip_mover_previous_frame_carry_writes_lift_speed_for_next_player_update() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(64.0, 440.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let idle = [InputState::default(); 20];
+        let idle_trace = simulate_trace(p.clone(), &idle, &zip_mover_map(), 20).unwrap();
+        let lift_state = idle_trace
+            .states
+            .iter()
+            .position(|state| state.last_lift_speed.y < 0.0)
+            .unwrap();
+        let mut inputs = idle;
+        inputs[lift_state] = InputState {
+            jump_pressed: true,
+            jump_held: true,
+            ..InputState::default()
+        };
+        let trace = simulate_trace(p, &inputs, &zip_mover_map(), 20).unwrap();
+        let jumped = &trace.states[lift_state + 1];
+
+        assert!(jumped.speed.y < JUMP_SPEED);
+        assert_eq!(jumped.var_jump_speed, jumped.speed.y);
+        assert!(jumped.last_lift_speed.y < 0.0);
+    }
+
+    #[test]
+    fn zip_mover_runs_after_player_and_matches_real_vertical_push_order() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(64.0, 440.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..24)
+            .map(|frame| InputState {
+                jump_pressed: frame == 10,
+                jump_held: (10..=15).contains(&frame),
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &zip_mover_map(), 24).unwrap();
+
+        // Real Everest ordering: the first pixel carry is written at the end
+        // of frame 10, then Player consumes that retained lift on frame 11.
+        assert!((trace.states[10].last_lift_speed.y + 29.575_138).abs() < 0.000_01);
+        assert!((trace.states[11].speed.y + 134.575_13).abs() < 0.000_01);
+
+        // At frame 19 Player moves from y=422 to y=420 before ZipMover moves
+        // from y=424 to y=421, so there is no early one-pixel platform push.
+        assert_eq!(trace.states[18].pos.y, 422.0);
+        assert_eq!(trace.states[19].pos.y, 420.0);
+        assert_eq!(trace.states[20].pos.y, 417.0);
+        assert_eq!(trace.states[18].zip_movers[0].position.y, 424.0);
+        assert_eq!(trace.states[19].zip_movers[0].position.y, 421.0);
+        assert_eq!(trace.states[20].zip_movers[0].position.y, 417.0);
+    }
+
+    #[test]
+    fn delayed_blockboost_uses_zip_lift_on_a_later_static_wall_jump() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(92.0, 440.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..25)
+            .map(|frame| InputState {
+                move_x: if frame >= 8 { 1 } else { 0 },
+                jump_pressed: frame == 24,
+                jump_held: frame == 24,
+                ..InputState::default()
+            })
+            .collect();
+        let mut map = zip_mover_map();
+        map.solids.push(Rect::new(112.0, 416.0, 8.0, 80.0));
+        let trace = simulate_trace(p.clone(), &inputs, &map, 25).unwrap();
+        let before = &trace.states[24];
+        let jumped = &trace.states[25];
+
+        assert!(trace.states[16].player_on_ground);
+        assert!(!trace.states[16].on_ground);
+        assert!(!trace.states[17].player_on_ground);
+        assert_eq!(trace.states[17].pos.y, 430.0);
+        assert!((trace.states[17].speed.y + 110.827_97).abs() < 0.000_01);
+        assert_eq!(before.pos.x, 108.0);
+        assert!(!before.on_ground);
+        assert!(before.last_lift_speed.y < -120.0);
+        assert!(before.lift_speed_timer > 0.0);
+        assert_eq!(jumped.speed.x, -130.0);
+        assert!((jumped.speed.y + 230.828).abs() < 0.000_1);
+        assert_eq!(jumped.state, PlayerState::Normal);
+
+        let first = simulate(p, &inputs[..16], &map, 16).unwrap();
+        let split = simulate(first, &inputs[16..], &map, 9).unwrap();
+        assert_eq!(&split, jumped);
+    }
+
+    #[test]
+    fn hot_bounce_block_shakes_off_player_with_source_lift_and_jump_grace() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(64.0, 160.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = vec![InputState::default(); 48];
+        let trace = simulate_trace(p, &inputs, &bounce_block_map(), 48).unwrap();
+        let launch_index = trace
+            .states
+            .iter()
+            .position(|state| state.bounce_blocks[0].phase == 3)
+            .unwrap();
+        let launched = &trace.states[launch_index];
+
+        assert_eq!(launched.state, PlayerState::Normal);
+        assert_eq!(launched.speed, launched.bounce_blocks[0].bounce_lift);
+        assert_eq!(launched.jump_grace_timer, JUMP_GRACE);
+        assert!(launched.speed.y < -100.0);
+        assert!(launched.on_ground);
+        assert!(!trace.states[launch_index + 1].on_ground);
+    }
+
+    #[test]
+    fn bounce_block_runtime_keeps_split_simulation_composable() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(64.0, 160.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = vec![InputState::default(); 48];
+        let direct = simulate(p.clone(), &inputs, &bounce_block_map(), 48).unwrap();
+        let first = simulate(p, &inputs[..18], &bounce_block_map(), 18).unwrap();
+        let split = simulate(first, &inputs[18..], &bounce_block_map(), 30).unwrap();
+
+        assert_eq!(split, direct);
+        assert_eq!(direct.bounce_blocks.len(), 1);
+    }
+
+    #[test]
+    fn broken_bounce_block_reforms_after_source_respawn_timer() {
+        let mut map = bounce_block_map();
+        map.solids.push(Rect::new(160.0, 160.0, 160.0, 80.0));
+        let initialized = simulate(
+            PlayerSnapshot {
+                pos: Vec2::new(200.0, 160.0),
+                on_ground: true,
+                ..PlayerSnapshot::default()
+            },
+            &[InputState::default()],
+            &map,
+            1,
+        )
+        .unwrap();
+        let mut broken = initialized;
+        broken.bounce_blocks[0].phase = 3;
+        broken.bounce_blocks[0].bounce_end_timer = 0.0;
+        broken.bounce_blocks[0].position = Vec2::new(32.0, 136.0);
+        let inputs = vec![InputState::default(); 110];
+        let trace = simulate_trace(broken, &inputs, &map, 110).unwrap();
+        let reform_index = trace
+            .states
+            .iter()
+            .position(|state| state.bounce_blocks[0].phase == 0)
+            .unwrap();
+
+        assert_eq!(trace.states[1].bounce_blocks[0].phase, 4);
+        assert!(trace.states[96].bounce_blocks[0].respawn_timer > 0.0);
+        assert!(trace.states[97].bounce_blocks[0].respawn_timer <= 0.0);
+        assert_eq!(reform_index, 98);
+        assert_eq!(
+            trace.states[reform_index].bounce_blocks[0].position,
+            Vec2::new(32.0, 160.0)
+        );
+    }
+
+    #[test]
+    fn dash_pickup_cancels_into_source_pickup_tween_and_restores_speed() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 160.0),
+            speed: Vec2::new(360.0, 0.0),
+            state: PlayerState::Dash,
+            dash_dir: Vec2::new(1.0, 0.0),
+            state_timer: 0.1,
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let held = InputState {
+            move_x: 1,
+            grab_held: true,
+            ..InputState::default()
+        };
+        let trace = simulate_trace(p, &[held; 12], &theo_crystal_map(), 12).unwrap();
+
+        assert_eq!(trace.states[1].state, PlayerState::Pickup);
+        assert_eq!(trace.states[1].speed, Vec2::default());
+        assert_eq!(trace.states[1].pickup_old_speed, Vec2::new(360.0, 0.0));
+        assert_eq!(trace.states[1].holding_theo, Some(0));
+        assert!(trace.states[1].theo_crystals[0].held);
+        assert!(!trace.states[1].dash_end_pending);
+        assert_eq!(trace.states[11].state, PlayerState::Pickup);
+        assert_eq!(trace.states[12].state, PlayerState::Normal);
+        assert_eq!(trace.states[12].speed, Vec2::new(360.0, 0.0));
+    }
+
+    #[test]
+    fn theo_pickup_release_and_runtime_are_split_composable() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 160.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = vec![
+            InputState {
+                grab_held: true,
+                ..InputState::default()
+            };
+            25
+        ];
+        inputs.push(InputState {
+            move_x: 1,
+            ..InputState::default()
+        });
+        let direct = simulate(p.clone(), &inputs, &theo_crystal_map(), 26).unwrap();
+        let first = simulate(p, &inputs[..8], &theo_crystal_map(), 8).unwrap();
+        let split = simulate(first, &inputs[8..], &theo_crystal_map(), 18).unwrap();
+
+        assert_eq!(split, direct);
+        assert_eq!(direct.state, PlayerState::Normal);
+        assert_eq!(direct.holding_theo, None);
+        assert!(!direct.theo_crystals[0].held);
+        assert!(direct.theo_crystals[0].cannot_hold_timer > 0.0);
+        assert_eq!(direct.theo_crystals[0].speed, Vec2::new(200.0, -80.0));
+        assert!((direct.speed.x + 63.333_3).abs() < 0.000_1);
+    }
+
+    #[test]
+    fn playground_theo_cancels_a_grounded_ultra_before_the_right_wall() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(820.0, 496.0),
+            speed: Vec2::new(300.0, 0.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..20)
+            .map(|frame| InputState {
+                move_x: 1,
+                move_y: 1,
+                dash_pressed: frame == 0,
+                grab_held: (5..=12).contains(&frame),
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &crate::mechanics_playground(), 20).unwrap();
+        let pickup_index = trace
+            .states
+            .iter()
+            .position(|state| state.state == PlayerState::Pickup)
+            .unwrap();
+
+        assert!(pickup_index <= 13);
+        assert_eq!(trace.states[pickup_index].pickup_old_speed.x, 360.0);
+        assert!(trace.states[pickup_index].pos.x < 864.0);
+        assert_eq!(trace.states[pickup_index].holding_theo, Some(0));
+    }
+
+    #[test]
+    fn playground_hot_bounce_block_grace_adds_core_super_lift() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(384.0, 360.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..38)
+            .map(|frame| InputState {
+                move_x: if frame >= 32 { 1 } else { 0 },
+                dash_pressed: frame == 32,
+                jump_pressed: frame == 36,
+                jump_held: frame == 36,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &crate::mechanics_playground(), 38).unwrap();
+
+        assert_eq!(trace.states[32].speed, Vec2::new(0.0, -200.0));
+        assert_eq!(trace.states[33].state, PlayerState::Dash);
+        assert_eq!(trace.states[37].state, PlayerState::Normal);
+        assert_eq!(trace.states[37].speed, Vec2::new(260.0, -235.0));
+    }
+
+    #[test]
+    fn playground_hot_bounce_block_grace_adds_core_hyper_lift() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(384.0, 360.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..38)
+            .map(|frame| InputState {
+                move_x: if frame >= 32 { 1 } else { 0 },
+                crouch_dash_pressed: frame == 32,
+                jump_pressed: frame == 36,
+                jump_held: frame == 36,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &crate::mechanics_playground(), 38).unwrap();
+
+        assert_eq!(trace.states[32].speed, Vec2::new(0.0, -200.0));
+        assert!(trace.states[33].ducking);
+        assert_eq!(trace.states[37].state, PlayerState::Normal);
+        assert_eq!(trace.states[37].speed, Vec2::new(325.0, -117.5));
+    }
+
+    #[test]
+    fn jump_adds_retained_lift_boost_before_caching_variable_jump_speed() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 100.0),
+            on_ground: true,
+            last_lift_speed: Vec2::new(40.0, -80.0),
+            lift_speed_timer: 0.16,
+            ..PlayerSnapshot::default()
+        };
+        let input = InputState {
+            jump_pressed: true,
+            jump_held: true,
+            ..InputState::default()
+        };
+
+        let p = simulate(p, &[input], &floor_map(), 1).unwrap();
+        assert_eq!(p.speed, Vec2::new(40.0, -185.0));
+        assert_eq!(p.var_jump_speed, -185.0);
+    }
+    #[test]
+    fn dash_caches_lift_boost_in_before_dash_speed() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 100.0),
+            speed: Vec2::new(20.0, 0.0),
+            on_ground: true,
+            last_lift_speed: Vec2::new(300.0, -80.0),
+            lift_speed_timer: 0.16,
+            ..PlayerSnapshot::default()
+        };
+        let input = InputState {
+            move_x: 1,
+            dash_pressed: true,
+            ..InputState::default()
+        };
+
+        let p = simulate(p, &[input], &floor_map(), 1).unwrap();
+        assert_eq!(p.state, PlayerState::Dash);
+        assert_eq!(p.before_dash_speed, Vec2::new(270.0, -80.0));
+    }
+    #[test]
+    fn delayed_climb_wall_jump_uses_retained_lift_speed() {
+        let map = Map {
+            solids: vec![Rect::new(36.0, 0.0, 8.0, 180.0)],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 80.0),
+            state: PlayerState::Climb,
+            facing: true,
+            stamina: 110.0,
+            last_lift_speed: Vec2::new(20.0, -30.0),
+            lift_speed_timer: 0.16,
+            ..PlayerSnapshot::default()
+        };
+        let input = InputState {
+            move_x: -1,
+            jump_pressed: true,
+            jump_held: true,
+            grab_held: true,
+            ..InputState::default()
+        };
+
+        let p = simulate(p, &[input], &map, 1).unwrap();
+        assert_eq!(p.state, PlayerState::Normal);
+        assert_eq!(p.speed, Vec2::new(-110.0, -135.0));
+        assert_eq!(p.var_jump_speed, -135.0);
+    }
+    #[test]
     fn coyote_jump_consumes_source_grace_window_after_leaving_a_ledge() {
         let map = Map {
             solids: vec![Rect::new(0.0, 100.0, 36.0, 80.0)],
@@ -2268,7 +4331,92 @@ mod tests {
         let trace = simulate_trace(p, &inputs, &floor_map(), inputs.len() as u32).unwrap();
         assert!(trace.states.iter().any(|state| state.on_ground));
         assert_eq!(trace.states.last().unwrap().speed.y, JUMP_SPEED);
-        assert_eq!(trace.states.last().unwrap().jump_buffer_timer, 0.0);
+        assert!(trace.states.last().unwrap().jump_buffer_timer <= 0.0);
+    }
+    #[test]
+    fn bunnyhop_buffers_the_landing_and_reapplies_horizontal_jump_boost() {
+        let player = PlayerSnapshot {
+            pos: Vec2::new(32.0, 91.0),
+            speed: Vec2::new(160.0, 100.0),
+            facing: true,
+            ..PlayerSnapshot::default()
+        };
+        let bunnyhop = std::array::from_fn::<_, 8, _>(|frame| InputState {
+            move_x: 1,
+            jump_pressed: frame == 0,
+            jump_held: true,
+            ..InputState::default()
+        });
+        let control = [InputState {
+            move_x: 1,
+            ..InputState::default()
+        }; 8];
+        let bunnyhop = simulate_trace(player.clone(), &bunnyhop, &floor_map(), 8).unwrap();
+        let control = simulate_trace(player, &control, &floor_map(), 8).unwrap();
+        let jump_state = (1..bunnyhop.states.len())
+            .find(|&frame| bunnyhop.states[frame].speed.y == JUMP_SPEED)
+            .expect("buffered jump fires after the landing state");
+        assert!(bunnyhop.states[jump_state - 1].on_ground);
+        assert!(!bunnyhop.states[jump_state].on_ground);
+        let expected_speed =
+            bunnyhop.states[jump_state - 1].speed.x - RUN_REDUCE * DT + JUMP_H_BOOST;
+        assert!((bunnyhop.states[jump_state].speed.x - expected_speed).abs() < 0.001);
+        assert!(
+            (bunnyhop.states[jump_state].speed.x
+                - control.states[jump_state].speed.x
+                - JUMP_H_BOOST)
+                .abs()
+                < 0.001
+        );
+        assert_eq!(bunnyhop.states[jump_state].state, PlayerState::Normal);
+        assert!(bunnyhop.states[jump_state].facing);
+        assert_eq!(bunnyhop.states[jump_state].dashes, 1);
+        assert_eq!(bunnyhop.states[jump_state].stamina, 110.0);
+        assert!(!bunnyhop.states[jump_state].ducking);
+        assert!(!bunnyhop.states[jump_state].dead);
+    }
+    #[test]
+    fn crouch_jump_keeps_the_short_hitbox_until_falling_in_open_air() {
+        let inputs = std::array::from_fn::<_, 40, _>(|frame| InputState {
+            move_y: if frame <= 1 { 1 } else { 0 },
+            jump_pressed: frame == 1,
+            jump_held: (1..10).contains(&frame),
+            ..InputState::default()
+        });
+        let trace = simulate_trace(grounded_player(), &inputs, &floor_map(), 40).unwrap();
+        assert!(trace.states[1].on_ground);
+        assert!(trace.states[1].ducking);
+        assert_eq!(trace.states[2].speed.y, JUMP_SPEED);
+        assert!(trace.states[2].ducking);
+        let falling_state = (3..trace.states.len())
+            .find(|&frame| trace.states[frame].speed.y > 0.0)
+            .expect("crouch jump reaches its falling phase");
+        assert!(
+            trace.states[2..falling_state]
+                .iter()
+                .all(|state| state.ducking)
+        );
+        assert!(!trace.states[falling_state].ducking);
+
+        let low_ceiling = Map {
+            solids: vec![Rect::new(0.0, 90.0, 64.0, 4.0)],
+            ..Map::default()
+        };
+        let falling_under_ceiling = PlayerSnapshot {
+            pos: Vec2::new(32.0, 100.0),
+            speed: Vec2::new(0.0, 30.0),
+            ducking: true,
+            ..PlayerSnapshot::default()
+        };
+        let falling_under_ceiling = simulate(
+            falling_under_ceiling,
+            &[InputState::default()],
+            &low_ceiling,
+            1,
+        )
+        .unwrap();
+        assert!(falling_under_ceiling.ducking);
+        assert!(!can_unduck(&falling_under_ceiling, &low_ceiling));
     }
     #[test]
     fn superdash_sets_source_launch_speed_and_spends_dash() {
@@ -2410,6 +4558,37 @@ mod tests {
         assert_eq!(p.speed.y, JUMP_SPEED);
     }
     #[test]
+    fn superwave_chains_extended_super_into_a_reverse_wavedash() {
+        let mut inputs = vec![InputState::default(); 30];
+        for input in &mut inputs[..=10] {
+            input.move_x = 1;
+        }
+        inputs[0].dash_pressed = true;
+        inputs[10].jump_pressed = true;
+        inputs[10].jump_held = true;
+        for input in &mut inputs[11..] {
+            input.move_x = -1;
+            input.move_y = 1;
+        }
+        inputs[11].dash_pressed = true;
+        inputs[26].jump_pressed = true;
+        inputs[26].jump_held = true;
+        let trace = simulate_trace(
+            grounded_player(),
+            &inputs,
+            &floor_map(),
+            inputs.len() as u32,
+        )
+        .unwrap();
+        assert_eq!(trace.states[11].speed, Vec2::new(SUPER_JUMP_H, JUMP_SPEED));
+        assert_eq!(trace.states[11].dashes, 1);
+        assert!(trace.states[22].on_ground);
+        assert!(trace.states[22].ducking);
+        assert!(trace.states[22].speed.x < -200.0);
+        assert_eq!(trace.states[27].speed, Vec2::new(-325.0, -52.5));
+        assert_eq!(trace.states[27].dashes, 1);
+    }
+    #[test]
     fn upward_diagonal_demo_keeps_crouched_dash_hitbox() {
         let mut inputs = [InputState::default(); 5];
         inputs[0] = InputState {
@@ -2488,6 +4667,58 @@ mod tests {
         assert_eq!(p.var_jump_timer, 0.25);
     }
     #[test]
+    fn spiked_wallbounce_is_safe_on_the_entry_frame_but_dies_one_frame_late() {
+        let map = Map {
+            solids: vec![Rect::new(100.0, 0.0, 8.0, 180.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::Spikes,
+                bounds: Rect::new(97.0, 60.0, 3.0, 20.0),
+                direction: Vec2::new(-1.0, 0.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "spikesLeft".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(96.0, 95.0),
+            dashes: 1,
+            ..PlayerSnapshot::default()
+        };
+        let mut on_time = [InputState::default(); 7];
+        on_time[0] = InputState {
+            move_y: -1,
+            dash_pressed: true,
+            ..InputState::default()
+        };
+        on_time[5] = InputState {
+            move_y: -1,
+            jump_pressed: true,
+            jump_held: true,
+            ..InputState::default()
+        };
+        let on_time = simulate_trace(p.clone(), &on_time, &map, on_time.len() as u32).unwrap();
+        assert!(!on_time.states.last().unwrap().dead);
+        assert_eq!(on_time.states[6].state, PlayerState::Normal);
+        assert_eq!(on_time.states[6].speed, Vec2::new(-170.0, -160.0));
+
+        let mut late = [InputState::default(); 7];
+        late[0] = InputState {
+            move_y: -1,
+            dash_pressed: true,
+            ..InputState::default()
+        };
+        late[6] = InputState {
+            move_y: -1,
+            jump_pressed: true,
+            jump_held: true,
+            ..InputState::default()
+        };
+        let late = simulate(p, &late, &map, late.len() as u32).unwrap();
+        assert!(late.dead);
+    }
+    #[test]
     fn fastfall_approaches_source_240_terminal_speed() {
         let p = PlayerSnapshot {
             pos: Vec2::new(32.0, 32.0),
@@ -2501,6 +4732,346 @@ mod tests {
         let p = simulate(p, &[input; 16], &Map::default(), 16).unwrap();
         assert_eq!(p.max_fall, FAST_MAX_FALL);
         assert_eq!(p.speed.y, FAST_MAX_FALL);
+    }
+    #[test]
+    fn upward_corner_correction_moves_around_a_one_pixel_ceiling_overlap() {
+        let map = Map {
+            solids: vec![Rect::new(40.0, 40.0, 32.0, 8.0)],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(37.0, 59.0),
+            speed: Vec2::new(0.0, JUMP_SPEED),
+            ..PlayerSnapshot::default()
+        };
+        let p = simulate(p, &[InputState::default()], &map, 1).unwrap();
+        assert_eq!(p.pos, Vec2::new(36.0, 58.0));
+        assert!(p.speed.y < 0.0);
+    }
+    #[test]
+    fn horizontal_dash_corner_correction_moves_over_a_two_pixel_ledge_overlap() {
+        let map = Map {
+            solids: vec![Rect::new(40.0, 80.0, 40.0, 80.0)],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(36.0, 82.0),
+            speed: Vec2::new(DASH_SPEED, 0.0),
+            state: PlayerState::Dash,
+            dash_dir: Vec2::new(1.0, 0.0),
+            state_timer: DASH_TIME,
+            ..PlayerSnapshot::default()
+        };
+        let p = simulate(p, &[InputState::default()], &map, 1).unwrap();
+        assert_eq!(p.pos, Vec2::new(37.0, 80.0));
+        assert_eq!(p.speed, Vec2::new(DASH_SPEED, 0.0));
+    }
+    #[test]
+    fn dash_attack_survives_dash_end_and_breaks_a_late_feather_shield() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            entities: vec![crate::Entity {
+                kind: EntityKind::FlyFeather,
+                bounds: Rect::new(110.0, 110.0, 20.0, 20.0),
+                direction: Vec2::default(),
+                shielded: true,
+                single_use: false,
+                nodes: vec![],
+                name: "infiniteStar".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(55.0, 120.0),
+            dashes: 1,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = vec![
+            InputState {
+                move_x: 1,
+                ..InputState::default()
+            };
+            32
+        ];
+        inputs[0].dash_pressed = true;
+        let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
+        let dash_end = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(2)
+            .find(|(_, state)| state.state == PlayerState::Normal)
+            .map(|(frame, _)| frame)
+            .unwrap();
+        let shield_break = trace
+            .states
+            .iter()
+            .enumerate()
+            .find(|(_, state)| state.state == PlayerState::StarFly)
+            .map(|(frame, _)| frame)
+            .unwrap();
+        assert!(shield_break > dash_end);
+        assert!(trace.states[dash_end].dash_attack_timer > 0.0);
+    }
+    #[test]
+    fn directional_spikes_only_kill_motion_into_their_points() {
+        let map = Map {
+            entities: vec![crate::Entity {
+                kind: EntityKind::Spikes,
+                bounds: Rect::new(40.0, 80.0, 3.0, 16.0),
+                direction: Vec2::new(-1.0, 0.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "spikesLeft".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let away = PlayerSnapshot {
+            pos: Vec2::new(44.0, 92.0),
+            speed: Vec2::new(-60.0, 0.0),
+            ..PlayerSnapshot::default()
+        };
+        let into = PlayerSnapshot {
+            pos: Vec2::new(44.0, 92.0),
+            speed: Vec2::new(60.0, 0.0),
+            ..PlayerSnapshot::default()
+        };
+        assert!(
+            !simulate(away, &[InputState::default()], &map, 1)
+                .unwrap()
+                .dead
+        );
+        assert!(
+            simulate(into, &[InputState::default()], &map, 1)
+                .unwrap()
+                .dead
+        );
+    }
+    #[test]
+    fn upward_motion_flush_with_directional_spikes_applies_gravity_on_frame_one() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 960.0, 512.0),
+            solids: vec![Rect::new(0.0, 496.0, 960.0, 24.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::Spikes,
+                bounds: Rect::new(328.0, 493.0, 96.0, 3.0),
+                direction: Vec2::new(0.0, -1.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "spikesUp".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(360.0, 496.0),
+            speed: Vec2::new(0.0, -60.0),
+            ..PlayerSnapshot::default()
+        };
+
+        let p = simulate(p, &[InputState::default()], &map, 1).unwrap();
+        assert_eq!(p.pos, Vec2::new(360.0, 495.0));
+        assert_eq!(p.speed.x, 0.0);
+        assert!((p.speed.y - -45.0).abs() < 0.001);
+        assert!(!p.on_ground);
+        assert!(!p.dead);
+    }
+    #[test]
+    fn fastbubble_manual_dash_releases_immediately_without_spending_dash() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(160.0, 394.0),
+            dashes: 1,
+            ..PlayerSnapshot::default()
+        };
+        let entered = simulate(p, &[InputState::default()], &booster_map(), 1).unwrap();
+        assert_eq!(entered.state, PlayerState::Boost);
+        let released = simulate(
+            entered,
+            &[InputState {
+                move_x: 1,
+                dash_pressed: true,
+                ..InputState::default()
+            }],
+            &booster_map(),
+            1,
+        )
+        .unwrap();
+        assert_eq!(released.state, PlayerState::Dash);
+        assert_eq!(released.dashes, 1);
+        assert!(released.state_timer > DASH_TIME);
+    }
+    #[test]
+    fn ultradash_landing_applies_the_source_one_point_two_multiplier() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 84.0),
+            dashes: 1,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = vec![
+            InputState {
+                move_x: 1,
+                move_y: 1,
+                ..InputState::default()
+            };
+            12
+        ];
+        inputs[0].dash_pressed = true;
+        let trace = simulate_trace(p, &inputs, &floor_map(), inputs.len() as u32).unwrap();
+        let landed = trace
+            .states
+            .iter()
+            .find(|state| state.on_ground && state.ducking)
+            .unwrap();
+        assert!((landed.speed.x - DASH_SPEED * std::f32::consts::FRAC_1_SQRT_2 * 1.2).abs() < 0.01);
+        assert_eq!(landed.dash_dir, Vec2::new(1.0, 0.0));
+    }
+    #[test]
+    fn grounded_ultra_preserves_faster_entry_speed_before_multiplier() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 100.0),
+            speed: Vec2::new(300.0, 0.0),
+            dashes: 1,
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = [InputState {
+            move_x: 1,
+            move_y: 1,
+            ..InputState::default()
+        }; 5];
+        inputs[0].dash_pressed = true;
+        let p = simulate(p, &inputs, &floor_map(), inputs.len() as u32).unwrap();
+        assert_eq!(p.state, PlayerState::Dash);
+        assert_eq!(p.speed, Vec2::new(360.0, 0.0));
+        assert!(p.ducking);
+    }
+    #[test]
+    fn delayed_ultra_lands_after_dash_state_and_still_multiplies_speed() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 24.0),
+            dashes: 1,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = vec![
+            InputState {
+                move_x: 1,
+                move_y: 1,
+                ..InputState::default()
+            };
+            32
+        ];
+        inputs[0].dash_pressed = true;
+        let trace = simulate_trace(p, &inputs, &floor_map(), inputs.len() as u32).unwrap();
+        let dash_end = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(2)
+            .find(|(_, state)| state.state == PlayerState::Normal)
+            .map(|(frame, _)| frame)
+            .unwrap();
+        let landing = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(dash_end + 1)
+            .find(|(_, state)| state.on_ground)
+            .map(|(frame, state)| (frame, state))
+            .unwrap();
+        assert!(landing.0 > dash_end);
+        let pre_landing = &trace.states[landing.0 - 1];
+        let expected = approach(pre_landing.speed.x, MAX_RUN, RUN_REDUCE * AIR_MULT * DT) * 1.2;
+        assert!((landing.1.speed.x - expected).abs() < 0.01);
+        assert!(landing.1.speed.x > pre_landing.speed.x);
+        assert_eq!(landing.1.dash_dir, Vec2::new(1.0, 0.0));
+    }
+    #[test]
+    fn chained_ultras_compound_two_landing_multipliers() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 65.0),
+            dashes: 1,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = vec![
+            InputState {
+                move_x: 1,
+                move_y: 1,
+                ..InputState::default()
+            };
+            36
+        ];
+        inputs[0].dash_pressed = true;
+        inputs[16].dash_pressed = true;
+        let trace = simulate_trace(p, &inputs, &floor_map(), inputs.len() as u32).unwrap();
+        let landings: Vec<_> = trace
+            .states
+            .windows(2)
+            .enumerate()
+            .filter(|(_, pair)| {
+                pair[1].on_ground && pair[1].ducking && pair[1].speed.x > pair[0].speed.x
+            })
+            .map(|(frame, pair)| (frame + 1, &pair[1]))
+            .collect();
+        assert_eq!(landings.len(), 2);
+        assert_eq!(landings[0].0, 17);
+        assert_eq!(landings[1].0, 22);
+        assert!(landings[1].1.speed.x > landings[0].1.speed.x);
+        assert!(landings[1].1.speed.x > 230.0);
+    }
+    #[test]
+    fn demodash_passes_a_six_pixel_gap_that_blocks_a_normal_dash() {
+        let map = Map {
+            solids: vec![
+                Rect::new(0.0, 100.0, 160.0, 80.0),
+                Rect::new(40.0, 0.0, 80.0, 94.0),
+            ],
+            ..Map::default()
+        };
+        let start = PlayerSnapshot {
+            pos: Vec2::new(24.0, 100.0),
+            dashes: 1,
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let mut demo_inputs = vec![
+            InputState {
+                move_x: 1,
+                ..InputState::default()
+            };
+            20
+        ];
+        demo_inputs[0].crouch_dash_pressed = true;
+        let mut normal_inputs = demo_inputs.clone();
+        normal_inputs[0].crouch_dash_pressed = false;
+        normal_inputs[0].dash_pressed = true;
+        let demo = simulate(start.clone(), &demo_inputs, &map, 20).unwrap();
+        let normal = simulate(start, &normal_inputs, &map, 20).unwrap();
+        assert!(demo.pos.x > 70.0);
+        assert_eq!(normal.pos.x, 36.0);
+        assert!(demo.demo_dashed);
+    }
+
+    #[test]
+    fn fastfall_limit_stays_normal_until_downward_speed_reaches_160() {
+        let player = PlayerSnapshot {
+            pos: Vec2::new(32.0, 32.0),
+            speed: Vec2::new(0.0, 150.0),
+            max_fall: MAX_FALL,
+            ..PlayerSnapshot::default()
+        };
+        let player = simulate(
+            player,
+            &[InputState {
+                move_y: 1,
+                ..InputState::default()
+            }],
+            &Map::default(),
+            1,
+        )
+        .unwrap();
+        assert_eq!(player.max_fall, MAX_FALL);
+        assert_eq!(player.speed.y, MAX_FALL);
     }
 
     #[test]
@@ -2544,6 +5115,310 @@ mod tests {
     }
 
     #[test]
+    fn neutral_wall_jumps_return_for_a_second_stamina_free_jump() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 300.0),
+            solids: vec![Rect::new(40.0, 0.0, 8.0, 300.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(34.0, 240.0),
+            speed: Vec2::new(0.0, 30.0),
+            facing: true,
+            stamina: 80.0,
+            ..PlayerSnapshot::default()
+        };
+        let first_cycle = std::array::from_fn::<_, 60, _>(|frame| InputState {
+            move_x: if frame >= 1 { 1 } else { 0 },
+            jump_pressed: frame == 0,
+            jump_held: frame < 10,
+            ..InputState::default()
+        });
+        let first_trace = simulate_trace(player.clone(), &first_cycle, &map, 60).unwrap();
+        let second_jump_frame = (10..60)
+            .find(|&frame| {
+                first_trace.states[frame].speed.x >= 0.0
+                    && wall_jump_check(&first_trace.states[frame], &map, 1)
+            })
+            .expect("neutral air control returns within wall-jump range");
+        assert_eq!(second_jump_frame, 26);
+        let inputs = std::array::from_fn::<_, 60, _>(|frame| InputState {
+            move_x: if frame == 0 || frame == second_jump_frame {
+                0
+            } else {
+                1
+            },
+            jump_pressed: frame == 0 || frame == second_jump_frame,
+            jump_held: frame < 10 || (second_jump_frame..second_jump_frame + 10).contains(&frame),
+            ..InputState::default()
+        });
+        let trace = simulate_trace(player, &inputs, &map, 60).unwrap();
+        for jump_state in [1, second_jump_frame + 1] {
+            assert_eq!(trace.states[jump_state].speed.x, -WALL_JUMP_H);
+            assert_eq!(trace.states[jump_state].speed.y, JUMP_SPEED);
+            assert_eq!(trace.states[jump_state].state, PlayerState::Normal);
+            assert!(trace.states[jump_state].facing);
+            assert_eq!(trace.states[jump_state].dashes, 1);
+            assert_eq!(trace.states[jump_state].stamina, 80.0);
+            assert!(!trace.states[jump_state].on_ground);
+            assert!(!trace.states[jump_state].ducking);
+            assert!(!trace.states[jump_state].dead);
+            assert_eq!(trace.states[jump_state].force_move_x_timer, 0.0);
+        }
+        assert!(trace.states[second_jump_frame + 1].pos.y < trace.states[1].pos.y);
+    }
+
+    #[test]
+    fn cornerkick_uses_the_three_pixel_probe_on_the_last_corner_pixel() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            solids: vec![Rect::new(40.0, 0.0, 8.0, 40.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(34.0, 50.0),
+            speed: Vec2::new(0.0, -30.0),
+            facing: true,
+            stamina: 80.0,
+            ..PlayerSnapshot::default()
+        };
+        assert!(!touching_wall(&player, &map, 1));
+        assert!(!climb_check(&player, &map, 1));
+        assert!(wall_jump_check(&player, &map, 1));
+
+        let directional = simulate(
+            player.clone(),
+            &[InputState {
+                move_x: 1,
+                jump_pressed: true,
+                jump_held: true,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert_eq!(directional.speed, Vec2::new(-WALL_JUMP_H, JUMP_SPEED));
+        assert_eq!(directional.force_move_x, -1);
+        assert_eq!(directional.force_move_x_timer, 0.16);
+        assert_eq!(directional.stamina, 80.0);
+
+        let neutral = simulate(
+            player.clone(),
+            &[InputState {
+                jump_pressed: true,
+                jump_held: true,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert_eq!(neutral.speed, Vec2::new(-WALL_JUMP_H, JUMP_SPEED));
+        assert_eq!(neutral.force_move_x_timer, 0.0);
+
+        let too_low = PlayerSnapshot {
+            pos: Vec2::new(34.0, 51.0),
+            ..player
+        };
+        assert!(!wall_jump_check(&too_low, &map, 1));
+        let too_low = simulate(
+            too_low,
+            &[InputState {
+                jump_pressed: true,
+                jump_held: true,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert_ne!(too_low.speed.y, JUMP_SPEED);
+        assert!(too_low.jump_buffer_timer > 0.0);
+    }
+
+    #[test]
+    fn ceiling_pop_climb_jumps_before_the_lost_wall_check() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            solids: vec![Rect::new(40.0, 0.0, 40.0, 40.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(36.0, 38.0),
+            speed: Vec2::new(0.0, 30.0),
+            facing: true,
+            stamina: 80.0,
+            max_fall: FAST_MAX_FALL,
+            ..PlayerSnapshot::default()
+        };
+        let descend = [InputState {
+            move_y: 1,
+            grab_held: true,
+            ..InputState::default()
+        }; 30];
+        let descend_trace = simulate_trace(player.clone(), &descend, &map, 30).unwrap();
+        let pop_frame = (1..descend_trace.states.len())
+            .find(|&frame| {
+                descend_trace.states[frame].state == PlayerState::Climb
+                    && !touching_wall(&descend_trace.states[frame], &map, 1)
+            })
+            .expect("downward climb reaches the one-frame lost-wall window");
+        assert_eq!(pop_frame, 18);
+        assert_eq!(
+            descend_trace.states[pop_frame + 1].state,
+            PlayerState::Normal
+        );
+
+        let inputs = std::array::from_fn::<_, 30, _>(|frame| InputState {
+            move_x: if frame == pop_frame { 1 } else { 0 },
+            move_y: 1,
+            grab_held: true,
+            jump_pressed: frame == pop_frame,
+            jump_held: frame == pop_frame,
+            ..InputState::default()
+        });
+        let trace = simulate_trace(player, &inputs, &map, 30).unwrap();
+        let popped = &trace.states[pop_frame + 1];
+        assert_eq!(popped.state, PlayerState::Normal);
+        assert_eq!(popped.max_fall, MAX_FALL);
+        assert_eq!(popped.stamina, 52.5);
+        assert!(popped.pos.x > descend_trace.states[pop_frame + 1].pos.x);
+        assert_eq!(popped.speed.x, JUMP_H_BOOST);
+        assert_eq!(popped.speed.y, 0.0);
+        assert!(!popped.on_ground);
+        assert!(!popped.ducking);
+        assert!(!popped.dead);
+    }
+
+    #[test]
+    fn wallboost_neutral_returns_to_the_wall_for_a_second_stamina_free_cycle() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 300.0),
+            solids: vec![Rect::new(40.0, 0.0, 8.0, 300.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(36.0, 240.0),
+            state: PlayerState::Climb,
+            facing: true,
+            stamina: 80.0,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = std::array::from_fn::<_, 60, _>(|frame| InputState {
+            move_x: match frame {
+                1 | 28 => -1,
+                2..=26 | 29.. => 1,
+                _ => 0,
+            },
+            jump_pressed: frame == 0 || frame == 27,
+            jump_held: frame < 10 || (27..37).contains(&frame),
+            grab_held: frame == 0 || frame >= 20,
+            ..InputState::default()
+        });
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+        assert_eq!(trace.states[1].stamina, 52.5);
+        assert_eq!(trace.states[3].stamina, 80.0);
+        assert_eq!(trace.states[27].state, PlayerState::Climb);
+        assert_eq!(trace.states[27].stamina, 80.0);
+        assert_eq!(trace.states[28].state, PlayerState::Normal);
+        assert_eq!(trace.states[28].stamina, 52.5);
+        assert_eq!(trace.states[30].wall_boost_timer, 0.0);
+        assert_eq!(trace.states[30].stamina, 80.0);
+        assert!(trace.states[30].speed.x < -110.0);
+    }
+
+    #[test]
+    fn climb_begin_at_a_ledge_uses_slip_speed_during_the_no_move_window() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 300.0),
+            solids: vec![Rect::new(40.0, 100.0, 8.0, 200.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(36.0, 106.0),
+            speed: Vec2::new(0.0, 24.0),
+            state: PlayerState::Climb,
+            facing: true,
+            climb_no_move_timer: 0.1,
+            ..PlayerSnapshot::default()
+        };
+        let input = InputState {
+            grab_held: true,
+            ..InputState::default()
+        };
+        let player = simulate(player, &[input], &map, 1).unwrap();
+        assert_eq!(player.state, PlayerState::Climb);
+        assert_eq!(player.speed.y, CLIMB_SLIP_SPEED);
+    }
+
+    #[test]
+    fn climbhop_waits_for_the_body_to_clear_the_ledge_before_horizontal_launch() {
+        let map = Map {
+            solids: vec![Rect::new(40.0, 80.0, 8.0, 100.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(36.0, 84.0),
+            speed: Vec2::new(0.0, -45.0),
+            state: PlayerState::Climb,
+            facing: true,
+            stamina: 100.0,
+            ..PlayerSnapshot::default()
+        };
+        let input = InputState {
+            move_x: 1,
+            move_y: -1,
+            grab_held: true,
+            ..InputState::default()
+        };
+        let trace = simulate_trace(player, &[input; 4], &map, 4).unwrap();
+        assert_eq!(trace.states[1].state, PlayerState::Normal);
+        assert_eq!(trace.states[1].speed.y, CLIMB_HOP_Y);
+        assert_eq!(trace.states[1].speed.x, 0.0);
+        assert_eq!(trace.states[1].hop_wait_x, 1);
+        assert_eq!(trace.states[1].force_move_x_timer, CLIMB_HOP_FORCE_TIME);
+        assert_eq!(trace.states[1].no_wind_timer, CLIMB_HOP_NO_WIND_TIME);
+        assert!((trace.states[3].speed.x - 89.166_64).abs() < 0.001);
+        assert_eq!(trace.states[3].hop_wait_x, 0);
+    }
+
+    #[test]
+    fn climb_jump_keeps_priority_over_climbhop_on_the_lost_wall_frame() {
+        let map = Map {
+            solids: vec![Rect::new(40.0, 0.0, 8.0, 40.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(36.0, 51.0),
+            speed: Vec2::new(0.0, -45.0),
+            state: PlayerState::Climb,
+            facing: true,
+            stamina: 80.0,
+            ..PlayerSnapshot::default()
+        };
+        assert!(!touching_wall(&player, &map, 1));
+        let player = simulate(
+            player,
+            &[InputState {
+                grab_held: true,
+                jump_pressed: true,
+                jump_held: true,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert_eq!(player.state, PlayerState::Normal);
+        assert_eq!(player.speed, Vec2::new(0.0, JUMP_SPEED));
+        assert_eq!(player.stamina, 52.5);
+        assert_eq!(player.wall_boost_timer, 0.2);
+        assert_eq!(player.hop_wait_x, 0);
+        assert_eq!(player.hop_wait_x_speed, 0.0);
+    }
+
+    #[test]
     fn stamina_cancel_regrabs_to_reset_the_no_move_cost_window() {
         let map = Map {
             solids: vec![Rect::new(40.0, 0.0, 8.0, 100.0)],
@@ -2578,6 +5453,48 @@ mod tests {
     }
 
     #[test]
+    fn climbing_down_does_not_pay_the_stationary_stamina_cost() {
+        let map = Map {
+            solids: vec![Rect::new(40.0, 0.0, 8.0, 100.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(36.0, 64.0),
+            state: PlayerState::Climb,
+            facing: true,
+            stamina: 80.0,
+            ..PlayerSnapshot::default()
+        };
+        let descending = simulate(
+            player.clone(),
+            &[InputState {
+                move_y: 1,
+                grab_held: true,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert_eq!(descending.state, PlayerState::Climb);
+        assert!(descending.speed.y > 0.0);
+        assert_eq!(descending.stamina, 80.0);
+
+        let stationary = simulate(
+            player,
+            &[InputState {
+                grab_held: true,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert_eq!(stationary.state, PlayerState::Climb);
+        assert!(stationary.stamina < 80.0);
+    }
+
+    #[test]
     fn cornerboost_restores_retained_speed_after_clearing_wall_top() {
         let map = Map {
             solids: vec![Rect::new(40.0, 40.0, 8.0, 60.0)],
@@ -2605,6 +5522,384 @@ mod tests {
         assert_eq!(trace.states[4].wall_speed_retention_timer, 0.0);
         assert!(trace.states[4].speed.x > 105.0);
     }
+
+    #[test]
+    fn cornerboost_climb_jump_stores_jump_boost_before_clearing_wall_top() {
+        let map = Map {
+            solids: vec![Rect::new(40.0, 40.0, 8.0, 60.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(35.0, 46.0),
+            speed: Vec2::new(90.0, -30.0),
+            facing: true,
+            stamina: 110.0,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(
+            player,
+            &[
+                InputState {
+                    move_x: 1,
+                    jump_pressed: true,
+                    jump_held: true,
+                    grab_held: true,
+                    ..InputState::default()
+                },
+                InputState {
+                    move_x: 1,
+                    jump_held: true,
+                    ..InputState::default()
+                },
+                InputState {
+                    move_x: 1,
+                    jump_held: true,
+                    ..InputState::default()
+                },
+                InputState {
+                    move_x: 1,
+                    jump_held: true,
+                    ..InputState::default()
+                },
+                InputState {
+                    move_x: 1,
+                    jump_held: true,
+                    ..InputState::default()
+                },
+            ],
+            &map,
+            5,
+        )
+        .unwrap();
+        assert_eq!(trace.states[1].state, PlayerState::Normal);
+        assert_eq!(trace.states[1].speed.x, 0.0);
+        assert!((trace.states[1].wall_speed_retained - 130.0).abs() < 0.001);
+        assert_eq!(trace.states[1].stamina, 82.5);
+        assert_eq!(trace.states[5].wall_speed_retention_timer, 0.0);
+        assert!((trace.states[5].speed.x - 125.666_64).abs() < 0.001);
+    }
+
+    #[test]
+    fn downward_cornerboost_uses_wall_jump_probe_without_entering_climb() {
+        let map = Map {
+            solids: vec![Rect::new(40.0, 40.0, 8.0, 60.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(34.0, 46.0),
+            speed: Vec2::new(160.0, 30.0),
+            facing: true,
+            stamina: 110.0,
+            ..PlayerSnapshot::default()
+        };
+        assert!(!climb_check(&player, &map, 1));
+        assert!(wall_jump_check(&player, &map, 1));
+        let trace = simulate_trace(
+            player,
+            &[
+                InputState {
+                    move_x: 1,
+                    jump_pressed: true,
+                    jump_held: true,
+                    grab_held: true,
+                    ..InputState::default()
+                },
+                InputState {
+                    move_x: 1,
+                    jump_held: true,
+                    ..InputState::default()
+                },
+                InputState {
+                    move_x: 1,
+                    jump_held: true,
+                    ..InputState::default()
+                },
+                InputState {
+                    move_x: 1,
+                    jump_held: true,
+                    ..InputState::default()
+                },
+                InputState {
+                    move_x: 1,
+                    jump_held: true,
+                    ..InputState::default()
+                },
+            ],
+            &map,
+            5,
+        )
+        .unwrap();
+        assert_eq!(trace.states[1].state, PlayerState::Normal);
+        assert_eq!(trace.states[1].speed.x, 0.0);
+        assert!((trace.states[1].wall_speed_retained - 195.666_66).abs() < 0.001);
+        assert_eq!(trace.states[1].stamina, 82.5);
+        assert!(trace.states[5].speed.x > 190.0);
+    }
+
+    #[test]
+    fn five_jump_chains_neutral_and_lip_climb_jumps_across_five_tiles() {
+        let map = Map {
+            solids: vec![
+                Rect::new(0.0, 40.0, 40.0, 80.0),
+                Rect::new(80.0, 40.0, 40.0, 8.0),
+            ],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(44.0, 52.0),
+            state: PlayerState::Climb,
+            facing: false,
+            stamina: 110.0,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = (0..48)
+            .map(|frame| InputState {
+                move_x: if frame >= 6 { 1 } else { 0 },
+                jump_pressed: frame == 0 || frame == 5,
+                jump_held: frame <= 17,
+                grab_held: frame == 0 || frame == 5,
+                ..InputState::default()
+            })
+            .collect::<Vec<_>>();
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+        assert_eq!(trace.states[1].speed.y, JUMP_SPEED);
+        assert_eq!(trace.states[6].stamina, 55.0);
+        assert!(trace.states.iter().any(|state| state.pos.x >= 76.0));
+        assert!(
+            trace
+                .states
+                .iter()
+                .any(|state| state.on_ground && state.pos.x >= 76.0)
+        );
+    }
+
+    #[test]
+    fn six_jump_uses_a_full_speed_cornerboost_to_reach_six_tile_landing() {
+        let map = Map {
+            solids: vec![
+                Rect::new(40.0, 40.0, 8.0, 80.0),
+                Rect::new(88.0, 48.0, 40.0, 8.0),
+            ],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(35.0, 46.0),
+            speed: Vec2::new(90.0, -30.0),
+            facing: true,
+            stamina: 110.0,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = (0..60)
+            .map(|frame| InputState {
+                move_x: 1,
+                jump_pressed: frame == 0,
+                jump_held: frame < 13,
+                grab_held: frame == 0,
+                ..InputState::default()
+            })
+            .collect::<Vec<_>>();
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+        assert!((trace.states[1].wall_speed_retained - 130.0).abs() < 0.001);
+        assert!(trace.states.iter().any(|state| state.pos.x >= 84.0));
+        assert!(
+            trace
+                .states
+                .iter()
+                .any(|state| state.on_ground && state.pos.x >= 84.0)
+        );
+    }
+
+    #[test]
+    fn double_cornerboost_uses_two_consecutive_climb_jumps_from_a_grounded_setup() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            solids: vec![
+                Rect::new(80.0, 152.0, 128.0, 32.0),
+                Rect::new(144.0, 80.0, 8.0, 72.0),
+            ],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(120.0, 152.0),
+            state: PlayerState::Normal,
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = (0..90)
+            .map(|frame| InputState {
+                move_x: if frame <= 20 || frame >= 78 {
+                    1
+                } else if (75..=77).contains(&frame) {
+                    -1
+                } else {
+                    0
+                },
+                move_y: if (21..=74).contains(&frame) { -1 } else { 0 },
+                jump_pressed: frame == 0 || frame == 79 || frame == 80,
+                jump_held: frame < 12 || frame == 79 || frame == 80,
+                grab_held: frame <= 74 || frame == 79 || frame == 80,
+                ..InputState::default()
+            })
+            .collect::<Vec<_>>();
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+
+        assert_eq!(trace.states[20].state, PlayerState::Climb);
+        assert_eq!(trace.states[79].pos, Vec2::new(139.0, 87.0));
+        assert!((trace.states[79].stamina - 72.1212).abs() < 0.001);
+        assert!((trace.states[79].stamina - trace.states[80].stamina - 27.5).abs() < 0.001);
+        assert!((trace.states[80].stamina - trace.states[81].stamina - 27.5).abs() < 0.001);
+        assert_eq!(trace.states[80].speed.x, JUMP_H_BOOST);
+        assert!((trace.states[81].wall_speed_retained - 90.83336).abs() < 0.001);
+        assert_eq!(trace.states[81].wall_speed_retention_timer, 0.06);
+        assert_eq!(trace.states[85].wall_speed_retention_timer, 0.0);
+        assert!((trace.states[85].speed.x - 90.0).abs() < 0.001);
+        assert!(trace.states[85].pos.x > 140.0);
+    }
+
+    #[test]
+    fn seven_jump_lands_on_a_target_seven_tiles_from_the_double_cornerboost_wall() {
+        let wall_x = 80.0;
+        let target_x = wall_x + 7.0 * 8.0;
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            solids: vec![
+                Rect::new(0.0, 120.0, wall_x, 64.0),
+                Rect::new(wall_x, 112.0, 8.0, 8.0),
+                Rect::new(target_x, 120.0, 80.0, 8.0),
+            ],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(8.0, 120.0),
+            state: PlayerState::Normal,
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = (0..120)
+            .map(|frame| InputState {
+                move_x: 1,
+                jump_pressed: frame == 11 || frame == 44 || frame == 45,
+                jump_held: (11..23).contains(&frame) || (44..58).contains(&frame),
+                grab_held: frame == 44 || frame == 45,
+                ..InputState::default()
+            })
+            .collect::<Vec<_>>();
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+
+        assert_eq!(trace.states[44].pos, Vec2::new(74.0, 118.0));
+        assert_eq!(trace.states[44].speed.x, MAX_RUN);
+        assert_eq!(trace.states[45].stamina, 82.5);
+        assert_eq!(trace.states[46].stamina, 55.0);
+        assert!((trace.states[46].wall_speed_retained - 165.66666).abs() < 0.001);
+        assert!(trace.states[49].speed.x > 160.0);
+        assert!(
+            trace
+                .states
+                .iter()
+                .any(|state| { state.on_ground && state.pos.x >= target_x - 4.0 })
+        );
+        assert_eq!(trace.states[80].pos, Vec2::new(134.0, 120.0));
+        assert!(trace.states[80].on_ground);
+    }
+
+    #[test]
+    fn eight_jump_lands_on_a_target_eight_tiles_from_the_cornerboost_wall() {
+        let wall_x = 80.0;
+        let target_x = wall_x + 8.0 * 8.0;
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            solids: vec![
+                Rect::new(0.0, 120.0, wall_x, 64.0),
+                Rect::new(wall_x, 104.0, 8.0, 16.0),
+                Rect::new(target_x, 112.0, 80.0, 8.0),
+            ],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(58.0, 120.0),
+            state: PlayerState::Normal,
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = (0..120)
+            .map(|frame| InputState {
+                move_x: 1,
+                jump_pressed: frame == 5 || frame == 11 || frame == 12 || frame == 13,
+                jump_held: frame <= 26,
+                grab_held: frame == 11 || frame == 12 || frame == 13,
+                ..InputState::default()
+            })
+            .collect::<Vec<_>>();
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+
+        assert_eq!(trace.states[11].pos, Vec2::new(74.0, 109.0));
+        assert_eq!(trace.states[12].stamina, 82.5);
+        assert_eq!(trace.states[13].stamina, 55.0);
+        assert_eq!(trace.states[14].stamina, 27.5);
+        assert!((trace.states[14].wall_speed_retained - 179.6666).abs() < 0.001);
+        assert_eq!(trace.states[49].pos, Vec2::new(143.0, 112.0));
+        assert!(trace.states[49].on_ground);
+        assert_eq!(target_x - wall_x, 64.0);
+        assert!(trace.states[49].pos.x >= target_x - 4.0);
+    }
+
+    #[test]
+    fn nine_jump_lands_nine_tiles_away_only_with_the_favorable_timing() {
+        let wall_x = 80.0;
+        let target_x = wall_x + 9.0 * 8.0;
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            solids: vec![
+                Rect::new(0.0, 120.0, wall_x, 64.0),
+                Rect::new(wall_x, 112.0, 8.0, 8.0),
+                Rect::new(target_x, 120.0, 80.0, 8.0),
+            ],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(67.0, 120.0),
+            state: PlayerState::Normal,
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = (0..120)
+            .map(|frame| InputState {
+                move_x: 1,
+                jump_pressed: frame == 4 || frame == 6 || frame == 7 || frame == 8,
+                jump_held: frame <= 21,
+                grab_held: frame == 6 || frame == 7 || frame == 8,
+                ..InputState::default()
+            })
+            .collect::<Vec<_>>();
+        let trace = simulate_trace(player.clone(), &inputs, &map, inputs.len() as u32).unwrap();
+
+        assert_eq!(trace.states[7].stamina, 82.5);
+        assert_eq!(trace.states[8].stamina, 55.0);
+        assert_eq!(trace.states[9].stamina, 27.5);
+        assert!((trace.states[8].wall_speed_retained - 190.33347).abs() < 0.001);
+        assert_eq!(trace.states[45].pos, Vec2::new(149.0, 120.0));
+        assert!(trace.states[45].on_ground);
+        assert_eq!(target_x - wall_x, 72.0);
+        assert!(trace.states[45].pos.x >= target_x - 4.0);
+
+        let late_inputs = (0..120)
+            .map(|frame| InputState {
+                move_x: 1,
+                jump_pressed: frame == 5 || frame == 7 || frame == 8 || frame == 9,
+                jump_held: frame <= 22,
+                grab_held: frame == 7 || frame == 8 || frame == 9,
+                ..InputState::default()
+            })
+            .collect::<Vec<_>>();
+        let late = simulate_trace(player, &late_inputs, &map, late_inputs.len() as u32).unwrap();
+        assert!(
+            !late
+                .states
+                .iter()
+                .any(|state| state.on_ground && state.pos.x >= target_x - 4.0)
+        );
+    }
+
     #[test]
     fn dash_spends_dash_and_is_diagonal_normalized() {
         let input = InputState {
@@ -2656,7 +5951,7 @@ mod tests {
     }
 
     #[test]
-    fn archie_centers_the_duck_hitbox_two_pixels_above_a_normal_boost() {
+    fn archie_preserves_the_source_two_and_a_half_pixel_center_offset() {
         let map = booster_map();
         let standing = PlayerSnapshot {
             pos: Vec2::new(160.0, 400.0),
@@ -2677,7 +5972,77 @@ mod tests {
             .zip(&ducking.states)
             .map(|(normal, archie)| normal.pos.y - archie.pos.y)
             .fold(0.0_f32, f32::max);
-        assert_eq!(max_height_gain, 2.0);
+        // The normal collider center is -5.5 while the duck collider center is
+        // -3.0. Their exact 2.5-pixel separation appears as a three-pixel peak
+        // after Monocle's ties-to-even integer movement.
+        assert_eq!(max_height_gain, 3.0);
+    }
+
+    #[test]
+    fn automatic_booster_dash_unducks_an_airborne_archie_in_open_space() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(160.0, 400.0),
+            ducking: true,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(p, &[InputState::default(); 36], &booster_map(), 36).unwrap();
+        let auto_dash = trace
+            .states
+            .iter()
+            .find(|state| state.state == PlayerState::Dash)
+            .expect("booster coroutine should enter Dash");
+        assert!(!auto_dash.on_ground);
+        assert!(!auto_dash.ducking);
+    }
+
+    #[test]
+    fn bubble_super_uses_coyote_grace_and_keeps_the_refilled_dash() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(220.0, 400.0),
+            speed: Vec2::new(90.0, 0.0),
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = [InputState::default(); 16];
+        for (frame, input) in inputs.iter_mut().enumerate() {
+            input.move_x = 1;
+            input.dash_pressed = frame == 5;
+            input.jump_pressed = frame == 9;
+            input.jump_held = (9..15).contains(&frame);
+        }
+        let trace = simulate_trace(p, &inputs, &crate::mechanics_playground(), 16).unwrap();
+        let jumped = trace
+            .states
+            .iter()
+            .find(|state| state.state == PlayerState::Normal && state.speed.y < 0.0)
+            .expect("bubble super should jump during coyote grace");
+        assert_eq!(jumped.speed.x, SUPER_JUMP_H);
+        assert_eq!(jumped.speed.y, JUMP_SPEED);
+        assert_eq!(jumped.dashes, 1);
+    }
+
+    #[test]
+    fn bubble_demohyper_uses_coyote_grace_and_keeps_the_refilled_dash() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(220.0, 400.0),
+            speed: Vec2::new(90.0, 0.0),
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = [InputState::default(); 16];
+        for (frame, input) in inputs.iter_mut().enumerate() {
+            input.move_x = 1;
+            input.crouch_dash_pressed = frame == 5;
+            input.jump_pressed = frame == 9;
+            input.jump_held = (9..15).contains(&frame);
+        }
+        let trace = simulate_trace(p, &inputs, &crate::mechanics_playground(), 16).unwrap();
+        let jumped = trace
+            .states
+            .iter()
+            .find(|state| state.state == PlayerState::Normal && state.speed.y < 0.0)
+            .expect("bubble demohyper should jump during coyote grace");
+        assert_eq!(jumped.speed.x, SUPER_JUMP_H * 1.25);
+        assert_eq!(jumped.speed.y, JUMP_SPEED * 0.5);
+        assert_eq!(jumped.dashes, 1);
     }
 
     #[test]
@@ -2711,6 +6076,93 @@ mod tests {
         assert_eq!(p.dashes, 0);
         assert_eq!(p.dash_buffer_timer, 0.0);
     }
+
+    #[test]
+    fn start_dash_consumes_both_buffers_even_when_a_booster_wins_the_final_state() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(160.0, 400.0),
+            dashes: 1,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(
+            p,
+            &[
+                InputState {
+                    move_x: 1,
+                    dash_pressed: true,
+                    ..InputState::default()
+                },
+                InputState::default(),
+            ],
+            &booster_map(),
+            2,
+        )
+        .unwrap();
+        assert_eq!(trace.states[1].state, PlayerState::Boost);
+        assert_eq!(trace.states[1].dash_buffer_timer, 0.0);
+        assert_eq!(trace.states[1].crouch_dash_buffer_timer, 0.0);
+        assert_eq!(trace.states[2].state, PlayerState::Boost);
+    }
+
+    #[test]
+    fn boost_approach_uses_the_normal_collider_half_pixel_center() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
+            entities: vec![crate::Entity {
+                kind: EntityKind::Booster,
+                bounds: Rect::new(712.0, 312.0, 16.0, 16.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "booster".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(720.0, 330.0),
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [
+            InputState {
+                move_x: 1,
+                dash_pressed: true,
+                ..InputState::default()
+            },
+            InputState::default(),
+            InputState::default(),
+            InputState::default(),
+            InputState {
+                move_x: 1,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: 1,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: 1,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: 1,
+                ..InputState::default()
+            },
+        ];
+        let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
+
+        assert_eq!(trace.states[5].pos, Vec2::new(721.0, 329.0));
+        assert!((trace.states[5].movement_remainder.x - 0.024_291_992).abs() < 0.000_001);
+        assert!((trace.states[5].movement_remainder.y - 0.146_423_34).abs() < 0.000_001);
+        assert_eq!(trace.states[6].pos, Vec2::new(722.0, 328.0));
+        assert!((trace.states[6].movement_remainder.x - 0.048_583_984).abs() < 0.000_001);
+        assert!((trace.states[6].movement_remainder.y - 0.292_846_68).abs() < 0.000_001);
+        assert_eq!(trace.states[7].pos, Vec2::new(723.0, 328.0));
+        assert_eq!(trace.states[7].movement_remainder, Vec2::new(0.0, -0.5));
+        assert_eq!(trace.states[8].pos, Vec2::new(723.0, 328.0));
+        assert_eq!(trace.states[8].movement_remainder, Vec2::new(0.0, -0.5));
+    }
+
     #[test]
     fn dream_dash_enters_a_dream_block() {
         let map = Map {
@@ -2762,6 +6214,58 @@ mod tests {
         assert_eq!(p.state, PlayerState::DreamDash);
         assert_eq!(p.speed, Vec2::new(240.0, 0.0));
     }
+
+    #[test]
+    fn dream_dash_check_uses_lingering_attack_and_then_moves_naively() {
+        let map = Map {
+            bounds: Rect::new(0.0, -100.0, 960.0, 280.0),
+            entities: vec![crate::Entity {
+                kind: EntityKind::DreamBlock,
+                bounds: Rect::new(880.0, -32.0, 32.0, 40.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "dreamBlock".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let diagonal = std::f32::consts::FRAC_1_SQRT_2;
+        let p = PlayerSnapshot {
+            pos: Vec2::new(876.0, -14.0),
+            speed: Vec2::new(231.333_31, 160.0),
+            state: PlayerState::Normal,
+            facing: true,
+            dashes: 0,
+            stamina: 110.0,
+            on_ground: false,
+            dash_dir: Vec2::new(diagonal, diagonal),
+            dash_attack_timer: 0.1,
+            can_dream_dash: true,
+            movement_remainder: Vec2::new(-0.216, 0.446),
+            ..PlayerSnapshot::default()
+        };
+        let input = InputState {
+            move_x: 1,
+            ..InputState::default()
+        };
+        let trace = simulate_trace(p, &[input; 2], &map, 2).unwrap();
+
+        let entered = &trace.states[1];
+        assert_eq!(entered.state, PlayerState::DreamDash);
+        assert_eq!(entered.pos, Vec2::new(876.0, -14.0));
+        assert!((entered.speed.x - 169.705_63).abs() < 0.000_1);
+        assert!((entered.speed.y - 169.705_63).abs() < 0.000_1);
+        assert_eq!(entered.dream_dash_can_end_timer, 0.1);
+        assert_eq!(entered.dash_attack_timer, 0.0);
+
+        let travelled = &trace.states[2];
+        assert_eq!(travelled.state, PlayerState::DreamDash);
+        assert_eq!(travelled.pos, Vec2::new(879.0, -11.0));
+        assert!((travelled.speed.x - 169.705_63).abs() < 0.000_1);
+        assert!((travelled.speed.y - 169.705_63).abs() < 0.000_1);
+    }
+
     #[test]
     fn dream_jump_runs_on_exit_and_restores_horizontal_exit_grace() {
         let p = PlayerSnapshot {
@@ -2786,8 +6290,69 @@ mod tests {
         .unwrap();
         assert_eq!(p.state, PlayerState::Normal);
         assert_eq!(p.speed, Vec2::new(280.0, JUMP_SPEED));
+        assert_eq!(p.pos, Vec2::new(81.0, 62.0));
         assert_eq!(p.jump_grace_timer, JUMP_GRACE);
         assert_eq!(p.var_jump_timer, VAR_JUMP_TIME);
+    }
+
+    #[test]
+    fn jump_buffer_survives_dream_exit_freeze_for_the_second_jump() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(825.0, -52.0),
+            speed: Vec2::new(280.0, JUMP_SPEED),
+            state: PlayerState::Normal,
+            facing: true,
+            on_ground: false,
+            freeze_timer: 0.05,
+            jump_grace_timer: JUMP_GRACE,
+            var_jump_timer: VAR_JUMP_TIME,
+            var_jump_speed: JUMP_SPEED,
+            movement_remainder: Vec2::new(-0.333_333, 0.25),
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [
+            InputState {
+                move_x: 1,
+                jump_pressed: true,
+                jump_held: true,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: 1,
+                jump_held: true,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: 1,
+                jump_held: true,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: 1,
+                jump_held: true,
+                ..InputState::default()
+            },
+        ];
+        let map = Map {
+            bounds: Rect::new(0.0, -100.0, 960.0, 280.0),
+            ..Map::default()
+        };
+        let trace = simulate_trace(p, &inputs, &map, 4).unwrap();
+
+        assert_eq!(trace.states[1].jump_buffer_timer, JUMP_BUFFER_TIME);
+        assert!((trace.states[2].jump_buffer_timer - (JUMP_BUFFER_TIME - DT)).abs() < 0.000_001);
+        assert!(
+            (trace.states[3].jump_buffer_timer - (JUMP_BUFFER_TIME - DT * 2.0)).abs() < 0.000_001
+        );
+        let second_jump = &trace.states[4];
+        assert_eq!(second_jump.speed.y, JUMP_SPEED);
+        assert!(
+            (second_jump.speed.x - 315.666_66).abs() < 0.000_1,
+            "second jump speed was {:?}",
+            second_jump.speed
+        );
+        assert_eq!(second_jump.jump_buffer_timer, 0.0);
+        assert_eq!(second_jump.jump_grace_timer, 0.0);
     }
 
     #[test]
@@ -2809,8 +6374,47 @@ mod tests {
         ];
         let p = simulate(p, &inputs, &dream_exit_map(), 2).unwrap();
         assert_eq!(p.state, PlayerState::Climb);
+        assert_eq!(p.pos, Vec2::new(76.0, 64.0));
         assert!(!p.facing);
         assert_eq!(p.jump_grace_timer, JUMP_GRACE);
+    }
+
+    #[test]
+    fn dream_grab_uses_v14_five_pixel_static_solid_correction() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            solids: vec![Rect::new(67.0, 40.0, 1.0, 40.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::DreamBlock,
+                bounds: Rect::new(40.0, 40.0, 32.0, 40.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "dreamBlock".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(76.0, 64.0),
+            state: PlayerState::DreamDash,
+            dash_dir: Vec2::new(1.0, 0.0),
+            ..PlayerSnapshot::default()
+        };
+        let p = simulate(
+            p,
+            &[InputState {
+                move_x: -1,
+                grab_held: true,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert_eq!(p.state, PlayerState::Climb);
+        assert_eq!(p.pos, Vec2::new(71.0, 64.0));
+        assert!(!p.facing);
     }
     #[test]
     fn entering_water_halves_downward_speed_and_enters_swim() {
@@ -2861,12 +6465,12 @@ mod tests {
     #[test]
     fn unsupported_state_is_explicit() {
         let p = PlayerSnapshot {
-            state: PlayerState::Pickup,
+            state: PlayerState::CassetteFly,
             ..PlayerSnapshot::default()
         };
         assert_eq!(
             simulate(p, &[InputState::default()], &Map::default(), 1),
-            Err(SimulationError::UnsupportedState(PlayerState::Pickup))
+            Err(SimulationError::UnsupportedState(PlayerState::CassetteFly))
         );
     }
 
@@ -2881,6 +6485,101 @@ mod tests {
             simulate(p, &[InputState::default()], &Map::default(), 1),
             Err(SimulationError::UnsupportedState(PlayerState::Attract))
         );
+    }
+    #[test]
+    fn upward_screen_transition_applies_source_launch_and_completion_refills() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            transition_rooms: vec![Rect::new(0.0, -184.0, 320.0, 184.0)],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(160.0, 4.0),
+            speed: Vec2::new(80.0, -160.0),
+            dashes: 0,
+            stamina: 20.0,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(p, &[InputState::default(); 42], &map, 42).unwrap();
+        assert_eq!(trace.states[1].transition_direction, Vec2::new(0.0, -1.0));
+        assert_eq!(trace.states[1].speed, Vec2::new(0.0, JUMP_SPEED));
+        assert_eq!(trace.states[1].dashes, 0);
+        let completed = trace
+            .states
+            .iter()
+            .position(|state| state.current_room_bounds == Some(map.transition_rooms[0]))
+            .unwrap();
+        assert_eq!(completed, 41);
+        assert_eq!(trace.states[completed].pos.y, -5.0);
+        assert_eq!(trace.states[completed].dashes, 1);
+        assert_eq!(trace.states[completed].stamina, 110.0);
+        assert_eq!(trace.states[completed].wall_slide_timer, WALL_SLIDE_TIME);
+        assert_eq!(trace.states[completed].jump_grace_timer, 0.0);
+    }
+
+    #[test]
+    fn climb_jump_buffer_uses_the_real_five_frame_transition_boundary() {
+        let upper = Rect::new(0.0, -184.0, 320.0, 184.0);
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            transition_rooms: vec![upper],
+            solids: vec![Rect::new(168.0, -16.0, 8.0, 16.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(164.0, 4.0),
+            speed: Vec2::new(80.0, -160.0),
+            stamina: 20.0,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = |press_frame| {
+            (0..43)
+                .map(|frame| InputState {
+                    move_x: 1,
+                    jump_pressed: frame == press_frame,
+                    jump_held: frame >= press_frame,
+                    grab_held: frame >= press_frame,
+                    ..InputState::default()
+                })
+                .collect::<Vec<_>>()
+        };
+        let on_time_inputs = inputs(37);
+        let on_time = simulate_trace(
+            player.clone(),
+            &on_time_inputs,
+            &map,
+            on_time_inputs.len() as u32,
+        )
+        .unwrap();
+        let early_inputs = inputs(36);
+        let early = simulate_trace(player, &early_inputs, &map, early_inputs.len() as u32).unwrap();
+
+        assert_eq!(on_time.states[41].current_room_bounds, Some(upper));
+        assert_eq!(on_time.states[42].stamina, 82.5);
+        assert_eq!(on_time.states[42].speed.x, 0.0);
+        assert!(on_time.states[42].wall_speed_retained > 0.0);
+        assert_eq!(on_time.states[42].jump_buffer_timer, 0.0);
+        assert_eq!(early.states[42].stamina, 110.0);
+        assert_eq!(early.states[42].speed.x, AIR_MULT * RUN_ACCEL * DT);
+    }
+
+    #[test]
+    fn downward_screen_transition_clamps_upward_speed_before_transfer() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            transition_rooms: vec![Rect::new(0.0, 184.0, 320.0, 184.0)],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(160.0, 185.0),
+            speed: Vec2::new(30.0, -40.0),
+            ..PlayerSnapshot::default()
+        };
+        let p = simulate(p, &[InputState::default()], &map, 1).unwrap();
+        assert_eq!(p.transition_direction, Vec2::new(0.0, 1.0));
+        assert_eq!(p.state, PlayerState::Normal);
+        assert_eq!(p.speed.y, 0.0);
+        assert_eq!(p.transition_target.y, 196.0);
     }
     #[test]
     fn wind_trigger_selects_a_persistent_next_frame_target() {
@@ -2930,6 +6629,74 @@ mod tests {
         assert!(!trace.states[28].star_fly_transforming);
         assert_eq!(trace.states[28].speed, Vec2::new(250.0, 0.0));
         assert_eq!(trace.states[28].pos, Vec2::new(124.0, 200.0));
+    }
+
+    #[test]
+    fn featherboost_uses_the_first_live_diagonal_for_the_250_start_speed() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(120.0, 200.0),
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = [InputState::default(); 28];
+        inputs[27].move_x = 1;
+        inputs[27].move_y = -1;
+        let trace = simulate_trace(p, &inputs, &feather_map(false), 28).unwrap();
+        let launched = &trace.states[28];
+        assert_eq!(launched.state, PlayerState::StarFly);
+        assert!(!launched.star_fly_transforming);
+        assert!((length(launched.speed) - STAR_FLY_START_SPEED).abs() < 0.001);
+        assert!((launched.speed.x - 176.776_69).abs() < 0.001);
+        assert!((launched.speed.y + 176.776_69).abs() < 0.001);
+    }
+
+    #[test]
+    fn feather_super_jumps_from_grounded_horizontal_starfly_speed() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(900.0, 496.0),
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = [InputState::default(); 50];
+        for (frame, input) in inputs.iter_mut().enumerate() {
+            input.move_x = 1;
+            input.jump_pressed = frame == 28;
+            input.jump_held = (28..40).contains(&frame);
+        }
+        let trace = simulate_trace(p, &inputs, &crate::mechanics_playground(), 50).unwrap();
+        let jumped = &trace.states[29];
+        assert_eq!(jumped.state, PlayerState::Normal);
+        assert!((jumped.speed.x - 273.333_34).abs() < 0.001);
+        assert_eq!(jumped.speed.y, JUMP_SPEED);
+        assert_eq!(jumped.var_jump_timer, VAR_JUMP_TIME);
+    }
+
+    #[test]
+    fn feather_clip_exits_below_the_jumpthrough_top() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(160.0, 40.0),
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [InputState {
+            move_y: 1,
+            ..InputState::default()
+        }; 180];
+        let trace = simulate_trace(p, &inputs, &crate::mechanics_playground(), 180).unwrap();
+        let (frame, exit) = trace
+            .states
+            .windows(2)
+            .enumerate()
+            .find(|states| {
+                states.1[0].state == PlayerState::StarFly
+                    && states.1[1].state == PlayerState::Normal
+            })
+            .expect("StarFly should expire into Normal");
+        assert!(
+            exit[1].pos.y >= 402.0,
+            "exit frame={} pos={:?} speed={:?}",
+            frame + 1,
+            exit[1].pos,
+            exit[1].speed
+        );
+        assert!(!exit[1].on_ground);
     }
 
     #[test]
@@ -3003,6 +6770,239 @@ mod tests {
         assert_eq!(p.speed, Vec2::new(-280.0, -150.0));
         assert_eq!(p.explode_launch_boost_timer, 0.01);
         assert_eq!(p.explode_launch_boost_speed, -336.0);
+    }
+
+    #[test]
+    fn spring_cancel_uses_the_buffered_dash_after_the_spring_refills_it() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(80.0, 92.0),
+            speed: Vec2::new(0.0, 100.0),
+            dashes: 0,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [
+            InputState {
+                dash_pressed: true,
+                ..InputState::default()
+            },
+            InputState::default(),
+            InputState::default(),
+            InputState::default(),
+        ];
+        let trace = simulate_trace(p, &inputs, &spring_map(Vec2::new(0.0, -1.0)), 4).unwrap();
+        assert_eq!(trace.states[2].state, PlayerState::Normal);
+        assert_eq!(trace.states[2].pos, Vec2::new(80.0, 96.0));
+        assert!((trace.states[2].speed.y - 130.0).abs() < 0.001);
+        assert_eq!(trace.states[2].dashes, 0);
+        assert_eq!(trace.states[3].state, PlayerState::Normal);
+        assert_eq!(trace.states[3].pos, Vec2::new(80.0, 94.0));
+        assert_eq!(trace.states[3].dashes, 1);
+        assert_eq!(trace.states[3].speed, Vec2::new(0.0, SUPER_BOUNCE_SPEED));
+        assert!(trace.states[3].dash_buffer_timer > 0.0);
+        assert_eq!(trace.states[4].state, PlayerState::Dash);
+        assert_eq!(trace.states[4].dashes, 0);
+        assert_eq!(trace.states[4].speed, Vec2::default());
+        assert_eq!(trace.states[4].dash_buffer_timer, 0.0);
+    }
+
+    #[test]
+    fn first_berry_collects_after_nine_consecutive_safe_ground_frames() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(80.0, 100.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(p, &[InputState::default(); 30], &berry_map(1), 30).unwrap();
+        assert_eq!(trace.states[1].carried_strawberries, 1);
+        let ready = trace
+            .states
+            .iter()
+            .position(|state| {
+                state.carried_strawberries > 0 && state.strawberry_follow_delay_timer <= 0.0
+            })
+            .unwrap();
+        let collected = trace
+            .states
+            .iter()
+            .position(|state| state.strawberry_collect_index == 1)
+            .unwrap();
+        assert_eq!(collected - ready, 9);
+        assert_eq!(trace.states[collected - 1].carried_strawberries, 1);
+        assert_eq!(trace.states[collected].carried_strawberries, 0);
+    }
+
+    #[test]
+    fn later_berry_in_the_train_waits_through_the_negative_collection_offset() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(80.0, 100.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(p, &[InputState::default(); 60], &berry_map(2), 60).unwrap();
+        let first = trace
+            .states
+            .iter()
+            .position(|state| state.strawberry_collect_index == 1)
+            .unwrap();
+        let second = trace
+            .states
+            .iter()
+            .position(|state| state.strawberry_collect_index == 2)
+            .unwrap();
+        assert_eq!(second - first, 17);
+        assert!((trace.states[first].strawberry_collect_timer - (-0.15 + DT)).abs() < 0.000_001);
+        assert_eq!(trace.states[second].carried_strawberries, 0);
+    }
+
+    #[test]
+    fn wall_spring_uses_source_side_bounce_speed_and_force_move() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(103.0, 80.0),
+            speed: Vec2::new(-30.0, 20.0),
+            dashes: 0,
+            stamina: 20.0,
+            ..PlayerSnapshot::default()
+        };
+        let p = simulate(
+            p,
+            &[InputState::default()],
+            &spring_map(Vec2::new(1.0, 0.0)),
+            1,
+        )
+        .unwrap();
+        assert_eq!(p.state, PlayerState::Normal);
+        assert_eq!(p.pos, Vec2::new(110.0, 80.0));
+        assert_eq!(p.speed, Vec2::new(SIDE_BOUNCE_SPEED, BOUNCE_SPEED));
+        assert_eq!(p.force_move_x, 1);
+        assert_eq!(p.force_move_x_timer, SIDE_BOUNCE_FORCE_MOVE_X_TIME);
+        assert_eq!(p.dashes, 1);
+        assert_eq!(p.stamina, 110.0);
+    }
+
+    #[test]
+    fn ice_ball_bounce_cancels_dash_and_preserves_horizontal_speed() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(96.0, 100.0),
+            speed: Vec2::new(240.0, 0.0),
+            state: PlayerState::Dash,
+            dashes: 0,
+            dash_attack_timer: DASH_ATTACK_TIME,
+            ..PlayerSnapshot::default()
+        };
+        let bounced = simulate(
+            p,
+            &[InputState {
+                jump_held: true,
+                ..InputState::default()
+            }],
+            &ice_ball_map(),
+            1,
+        )
+        .unwrap();
+        assert_eq!(bounced.state, PlayerState::Normal);
+        assert_eq!(bounced.pos, Vec2::new(100.0, 98.0));
+        assert_eq!(bounced.speed, Vec2::new(240.0, -140.0));
+        assert_eq!(bounced.dashes, 1);
+        assert_eq!(bounced.stamina, 110.0);
+        assert_eq!(bounced.dash_attack_timer, 0.0);
+        assert!(bounced.auto_jump);
+        assert_eq!(bounced.auto_jump_timer, 0.1);
+        assert_eq!(bounced.var_jump_timer, VAR_JUMP_TIME);
+
+        let held = simulate(
+            bounced.clone(),
+            &[InputState {
+                jump_held: true,
+                ..InputState::default()
+            }; 12],
+            &ice_ball_map(),
+            12,
+        )
+        .unwrap();
+        let released =
+            simulate(bounced, &[InputState::default(); 12], &ice_ball_map(), 12).unwrap();
+        assert!(held.speed.y < released.speed.y);
+        assert!(held.pos.y < released.pos.y);
+    }
+
+    #[test]
+    fn ice_ball_feather_cancel_restores_star_fly_collider_after_normal_hurtbox() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(100.0, 100.0),
+            state: PlayerState::StarFly,
+            star_fly_timer: 1.0,
+            ..PlayerSnapshot::default()
+        };
+        let bounced = simulate(p, &[InputState::default()], &ice_ball_map(), 1).unwrap();
+        assert_eq!(bounced.state, PlayerState::Normal);
+        assert!(bounced.star_fly_hitbox_preserved);
+        assert!(!bounced.ducking);
+        assert_eq!(
+            current_player_rect(&bounced, bounced.pos.x, bounced.pos.y),
+            star_fly_rect(bounced.pos.x, bounced.pos.y)
+        );
+        assert_eq!(
+            current_player_hurt_rect(&bounced),
+            player_hurt_rect(bounced.pos.x, bounced.pos.y)
+        );
+    }
+
+    #[test]
+    fn playground_ice_ball_dash_bounce_scenario_reaches_the_top_collider() {
+        let inputs: Vec<_> = (0..24)
+            .map(|frame| InputState {
+                move_x: 1,
+                move_y: 1,
+                jump_held: true,
+                dash_pressed: frame == 0,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(
+            PlayerSnapshot {
+                pos: Vec2::new(317.0, 155.0),
+                ..PlayerSnapshot::default()
+            },
+            &inputs,
+            &crate::mechanics_playground(),
+            inputs.len() as u32,
+        )
+        .unwrap();
+        let bounced = trace
+            .states
+            .iter()
+            .find(|state| state.bounce_reuse_timer > 0.0)
+            .expect("down-right dash should top-bounce from the stationary ice ball");
+        assert_eq!(bounced.state, PlayerState::Normal);
+        assert_eq!(bounced.dashes, 1);
+        assert_eq!(bounced.speed.y, -140.0);
+        assert!(bounced.speed.x > 160.0);
+    }
+
+    #[test]
+    fn playground_feather_cancel_scenario_preserves_the_star_fly_collider() {
+        let inputs = [InputState {
+            move_y: 1,
+            ..InputState::default()
+        }; 60];
+        let trace = simulate_trace(
+            PlayerSnapshot {
+                pos: Vec2::new(320.0, 120.0),
+                ..PlayerSnapshot::default()
+            },
+            &inputs,
+            &crate::mechanics_playground(),
+            inputs.len() as u32,
+        )
+        .unwrap();
+        let preserved = trace
+            .states
+            .iter()
+            .find(|state| state.star_fly_hitbox_preserved)
+            .expect("downward feather flight should bounce on the aligned ice ball");
+        assert_eq!(preserved.state, PlayerState::Normal);
+        assert_eq!(preserved.speed.y, -140.0);
+        assert!(!preserved.ducking);
     }
 
     #[test]

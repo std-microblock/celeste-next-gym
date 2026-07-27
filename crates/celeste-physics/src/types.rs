@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::Rect;
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[repr(C)]
 pub struct Vec2 {
@@ -66,6 +68,55 @@ impl InputState {
     }
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ZipMoverSnapshot {
+    /// Source coroutine phase: waiting, start delay, outbound, target delay,
+    /// return, or start delay.
+    pub phase: u8,
+    /// Coroutine float-yield timer. Like Monocle.Coroutine, a frame that
+    /// crosses zero only resumes the iterator on the following update.
+    pub wait_timer: f32,
+    /// Current outbound/return interpolation cursor before Ease.SineIn.
+    pub at: f32,
+    /// Integer Platform.Position used for collision and carrying.
+    pub position: Vec2,
+    /// Platform movementCounter retained by MoveTo across frames.
+    pub remainder: Vec2,
+    /// Platform.LiftSpeed components last written by MoveToX/MoveToY.
+    pub lift_speed: Vec2,
+    /// Original entity position captured before the runtime map is moved.
+    pub start: Vec2,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct BounceBlockSnapshot {
+    /// Waiting, winding up, bouncing, bounce end, or broken.
+    pub phase: u8,
+    pub move_speed: f32,
+    pub bounce_dir: Vec2,
+    pub bounce_lift: Vec2,
+    pub bounce_end_timer: f32,
+    pub respawn_timer: f32,
+    pub position: Vec2,
+    pub remainder: Vec2,
+    pub lift_speed: Vec2,
+    pub start: Vec2,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct TheoCrystalSnapshot {
+    /// Actor.Position: bottom-center of the 8x10 body collider.
+    pub position: Vec2,
+    pub speed: Vec2,
+    pub remainder: Vec2,
+    pub held: bool,
+    pub cannot_hold_timer: f32,
+    pub gravity_timer: f32,
+}
+
 fn default_stamina() -> f32 {
     110.0
 }
@@ -86,12 +137,25 @@ pub struct PlayerSnapshot {
     pub facing: bool,
     pub dashes: u8,
     pub stamina: f32,
+    /// Geometric `Player.OnGround()` value exposed by the portable snapshot
+    /// after every entity in the Scene has updated.
     pub on_ground: bool,
+    /// Source-private `Player.onGround` captured during Player.Update, before
+    /// later room entities such as ZipMover can carry or push the player.
+    pub player_on_ground: bool,
+    /// Distinguishes legacy/input snapshots from a persisted internal ground
+    /// value so segmented simulation can resume the one-frame separation.
+    pub player_on_ground_initialized: bool,
     pub ducking: bool,
     pub can_dream_dash: bool,
     pub dead: bool,
     pub death_freeze_pending: bool,
     pub respawn_frames: u16,
+    pub current_room_bounds: Option<Rect>,
+    pub transition_room_bounds: Option<Rect>,
+    pub transition_direction: Vec2,
+    pub transition_target: Vec2,
+    pub transition_timer: f32,
     pub dash_dir: Vec2,
     pub last_aim: Vec2,
     pub before_dash_speed: Vec2,
@@ -136,6 +200,34 @@ pub struct PlayerSnapshot {
     pub wall_speed_retained: f32,
     pub wall_boost_timer: f32,
     pub wall_boost_dir: i8,
+    /// Deferred horizontal launch used by Player.ClimbHop while the player's
+    /// body is still overlapping the ledge wall.
+    pub hop_wait_x: i8,
+    pub hop_wait_x_speed: f32,
+    /// `Actor.LiftSpeed` written by a moving platform before Player.Update.
+    /// Actor.Update clears this after the state callback every frame.
+    pub current_lift_speed: Vec2,
+    /// Last non-zero lift speed retained for `LiftSpeedGraceTime` (0.16 s).
+    pub last_lift_speed: Vec2,
+    pub lift_speed_timer: f32,
+    /// Shared deterministic clock for simulator-native constant-velocity
+    /// moving solids. Keeping it in the snapshot makes split simulations
+    /// resume from the same platform positions.
+    pub moving_solid_time: f32,
+    /// Per-entity vanilla ZipMover coroutine and Platform movement state, in
+    /// map entity order. This keeps segmented simulation composable.
+    pub zip_movers: Vec<ZipMoverSnapshot>,
+    /// Per-entity hot BounceBlock state, in map entity order.
+    pub bounce_blocks: Vec<BounceBlockSnapshot>,
+    /// Per-entity vanilla TheoCrystal actor and Holdable state.
+    pub theo_crystals: Vec<TheoCrystalSnapshot>,
+    /// Map-order TheoCrystal index currently held by Player.
+    pub holding_theo: Option<u16>,
+    pub min_hold_timer: f32,
+    /// PickupCoroutine state needed to resume the 0.16 second lift tween.
+    pub pickup_old_speed: Vec2,
+    pub pickup_old_var_jump_timer: f32,
+    pub pickup_timer: f32,
     pub climb_no_move_timer: f32,
     pub dream_dash_can_end_timer: f32,
     pub launch_approach_x: Option<f32>,
@@ -152,6 +244,21 @@ pub struct PlayerSnapshot {
     pub feather_reuse_timer: f32,
     pub last_bumper_target: Vec2,
     pub bumper_reuse_timer: f32,
+    /// Bitset of ordinary strawberries already attached to the player's
+    /// follower train. The bit index is the map entity index.
+    pub strawberry_picked_mask: u64,
+    pub carried_strawberries: u8,
+    /// Follower.DelayTimer for the first ordinary strawberry in the train.
+    pub strawberry_follow_delay_timer: f32,
+    /// Strawberry.collectTimer for the first ordinary strawberry in the train.
+    pub strawberry_collect_timer: f32,
+    pub strawberry_collect_index: u16,
+    pub strawberry_collect_reset_timer: f32,
+    /// `Player.Bounce` can restore the cached StarFly collider after
+    /// `StarFlyEnd` has already restored the normal hurtbox.
+    pub star_fly_hitbox_preserved: bool,
+    pub last_bounce_target: Vec2,
+    pub bounce_reuse_timer: f32,
     pub explode_launch_boost_timer: f32,
     pub explode_launch_boost_speed: f32,
     pub badeline_boost_active: bool,
@@ -195,11 +302,18 @@ impl Default for PlayerSnapshot {
             dashes: default_dashes(),
             stamina: default_stamina(),
             on_ground: false,
+            player_on_ground: false,
+            player_on_ground_initialized: false,
             ducking: false,
             can_dream_dash: false,
             dead: false,
             death_freeze_pending: false,
             respawn_frames: 0,
+            current_room_bounds: None,
+            transition_room_bounds: None,
+            transition_direction: Vec2::default(),
+            transition_target: Vec2::default(),
+            transition_timer: 0.0,
             dash_dir: Vec2::default(),
             last_aim: Vec2::new(1.0, 0.0),
             before_dash_speed: Vec2::default(),
@@ -236,6 +350,20 @@ impl Default for PlayerSnapshot {
             wall_speed_retained: 0.0,
             wall_boost_timer: 0.0,
             wall_boost_dir: 0,
+            hop_wait_x: 0,
+            hop_wait_x_speed: 0.0,
+            current_lift_speed: Vec2::default(),
+            last_lift_speed: Vec2::default(),
+            lift_speed_timer: 0.0,
+            moving_solid_time: 0.0,
+            zip_movers: vec![],
+            bounce_blocks: vec![],
+            theo_crystals: vec![],
+            holding_theo: None,
+            min_hold_timer: 0.0,
+            pickup_old_speed: Vec2::default(),
+            pickup_old_var_jump_timer: 0.0,
+            pickup_timer: 0.0,
             climb_no_move_timer: 0.0,
             dream_dash_can_end_timer: 0.0,
             launch_approach_x: None,
@@ -250,6 +378,15 @@ impl Default for PlayerSnapshot {
             feather_reuse_timer: 0.0,
             last_bumper_target: Vec2::default(),
             bumper_reuse_timer: 0.0,
+            strawberry_picked_mask: 0,
+            carried_strawberries: 0,
+            strawberry_follow_delay_timer: 0.0,
+            strawberry_collect_timer: 0.0,
+            strawberry_collect_index: 0,
+            strawberry_collect_reset_timer: 0.0,
+            star_fly_hitbox_preserved: false,
+            last_bounce_target: Vec2::default(),
+            bounce_reuse_timer: 0.0,
             explode_launch_boost_timer: 0.0,
             explode_launch_boost_speed: 0.0,
             badeline_boost_active: false,
