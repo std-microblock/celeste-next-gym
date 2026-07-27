@@ -107,7 +107,15 @@ pub struct PlayerSnapshot {
     pub facing: bool,
     pub dashes: u8,
     pub stamina: f32,
+    /// Geometric `Player.OnGround()` value exposed by the portable snapshot
+    /// after every entity in the Scene has updated.
     pub on_ground: bool,
+    /// Source-private `Player.onGround` captured during Player.Update, before
+    /// later room entities such as ZipMover can carry or push the player.
+    pub player_on_ground: bool,
+    /// Distinguishes legacy/input snapshots from a persisted internal ground
+    /// value so segmented simulation can resume the one-frame separation.
+    pub player_on_ground_initialized: bool,
     pub ducking: bool,
     pub can_dream_dash: bool,
     pub dead: bool,
@@ -234,6 +242,8 @@ impl Default for PlayerSnapshot {
             dashes: default_dashes(),
             stamina: default_stamina(),
             on_ground: false,
+            player_on_ground: false,
+            player_on_ground_initialized: false,
             ducking: false,
             can_dream_dash: false,
             dead: false,

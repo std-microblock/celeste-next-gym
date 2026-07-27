@@ -56,6 +56,8 @@ export interface PlayerSnapshot {
   dashes: number;
   stamina: number;
   on_ground: boolean;
+  player_on_ground?: boolean;
+  player_on_ground_initialized?: boolean;
   ducking: boolean;
   can_dream_dash?: boolean;
   freeze_timer?: number;

@@ -117,6 +117,10 @@ pub fn simulate_trace(
         });
     }
     validate_snapshot(&snapshot)?;
+    if !snapshot.player_on_ground_initialized {
+        snapshot.player_on_ground = snapshot.on_ground;
+        snapshot.player_on_ground_initialized = true;
+    }
     let mut runtime_map = map.clone();
     initialize_zip_movers(&mut snapshot, &mut runtime_map);
     position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
@@ -509,6 +513,8 @@ fn step(
             p.speed = Vec2::default();
             p.state = PlayerState::IntroRespawn;
             p.on_ground = grounded(p, map);
+            p.player_on_ground = p.on_ground;
+            p.player_on_ground_initialized = true;
             p.dashes = p.dashes.max(1);
             p.stamina = 110.0;
             p.movement_remainder = Vec2::default();
@@ -516,6 +522,7 @@ fn step(
         }
         p.respawn_frames -= 1;
         p.on_ground = false;
+        p.player_on_ground = false;
         if p.death_freeze_pending {
             p.death_freeze_pending = false;
             p.freeze_timer = 0.05;
@@ -560,8 +567,9 @@ fn step(
         p.wall_slide_timer = (p.wall_slide_timer - DT).max(0.0);
     }
     p.wall_slide_dir = 0;
-    let was_on_ground = p.on_ground;
-    p.on_ground = p.state != PlayerState::DreamDash && grounded(p, map);
+    let was_on_ground = p.player_on_ground;
+    p.player_on_ground = p.state != PlayerState::DreamDash && p.speed.y >= 0.0 && grounded(p, map);
+    p.on_ground = p.player_on_ground;
     if p.on_ground {
         p.auto_jump = false;
         p.jump_grace_timer = JUMP_GRACE;
@@ -2926,10 +2934,15 @@ mod tests {
             .collect();
         let mut map = zip_mover_map();
         map.solids.push(Rect::new(112.0, 416.0, 8.0, 80.0));
-        let trace = simulate_trace(p, &inputs, &map, 25).unwrap();
+        let trace = simulate_trace(p.clone(), &inputs, &map, 25).unwrap();
         let before = &trace.states[24];
         let jumped = &trace.states[25];
 
+        assert!(trace.states[16].player_on_ground);
+        assert!(!trace.states[16].on_ground);
+        assert!(!trace.states[17].player_on_ground);
+        assert_eq!(trace.states[17].pos.y, 430.0);
+        assert!((trace.states[17].speed.y + 110.827_97).abs() < 0.000_01);
         assert_eq!(before.pos.x, 108.0);
         assert!(!before.on_ground);
         assert!(before.last_lift_speed.y < -120.0);
@@ -2937,6 +2950,10 @@ mod tests {
         assert_eq!(jumped.speed.x, -130.0);
         assert!((jumped.speed.y + 230.828).abs() < 0.000_1);
         assert_eq!(jumped.state, PlayerState::Normal);
+
+        let first = simulate(p, &inputs[..16], &map, 16).unwrap();
+        let split = simulate(first, &inputs[16..], &map, 9).unwrap();
+        assert_eq!(&split, jumped);
     }
     #[test]
     fn jump_adds_retained_lift_boost_before_caching_variable_jump_speed() {
