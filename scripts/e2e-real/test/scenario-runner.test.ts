@@ -8,7 +8,11 @@ describe('scenario execution ordering', () => {
   it('validates structure, writes the trace, verifies semantics, then compares Rust', async () => {
     const events: string[] = []
     const scenario = testScenario('ordered', {
-      verify: () => { events.push('verify') },
+      room: 'lvl_1',
+      verify: (_states, context) => {
+        assert.equal(context.room, 'lvl_1')
+        events.push('verify')
+      },
     })
     await executeScenario({
       scenario,
@@ -18,12 +22,35 @@ describe('scenario execution ordering', () => {
       skipTransitions: false,
       collectOnly: false,
       dependencies: {
-        simulate: async () => { events.push('simulate'); return [reflectedState(), reflectedState({ _frame: 1 })] },
+        simulate: async (request) => {
+          assert.equal(request.room, 'lvl_1')
+          events.push('simulate')
+          return [reflectedState(), reflectedState({ _frame: 1 })]
+        },
         writeTrace: () => { events.push('trace') },
-        compare: () => { events.push('compare') },
+        compare: (options) => {
+          assert.equal(options.room, 'lvl_1')
+          events.push('compare')
+        },
       },
     })
     assert.deepEqual(events, ['simulate', 'trace', 'verify', 'compare'])
+  })
+
+  it('allows an explicit invocation room to override the scenario room', async () => {
+    const scenario = testScenario('room-override', { room: 'scenario-room' })
+    await executeScenario({
+      scenario, room: 'override-room', map: new Uint8Array(), mapPath: 'map.bin', repoRoot: 'D:\\repo',
+      skipTransitions: false, collectOnly: false,
+      dependencies: {
+        simulate: async (request) => {
+          assert.equal(request.room, 'override-room')
+          return [reflectedState(), reflectedState({ _frame: 1 })]
+        },
+        writeTrace: () => undefined,
+        compare: (options) => { assert.equal(options.room, 'override-room') },
+      },
+    })
   })
 
   it('leaves a trace when semantic verification fails and does not compare', async () => {

@@ -33,5 +33,7 @@ describe('production scenario registry', () => {
     assert.equal(registry.scenarios.some((scenario) => scenario.name.includes('2.8.2.1')), false)
     assert.equal(registry.scenarios.filter((scenario) => scenario.target.kind === 'external').every((scenario) => scenario.mapParts.length === 0), true)
     assert.equal(registry.scenarios.filter((scenario) => scenario.target.kind === 'playground').every((scenario) => scenario.mapParts.length > 0), true)
+    assert.equal(registry.byTarget.get('area-2')?.every((scenario) => scenario.room === 'lvl_1'), true)
+    assert.equal(registry.byTarget.get('area-4')?.every((scenario) => scenario.room === 'lvl_a-02'), true)
   })
 })
