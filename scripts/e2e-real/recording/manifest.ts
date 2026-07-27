@@ -59,7 +59,10 @@ export async function loadPresentationManifest(
   manifestPath: string,
 ): Promise<LoadedPresentationManifest> {
   const canonicalRoot = await canonicalDirectory(recordingRoot);
-  const canonicalManifest = await realpath(manifestPath);
+  const manifestCandidate = path.isAbsolute(manifestPath)
+    ? manifestPath
+    : path.resolve(canonicalRoot, manifestPath);
+  const canonicalManifest = await realpath(manifestCandidate);
   ensurePathInside(canonicalRoot, canonicalManifest, "manifest");
   const parsed = JSON.parse(await readFile(canonicalManifest, "utf8")) as unknown;
   const manifest = validateManifest(parsed);

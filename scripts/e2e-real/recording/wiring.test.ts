@@ -93,7 +93,7 @@ describe('recording service state machine', () => {
     const token = 'a'.repeat(32)
     const fixture = await createRawFixture(token)
     const events: string[] = []
-    const service = fakeService(fixture.manifestPath, events, 'ready')
+    const service = fakeService(path.relative(fixture.root, fixture.manifestPath), events, 'ready')
     const result = await captureScenario({
       service, recordingRoot: fixture.root, scenarioId: 'scenario-1', endStateIndex: 1,
       runNonce: 'nonce-1', gameProcessId: 42, timeoutMs: 1000, pollTimeoutMs: 1000,
