@@ -1,0 +1,17 @@
+{
+  "name": "@celeste-next-gym/interactive-recorder",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "compare": "node ../services/collector/node_modules/tsx/dist/cli.mjs src/cli.ts compare",
+    "game": "node ../services/collector/node_modules/tsx/dist/cli.mjs src/cli.ts game",
+    "samples": "node scripts/generate-web-samples.mjs",
+    "maps:check": "node ../scripts/generate-e2e-map-fixtures.mjs --check",
+    "test": "node ../services/collector/node_modules/tsx/dist/cli.mjs --test test/**/*.test.ts",
+    "typecheck": "node ../services/collector/node_modules/typescript/bin/tsc -p tsconfig.json --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

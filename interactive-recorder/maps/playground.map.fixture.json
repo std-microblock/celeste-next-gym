@@ -1,0 +1,708 @@
+{
+  "formatVersion": 1,
+  "package": "CelesteGymPlayground",
+  "sid": "CelesteGymPlayground/Playground",
+  "rooms": [
+    {
+      "name": "playground",
+      "bounds": [
+        0.0,
+        0.0,
+        960.0,
+        544.0
+      ],
+      "spawn": [
+        64.0,
+        496.0
+      ],
+      "solids": [
+        [
+          0.0,
+          0.0,
+          24.0,
+          496.0
+        ],
+        [
+          0.0,
+          496.0,
+          960.0,
+          48.0
+        ],
+        [
+          112.0,
+          416.0,
+          8.0,
+          80.0
+        ],
+        [
+          168.0,
+          120.0,
+          72.0,
+          64.0
+        ],
+        [
+          240.0,
+          112.0,
+          8.0,
+          8.0
+        ],
+        [
+          272.0,
+          304.0,
+          32.0,
+          192.0
+        ],
+        [
+          296.0,
+          120.0,
+          16.0,
+          8.0
+        ],
+        [
+          328.0,
+          120.0,
+          48.0,
+          8.0
+        ],
+        [
+          400.0,
+          80.0,
+          24.0,
+          200.0
+        ],
+        [
+          400.0,
+          120.0,
+          80.0,
+          64.0
+        ],
+        [
+          480.0,
+          104.0,
+          8.0,
+          16.0
+        ],
+        [
+          480.0,
+          240.0,
+          96.0,
+          24.0
+        ],
+        [
+          544.0,
+          112.0,
+          80.0,
+          8.0
+        ],
+        [
+          688.0,
+          120.0,
+          80.0,
+          64.0
+        ],
+        [
+          688.0,
+          360.0,
+          24.0,
+          136.0
+        ],
+        [
+          720.0,
+          304.0,
+          120.0,
+          8.0
+        ],
+        [
+          720.0,
+          320.0,
+          120.0,
+          16.0
+        ],
+        [
+          768.0,
+          112.0,
+          8.0,
+          8.0
+        ],
+        [
+          800.0,
+          248.0,
+          120.0,
+          16.0
+        ],
+        [
+          840.0,
+          120.0,
+          80.0,
+          8.0
+        ],
+        [
+          864.0,
+          240.0,
+          24.0,
+          256.0
+        ],
+        [
+          936.0,
+          0.0,
+          24.0,
+          496.0
+        ]
+      ],
+      "entities": [
+        {
+          "id": "entity-0000",
+          "kind": "jump_thru",
+          "bounds": [
+            112.0,
+            400.0,
+            112.0,
+            8.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "jumpThru"
+        },
+        {
+          "id": "entity-0001",
+          "kind": "zip_mover",
+          "bounds": [
+            32.0,
+            440.0,
+            64.0,
+            16.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [
+            [
+              32.0,
+              320.0
+            ]
+          ],
+          "name": "zipMover"
+        },
+        {
+          "id": "entity-0002",
+          "kind": "booster",
+          "bounds": [
+            252.0,
+            384.0,
+            16.0,
+            16.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "booster"
+        },
+        {
+          "id": "entity-0003",
+          "kind": "booster",
+          "bounds": [
+            230.0,
+            384.0,
+            16.0,
+            16.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "booster"
+        },
+        {
+          "id": "entity-0004",
+          "kind": "spikes",
+          "bounds": [
+            328.0,
+            493.0,
+            96.0,
+            3.0
+          ],
+          "direction": [
+            0.0,
+            -1.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "spikesUp"
+        },
+        {
+          "id": "entity-0005",
+          "kind": "spikes",
+          "bounds": [
+            397.0,
+            160.0,
+            3.0,
+            32.0
+          ],
+          "direction": [
+            -1.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "spikesLeft"
+        },
+        {
+          "id": "entity-0006",
+          "kind": "spring",
+          "bounds": [
+            72.0,
+            490.0,
+            16.0,
+            6.0
+          ],
+          "direction": [
+            0.0,
+            -1.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "spring"
+        },
+        {
+          "id": "entity-0007",
+          "kind": "strawberry",
+          "bounds": [
+            153.0,
+            461.0,
+            14.0,
+            14.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "strawberry"
+        },
+        {
+          "id": "entity-0008",
+          "kind": "strawberry",
+          "bounds": [
+            153.0,
+            461.0,
+            14.0,
+            14.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "strawberry"
+        },
+        {
+          "id": "entity-0009",
+          "kind": "water",
+          "bounds": [
+            448.0,
+            416.0,
+            112.0,
+            80.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "water"
+        },
+        {
+          "id": "entity-0010",
+          "kind": "dream_block",
+          "bounds": [
+            600.0,
+            352.0,
+            64.0,
+            144.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "dreamBlock"
+        },
+        {
+          "id": "entity-0011",
+          "kind": "booster",
+          "bounds": [
+            712.0,
+            312.0,
+            16.0,
+            16.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "booster"
+        },
+        {
+          "id": "entity-0012",
+          "kind": "booster",
+          "bounds": [
+            752.0,
+            432.0,
+            16.0,
+            16.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "booster"
+        },
+        {
+          "id": "entity-0013",
+          "kind": "red_booster",
+          "bounds": [
+            816.0,
+            432.0,
+            16.0,
+            16.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "booster"
+        },
+        {
+          "id": "entity-0014",
+          "kind": "fly_feather",
+          "bounds": [
+            110.0,
+            190.0,
+            20.0,
+            20.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "infiniteStar"
+        },
+        {
+          "id": "entity-0015",
+          "kind": "fly_feather",
+          "bounds": [
+            150.0,
+            30.0,
+            20.0,
+            20.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "infiniteStar"
+        },
+        {
+          "id": "entity-0016",
+          "kind": "fly_feather",
+          "bounds": [
+            110.0,
+            110.0,
+            20.0,
+            20.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": true,
+          "singleUse": false,
+          "nodes": [],
+          "name": "infiniteStar"
+        },
+        {
+          "id": "entity-0017",
+          "kind": "fly_feather",
+          "bounds": [
+            350.0,
+            390.0,
+            20.0,
+            20.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "infiniteStar"
+        },
+        {
+          "id": "entity-0018",
+          "kind": "fly_feather",
+          "bounds": [
+            110.0,
+            310.0,
+            20.0,
+            20.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "infiniteStar"
+        },
+        {
+          "id": "entity-0019",
+          "kind": "fly_feather",
+          "bounds": [
+            240.0,
+            310.0,
+            20.0,
+            20.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "infiniteStar"
+        },
+        {
+          "id": "entity-0020",
+          "kind": "fly_feather",
+          "bounds": [
+            310.0,
+            110.0,
+            20.0,
+            20.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "infiniteStar"
+        },
+        {
+          "id": "entity-0021",
+          "kind": "fly_feather",
+          "bounds": [
+            890.0,
+            474.0,
+            20.0,
+            20.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "infiniteStar"
+        },
+        {
+          "id": "entity-0022",
+          "kind": "bumper",
+          "bounds": [
+            588.0,
+            188.0,
+            24.0,
+            24.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "bigSpinner"
+        },
+        {
+          "id": "entity-0023",
+          "kind": "ice_ball",
+          "bounds": [
+            314.0,
+            154.0,
+            12.0,
+            12.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": true,
+          "nodes": [
+            [
+              336.0,
+              160.0
+            ]
+          ],
+          "name": "fireBall"
+        },
+        {
+          "id": "entity-0024",
+          "kind": "badeline_boost",
+          "bounds": [
+            304.0,
+            384.0,
+            32.0,
+            32.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [
+            [
+              320.0,
+              288.0
+            ]
+          ],
+          "name": "badelineBoost"
+        },
+        {
+          "id": "entity-0025",
+          "kind": "badeline_boost",
+          "bounds": [
+            432.0,
+            384.0,
+            32.0,
+            32.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "badelineBoost"
+        },
+        {
+          "id": "entity-0026",
+          "kind": "theo_crystal",
+          "bounds": [
+            846.0,
+            486.0,
+            8.0,
+            10.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "theoCrystal"
+        },
+        {
+          "id": "entity-0027",
+          "kind": "bounce_block",
+          "bounds": [
+            352.0,
+            360.0,
+            64.0,
+            16.0
+          ],
+          "direction": [
+            0.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "bounceBlock"
+        },
+        {
+          "id": "entity-0028",
+          "kind": "wind",
+          "bounds": [
+            640.0,
+            128.0,
+            280.0,
+            120.0
+          ],
+          "direction": [
+            400.0,
+            0.0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "windTrigger"
+        }
+      ]
+    },
+    {
+      "name": "transition_0",
+      "bounds": [
+        0.0,
+        -544.0,
+        960.0,
+        544.0
+      ],
+      "spawn": [
+        24.0,
+        -16.0
+      ],
+      "solids": [],
+      "entities": []
+    }
+  ]
+}
