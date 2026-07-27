@@ -20,6 +20,7 @@ import {
 } from './model'
 import { FrameCache } from './simulator/frameCache'
 import { WasmClient } from './simulator/wasmClient'
+import { compareTraces, createWebTrace, initialStateFromTrace, parseTrace } from './recording/trace'
 
 interface RunDocument {
   version: 2
@@ -237,6 +238,40 @@ export default function App() {
     setNotice('时间线已导出')
   }
 
+  const exportTrace = async () => {
+    try {
+      const endFrame = frameRef.current
+      await cache.ensureFrame(endFrame)
+      const trace = createWebTrace(map, cache.getInputs(), cache.getStates(), endFrame, undefined, cache.getSimulationInputs(endFrame))
+      download(`celeste-gym-web-${endFrame}-frames.trace.json`, JSON.stringify(trace, null, 2))
+      setNotice(`已导出 F0–F${endFrame} 的输入和 ${trace.states.length} 个逐帧状态`)
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '逐帧数据导出失败')
+    }
+  }
+
+  const compareTrace = async (file: File) => {
+    try {
+      const expected = parseTrace(JSON.parse(await file.text()))
+      const endFrame = expected.inputs.length
+      const comparisonMap = expected.map.data ?? map
+      setPlaying(false)
+      setRecording(false)
+      setMap(comparisonMap)
+      cache.replaceSimulationInputs(comparisonMap, initialStateFromTrace(expected.states[0], comparisonMap), expected.inputs)
+      await cache.ensureFrame(endFrame)
+      frameRef.current = endFrame
+      setFrame(endFrame)
+      const actual = createWebTrace(comparisonMap, cache.getInputs(), cache.getStates(), endFrame, undefined, cache.getSimulationInputs(endFrame))
+      const result = compareTraces(actual, expected)
+      setNotice(result.matched
+        ? `对比通过：${result.compared_frames} 帧，位置 ${result.max_position_error.toFixed(6)}，速度 ${result.max_speed_error.toFixed(6)}`
+        : `对比失败：${result.reason}；位置 ${result.max_position_error.toFixed(6)}，速度 ${result.max_speed_error.toFixed(6)}`)
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '逐帧数据对比失败')
+    }
+  }
+
   const importRun = async (file: File) => {
     try {
       const document = JSON.parse(await file.text()) as RunDocument
@@ -260,8 +295,10 @@ export default function App() {
       <div className={`wasm-status ${wasmStatus}`} title="celeste-wasm 0.2.0 · rebuilt from current Rust source"><i />WASM 0.2.0 <span>{wasmStatus === 'ready' ? 'ONLINE' : wasmStatus === 'error' ? 'FAILED' : 'BOOTING'}</span></div>
       <div className="top-actions">
         <button onClick={() => setBindingsOpen(true)}>键位</button>
-        <label className="file-button">导入<input type="file" accept="application/json,.json" onChange={(event) => event.target.files?.[0] && void importRun(event.target.files[0])} /></label>
-        <button onClick={exportRun}>导出</button>
+        <label className="file-button">导入时间线<input type="file" accept="application/json,.json" onChange={(event) => event.target.files?.[0] && void importRun(event.target.files[0])} /></label>
+        <button onClick={exportRun}>导出时间线</button>
+        <button onClick={() => void exportTrace()}>导出逐帧</button>
+        <label className="file-button">对比逐帧<input type="file" accept="application/json,.json" onChange={(event) => event.target.files?.[0] && void compareTrace(event.target.files[0])} /></label>
       </div>
     </header>
 

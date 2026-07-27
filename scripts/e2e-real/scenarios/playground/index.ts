@@ -78,9 +78,14 @@ import { scenario as scenario75 } from './playground-dummy-state.js'
 import { scenario as scenario76 } from './playground-frozen-state.js'
 import { scenario as scenario77 } from './playground-temple-fall-state.js'
 import { scenario as scenario78 } from './playground-reflection-fall-state.js'
-import { scenario as scenario79 } from './other-5.5-half-stamina-climbing.js'
-import { scenario as scenario80 } from './other-5.6-kermit-dash.js'
-import { scenario as scenario81 } from './other-5.12-subpixel-manipulation.js'
+import { scenario as scenario79 } from './entity-4.6-cloud-jump.js'
+import { scenario as scenario80 } from './eleven-jump.js'
+import { scenario as scenario81 } from './reverse-cornerboost.js'
+import { scenario as scenario82 } from './neutral-reverse-cornerboost.js'
+import { scenario as scenario83 } from './spiked-cornerboost.js'
+import { scenario as scenario84 } from './other-5.5-half-stamina-climbing.js'
+import { scenario as scenario85 } from './other-5.6-kermit-dash.js'
+import { scenario as scenario86 } from './other-5.12-subpixel-manipulation.js'
 
 export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario0,
@@ -165,4 +170,9 @@ export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario79,
   scenario80,
   scenario81,
+  scenario82,
+  scenario83,
+  scenario84,
+  scenario85,
+  scenario86,
 ])

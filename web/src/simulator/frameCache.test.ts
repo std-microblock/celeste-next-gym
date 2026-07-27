@@ -110,4 +110,20 @@ describe('FrameCache', () => {
     expect(runner.calls[1].inputs[2].jump_pressed).toBe(true)
     expect(cache.getState(6)).toBeDefined()
   })
+
+  it('replays direct game inputs including crouch dash until the timeline is edited', async () => {
+    const runner = new FakeRunner()
+    const cache = new FrameCache(runner, PLAYGROUND, createInitialState(PLAYGROUND), 2)
+    const direct: SimInput = {
+      move_x: 1, move_y: 1, jump_pressed: false, jump_held: false,
+      dash_pressed: false, crouch_dash_pressed: true, grab_held: false,
+    }
+    cache.replaceSimulationInputs(PLAYGROUND, createInitialState(PLAYGROUND), [direct])
+    await cache.ensureFrame(1)
+    expect(runner.calls[0].inputs[0]).toEqual(direct)
+
+    cache.setFrame(0, 'right', false)
+    await cache.ensureFrame(1)
+    expect(runner.calls[1].inputs[0].crouch_dash_pressed).toBe(false)
+  })
 })

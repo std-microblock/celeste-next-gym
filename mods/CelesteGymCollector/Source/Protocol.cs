@@ -50,6 +50,12 @@ public sealed class CollectorRequest {
 
     [JsonPropertyName("reason")]
     public string? Reason { get; set; }
+
+    [JsonPropertyName("recording_id")]
+    public string? RecordingId { get; set; }
+
+    [JsonPropertyName("max_frames")]
+    public int MaxFrames { get; set; } = 36_000;
 }
 
 public sealed class CaptureStartRequest {
@@ -137,6 +143,38 @@ public sealed class CollectorResponse {
     [JsonPropertyName("recording")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public CaptureStatus? Recording { get; set; }
+
+    [JsonPropertyName("interactive_recording")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public InteractiveRecordingStatus? InteractiveRecording { get; set; }
+}
+
+public sealed class InteractiveRecordingStatus {
+    [JsonPropertyName("state")]
+    public string State { get; set; } = "";
+
+    [JsonPropertyName("recording_id")]
+    public string RecordingId { get; set; } = "";
+
+    [JsonPropertyName("area_sid")]
+    public string AreaSid { get; set; } = "";
+
+    [JsonPropertyName("room")]
+    public string Room { get; set; } = "";
+
+    [JsonPropertyName("frame_count")]
+    public int FrameCount { get; set; }
+
+    [JsonPropertyName("state_count")]
+    public int StateCount { get; set; }
+
+    [JsonPropertyName("trace_path")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? TracePath { get; set; }
+
+    [JsonPropertyName("reason")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Reason { get; set; }
 }
 
 public sealed class CaptureStatus {
