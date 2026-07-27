@@ -6,6 +6,10 @@ namespace Celeste.Mod.CelesteGymCollector;
 
 internal static class SnapshotCapture {
     private static readonly FieldInfo[] fields = GetFields();
+    private static readonly FieldInfo? platformMovementCounter = typeof(Platform).GetField(
+        "movementCounter",
+        BindingFlags.Instance | BindingFlags.NonPublic
+    );
 
     public static PlayerFrame Capture(Player player, int frame) {
         Dictionary<string, object?> values = [];
@@ -16,7 +20,14 @@ internal static class SnapshotCapture {
                 if (serialized is not null) values[field.Name] = serialized;
             } catch { }
         }
-        if (player.Scene is Level level) values["levelWind"] = new[] { level.Wind.X, level.Wind.Y };
+        if (player.Scene is Level level) {
+            values["levelWind"] = new[] { level.Wind.X, level.Wind.Y };
+            if (level.Entities.FindFirst<ZipMover>() is ZipMover zipMover) {
+                values["zipMoverPosition"] = Simplify(zipMover.Position);
+                values["zipMoverLiftSpeed"] = Simplify(zipMover.LiftSpeed);
+                values["zipMoverMovementCounter"] = Simplify(platformMovementCounter?.GetValue(zipMover));
+            }
+        }
 
         return new PlayerFrame {
             Frame = frame,

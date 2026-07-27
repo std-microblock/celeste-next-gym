@@ -6,6 +6,19 @@
 
 #let missing = [#text(fill: rgb("#64748b"))[未提供 / Not provided]]
 
+#let coverage-summary(expected: 120) = context {
+  let entries = query(<tech-entry>)
+  let implemented = entries.filter(entry => entry.value.status == "implemented").len()
+  let total = entries.len()
+
+  assert(
+    total == expected,
+    message: "expected " + str(expected) + " techniques, found " + str(total),
+  )
+
+  [#implemented / #total]
+}
+
 #let evidence(path: none, symbol: none, snippet: none, note: none) = block(
   width: 100%,
   inset: 8pt,
@@ -47,6 +60,8 @@
 ) = {
   let badge = status-style(status)
   [
+    #metadata((id: id, status: status)) <tech-entry>
+
     == #id　#title-zh
     #text(size: 12pt, fill: rgb("#475569"), style: "italic")[#title-en]
 

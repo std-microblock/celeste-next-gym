@@ -8,7 +8,11 @@ public sealed class CelesteGymCollectorModule : EverestModule {
     private readonly CollectorServer server = new();
     private readonly int collectorPort = ReadCollectorPort();
     private readonly string runNonce = Environment.GetEnvironmentVariable("CELESTE_GYM_RUN_NONCE") ?? "";
+    private readonly string? configuredRecordingRoot =
+        Environment.GetEnvironmentVariable("CELESTE_GYM_RECORDING_ROOT");
+    private readonly HashSet<string> usedCaptureTokens = new(StringComparer.Ordinal);
     private SimulationJob? job;
+    private PresentationCaptureSession? captureSession;
     private readonly Dictionary<VirtualButton, List<VirtualButton.Node>> originalButtonNodes = [];
     private static readonly PropertyInfo FeatherValueProperty = typeof(VirtualJoystick)
         .GetProperty(nameof(VirtualJoystick.Value), BindingFlags.Instance | BindingFlags.Public)!;
@@ -17,7 +21,9 @@ public sealed class CelesteGymCollectorModule : EverestModule {
 
     public override void Load() {
         On.Monocle.Engine.Update += EngineUpdate;
+        On.Celeste.Celeste.RenderCore += CelesteRenderCore;
         On.Celeste.Player.Update += PlayerUpdate;
+        On.Celeste.Player.StartDash += PlayerStartDash;
         On.Celeste.Player.Die += PlayerDie;
         On.Celeste.Input.GetAimVector += GetAimVector;
         server.Start(collectorPort);
@@ -26,7 +32,9 @@ public sealed class CelesteGymCollectorModule : EverestModule {
     public override void Unload() {
         server.Dispose();
         On.Monocle.Engine.Update -= EngineUpdate;
+        On.Celeste.Celeste.RenderCore -= CelesteRenderCore;
         On.Celeste.Player.Update -= PlayerUpdate;
+        On.Celeste.Player.StartDash -= PlayerStartDash;
         On.Celeste.Player.Die -= PlayerDie;
         On.Celeste.Input.GetAimVector -= GetAimVector;
     }
@@ -36,6 +44,14 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         PrepareSimulationFrame();
         orig(self, gameTime);
         FinishSimulationFrame();
+    }
+
+    private void CelesteRenderCore(
+        On.Celeste.Celeste.orig_RenderCore orig,
+        global::Celeste.Celeste self
+    ) {
+        orig(self);
+        captureSession?.CapturePresentation(self.GraphicsDevice, Engine.Viewport.Bounds);
     }
 
     private void ProcessRequests() {
@@ -55,11 +71,16 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                 });
                 return;
             }
+            if (pending.Request.Command.StartsWith("capture_", StringComparison.Ordinal)) {
+                HandleCaptureCommand(pending);
+                return;
+            }
             if (pending.Request.Command != "simulate_area") {
                 pending.Completion.SetResult(new CollectorResponse { Success = false, Error = "unknown command" });
                 return;
             }
             try {
+                BindCaptureToSimulation(pending.Request);
                 if (SaveData.Instance is null) SaveData.InitializeDebugMode(loadExisting: false);
                 int areaId = ResolveAreaId(pending.Request);
                 job = new SimulationJob(pending, Engine.Scene, areaId);
@@ -87,6 +108,84 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         }
     }
 
+    private void HandleCaptureCommand(PendingRequest pending) {
+        try {
+            CollectorRequest request = pending.Request;
+            RecordingSecurity.Authenticate(
+                runNonce,
+                Environment.ProcessId,
+                request.RunNonce,
+                request.ProcessId
+            );
+            string token = RecordingSecurity.ValidateToken(request.CaptureToken);
+            switch (request.Command) {
+                case "capture_start":
+                    if (captureSession is not null && captureSession.GetStatus().State != "finalized") {
+                        throw new InvalidOperationException("another capture session is not finalized");
+                    }
+                    if (usedCaptureTokens.Contains(token)) {
+                        throw new InvalidOperationException("capture token is one-time and was already used");
+                    }
+                    captureSession = new PresentationCaptureSession(
+                        configuredRecordingRoot
+                            ?? throw new InvalidOperationException(
+                                "CELESTE_GYM_RECORDING_ROOT is not configured"
+                            ),
+                        runNonce,
+                        Environment.ProcessId,
+                        new CaptureStartRequest {
+                            CaptureToken = token,
+                            ScenarioId = request.ScenarioId ?? "",
+                            StartStateIndex = request.StartStateIndex,
+                            EndStateIndex = request.EndStateIndex,
+                            TimeoutMilliseconds = request.TimeoutMilliseconds
+                        }
+                    );
+                    usedCaptureTokens.Add(token);
+                    break;
+                case "capture_status":
+                    RequireCaptureSession(token);
+                    break;
+                case "capture_stop":
+                    RequireCaptureSession(token).Stop(request.Reason ?? "explicit_stop");
+                    break;
+                case "capture_finalize":
+                    RequireCaptureSession(token).FinalizeManifest();
+                    break;
+                default:
+                    throw new InvalidOperationException("unknown capture command");
+            }
+            pending.Completion.SetResult(new CollectorResponse {
+                Success = true,
+                Recording = RequireCaptureSession(token).GetStatus()
+            });
+        } catch (Exception error) {
+            pending.Completion.SetResult(new CollectorResponse {
+                Success = false,
+                Error = error.Message
+            });
+        }
+    }
+
+    private PresentationCaptureSession RequireCaptureSession(string token) {
+        if (captureSession is null
+            || !string.Equals(captureSession.Token, token, StringComparison.Ordinal)) {
+            throw new UnauthorizedAccessException("capture token does not identify the active session");
+        }
+        return captureSession;
+    }
+
+    private void BindCaptureToSimulation(CollectorRequest request) {
+        if (captureSession is null || !captureSession.IsCapturing) {
+            if (!string.IsNullOrEmpty(request.CaptureToken)) {
+                throw new InvalidOperationException("simulation references no active capture session");
+            }
+            return;
+        }
+        string token = RecordingSecurity.ValidateToken(request.CaptureToken);
+        RequireCaptureSession(token).BindToSimulation(request.Inputs.Count);
+    }
+
     private static int ReadCollectorPort() {
         string? raw = Environment.GetEnvironmentVariable("CELESTE_GYM_COLLECTOR_PORT");
         if (string.IsNullOrWhiteSpace(raw)) return 32270;
@@ -107,17 +206,33 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         }
         int beforeState = self.StateMachine.State;
         float beforeSpeedY = self.Speed.Y;
+        float beforeStamina = self.Stamina;
         orig(self);
+        // Jump/WallJump/ClimbJump all consume the same virtual-button buffer.
+        // A Normal-state ClimbJump may start while Speed.Y is already negative,
+        // and a repeated ClimbJump may already be exactly -105. The precise
+        // 27.5 stamina cost covers that last case without swallowing launches.
+        bool normalJumpStarted = self.StateMachine.State == Player.StNormal
+            && MathF.Abs(self.Speed.Y - -105f) < 0.001f
+            && MathF.Abs(beforeSpeedY - self.Speed.Y) > 0.001f;
+        bool climbJumpCostPaid = beforeStamina - self.Stamina >= 27.49f;
         if (job is { JumpBufferFrames: > 0 }
             && self.Speed.Y < 0f
-            && (beforeSpeedY >= 0f || (beforeState != 0 && self.StateMachine.State == 0))) {
+            && (beforeSpeedY >= 0f
+                || (beforeState != Player.StNormal && self.StateMachine.State == Player.StNormal)
+                || normalJumpStarted
+                || climbJumpCostPaid)) {
             job.JumpBufferFrames = 0;
         }
-        if (job is not null && beforeState != self.StateMachine.State
-            && self.StateMachine.State is Player.StDash or Player.StRedDash) {
+    }
+
+    private int PlayerStartDash(On.Celeste.Player.orig_StartDash orig, Player self) {
+        int nextState = orig(self);
+        if (job is not null) {
             job.DashBufferFrames = 0;
             job.CrouchDashBufferFrames = 0;
         }
+        return nextState;
     }
 
     private PlayerDeadBody? PlayerDie(
@@ -140,12 +255,21 @@ public sealed class CelesteGymCollectorModule : EverestModule {
             if (ReferenceEquals(Engine.Scene, job.SceneAtRequest)) return;
             Player? player = ActivePlayer(job.AreaId);
             if (player is null) return;
+            // Recording starts before the fresh LevelEnter so that the capture
+            // token owns the entire request. Do not advance scripted state 0
+            // behind that entry wipe: wait for ScreenWipe to clear itself,
+            // while leaving later room transitions entirely untouched.
+            if (captureSession is not null
+                && !job.Pending.Request.SkipTransitions
+                && Engine.Scene is Level recordingLevel
+                && recordingLevel.Wipe is not null) return;
             if (job.Pending.Request.SkipTransitions && Engine.Scene is Level level) {
                 level.Wipe?.Cancel();
             }
             InstallScriptedButtons();
             ApplyInitialSnapshot(player, job.Pending.Request.InitialSnapshot);
             job.States.Add(SnapshotCapture.Capture(player, 0));
+            captureSession?.UpdateLatestStateIndex(0);
             job.Started = true;
         }
         if (job.Index >= job.Pending.Request.Inputs.Count) {
@@ -168,6 +292,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
             : SnapshotCapture.Capture(player, job.Index);
         job.DeathFrame = null;
         job.States.Add(frame);
+        captureSession?.UpdateLatestStateIndex(job.Index);
         job.LastInput = job.CurrentInput;
         job.CurrentInput = null;
         if (job.JumpBufferFrames > 0) job.JumpBufferFrames--;
@@ -203,7 +328,11 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         SimulationJob completed = job!;
         job = null;
         RestoreButtons();
-        completed.Pending.Completion.SetResult(new CollectorResponse { Success = true, States = completed.States });
+        completed.Pending.Completion.SetResult(new CollectorResponse {
+            Success = true,
+            States = completed.States,
+            Recording = captureSession?.GetStatus()
+        });
     }
 
     private void InstallScriptedButtons() {
@@ -228,7 +357,13 @@ public sealed class CelesteGymCollectorModule : EverestModule {
     private void ReplaceNodes(VirtualButton button, Func<bool> check, Func<bool> pressed, Func<bool> released) {
         originalButtonNodes[button] = [.. button.Nodes];
         button.Nodes.Clear();
-        button.Nodes.Add(new ScriptedButtonNode(check, pressed, released));
+        ScriptedButtonNode node = new(check, pressed, released) {
+            // The collector owns the explicit five-frame counters above.
+            // Letting VirtualButton buffer this scripted node as well would
+            // re-press dash after Player.StartDash consumed the source buffer.
+            Bufferable = false
+        };
+        button.Nodes.Add(node);
     }
 
     private void RestoreButtons() {

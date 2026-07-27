@@ -26,6 +26,38 @@ public sealed class CollectorRequest {
 
     [JsonPropertyName("skip_transitions")]
     public bool SkipTransitions { get; set; }
+
+    [JsonPropertyName("run_nonce")]
+    public string? RunNonce { get; set; }
+
+    [JsonPropertyName("process_id")]
+    public int? ProcessId { get; set; }
+
+    [JsonPropertyName("capture_token")]
+    public string? CaptureToken { get; set; }
+
+    [JsonPropertyName("scenario_id")]
+    public string? ScenarioId { get; set; }
+
+    [JsonPropertyName("start_state_index")]
+    public int StartStateIndex { get; set; }
+
+    [JsonPropertyName("end_state_index")]
+    public int EndStateIndex { get; set; }
+
+    [JsonPropertyName("timeout_ms")]
+    public int TimeoutMilliseconds { get; set; } = 120_000;
+
+    [JsonPropertyName("reason")]
+    public string? Reason { get; set; }
+}
+
+public sealed class CaptureStartRequest {
+    public string CaptureToken { get; init; } = "";
+    public string ScenarioId { get; init; } = "";
+    public int StartStateIndex { get; init; }
+    public int EndStateIndex { get; init; }
+    public int TimeoutMilliseconds { get; init; }
 }
 
 public sealed class FrameInput {
@@ -101,6 +133,47 @@ public sealed class CollectorResponse {
     [JsonPropertyName("collector_port")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? CollectorPort { get; set; }
+
+    [JsonPropertyName("recording")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public CaptureStatus? Recording { get; set; }
+}
+
+public sealed class CaptureStatus {
+    [JsonPropertyName("state")]
+    public string State { get; set; } = "";
+
+    [JsonPropertyName("scenario_id")]
+    public string ScenarioId { get; set; } = "";
+
+    [JsonPropertyName("start_state_index")]
+    public int StartStateIndex { get; set; }
+
+    [JsonPropertyName("end_state_index")]
+    public int EndStateIndex { get; set; }
+
+    [JsonPropertyName("latest_state_index")]
+    public int LatestStateIndex { get; set; }
+
+    [JsonPropertyName("render_frame_count")]
+    public int RenderFrameCount { get; set; }
+
+    [JsonPropertyName("final_state_presented")]
+    public bool FinalStatePresented { get; set; }
+
+    [JsonPropertyName("repeated_presentation_count")]
+    public int RepeatedPresentationCount { get; set; }
+
+    [JsonPropertyName("unpresented_update_ranges")]
+    public List<StateIndexRange> UnpresentedUpdateRanges { get; set; } = [];
+
+    [JsonPropertyName("manifest_path")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ManifestPath { get; set; }
+
+    [JsonPropertyName("reason")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Reason { get; set; }
 }
 
 public sealed class PlayerFrame {

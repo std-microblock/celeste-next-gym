@@ -13,10 +13,14 @@ function backendFromEnvironment(): CollectorBackend {
   }
   if (backend === "everest") {
     const areaSid = process.env.EVEREST_AREA_SID?.trim() || undefined;
+    const runNonce = process.env.EVEREST_RUN_NONCE?.trim() || undefined;
+    const processId = readOptionalPositiveInteger("EVEREST_PROCESS_ID");
     return new EverestTcpBackend({
       host: process.env.EVEREST_COLLECTOR_HOST ?? "127.0.0.1",
       port: readPositiveInteger("EVEREST_COLLECTOR_PORT", 32270),
       areaId: readUnsignedInteger("EVEREST_AREA_ID", 1),
+      ...(runNonce === undefined ? {} : { runNonce }),
+      ...(processId === undefined ? {} : { processId }),
       ...(areaSid === undefined ? {} : { areaSid }),
     });
   }
@@ -26,6 +30,16 @@ function backendFromEnvironment(): CollectorBackend {
     );
   }
   return new NotConfiguredBackend();
+}
+
+function readOptionalPositiveInteger(name: string): number | undefined {
+  const raw = process.env[name];
+  if (raw === undefined || raw.trim() === "") return undefined;
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+  return value;
 }
 
 function readUnsignedInteger(name: string, fallback: number): number {

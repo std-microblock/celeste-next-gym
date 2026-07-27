@@ -56,6 +56,8 @@ export interface PlayerSnapshot {
   dashes: number;
   stamina: number;
   on_ground: boolean;
+  player_on_ground?: boolean;
+  player_on_ground_initialized?: boolean;
   ducking: boolean;
   can_dream_dash?: boolean;
   freeze_timer?: number;
@@ -72,6 +74,11 @@ export interface PlayerSnapshot {
   force_move_x_timer?: number;
   wall_speed_retention_timer?: number;
   wall_boost_timer?: number;
+  current_lift_speed?: Vector2;
+  last_lift_speed?: Vector2;
+  lift_speed_timer?: number;
+  moving_solid_time?: number;
+  zip_movers?: ZipMoverSnapshot[];
   climb_no_move_timer?: number;
   dream_dash_can_end_timer?: number;
   launch_approach_x?: number | null;
@@ -118,6 +125,16 @@ export interface PlayerSnapshot {
   [key: string]: unknown;
 }
 
+export interface ZipMoverSnapshot {
+  phase: number;
+  wait_timer: number;
+  at: number;
+  position: Vector2;
+  remainder: Vector2;
+  lift_speed: Vector2;
+  start: Vector2;
+}
+
 export interface SimulateRequest {
   map: Uint8Array;
   room?: string;
@@ -126,6 +143,7 @@ export interface SimulateRequest {
   initial_snapshot: PlayerSnapshot | null;
   frames: number;
   skip_transitions?: boolean;
+  capture_token?: string;
 }
 
 export interface SimulateSuccess {
@@ -214,10 +232,13 @@ export function decodeSimulateRequest(
     skip_transitions: root.skip_transitions === undefined
       ? false
       : requireBoolean(root.skip_transitions, "skip_transitions"),
+    ...(root.capture_token === undefined
+      ? {}
+      : { capture_token: requireCaptureToken(root.capture_token) }),
   };
 }
 
-export function encodeResponse(response: SimulateResponse): Uint8Array {
+export function encodeResponse(response: unknown): Uint8Array {
   return encode(response);
 }
 
@@ -359,6 +380,18 @@ function requireBoolean(value: unknown, path: string): boolean {
 function requireNonEmptyString(value: unknown, path: string): string {
   if (typeof value !== "string" || value.trim().length === 0) {
     throw new ProtocolValidationError(`${path} must be a non-empty string`);
+  }
+  return value;
+}
+
+function requireCaptureToken(value: unknown): string {
+  if (
+    typeof value !== "string" ||
+    !/^[A-Za-z0-9_-]{32,128}$/.test(value)
+  ) {
+    throw new ProtocolValidationError(
+      "capture_token must be 32-128 URL-safe characters",
+    );
   }
   return value;
 }

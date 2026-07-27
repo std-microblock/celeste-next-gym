@@ -19,6 +19,11 @@ import {
   listen,
   type RunningCollectorServer,
 } from "../src/server.js";
+import type {
+  RecordingResponse,
+  RecordingStartRequest,
+  RecordingStatus,
+} from "../src/recording.js";
 
 const runningServers: RunningCollectorServer[] = [];
 
@@ -141,7 +146,82 @@ describe("collector HTTP service", () => {
     assert.equal(body.code, "BACKEND_ERROR");
     assert.match(body.error, /expected 2/);
   });
+
+  it("forwards only constrained recording fields and strips output paths", async () => {
+    let forwarded: RecordingStartRequest | undefined;
+    const backend: CollectorBackend = {
+      name: "recording-test-backend",
+      async collect() {
+        return [createDefaultSnapshot()];
+      },
+      async recordingStart(request) {
+        forwarded = request;
+        return recordingStatus();
+      },
+    };
+    const running = await start(backend);
+    const response = await postRecording(running, "start", {
+      capture_token: "a".repeat(32),
+      scenario_id: "dash-tech.2-4",
+      start_state_index: 0,
+      end_state_index: 10,
+      timeout_ms: 30_000,
+      recording_root: "C:/attacker-controlled",
+      output_path: "../../escape.mp4",
+    });
+    const body = (await decodeResponse(response)) as RecordingResponse;
+
+    assert.equal(response.status, 200);
+    assert.equal(body.success, true);
+    assert.deepEqual(forwarded, {
+      capture_token: "a".repeat(32),
+      scenario_id: "dash-tech.2-4",
+      start_state_index: 0,
+      end_state_index: 10,
+      timeout_ms: 30_000,
+    });
+  });
+
+  it("rejects recording token and scenario path injection", async () => {
+    const running = await start(new MockCollectorBackend());
+    const response = await postRecording(running, "start", {
+      capture_token: "../bad",
+      scenario_id: "../escape",
+      start_state_index: 0,
+      end_state_index: 1,
+      timeout_ms: 30_000,
+    });
+    const body = (await decodeResponse(response)) as SimulateFailure;
+
+    assert.equal(response.status, 400);
+    assert.equal(body.code, "INVALID_REQUEST");
+  });
+
+  it("does not pretend an unconfigured backend supports recording", async () => {
+    const running = await start(new MockCollectorBackend());
+    const response = await postRecording(running, "status", {
+      capture_token: "b".repeat(32),
+    });
+    const body = (await decodeResponse(response)) as SimulateFailure;
+
+    assert.equal(response.status, 503);
+    assert.equal(body.code, "RECORDING_NOT_CONFIGURED");
+  });
 });
+
+function recordingStatus(): RecordingStatus {
+  return {
+    state: "active",
+    scenario_id: "dash-tech.2-4",
+    start_state_index: 0,
+    end_state_index: 10,
+    latest_state_index: -1,
+    render_frame_count: 0,
+    final_state_presented: false,
+    repeated_presentation_count: 0,
+    unpresented_update_ranges: [],
+  };
+}
 
 async function start(
   backend: CollectorBackend,
@@ -176,6 +256,18 @@ async function post(
   request: ReturnType<typeof validRequest>,
 ): Promise<Response> {
   return await fetch(`${running.url}/api/simulate`, {
+    method: "POST",
+    headers: { "content-type": CONTENT_TYPE },
+    body: encode(request),
+  });
+}
+
+async function postRecording(
+  running: RunningCollectorServer,
+  action: "start" | "status" | "stop" | "finalize",
+  request: Record<string, unknown>,
+): Promise<Response> {
+  return await fetch(`${running.url}/api/recording/${action}`, {
     method: "POST",
     headers: { "content-type": CONTENT_TYPE },
     body: encode(request),

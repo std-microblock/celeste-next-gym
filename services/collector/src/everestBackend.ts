@@ -5,6 +5,12 @@ import {
   type SimulateRequest,
 } from "./protocol.js";
 import type { BackendHealth, CollectorBackend } from "./backend.js";
+import type {
+  RecordingAction,
+  RecordingControlRequest,
+  RecordingStartRequest,
+  RecordingStatus,
+} from "./recording.js";
 
 interface EverestFrame {
   frame: number;
@@ -27,6 +33,9 @@ interface EverestResponse {
   error?: string;
   version?: string;
   states?: EverestFrame[];
+  run_nonce?: string;
+  process_id?: number;
+  recording?: RecordingStatus;
 }
 
 export interface EverestTcpBackendOptions {
@@ -34,6 +43,8 @@ export interface EverestTcpBackendOptions {
   port?: number;
   areaId?: number;
   areaSid?: string;
+  runNonce?: string;
+  processId?: number;
 }
 
 export class EverestTcpBackend implements CollectorBackend {
@@ -42,12 +53,16 @@ export class EverestTcpBackend implements CollectorBackend {
   private readonly port: number;
   private readonly areaId: number;
   private readonly areaSid: string | undefined;
+  private readonly runNonce: string | undefined;
+  private readonly processId: number | undefined;
 
   constructor(options: EverestTcpBackendOptions = {}) {
     this.host = options.host ?? "127.0.0.1";
     this.port = options.port ?? 32270;
     this.areaId = options.areaId ?? 1;
     this.areaSid = options.areaSid;
+    this.runNonce = options.runNonce;
+    this.processId = options.processId;
   }
 
   async collect(request: SimulateRequest, signal: AbortSignal): Promise<PlayerSnapshot[]> {
@@ -71,6 +86,9 @@ export class EverestTcpBackend implements CollectorBackend {
         ducking: initial.ducking,
       },
       skip_transitions: request.skip_transitions ?? false,
+      ...(request.capture_token === undefined
+        ? {}
+        : { capture_token: request.capture_token }),
     }, signal);
     if (!response.success || !response.states) {
       throw new Error(response.error ?? "Everest collector returned no states");
@@ -95,6 +113,12 @@ export class EverestTcpBackend implements CollectorBackend {
   async health(): Promise<BackendHealth> {
     try {
       const response = await this.send({ command: "ping" }, AbortSignal.timeout(2_000));
+      if (this.runNonce !== undefined && response.run_nonce !== this.runNonce) {
+        return { ready: false, detail: "Everest collector run nonce mismatch" };
+      }
+      if (this.processId !== undefined && response.process_id !== this.processId) {
+        return { ready: false, detail: "Everest collector process id mismatch" };
+      }
       return {
         ready: response.success,
         detail: response.success
@@ -104,6 +128,56 @@ export class EverestTcpBackend implements CollectorBackend {
     } catch (error) {
       return { ready: false, detail: error instanceof Error ? error.message : String(error) };
     }
+  }
+
+  async recordingStart(
+    request: RecordingStartRequest,
+    signal: AbortSignal,
+  ): Promise<RecordingStatus> {
+    return await this.sendRecording("start", request, signal);
+  }
+
+  async recordingStatus(
+    request: RecordingControlRequest,
+    signal: AbortSignal,
+  ): Promise<RecordingStatus> {
+    return await this.sendRecording("status", request, signal);
+  }
+
+  async recordingStop(
+    request: RecordingControlRequest,
+    signal: AbortSignal,
+  ): Promise<RecordingStatus> {
+    return await this.sendRecording("stop", request, signal);
+  }
+
+  async recordingFinalize(
+    request: RecordingControlRequest,
+    signal: AbortSignal,
+  ): Promise<RecordingStatus> {
+    return await this.sendRecording("finalize", request, signal);
+  }
+
+  private async sendRecording(
+    action: RecordingAction,
+    request: RecordingStartRequest | RecordingControlRequest,
+    signal: AbortSignal,
+  ): Promise<RecordingStatus> {
+    if (!this.runNonce || this.processId === undefined) {
+      throw new Error(
+        "Everest recording requires an authenticated runNonce and exact processId",
+      );
+    }
+    const response = await this.send({
+      command: `capture_${action}`,
+      run_nonce: this.runNonce,
+      process_id: this.processId,
+      ...request,
+    }, signal);
+    if (!response.success || !response.recording) {
+      throw new Error(response.error ?? "Everest collector returned no recording status");
+    }
+    return response.recording;
   }
 
   private async send(payload: unknown, signal: AbortSignal): Promise<EverestResponse> {

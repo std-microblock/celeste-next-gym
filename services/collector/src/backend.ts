@@ -3,6 +3,11 @@ import {
   type PlayerSnapshot,
   type SimulateRequest,
 } from "./protocol.js";
+import type {
+  RecordingControlRequest,
+  RecordingStartRequest,
+  RecordingStatus,
+} from "./recording.js";
 
 export interface BackendHealth {
   ready: boolean;
@@ -17,6 +22,22 @@ export interface CollectorBackend {
   ): Promise<PlayerSnapshot[]>;
   health?(): Promise<BackendHealth>;
   close?(): Promise<void>;
+  recordingStart?(
+    request: RecordingStartRequest,
+    signal: AbortSignal,
+  ): Promise<RecordingStatus>;
+  recordingStatus?(
+    request: RecordingControlRequest,
+    signal: AbortSignal,
+  ): Promise<RecordingStatus>;
+  recordingStop?(
+    request: RecordingControlRequest,
+    signal: AbortSignal,
+  ): Promise<RecordingStatus>;
+  recordingFinalize?(
+    request: RecordingControlRequest,
+    signal: AbortSignal,
+  ): Promise<RecordingStatus>;
 }
 
 export class BackendNotConfiguredError extends Error {

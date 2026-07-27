@@ -6,6 +6,7 @@
 mod binary_packer;
 mod ffi;
 mod map;
+mod map_fixture;
 mod playground;
 mod sim;
 mod types;
@@ -17,9 +18,17 @@ pub use map::{
     Entity, EntityKind, Map, MapEncodeError, Rect, decode_map, decode_map_room, encode_celeste_map,
     encode_map,
 };
+pub use map_fixture::{
+    CelesteMapFixture, FixtureEntity, FixtureEntityKind, FixtureRect, FixtureRoom, FixtureVec2,
+    MAP_FIXTURE_FORMAT_VERSION, MapFixtureError, MapPartFixture, RoomContribution,
+    canonical_map_fixture_json, encode_map_fixture, merge_map_parts, parse_map_fixture,
+};
 pub use playground::{PLAYGROUND_PACKAGE, PLAYGROUND_ROOM, PLAYGROUND_SID, mechanics_playground};
 pub use sim::{
     DT, Fidelity, INTENTIONALLY_UNSUPPORTED_STATES, SimulationError, SimulationResult, fidelity,
     simulate, simulate_trace,
 };
-pub use types::{InputState, PlayerSnapshot, PlayerState, Vec2};
+pub use types::{
+    BounceBlockSnapshot, InputState, PlayerSnapshot, PlayerState, TheoCrystalSnapshot, Vec2,
+    ZipMoverSnapshot,
+};
