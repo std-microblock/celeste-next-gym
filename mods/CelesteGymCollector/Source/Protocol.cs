@@ -89,6 +89,18 @@ public sealed class CollectorResponse {
     [JsonPropertyName("version")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Version { get; set; }
+
+    [JsonPropertyName("run_nonce")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? RunNonce { get; set; }
+
+    [JsonPropertyName("process_id")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? ProcessId { get; set; }
+
+    [JsonPropertyName("collector_port")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? CollectorPort { get; set; }
 }
 
 public sealed class PlayerFrame {
