@@ -7,11 +7,12 @@ export const mapParts = [TECH_ENTITY_4_3_BUMPER_CLIP] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
-  tags: ["feature:bumper"],
+  status: 'active',
+  tags: ['feature:bumper'],
   techniqueIds: ['4.3'],
   mapParts,
   name: 'entity-4.3-bumper-clip',
+  recording: { primaryFor: ['4.3'], startFrame: 0, endFrame: 50 },
     initial: { pos: [589, 206], speed: [0, 0] },
     inputs: Array.from({ length: 50 }, (_, frame) => input({
       move_x: 1,

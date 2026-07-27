@@ -13,20 +13,14 @@ describe('production scenario registry', () => {
     assert.equal(registry.byTarget.get('area-1')?.length, 36)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 123, candidate: 5 })
+    assert.deepEqual(registry.counts, { active: 127, candidate: 1 })
   })
 
   it('keeps evidence-less entity scenarios as opt-in candidates', () => {
     const candidates = registry.scenarios
       .filter((scenario) => scenario.status === 'candidate')
       .map((scenario) => scenario.name)
-    assert.deepEqual(candidates, [
-      'entity-4.15.2-feather-hitbox-preservation',
-      'entity-4.3-bumper-clip',
-      'entity-4.4-explosion-boost',
-      'entity-4.5-iceball-jump',
-      'entity-4.6-cloud-jump',
-    ])
+    assert.deepEqual(candidates, ['entity-4.15.2-feather-hitbox-preservation'])
     assert.equal(selectScenarios(registry, { target: 'playground' }).some((scenario) => scenario.status === 'candidate'), false)
   })
 

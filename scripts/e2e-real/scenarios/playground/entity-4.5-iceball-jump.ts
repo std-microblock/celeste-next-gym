@@ -7,11 +7,12 @@ export const mapParts = [TECH_ENTITY_4_5_BOUNCE_JUMP] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
-  tags: ["feature:booster"],
+  status: 'active',
+  tags: ['feature:booster'],
   techniqueIds: ['4.5'],
   mapParts,
   name: 'entity-4.5-iceball-jump',
+  recording: { primaryFor: ['4.5'], startFrame: 0, endFrame: 24 },
     initial: { pos: [317, 155], speed: [0, 0] },
     inputs: Array.from({ length: 24 }, (_, frame) => input({
       move_x: 1,

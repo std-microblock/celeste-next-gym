@@ -7,11 +7,12 @@ export const mapParts = [TECH_ENTITY_4_6_CLOUD_JUMP] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: ['feature:cloud'],
   techniqueIds: ['4.6'],
   mapParts,
   name: 'entity-4.6-cloud-jump',
+  recording: { primaryFor: ['4.6'], startFrame: 0, endFrame: 70 },
   initial: { pos: [616, 440], speed: [0, 0] },
   inputs: Array.from({ length: 70 }, () => input()),
   verify(states) {

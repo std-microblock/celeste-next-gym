@@ -7,11 +7,12 @@ export const mapParts = [TECH_ENTITY_4_4_EXPLOSION_BOOST] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
-  tags: ["feature:bumper"],
+  status: 'active',
+  tags: ['feature:bumper'],
   techniqueIds: ['4.4'],
   mapParts,
   name: 'entity-4.4-explosion-boost',
+  recording: { primaryFor: ['4.4'], startFrame: 0, endFrame: 30 },
     initial: { pos: [589, 206], speed: [0, 0] },
     inputs: Array.from({ length: 30 }, () => input({ move_x: -1 })),
     verify(states) {
