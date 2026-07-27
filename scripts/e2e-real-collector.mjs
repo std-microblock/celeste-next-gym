@@ -309,6 +309,16 @@ try {
       verify: verifyDemodashGap,
     },
     {
+      name: 'dash-ultra',
+      initial: { pos: [200, 480], speed: [0, 0] },
+      inputs: Array.from({ length: 12 }, (_, frame) => input({
+        move_x: 1,
+        move_y: 1,
+        dash_pressed: frame === 0,
+      })),
+      verify: verifyUltra,
+    },
+    {
       name: 'dash-grounded-ultra',
       initial: { pos: [820, 496], speed: [300, 0] },
       inputs: Array.from({ length: 12 }, (_, frame) => input({
@@ -1070,6 +1080,16 @@ function ultraLandingFrames(states) {
     if (!before.ducking && after.ducking && after.speed[0] > before.speed[0] * 1.19) frames.push(frame)
   }
   return frames
+}
+
+function verifyUltra(states) {
+  const landing = ultraLandingFrames(states).find((frame) => states[frame].state === 2)
+  semanticAssert(landing !== undefined, 'dash-ultra', 'no in-Dash landing applied the 1.2 multiplier')
+  const landed = states[landing]
+  const expected = 240 * Math.SQRT1_2 * 1.2
+  semanticAssert(near(landed.speed[0], expected) && near(landed.speed[1], 0), 'dash-ultra', `landing speed was ${JSON.stringify(landed.speed)} instead of ${expected}/0`)
+  const dashDir = field(landed, 'DashDir')
+  semanticAssert(Array.isArray(dashDir) && near(dashDir[0], 1) && near(dashDir[1], 0), 'dash-ultra', `landing did not flatten DashDir to 1/0: ${JSON.stringify(dashDir)}`)
 }
 
 function verifyGroundedUltra(states) {
