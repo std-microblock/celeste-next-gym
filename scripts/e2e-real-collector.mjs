@@ -678,6 +678,24 @@ try {
       })),
     },
     {
+      name: 'bunnyhop',
+      initial: { pos: [19, 135], speed: [160, 100] },
+      inputs: Array.from({ length: 18 }, (_, frame) => input({
+        move_x: 1,
+        jump_pressed: frame === 3,
+        jump_held: frame >= 3 && frame < 11,
+      })),
+    },
+    {
+      name: 'crouch-jump',
+      initial: { pos: [42, 144], speed: [0, 0] },
+      inputs: Array.from({ length: 40 }, (_, frame) => input({
+        move_y: frame <= 1 ? 1 : 0,
+        jump_pressed: frame === 1,
+        jump_held: frame >= 1 && frame < 10,
+      })),
+    },
+    {
       name: 'fastfall',
       initial: { pos: [120, 60], speed: [0, 160] },
       inputs: Array.from({ length: 24 }, () => input({ move_y: 1 })),

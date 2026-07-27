@@ -341,9 +341,10 @@ fn step(p: &mut PlayerSnapshot, mut input: InputState, map: &Map) -> Result<(), 
     }
 
     // After components/coroutines update but before movement, Player.Update
-    // restores the normal collider while rising/falling in open air. A
-    // downward air dash therefore only becomes crouched again when it lands.
-    if p.ducking && p.speed.y > 0.0 && !p.on_ground && p.jump_grace_timer <= 0.0 {
+    // restores the normal collider while falling in open air when CanUnDuck
+    // succeeds. A downward air dash therefore only becomes crouched again
+    // when it lands.
+    if p.ducking && p.speed.y > 0.0 && !p.on_ground && can_unduck(p, map) {
         p.ducking = false;
     }
 
@@ -2340,6 +2341,91 @@ mod tests {
         assert!(trace.states.iter().any(|state| state.on_ground));
         assert_eq!(trace.states.last().unwrap().speed.y, JUMP_SPEED);
         assert_eq!(trace.states.last().unwrap().jump_buffer_timer, 0.0);
+    }
+    #[test]
+    fn bunnyhop_buffers_the_landing_and_reapplies_horizontal_jump_boost() {
+        let player = PlayerSnapshot {
+            pos: Vec2::new(32.0, 91.0),
+            speed: Vec2::new(160.0, 100.0),
+            facing: true,
+            ..PlayerSnapshot::default()
+        };
+        let bunnyhop = std::array::from_fn::<_, 8, _>(|frame| InputState {
+            move_x: 1,
+            jump_pressed: frame == 0,
+            jump_held: true,
+            ..InputState::default()
+        });
+        let control = [InputState {
+            move_x: 1,
+            ..InputState::default()
+        }; 8];
+        let bunnyhop = simulate_trace(player.clone(), &bunnyhop, &floor_map(), 8).unwrap();
+        let control = simulate_trace(player, &control, &floor_map(), 8).unwrap();
+        let jump_state = (1..bunnyhop.states.len())
+            .find(|&frame| bunnyhop.states[frame].speed.y == JUMP_SPEED)
+            .expect("buffered jump fires after the landing state");
+        assert!(bunnyhop.states[jump_state - 1].on_ground);
+        assert!(!bunnyhop.states[jump_state].on_ground);
+        let expected_speed =
+            bunnyhop.states[jump_state - 1].speed.x - RUN_REDUCE * DT + JUMP_H_BOOST;
+        assert!((bunnyhop.states[jump_state].speed.x - expected_speed).abs() < 0.001);
+        assert!(
+            (bunnyhop.states[jump_state].speed.x
+                - control.states[jump_state].speed.x
+                - JUMP_H_BOOST)
+                .abs()
+                < 0.001
+        );
+        assert_eq!(bunnyhop.states[jump_state].state, PlayerState::Normal);
+        assert!(bunnyhop.states[jump_state].facing);
+        assert_eq!(bunnyhop.states[jump_state].dashes, 1);
+        assert_eq!(bunnyhop.states[jump_state].stamina, 110.0);
+        assert!(!bunnyhop.states[jump_state].ducking);
+        assert!(!bunnyhop.states[jump_state].dead);
+    }
+    #[test]
+    fn crouch_jump_keeps_the_short_hitbox_until_falling_in_open_air() {
+        let inputs = std::array::from_fn::<_, 40, _>(|frame| InputState {
+            move_y: if frame <= 1 { 1 } else { 0 },
+            jump_pressed: frame == 1,
+            jump_held: (1..10).contains(&frame),
+            ..InputState::default()
+        });
+        let trace = simulate_trace(grounded_player(), &inputs, &floor_map(), 40).unwrap();
+        assert!(trace.states[1].on_ground);
+        assert!(trace.states[1].ducking);
+        assert_eq!(trace.states[2].speed.y, JUMP_SPEED);
+        assert!(trace.states[2].ducking);
+        let falling_state = (3..trace.states.len())
+            .find(|&frame| trace.states[frame].speed.y > 0.0)
+            .expect("crouch jump reaches its falling phase");
+        assert!(
+            trace.states[2..falling_state]
+                .iter()
+                .all(|state| state.ducking)
+        );
+        assert!(!trace.states[falling_state].ducking);
+
+        let low_ceiling = Map {
+            solids: vec![Rect::new(0.0, 90.0, 64.0, 4.0)],
+            ..Map::default()
+        };
+        let falling_under_ceiling = PlayerSnapshot {
+            pos: Vec2::new(32.0, 100.0),
+            speed: Vec2::new(0.0, 30.0),
+            ducking: true,
+            ..PlayerSnapshot::default()
+        };
+        let falling_under_ceiling = simulate(
+            falling_under_ceiling,
+            &[InputState::default()],
+            &low_ceiling,
+            1,
+        )
+        .unwrap();
+        assert!(falling_under_ceiling.ducking);
+        assert!(!can_unduck(&falling_under_ceiling, &low_ceiling));
     }
     #[test]
     fn superdash_sets_source_launch_speed_and_spends_dash() {
