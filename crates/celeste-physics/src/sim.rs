@@ -1353,8 +1353,9 @@ fn check_stamina(p: &PlayerSnapshot) -> f32 {
 
 fn climb_bounds_check(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
     let rect = current_player_rect(p, p.pos.x, p.pos.y);
-    rect.x + dir as f32 * CLIMB_CHECK_DIST >= map.bounds.x
-        && rect.right() + dir as f32 * CLIMB_CHECK_DIST < map.bounds.right()
+    let bounds = p.current_room_bounds.unwrap_or(map.bounds);
+    rect.x + dir as f32 * CLIMB_CHECK_DIST >= bounds.x
+        && rect.right() + dir as f32 * CLIMB_CHECK_DIST < bounds.right()
 }
 
 fn climb_check(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
