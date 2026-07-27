@@ -249,6 +249,15 @@ try {
       verify: verifyUpwardScreenTransition,
     },
     {
+      name: 'mechanics-liftboost-zip-jump',
+      initial: { pos: [64, 440], speed: [0, 0] },
+      inputs: Array.from({ length: 24 }, (_, frame) => input({
+        jump_pressed: frame === 10,
+        jump_held: frame >= 10 && frame < 16,
+      })),
+      verify: verifyZipMoverLiftboost,
+    },
+    {
       name: 'dash-spring-cancel',
       initial: { pos: [80, 488], speed: [0, 100], dashes: 0 },
       inputs: Array.from({ length: 16 }, (_, frame) => input({
@@ -1014,6 +1023,14 @@ function verifyUpwardScreenTransition(states) {
   const completed = states.findIndex((state, frame) => frame > entered && state.dashes >= 1 && near(state.stamina, 110))
   semanticAssert(completed - entered === 40, 'mechanics-screen-transition-up', `0.65 second transition plus the final coroutine resume took ${completed - entered} frames instead of 40`)
   semanticAssert(completed > 0 && near(states[completed].pos[1], -5), 'mechanics-screen-transition-up', `upward transition ended at y=${states[completed]?.pos[1]} instead of the source-derived target y=-5`)
+}
+
+function verifyZipMoverLiftboost(states) {
+  const jumped = states.find((state) => state.speed[1] < -105.01)
+  semanticAssert(jumped, 'mechanics-liftboost-zip-jump', 'jump never inherited the upward ZipMover lift speed')
+  const retained = field(jumped, 'lastLiftSpeed')
+  semanticAssert(Array.isArray(retained) && retained[1] < 0, 'mechanics-liftboost-zip-jump', `jump frame did not retain an upward lastLiftSpeed: ${JSON.stringify(retained)}`)
+  semanticAssert(jumped.on_ground === false && jumped.dead === false, 'mechanics-liftboost-zip-jump', 'liftboost jump did not leave the moving platform alive')
 }
 
 function verifySpringCancel(states) {
