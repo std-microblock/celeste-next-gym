@@ -67,6 +67,8 @@ const STAR_FLY_EXIT_UP: f32 = -100.0;
 const STAR_FLY_TRANSFORM_FRAMES: u8 = 27;
 const FEATHER_RESPAWN_TIME: f32 = 3.0;
 const LAUNCH_CANCEL_THRESHOLD: f32 = 220.0;
+const TRANSITION_TIME: f32 = 0.65;
+const TRANSITION_MOVE_SPEED: f32 = 60.0;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -147,6 +149,19 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         s.dash_attack_timer,
         s.dash_cooldown_timer,
         s.freeze_timer,
+        s.current_room_bounds.map_or(0.0, |bounds| bounds.x),
+        s.current_room_bounds.map_or(0.0, |bounds| bounds.y),
+        s.current_room_bounds.map_or(0.0, |bounds| bounds.width),
+        s.current_room_bounds.map_or(0.0, |bounds| bounds.height),
+        s.transition_room_bounds.map_or(0.0, |bounds| bounds.x),
+        s.transition_room_bounds.map_or(0.0, |bounds| bounds.y),
+        s.transition_room_bounds.map_or(0.0, |bounds| bounds.width),
+        s.transition_room_bounds.map_or(0.0, |bounds| bounds.height),
+        s.transition_direction.x,
+        s.transition_direction.y,
+        s.transition_target.x,
+        s.transition_target.y,
+        s.transition_timer,
         s.state_timer,
         s.boost_target.x,
         s.boost_target.y,
@@ -253,6 +268,10 @@ fn step(p: &mut PlayerSnapshot, mut input: InputState, map: &Map) -> Result<(), 
     // part of the portable snapshot for engine-frame-accurate replay.
     if p.freeze_timer > 0.0 {
         p.freeze_timer = (p.freeze_timer - DT).max(0.0);
+        return Ok(());
+    }
+    if p.transition_timer > 0.0 {
+        update_transition(p);
         return Ok(());
     }
     advance_badeline_boost_relocation(p);
@@ -2003,33 +2022,135 @@ fn enforce_level_bounds(p: &mut PlayerSnapshot, map: &Map) {
     if p.dead || p.state == PlayerState::DreamDash || !player_in_control(p.state) {
         return;
     }
+    let bounds = p.current_room_bounds.unwrap_or(map.bounds);
     let mut collider = current_player_rect(p, p.pos.x, p.pos.y);
-    if collider.x < map.bounds.x {
-        p.pos.x += map.bounds.x - collider.x;
+    if collider.x < bounds.x {
+        let center = Vec2::new(p.pos.x, collider.y + collider.height * 0.5);
+        if let Some(next) = transition_room_at(map, p, Vec2::new(center.x - 8.0, center.y)) {
+            begin_transition(p, next, Vec2::new(-1.0, 0.0));
+            return;
+        }
+        p.pos.x += bounds.x - collider.x;
         p.speed.x = 0.0;
         collider = current_player_rect(p, p.pos.x, p.pos.y);
     }
-    let right = map.bounds.x + map.bounds.width;
+    let right = bounds.right();
     if collider.x + collider.width > right {
+        let center = Vec2::new(p.pos.x, collider.y + collider.height * 0.5);
+        if let Some(next) = transition_room_at(map, p, Vec2::new(center.x + 8.0, center.y)) {
+            begin_transition(p, next, Vec2::new(1.0, 0.0));
+            return;
+        }
         p.pos.x -= collider.x + collider.width - right;
         p.speed.x = 0.0;
         collider = current_player_rect(p, p.pos.x, p.pos.y);
     }
 
-    let top = map.bounds.y;
+    let top = bounds.y;
     let center_y = collider.y + collider.height * 0.5;
+    if center_y < top {
+        let center = Vec2::new(p.pos.x, center_y);
+        if let Some(next) = transition_room_at(map, p, Vec2::new(center.x, center.y - 12.0)) {
+            begin_transition(p, next, Vec2::new(0.0, -1.0));
+            return;
+        }
+    }
     if center_y < top && collider.y < top - 24.0 {
         p.pos.y += top - 24.0 - collider.y;
         p.speed.y = 0.0;
         collider = current_player_rect(p, p.pos.x, p.pos.y);
     }
 
-    let bottom = map.bounds.y + map.bounds.height;
+    let bottom = bounds.bottom();
+    if collider.bottom() > bottom {
+        let center = Vec2::new(p.pos.x, collider.y + collider.height * 0.5);
+        if let Some(next) = transition_room_at(map, p, Vec2::new(center.x, center.y + 12.0)) {
+            begin_transition(p, next, Vec2::new(0.0, 1.0));
+            return;
+        }
+    }
     if collider.y > bottom + 4.0 {
         p.dead = true;
         p.speed = Vec2::default();
         p.death_freeze_pending = true;
         p.respawn_frames = 95;
+    }
+}
+
+fn transition_room_at(map: &Map, p: &PlayerSnapshot, point: Vec2) -> Option<Rect> {
+    let current = p.current_room_bounds.unwrap_or(map.bounds);
+    std::iter::once(map.bounds)
+        .chain(map.transition_rooms.iter().copied())
+        .filter(|room| *room != current)
+        .find(|room| {
+            point.x >= room.x
+                && point.x < room.right()
+                && point.y >= room.y
+                && point.y < room.bottom()
+        })
+}
+
+fn begin_transition(p: &mut PlayerSnapshot, next: Rect, direction: Vec2) {
+    if direction.y > 0.0
+        && !matches!(
+            p.state,
+            PlayerState::RedDash | PlayerState::ReflectionFall | PlayerState::StarFly
+        )
+    {
+        p.state = PlayerState::Normal;
+        p.speed.y = p.speed.y.max(0.0);
+        p.auto_jump = false;
+        p.var_jump_timer = 0.0;
+    } else if direction.y < 0.0 {
+        p.speed.x = 0.0;
+        if !matches!(
+            p.state,
+            PlayerState::RedDash | PlayerState::ReflectionFall | PlayerState::StarFly
+        ) {
+            p.state = PlayerState::Normal;
+            p.speed.y = JUMP_SPEED;
+            p.var_jump_speed = p.speed.y;
+            p.auto_jump = true;
+            p.auto_jump_timer = 0.0;
+            p.var_jump_timer = VAR_JUMP_TIME;
+        }
+        p.dash_cooldown_timer = 0.2;
+    }
+
+    let mut target = p.pos;
+    if direction.x > 0.0 {
+        target.x = next.x + 4.0;
+    } else if direction.x < 0.0 {
+        target.x = next.right() - 5.0;
+    } else if direction.y > 0.0 {
+        target.y = next.y + 12.0;
+    } else {
+        target.y = next.bottom() - 13.0;
+    }
+    p.transition_room_bounds = Some(next);
+    p.transition_direction = direction;
+    p.transition_target = target;
+    p.transition_timer = TRANSITION_TIME;
+    p.on_ground = false;
+}
+
+fn update_transition(p: &mut PlayerSnapshot) {
+    let max_move = TRANSITION_MOVE_SPEED * DT;
+    p.pos.x = approach(p.pos.x, p.transition_target.x, max_move);
+    p.pos.y = approach(p.pos.y, p.transition_target.y, max_move);
+    p.transition_timer = (p.transition_timer - DT).max(0.0);
+    p.on_ground = false;
+    if p.transition_timer <= 0.0 && p.pos == p.transition_target {
+        p.movement_remainder = Vec2::default();
+        p.speed.x = p.speed.x.round();
+        p.speed.y = p.speed.y.round();
+        p.wall_slide_timer = WALL_SLIDE_TIME;
+        p.jump_grace_timer = 0.0;
+        p.force_move_x_timer = 0.0;
+        p.dashes = p.dashes.max(1);
+        p.stamina = 110.0;
+        p.current_room_bounds = p.transition_room_bounds.take();
+        p.transition_direction = Vec2::default();
     }
 }
 
@@ -3509,6 +3630,54 @@ mod tests {
             simulate(p, &[InputState::default()], &Map::default(), 1),
             Err(SimulationError::UnsupportedState(PlayerState::Attract))
         );
+    }
+    #[test]
+    fn upward_screen_transition_applies_source_launch_and_completion_refills() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            transition_rooms: vec![Rect::new(0.0, -184.0, 320.0, 184.0)],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(160.0, 4.0),
+            speed: Vec2::new(80.0, -160.0),
+            dashes: 0,
+            stamina: 20.0,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(p, &[InputState::default(); 42], &map, 42).unwrap();
+        assert_eq!(trace.states[1].transition_direction, Vec2::new(0.0, -1.0));
+        assert_eq!(trace.states[1].speed, Vec2::new(0.0, JUMP_SPEED));
+        assert_eq!(trace.states[1].dashes, 0);
+        let completed = trace
+            .states
+            .iter()
+            .position(|state| state.current_room_bounds == Some(map.transition_rooms[0]))
+            .unwrap();
+        assert_eq!(trace.states[completed].pos.y, -13.0);
+        assert_eq!(trace.states[completed].dashes, 1);
+        assert_eq!(trace.states[completed].stamina, 110.0);
+        assert_eq!(trace.states[completed].wall_slide_timer, WALL_SLIDE_TIME);
+        assert_eq!(trace.states[completed].jump_grace_timer, 0.0);
+    }
+
+    #[test]
+    fn downward_screen_transition_clamps_upward_speed_before_transfer() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            transition_rooms: vec![Rect::new(0.0, 184.0, 320.0, 184.0)],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(160.0, 185.0),
+            speed: Vec2::new(30.0, -40.0),
+            ..PlayerSnapshot::default()
+        };
+        let p = simulate(p, &[InputState::default()], &map, 1).unwrap();
+        assert_eq!(p.transition_direction, Vec2::new(0.0, 1.0));
+        assert_eq!(p.state, PlayerState::Normal);
+        assert_eq!(p.speed.y, 0.0);
+        assert_eq!(p.transition_target.y, 196.0);
     }
     #[test]
     fn wind_trigger_selects_a_persistent_next_frame_target() {

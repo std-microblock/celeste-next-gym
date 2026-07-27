@@ -7,6 +7,7 @@ pub const PLAYGROUND_ROOM: &str = "playground";
 pub fn mechanics_playground() -> Map {
     Map {
         bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
+        transition_rooms: vec![Rect::new(0.0, -544.0, 960.0, 544.0)],
         spawn: Vec2::new(64.0, 496.0),
         solids: vec![
             Rect::new(0.0, 496.0, 960.0, 48.0),
