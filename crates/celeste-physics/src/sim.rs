@@ -2284,8 +2284,12 @@ fn check_stamina(p: &PlayerSnapshot) -> f32 {
 
 fn climb_bounds_check(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
     let rect = current_player_rect(p, p.pos.x, p.pos.y);
-    rect.x + dir as f32 * CLIMB_CHECK_DIST >= map.bounds.x
-        && rect.right() + dir as f32 * CLIMB_CHECK_DIST < map.bounds.right()
+    // Player.ClimbBoundsCheck reads Level.Bounds, which switches to the
+    // destination room in OnTransition. Using the map's source bounds here
+    // incorrectly disables every wall probe after a horizontal transition.
+    let bounds = p.current_room_bounds.unwrap_or(map.bounds);
+    rect.x + dir as f32 * CLIMB_CHECK_DIST >= bounds.x
+        && rect.right() + dir as f32 * CLIMB_CHECK_DIST < bounds.right()
 }
 
 fn climb_check(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
@@ -5925,6 +5929,186 @@ mod tests {
                 .iter()
                 .any(|state| state.on_ground && state.pos.x >= target_x - 4.0)
         );
+    }
+
+    #[test]
+    fn eleven_jump_buffers_three_climb_jumps_across_a_room_transition() {
+        let next_room = Rect::new(320.0, 0.0, 320.0, 184.0);
+        let wall_x = 328.0;
+        let target_x = wall_x + 11.0 * 8.0;
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            transition_rooms: vec![next_room],
+            solids: vec![
+                Rect::new(wall_x, 80.0, 8.0, 16.0),
+                Rect::new(target_x, 128.0, 80.0, 8.0),
+            ],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(316.0, 86.0),
+            speed: Vec2::new(160.0, -30.0),
+            stamina: 20.0,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = (0..120)
+            .map(|frame| InputState {
+                move_x: 1,
+                jump_pressed: frame == 37 || frame == 42 || frame == 43,
+                jump_held: (37..60).contains(&frame),
+                grab_held: (37..=43).contains(&frame),
+                ..InputState::default()
+            })
+            .collect::<Vec<_>>();
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+
+        assert_eq!(trace.states[41].current_room_bounds, Some(next_room));
+        assert_eq!(trace.states[42].stamina, 82.5);
+        assert_eq!(trace.states[43].stamina, 55.0);
+        assert_eq!(trace.states[44].stamina, 27.5);
+        assert!(trace.states[44].wall_speed_retained > 190.0);
+        assert!(
+            trace
+                .states
+                .iter()
+                .any(|state| state.on_ground && state.pos.x >= target_x - 4.0),
+            "last={:?}, max_x={}",
+            trace.states.last().unwrap(),
+            trace
+                .states
+                .iter()
+                .map(|state| state.pos.x)
+                .fold(f32::NEG_INFINITY, f32::max),
+        );
+    }
+
+    #[test]
+    fn reverse_cornerboost_preserves_forward_momentum_minus_backward_jump_boost() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            solids: vec![Rect::new(104.0, 120.0, 8.0, 64.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(116.0, 122.0),
+            speed: Vec2::new(160.0, -30.0),
+            facing: false,
+            stamina: 110.0,
+            dash_attack_timer: 0.3,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(
+            player,
+            &[InputState {
+                move_x: -1,
+                jump_pressed: true,
+                jump_held: true,
+                grab_held: true,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+
+        assert_eq!(trace.states[1].state, PlayerState::Normal);
+        assert_eq!(trace.states[1].stamina, 82.5);
+        assert_eq!(trace.states[1].dash_attack_timer, 0.0);
+        assert!((trace.states[1].speed.x - 109.166_664).abs() < 0.001);
+        assert_eq!(trace.states[1].facing, false);
+    }
+
+    #[test]
+    fn neutral_reverse_cornerboost_keeps_speed_then_converts_within_wallboost_window() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            solids: vec![Rect::new(104.0, 120.0, 8.0, 64.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(116.0, 122.0),
+            speed: Vec2::new(160.0, -30.0),
+            facing: false,
+            stamina: 110.0,
+            dash_attack_timer: 0.3,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [
+            InputState {
+                jump_pressed: true,
+                jump_held: true,
+                grab_held: true,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: 1,
+                jump_held: true,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: 1,
+                jump_held: true,
+                ..InputState::default()
+            },
+        ];
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+
+        assert!((trace.states[1].speed.x - 149.166_64).abs() < 0.001);
+        assert_eq!(trace.states[1].wall_boost_dir, 1);
+        assert!(trace.states[1].wall_boost_timer > 0.19);
+        assert_eq!(trace.states[1].stamina, 82.5);
+        assert!((trace.states[3].speed.x - 125.666_66).abs() < 0.001);
+        assert_eq!(trace.states[3].stamina, 110.0);
+        assert_eq!(trace.states[3].wall_boost_timer, 0.0);
+    }
+
+    #[test]
+    fn spiked_cornerboost_survives_only_while_rising_away_from_top_spikes() {
+        let spikes = crate::Entity {
+            kind: EntityKind::Spikes,
+            bounds: Rect::new(36.0, 37.0, 12.0, 3.0),
+            direction: Vec2::new(0.0, -1.0),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "spikesUp".to_owned(),
+        };
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            solids: vec![Rect::new(40.0, 40.0, 8.0, 64.0)],
+            entities: vec![spikes],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(35.0, 46.0),
+            speed: Vec2::new(90.0, -30.0),
+            facing: true,
+            stamina: 110.0,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = std::array::from_fn::<_, 5, _>(|frame| InputState {
+            move_x: 1,
+            jump_pressed: frame == 0,
+            jump_held: true,
+            grab_held: frame == 0,
+            ..InputState::default()
+        });
+        let cornerboost =
+            simulate_trace(player.clone(), &inputs, &map, inputs.len() as u32).unwrap();
+        assert!(cornerboost.states.iter().all(|state| !state.dead));
+        assert!(cornerboost.states[1].wall_speed_retained > 120.0);
+
+        let falling = simulate(
+            PlayerSnapshot {
+                speed: Vec2::new(0.0, 30.0),
+                ..player
+            },
+            &[InputState::default()],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert!(falling.dead);
     }
 
     #[test]
