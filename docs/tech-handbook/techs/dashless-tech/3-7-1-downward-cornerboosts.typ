@@ -4,7 +4,7 @@
   id: "3.7.1",
   title-zh: "向下 Cornerboost",
   title-en: "Downward Cornerboosts",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [通过保持向上速度、冲刺状态、较远墙距或低体力等条件避免真正抓墙，可在向下经过墙角时保留速度并完成 Cornerboost。],
   description-en: [A downward cornerboost avoids entering the grab state through movement, dash, spacing, or stamina conditions so speed is not erased.],
   source-evidence: evidence(
@@ -23,6 +23,10 @@
     symbol: [downward_cornerboost_uses_wall_jump_probe_without_entering_climb],
     note: [独立场景以 +30 垂直速度和 160 水平速度下降，明确断言 2px climb_check 失败、3px wall_jump_check 命中；结果保持 Normal、扣除 27.5 体力并保存 195.66666。],
   ),
-  e2e-evidence: none,
-  candidate-e2e: "downward-cornerboost",
+  e2e-evidence: evidence(
+    path: [scripts/e2e-real-collector.mjs],
+    symbol: [downward-cornerboost],
+    note: [真实游戏共 13 个状态帧：从 +30 垂直速度下降，以 2px 抓墙 miss／3px 墙跳 hit 保持 Normal；首帧保存 195.66666，第 5 状态帧返还为 191.33331。九类核心字段逐帧一致，最大位置误差 0、速度误差 0.000001。],
+  ),
+  candidate-e2e: none,
 )

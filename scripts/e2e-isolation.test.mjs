@@ -132,6 +132,16 @@ describe('E2E isolation', () => {
     assert.match(protocolSource, /JsonPropertyName\("collector_port"\)/)
   })
 
+  it('consumes a scripted jump press after same-speed ClimbJump', () => {
+    const moduleSource = readFileSync(
+      resolve(repoRoot, 'mods', 'CelesteGymCollector', 'Source', 'CelesteGymCollectorModule.cs'),
+      'utf8',
+    )
+    assert.match(moduleSource, /normalJumpStarted/)
+    assert.match(moduleSource, /climbJumpCostPaid = beforeStamina - self\.Stamina >= 27\.49f/)
+    assert.match(moduleSource, /\|\| climbJumpCostPaid/)
+  })
+
   it('refuses cleanup ownership when PID identity changes', () => {
     const expected = {
       processId: 91,

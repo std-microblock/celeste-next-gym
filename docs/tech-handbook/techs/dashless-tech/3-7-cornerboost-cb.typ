@@ -4,7 +4,7 @@
   id: "3.7",
   title-zh: "Cornerboost 墙角加速",
   title-en: "Cornerboost (cb)",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [撞墙时保存的 retained speed 会在 5 帧内脱离阻挡后返还；在墙角攀跳可同时获得跳跃加速并取回原速度。],
   description-en: [Wall collision stores retained speed for five frames; climb-jumping past the corner refunds it while adding jump acceleration.],
   source-evidence: evidence(
@@ -23,6 +23,10 @@
     symbol: [cornerboost_climb_jump_stores_jump_boost_before_clearing_wall_top],
     note: [独立场景以 90 空速攀跳墙角，同帧保存 130，保持 Normal 与 82.5 体力；清角后计时器归零并返还高速。],
   ),
-  e2e-evidence: none,
-  candidate-e2e: "cornerboost",
+  e2e-evidence: evidence(
+    path: [scripts/e2e-real-collector.mjs],
+    symbol: [cornerboost],
+    note: [真实游戏共 13 个状态帧：以 90 空速攀跳后首帧碰撞保存 130 并把水平速度归零，第 5 状态帧清角后返还为 125.66666。九类核心字段逐帧一致，最大位置误差 0、速度误差 0.000001。],
+  ),
+  candidate-e2e: none,
 )
