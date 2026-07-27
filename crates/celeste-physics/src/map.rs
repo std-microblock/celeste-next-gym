@@ -136,350 +136,357 @@ pub fn encode_map(map: &Map) -> Result<Vec<u8>, rmp_serde::encode::Error> {
 }
 
 pub fn encode_celeste_map(map: &Map, package: &str, room: &str) -> Result<Vec<u8>, MapEncodeError> {
-    if map.bounds.width <= 0.0
-        || map.bounds.height <= 0.0
-        || map.bounds.width % 8.0 != 0.0
-        || map.bounds.height % 8.0 != 0.0
-        || map.transition_rooms.iter().any(|room| {
-            room.width <= 0.0
-                || room.height <= 0.0
-                || room.width % 8.0 != 0.0
-                || room.height % 8.0 != 0.0
-        })
+    if !valid_room_bounds(map.bounds)
+        || map
+            .transition_rooms
+            .iter()
+            .copied()
+            .any(|bounds| !valid_room_bounds(bounds))
     {
         return Err(MapEncodeError::InvalidBounds);
     }
-    let mut entities = vec![element(
-        "player",
-        [
-            ("id", BinaryValue::Int(0)),
-            ("originX", BinaryValue::Int(4)),
-            ("originY", BinaryValue::Int(8)),
-            ("width", BinaryValue::Int(8)),
-            ("x", BinaryValue::Int((map.spawn.x - map.bounds.x) as i32)),
-            ("y", BinaryValue::Int((map.spawn.y - map.bounds.y) as i32)),
-        ],
-        vec![],
-    )];
-    let mut triggers = Vec::new();
-    for (index, entity) in map.entities.iter().enumerate() {
-        let id = index as i32 + 1;
-        let x = (entity.bounds.x - map.bounds.x) as i32;
-        let y = (entity.bounds.y - map.bounds.y) as i32;
-        let width = entity.bounds.width as i32;
-        let height = entity.bounds.height as i32;
-        let encoded = match entity.kind {
-            EntityKind::JumpThru => Some(element(
-                "jumpThru",
-                [
-                    ("id", BinaryValue::Int(id)),
-                    ("originX", BinaryValue::Int(0)),
-                    ("originY", BinaryValue::Int(0)),
-                    ("texture", BinaryValue::String("default".to_owned())),
-                    ("width", BinaryValue::Int(width)),
-                    ("x", BinaryValue::Int(x)),
-                    ("y", BinaryValue::Int(y)),
-                ],
-                vec![],
-            )),
-            EntityKind::DreamBlock => Some(element(
-                "dreamBlock",
-                [
-                    ("fastMoving", BinaryValue::Bool(false)),
-                    ("height", BinaryValue::Int(height)),
-                    ("id", BinaryValue::Int(id)),
-                    ("originX", BinaryValue::Int(0)),
-                    ("originY", BinaryValue::Int(0)),
-                    ("width", BinaryValue::Int(width)),
-                    ("x", BinaryValue::Int(x)),
-                    ("y", BinaryValue::Int(y)),
-                ],
-                vec![],
-            )),
-            EntityKind::Spikes => {
-                let (name, x, y, width, height) = if entity.direction.y < 0.0 {
-                    ("spikesUp", x, y + height, width, 0)
-                } else if entity.direction.y > 0.0 {
-                    ("spikesDown", x, y, width, 0)
-                } else if entity.direction.x < 0.0 {
-                    ("spikesLeft", x + width, y, 0, height)
-                } else {
-                    ("spikesRight", x, y, 0, height)
-                };
-                let mut attrs = vec![
-                    ("id", BinaryValue::Int(id)),
-                    ("originX", BinaryValue::Int(0)),
-                    ("originY", BinaryValue::Int(4)),
-                    ("type", BinaryValue::String("default".to_owned())),
-                    ("x", BinaryValue::Int(x)),
-                    ("y", BinaryValue::Int(y)),
-                ];
-                if width > 0 {
-                    attrs.push(("width", BinaryValue::Int(width)));
-                }
-                if height > 0 {
-                    attrs.push(("height", BinaryValue::Int(height)));
-                }
-                Some(element_vec(name, attrs, vec![]))
-            }
-            EntityKind::Water => Some(element(
-                "water",
-                [
-                    ("hasBottom", BinaryValue::Bool(false)),
-                    ("height", BinaryValue::Int(height)),
-                    ("id", BinaryValue::Int(id)),
-                    ("originX", BinaryValue::Int(0)),
-                    ("originY", BinaryValue::Int(0)),
-                    ("steamy", BinaryValue::Bool(false)),
-                    ("width", BinaryValue::Int(width)),
-                    ("x", BinaryValue::Int(x)),
-                    ("y", BinaryValue::Int(y)),
-                ],
-                vec![],
-            )),
-            EntityKind::Booster | EntityKind::RedBooster => Some(element(
-                "booster",
-                [
-                    ("id", BinaryValue::Int(id)),
-                    ("originX", BinaryValue::Int(4)),
-                    ("originY", BinaryValue::Int(4)),
-                    (
-                        "red",
-                        BinaryValue::Bool(entity.kind == EntityKind::RedBooster),
-                    ),
-                    ("x", BinaryValue::Int(x + width / 2)),
-                    ("y", BinaryValue::Int(y + height / 2)),
-                ],
-                vec![],
-            )),
-            EntityKind::FlyFeather => Some(element(
-                "infiniteStar",
-                [
-                    ("id", BinaryValue::Int(id)),
-                    ("shielded", BinaryValue::Bool(entity.shielded)),
-                    ("singleUse", BinaryValue::Bool(entity.single_use)),
-                    ("x", BinaryValue::Int(x + width / 2)),
-                    ("y", BinaryValue::Int(y + height / 2)),
-                ],
-                vec![],
-            )),
-            EntityKind::Bumper => Some(element(
-                "bigSpinner",
-                [
-                    ("id", BinaryValue::Int(id)),
-                    ("x", BinaryValue::Int(x + width / 2)),
-                    ("y", BinaryValue::Int(y + height / 2)),
-                ],
-                vec![],
-            )),
-            EntityKind::IceBall => Some(element(
-                "fireBall",
-                [
-                    ("amount", BinaryValue::Int(1)),
-                    ("id", BinaryValue::Int(id)),
-                    ("notCoreMode", BinaryValue::Bool(true)),
-                    ("offset", BinaryValue::Float(0.0)),
-                    ("speed", BinaryValue::Float(0.0)),
-                    ("x", BinaryValue::Int(x + width / 2)),
-                    ("y", BinaryValue::Int(y + height / 2)),
-                ],
-                vec![element(
-                    "node",
-                    [
-                        ("x", BinaryValue::Int(x + width / 2 + 16)),
-                        ("y", BinaryValue::Int(y + height / 2)),
-                    ],
-                    vec![],
-                )],
-            )),
-            EntityKind::BadelineBoost => Some(element(
-                "badelineBoost",
-                [
-                    ("canSkip", BinaryValue::Bool(false)),
-                    ("id", BinaryValue::Int(id)),
-                    ("lockCamera", BinaryValue::Bool(false)),
-                    ("x", BinaryValue::Int(x + width / 2)),
-                    ("y", BinaryValue::Int(y + height / 2)),
-                ],
-                entity
-                    .nodes
-                    .iter()
-                    .map(|node| {
-                        element(
-                            "node",
-                            [
-                                ("x", BinaryValue::Int(node.x.round() as i32)),
-                                ("y", BinaryValue::Int(node.y.round() as i32)),
-                            ],
-                            vec![],
-                        )
-                    })
-                    .collect(),
-            )),
-            EntityKind::Spring => {
-                let (name, spring_x, spring_y) = if entity.direction.y < 0.0 {
-                    ("spring", x + 8, y + 6)
-                } else if entity.direction.x > 0.0 {
-                    ("wallSpringLeft", x, y + 8)
-                } else {
-                    ("wallSpringRight", x + 6, y + 8)
-                };
-                Some(element(
-                    name,
-                    [
-                        ("id", BinaryValue::Int(id)),
-                        ("playerCanUse", BinaryValue::Bool(true)),
-                        ("x", BinaryValue::Int(spring_x)),
-                        ("y", BinaryValue::Int(spring_y)),
-                    ],
-                    vec![],
-                ))
-            }
-            EntityKind::Strawberry => Some(element(
-                "strawberry",
-                [
-                    ("id", BinaryValue::Int(id)),
-                    ("moon", BinaryValue::Bool(false)),
-                    ("winged", BinaryValue::Bool(false)),
-                    ("x", BinaryValue::Int(x + width / 2)),
-                    ("y", BinaryValue::Int(y + height / 2)),
-                ],
-                vec![],
-            )),
-            EntityKind::Wind => {
-                triggers.push(element(
-                    "windTrigger",
-                    [
-                        ("height", BinaryValue::Int(height)),
-                        ("id", BinaryValue::Int(id)),
-                        (
-                            "pattern",
-                            BinaryValue::String(wind_pattern(entity.direction)),
-                        ),
-                        ("width", BinaryValue::Int(width)),
-                        ("x", BinaryValue::Int(x)),
-                        ("y", BinaryValue::Int(y)),
-                    ],
-                    vec![],
-                ));
-                None
-            }
-            EntityKind::BounceBlock => Some(element(
-                "bounceBlock",
-                [
-                    ("height", BinaryValue::Int(height)),
-                    ("id", BinaryValue::Int(id)),
-                    ("originX", BinaryValue::Int(0)),
-                    ("originY", BinaryValue::Int(0)),
-                    ("width", BinaryValue::Int(width)),
-                    ("x", BinaryValue::Int(x)),
-                    ("y", BinaryValue::Int(y)),
-                ],
-                vec![],
-            )),
-            EntityKind::TheoCrystal => Some(element(
-                "theoCrystal",
-                [
-                    ("id", BinaryValue::Int(id)),
-                    ("originX", BinaryValue::Int(0)),
-                    ("originY", BinaryValue::Int(0)),
-                    ("x", BinaryValue::Int(x + 4)),
-                    ("y", BinaryValue::Int(y + 10)),
-                ],
-                vec![],
-            )),
-            EntityKind::ZipMover => {
-                let target = entity
-                    .nodes
-                    .first()
-                    .copied()
-                    .unwrap_or(Vec2::new(entity.bounds.x, entity.bounds.y));
-                Some(element(
-                    "zipMover",
-                    [
-                        ("height", BinaryValue::Int(height)),
-                        ("id", BinaryValue::Int(id)),
-                        ("originX", BinaryValue::Int(0)),
-                        ("originY", BinaryValue::Int(0)),
-                        ("theme", BinaryValue::String("Normal".to_owned())),
-                        ("width", BinaryValue::Int(width)),
-                        ("x", BinaryValue::Int(x)),
-                        ("y", BinaryValue::Int(y)),
-                    ],
-                    vec![element(
-                        "node",
-                        [
-                            (
-                                "x",
-                                BinaryValue::Int((target.x - map.bounds.x).round() as i32),
-                            ),
-                            (
-                                "y",
-                                BinaryValue::Int((target.y - map.bounds.y).round() as i32),
-                            ),
-                        ],
-                        vec![],
-                    )],
-                ))
-            }
-            EntityKind::MovingSolid => Some(element(
-                "celesteGymMovingSolid",
-                [
-                    ("height", BinaryValue::Int(height)),
-                    ("id", BinaryValue::Int(id)),
-                    ("originX", BinaryValue::Int(0)),
-                    ("originY", BinaryValue::Int(0)),
-                    ("speedX", BinaryValue::Float(entity.direction.x)),
-                    ("speedY", BinaryValue::Float(entity.direction.y)),
-                    ("width", BinaryValue::Int(width)),
-                    ("x", BinaryValue::Int(x)),
-                    ("y", BinaryValue::Int(y)),
-                ],
-                vec![],
-            )),
-            EntityKind::Unknown => None,
-        };
-        if let Some(encoded) = encoded {
-            entities.push(encoded);
-        }
-    }
-
-    let level = encoded_level(
-        format!("lvl_{room}"),
-        map.bounds,
-        triggers,
-        entities,
-        solids_text(map),
-    );
-    let mut levels = vec![level];
+    let mut rooms = vec![(room.to_owned(), map.clone())];
     for (index, bounds) in map.transition_rooms.iter().copied().enumerate() {
-        let blank = Map {
-            bounds,
-            solids: map.solids.clone(),
-            ..Map::default()
-        };
         // LevelData marks rooms without a player spawn as Dummy, and
         // MapData.CanTransitionTo rejects Dummy targets. A transition room
         // therefore needs a valid spawn even though screen transitions keep
         // the existing player instead of respawning at it.
-        let transition_spawn = element(
+        rooms.push((
+            format!("transition_{index}"),
+            Map {
+                bounds,
+                spawn: Vec2::new(bounds.x + 24.0, bounds.bottom() - 16.0),
+                solids: map.solids.clone(),
+                ..Map::default()
+            },
+        ));
+    }
+    encode_celeste_rooms(package, &rooms)
+}
+
+fn valid_room_bounds(bounds: Rect) -> bool {
+    bounds.width > 0.0
+        && bounds.height > 0.0
+        && bounds.width % 8.0 == 0.0
+        && bounds.height % 8.0 == 0.0
+}
+
+pub(crate) fn encode_celeste_rooms(
+    package: &str,
+    rooms: &[(String, Map)],
+) -> Result<Vec<u8>, MapEncodeError> {
+    if rooms.is_empty() || rooms.iter().any(|(_, map)| !valid_room_bounds(map.bounds)) {
+        return Err(MapEncodeError::InvalidBounds);
+    }
+    let mut levels = Vec::with_capacity(rooms.len());
+    for (room, map) in rooms {
+        let mut entities = vec![element(
             "player",
             [
                 ("id", BinaryValue::Int(0)),
                 ("originX", BinaryValue::Int(4)),
                 ("originY", BinaryValue::Int(8)),
                 ("width", BinaryValue::Int(8)),
-                ("x", BinaryValue::Int(24)),
-                ("y", BinaryValue::Int(bounds.height as i32 - 16)),
+                ("x", BinaryValue::Int((map.spawn.x - map.bounds.x) as i32)),
+                ("y", BinaryValue::Int((map.spawn.y - map.bounds.y) as i32)),
             ],
             vec![],
-        );
+        )];
+        let mut triggers = Vec::new();
+        for (index, entity) in map.entities.iter().enumerate() {
+            let id = index as i32 + 1;
+            let x = (entity.bounds.x - map.bounds.x) as i32;
+            let y = (entity.bounds.y - map.bounds.y) as i32;
+            let width = entity.bounds.width as i32;
+            let height = entity.bounds.height as i32;
+            let encoded = match entity.kind {
+                EntityKind::JumpThru => Some(element(
+                    "jumpThru",
+                    [
+                        ("id", BinaryValue::Int(id)),
+                        ("originX", BinaryValue::Int(0)),
+                        ("originY", BinaryValue::Int(0)),
+                        ("texture", BinaryValue::String("default".to_owned())),
+                        ("width", BinaryValue::Int(width)),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![],
+                )),
+                EntityKind::DreamBlock => Some(element(
+                    "dreamBlock",
+                    [
+                        ("fastMoving", BinaryValue::Bool(false)),
+                        ("height", BinaryValue::Int(height)),
+                        ("id", BinaryValue::Int(id)),
+                        ("originX", BinaryValue::Int(0)),
+                        ("originY", BinaryValue::Int(0)),
+                        ("width", BinaryValue::Int(width)),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![],
+                )),
+                EntityKind::Spikes => {
+                    let (name, x, y, width, height) = if entity.direction.y < 0.0 {
+                        ("spikesUp", x, y + height, width, 0)
+                    } else if entity.direction.y > 0.0 {
+                        ("spikesDown", x, y, width, 0)
+                    } else if entity.direction.x < 0.0 {
+                        ("spikesLeft", x + width, y, 0, height)
+                    } else {
+                        ("spikesRight", x, y, 0, height)
+                    };
+                    let mut attrs = vec![
+                        ("id", BinaryValue::Int(id)),
+                        ("originX", BinaryValue::Int(0)),
+                        ("originY", BinaryValue::Int(4)),
+                        ("type", BinaryValue::String("default".to_owned())),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ];
+                    if width > 0 {
+                        attrs.push(("width", BinaryValue::Int(width)));
+                    }
+                    if height > 0 {
+                        attrs.push(("height", BinaryValue::Int(height)));
+                    }
+                    Some(element_vec(name, attrs, vec![]))
+                }
+                EntityKind::Water => Some(element(
+                    "water",
+                    [
+                        ("hasBottom", BinaryValue::Bool(false)),
+                        ("height", BinaryValue::Int(height)),
+                        ("id", BinaryValue::Int(id)),
+                        ("originX", BinaryValue::Int(0)),
+                        ("originY", BinaryValue::Int(0)),
+                        ("steamy", BinaryValue::Bool(false)),
+                        ("width", BinaryValue::Int(width)),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![],
+                )),
+                EntityKind::Booster | EntityKind::RedBooster => Some(element(
+                    "booster",
+                    [
+                        ("id", BinaryValue::Int(id)),
+                        ("originX", BinaryValue::Int(4)),
+                        ("originY", BinaryValue::Int(4)),
+                        (
+                            "red",
+                            BinaryValue::Bool(entity.kind == EntityKind::RedBooster),
+                        ),
+                        ("x", BinaryValue::Int(x + width / 2)),
+                        ("y", BinaryValue::Int(y + height / 2)),
+                    ],
+                    vec![],
+                )),
+                EntityKind::FlyFeather => Some(element(
+                    "infiniteStar",
+                    [
+                        ("id", BinaryValue::Int(id)),
+                        ("shielded", BinaryValue::Bool(entity.shielded)),
+                        ("singleUse", BinaryValue::Bool(entity.single_use)),
+                        ("x", BinaryValue::Int(x + width / 2)),
+                        ("y", BinaryValue::Int(y + height / 2)),
+                    ],
+                    vec![],
+                )),
+                EntityKind::Bumper => Some(element(
+                    "bigSpinner",
+                    [
+                        ("id", BinaryValue::Int(id)),
+                        ("x", BinaryValue::Int(x + width / 2)),
+                        ("y", BinaryValue::Int(y + height / 2)),
+                    ],
+                    vec![],
+                )),
+                EntityKind::IceBall => Some(element(
+                    "fireBall",
+                    [
+                        ("amount", BinaryValue::Int(1)),
+                        ("id", BinaryValue::Int(id)),
+                        ("notCoreMode", BinaryValue::Bool(true)),
+                        ("offset", BinaryValue::Float(0.0)),
+                        ("speed", BinaryValue::Float(0.0)),
+                        ("x", BinaryValue::Int(x + width / 2)),
+                        ("y", BinaryValue::Int(y + height / 2)),
+                    ],
+                    vec![element(
+                        "node",
+                        [
+                            ("x", BinaryValue::Int(x + width / 2 + 16)),
+                            ("y", BinaryValue::Int(y + height / 2)),
+                        ],
+                        vec![],
+                    )],
+                )),
+                EntityKind::BadelineBoost => Some(element(
+                    "badelineBoost",
+                    [
+                        ("canSkip", BinaryValue::Bool(false)),
+                        ("id", BinaryValue::Int(id)),
+                        ("lockCamera", BinaryValue::Bool(false)),
+                        ("x", BinaryValue::Int(x + width / 2)),
+                        ("y", BinaryValue::Int(y + height / 2)),
+                    ],
+                    entity
+                        .nodes
+                        .iter()
+                        .map(|node| {
+                            element(
+                                "node",
+                                [
+                                    (
+                                        "x",
+                                        BinaryValue::Int((node.x - map.bounds.x).round() as i32),
+                                    ),
+                                    (
+                                        "y",
+                                        BinaryValue::Int((node.y - map.bounds.y).round() as i32),
+                                    ),
+                                ],
+                                vec![],
+                            )
+                        })
+                        .collect(),
+                )),
+                EntityKind::Spring => {
+                    let (name, spring_x, spring_y) = if entity.direction.y < 0.0 {
+                        ("spring", x + 8, y + 6)
+                    } else if entity.direction.x > 0.0 {
+                        ("wallSpringLeft", x, y + 8)
+                    } else {
+                        ("wallSpringRight", x + 6, y + 8)
+                    };
+                    Some(element(
+                        name,
+                        [
+                            ("id", BinaryValue::Int(id)),
+                            ("playerCanUse", BinaryValue::Bool(true)),
+                            ("x", BinaryValue::Int(spring_x)),
+                            ("y", BinaryValue::Int(spring_y)),
+                        ],
+                        vec![],
+                    ))
+                }
+                EntityKind::Strawberry => Some(element(
+                    "strawberry",
+                    [
+                        ("id", BinaryValue::Int(id)),
+                        ("moon", BinaryValue::Bool(false)),
+                        ("winged", BinaryValue::Bool(false)),
+                        ("x", BinaryValue::Int(x + width / 2)),
+                        ("y", BinaryValue::Int(y + height / 2)),
+                    ],
+                    vec![],
+                )),
+                EntityKind::Wind => {
+                    triggers.push(element(
+                        "windTrigger",
+                        [
+                            ("height", BinaryValue::Int(height)),
+                            ("id", BinaryValue::Int(id)),
+                            (
+                                "pattern",
+                                BinaryValue::String(wind_pattern(entity.direction)),
+                            ),
+                            ("width", BinaryValue::Int(width)),
+                            ("x", BinaryValue::Int(x)),
+                            ("y", BinaryValue::Int(y)),
+                        ],
+                        vec![],
+                    ));
+                    None
+                }
+                EntityKind::BounceBlock => Some(element(
+                    "bounceBlock",
+                    [
+                        ("height", BinaryValue::Int(height)),
+                        ("id", BinaryValue::Int(id)),
+                        ("originX", BinaryValue::Int(0)),
+                        ("originY", BinaryValue::Int(0)),
+                        ("width", BinaryValue::Int(width)),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![],
+                )),
+                EntityKind::TheoCrystal => Some(element(
+                    "theoCrystal",
+                    [
+                        ("id", BinaryValue::Int(id)),
+                        ("originX", BinaryValue::Int(0)),
+                        ("originY", BinaryValue::Int(0)),
+                        ("x", BinaryValue::Int(x + 4)),
+                        ("y", BinaryValue::Int(y + 10)),
+                    ],
+                    vec![],
+                )),
+                EntityKind::ZipMover => {
+                    let target = entity
+                        .nodes
+                        .first()
+                        .copied()
+                        .unwrap_or(Vec2::new(entity.bounds.x, entity.bounds.y));
+                    Some(element(
+                        "zipMover",
+                        [
+                            ("height", BinaryValue::Int(height)),
+                            ("id", BinaryValue::Int(id)),
+                            ("originX", BinaryValue::Int(0)),
+                            ("originY", BinaryValue::Int(0)),
+                            ("theme", BinaryValue::String("Normal".to_owned())),
+                            ("width", BinaryValue::Int(width)),
+                            ("x", BinaryValue::Int(x)),
+                            ("y", BinaryValue::Int(y)),
+                        ],
+                        vec![element(
+                            "node",
+                            [
+                                (
+                                    "x",
+                                    BinaryValue::Int((target.x - map.bounds.x).round() as i32),
+                                ),
+                                (
+                                    "y",
+                                    BinaryValue::Int((target.y - map.bounds.y).round() as i32),
+                                ),
+                            ],
+                            vec![],
+                        )],
+                    ))
+                }
+                EntityKind::MovingSolid => Some(element(
+                    "celesteGymMovingSolid",
+                    [
+                        ("height", BinaryValue::Int(height)),
+                        ("id", BinaryValue::Int(id)),
+                        ("originX", BinaryValue::Int(0)),
+                        ("originY", BinaryValue::Int(0)),
+                        ("speedX", BinaryValue::Float(entity.direction.x)),
+                        ("speedY", BinaryValue::Float(entity.direction.y)),
+                        ("width", BinaryValue::Int(width)),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![],
+                )),
+                EntityKind::Unknown => None,
+            };
+            if let Some(encoded) = encoded {
+                entities.push(encoded);
+            }
+        }
+
         levels.push(encoded_level(
-            format!("lvl_transition_{index}"),
-            bounds,
-            vec![],
-            vec![transition_spawn],
-            solids_text(&blank),
+            format!("lvl_{room}"),
+            map.bounds,
+            triggers,
+            entities,
+            solids_text(map),
         ));
     }
     let root = BinaryElement {
@@ -1150,6 +1157,29 @@ mod tests {
         assert_eq!(entity.kind, EntityKind::BounceBlock);
         assert_eq!(entity.bounds, Rect::new(352.0, -120.0, 64.0, 16.0));
         assert_eq!(entity.name, "bounceBlock");
+    }
+
+    #[test]
+    fn badeline_nodes_are_room_relative_in_the_binary_and_absolute_after_decode() {
+        let boost = Entity {
+            kind: EntityKind::BadelineBoost,
+            bounds: Rect::new(352.0, -136.0, 32.0, 32.0),
+            direction: Vec2::default(),
+            shielded: false,
+            single_use: false,
+            nodes: vec![Vec2::new(400.0, -200.0)],
+            name: "badelineBoost".to_owned(),
+        };
+        let map = Map {
+            bounds: Rect::new(320.0, -240.0, 320.0, 184.0),
+            spawn: Vec2::new(344.0, -80.0),
+            entities: vec![boost.clone()],
+            ..Map::default()
+        };
+
+        let encoded = encode_celeste_map(&map, "CelesteGymTest", "badeline").unwrap();
+        let decoded = decode_map_room(&encoded, Some("badeline")).unwrap();
+        assert_eq!(decoded.entities, vec![boost]);
     }
 
     #[test]
