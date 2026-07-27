@@ -329,6 +329,17 @@ try {
       verify: verifyGroundedUltra,
     },
     {
+      name: 'dash-grounded-ultra-cancel',
+      initial: { pos: [820, 496], speed: [300, 0] },
+      inputs: Array.from({ length: 20 }, (_, frame) => input({
+        move_x: 1,
+        move_y: 1,
+        dash_pressed: frame === 0,
+        grab_held: frame >= 5 && frame <= 12,
+      })),
+      verify: verifyGroundedUltraCancel,
+    },
+    {
       name: 'dash-delayed-ultra',
       initial: { pos: [200, 420], speed: [0, 0] },
       inputs: Array.from({ length: 36 }, (_, frame) => input({
@@ -1107,6 +1118,19 @@ function verifyUltra(states) {
 
 function verifyGroundedUltra(states) {
   semanticAssert(states.some((state) => state.ducking && state.speed[0] >= 359.99), 'dash-grounded-ultra', 'grounded landing never preserved 300 entry speed and applied 1.2')
+}
+
+function verifyGroundedUltraCancel(states) {
+  const ultra = states.findIndex((state) => state.state === 2
+    && state.on_ground && state.ducking && state.speed[0] >= 359.99)
+  semanticAssert(ultra > 0, 'dash-grounded-ultra-cancel', 'grounded Ultra never reached the 360 horizontal-speed keyframe')
+  const pickup = states.findIndex((state, frame) => frame > ultra && state.state === 8)
+  semanticAssert(pickup > ultra, 'dash-grounded-ultra-cancel', 'holding Grab near Theo never cancelled Dash into Pickup')
+  semanticAssert(near(states[pickup].speed[0], 0) && near(states[pickup].speed[1], 0), 'dash-grounded-ultra-cancel', `Pickup did not zero speed for its tween: ${JSON.stringify(states[pickup].speed)}`)
+  const restored = states.findIndex((state, frame) => frame > pickup
+    && state.state === 0 && near(state.speed[0], states[ultra].speed[0]) && state.speed[1] <= 0)
+  semanticAssert(restored > pickup, 'dash-grounded-ultra-cancel', `Pickup did not restore the saved ${states[ultra].speed[0]} Ultra speed: ${JSON.stringify(states.map(pickCore))}`)
+  semanticAssert(states.slice(0, restored + 1).every((state) => !state.dead), 'dash-grounded-ultra-cancel', 'player died before Pickup restored the Ultra speed')
 }
 
 function verifyDelayedUltra(states) {
