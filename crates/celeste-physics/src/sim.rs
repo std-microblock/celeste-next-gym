@@ -487,7 +487,7 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         p.facing = move_x > 0;
     }
 
-    let target_max_fall = if input.move_y > 0 {
+    let target_max_fall = if input.move_y > 0 && p.speed.y >= MAX_FALL {
         FAST_MAX_FALL
     } else {
         MAX_FALL
@@ -693,13 +693,18 @@ fn super_wall_jump(p: &mut PlayerSnapshot, dir: i8) {
     p.launched = true;
 }
 
+fn enter_normal(p: &mut PlayerSnapshot) {
+    p.state = PlayerState::Normal;
+    p.max_fall = MAX_FALL;
+}
+
 fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     let wall = if p.facing { 1 } else { -1 };
     // Player.ClimbUpdate checks jump and dash before letting go or checking
     // whether the one-pixel wall contact still exists. Ceiling pops rely on
     // that ordering for the first Climb frame just below a wall's bottom edge.
     if input.jump_pressed && (!p.ducking || can_unduck(p, map)) {
-        p.state = PlayerState::Normal;
+        enter_normal(p);
         p.jump_buffer_timer = 0.0;
         p.jump_grace_timer = 0.0;
         p.auto_jump = false;
@@ -732,14 +737,14 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         return;
     }
     if !input.grab_held {
-        p.state = PlayerState::Normal;
+        enter_normal(p);
         return;
     }
     if !touching_wall(p, map, wall) {
         if p.speed.y < 0.0 {
             climb_hop(p, map, wall);
         }
-        p.state = PlayerState::Normal;
+        enter_normal(p);
         return;
     }
     let slipping = slip_check(p, map, 0.0);
@@ -749,7 +754,7 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         match input.move_y {
             -1 if slipping => {
                 climb_hop(p, map, wall);
-                p.state = PlayerState::Normal;
+                enter_normal(p);
                 return;
             }
             -1 => CLIMB_UP_SPEED,
@@ -776,7 +781,7 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         p.stamina = (p.stamina - cost * DT).max(0.0);
     }
     if p.stamina <= 0.0 {
-        p.state = PlayerState::Normal;
+        enter_normal(p);
     }
 }
 
@@ -2725,6 +2730,28 @@ mod tests {
     }
 
     #[test]
+    fn fastfall_limit_stays_normal_until_downward_speed_reaches_160() {
+        let player = PlayerSnapshot {
+            pos: Vec2::new(32.0, 32.0),
+            speed: Vec2::new(0.0, 150.0),
+            max_fall: MAX_FALL,
+            ..PlayerSnapshot::default()
+        };
+        let player = simulate(
+            player,
+            &[InputState {
+                move_y: 1,
+                ..InputState::default()
+            }],
+            &Map::default(),
+            1,
+        )
+        .unwrap();
+        assert_eq!(player.max_fall, MAX_FALL);
+        assert_eq!(player.speed.y, MAX_FALL);
+    }
+
+    #[test]
     fn neutral_climb_jump_converts_to_wallboost_and_refunds_stamina() {
         let map = Map {
             solids: vec![Rect::new(40.0, 0.0, 8.0, 100.0)],
@@ -2899,6 +2926,7 @@ mod tests {
             speed: Vec2::new(0.0, 30.0),
             facing: true,
             stamina: 80.0,
+            max_fall: FAST_MAX_FALL,
             ..PlayerSnapshot::default()
         };
         let descend = [InputState {
@@ -2930,6 +2958,7 @@ mod tests {
         let trace = simulate_trace(player, &inputs, &map, 30).unwrap();
         let popped = &trace.states[pop_frame + 1];
         assert_eq!(popped.state, PlayerState::Normal);
+        assert_eq!(popped.max_fall, MAX_FALL);
         assert_eq!(popped.stamina, 52.5);
         assert!(popped.pos.x > descend_trace.states[pop_frame + 1].pos.x);
         assert_eq!(popped.speed.x, JUMP_H_BOOST);
