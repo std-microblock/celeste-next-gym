@@ -188,7 +188,7 @@ try {
     ...(includePlaygroundBooster ? [
       {
         name: 'entity-4.1-archie',
-        initial: { pos: [160, 400], speed: [0, 0] },
+        initial: { pos: [245, 400], speed: [0, 0] },
         inputs: Array.from({ length: 36 }, (_, frame) => input({
           move_x: 1,
           crouch_dash_pressed: frame === 0,
@@ -636,6 +636,14 @@ try {
         grab_held: frame <= 3,
         jump_pressed: frame === 3,
         jump_held: frame >= 3 && frame < 10,
+      })),
+    },
+    {
+      name: 'stamina-cancel',
+      initial: { pos: [140, 112], speed: [0, 30] },
+      inputs: Array.from({ length: 30 }, (_, frame) => input({
+        move_y: -1,
+        grab_held: frame < 8 || frame >= 11,
       })),
     },
     {

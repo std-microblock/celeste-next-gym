@@ -40,7 +40,7 @@
     [
       *当前覆盖 / Current coverage*
 
-      #text(size: 19pt, weight: "bold", fill: rgb("#991b1b"))[0 / 120]
+      #text(size: 19pt, weight: "bold", fill: rgb("#991b1b"))[14 / 120]
 
       所有技巧在四类证据齐全前均明确标记为“未实现”。
 

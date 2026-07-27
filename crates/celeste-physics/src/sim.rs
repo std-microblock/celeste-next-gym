@@ -1449,17 +1449,24 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
         } else {
             hitbox
         };
-        let intersects = if entity.kind == EntityKind::Bumper {
-            circle_rect_intersects(
+        let intersects = match entity.kind {
+            EntityKind::Booster | EntityKind::RedBooster => circle_rect_intersects(
+                Vec2::new(
+                    entity.bounds.x + entity.bounds.width * 0.5,
+                    entity.bounds.y + entity.bounds.height * 0.5 + 2.0,
+                ),
+                10.0,
+                player_box,
+            ),
+            EntityKind::Bumper => circle_rect_intersects(
                 Vec2::new(
                     entity.bounds.x + entity.bounds.width * 0.5,
                     entity.bounds.y + entity.bounds.height * 0.5,
                 ),
                 entity.bounds.width * 0.5,
                 player_box,
-            )
-        } else {
-            entity.bounds.intersects(player_box)
+            ),
+            _ => entity.bounds.intersects(player_box),
         };
         if !intersects {
             continue;
@@ -2534,6 +2541,40 @@ mod tests {
         assert_eq!(trace.states[3].stamina, 80.0);
         assert_eq!(trace.states[3].wall_boost_timer, 0.0);
         assert!(trace.states[3].speed.x < -110.0);
+    }
+
+    #[test]
+    fn stamina_cancel_regrabs_to_reset_the_no_move_cost_window() {
+        let map = Map {
+            solids: vec![Rect::new(40.0, 0.0, 8.0, 100.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(36.0, 64.0),
+            speed: Vec2::new(0.0, 30.0),
+            facing: true,
+            ..PlayerSnapshot::default()
+        };
+        let held = [InputState {
+            move_y: -1,
+            grab_held: true,
+            ..InputState::default()
+        }; 30];
+        let cancelled = std::array::from_fn::<_, 30, _>(|frame| InputState {
+            move_y: -1,
+            grab_held: frame < 8 || frame >= 11,
+            ..InputState::default()
+        });
+        let held_trace = simulate_trace(player.clone(), &held, &map, 30).unwrap();
+        let cancelled_trace = simulate_trace(player, &cancelled, &map, 30).unwrap();
+        assert_eq!(cancelled_trace.states[9].state, PlayerState::Normal);
+        assert_eq!(cancelled_trace.states[12].state, PlayerState::Climb);
+        assert!(cancelled_trace.states[12].climb_no_move_timer > 0.09);
+        assert_eq!(
+            cancelled_trace.states[12].stamina,
+            cancelled_trace.states[17].stamina
+        );
+        assert!(held_trace.states[17].stamina < cancelled_trace.states[17].stamina);
     }
 
     #[test]

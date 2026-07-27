@@ -1,3 +1,6 @@
+// Pinned authoritative 120-item coverage order. Do not regenerate from the
+// online Wiki unless the user explicitly requests a baseline refresh.
+
 = 基础机制 / Mechanics
 
 #include "techs/mechanics/1-1-berry-mechanics.typ"

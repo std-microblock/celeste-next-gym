@@ -34,7 +34,7 @@ pub fn mechanics_playground() -> Map {
             // the ledge for coyote-time bubble super/hyper setups.
             Entity {
                 kind: EntityKind::Booster,
-                bounds: Rect::new(184.0, 384.0, 16.0, 16.0),
+                bounds: Rect::new(252.0, 384.0, 16.0, 16.0),
                 direction: Vec2::default(),
                 shielded: false,
                 single_use: false,
