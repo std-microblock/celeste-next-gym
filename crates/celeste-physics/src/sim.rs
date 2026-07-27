@@ -3502,6 +3502,104 @@ mod tests {
     }
 
     #[test]
+    fn eight_jump_lands_on_a_target_eight_tiles_from_the_cornerboost_wall() {
+        let wall_x = 80.0;
+        let target_x = wall_x + 8.0 * 8.0;
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            solids: vec![
+                Rect::new(0.0, 120.0, wall_x, 64.0),
+                Rect::new(wall_x, 104.0, 8.0, 16.0),
+                Rect::new(target_x, 112.0, 80.0, 8.0),
+            ],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(58.0, 120.0),
+            state: PlayerState::Normal,
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = (0..120)
+            .map(|frame| InputState {
+                move_x: 1,
+                jump_pressed: frame == 5 || frame == 11 || frame == 12 || frame == 13,
+                jump_held: frame <= 26,
+                grab_held: frame == 11 || frame == 12 || frame == 13,
+                ..InputState::default()
+            })
+            .collect::<Vec<_>>();
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+
+        assert_eq!(trace.states[11].pos, Vec2::new(74.0, 109.0));
+        assert_eq!(trace.states[12].stamina, 82.5);
+        assert_eq!(trace.states[13].stamina, 55.0);
+        assert_eq!(trace.states[14].stamina, 27.5);
+        assert!((trace.states[14].wall_speed_retained - 179.6666).abs() < 0.001);
+        assert_eq!(trace.states[49].pos, Vec2::new(143.0, 112.0));
+        assert!(trace.states[49].on_ground);
+        assert_eq!(target_x - wall_x, 64.0);
+        assert!(trace.states[49].pos.x >= target_x - 4.0);
+    }
+
+    #[test]
+    fn nine_jump_lands_nine_tiles_away_only_with_the_favorable_timing() {
+        let wall_x = 80.0;
+        let target_x = wall_x + 9.0 * 8.0;
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            solids: vec![
+                Rect::new(0.0, 120.0, wall_x, 64.0),
+                Rect::new(wall_x, 112.0, 8.0, 8.0),
+                Rect::new(target_x, 120.0, 80.0, 8.0),
+            ],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(67.0, 120.0),
+            state: PlayerState::Normal,
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = (0..120)
+            .map(|frame| InputState {
+                move_x: 1,
+                jump_pressed: frame == 4 || frame == 6 || frame == 7 || frame == 8,
+                jump_held: frame <= 21,
+                grab_held: frame == 6 || frame == 7 || frame == 8,
+                ..InputState::default()
+            })
+            .collect::<Vec<_>>();
+        let trace = simulate_trace(player.clone(), &inputs, &map, inputs.len() as u32).unwrap();
+
+        assert_eq!(trace.states[7].stamina, 82.5);
+        assert_eq!(trace.states[8].stamina, 55.0);
+        assert_eq!(trace.states[9].stamina, 27.5);
+        assert!((trace.states[8].wall_speed_retained - 190.33347).abs() < 0.001);
+        assert_eq!(trace.states[45].pos, Vec2::new(149.0, 120.0));
+        assert!(trace.states[45].on_ground);
+        assert_eq!(target_x - wall_x, 72.0);
+        assert!(trace.states[45].pos.x >= target_x - 4.0);
+
+        let late_inputs = (0..120)
+            .map(|frame| InputState {
+                move_x: 1,
+                jump_pressed: frame == 5 || frame == 7 || frame == 8 || frame == 9,
+                jump_held: frame <= 22,
+                grab_held: frame == 7 || frame == 8 || frame == 9,
+                ..InputState::default()
+            })
+            .collect::<Vec<_>>();
+        let late = simulate_trace(player, &late_inputs, &map, late_inputs.len() as u32).unwrap();
+        assert!(
+            !late
+                .states
+                .iter()
+                .any(|state| state.on_ground && state.pos.x >= target_x - 4.0)
+        );
+    }
+
+    #[test]
     fn dash_spends_dash_and_is_diagonal_normalized() {
         let input = InputState {
             move_x: 1,

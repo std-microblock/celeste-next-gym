@@ -229,6 +229,26 @@ try {
         grab_held: frame === 44 || frame === 45,
       })),
     },
+    {
+      name: 'eight-jump',
+      initial: { pos: [458, 120], speed: [0, 0], on_ground: true },
+      inputs: Array.from({ length: 120 }, (_, frame) => input({
+        move_x: 1,
+        jump_pressed: frame === 5 || frame === 11 || frame === 12 || frame === 13,
+        jump_held: frame <= 26,
+        grab_held: frame === 11 || frame === 12 || frame === 13,
+      })),
+    },
+    {
+      name: 'nine-jump',
+      initial: { pos: [755, 120], speed: [0, 0], on_ground: true },
+      inputs: Array.from({ length: 120 }, (_, frame) => input({
+        move_x: 1,
+        jump_pressed: frame === 4 || frame === 6 || frame === 7 || frame === 8,
+        jump_held: frame <= 21,
+        grab_held: frame === 6 || frame === 7 || frame === 8,
+      })),
+    },
     ...(includePlaygroundSwim ? [
       {
         name: 'playground-swim-idle',
