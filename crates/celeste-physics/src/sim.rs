@@ -2273,7 +2273,10 @@ fn begin_transition(p: &mut PlayerSnapshot, next: Rect, direction: Vec2) {
     p.transition_room_bounds = Some(next);
     p.transition_direction = direction;
     p.transition_target = target;
-    p.transition_timer = TRANSITION_TIME;
+    // TransitionRoutine updates cameraAt after yielding, then resumes once
+    // more to observe cameraAt == 1 and run OnTransition. Preserve that final
+    // coroutine-resume frame in addition to the 0.65-second camera duration.
+    p.transition_timer = TRANSITION_TIME + DT;
     p.on_ground = false;
 }
 
@@ -3998,6 +4001,7 @@ mod tests {
             .iter()
             .position(|state| state.current_room_bounds == Some(map.transition_rooms[0]))
             .unwrap();
+        assert_eq!(completed, 41);
         assert_eq!(trace.states[completed].pos.y, -5.0);
         assert_eq!(trace.states[completed].dashes, 1);
         assert_eq!(trace.states[completed].stamina, 110.0);

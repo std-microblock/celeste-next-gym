@@ -1012,7 +1012,7 @@ function verifyUpwardScreenTransition(states) {
     && near(state.stamina, 20))
   semanticAssert(entered > 0, 'mechanics-screen-transition-up', `BeforeUpTransition did not apply 0/-105 with delayed resource refill: ${JSON.stringify(states.slice(0, 6).map(pickCore))}`)
   const completed = states.findIndex((state, frame) => frame > entered && state.dashes >= 1 && near(state.stamina, 110))
-  semanticAssert(completed - entered >= 39, 'mechanics-screen-transition-up', `0.65 second transition completed too early: entered=${entered}, completed=${completed}`)
+  semanticAssert(completed - entered === 40, 'mechanics-screen-transition-up', `0.65 second transition plus the final coroutine resume took ${completed - entered} frames instead of 40`)
   semanticAssert(completed > 0 && near(states[completed].pos[1], -5), 'mechanics-screen-transition-up', `upward transition ended at y=${states[completed]?.pos[1]} instead of the source-derived target y=-5`)
 }
 
