@@ -2486,6 +2486,37 @@ mod tests {
         assert_eq!(p.speed.y, JUMP_SPEED);
     }
     #[test]
+    fn superwave_chains_extended_super_into_a_reverse_wavedash() {
+        let mut inputs = vec![InputState::default(); 30];
+        for input in &mut inputs[..=10] {
+            input.move_x = 1;
+        }
+        inputs[0].dash_pressed = true;
+        inputs[10].jump_pressed = true;
+        inputs[10].jump_held = true;
+        for input in &mut inputs[11..] {
+            input.move_x = -1;
+            input.move_y = 1;
+        }
+        inputs[11].dash_pressed = true;
+        inputs[26].jump_pressed = true;
+        inputs[26].jump_held = true;
+        let trace = simulate_trace(
+            grounded_player(),
+            &inputs,
+            &floor_map(),
+            inputs.len() as u32,
+        )
+        .unwrap();
+        assert_eq!(trace.states[11].speed, Vec2::new(SUPER_JUMP_H, JUMP_SPEED));
+        assert_eq!(trace.states[11].dashes, 1);
+        assert!(trace.states[22].on_ground);
+        assert!(trace.states[22].ducking);
+        assert!(trace.states[22].speed.x < -200.0);
+        assert_eq!(trace.states[27].speed, Vec2::new(-325.0, -52.5));
+        assert_eq!(trace.states[27].dashes, 1);
+    }
+    #[test]
     fn upward_diagonal_demo_keeps_crouched_dash_hitbox() {
         let mut inputs = [InputState::default(); 5];
         inputs[0] = InputState {
