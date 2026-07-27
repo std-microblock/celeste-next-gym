@@ -2723,6 +2723,56 @@ mod tests {
     }
 
     #[test]
+    fn bubble_super_uses_coyote_grace_and_keeps_the_refilled_dash() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(220.0, 400.0),
+            speed: Vec2::new(90.0, 0.0),
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = [InputState::default(); 16];
+        for (frame, input) in inputs.iter_mut().enumerate() {
+            input.move_x = 1;
+            input.dash_pressed = frame == 5;
+            input.jump_pressed = frame == 9;
+            input.jump_held = (9..15).contains(&frame);
+        }
+        let trace = simulate_trace(p, &inputs, &crate::mechanics_playground(), 16).unwrap();
+        let jumped = trace
+            .states
+            .iter()
+            .find(|state| state.state == PlayerState::Normal && state.speed.y < 0.0)
+            .expect("bubble super should jump during coyote grace");
+        assert_eq!(jumped.speed.x, SUPER_JUMP_H);
+        assert_eq!(jumped.speed.y, JUMP_SPEED);
+        assert_eq!(jumped.dashes, 1);
+    }
+
+    #[test]
+    fn bubble_demohyper_uses_coyote_grace_and_keeps_the_refilled_dash() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(220.0, 400.0),
+            speed: Vec2::new(90.0, 0.0),
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = [InputState::default(); 16];
+        for (frame, input) in inputs.iter_mut().enumerate() {
+            input.move_x = 1;
+            input.crouch_dash_pressed = frame == 5;
+            input.jump_pressed = frame == 9;
+            input.jump_held = (9..15).contains(&frame);
+        }
+        let trace = simulate_trace(p, &inputs, &crate::mechanics_playground(), 16).unwrap();
+        let jumped = trace
+            .states
+            .iter()
+            .find(|state| state.state == PlayerState::Normal && state.speed.y < 0.0)
+            .expect("bubble demohyper should jump during coyote grace");
+        assert_eq!(jumped.speed.x, SUPER_JUMP_H * 1.25);
+        assert_eq!(jumped.speed.y, JUMP_SPEED * 0.5);
+        assert_eq!(jumped.dashes, 1);
+    }
+
+    #[test]
     fn dash_virtual_button_buffer_survives_global_freeze() {
         let p = PlayerSnapshot {
             pos: Vec2::new(32.0, 64.0),

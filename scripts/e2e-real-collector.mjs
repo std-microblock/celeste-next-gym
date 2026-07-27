@@ -203,6 +203,26 @@ try {
         })),
       },
       {
+        name: 'entity-4.2-bubble-super',
+        initial: { pos: [220, 400], speed: [90, 0] },
+        inputs: Array.from({ length: 16 }, (_, frame) => input({
+          move_x: 1,
+          dash_pressed: frame === 5,
+          jump_pressed: frame === 9,
+          jump_held: frame >= 9 && frame < 15,
+        })),
+      },
+      {
+        name: 'entity-4.2-bubble-demohyper',
+        initial: { pos: [220, 400], speed: [90, 0] },
+        inputs: Array.from({ length: 16 }, (_, frame) => input({
+          move_x: 1,
+          crouch_dash_pressed: frame === 5,
+          jump_pressed: frame === 9,
+          jump_held: frame >= 9 && frame < 15,
+        })),
+      },
+      {
         name: 'playground-green-booster-auto',
         initial: { pos: [760, 440], speed: [0, 0] },
         inputs: Array.from({ length: 30 }, () => input()),
