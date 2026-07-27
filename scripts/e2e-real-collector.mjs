@@ -23,6 +23,8 @@ const serviceRoot = resolve(root, 'services', 'collector')
 const showGameWindow = process.env.E2E_SHOW_WINDOWS === '1'
 const skipTransitions = process.env.E2E_SKIP_TRANSITIONS === '1' || showGameWindow
 const collectOnly = process.env.E2E_COLLECT_ONLY === '1'
+const expectedGitBranch = process.env.E2E_EXPECT_GIT_BRANCH?.trim() || undefined
+const expectedGitHead = process.env.E2E_EXPECT_GIT_HEAD?.trim() || undefined
 const requestedScenarios = new Set(
   (process.env.E2E_SCENARIOS ?? '').split(',').map((name) => name.trim()).filter(Boolean),
 )
@@ -82,6 +84,12 @@ const gameInstall = validateGameInstall({ repoRoot: root, gameRoot, steamRoots }
 const git = {
   branch: capture('git', ['branch', '--show-current']),
   head: capture('git', ['rev-parse', 'HEAD']),
+}
+if (expectedGitBranch && git.branch !== expectedGitBranch) {
+  throw new Error(`expected git branch ${expectedGitBranch}, got ${git.branch || '(detached)'}`)
+}
+if (expectedGitHead && git.head !== expectedGitHead) {
+  throw new Error(`expected git HEAD ${expectedGitHead}, got ${git.head}`)
 }
 
 function cleanupOwned(label, child, identity) {
