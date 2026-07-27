@@ -17,6 +17,7 @@ const RUN_REDUCE: f32 = 400.0;
 const DUCK_FRICTION: f32 = 500.0;
 const AIR_MULT: f32 = 0.65;
 const JUMP_GRACE: f32 = 0.1;
+const JUMP_BUFFER_TIME: f32 = 0.08;
 const JUMP_SPEED: f32 = -105.0;
 const JUMP_H_BOOST: f32 = 40.0;
 const VAR_JUMP_TIME: f32 = 0.2;
@@ -226,11 +227,15 @@ fn step(p: &mut PlayerSnapshot, mut input: InputState, map: &Map) -> Result<(), 
     // clip to carry a press out of the hit freeze.
     p.dash_buffer_timer = (p.dash_buffer_timer - DT).max(0.0);
     p.crouch_dash_buffer_timer = (p.crouch_dash_buffer_timer - DT).max(0.0);
+    p.jump_buffer_timer = (p.jump_buffer_timer - DT).max(0.0);
     if input.dash_pressed {
         p.dash_buffer_timer = 0.08;
     }
     if input.crouch_dash_pressed {
         p.crouch_dash_buffer_timer = 0.08;
+    }
+    if input.jump_pressed {
+        p.jump_buffer_timer = JUMP_BUFFER_TIME;
     }
     input.dash_pressed = p.dash_buffer_timer > 0.0;
     input.crouch_dash_pressed = p.crouch_dash_buffer_timer > 0.0;
@@ -311,9 +316,6 @@ fn step(p: &mut PlayerSnapshot, mut input: InputState, map: &Map) -> Result<(), 
     if p.state == PlayerState::Swim && !dash_refill_cooldown_active {
         p.dashes = p.dashes.max(1);
     }
-    if input.jump_pressed {
-        p.jump_buffer_timer = 0.1;
-    }
     update_wall_boost(p);
     p.move_x = if force_move_x_active {
         p.force_move_x
@@ -393,7 +395,6 @@ fn tick_timers(p: &mut PlayerSnapshot) {
         &mut p.bumper_reuse_timer,
         &mut p.no_wind_timer,
         &mut p.jump_grace_timer,
-        &mut p.jump_buffer_timer,
         &mut p.auto_jump_timer,
         &mut p.var_jump_timer,
         &mut p.force_move_x_timer,
@@ -4029,6 +4030,52 @@ mod tests {
         assert_eq!(trace.states[completed].stamina, 110.0);
         assert_eq!(trace.states[completed].wall_slide_timer, WALL_SLIDE_TIME);
         assert_eq!(trace.states[completed].jump_grace_timer, 0.0);
+    }
+
+    #[test]
+    fn climb_jump_buffer_uses_the_real_five_frame_transition_boundary() {
+        let upper = Rect::new(0.0, -184.0, 320.0, 184.0);
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            transition_rooms: vec![upper],
+            solids: vec![Rect::new(168.0, -16.0, 8.0, 16.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(164.0, 4.0),
+            speed: Vec2::new(80.0, -160.0),
+            stamina: 20.0,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = |press_frame| {
+            (0..43)
+                .map(|frame| InputState {
+                    move_x: 1,
+                    jump_pressed: frame == press_frame,
+                    jump_held: frame >= press_frame,
+                    grab_held: frame >= press_frame,
+                    ..InputState::default()
+                })
+                .collect::<Vec<_>>()
+        };
+        let on_time_inputs = inputs(37);
+        let on_time = simulate_trace(
+            player.clone(),
+            &on_time_inputs,
+            &map,
+            on_time_inputs.len() as u32,
+        )
+        .unwrap();
+        let early_inputs = inputs(36);
+        let early = simulate_trace(player, &early_inputs, &map, early_inputs.len() as u32).unwrap();
+
+        assert_eq!(on_time.states[41].current_room_bounds, Some(upper));
+        assert_eq!(on_time.states[42].stamina, 82.5);
+        assert_eq!(on_time.states[42].speed.x, 0.0);
+        assert!(on_time.states[42].wall_speed_retained > 0.0);
+        assert_eq!(on_time.states[42].jump_buffer_timer, 0.0);
+        assert_eq!(early.states[42].stamina, 110.0);
+        assert_eq!(early.states[42].speed.x, AIR_MULT * RUN_ACCEL * DT);
     }
 
     #[test]
