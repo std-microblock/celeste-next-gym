@@ -763,6 +763,46 @@ try {
       })),
     },
     {
+      name: 'cornerboost',
+      initial: { pos: [139, 86], speed: [90, -30] },
+      inputs: Array.from({ length: 12 }, (_, frame) => input({
+        move_x: 1,
+        jump_pressed: frame === 0,
+        jump_held: frame < 8,
+        grab_held: frame === 0,
+      })),
+    },
+    {
+      name: 'downward-cornerboost',
+      initial: { pos: [138, 86], speed: [160, 30] },
+      inputs: Array.from({ length: 12 }, (_, frame) => input({
+        move_x: 1,
+        jump_pressed: frame === 0,
+        jump_held: frame < 8,
+        grab_held: frame === 0,
+      })),
+    },
+    {
+      name: 'five-jump',
+      initial: { pos: [36, 156], speed: [0, 0], state: 'Climb' },
+      inputs: Array.from({ length: 48 }, (_, frame) => input({
+        move_x: frame >= 5 ? 1 : 0,
+        jump_pressed: frame === 0 || frame === 5,
+        jump_held: frame <= 17,
+        grab_held: frame === 0 || frame === 5,
+      })),
+    },
+    {
+      name: 'six-jump',
+      initial: { pos: [139, 86], speed: [90, -30] },
+      inputs: Array.from({ length: 40 }, (_, frame) => input({
+        move_x: 1,
+        jump_pressed: frame === 0,
+        jump_held: frame < 13,
+        grab_held: frame === 0,
+      })),
+    },
+    {
       name: 'wallboost',
       initial: { pos: [140, 112], speed: [0, 30] },
       inputs: Array.from({ length: 12 }, (_, frame) => input({

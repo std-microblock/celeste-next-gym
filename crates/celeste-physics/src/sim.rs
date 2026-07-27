@@ -40,6 +40,7 @@ const CLIMB_SLIP_SPEED: f32 = 30.0;
 const CLIMB_ACCEL: f32 = 900.0;
 const CLIMB_CHECK_DIST: f32 = 2.0;
 const CLIMB_TIRED_THRESHOLD: f32 = 20.0;
+const CLIMB_JUMP_COST: f32 = 27.5;
 const CLIMB_UP_COST: f32 = 45.454_544;
 const CLIMB_STILL_COST: f32 = 10.0;
 const SWIM_Y_SPEED_MULT: f32 = 0.5;
@@ -433,6 +434,11 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         && check_stamina(p) >= CLIMB_TIRED_THRESHOLD
         && climb_check(p, map, facing_dir)
     {
+        // StateMachine invokes NormalEnd before ClimbBegin. Entering the
+        // actual grab state therefore destroys any pending cornerboost speed.
+        p.wall_speed_retention_timer = 0.0;
+        p.wall_boost_timer = 0.0;
+        p.hop_wait_x = 0;
         p.state = PlayerState::Climb;
         p.auto_jump = false;
         p.speed.x = 0.0;
@@ -542,19 +548,23 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
             if jump_wall == 0 {
                 return;
             }
-            p.jump_buffer_timer = 0.0;
-            p.speed.x = -(jump_wall as f32) * WALL_JUMP_H;
-            p.speed.y = JUMP_SPEED;
-            p.auto_jump = false;
-            p.dash_attack_timer = 0.0;
-            p.wall_slide_timer = WALL_SLIDE_TIME;
-            p.wall_boost_timer = 0.0;
-            if move_x != 0 {
-                p.force_move_x = -jump_wall;
-                p.force_move_x_timer = 0.16;
+            if input.grab_held && p.stamina > 0.0 && facing_dir == jump_wall {
+                climb_jump(p, jump_wall);
+            } else {
+                p.jump_buffer_timer = 0.0;
+                p.speed.x = -(jump_wall as f32) * WALL_JUMP_H;
+                p.speed.y = JUMP_SPEED;
+                p.auto_jump = false;
+                p.dash_attack_timer = 0.0;
+                p.wall_slide_timer = WALL_SLIDE_TIME;
+                p.wall_boost_timer = 0.0;
+                if move_x != 0 {
+                    p.force_move_x = -jump_wall;
+                    p.force_move_x_timer = 0.16;
+                }
+                p.var_jump_speed = p.speed.y;
+                p.var_jump_timer = VAR_JUMP_TIME;
             }
-            p.var_jump_speed = p.speed.y;
-            p.var_jump_timer = VAR_JUMP_TIME;
         }
     }
 }
@@ -698,6 +708,26 @@ fn enter_normal(p: &mut PlayerSnapshot) {
     p.max_fall = MAX_FALL;
 }
 
+fn climb_jump(p: &mut PlayerSnapshot, wall: i8) {
+    p.jump_buffer_timer = 0.0;
+    p.jump_grace_timer = 0.0;
+    p.auto_jump = false;
+    p.dash_attack_timer = 0.0;
+    p.wall_slide_timer = WALL_SLIDE_TIME;
+    p.wall_boost_timer = 0.0;
+    p.speed.x += p.move_x as f32 * JUMP_H_BOOST;
+    p.speed.y = JUMP_SPEED;
+    if !p.on_ground {
+        p.stamina = (p.stamina - CLIMB_JUMP_COST).max(0.0);
+    }
+    if p.move_x == 0 {
+        p.wall_boost_dir = -wall;
+        p.wall_boost_timer = 0.2;
+    }
+    p.var_jump_speed = p.speed.y;
+    p.var_jump_timer = VAR_JUMP_TIME;
+}
+
 fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     let wall = if p.facing { 1 } else { -1 };
     // Player.ClimbUpdate checks jump and dash before letting go or checking
@@ -705,28 +735,20 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     // that ordering for the first Climb frame just below a wall's bottom edge.
     if input.jump_pressed && (!p.ducking || can_unduck(p, map)) {
         enter_normal(p);
-        p.jump_buffer_timer = 0.0;
-        p.jump_grace_timer = 0.0;
-        p.auto_jump = false;
-        p.dash_attack_timer = 0.0;
-        p.wall_slide_timer = WALL_SLIDE_TIME;
-        p.wall_boost_timer = 0.0;
         if p.move_x == -wall {
+            p.jump_buffer_timer = 0.0;
+            p.jump_grace_timer = 0.0;
+            p.auto_jump = false;
+            p.dash_attack_timer = 0.0;
+            p.wall_slide_timer = WALL_SLIDE_TIME;
+            p.wall_boost_timer = 0.0;
             p.ducking = false;
             p.speed = Vec2::new(-(wall as f32) * WALL_JUMP_H, JUMP_SPEED);
+            p.var_jump_speed = p.speed.y;
+            p.var_jump_timer = VAR_JUMP_TIME;
         } else {
-            p.speed.x += p.move_x as f32 * JUMP_H_BOOST;
-            p.speed.y = JUMP_SPEED;
-            if !p.on_ground {
-                p.stamina = (p.stamina - 27.5).max(0.0);
-            }
-            if p.move_x == 0 {
-                p.wall_boost_dir = -wall;
-                p.wall_boost_timer = 0.2;
-            }
+            climb_jump(p, wall);
         }
-        p.var_jump_speed = p.speed.y;
-        p.var_jump_timer = VAR_JUMP_TIME;
         return;
     }
     if (input.dash_pressed || input.crouch_dash_pressed)
@@ -3199,6 +3221,193 @@ mod tests {
         assert_eq!(trace.states[4].wall_speed_retention_timer, 0.0);
         assert!(trace.states[4].speed.x > 105.0);
     }
+
+    #[test]
+    fn cornerboost_climb_jump_stores_jump_boost_before_clearing_wall_top() {
+        let map = Map {
+            solids: vec![Rect::new(40.0, 40.0, 8.0, 60.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(35.0, 46.0),
+            speed: Vec2::new(90.0, -30.0),
+            facing: true,
+            stamina: 110.0,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(
+            player,
+            &[
+                InputState {
+                    move_x: 1,
+                    jump_pressed: true,
+                    jump_held: true,
+                    grab_held: true,
+                    ..InputState::default()
+                },
+                InputState {
+                    move_x: 1,
+                    jump_held: true,
+                    ..InputState::default()
+                },
+                InputState {
+                    move_x: 1,
+                    jump_held: true,
+                    ..InputState::default()
+                },
+                InputState {
+                    move_x: 1,
+                    jump_held: true,
+                    ..InputState::default()
+                },
+                InputState {
+                    move_x: 1,
+                    jump_held: true,
+                    ..InputState::default()
+                },
+            ],
+            &map,
+            5,
+        )
+        .unwrap();
+        assert_eq!(trace.states[1].state, PlayerState::Normal);
+        assert_eq!(trace.states[1].speed.x, 0.0);
+        assert!((trace.states[1].wall_speed_retained - 130.0).abs() < 0.001);
+        assert_eq!(trace.states[1].stamina, 82.5);
+        assert_eq!(trace.states[5].wall_speed_retention_timer, 0.0);
+        assert!((trace.states[5].speed.x - 125.666_64).abs() < 0.001);
+    }
+
+    #[test]
+    fn downward_cornerboost_uses_wall_jump_probe_without_entering_climb() {
+        let map = Map {
+            solids: vec![Rect::new(40.0, 40.0, 8.0, 60.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(34.0, 46.0),
+            speed: Vec2::new(160.0, 30.0),
+            facing: true,
+            stamina: 110.0,
+            ..PlayerSnapshot::default()
+        };
+        assert!(!climb_check(&player, &map, 1));
+        assert!(wall_jump_check(&player, &map, 1));
+        let trace = simulate_trace(
+            player,
+            &[
+                InputState {
+                    move_x: 1,
+                    jump_pressed: true,
+                    jump_held: true,
+                    grab_held: true,
+                    ..InputState::default()
+                },
+                InputState {
+                    move_x: 1,
+                    jump_held: true,
+                    ..InputState::default()
+                },
+                InputState {
+                    move_x: 1,
+                    jump_held: true,
+                    ..InputState::default()
+                },
+                InputState {
+                    move_x: 1,
+                    jump_held: true,
+                    ..InputState::default()
+                },
+                InputState {
+                    move_x: 1,
+                    jump_held: true,
+                    ..InputState::default()
+                },
+            ],
+            &map,
+            5,
+        )
+        .unwrap();
+        assert_eq!(trace.states[1].state, PlayerState::Normal);
+        assert_eq!(trace.states[1].speed.x, 0.0);
+        assert!((trace.states[1].wall_speed_retained - 195.666_66).abs() < 0.001);
+        assert_eq!(trace.states[1].stamina, 82.5);
+        assert!(trace.states[5].speed.x > 190.0);
+    }
+
+    #[test]
+    fn five_jump_chains_neutral_and_lip_climb_jumps_across_five_tiles() {
+        let map = Map {
+            solids: vec![
+                Rect::new(40.0, 40.0, 8.0, 80.0),
+                Rect::new(80.0, 40.0, 40.0, 8.0),
+            ],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(36.0, 52.0),
+            state: PlayerState::Climb,
+            facing: true,
+            stamina: 110.0,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = (0..48)
+            .map(|frame| InputState {
+                move_x: if frame >= 5 { 1 } else { 0 },
+                jump_pressed: frame == 0 || frame == 5,
+                jump_held: frame <= 17,
+                grab_held: frame == 0 || frame == 5,
+                ..InputState::default()
+            })
+            .collect::<Vec<_>>();
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+        assert_eq!(trace.states[1].speed.y, JUMP_SPEED);
+        assert_eq!(trace.states[6].stamina, 55.0);
+        assert!(trace.states.iter().any(|state| state.pos.x >= 76.0));
+        assert!(
+            trace
+                .states
+                .iter()
+                .any(|state| state.on_ground && state.pos.x >= 76.0)
+        );
+    }
+
+    #[test]
+    fn six_jump_uses_a_full_speed_cornerboost_to_reach_six_tile_landing() {
+        let map = Map {
+            solids: vec![
+                Rect::new(40.0, 40.0, 8.0, 80.0),
+                Rect::new(88.0, 48.0, 40.0, 8.0),
+            ],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(35.0, 46.0),
+            speed: Vec2::new(90.0, -30.0),
+            facing: true,
+            stamina: 110.0,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = (0..60)
+            .map(|frame| InputState {
+                move_x: 1,
+                jump_pressed: frame == 0,
+                jump_held: frame < 13,
+                grab_held: frame == 0,
+                ..InputState::default()
+            })
+            .collect::<Vec<_>>();
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+        assert!((trace.states[1].wall_speed_retained - 130.0).abs() < 0.001);
+        assert!(trace.states.iter().any(|state| state.pos.x >= 84.0));
+        assert!(
+            trace
+                .states
+                .iter()
+                .any(|state| state.on_ground && state.pos.x >= 84.0)
+        );
+    }
+
     #[test]
     fn dash_spends_dash_and_is_diagonal_normalized() {
         let input = InputState {
