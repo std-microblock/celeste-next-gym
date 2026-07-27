@@ -32,6 +32,8 @@ const SUPER_JUMP_H: f32 = 260.0;
 const CLIMB_UP_SPEED: f32 = -45.0;
 const CLIMB_DOWN_SPEED: f32 = 80.0;
 const CLIMB_ACCEL: f32 = 900.0;
+const CLIMB_CHECK_DIST: f32 = 2.0;
+const CLIMB_TIRED_THRESHOLD: f32 = 20.0;
 const CLIMB_UP_COST: f32 = 45.454_544;
 const CLIMB_STILL_COST: f32 = 10.0;
 const SWIM_Y_SPEED_MULT: f32 = 0.5;
@@ -413,15 +415,31 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     }
 
     let wall = wall_dir(p, map);
-    if input.grab_held && !p.on_ground && wall != 0 && p.stamina > 0.0 {
+    let facing_dir = if p.facing { 1 } else { -1 };
+    if input.grab_held
+        && !p.on_ground
+        && !p.ducking
+        && p.speed.y >= 0.0
+        && p.speed.x.signum() != -(facing_dir as f32)
+        && check_stamina(p) >= CLIMB_TIRED_THRESHOLD
+        && climb_check(p, map, facing_dir)
+    {
         p.state = PlayerState::Climb;
-        p.facing = wall > 0;
         p.auto_jump = false;
         p.speed.x = 0.0;
         p.speed.y *= 0.2;
         p.wall_slide_timer = WALL_SLIDE_TIME;
         p.climb_no_move_timer = 0.1;
         p.wall_boost_timer = 0.0;
+        // ClimbBegin closes a one-pixel gap when ClimbCheck found the wall at
+        // its full two-pixel probe distance. MoveHExact leaves the sub-pixel
+        // movement counter unchanged.
+        for _ in 0..CLIMB_CHECK_DIST as u8 {
+            if map.solid_at(current_player_rect(p, p.pos.x + facing_dir as f32, p.pos.y)) {
+                break;
+            }
+            p.pos.x += facing_dir as f32;
+        }
         return;
     }
 
@@ -1228,6 +1246,25 @@ fn enter_swim(p: &mut PlayerSnapshot) {
 
 fn touching_wall(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
     map.solid_at(current_player_rect(p, p.pos.x + dir as f32, p.pos.y))
+}
+
+fn check_stamina(p: &PlayerSnapshot) -> f32 {
+    p.stamina + if p.wall_boost_timer > 0.0 { 27.5 } else { 0.0 }
+}
+
+fn climb_bounds_check(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
+    let rect = current_player_rect(p, p.pos.x, p.pos.y);
+    rect.x + dir as f32 * CLIMB_CHECK_DIST >= map.bounds.x
+        && rect.right() + dir as f32 * CLIMB_CHECK_DIST < map.bounds.right()
+}
+
+fn climb_check(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
+    climb_bounds_check(p, map, dir)
+        && map.solid_at(current_player_rect(
+            p,
+            p.pos.x + dir as f32 * CLIMB_CHECK_DIST,
+            p.pos.y,
+        ))
 }
 fn wall_dir(p: &PlayerSnapshot, map: &Map) -> i8 {
     if touching_wall(p, map, -1) {
@@ -2541,6 +2578,43 @@ mod tests {
         assert_eq!(trace.states[3].stamina, 80.0);
         assert_eq!(trace.states[3].wall_boost_timer, 0.0);
         assert!(trace.states[3].speed.x < -110.0);
+    }
+
+    #[test]
+    fn wallboost_neutral_returns_to_the_wall_for_a_second_stamina_free_cycle() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 300.0),
+            solids: vec![Rect::new(40.0, 0.0, 8.0, 300.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(36.0, 240.0),
+            state: PlayerState::Climb,
+            facing: true,
+            stamina: 80.0,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = std::array::from_fn::<_, 60, _>(|frame| InputState {
+            move_x: match frame {
+                1 | 28 => -1,
+                2..=26 | 29.. => 1,
+                _ => 0,
+            },
+            jump_pressed: frame == 0 || frame == 27,
+            jump_held: frame < 10 || (27..37).contains(&frame),
+            grab_held: frame == 0 || frame >= 20,
+            ..InputState::default()
+        });
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+        assert_eq!(trace.states[1].stamina, 52.5);
+        assert_eq!(trace.states[3].stamina, 80.0);
+        assert_eq!(trace.states[27].state, PlayerState::Climb);
+        assert_eq!(trace.states[27].stamina, 80.0);
+        assert_eq!(trace.states[28].state, PlayerState::Normal);
+        assert_eq!(trace.states[28].stamina, 52.5);
+        assert_eq!(trace.states[30].wall_boost_timer, 0.0);
+        assert_eq!(trace.states[30].stamina, 80.0);
+        assert!(trace.states[30].speed.x < -110.0);
     }
 
     #[test]
