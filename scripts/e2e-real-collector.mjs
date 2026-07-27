@@ -16,10 +16,7 @@ import {
 } from './e2e-isolation.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const gameRepoRoot = process.env.E2E_GAME_REPO_ROOT
-  ? resolve(process.env.E2E_GAME_REPO_ROOT)
-  : root
-const gameRoot = resolve(gameRepoRoot, 'vendor', 'celeste-game')
+const gameRoot = resolve(root, 'vendor', 'celeste-game')
 const modRoot = resolve(root, 'mods', 'CelesteGymCollector')
 const playgroundModRoot = resolve(root, 'mods', 'CelesteGymPlayground')
 const serviceRoot = resolve(root, 'services', 'collector')
@@ -85,7 +82,7 @@ const steamRoots = (process.env.E2E_STEAM_CELESTE_ROOTS ?? '')
   .split(process.platform === 'win32' ? ';' : ':')
   .map((path) => path.trim())
   .filter(Boolean)
-const gameInstall = validateGameInstall({ repoRoot: gameRepoRoot, gameRoot, steamRoots })
+const gameInstall = validateGameInstall({ repoRoot: root, gameRoot, steamRoots })
 const git = {
   branch: capture('git', ['branch', '--show-current']),
   head: capture('git', ['rev-parse', 'HEAD']),
@@ -132,10 +129,7 @@ try {
   const codec = requireFromService('@msgpack/msgpack')
   encode = codec.encode
   decode = codec.decode
-  run('dotnet', [
-    'build', resolve(modRoot, 'Source', 'CelesteGymCollector.csproj'), '-c', 'Release',
-    `-p:CelesteRoot=${gameRoot}`,
-  ])
+  run('dotnet', ['build', resolve(modRoot, 'Source', 'CelesteGymCollector.csproj'), '-c', 'Release'])
   const installedMod = resolve(gameInstall.gameRoot, 'Mods', 'CelesteGymCollector')
   mkdirSync(resolve(installedMod, 'Code'), { recursive: true })
   copyFileSync(resolve(modRoot, 'everest.yaml'), resolve(installedMod, 'everest.yaml'))
