@@ -1077,7 +1077,7 @@ function ultraLandingFrames(states) {
   for (let frame = 1; frame < states.length; frame++) {
     const before = states[frame - 1]
     const after = states[frame]
-    if (!before.ducking && after.ducking && after.speed[0] > before.speed[0] * 1.19) frames.push(frame)
+    if (!before.on_ground && after.on_ground && after.ducking && after.speed[0] > before.speed[0]) frames.push(frame)
   }
   return frames
 }
@@ -1098,7 +1098,11 @@ function verifyGroundedUltra(states) {
 
 function verifyDelayedUltra(states) {
   const landing = ultraLandingFrames(states).find((frame) => states[frame].state !== 2)
-  semanticAssert(landing !== undefined, 'dash-delayed-ultra', 'no post-Dash landing applied the delayed 1.2 multiplier')
+  semanticAssert(landing !== undefined, 'dash-delayed-ultra', `no post-Dash landing applied the delayed 1.2 multiplier: ${JSON.stringify(states.map(pickCore))}`)
+  const before = states[landing - 1]
+  const after = states[landing]
+  const expected = Math.max(90, before.speed[0] - 400 * 0.65 / 60) * 1.2
+  semanticAssert(near(after.speed[0], expected) && near(after.speed[1], 0), 'dash-delayed-ultra', `post-Dash landing speed was ${JSON.stringify(after.speed)} instead of ${expected}/0`)
 }
 
 function verifyChainedUltras(states) {
