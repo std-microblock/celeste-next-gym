@@ -57,8 +57,12 @@ export function prepareMods(
   }
   assertUnlinkedTarget(installedPlaygroundMod, gameModsRoot)
   assertUnlinkedTarget(installedPlaygroundZip, gameModsRoot)
-  rmSync(installedPlaygroundMod, { recursive: true, force: true })
-  rmSync(installedPlaygroundZip, { force: true })
+  // Windows can briefly retain the previous lifecycle's zip handle after the
+  // owned Celeste child has exited. Keep replacement bounded to the two exact,
+  // validated targets while allowing fs.rm's built-in EPERM retry path.
+  const removal = { recursive: true, force: true, maxRetries: 10, retryDelay: 100 } as const
+  rmSync(installedPlaygroundMod, removal)
+  rmSync(installedPlaygroundZip, removal)
   runCommand('7z', ['a', '-tzip', '-mx=0', installedPlaygroundZip, 'everest.yaml', 'Maps'], playgroundModRoot)
   runCommand(
     process.execPath,
