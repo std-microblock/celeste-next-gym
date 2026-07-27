@@ -3456,6 +3456,52 @@ mod tests {
     }
 
     #[test]
+    fn seven_jump_lands_on_a_target_seven_tiles_from_the_double_cornerboost_wall() {
+        let wall_x = 80.0;
+        let target_x = wall_x + 7.0 * 8.0;
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            solids: vec![
+                Rect::new(0.0, 120.0, wall_x, 64.0),
+                Rect::new(wall_x, 111.0, 8.0, 9.0),
+                Rect::new(target_x, 119.0, 80.0, 8.0),
+            ],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(17.0, 120.0),
+            state: PlayerState::Normal,
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = (0..120)
+            .map(|frame| InputState {
+                move_x: 1,
+                jump_pressed: frame == 5 || frame == 38 || frame == 39,
+                jump_held: (5..17).contains(&frame) || (38..52).contains(&frame),
+                grab_held: frame == 38 || frame == 39,
+                ..InputState::default()
+            })
+            .collect::<Vec<_>>();
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+
+        assert_eq!(trace.states[38].pos, Vec2::new(74.0, 118.0));
+        assert_eq!(trace.states[38].speed.x, MAX_RUN);
+        assert_eq!(trace.states[39].stamina, 82.5);
+        assert_eq!(trace.states[40].stamina, 55.0);
+        assert!((trace.states[40].wall_speed_retained - 165.66666).abs() < 0.001);
+        assert!(trace.states[43].speed.x > 160.0);
+        assert!(
+            trace
+                .states
+                .iter()
+                .any(|state| { state.on_ground && state.pos.x >= target_x - 4.0 })
+        );
+        assert_eq!(trace.states[74].pos, Vec2::new(134.0, 119.0));
+        assert!(trace.states[74].on_ground);
+    }
+
+    #[test]
     fn dash_spends_dash_and_is_diagonal_normalized() {
         let input = InputState {
             move_x: 1,

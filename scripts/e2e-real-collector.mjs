@@ -219,6 +219,16 @@ try {
       initial: { pos: [64, 496], speed: [0, 0] },
       inputs: Array.from({ length: 30 }, () => input({ move_x: 1 })),
     },
+    {
+      name: 'seven-jump',
+      initial: { pos: [177, 120], speed: [0, 0], on_ground: true },
+      inputs: Array.from({ length: 120 }, (_, frame) => input({
+        move_x: 1,
+        jump_pressed: frame === 5 || frame === 38 || frame === 39,
+        jump_held: (frame >= 5 && frame < 17) || (frame >= 38 && frame < 52),
+        grab_held: frame === 38 || frame === 39,
+      })),
+    },
     ...(includePlaygroundSwim ? [
       {
         name: 'playground-swim-idle',
