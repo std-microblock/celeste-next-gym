@@ -321,11 +321,27 @@ pub fn encode_celeste_map(map: &Map, package: &str, room: &str) -> Result<Vec<u8
             bounds,
             ..Map::default()
         };
+        // LevelData marks rooms without a player spawn as Dummy, and
+        // MapData.CanTransitionTo rejects Dummy targets. A transition room
+        // therefore needs a valid spawn even though screen transitions keep
+        // the existing player instead of respawning at it.
+        let transition_spawn = element(
+            "player",
+            [
+                ("id", BinaryValue::Int(0)),
+                ("originX", BinaryValue::Int(4)),
+                ("originY", BinaryValue::Int(8)),
+                ("width", BinaryValue::Int(8)),
+                ("x", BinaryValue::Int(24)),
+                ("y", BinaryValue::Int(bounds.height as i32 - 16)),
+            ],
+            vec![],
+        );
         levels.push(encoded_level(
             format!("lvl_transition_{index}"),
             bounds,
             vec![],
-            vec![],
+            vec![transition_spawn],
             solids_text(&blank),
         ));
     }
@@ -788,5 +804,6 @@ mod tests {
         let upper = decode_map_room(&bytes, Some("transition_0")).unwrap();
         assert_eq!(upper.bounds, adjacent);
         assert_eq!(upper.transition_rooms, vec![map.bounds]);
+        assert_eq!(upper.spawn, Vec2::new(24.0, -16.0));
     }
 }
