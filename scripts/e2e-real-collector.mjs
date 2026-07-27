@@ -238,6 +238,13 @@ try {
             throw new Error(`entity-4.8-delayed-blockboost: did not apply retained ZipMover lift to the later static-wall jump: ${JSON.stringify({
               before: before && pickCore(before),
               jumped: jumped && pickCore(jumped),
+              timeline: states.slice(14, 26).map((state) => ({
+                ...pickCore(state),
+                jump_grace: state._everest_fields?.jumpGraceTimer,
+                current_lift: state._everest_fields?.currentLiftSpeed,
+                last_lift: state._everest_fields?.lastLiftSpeed,
+                lift_timer: state._everest_fields?.liftSpeedTimer,
+              })),
             })}`)
           }
         },
