@@ -47,7 +47,7 @@ npm run typecheck
 
 比较器逐帧检查 position、speed、state、facing、dashes、stamina、grounded、ducking、death 九类字段。默认且最大容差均为 `0.01`；不一致时以非零退出码返回首个差异帧和字段。
 
-`examples/` 内的右跑和右跳 trace 由当前 WASM 与附带 `.bin` 可复现生成：
+`examples/` 内的右跑和右跳 trace 由当前 WASM 与附带 `.bin` 可复现生成；`game-idle.trace.json` 是启动器在真实 Celeste/Everest Playground 中录到的最小烟测样本，保留每帧 Collector 详细字段：
 
 ```text
 npm run samples
