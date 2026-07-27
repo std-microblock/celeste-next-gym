@@ -136,6 +136,10 @@ pub struct PlayerSnapshot {
     pub wall_speed_retained: f32,
     pub wall_boost_timer: f32,
     pub wall_boost_dir: i8,
+    /// Deferred horizontal launch used by Player.ClimbHop while the player's
+    /// body is still overlapping the ledge wall.
+    pub hop_wait_x: i8,
+    pub hop_wait_x_speed: f32,
     pub climb_no_move_timer: f32,
     pub dream_dash_can_end_timer: f32,
     pub launch_approach_x: Option<f32>,
@@ -236,6 +240,8 @@ impl Default for PlayerSnapshot {
             wall_speed_retained: 0.0,
             wall_boost_timer: 0.0,
             wall_boost_dir: 0,
+            hop_wait_x: 0,
+            hop_wait_x_speed: 0.0,
             climb_no_move_timer: 0.0,
             dream_dash_can_end_timer: 0.0,
             launch_approach_x: None,

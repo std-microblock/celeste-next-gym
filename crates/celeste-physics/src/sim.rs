@@ -30,6 +30,10 @@ const DASH_TIME: f32 = 0.15;
 const DASH_COOLDOWN: f32 = 0.2;
 const DASH_ATTACK_TIME: f32 = 0.3;
 const SUPER_JUMP_H: f32 = 260.0;
+const CLIMB_HOP_Y: f32 = -120.0;
+const CLIMB_HOP_X: f32 = 100.0;
+const CLIMB_HOP_FORCE_TIME: f32 = 0.2;
+const CLIMB_HOP_NO_WIND_TIME: f32 = 0.3;
 const CLIMB_UP_SPEED: f32 = -45.0;
 const CLIMB_DOWN_SPEED: f32 = 80.0;
 const CLIMB_SLIP_SPEED: f32 = 30.0;
@@ -186,6 +190,7 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         s.wall_speed_retention_timer,
         s.wall_speed_retained,
         s.wall_boost_timer,
+        s.hop_wait_x_speed,
         s.dash_buffer_timer,
         s.crouch_dash_buffer_timer,
         s.movement_remainder.x,
@@ -313,6 +318,7 @@ fn step(p: &mut PlayerSnapshot, mut input: InputState, map: &Map) -> Result<(), 
     // NormalUpdate accelerates it, and retained wall speed is restored before
     // the same callback applies air control.
     update_wall_speed_retention(p, map);
+    update_climb_hop_wait(p, map);
 
     if p.badeline_boost_active {
         update_badeline_boost(p, map);
@@ -730,6 +736,9 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         return;
     }
     if !touching_wall(p, map, wall) {
+        if p.speed.y < 0.0 {
+            climb_hop(p, map, wall);
+        }
         p.state = PlayerState::Normal;
         return;
     }
@@ -738,6 +747,11 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         if slipping { CLIMB_SLIP_SPEED } else { 0.0 }
     } else {
         match input.move_y {
+            -1 if slipping => {
+                climb_hop(p, map, wall);
+                p.state = PlayerState::Normal;
+                return;
+            }
             -1 => CLIMB_UP_SPEED,
             1 => CLIMB_DOWN_SPEED,
             _ => {
@@ -1321,6 +1335,36 @@ fn slip_check(p: &PlayerSnapshot, map: &Map, add_y: f32) -> bool {
     !map.solid_at(Rect::new(x, lower_y, 1.0, 1.0))
         && !map.solid_at(Rect::new(x, lower_y - 4.0 + add_y, 1.0, 1.0))
 }
+
+fn climb_hop(p: &mut PlayerSnapshot, map: &Map, wall: i8) {
+    if touching_wall(p, map, wall) {
+        p.hop_wait_x = wall;
+        p.hop_wait_x_speed = wall as f32 * CLIMB_HOP_X;
+    } else {
+        p.hop_wait_x = 0;
+        p.hop_wait_x_speed = 0.0;
+        p.speed.x = wall as f32 * CLIMB_HOP_X;
+    }
+    p.speed.y = p.speed.y.min(CLIMB_HOP_Y);
+    p.force_move_x = 0;
+    p.force_move_x_timer = CLIMB_HOP_FORCE_TIME;
+    p.no_wind_timer = CLIMB_HOP_NO_WIND_TIME;
+}
+
+fn update_climb_hop_wait(p: &mut PlayerSnapshot, map: &Map) {
+    if p.hop_wait_x == 0 {
+        return;
+    }
+    if p.speed.x.signum() == -(p.hop_wait_x as f32) || p.speed.y > 0.0 {
+        p.hop_wait_x = 0;
+        p.hop_wait_x_speed = 0.0;
+    } else if !touching_wall(p, map, p.hop_wait_x) {
+        p.speed.x = p.hop_wait_x_speed;
+        p.hop_wait_x = 0;
+        p.hop_wait_x_speed = 0.0;
+    }
+}
+
 fn wall_dir(p: &PlayerSnapshot, map: &Map) -> i8 {
     if touching_wall(p, map, -1) {
         -1
@@ -2954,6 +2998,72 @@ mod tests {
         let player = simulate(player, &[input], &map, 1).unwrap();
         assert_eq!(player.state, PlayerState::Climb);
         assert_eq!(player.speed.y, CLIMB_SLIP_SPEED);
+    }
+
+    #[test]
+    fn climbhop_waits_for_the_body_to_clear_the_ledge_before_horizontal_launch() {
+        let map = Map {
+            solids: vec![Rect::new(40.0, 80.0, 8.0, 100.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(36.0, 84.0),
+            speed: Vec2::new(0.0, -45.0),
+            state: PlayerState::Climb,
+            facing: true,
+            stamina: 100.0,
+            ..PlayerSnapshot::default()
+        };
+        let input = InputState {
+            move_x: 1,
+            move_y: -1,
+            grab_held: true,
+            ..InputState::default()
+        };
+        let trace = simulate_trace(player, &[input; 4], &map, 4).unwrap();
+        assert_eq!(trace.states[1].state, PlayerState::Normal);
+        assert_eq!(trace.states[1].speed.y, CLIMB_HOP_Y);
+        assert_eq!(trace.states[1].speed.x, 0.0);
+        assert_eq!(trace.states[1].hop_wait_x, 1);
+        assert_eq!(trace.states[1].force_move_x_timer, CLIMB_HOP_FORCE_TIME);
+        assert_eq!(trace.states[1].no_wind_timer, CLIMB_HOP_NO_WIND_TIME);
+        assert!((trace.states[3].speed.x - 89.166_64).abs() < 0.001);
+        assert_eq!(trace.states[3].hop_wait_x, 0);
+    }
+
+    #[test]
+    fn climb_jump_keeps_priority_over_climbhop_on_the_lost_wall_frame() {
+        let map = Map {
+            solids: vec![Rect::new(40.0, 0.0, 8.0, 40.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(36.0, 51.0),
+            speed: Vec2::new(0.0, -45.0),
+            state: PlayerState::Climb,
+            facing: true,
+            stamina: 80.0,
+            ..PlayerSnapshot::default()
+        };
+        assert!(!touching_wall(&player, &map, 1));
+        let player = simulate(
+            player,
+            &[InputState {
+                grab_held: true,
+                jump_pressed: true,
+                jump_held: true,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert_eq!(player.state, PlayerState::Normal);
+        assert_eq!(player.speed, Vec2::new(0.0, JUMP_SPEED));
+        assert_eq!(player.stamina, 52.5);
+        assert_eq!(player.wall_boost_timer, 0.2);
+        assert_eq!(player.hop_wait_x, 0);
+        assert_eq!(player.hop_wait_x_speed, 0.0);
     }
 
     #[test]
