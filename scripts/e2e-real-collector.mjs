@@ -624,12 +624,17 @@ try {
       initial: { pos: [776, -50], speed: [0, 0] },
       inputs: Array.from({ length: 38 }, (_, frame) => input({
         move_x: 1,
-        move_y: frame >= 17 && frame <= 24 ? 1 : 0,
         jump_pressed: frame === 24,
         jump_held: frame >= 24 && frame < 34,
         dash_pressed: frame === 0,
         crouch_dash_pressed: frame === 17,
       })),
+      verify(states) {
+        const hyper = states.find((state) => state.state === 0
+          && Math.abs(state.speed[0] - 325) <= 0.01
+          && Math.abs(state.speed[1] + 52.5) <= 0.01)
+        if (!hyper) throw new Error('entity-4.10.2-dream-hyper: did not execute the expected 325/-52.5 dream-exit hyper')
+      },
     },
   ] : areaId === 4 ? [
     {
@@ -858,6 +863,7 @@ try {
     if (!body.states[0]._everest_fields || Object.keys(body.states[0]._everest_fields).length < 100) {
       throw new Error(`${scenario.name}: real reflected Everest fields are missing`)
     }
+    scenario.verify?.(body.states)
     const tracePath = resolve(root, '.tmp', `e2e-${scenario.name}-trace.json`)
     writeFileSync(tracePath, JSON.stringify({ inputs: request.inputs, states: body.states }))
     if (!collectOnly) {
