@@ -86,6 +86,12 @@ import { scenario as scenario83 } from './spiked-cornerboost.js'
 import { scenario as scenario84 } from './other-5.5-half-stamina-climbing.js'
 import { scenario as scenario85 } from './other-5.6-kermit-dash.js'
 import { scenario as scenario86 } from './other-5.12-subpixel-manipulation.js'
+import { scenario as scenario87 } from './spike-climb.js'
+import { scenario as scenario88 } from './narrow-spiked-climb.js'
+import { scenario as scenario89 } from './spike-clip.js'
+import { scenario as scenario90 } from './spike-jump.js'
+import { scenario as scenario91 } from './cornerboost-wallboost.js'
+import { scenario as scenario92 } from './cornerslip.js'
 
 export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario0,
@@ -175,4 +181,10 @@ export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario84,
   scenario85,
   scenario86,
+  scenario87,
+  scenario88,
+  scenario89,
+  scenario90,
+  scenario91,
+  scenario92,
 ])
