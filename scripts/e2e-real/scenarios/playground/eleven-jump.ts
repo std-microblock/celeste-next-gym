@@ -9,7 +9,7 @@ export const mapParts = [ELEVEN_JUMP_PART] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: [],
   techniqueIds: ['3.7.7'],
   mapParts,
@@ -21,6 +21,7 @@ export const scenario = defineScenario({
     jump_held: frame >= 37 && frame < 60,
     grab_held: frame >= 37 && frame <= 43,
   })),
+  recording: { primaryFor: ['3.7.7'], startFrame: 0, endFrame: 120 },
   verify: verifyElevenJump,
 })
 

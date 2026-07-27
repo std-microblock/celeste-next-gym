@@ -9,7 +9,7 @@ export const mapParts = [REVERSE_CORNERBOOST_PART] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: [],
   techniqueIds: ['3.7.8'],
   mapParts,
@@ -21,6 +21,7 @@ export const scenario = defineScenario({
     jump_held: frame < 12,
     grab_held: frame === 0,
   })),
+  recording: { primaryFor: ['3.7.8'], startFrame: 0, endFrame: 20 },
   verify: verifyReverseCornerboost,
 })
 
