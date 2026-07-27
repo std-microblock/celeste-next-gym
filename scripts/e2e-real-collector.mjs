@@ -10,11 +10,11 @@ const gameRoot = resolve(root, 'vendor', 'celeste-game')
 const modRoot = resolve(root, 'mods', 'CelesteGymCollector')
 const playgroundModRoot = resolve(root, 'mods', 'CelesteGymPlayground')
 const serviceRoot = resolve(root, 'services', 'collector')
-const requireFromService = createRequire(resolve(serviceRoot, 'package.json'))
-const { encode, decode } = requireFromService('@msgpack/msgpack')
 const showGameWindow = process.env.E2E_SHOW_WINDOWS === '1'
 const skipTransitions = process.env.E2E_SKIP_TRANSITIONS === '1' || showGameWindow
 const collectOnly = process.env.E2E_COLLECT_ONLY === '1'
+const expectedGitBranch = process.env.E2E_EXPECT_GIT_BRANCH?.trim() || undefined
+const expectedGitHead = process.env.E2E_EXPECT_GIT_HEAD?.trim() || undefined
 const requestedScenarios = new Set(
   (process.env.E2E_SCENARIOS ?? '').split(',').map((name) => name.trim()).filter(Boolean),
 )
@@ -42,6 +42,27 @@ function run(command, args, cwd = root) {
   if (result.error) throw result.error
   if (result.status !== 0) throw new Error(`${command} exited with ${result.status}`)
 }
+
+function capture(command, args, cwd = root) {
+  const result = spawnSync(command, args, { cwd, encoding: 'utf8', shell: false })
+  if (result.error) throw result.error
+  if (result.status !== 0) throw new Error(`${command} exited with ${result.status}: ${result.stderr.trim()}`)
+  return result.stdout.trim()
+}
+
+if (expectedGitBranch || expectedGitHead) {
+  const actualGitBranch = capture('git', ['branch', '--show-current'])
+  const actualGitHead = capture('git', ['rev-parse', 'HEAD'])
+  if (expectedGitBranch && actualGitBranch !== expectedGitBranch) {
+    throw new Error(`expected git branch ${expectedGitBranch}, got ${actualGitBranch || '(detached)'}`)
+  }
+  if (expectedGitHead && actualGitHead !== expectedGitHead) {
+    throw new Error(`expected git HEAD ${expectedGitHead}, got ${actualGitHead}`)
+  }
+}
+
+const requireFromService = createRequire(resolve(serviceRoot, 'package.json'))
+const { encode, decode } = requireFromService('@msgpack/msgpack')
 
 function waitForPort(port, timeoutMs) {
   const deadline = Date.now() + timeoutMs
