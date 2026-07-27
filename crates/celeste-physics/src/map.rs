@@ -419,6 +419,7 @@ pub fn encode_celeste_map(map: &Map, package: &str, room: &str) -> Result<Vec<u8
     for (index, bounds) in map.transition_rooms.iter().copied().enumerate() {
         let blank = Map {
             bounds,
+            solids: map.solids.clone(),
             ..Map::default()
         };
         // LevelData marks rooms without a player spawn as Dummy, and
@@ -828,10 +829,14 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
         }
     }
 
-    if let Some(solids) = level.children.iter().find(|e| e.name == "solids")
-        && let Some(text) = attr_text(solids, "innerText")
-    {
-        map.solids.extend(tile_rects(text, x, y));
+    for room_level in &levels.children {
+        let room_x = attr_f32(room_level, "x", 0.0);
+        let room_y = attr_f32(room_level, "y", 0.0);
+        if let Some(solids) = room_level.children.iter().find(|e| e.name == "solids")
+            && let Some(text) = attr_text(solids, "innerText")
+        {
+            map.solids.extend(tile_rects(text, room_x, room_y));
+        }
     }
     Ok(map)
 }
@@ -925,6 +930,20 @@ mod tests {
     }
 
     #[test]
+    fn single_room_solids_round_trip_unchanged() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            solids: vec![Rect::new(16.0, 176.0, 32.0, 8.0)],
+            ..Map::default()
+        };
+        let bytes = encode_celeste_map(&map, "CelesteGymPlayground", "single").unwrap();
+        let decoded = decode_map_room(&bytes, Some("single")).unwrap();
+        assert_eq!(decoded.bounds, map.bounds);
+        assert!(decoded.transition_rooms.is_empty());
+        assert_eq!(decoded.solids, map.solids);
+    }
+
+    #[test]
     fn celeste_spring_entities_round_trip_with_source_colliders() {
         let springs = vec![
             Entity {
@@ -992,6 +1011,10 @@ mod tests {
         let map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
             transition_rooms: vec![adjacent],
+            solids: vec![
+                Rect::new(0.0, 176.0, 320.0, 8.0),
+                Rect::new(160.0, -16.0, 8.0, 16.0),
+            ],
             ..Map::default()
         };
         let bytes = encode_celeste_map(&map, "CelesteGymPlayground", "lower").unwrap();
@@ -1002,6 +1025,15 @@ mod tests {
         assert_eq!(upper.bounds, adjacent);
         assert_eq!(upper.transition_rooms, vec![map.bounds]);
         assert_eq!(upper.spawn, Vec2::new(24.0, -16.0));
+        let decoded_solids = vec![
+            Rect::new(0.0, 176.0, 320.0, 8.0),
+            Rect::new(160.0, -16.0, 8.0, 8.0),
+            Rect::new(160.0, -8.0, 8.0, 8.0),
+        ];
+        assert_eq!(lower.solids, decoded_solids);
+        assert_eq!(upper.solids, decoded_solids);
+        assert!(lower.solid_at(Rect::new(160.0, -12.0, 1.0, 1.0)));
+        assert!(upper.solid_at(Rect::new(160.0, -12.0, 1.0, 1.0)));
     }
 
     #[test]

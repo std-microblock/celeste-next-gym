@@ -107,10 +107,22 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         }
         int beforeState = self.StateMachine.State;
         float beforeSpeedY = self.Speed.Y;
+        float beforeStamina = self.Stamina;
         orig(self);
+        // Jump/WallJump/ClimbJump all consume the same virtual-button buffer.
+        // A Normal-state ClimbJump may start while Speed.Y is already negative,
+        // and a repeated ClimbJump may already be exactly -105. The precise
+        // 27.5 stamina cost covers that last case without swallowing launches.
+        bool normalJumpStarted = self.StateMachine.State == Player.StNormal
+            && MathF.Abs(self.Speed.Y - -105f) < 0.001f
+            && MathF.Abs(beforeSpeedY - self.Speed.Y) > 0.001f;
+        bool climbJumpCostPaid = beforeStamina - self.Stamina >= 27.49f;
         if (job is { JumpBufferFrames: > 0 }
             && self.Speed.Y < 0f
-            && (beforeSpeedY >= 0f || (beforeState != 0 && self.StateMachine.State == 0))) {
+            && (beforeSpeedY >= 0f
+                || (beforeState != Player.StNormal && self.StateMachine.State == Player.StNormal)
+                || normalJumpStarted
+                || climbJumpCostPaid)) {
             job.JumpBufferFrames = 0;
         }
         if (job is not null && beforeState != self.StateMachine.State

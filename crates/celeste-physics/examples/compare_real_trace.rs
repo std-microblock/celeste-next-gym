@@ -175,7 +175,13 @@ fn main() -> ExitCode {
                 rust.speed.y,
                 rust.movement_remainder.x,
                 rust.movement_remainder.y,
-                zip.map(|zip| (zip.phase, zip.at, zip.position, zip.remainder, zip.lift_speed)),
+                zip.map(|zip| (
+                    zip.phase,
+                    zip.at,
+                    zip.position,
+                    zip.remainder,
+                    zip.lift_speed
+                )),
                 game.pos[0],
                 game.pos[1],
                 game.speed[0],

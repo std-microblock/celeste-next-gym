@@ -23,6 +23,8 @@ const serviceRoot = resolve(root, 'services', 'collector')
 const showGameWindow = process.env.E2E_SHOW_WINDOWS === '1'
 const skipTransitions = process.env.E2E_SKIP_TRANSITIONS === '1' || showGameWindow
 const collectOnly = process.env.E2E_COLLECT_ONLY === '1'
+const expectedGitBranch = process.env.E2E_EXPECT_GIT_BRANCH?.trim() || undefined
+const expectedGitHead = process.env.E2E_EXPECT_GIT_HEAD?.trim() || undefined
 const requestedScenarios = new Set(
   (process.env.E2E_SCENARIOS ?? '').split(',').map((name) => name.trim()).filter(Boolean),
 )
@@ -82,6 +84,12 @@ const gameInstall = validateGameInstall({ repoRoot: root, gameRoot, steamRoots }
 const git = {
   branch: capture('git', ['branch', '--show-current']),
   head: capture('git', ['rev-parse', 'HEAD']),
+}
+if (expectedGitBranch && git.branch !== expectedGitBranch) {
+  throw new Error(`expected git branch ${expectedGitBranch}, got ${git.branch || '(detached)'}`)
+}
+if (expectedGitHead && git.head !== expectedGitHead) {
+  throw new Error(`expected git HEAD ${expectedGitHead}, got ${git.head}`)
 }
 
 function cleanupOwned(label, child, identity) {
@@ -243,6 +251,26 @@ try {
       verify: verifyBerryTrain,
     },
     {
+      name: 'seven-jump',
+      initial: { pos: [168, 120], speed: [0, 0], on_ground: true },
+      inputs: Array.from({ length: 120 }, (_, frame) => input({
+        move_x: 1,
+        jump_pressed: frame === 11 || frame === 44 || frame === 45,
+        jump_held: (frame >= 11 && frame < 23) || (frame >= 44 && frame < 58),
+        grab_held: frame === 44 || frame === 45,
+      })),
+    },
+    {
+      name: 'eight-jump',
+      initial: { pos: [458, 120], speed: [0, 0], on_ground: true },
+      inputs: Array.from({ length: 120 }, (_, frame) => input({
+        move_x: 1,
+        jump_pressed: frame === 5 || frame === 11 || frame === 12 || frame === 13,
+        jump_held: frame <= 26,
+        grab_held: frame === 11 || frame === 12 || frame === 13,
+      })),
+    },
+    {
       name: 'mechanics-screen-transition-up',
       initial: { pos: [640, 4], speed: [80, -160], dashes: 0, stamina: 20 },
       inputs: Array.from({ length: 42 }, () => input()),
@@ -347,6 +375,16 @@ try {
         dash_pressed: frame === 0 || frame === 16,
       })),
       verify: verifyChainedUltras,
+    },
+    {
+      name: 'nine-jump',
+      initial: { pos: [755, 120], speed: [0, 0], on_ground: true },
+      inputs: Array.from({ length: 120 }, (_, frame) => input({
+        move_x: 1,
+        jump_pressed: frame === 4 || frame === 6 || frame === 7 || frame === 8,
+        jump_held: frame <= 21,
+        grab_held: frame === 6 || frame === 7 || frame === 8,
+      })),
     },
     ...(includePlaygroundSwim ? [
       {
@@ -825,6 +863,24 @@ try {
       })),
     },
     {
+      name: 'bunnyhop',
+      initial: { pos: [19, 135], speed: [160, 100] },
+      inputs: Array.from({ length: 18 }, (_, frame) => input({
+        move_x: 1,
+        jump_pressed: frame === 3,
+        jump_held: frame >= 3 && frame < 11,
+      })),
+    },
+    {
+      name: 'crouch-jump',
+      initial: { pos: [42, 144], speed: [0, 0] },
+      inputs: Array.from({ length: 40 }, (_, frame) => input({
+        move_y: frame <= 1 ? 1 : 0,
+        jump_pressed: frame === 1,
+        jump_held: frame >= 1 && frame < 10,
+      })),
+    },
+    {
       name: 'fastfall',
       initial: { pos: [120, 60], speed: [0, 160] },
       inputs: Array.from({ length: 24 }, () => input({ move_y: 1 })),
@@ -841,6 +897,24 @@ try {
         move_x: 1,
         jump_pressed: frame === 0,
         jump_held: frame < 6,
+      })),
+    },
+    {
+      name: 'cornerkick',
+      initial: { pos: [242, 90], speed: [0, -30] },
+      inputs: Array.from({ length: 12 }, (_, frame) => input({
+        move_x: 1,
+        jump_pressed: frame === 0,
+        jump_held: frame < 6,
+      })),
+    },
+    {
+      name: 'neutral-jump',
+      initial: { pos: [140, 112], speed: [0, 30] },
+      inputs: Array.from({ length: 50 }, (_, frame) => input({
+        move_x: frame === 0 || frame === 26 ? 0 : 1,
+        jump_pressed: frame === 0 || frame === 26,
+        jump_held: frame < 10 || (frame >= 26 && frame < 36),
       })),
     },
     {
@@ -872,6 +946,72 @@ try {
       })),
     },
     {
+      name: 'ceiling-pop',
+      initial: { pos: [244, 78], speed: [0, 30] },
+      inputs: Array.from({ length: 30 }, (_, frame) => input({
+        move_x: frame === 18 ? 1 : 0,
+        move_y: 1,
+        grab_held: true,
+        jump_pressed: frame === 18,
+        jump_held: frame === 18,
+      })),
+    },
+    {
+      name: 'cornerboost',
+      initial: { pos: [139, 86], speed: [90, -30] },
+      inputs: Array.from({ length: 12 }, (_, frame) => input({
+        move_x: 1,
+        jump_pressed: frame === 0,
+        jump_held: frame < 8,
+        grab_held: frame === 0,
+      })),
+    },
+    {
+      name: 'downward-cornerboost',
+      initial: { pos: [138, 86], speed: [160, 30] },
+      inputs: Array.from({ length: 12 }, (_, frame) => input({
+        move_x: 1,
+        jump_pressed: frame === 0,
+        jump_held: frame < 8,
+        grab_held: frame === 0,
+      })),
+    },
+    {
+      name: 'five-jump',
+      initial: { pos: [44, 156], speed: [0, 0], state: 'Climb', facing: 'Left' },
+      inputs: Array.from({ length: 48 }, (_, frame) => input({
+        move_x: frame >= 6 ? 1 : 0,
+        jump_pressed: frame === 0 || frame === 5,
+        jump_held: frame <= 17,
+        grab_held: frame === 0 || frame === 5,
+      })),
+    },
+    {
+      name: 'six-jump',
+      initial: { pos: [139, 86], speed: [90, -30] },
+      inputs: Array.from({ length: 40 }, (_, frame) => input({
+        move_x: 1,
+        jump_pressed: frame === 0,
+        jump_held: frame < 13,
+        grab_held: frame === 0,
+      })),
+    },
+    {
+      name: 'double-cornerboost',
+      initial: { pos: [120, 152], speed: [0, 0], on_ground: true },
+      inputs: Array.from({ length: 90 }, (_, frame) => input({
+        move_x: frame <= 20 || frame >= 78
+          ? 1
+          : frame >= 75 && frame <= 77
+            ? -1
+            : 0,
+        move_y: frame >= 21 && frame <= 74 ? -1 : 0,
+        jump_pressed: frame === 0 || frame === 79 || frame === 80,
+        jump_held: frame < 12 || frame === 79 || frame === 80,
+        grab_held: frame <= 74 || frame === 79 || frame === 80,
+      })),
+    },
+    {
       name: 'wallboost',
       initial: { pos: [140, 112], speed: [0, 30] },
       inputs: Array.from({ length: 12 }, (_, frame) => input({
@@ -879,6 +1019,20 @@ try {
         grab_held: frame <= 3,
         jump_pressed: frame === 3,
         jump_held: frame >= 3 && frame < 10,
+      })),
+    },
+    {
+      name: 'wallboost-neutral',
+      initial: { pos: [140, 112], speed: [0, 30] },
+      inputs: Array.from({ length: 60 }, (_, frame) => input({
+        move_x: frame === 4 || frame === 31
+          ? -1
+          : (frame >= 5 && frame <= 29) || frame >= 32
+            ? 1
+            : 0,
+        grab_held: frame <= 3 || frame >= 20,
+        jump_pressed: frame === 3 || frame === 30,
+        jump_held: (frame >= 3 && frame < 13) || (frame >= 30 && frame < 40),
       })),
     },
     {

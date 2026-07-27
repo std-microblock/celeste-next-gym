@@ -23,6 +23,21 @@ pub fn mechanics_playground() -> Map {
             // these solids while the normal 8x11 collider is rejected.
             Rect::new(720.0, 320.0, 120.0, 16.0),
             Rect::new(720.0, 304.0, 120.0, 8.0),
+            // Dedicated seven-tile Double Cornerboost booth. The wall corner
+            // and target leading edge are exactly 56 pixels apart.
+            Rect::new(160.0, 120.0, 80.0, 64.0),
+            Rect::new(240.0, 112.0, 8.0, 8.0),
+            Rect::new(296.0, 120.0, 80.0, 8.0),
+            // Dedicated eight-tile booth. The wall corner and raised target
+            // leading edge are exactly 64 pixels apart.
+            Rect::new(400.0, 120.0, 80.0, 64.0),
+            Rect::new(480.0, 104.0, 8.0, 16.0),
+            Rect::new(544.0, 112.0, 80.0, 8.0),
+            // Dedicated nine-tile booth. The favorable approach crosses the
+            // full 72 pixels while a one-frame-late control misses.
+            Rect::new(688.0, 120.0, 80.0, 64.0),
+            Rect::new(768.0, 112.0, 8.0, 8.0),
+            Rect::new(840.0, 120.0, 80.0, 8.0),
         ],
         entities: vec![
             Entity {
