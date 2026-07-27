@@ -314,7 +314,10 @@ fn step(p: &mut PlayerSnapshot, mut input: InputState, map: &Map) -> Result<(), 
         p.strawberry_collect_index = 0;
     }
     let was_on_ground = p.on_ground;
-    p.on_ground = p.state != PlayerState::DreamDash && grounded(p, map);
+    // Player.Update only probes the platform below while Speed.Y >= 0.
+    // Upward motion is airborne even when the player starts flush with a
+    // floor, so NormalUpdate must apply gravity on that same frame.
+    p.on_ground = p.state != PlayerState::DreamDash && p.speed.y >= 0.0 && grounded(p, map);
     if p.on_ground {
         p.auto_jump = false;
         p.jump_grace_timer = JUMP_GRACE;
@@ -3230,6 +3233,35 @@ mod tests {
                 .unwrap()
                 .dead
         );
+    }
+    #[test]
+    fn upward_motion_flush_with_directional_spikes_applies_gravity_on_frame_one() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 960.0, 512.0),
+            solids: vec![Rect::new(0.0, 496.0, 960.0, 24.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::Spikes,
+                bounds: Rect::new(328.0, 493.0, 96.0, 3.0),
+                direction: Vec2::new(0.0, -1.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "spikesUp".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(360.0, 496.0),
+            speed: Vec2::new(0.0, -60.0),
+            ..PlayerSnapshot::default()
+        };
+
+        let p = simulate(p, &[InputState::default()], &map, 1).unwrap();
+        assert_eq!(p.pos, Vec2::new(360.0, 495.0));
+        assert_eq!(p.speed.x, 0.0);
+        assert!((p.speed.y - -45.0).abs() < 0.001);
+        assert!(!p.on_ground);
+        assert!(!p.dead);
     }
     #[test]
     fn fastbubble_manual_dash_releases_immediately_without_spending_dash() {
