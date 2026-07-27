@@ -76,11 +76,11 @@
     === English description
     #description-en
 
-    === 实现与核验证据 / Implementation evidence
+    === 实现
     #grid(
       columns: (1fr, 1fr),
       gutter: 8pt,
-      evidence-cell([上游源码 / Upstream source], source-evidence),
+      evidence-cell([源码], source-evidence),
       evidence-cell([Rust 实现 / Rust implementation], rust-evidence),
       evidence-cell([回归测试 / Regression test], test-evidence),
       evidence-cell([真实 E2E / Real Everest E2E], e2e-evidence),
