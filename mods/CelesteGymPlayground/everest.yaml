@@ -1,0 +1,5 @@
+- Name: CelesteGymPlayground
+  Version: 0.1.0
+  Dependencies:
+    - Name: EverestCore
+      Version: 1.0.0

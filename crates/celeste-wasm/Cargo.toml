@@ -1,0 +1,15 @@
+[package]
+name = "celeste-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+celeste-physics = { path = "../celeste-physics" }
+rmp-serde.workspace = true
+serde.workspace = true
+wasm-bindgen.workspace = true
+

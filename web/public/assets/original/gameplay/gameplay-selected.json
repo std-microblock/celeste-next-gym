@@ -1,0 +1,4395 @@
+{
+  "sourceHash": "Graphics/SOURCES/Gameplay Graphics/Atlases --padding 1 --trim --premultiply",
+  "entries": {
+    "objects/badelineboost/flash06": {
+      "x": 2,
+      "y": 2,
+      "width": 1,
+      "height": 1,
+      "drawOffsetX": 16,
+      "drawOffsetY": 16,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "particles/snow": {
+      "x": 5,
+      "y": 2,
+      "width": 4,
+      "height": 2,
+      "drawOffsetX": 2,
+      "drawOffsetY": 3,
+      "frameWidth": 8,
+      "frameHeight": 8
+    },
+    "characters/player/death_h14": {
+      "x": 11,
+      "y": 2,
+      "width": 3,
+      "height": 3,
+      "drawOffsetX": 14,
+      "drawOffsetY": 23,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/badelineboost/flash05": {
+      "x": 16,
+      "y": 2,
+      "width": 3,
+      "height": 3,
+      "drawOffsetX": 15,
+      "drawOffsetY": 15,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/booster/boosterRed26": {
+      "x": 21,
+      "y": 2,
+      "width": 3,
+      "height": 10,
+      "drawOffsetX": 9,
+      "drawOffsetY": 11,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "danger/spikes/default_right00": {
+      "x": 26,
+      "y": 2,
+      "width": 6,
+      "height": 7,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 8
+    },
+    "danger/spikes/default_left00": {
+      "x": 34,
+      "y": 2,
+      "width": 6,
+      "height": 7,
+      "drawOffsetX": 3,
+      "drawOffsetY": 1,
+      "frameWidth": 9,
+      "frameHeight": 8
+    },
+    "danger/spikes/default_down00": {
+      "x": 42,
+      "y": 2,
+      "width": 7,
+      "height": 6,
+      "drawOffsetX": 1,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 9
+    },
+    "danger/spikes/default_up00": {
+      "x": 51,
+      "y": 2,
+      "width": 7,
+      "height": 6,
+      "drawOffsetX": 0,
+      "drawOffsetY": 3,
+      "frameWidth": 8,
+      "frameHeight": 9
+    },
+    "characters/player/death_h12": {
+      "x": 60,
+      "y": 2,
+      "width": 7,
+      "height": 7,
+      "drawOffsetX": 12,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/bangs01": {
+      "x": 69,
+      "y": 2,
+      "width": 8,
+      "height": 7,
+      "drawOffsetX": 1,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "characters/player/bangs00": {
+      "x": 79,
+      "y": 2,
+      "width": 8,
+      "height": 7,
+      "drawOffsetX": 1,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "characters/player/hair00": {
+      "x": 89,
+      "y": 2,
+      "width": 8,
+      "height": 8,
+      "drawOffsetX": 1,
+      "drawOffsetY": 1,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "characters/player/bangs02": {
+      "x": 99,
+      "y": 2,
+      "width": 8,
+      "height": 8,
+      "drawOffsetX": 1,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "objects/badelineboost/flash04": {
+      "x": 109,
+      "y": 2,
+      "width": 9,
+      "height": 8,
+      "drawOffsetX": 10,
+      "drawOffsetY": 11,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "characters/player/dreamDash08": {
+      "x": 120,
+      "y": 2,
+      "width": 16,
+      "height": 5,
+      "drawOffsetX": 8,
+      "drawOffsetY": 25,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/dreamblock/particles": {
+      "x": 138,
+      "y": 2,
+      "width": 17,
+      "height": 5,
+      "drawOffsetX": 3,
+      "drawOffsetY": 1,
+      "frameWidth": 21,
+      "frameHeight": 7
+    },
+    "characters/player/climb11": {
+      "x": 157,
+      "y": 2,
+      "width": 8,
+      "height": 11,
+      "drawOffsetX": 13,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/startStarFlyWhite03": {
+      "x": 167,
+      "y": 2,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 11,
+      "drawOffsetY": 22,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/startStarFly03": {
+      "x": 179,
+      "y": 2,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 11,
+      "drawOffsetY": 22,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/badelineboost/flash00": {
+      "x": 191,
+      "y": 2,
+      "width": 8,
+      "height": 12,
+      "drawOffsetX": 5,
+      "drawOffsetY": 6,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/booster/boosterRed27": {
+      "x": 201,
+      "y": 2,
+      "width": 6,
+      "height": 16,
+      "drawOffsetX": 9,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/climb10": {
+      "x": 209,
+      "y": 2,
+      "width": 9,
+      "height": 11,
+      "drawOffsetX": 12,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/startStarFlyWhite02": {
+      "x": 220,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 11,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/startStarFly02": {
+      "x": 232,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 11,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/starFly00": {
+      "x": 244,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 11,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/climb02": {
+      "x": 256,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 11,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/climb01": {
+      "x": 268,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 11,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/duck": {
+      "x": 280,
+      "y": 2,
+      "width": 13,
+      "height": 8,
+      "drawOffsetX": 8,
+      "drawOffsetY": 24,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/dreamDash11": {
+      "x": 295,
+      "y": 2,
+      "width": 10,
+      "height": 11,
+      "drawOffsetX": 11,
+      "drawOffsetY": 18,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/badelineboost/flash01": {
+      "x": 307,
+      "y": 2,
+      "width": 11,
+      "height": 10,
+      "drawOffsetX": 5,
+      "drawOffsetY": 6,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "characters/player/climb12": {
+      "x": 320,
+      "y": 2,
+      "width": 10,
+      "height": 11,
+      "drawOffsetX": 11,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/climb08": {
+      "x": 332,
+      "y": 2,
+      "width": 10,
+      "height": 11,
+      "drawOffsetX": 11,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/climb06": {
+      "x": 344,
+      "y": 2,
+      "width": 10,
+      "height": 11,
+      "drawOffsetX": 11,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/climb00": {
+      "x": 356,
+      "y": 2,
+      "width": 10,
+      "height": 11,
+      "drawOffsetX": 11,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/climb03": {
+      "x": 368,
+      "y": 2,
+      "width": 10,
+      "height": 11,
+      "drawOffsetX": 11,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/climb09": {
+      "x": 380,
+      "y": 2,
+      "width": 10,
+      "height": 11,
+      "drawOffsetX": 11,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/death_h09": {
+      "x": 392,
+      "y": 2,
+      "width": 10,
+      "height": 12,
+      "drawOffsetX": 11,
+      "drawOffsetY": 18,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/death_h10": {
+      "x": 404,
+      "y": 2,
+      "width": 10,
+      "height": 12,
+      "drawOffsetX": 11,
+      "drawOffsetY": 18,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/climb14": {
+      "x": 416,
+      "y": 2,
+      "width": 11,
+      "height": 11,
+      "drawOffsetX": 10,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/climb13": {
+      "x": 429,
+      "y": 2,
+      "width": 11,
+      "height": 11,
+      "drawOffsetX": 10,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/climb04": {
+      "x": 442,
+      "y": 2,
+      "width": 11,
+      "height": 11,
+      "drawOffsetX": 10,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/dreamDash13": {
+      "x": 455,
+      "y": 2,
+      "width": 11,
+      "height": 11,
+      "drawOffsetX": 7,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/climb07": {
+      "x": 468,
+      "y": 2,
+      "width": 11,
+      "height": 11,
+      "drawOffsetX": 10,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/climb05": {
+      "x": 481,
+      "y": 2,
+      "width": 11,
+      "height": 11,
+      "drawOffsetX": 10,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/dreamDash12": {
+      "x": 494,
+      "y": 2,
+      "width": 11,
+      "height": 11,
+      "drawOffsetX": 12,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/death_h11": {
+      "x": 507,
+      "y": 2,
+      "width": 11,
+      "height": 11,
+      "drawOffsetX": 10,
+      "drawOffsetY": 19,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/dreamDash15": {
+      "x": 520,
+      "y": 2,
+      "width": 12,
+      "height": 11,
+      "drawOffsetX": 10,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/badelineboost/idle12": {
+      "x": 534,
+      "y": 2,
+      "width": 20,
+      "height": 7,
+      "drawOffsetX": 2,
+      "drawOffsetY": 9,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "characters/player/dash03": {
+      "x": 556,
+      "y": 2,
+      "width": 14,
+      "height": 10,
+      "drawOffsetX": 8,
+      "drawOffsetY": 22,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/swim09": {
+      "x": 572,
+      "y": 2,
+      "width": 13,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB23": {
+      "x": 587,
+      "y": 2,
+      "width": 13,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleA10": {
+      "x": 602,
+      "y": 2,
+      "width": 13,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleA09": {
+      "x": 617,
+      "y": 2,
+      "width": 13,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleA11": {
+      "x": 632,
+      "y": 2,
+      "width": 13,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleA08": {
+      "x": 647,
+      "y": 2,
+      "width": 13,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idle05": {
+      "x": 662,
+      "y": 2,
+      "width": 13,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idle06": {
+      "x": 677,
+      "y": 2,
+      "width": 13,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleA07": {
+      "x": 692,
+      "y": 2,
+      "width": 13,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleA06": {
+      "x": 707,
+      "y": 2,
+      "width": 13,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleA05": {
+      "x": 722,
+      "y": 2,
+      "width": 13,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB19": {
+      "x": 737,
+      "y": 2,
+      "width": 13,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB20": {
+      "x": 752,
+      "y": 2,
+      "width": 13,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idle08": {
+      "x": 767,
+      "y": 2,
+      "width": 13,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idle07": {
+      "x": 782,
+      "y": 2,
+      "width": 13,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB21": {
+      "x": 797,
+      "y": 2,
+      "width": 13,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB22": {
+      "x": 812,
+      "y": 2,
+      "width": 13,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/death_h08": {
+      "x": 827,
+      "y": 2,
+      "width": 11,
+      "height": 13,
+      "drawOffsetX": 10,
+      "drawOffsetY": 17,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idle04": {
+      "x": 840,
+      "y": 2,
+      "width": 13,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/startStarFlyWhite01": {
+      "x": 855,
+      "y": 2,
+      "width": 12,
+      "height": 12,
+      "drawOffsetX": 10,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/startStarFly01": {
+      "x": 869,
+      "y": 2,
+      "width": 12,
+      "height": 12,
+      "drawOffsetX": 10,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/badelineboost/stretch": {
+      "x": 883,
+      "y": 2,
+      "width": 12,
+      "height": 12,
+      "drawOffsetX": 6,
+      "drawOffsetY": 6,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "characters/player/dreamDash01": {
+      "x": 897,
+      "y": 2,
+      "width": 14,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/swim08": {
+      "x": 913,
+      "y": 2,
+      "width": 14,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/runFast08": {
+      "x": 929,
+      "y": 2,
+      "width": 14,
+      "height": 11,
+      "drawOffsetX": 7,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/runFast07": {
+      "x": 945,
+      "y": 2,
+      "width": 14,
+      "height": 11,
+      "drawOffsetX": 7,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/runFast06": {
+      "x": 961,
+      "y": 2,
+      "width": 14,
+      "height": 11,
+      "drawOffsetX": 7,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/runFast02": {
+      "x": 977,
+      "y": 2,
+      "width": 14,
+      "height": 11,
+      "drawOffsetX": 7,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/runFast01": {
+      "x": 993,
+      "y": 2,
+      "width": 14,
+      "height": 11,
+      "drawOffsetX": 7,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/dash01": {
+      "x": 2,
+      "y": 20,
+      "width": 14,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/dash02": {
+      "x": 18,
+      "y": 20,
+      "width": 14,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/runFast03": {
+      "x": 34,
+      "y": 20,
+      "width": 14,
+      "height": 11,
+      "drawOffsetX": 7,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/runSlow01": {
+      "x": 50,
+      "y": 20,
+      "width": 14,
+      "height": 11,
+      "drawOffsetX": 7,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/runFast09": {
+      "x": 66,
+      "y": 20,
+      "width": 14,
+      "height": 11,
+      "drawOffsetX": 7,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/runSlow09": {
+      "x": 82,
+      "y": 20,
+      "width": 14,
+      "height": 11,
+      "drawOffsetX": 7,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/runSlow08": {
+      "x": 98,
+      "y": 20,
+      "width": 14,
+      "height": 11,
+      "drawOffsetX": 7,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/runSlow07": {
+      "x": 114,
+      "y": 20,
+      "width": 14,
+      "height": 11,
+      "drawOffsetX": 7,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/runSlow06": {
+      "x": 130,
+      "y": 20,
+      "width": 14,
+      "height": 11,
+      "drawOffsetX": 7,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/runSlow03": {
+      "x": 146,
+      "y": 20,
+      "width": 14,
+      "height": 11,
+      "drawOffsetX": 7,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/runSlow02": {
+      "x": 162,
+      "y": 20,
+      "width": 14,
+      "height": 11,
+      "drawOffsetX": 7,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB02": {
+      "x": 178,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB01": {
+      "x": 193,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB00": {
+      "x": 208,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB03": {
+      "x": 223,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB04": {
+      "x": 238,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB15": {
+      "x": 253,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB14": {
+      "x": 268,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB13": {
+      "x": 283,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB12": {
+      "x": 298,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB11": {
+      "x": 313,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB10": {
+      "x": 328,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB09": {
+      "x": 343,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB08": {
+      "x": 358,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB05": {
+      "x": 373,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB07": {
+      "x": 388,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idle00": {
+      "x": 403,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idle03": {
+      "x": 418,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idle02": {
+      "x": 433,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleA04": {
+      "x": 448,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleA03": {
+      "x": 463,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleA02": {
+      "x": 478,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleA01": {
+      "x": 493,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleA00": {
+      "x": 508,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB06": {
+      "x": 523,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB16": {
+      "x": 538,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idle_carry07": {
+      "x": 553,
+      "y": 20,
+      "width": 12,
+      "height": 13,
+      "drawOffsetX": 8,
+      "drawOffsetY": 19,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idle_carry06": {
+      "x": 567,
+      "y": 20,
+      "width": 12,
+      "height": 13,
+      "drawOffsetX": 8,
+      "drawOffsetY": 19,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idle_carry05": {
+      "x": 581,
+      "y": 20,
+      "width": 12,
+      "height": 13,
+      "drawOffsetX": 8,
+      "drawOffsetY": 19,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idle_carry04": {
+      "x": 595,
+      "y": 20,
+      "width": 12,
+      "height": 13,
+      "drawOffsetX": 8,
+      "drawOffsetY": 19,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idle_carry03": {
+      "x": 609,
+      "y": 20,
+      "width": 12,
+      "height": 13,
+      "drawOffsetX": 8,
+      "drawOffsetY": 19,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/swim11": {
+      "x": 623,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/swim10": {
+      "x": 638,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/jumpFast02": {
+      "x": 653,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 9,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/jumpSlow03": {
+      "x": 668,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/jumpSlow02": {
+      "x": 683,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 9,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/dreamDash16": {
+      "x": 698,
+      "y": 20,
+      "width": 12,
+      "height": 13,
+      "drawOffsetX": 10,
+      "drawOffsetY": 18,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/swim02": {
+      "x": 712,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/swim01": {
+      "x": 727,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idle01": {
+      "x": 742,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleC01": {
+      "x": 757,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB18": {
+      "x": 772,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleC00": {
+      "x": 787,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleC02": {
+      "x": 802,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleB17": {
+      "x": 817,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleC05": {
+      "x": 832,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleC03": {
+      "x": 847,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleC04": {
+      "x": 862,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/startStarFlyWhite00": {
+      "x": 877,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 9,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/swim00": {
+      "x": 892,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/startStarFly00": {
+      "x": 907,
+      "y": 20,
+      "width": 13,
+      "height": 12,
+      "drawOffsetX": 9,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/death_h03": {
+      "x": 922,
+      "y": 20,
+      "width": 11,
+      "height": 15,
+      "drawOffsetX": 11,
+      "drawOffsetY": 17,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/death_h04": {
+      "x": 935,
+      "y": 20,
+      "width": 11,
+      "height": 15,
+      "drawOffsetX": 11,
+      "drawOffsetY": 17,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/death_h05": {
+      "x": 948,
+      "y": 20,
+      "width": 11,
+      "height": 15,
+      "drawOffsetX": 11,
+      "drawOffsetY": 17,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/dash00": {
+      "x": 961,
+      "y": 20,
+      "width": 15,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/dreamDash00": {
+      "x": 978,
+      "y": 20,
+      "width": 15,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/swim03": {
+      "x": 995,
+      "y": 20,
+      "width": 14,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/swim05": {
+      "x": 2,
+      "y": 37,
+      "width": 14,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idle_carry00": {
+      "x": 18,
+      "y": 37,
+      "width": 12,
+      "height": 14,
+      "drawOffsetX": 8,
+      "drawOffsetY": 18,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idle_carry01": {
+      "x": 32,
+      "y": 37,
+      "width": 12,
+      "height": 14,
+      "drawOffsetX": 8,
+      "drawOffsetY": 18,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idle_carry02": {
+      "x": 46,
+      "y": 37,
+      "width": 12,
+      "height": 14,
+      "drawOffsetX": 8,
+      "drawOffsetY": 18,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/jumpFast03": {
+      "x": 60,
+      "y": 37,
+      "width": 14,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idle_carry08": {
+      "x": 76,
+      "y": 37,
+      "width": 12,
+      "height": 14,
+      "drawOffsetX": 8,
+      "drawOffsetY": 18,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/runSlow11": {
+      "x": 90,
+      "y": 37,
+      "width": 14,
+      "height": 12,
+      "drawOffsetX": 7,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/runSlow05": {
+      "x": 106,
+      "y": 37,
+      "width": 14,
+      "height": 12,
+      "drawOffsetX": 7,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/runFast05": {
+      "x": 122,
+      "y": 37,
+      "width": 14,
+      "height": 12,
+      "drawOffsetX": 7,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/runSlow00": {
+      "x": 138,
+      "y": 37,
+      "width": 14,
+      "height": 12,
+      "drawOffsetX": 7,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/runFast00": {
+      "x": 154,
+      "y": 37,
+      "width": 14,
+      "height": 12,
+      "drawOffsetX": 7,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/swim07": {
+      "x": 170,
+      "y": 37,
+      "width": 13,
+      "height": 13,
+      "drawOffsetX": 8,
+      "drawOffsetY": 19,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/badelineboost/flash02": {
+      "x": 185,
+      "y": 37,
+      "width": 13,
+      "height": 13,
+      "drawOffsetX": 5,
+      "drawOffsetY": 6,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/flyFeather/flash05": {
+      "x": 200,
+      "y": 37,
+      "width": 10,
+      "height": 17,
+      "drawOffsetX": 11,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/idle04": {
+      "x": 212,
+      "y": 37,
+      "width": 10,
+      "height": 17,
+      "drawOffsetX": 11,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/idle05": {
+      "x": 224,
+      "y": 37,
+      "width": 10,
+      "height": 17,
+      "drawOffsetX": 11,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/idle06": {
+      "x": 236,
+      "y": 37,
+      "width": 10,
+      "height": 17,
+      "drawOffsetX": 11,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/flash06": {
+      "x": 248,
+      "y": 37,
+      "width": 10,
+      "height": 17,
+      "drawOffsetX": 11,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/flash04": {
+      "x": 260,
+      "y": 37,
+      "width": 10,
+      "height": 17,
+      "drawOffsetX": 11,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/swim04": {
+      "x": 272,
+      "y": 37,
+      "width": 15,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/death_h01": {
+      "x": 289,
+      "y": 37,
+      "width": 12,
+      "height": 15,
+      "drawOffsetX": 10,
+      "drawOffsetY": 17,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/death_h02": {
+      "x": 303,
+      "y": 37,
+      "width": 12,
+      "height": 15,
+      "drawOffsetX": 10,
+      "drawOffsetY": 17,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/jumpFast01": {
+      "x": 317,
+      "y": 37,
+      "width": 14,
+      "height": 13,
+      "drawOffsetX": 8,
+      "drawOffsetY": 19,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/death_h07": {
+      "x": 333,
+      "y": 37,
+      "width": 13,
+      "height": 14,
+      "drawOffsetX": 9,
+      "drawOffsetY": 17,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/runFast04": {
+      "x": 348,
+      "y": 37,
+      "width": 14,
+      "height": 13,
+      "drawOffsetX": 7,
+      "drawOffsetY": 19,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/runSlow04": {
+      "x": 364,
+      "y": 37,
+      "width": 14,
+      "height": 13,
+      "drawOffsetX": 7,
+      "drawOffsetY": 19,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/swim06": {
+      "x": 380,
+      "y": 37,
+      "width": 14,
+      "height": 13,
+      "drawOffsetX": 8,
+      "drawOffsetY": 19,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/jumpSlow01": {
+      "x": 396,
+      "y": 37,
+      "width": 14,
+      "height": 13,
+      "drawOffsetX": 8,
+      "drawOffsetY": 19,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/jumpFast00": {
+      "x": 412,
+      "y": 37,
+      "width": 14,
+      "height": 13,
+      "drawOffsetX": 8,
+      "drawOffsetY": 19,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/jumpSlow00": {
+      "x": 428,
+      "y": 37,
+      "width": 14,
+      "height": 13,
+      "drawOffsetX": 8,
+      "drawOffsetY": 19,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/runSlow10": {
+      "x": 444,
+      "y": 37,
+      "width": 14,
+      "height": 13,
+      "drawOffsetX": 7,
+      "drawOffsetY": 19,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/badelineboost/flash03": {
+      "x": 460,
+      "y": 37,
+      "width": 14,
+      "height": 13,
+      "drawOffsetX": 5,
+      "drawOffsetY": 6,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "characters/player/runFast11": {
+      "x": 476,
+      "y": 37,
+      "width": 16,
+      "height": 12,
+      "drawOffsetX": 7,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/death_h06": {
+      "x": 494,
+      "y": 37,
+      "width": 13,
+      "height": 15,
+      "drawOffsetX": 9,
+      "drawOffsetY": 17,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/dreamDash07": {
+      "x": 509,
+      "y": 37,
+      "width": 14,
+      "height": 14,
+      "drawOffsetX": 9,
+      "drawOffsetY": 18,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/badelineboost/idle13": {
+      "x": 525,
+      "y": 37,
+      "width": 18,
+      "height": 11,
+      "drawOffsetX": 3,
+      "drawOffsetY": 7,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "characters/player/dreamDash09": {
+      "x": 545,
+      "y": 37,
+      "width": 20,
+      "height": 10,
+      "drawOffsetX": 6,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/flash15": {
+      "x": 567,
+      "y": 37,
+      "width": 12,
+      "height": 17,
+      "drawOffsetX": 9,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/flash16": {
+      "x": 581,
+      "y": 37,
+      "width": 12,
+      "height": 17,
+      "drawOffsetX": 11,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/idle16": {
+      "x": 595,
+      "y": 37,
+      "width": 12,
+      "height": 17,
+      "drawOffsetX": 11,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/idle15": {
+      "x": 609,
+      "y": 37,
+      "width": 12,
+      "height": 17,
+      "drawOffsetX": 9,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/runFast10": {
+      "x": 623,
+      "y": 37,
+      "width": 16,
+      "height": 13,
+      "drawOffsetX": 7,
+      "drawOffsetY": 19,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/death_h00": {
+      "x": 641,
+      "y": 37,
+      "width": 14,
+      "height": 15,
+      "drawOffsetX": 8,
+      "drawOffsetY": 17,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleC07": {
+      "x": 657,
+      "y": 37,
+      "width": 21,
+      "height": 10,
+      "drawOffsetX": 9,
+      "drawOffsetY": 22,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleC08": {
+      "x": 680,
+      "y": 37,
+      "width": 22,
+      "height": 10,
+      "drawOffsetX": 8,
+      "drawOffsetY": 22,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleC06": {
+      "x": 704,
+      "y": 37,
+      "width": 20,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/launchRecover09": {
+      "x": 726,
+      "y": 37,
+      "width": 13,
+      "height": 17,
+      "drawOffsetX": 8,
+      "drawOffsetY": 15,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/flash07": {
+      "x": 741,
+      "y": 37,
+      "width": 13,
+      "height": 17,
+      "drawOffsetX": 9,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/idle07": {
+      "x": 756,
+      "y": 37,
+      "width": 13,
+      "height": 17,
+      "drawOffsetX": 9,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/launchRecover10": {
+      "x": 771,
+      "y": 37,
+      "width": 13,
+      "height": 17,
+      "drawOffsetX": 8,
+      "drawOffsetY": 15,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/dreamDash05": {
+      "x": 786,
+      "y": 37,
+      "width": 18,
+      "height": 13,
+      "drawOffsetX": 7,
+      "drawOffsetY": 19,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/launch00": {
+      "x": 806,
+      "y": 37,
+      "width": 13,
+      "height": 18,
+      "drawOffsetX": 9,
+      "drawOffsetY": 14,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/dreamDash14": {
+      "x": 821,
+      "y": 37,
+      "width": 18,
+      "height": 13,
+      "drawOffsetX": 7,
+      "drawOffsetY": 17,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/flash11": {
+      "x": 841,
+      "y": 37,
+      "width": 14,
+      "height": 17,
+      "drawOffsetX": 8,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/flash10": {
+      "x": 857,
+      "y": 37,
+      "width": 14,
+      "height": 17,
+      "drawOffsetX": 8,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/flash13": {
+      "x": 873,
+      "y": 37,
+      "width": 14,
+      "height": 17,
+      "drawOffsetX": 8,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/idle14": {
+      "x": 889,
+      "y": 37,
+      "width": 14,
+      "height": 17,
+      "drawOffsetX": 8,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/idle10": {
+      "x": 905,
+      "y": 37,
+      "width": 14,
+      "height": 17,
+      "drawOffsetX": 8,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/idle17": {
+      "x": 921,
+      "y": 37,
+      "width": 14,
+      "height": 17,
+      "drawOffsetX": 10,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/idle11": {
+      "x": 937,
+      "y": 37,
+      "width": 14,
+      "height": 17,
+      "drawOffsetX": 8,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/idle12": {
+      "x": 953,
+      "y": 37,
+      "width": 14,
+      "height": 17,
+      "drawOffsetX": 8,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/flash20": {
+      "x": 969,
+      "y": 37,
+      "width": 14,
+      "height": 17,
+      "drawOffsetX": 10,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/flash18": {
+      "x": 985,
+      "y": 37,
+      "width": 14,
+      "height": 17,
+      "drawOffsetX": 10,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/flash12": {
+      "x": 1001,
+      "y": 37,
+      "width": 14,
+      "height": 17,
+      "drawOffsetX": 8,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/flash14": {
+      "x": 2,
+      "y": 57,
+      "width": 14,
+      "height": 17,
+      "drawOffsetX": 8,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/idle20": {
+      "x": 18,
+      "y": 57,
+      "width": 14,
+      "height": 17,
+      "drawOffsetX": 10,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/flash19": {
+      "x": 34,
+      "y": 57,
+      "width": 14,
+      "height": 17,
+      "drawOffsetX": 10,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/idle18": {
+      "x": 50,
+      "y": 57,
+      "width": 14,
+      "height": 17,
+      "drawOffsetX": 10,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/idle19": {
+      "x": 66,
+      "y": 57,
+      "width": 14,
+      "height": 17,
+      "drawOffsetX": 10,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/idle13": {
+      "x": 82,
+      "y": 57,
+      "width": 14,
+      "height": 17,
+      "drawOffsetX": 8,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/flash17": {
+      "x": 98,
+      "y": 57,
+      "width": 14,
+      "height": 17,
+      "drawOffsetX": 10,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/badelineboost/idle00": {
+      "x": 114,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/badelineboost/idle01": {
+      "x": 132,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/badelineboost/idle02": {
+      "x": 150,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/badelineboost/idle03": {
+      "x": 168,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/badelineboost/idle04": {
+      "x": 186,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/badelineboost/idle05": {
+      "x": 204,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/badelineboost/idle06": {
+      "x": 222,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/badelineboost/idle07": {
+      "x": 240,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/badelineboost/idle21": {
+      "x": 258,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/badelineboost/idle25": {
+      "x": 276,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/badelineboost/idle14": {
+      "x": 294,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/badelineboost/idle18": {
+      "x": 312,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/badelineboost/idle22": {
+      "x": 330,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/badelineboost/idle11": {
+      "x": 348,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/badelineboost/idle24": {
+      "x": 366,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/badelineboost/idle20": {
+      "x": 384,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/badelineboost/idle23": {
+      "x": 402,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/badelineboost/idle19": {
+      "x": 420,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/badelineboost/idle10": {
+      "x": 438,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/badelineboost/idle15": {
+      "x": 456,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/badelineboost/idle16": {
+      "x": 474,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/badelineboost/idle09": {
+      "x": 492,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/badelineboost/idle08": {
+      "x": 510,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/badelineboost/idle17": {
+      "x": 528,
+      "y": 57,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "characters/player/idleC10": {
+      "x": 546,
+      "y": 57,
+      "width": 22,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleC09": {
+      "x": 570,
+      "y": 57,
+      "width": 22,
+      "height": 11,
+      "drawOffsetX": 8,
+      "drawOffsetY": 21,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/dreamDash20": {
+      "x": 594,
+      "y": 57,
+      "width": 21,
+      "height": 12,
+      "drawOffsetX": 5,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/dreamDash04": {
+      "x": 617,
+      "y": 57,
+      "width": 18,
+      "height": 14,
+      "drawOffsetX": 7,
+      "drawOffsetY": 18,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/boosterRed28": {
+      "x": 637,
+      "y": 57,
+      "width": 14,
+      "height": 18,
+      "drawOffsetX": 8,
+      "drawOffsetY": 7,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/idleC11": {
+      "x": 653,
+      "y": 57,
+      "width": 21,
+      "height": 12,
+      "drawOffsetX": 8,
+      "drawOffsetY": 20,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/launch02": {
+      "x": 676,
+      "y": 57,
+      "width": 14,
+      "height": 18,
+      "drawOffsetX": 8,
+      "drawOffsetY": 14,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/launch01": {
+      "x": 692,
+      "y": 57,
+      "width": 14,
+      "height": 18,
+      "drawOffsetX": 8,
+      "drawOffsetY": 14,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/dreamDash10": {
+      "x": 708,
+      "y": 57,
+      "width": 17,
+      "height": 15,
+      "drawOffsetX": 8,
+      "drawOffsetY": 16,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/woodPlatform/default": {
+      "x": 727,
+      "y": 57,
+      "width": 32,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 32,
+      "frameHeight": 8
+    },
+    "characters/player/dreamDash17": {
+      "x": 761,
+      "y": 57,
+      "width": 19,
+      "height": 14,
+      "drawOffsetX": 6,
+      "drawOffsetY": 18,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/launch04": {
+      "x": 782,
+      "y": 57,
+      "width": 15,
+      "height": 18,
+      "drawOffsetX": 7,
+      "drawOffsetY": 14,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/launch07": {
+      "x": 799,
+      "y": 57,
+      "width": 15,
+      "height": 18,
+      "drawOffsetX": 9,
+      "drawOffsetY": 14,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/launchRecover00": {
+      "x": 816,
+      "y": 57,
+      "width": 15,
+      "height": 18,
+      "drawOffsetX": 9,
+      "drawOffsetY": 14,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/dreamDash06": {
+      "x": 833,
+      "y": 57,
+      "width": 18,
+      "height": 15,
+      "drawOffsetX": 7,
+      "drawOffsetY": 17,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/idle00": {
+      "x": 853,
+      "y": 57,
+      "width": 16,
+      "height": 17,
+      "drawOffsetX": 9,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/idle01": {
+      "x": 871,
+      "y": 57,
+      "width": 16,
+      "height": 17,
+      "drawOffsetX": 9,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/flash08": {
+      "x": 889,
+      "y": 57,
+      "width": 16,
+      "height": 17,
+      "drawOffsetX": 7,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/flash09": {
+      "x": 907,
+      "y": 57,
+      "width": 16,
+      "height": 17,
+      "drawOffsetX": 7,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/flash03": {
+      "x": 925,
+      "y": 57,
+      "width": 16,
+      "height": 17,
+      "drawOffsetX": 9,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/flash02": {
+      "x": 943,
+      "y": 57,
+      "width": 16,
+      "height": 17,
+      "drawOffsetX": 9,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/flash01": {
+      "x": 961,
+      "y": 57,
+      "width": 16,
+      "height": 17,
+      "drawOffsetX": 9,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/flash00": {
+      "x": 979,
+      "y": 57,
+      "width": 16,
+      "height": 17,
+      "drawOffsetX": 9,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/outline": {
+      "x": 997,
+      "y": 57,
+      "width": 16,
+      "height": 17,
+      "drawOffsetX": 9,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/idle09": {
+      "x": 2,
+      "y": 77,
+      "width": 16,
+      "height": 17,
+      "drawOffsetX": 7,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/idle08": {
+      "x": 20,
+      "y": 77,
+      "width": 16,
+      "height": 17,
+      "drawOffsetX": 7,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/idle03": {
+      "x": 38,
+      "y": 77,
+      "width": 16,
+      "height": 17,
+      "drawOffsetX": 9,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/flyFeather/idle02": {
+      "x": 56,
+      "y": 77,
+      "width": 16,
+      "height": 17,
+      "drawOffsetX": 9,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/dreamDash19": {
+      "x": 74,
+      "y": 77,
+      "width": 21,
+      "height": 13,
+      "drawOffsetX": 5,
+      "drawOffsetY": 19,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/dreamDash18": {
+      "x": 97,
+      "y": 77,
+      "width": 20,
+      "height": 14,
+      "drawOffsetX": 6,
+      "drawOffsetY": 18,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/launch05": {
+      "x": 119,
+      "y": 77,
+      "width": 16,
+      "height": 18,
+      "drawOffsetX": 7,
+      "drawOffsetY": 14,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/launch06": {
+      "x": 137,
+      "y": 77,
+      "width": 16,
+      "height": 18,
+      "drawOffsetX": 7,
+      "drawOffsetY": 14,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/jumpthru/wood": {
+      "x": 155,
+      "y": 77,
+      "width": 24,
+      "height": 12,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 16
+    },
+    "characters/player/launch03": {
+      "x": 181,
+      "y": 77,
+      "width": 17,
+      "height": 18,
+      "drawOffsetX": 7,
+      "drawOffsetY": 14,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/booster02": {
+      "x": 200,
+      "y": 77,
+      "width": 20,
+      "height": 16,
+      "drawOffsetX": 6,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/booster03": {
+      "x": 222,
+      "y": 77,
+      "width": 20,
+      "height": 16,
+      "drawOffsetX": 6,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/boosterRed02": {
+      "x": 244,
+      "y": 77,
+      "width": 20,
+      "height": 16,
+      "drawOffsetX": 6,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/boosterRed03": {
+      "x": 266,
+      "y": 77,
+      "width": 20,
+      "height": 16,
+      "drawOffsetX": 6,
+      "drawOffsetY": 8,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/launchRecover02": {
+      "x": 288,
+      "y": 77,
+      "width": 19,
+      "height": 17,
+      "drawOffsetX": 8,
+      "drawOffsetY": 15,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/launchRecover08": {
+      "x": 309,
+      "y": 77,
+      "width": 19,
+      "height": 17,
+      "drawOffsetX": 2,
+      "drawOffsetY": 15,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/boosterRed34": {
+      "x": 330,
+      "y": 77,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 7,
+      "drawOffsetY": 7,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/outline": {
+      "x": 350,
+      "y": 77,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 7,
+      "drawOffsetY": 7,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/boosterRed33": {
+      "x": 370,
+      "y": 77,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 7,
+      "drawOffsetY": 7,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/boosterRed32": {
+      "x": 390,
+      "y": 77,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 7,
+      "drawOffsetY": 7,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/boosterRed31": {
+      "x": 410,
+      "y": 77,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 7,
+      "drawOffsetY": 7,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/Bumper/Idle42": {
+      "x": 430,
+      "y": 77,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 23,
+      "drawOffsetY": 23,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/booster/boosterRed30": {
+      "x": 450,
+      "y": 77,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 7,
+      "drawOffsetY": 7,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/boosterRed04": {
+      "x": 470,
+      "y": 77,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 7,
+      "drawOffsetY": 7,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/boosterRed01": {
+      "x": 490,
+      "y": 77,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 7,
+      "drawOffsetY": 7,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/boosterRed00": {
+      "x": 510,
+      "y": 77,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 7,
+      "drawOffsetY": 7,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/booster04": {
+      "x": 530,
+      "y": 77,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 7,
+      "drawOffsetY": 7,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/booster01": {
+      "x": 550,
+      "y": 77,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 7,
+      "drawOffsetY": 7,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/booster00": {
+      "x": 570,
+      "y": 77,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 7,
+      "drawOffsetY": 7,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/dreamDash02": {
+      "x": 590,
+      "y": 77,
+      "width": 25,
+      "height": 13,
+      "drawOffsetX": 4,
+      "drawOffsetY": 18,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/launchRecover07": {
+      "x": 617,
+      "y": 77,
+      "width": 20,
+      "height": 17,
+      "drawOffsetX": 2,
+      "drawOffsetY": 15,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/launchRecover06": {
+      "x": 639,
+      "y": 77,
+      "width": 20,
+      "height": 17,
+      "drawOffsetX": 2,
+      "drawOffsetY": 15,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/launchRecover01": {
+      "x": 661,
+      "y": 77,
+      "width": 20,
+      "height": 17,
+      "drawOffsetX": 7,
+      "drawOffsetY": 14,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/Bumper/Idle41": {
+      "x": 683,
+      "y": 77,
+      "width": 18,
+      "height": 20,
+      "drawOffsetX": 23,
+      "drawOffsetY": 22,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/booster/boosterRed29": {
+      "x": 703,
+      "y": 77,
+      "width": 18,
+      "height": 20,
+      "drawOffsetX": 7,
+      "drawOffsetY": 6,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/launchRecover03": {
+      "x": 723,
+      "y": 77,
+      "width": 25,
+      "height": 15,
+      "drawOffsetX": 3,
+      "drawOffsetY": 17,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/dreamDash03": {
+      "x": 750,
+      "y": 77,
+      "width": 19,
+      "height": 20,
+      "drawOffsetX": 7,
+      "drawOffsetY": 10,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/death_h13": {
+      "x": 771,
+      "y": 77,
+      "width": 21,
+      "height": 19,
+      "drawOffsetX": 4,
+      "drawOffsetY": 12,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/launchRecover04": {
+      "x": 794,
+      "y": 77,
+      "width": 27,
+      "height": 16,
+      "drawOffsetX": 2,
+      "drawOffsetY": 16,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "characters/player/launchRecover05": {
+      "x": 823,
+      "y": 77,
+      "width": 27,
+      "height": 16,
+      "drawOffsetX": 2,
+      "drawOffsetY": 16,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/Bumper/Evil40": {
+      "x": 852,
+      "y": 77,
+      "width": 22,
+      "height": 20,
+      "drawOffsetX": 21,
+      "drawOffsetY": 22,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/booster/boosterRed05": {
+      "x": 876,
+      "y": 77,
+      "width": 20,
+      "height": 22,
+      "drawOffsetX": 6,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/boosterRed22": {
+      "x": 898,
+      "y": 77,
+      "width": 20,
+      "height": 22,
+      "drawOffsetX": 6,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/booster22": {
+      "x": 920,
+      "y": 77,
+      "width": 20,
+      "height": 22,
+      "drawOffsetX": 6,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/booster18": {
+      "x": 942,
+      "y": 77,
+      "width": 20,
+      "height": 22,
+      "drawOffsetX": 6,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/booster05": {
+      "x": 964,
+      "y": 77,
+      "width": 20,
+      "height": 22,
+      "drawOffsetX": 6,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/boosterRed18": {
+      "x": 986,
+      "y": 77,
+      "width": 20,
+      "height": 22,
+      "drawOffsetX": 6,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/boosterRed19": {
+      "x": 2,
+      "y": 101,
+      "width": 22,
+      "height": 21,
+      "drawOffsetX": 5,
+      "drawOffsetY": 5,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/booster19": {
+      "x": 26,
+      "y": 101,
+      "width": 22,
+      "height": 21,
+      "drawOffsetX": 5,
+      "drawOffsetY": 5,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/booster23": {
+      "x": 50,
+      "y": 101,
+      "width": 22,
+      "height": 21,
+      "drawOffsetX": 5,
+      "drawOffsetY": 5,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/boosterRed23": {
+      "x": 74,
+      "y": 101,
+      "width": 22,
+      "height": 21,
+      "drawOffsetX": 5,
+      "drawOffsetY": 5,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/boosterRed06": {
+      "x": 98,
+      "y": 101,
+      "width": 22,
+      "height": 21,
+      "drawOffsetX": 5,
+      "drawOffsetY": 5,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/booster06": {
+      "x": 122,
+      "y": 101,
+      "width": 22,
+      "height": 21,
+      "drawOffsetX": 5,
+      "drawOffsetY": 5,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/booster09": {
+      "x": 146,
+      "y": 101,
+      "width": 18,
+      "height": 26,
+      "drawOffsetX": 7,
+      "drawOffsetY": 2,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/boosterRed09": {
+      "x": 166,
+      "y": 101,
+      "width": 18,
+      "height": 26,
+      "drawOffsetX": 7,
+      "drawOffsetY": 2,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/Bumper/Evil39": {
+      "x": 186,
+      "y": 101,
+      "width": 20,
+      "height": 24,
+      "drawOffsetX": 22,
+      "drawOffsetY": 20,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle17": {
+      "x": 208,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle04": {
+      "x": 232,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle18": {
+      "x": 256,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle05": {
+      "x": 280,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle26": {
+      "x": 304,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle25": {
+      "x": 328,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle23": {
+      "x": 352,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle22": {
+      "x": 376,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle12": {
+      "x": 400,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle02": {
+      "x": 424,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle06": {
+      "x": 448,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle11": {
+      "x": 472,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/booster/boosterRed21": {
+      "x": 496,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 5,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/Bumper/Idle13": {
+      "x": 520,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle14": {
+      "x": 544,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle15": {
+      "x": 568,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle20": {
+      "x": 592,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle19": {
+      "x": 616,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle16": {
+      "x": 640,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/booster/boosterRed08": {
+      "x": 664,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 5,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/Bumper/Idle21": {
+      "x": 688,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle08": {
+      "x": 712,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle10": {
+      "x": 736,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle03": {
+      "x": 760,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle29": {
+      "x": 784,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/booster/booster08": {
+      "x": 808,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 5,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/Bumper/Idle01": {
+      "x": 832,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/booster/boosterRed25": {
+      "x": 856,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 5,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/booster21": {
+      "x": 880,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 5,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/Bumper/Idle44": {
+      "x": 904,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle33": {
+      "x": 928,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle32": {
+      "x": 952,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle31": {
+      "x": 976,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle00": {
+      "x": 1000,
+      "y": 101,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/booster/booster25": {
+      "x": 2,
+      "y": 129,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 5,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/Bumper/Idle30": {
+      "x": 26,
+      "y": 129,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/booster/booster20": {
+      "x": 50,
+      "y": 129,
+      "width": 24,
+      "height": 21,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/boosterRed20": {
+      "x": 76,
+      "y": 129,
+      "width": 24,
+      "height": 21,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/boosterRed24": {
+      "x": 102,
+      "y": 129,
+      "width": 24,
+      "height": 21,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/booster24": {
+      "x": 128,
+      "y": 129,
+      "width": 24,
+      "height": 21,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/booster07": {
+      "x": 154,
+      "y": 129,
+      "width": 24,
+      "height": 21,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/boosterRed07": {
+      "x": 180,
+      "y": 129,
+      "width": 24,
+      "height": 21,
+      "drawOffsetX": 4,
+      "drawOffsetY": 5,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/booster11": {
+      "x": 206,
+      "y": 129,
+      "width": 22,
+      "height": 24,
+      "drawOffsetX": 5,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/Bumper/Idle40": {
+      "x": 230,
+      "y": 129,
+      "width": 22,
+      "height": 24,
+      "drawOffsetX": 21,
+      "drawOffsetY": 20,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle43": {
+      "x": 254,
+      "y": 129,
+      "width": 22,
+      "height": 24,
+      "drawOffsetX": 21,
+      "drawOffsetY": 20,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle24": {
+      "x": 278,
+      "y": 129,
+      "width": 22,
+      "height": 24,
+      "drawOffsetX": 21,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/booster/boosterRed11": {
+      "x": 302,
+      "y": 129,
+      "width": 22,
+      "height": 24,
+      "drawOffsetX": 5,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/boosterRed12": {
+      "x": 326,
+      "y": 129,
+      "width": 23,
+      "height": 23,
+      "drawOffsetX": 4,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/booster12": {
+      "x": 351,
+      "y": 129,
+      "width": 23,
+      "height": 23,
+      "drawOffsetX": 4,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/boosterRed16": {
+      "x": 376,
+      "y": 129,
+      "width": 24,
+      "height": 23,
+      "drawOffsetX": 3,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/booster16": {
+      "x": 402,
+      "y": 129,
+      "width": 24,
+      "height": 23,
+      "drawOffsetX": 3,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/Bumper/Idle09": {
+      "x": 428,
+      "y": 129,
+      "width": 24,
+      "height": 23,
+      "drawOffsetX": 20,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle28": {
+      "x": 454,
+      "y": 129,
+      "width": 26,
+      "height": 22,
+      "drawOffsetX": 17,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/booster/booster13": {
+      "x": 482,
+      "y": 129,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 4,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/Bumper/Idle07": {
+      "x": 508,
+      "y": 129,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 20,
+      "drawOffsetY": 20,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/outline": {
+      "x": 534,
+      "y": 129,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 20,
+      "drawOffsetY": 20,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/booster/boosterRed13": {
+      "x": 560,
+      "y": 129,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 4,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/dreamblock/active": {
+      "x": 586,
+      "y": 129,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/booster/boosterRed10": {
+      "x": 612,
+      "y": 129,
+      "width": 21,
+      "height": 28,
+      "drawOffsetX": 5,
+      "drawOffsetY": 1,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/booster10": {
+      "x": 635,
+      "y": 129,
+      "width": 21,
+      "height": 28,
+      "drawOffsetX": 5,
+      "drawOffsetY": 1,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/Bumper/Idle27": {
+      "x": 658,
+      "y": 129,
+      "width": 27,
+      "height": 22,
+      "drawOffsetX": 16,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/booster/booster15": {
+      "x": 687,
+      "y": 129,
+      "width": 25,
+      "height": 24,
+      "drawOffsetX": 3,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/booster14": {
+      "x": 714,
+      "y": 129,
+      "width": 25,
+      "height": 24,
+      "drawOffsetX": 4,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/boosterRed14": {
+      "x": 741,
+      "y": 129,
+      "width": 25,
+      "height": 24,
+      "drawOffsetX": 4,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/boosterRed15": {
+      "x": 768,
+      "y": 129,
+      "width": 25,
+      "height": 24,
+      "drawOffsetX": 3,
+      "drawOffsetY": 4,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/Bumper/Evil23": {
+      "x": 795,
+      "y": 129,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 19,
+      "drawOffsetY": 20,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil31": {
+      "x": 823,
+      "y": 129,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 19,
+      "drawOffsetY": 20,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil02": {
+      "x": 851,
+      "y": 129,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 19,
+      "drawOffsetY": 20,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil03": {
+      "x": 879,
+      "y": 129,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 19,
+      "drawOffsetY": 20,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil30": {
+      "x": 907,
+      "y": 129,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 19,
+      "drawOffsetY": 20,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil28": {
+      "x": 935,
+      "y": 129,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 19,
+      "drawOffsetY": 20,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil27": {
+      "x": 963,
+      "y": 129,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 19,
+      "drawOffsetY": 20,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil26": {
+      "x": 991,
+      "y": 129,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 19,
+      "drawOffsetY": 20,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil25": {
+      "x": 2,
+      "y": 159,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 19,
+      "drawOffsetY": 20,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil24": {
+      "x": 30,
+      "y": 159,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 19,
+      "drawOffsetY": 20,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil04": {
+      "x": 58,
+      "y": 159,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 19,
+      "drawOffsetY": 20,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil29": {
+      "x": 86,
+      "y": 159,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 19,
+      "drawOffsetY": 20,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil00": {
+      "x": 114,
+      "y": 159,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 19,
+      "drawOffsetY": 20,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil01": {
+      "x": 142,
+      "y": 159,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 19,
+      "drawOffsetY": 20,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil18": {
+      "x": 170,
+      "y": 159,
+      "width": 26,
+      "height": 26,
+      "drawOffsetX": 19,
+      "drawOffsetY": 19,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil42": {
+      "x": 198,
+      "y": 159,
+      "width": 26,
+      "height": 26,
+      "drawOffsetX": 19,
+      "drawOffsetY": 19,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil05": {
+      "x": 226,
+      "y": 159,
+      "width": 26,
+      "height": 27,
+      "drawOffsetX": 19,
+      "drawOffsetY": 18,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil06": {
+      "x": 254,
+      "y": 159,
+      "width": 26,
+      "height": 28,
+      "drawOffsetX": 19,
+      "drawOffsetY": 17,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil14": {
+      "x": 282,
+      "y": 159,
+      "width": 26,
+      "height": 28,
+      "drawOffsetX": 19,
+      "drawOffsetY": 17,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil38": {
+      "x": 310,
+      "y": 159,
+      "width": 26,
+      "height": 28,
+      "drawOffsetX": 19,
+      "drawOffsetY": 18,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil19": {
+      "x": 338,
+      "y": 159,
+      "width": 26,
+      "height": 28,
+      "drawOffsetX": 19,
+      "drawOffsetY": 17,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil15": {
+      "x": 366,
+      "y": 159,
+      "width": 26,
+      "height": 29,
+      "drawOffsetX": 19,
+      "drawOffsetY": 16,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil20": {
+      "x": 394,
+      "y": 159,
+      "width": 26,
+      "height": 29,
+      "drawOffsetX": 19,
+      "drawOffsetY": 16,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil07": {
+      "x": 422,
+      "y": 159,
+      "width": 26,
+      "height": 29,
+      "drawOffsetX": 19,
+      "drawOffsetY": 16,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil41": {
+      "x": 450,
+      "y": 159,
+      "width": 26,
+      "height": 30,
+      "drawOffsetX": 19,
+      "drawOffsetY": 17,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil21": {
+      "x": 478,
+      "y": 159,
+      "width": 26,
+      "height": 30,
+      "drawOffsetX": 19,
+      "drawOffsetY": 15,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil08": {
+      "x": 506,
+      "y": 159,
+      "width": 26,
+      "height": 30,
+      "drawOffsetX": 19,
+      "drawOffsetY": 15,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil16": {
+      "x": 534,
+      "y": 159,
+      "width": 26,
+      "height": 30,
+      "drawOffsetX": 19,
+      "drawOffsetY": 15,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil17": {
+      "x": 562,
+      "y": 159,
+      "width": 26,
+      "height": 30,
+      "drawOffsetX": 19,
+      "drawOffsetY": 15,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil11": {
+      "x": 590,
+      "y": 159,
+      "width": 26,
+      "height": 30,
+      "drawOffsetX": 19,
+      "drawOffsetY": 15,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil22": {
+      "x": 618,
+      "y": 159,
+      "width": 26,
+      "height": 30,
+      "drawOffsetX": 19,
+      "drawOffsetY": 15,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil12": {
+      "x": 646,
+      "y": 159,
+      "width": 26,
+      "height": 31,
+      "drawOffsetX": 19,
+      "drawOffsetY": 14,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil10": {
+      "x": 674,
+      "y": 159,
+      "width": 26,
+      "height": 31,
+      "drawOffsetX": 19,
+      "drawOffsetY": 14,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil13": {
+      "x": 702,
+      "y": 159,
+      "width": 26,
+      "height": 31,
+      "drawOffsetX": 19,
+      "drawOffsetY": 14,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil09": {
+      "x": 730,
+      "y": 159,
+      "width": 26,
+      "height": 31,
+      "drawOffsetX": 19,
+      "drawOffsetY": 14,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/booster/boosterRed17": {
+      "x": 758,
+      "y": 159,
+      "width": 32,
+      "height": 32,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/booster/booster17": {
+      "x": 792,
+      "y": 159,
+      "width": 32,
+      "height": 32,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "objects/Bumper/Idle34": {
+      "x": 826,
+      "y": 159,
+      "width": 41,
+      "height": 41,
+      "drawOffsetX": 12,
+      "drawOffsetY": 11,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil32": {
+      "x": 869,
+      "y": 159,
+      "width": 47,
+      "height": 43,
+      "drawOffsetX": 8,
+      "drawOffsetY": 10,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil33": {
+      "x": 918,
+      "y": 159,
+      "width": 46,
+      "height": 50,
+      "drawOffsetX": 8,
+      "drawOffsetY": 4,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle35": {
+      "x": 966,
+      "y": 159,
+      "width": 46,
+      "height": 50,
+      "drawOffsetX": 8,
+      "drawOffsetY": 4,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil34": {
+      "x": 2,
+      "y": 211,
+      "width": 51,
+      "height": 50,
+      "drawOffsetX": 6,
+      "drawOffsetY": 6,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle36": {
+      "x": 55,
+      "y": 211,
+      "width": 51,
+      "height": 50,
+      "drawOffsetX": 6,
+      "drawOffsetY": 6,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle37": {
+      "x": 108,
+      "y": 211,
+      "width": 53,
+      "height": 50,
+      "drawOffsetX": 5,
+      "drawOffsetY": 8,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil35": {
+      "x": 163,
+      "y": 211,
+      "width": 53,
+      "height": 50,
+      "drawOffsetX": 5,
+      "drawOffsetY": 8,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil37": {
+      "x": 218,
+      "y": 211,
+      "width": 54,
+      "height": 50,
+      "drawOffsetX": 5,
+      "drawOffsetY": 9,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle39": {
+      "x": 274,
+      "y": 211,
+      "width": 54,
+      "height": 50,
+      "drawOffsetX": 5,
+      "drawOffsetY": 9,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Evil36": {
+      "x": 330,
+      "y": 211,
+      "width": 54,
+      "height": 51,
+      "drawOffsetX": 5,
+      "drawOffsetY": 8,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/Bumper/Idle38": {
+      "x": 386,
+      "y": 211,
+      "width": 54,
+      "height": 51,
+      "drawOffsetX": 5,
+      "drawOffsetY": 8,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "tilesets/snow": {
+      "x": 442,
+      "y": 211,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/dirt": {
+      "x": 492,
+      "y": 211,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/bgDirt": {
+      "x": 542,
+      "y": 211,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/bgSnow": {
+      "x": 592,
+      "y": 211,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    }
+  }
+}

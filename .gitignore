@@ -1,0 +1,16 @@
+target/
+node_modules/
+wasm/
+dist/
+.vite/
+/.idea/
+/.vscode/
+/.tmp/
+/vendor/celeste-fna/
+/vendor/celeste-game/
+/1.4.0.0 itch.io FNA 代码/
+/celeste-win.zip
+/1.4.0.0 itch.io FNA 代码.zip
+*.log
+**/bin/
+**/obj/
