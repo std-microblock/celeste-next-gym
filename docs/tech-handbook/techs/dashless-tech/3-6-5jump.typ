@@ -4,7 +4,7 @@
   id: "3.6",
   title-zh: "5 格跳",
   title-en: "5jump",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [用 neutral 攀跳到墙顶，再从顶部追加跳跃或攀跳，可跨越约 5 格宽的缺口。],
   description-en: [A neutral climb jump reaches the wall top, followed by another jump from the lip to cross a five-tile gap.],
   source-evidence: evidence(
@@ -23,6 +23,10 @@
     symbol: [five_jump_chains_neutral_and_lip_climb_jumps_across_five_tiles],
     note: [独立场景先 neutral 攀跳、再在墙唇执行第二次攀跳，验证两次 -27.5 体力消耗，并落到从墙角相隔 5 格的目标平台。],
   ),
-  e2e-evidence: none,
-  candidate-e2e: "five-jump",
+  e2e-evidence: evidence(
+    path: [scripts/e2e-real-collector.mjs],
+    symbol: [five-jump],
+    note: [真实游戏共 49 个状态帧：第 1 状态帧首次攀跳后体力为 82.5，第 6 状态帧在墙唇再次攀跳后为 55；第 31 状态帧到达 85/128 并落在与起跳墙角相隔 5 格的平台。九类核心字段逐帧一致，最大位置误差 0、速度误差 0.000001。],
+  ),
+  candidate-e2e: none,
 )

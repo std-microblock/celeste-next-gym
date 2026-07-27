@@ -4,7 +4,7 @@
   id: "3.7.2",
   title-zh: "6 格跳",
   title-en: "6jump",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [满空中横移速度下在墙顶做一次 Cornerboost，把约 90 的速度再增加 40，以跨越 6 格缺口。],
   description-en: [At full air-strafe speed, one top-corner boost adds about 40 speed and crosses a six-tile gap.],
   source-evidence: evidence(
@@ -23,6 +23,10 @@
     symbol: [six_jump_uses_a_full_speed_cornerboost_to_reach_six_tile_landing],
     note: [独立几何的两平台墙角相距 48 像素；测试验证首帧保存 130，并在一次 Cornerboost 后越过 6 格落到目标平台。],
   ),
-  e2e-evidence: none,
-  candidate-e2e: "six-jump",
+  e2e-evidence: evidence(
+    path: [scripts/e2e-real-collector.mjs],
+    symbol: [six-jump],
+    note: [真实游戏共 41 个状态帧：从 90 空速起步，第 1 状态帧攀跳撞角自然保存 130，第 5 状态帧清角返还为 125.66666；第 34 状态帧到达 x=188，相对起始 x=139 超过 48 像素。九类核心字段逐帧一致，最大位置误差 0、速度误差 0.000001。],
+  ),
+  candidate-e2e: none,
 )
