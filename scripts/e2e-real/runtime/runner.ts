@@ -22,6 +22,7 @@ import { captureScenario, encodeScenarioArtifacts, writeArtifactManifest } from 
 import { createCollectorClient } from './collector-client.js'
 import { captureCommand, waitForPort } from './commands.js'
 import { createHarnessPaths, prepareMods } from './prepare-mods.js'
+import { groupScenariosByLifecycle, materializePlaygroundMap } from './playground-map.js'
 import { compareRealTrace } from './rust-compare.js'
 import { executeScenario, type ScenarioSummary } from './scenario-runner.js'
 import { writeTrace } from './trace.js'
@@ -53,6 +54,33 @@ export async function runRecordingHarness(
 }
 
 export async function runHarness(
+  config: HarnessConfig,
+  scenarios: readonly ScenarioDefinition[],
+  recordingGroup?: RecordingTargetGroup,
+): Promise<HarnessSummary> {
+  if (scenarios.length === 0) throw new Error('no E2E scenarios selected')
+  const targets = new Set(scenarios.map((scenario) => scenario.target.id))
+  if (targets.size !== 1) throw new Error(`one E2E invocation cannot mix targets: ${[...targets].join(', ')}`)
+  const lifecycleGroups = groupScenariosByLifecycle(scenarios)
+  if (lifecycleGroups.length === 1) {
+    return await runHarnessLifecycle(config, scenarios, recordingGroup)
+  }
+  const results: HarnessSummary[] = []
+  for (const lifecycle of lifecycleGroups) {
+    const names = new Set(lifecycle.scenarios.map((scenario) => scenario.name))
+    const lifecycleRecordingGroup = recordingGroup ? Object.freeze({
+      target: recordingGroup.target,
+      scenarios: Object.freeze(recordingGroup.scenarios.filter((item) => names.has(item.scenario.name))),
+    }) : undefined
+    results.push(await runHarnessLifecycle(config, lifecycle.scenarios, lifecycleRecordingGroup))
+  }
+  return {
+    health: Object.freeze({ lifecycles: results.map((result) => result.health) }),
+    scenarios: Object.freeze(results.flatMap((result) => result.scenarios)),
+  }
+}
+
+async function runHarnessLifecycle(
   config: HarnessConfig,
   scenarios: readonly ScenarioDefinition[],
   recordingGroup?: RecordingTargetGroup,
@@ -92,7 +120,15 @@ export async function runHarness(
   let serviceIdentity: ProcessIdentity | undefined
   let runError: unknown
   try {
-    prepareMods(paths, gameInstall)
+    const materializedMap = scenarioTarget.kind === 'playground'
+      ? materializePlaygroundMap({
+        repoRoot: config.repoRoot,
+        runRoot: runContext.runRoot,
+        paths,
+        scenario: scenarios[0]!,
+      })
+      : undefined
+    prepareMods(paths, gameInstall, materializedMap?.modRoot)
     await modPortReservation.release()
     updateRunManifest(runContext, { status: 'starting-game' })
     game = spawn(gameInstall.executable, ['--disable-splash', '--loglevel', 'info'], {
@@ -145,7 +181,7 @@ export async function runHarness(
 
     const client = createCollectorClient(paths.serviceRoot, httpPortReservation.port)
     const health = await client.waitUntilReady()
-    const mapPath = resolveMapPath(config, paths, scenarioTarget)
+    const mapPath = materializedMap?.mapPath ?? resolveMapPath(config, paths, scenarioTarget)
     const map = readFileSync(mapPath)
     const summaries: ScenarioSummary[] = []
     const recordingArtifacts: RecordingArtifactEntry[] = []

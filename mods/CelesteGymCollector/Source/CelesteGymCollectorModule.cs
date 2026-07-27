@@ -25,8 +25,6 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         On.Celeste.Player.Update += PlayerUpdate;
         On.Celeste.Player.StartDash += PlayerStartDash;
         On.Celeste.Player.Die += PlayerDie;
-        On.Celeste.Level.TransitionTo += LevelTransitionTo;
-        On.Celeste.Level.LoadLevel += LevelLoadLevel;
         On.Celeste.Input.GetAimVector += GetAimVector;
         server.Start(collectorPort);
     }
@@ -38,8 +36,6 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         On.Celeste.Player.Update -= PlayerUpdate;
         On.Celeste.Player.StartDash -= PlayerStartDash;
         On.Celeste.Player.Die -= PlayerDie;
-        On.Celeste.Level.TransitionTo -= LevelTransitionTo;
-        On.Celeste.Level.LoadLevel -= LevelLoadLevel;
         On.Celeste.Input.GetAimVector -= GetAimVector;
     }
 
@@ -246,35 +242,11 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         bool evenIfInvincible,
         bool registerDeathInStats
     ) {
-        Logger.Info("CelesteGymCollector", $"diagnostic die: pos={self.Position} tag={self.Tag} scene={self.Scene is not null} dead={self.Dead} direction={direction} stack={Environment.StackTrace}");
         PlayerDeadBody? body = orig(self, direction, evenIfInvincible, registerDeathInStats);
         if (body is not null && job is { Started: true, CurrentInput: not null }) {
             job.DeathFrame = SnapshotCapture.Capture(self, job.Index + 1);
         }
         return body;
-    }
-
-    private void LevelTransitionTo(
-        On.Celeste.Level.orig_TransitionTo orig,
-        Level self,
-        LevelData next,
-        Vector2 direction
-    ) {
-        Player? player = self.Tracker.GetEntity<Player>();
-        Logger.Info("CelesteGymCollector", $"diagnostic transition before: player={player is not null} tag={player?.Tag} scene={ReferenceEquals(player?.Scene, self)} tracked={ReferenceEquals(player, self.Tracker.GetEntity<Player>())} next={next.Name}");
-        orig(self, next, direction);
-    }
-
-    private void LevelLoadLevel(
-        On.Celeste.Level.orig_LoadLevel orig,
-        Level self,
-        Player.IntroTypes intro,
-        bool isFromLoader
-    ) {
-        Player? player = self.Tracker.GetEntity<Player>();
-        Logger.Info("CelesteGymCollector", $"diagnostic load before: intro={intro} player={player is not null} tag={player?.Tag} scene={ReferenceEquals(player?.Scene, self)}");
-        orig(self, intro, isFromLoader);
-        Logger.Info("CelesteGymCollector", $"diagnostic load after: intro={intro} sameScene={ReferenceEquals(player?.Scene, self)} trackedSame={ReferenceEquals(player, self.Tracker.GetEntity<Player>())} currentTag={player?.Tag} currentPlayerTag={self.Tracker.GetEntity<Player>()?.Tag}");
     }
 
     private void PrepareSimulationFrame() {

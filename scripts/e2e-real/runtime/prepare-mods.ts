@@ -23,7 +23,11 @@ export function createHarnessPaths(repoRoot: string): HarnessPaths {
   })
 }
 
-export function prepareMods(paths: HarnessPaths, gameInstall: GameInstall): void {
+export function prepareMods(
+  paths: HarnessPaths,
+  gameInstall: GameInstall,
+  playgroundModRoot: string = paths.playgroundModRoot,
+): void {
   runCommand('dotnet', ['build', resolve(paths.modRoot, 'Source', 'CelesteGymCollector.csproj'), '-c', 'Release'], paths.repoRoot)
   const gameModsRoot = resolve(gameInstall.gameRoot, 'Mods')
   mkdirSync(gameModsRoot, { recursive: true })
@@ -55,7 +59,7 @@ export function prepareMods(paths: HarnessPaths, gameInstall: GameInstall): void
   assertUnlinkedTarget(installedPlaygroundZip, gameModsRoot)
   rmSync(installedPlaygroundMod, { recursive: true, force: true })
   rmSync(installedPlaygroundZip, { force: true })
-  runCommand('7z', ['a', '-tzip', '-mx=0', installedPlaygroundZip, 'everest.yaml', 'Maps'], paths.playgroundModRoot)
+  runCommand('7z', ['a', '-tzip', '-mx=0', installedPlaygroundZip, 'everest.yaml', 'Maps'], playgroundModRoot)
   runCommand(
     process.execPath,
     [resolve(paths.serviceRoot, 'node_modules', 'typescript', 'bin', 'tsc'), '-p', 'tsconfig.json'],
