@@ -4,7 +4,7 @@
   id: "3.7.3",
   title-zh: "双 Cornerboost",
   title-en: "Double Cornerboost (dcb)",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [在水平速度低于约 144 且像素位置精确时，可连续两帧攀跳同一墙角，额外获得两次加速。],
   description-en: [With precise positioning below roughly 144 horizontal speed, two consecutive climb jumps can boost from the same corner.],
   source-evidence: evidence(
@@ -23,6 +23,10 @@
     symbol: [double_cornerboost_uses_two_consecutive_climb_jumps_from_a_grounded_setup],
     note: [独立场景从地面零速起跳、接墙并攀到墙顶，再松抓调整一像素位置；连续两帧攀跳各扣 27.5 体力，第二次自然保存 90.83336，并在计时窗内清角返还。],
   ),
-  e2e-evidence: none,
-  candidate-e2e: "double-cornerboost",
+  e2e-evidence: evidence(
+    path: [scripts/e2e-real-collector.mjs],
+    symbol: [double-cornerboost],
+    note: [真实游戏共 91 个状态帧，从 120/152 地面零速起跳并自然攀墙；第 79 状态帧由松抓输入链进入 139/87 的同角窗口，第 80、81 状态帧连续攀跳后体力由 72.1212 降至 44.6212、17.1212，第二次自然保存 90.83336，第 85 状态帧清角返还 90。九类核心字段逐帧一致，最大位置误差 0、速度误差 0.000008。],
+  ),
+  candidate-e2e: none,
 )
