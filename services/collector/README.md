@@ -43,6 +43,8 @@ COLLECTOR_BACKEND=everest npm start
 
 完整自动 E2E 推荐从仓库根目录运行 `node scripts/e2e-real-collector.mjs`。
 
+自动 runner 会动态选择 `EVEREST_COLLECTOR_PORT` 与 `COLLECTOR_PORT`，并先用 run nonce、Mod 回报 PID 和端口验证游戏子进程。手工运行时固定默认端口仍可用，但不得把未知的既有监听器当作真实测试后端。
+
 可见窗口下对标第二章 `lvl_1` 的 DreamDash：
 
 ```powershell
