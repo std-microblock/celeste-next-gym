@@ -8,12 +8,12 @@ describe('production scenario registry', () => {
   const registry = buildRegistry(scenarios)
 
   it('derives all target and status counts from explicit indexes', () => {
-    assert.equal(registry.scenarios.length, 127)
-    assert.equal(registry.byTarget.get('playground')?.length, 85)
+    assert.equal(registry.scenarios.length, 133)
+    assert.equal(registry.byTarget.get('playground')?.length, 91)
     assert.equal(registry.byTarget.get('area-1')?.length, 36)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 123, candidate: 4 })
+    assert.deepEqual(registry.counts, { active: 123, candidate: 10 })
   })
 
   it('keeps evidence-less entity scenarios as opt-in candidates', () => {
@@ -21,10 +21,16 @@ describe('production scenario registry', () => {
       .filter((scenario) => scenario.status === 'candidate')
       .map((scenario) => scenario.name)
     assert.deepEqual(candidates, [
+      'cornerboost-wallboost',
+      'cornerslip',
       'entity-4.15.2-feather-hitbox-preservation',
       'entity-4.3-bumper-clip',
       'entity-4.4-explosion-boost',
       'entity-4.5-iceball-jump',
+      'narrow-spiked-climb',
+      'spike-climb',
+      'spike-clip',
+      'spike-jump',
     ])
     assert.equal(selectScenarios(registry, { target: 'playground' }).some((scenario) => scenario.status === 'candidate'), false)
   })
@@ -49,6 +55,25 @@ describe('production scenario registry', () => {
       'tech.3.7.8.reverse-cornerboost',
       'tech.3.7.9.neutral-reverse-cornerboost',
       'tech.3.7.10.spiked-cornerboost',
+    ])
+  })
+
+  it('keeps every dashless spike proof in an independently named map part', () => {
+    const techniqueIds = ['3.8', '3.8.1', '3.9', '3.10', '3.12.1', '3.13']
+    const parts = techniqueIds.map((techniqueId) => {
+      const scenario = registry.scenarios.find((candidate) => candidate.techniqueIds.includes(techniqueId))
+      assert.ok(scenario, `missing scenario for ${techniqueId}`)
+      assert.equal(scenario.mapParts.length, 1)
+      return scenario.mapParts[0]?.id
+    })
+    assert.equal(new Set(parts).size, techniqueIds.length)
+    assert.deepEqual(parts, [
+      'tech.3.8.spike-climb',
+      'tech.3.8.1.narrow-spiked-climb',
+      'tech.3.9.spike-clip',
+      'tech.3.10.spike-jump',
+      'tech.3.12.1.cornerboost-wallboost',
+      'tech.3.13.cornerslip',
     ])
   })
 })
