@@ -1,4 +1,4 @@
-#import "template.typ": evidence
+#import "template.typ": evidence, coverage-summary
 
 #set document(
   title: "Celeste Next Gym 技巧手册 / Tech Handbook",
@@ -40,7 +40,7 @@
     [
       *当前覆盖 / Current coverage*
 
-      #text(size: 19pt, weight: "bold", fill: rgb("#991b1b"))[14 / 120]
+      #text(size: 19pt, weight: "bold", fill: rgb("#991b1b"))[#coverage-summary()]
 
       所有技巧在四类证据齐全前均明确标记为“未实现”。
 
