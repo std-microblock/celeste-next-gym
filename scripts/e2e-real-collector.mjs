@@ -5,6 +5,16 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawn, spawnSync } from 'node:child_process'
 
+import {
+  createRunContext,
+  reserveLoopbackPort,
+  terminateOwnedProcess,
+  updateRunManifest,
+  validateGameInstall,
+  waitForOwnedEverest,
+  waitForProcessIdentity,
+} from './e2e-isolation.mjs'
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const gameRoot = resolve(root, 'vendor', 'celeste-game')
 const modRoot = resolve(root, 'mods', 'CelesteGymCollector')
@@ -50,20 +60,6 @@ function capture(command, args, cwd = root) {
   return result.stdout.trim()
 }
 
-if (expectedGitBranch || expectedGitHead) {
-  const actualGitBranch = capture('git', ['branch', '--show-current'])
-  const actualGitHead = capture('git', ['rev-parse', 'HEAD'])
-  if (expectedGitBranch && actualGitBranch !== expectedGitBranch) {
-    throw new Error(`expected git branch ${expectedGitBranch}, got ${actualGitBranch || '(detached)'}`)
-  }
-  if (expectedGitHead && actualGitHead !== expectedGitHead) {
-    throw new Error(`expected git HEAD ${expectedGitHead}, got ${actualGitHead}`)
-  }
-}
-
-const requireFromService = createRequire(resolve(serviceRoot, 'package.json'))
-const { encode, decode } = requireFromService('@msgpack/msgpack')
-
 function waitForPort(port, timeoutMs) {
   const deadline = Date.now() + timeoutMs
   return new Promise((resolveWait, reject) => {
@@ -80,62 +76,132 @@ function waitForPort(port, timeoutMs) {
   })
 }
 
-function stopTree(child) {
-  if (!child?.pid || child.exitCode !== null) return
-  if (process.platform === 'win32') {
-    spawnSync('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true })
-  } else {
-    child.kill('SIGKILL')
+const steamRoots = (process.env.E2E_STEAM_CELESTE_ROOTS ?? '')
+  .split(process.platform === 'win32' ? ';' : ':')
+  .map((path) => path.trim())
+  .filter(Boolean)
+const gameInstall = validateGameInstall({ repoRoot: root, gameRoot, steamRoots })
+const git = {
+  branch: capture('git', ['branch', '--show-current']),
+  head: capture('git', ['rev-parse', 'HEAD']),
+}
+if (expectedGitBranch && git.branch !== expectedGitBranch) {
+  throw new Error(`expected git branch ${expectedGitBranch}, got ${git.branch || '(detached)'}`)
+}
+if (expectedGitHead && git.head !== expectedGitHead) {
+  throw new Error(`expected git HEAD ${expectedGitHead}, got ${git.head}`)
+}
+
+function cleanupOwned(label, child, identity) {
+  if (!identity) {
+    if (child?.pid && child.exitCode === null) {
+      console.warn(`refusing to terminate ${label} PID ${child.pid}: no recorded process identity`)
+    }
+    return false
+  }
+  try {
+    return terminateOwnedProcess({ child, expectedIdentity: identity })
+  } catch (error) {
+    console.warn(`failed to terminate owned ${label} PID ${child?.pid}: ${String(error)}`)
+    return false
   }
 }
-
-run('dotnet', ['build', resolve(modRoot, 'Source', 'CelesteGymCollector.csproj'), '-c', 'Release'])
-const installedMod = resolve(gameRoot, 'Mods', 'CelesteGymCollector')
-mkdirSync(resolve(installedMod, 'Code'), { recursive: true })
-copyFileSync(resolve(modRoot, 'everest.yaml'), resolve(installedMod, 'everest.yaml'))
-copyFileSync(
-  resolve(modRoot, 'Source', 'bin', 'Release', 'net8.0', 'CelesteGymCollector.dll'),
-  resolve(installedMod, 'Code', 'CelesteGymCollector.dll'),
-)
-const gameModsRoot = resolve(gameRoot, 'Mods')
-const installedPlaygroundMod = resolve(gameModsRoot, 'CelesteGymPlayground')
-const installedPlaygroundZip = resolve(gameModsRoot, 'CelesteGymPlayground.zip')
-if (dirname(installedPlaygroundMod) !== gameModsRoot || dirname(installedPlaygroundZip) !== gameModsRoot) {
-  throw new Error('refusing to replace a playground mod outside the game Mods directory')
-}
-rmSync(installedPlaygroundMod, { recursive: true, force: true })
-rmSync(installedPlaygroundZip, { force: true })
-run('7z', ['a', '-tzip', '-mx=0', installedPlaygroundZip, 'everest.yaml', 'Maps'], playgroundModRoot)
-run(process.execPath, [resolve(serviceRoot, 'node_modules', 'typescript', 'bin', 'tsc'), '-p', 'tsconfig.json'], serviceRoot)
-
+const modPortReservation = await reserveLoopbackPort()
+const httpPortReservation = await reserveLoopbackPort()
+const runContext = createRunContext({
+  repoRoot: root,
+  gameInstall,
+  modPort: modPortReservation.port,
+  httpPort: httpPortReservation.port,
+  git,
+})
 let game
 let service
+let gameIdentity
+let serviceIdentity
+let runError
+let encode
+let decode
 try {
-  game = spawn(resolve(gameRoot, 'Celeste.exe'), ['--disable-splash', '--loglevel', 'info'], {
-    cwd: gameRoot,
+  const requireFromService = createRequire(resolve(serviceRoot, 'package.json'))
+  const codec = requireFromService('@msgpack/msgpack')
+  encode = codec.encode
+  decode = codec.decode
+  run('dotnet', ['build', resolve(modRoot, 'Source', 'CelesteGymCollector.csproj'), '-c', 'Release'])
+  const installedMod = resolve(gameInstall.gameRoot, 'Mods', 'CelesteGymCollector')
+  mkdirSync(resolve(installedMod, 'Code'), { recursive: true })
+  copyFileSync(resolve(modRoot, 'everest.yaml'), resolve(installedMod, 'everest.yaml'))
+  copyFileSync(
+    resolve(modRoot, 'Source', 'bin', 'Release', 'net8.0', 'CelesteGymCollector.dll'),
+    resolve(installedMod, 'Code', 'CelesteGymCollector.dll'),
+  )
+  const gameModsRoot = resolve(gameInstall.gameRoot, 'Mods')
+  const installedPlaygroundMod = resolve(gameModsRoot, 'CelesteGymPlayground')
+  const installedPlaygroundZip = resolve(gameModsRoot, 'CelesteGymPlayground.zip')
+  if (dirname(installedPlaygroundMod) !== gameModsRoot || dirname(installedPlaygroundZip) !== gameModsRoot) {
+    throw new Error('refusing to replace a playground mod outside the game Mods directory')
+  }
+  rmSync(installedPlaygroundMod, { recursive: true, force: true })
+  rmSync(installedPlaygroundZip, { force: true })
+  run('7z', ['a', '-tzip', '-mx=0', installedPlaygroundZip, 'everest.yaml', 'Maps'], playgroundModRoot)
+  run(process.execPath, [resolve(serviceRoot, 'node_modules', 'typescript', 'bin', 'tsc'), '-p', 'tsconfig.json'], serviceRoot)
+
+  await modPortReservation.release()
+  updateRunManifest(runContext, { status: 'starting-game' })
+  game = spawn(gameInstall.executable, ['--disable-splash', '--loglevel', 'info'], {
+    cwd: gameInstall.gameRoot,
     windowsHide: !showGameWindow,
     stdio: 'ignore',
+    shell: false,
+    env: {
+      ...process.env,
+      CELESTE_GYM_COLLECTOR_PORT: String(modPortReservation.port),
+      CELESTE_GYM_RUN_NONCE: runContext.runNonce,
+      EVEREST_SAVEPATH: runContext.saveRoot,
+      EVEREST_TMPDIR: runContext.tempRoot,
+    },
   })
-  await waitForPort(32270, 30_000)
+  if (!game.pid) throw new Error('Celeste child did not expose a process id')
+  gameIdentity = await waitForProcessIdentity(game.pid, gameInstall.executable)
+  updateRunManifest(runContext, {
+    status: 'waiting-for-everest',
+    game_process: gameIdentity,
+  })
+  const everestPing = await waitForOwnedEverest(modPortReservation.port, {
+    runNonce: runContext.runNonce,
+    processId: game.pid,
+    port: modPortReservation.port,
+  }, 30_000)
+  updateRunManifest(runContext, { status: 'game-authenticated', everest_ping: everestPing })
 
+  await httpPortReservation.release()
   service = spawn(process.execPath, [resolve(serviceRoot, 'dist', 'src', 'index.js')], {
     cwd: serviceRoot,
     windowsHide: true,
     stdio: 'ignore',
+    shell: false,
     env: {
       ...process.env,
       COLLECTOR_BACKEND: 'everest',
+      COLLECTOR_PORT: String(httpPortReservation.port),
       COLLECTOR_TIMEOUT_MS: '60000',
+      EVEREST_COLLECTOR_PORT: String(modPortReservation.port),
       EVEREST_AREA_ID: String(areaId),
       ...(areaSid ? { EVEREST_AREA_SID: areaSid } : {}),
     },
   })
-  await waitForPort(4318, 10_000)
+  if (!service.pid) throw new Error('collector service child did not expose a process id')
+  serviceIdentity = await waitForProcessIdentity(service.pid, process.execPath)
+  updateRunManifest(runContext, {
+    status: 'waiting-for-service',
+    service_process: serviceIdentity,
+  })
+  await waitForPort(httpPortReservation.port, 10_000)
 
   let health
   const healthDeadline = Date.now() + 30_000
   do {
-    health = await fetch('http://127.0.0.1:4318/health').then((response) => response.json())
+    health = await fetch(`http://127.0.0.1:${httpPortReservation.port}/health`).then((response) => response.json())
     if (health.ready) break
     await new Promise((resolveWait) => setTimeout(resolveWait, 250))
   } while (Date.now() < healthDeadline)
@@ -720,7 +786,7 @@ try {
       frames: scenario.inputs.length,
       skip_transitions: skipTransitions,
     }
-    const response = await fetch('http://127.0.0.1:4318/api/simulate', {
+    const response = await fetch(`http://127.0.0.1:${httpPortReservation.port}/api/simulate`, {
       method: 'POST',
       headers: { 'content-type': 'application/octet-stream' },
       body: encode(request),
@@ -750,10 +816,22 @@ try {
       tracePath,
     })
   }
+  updateRunManifest(runContext, { status: 'completed' })
   console.log(JSON.stringify({ health, scenarios: summaries }, null, 2))
+} catch (error) {
+  runError = error
+  updateRunManifest(runContext, { status: 'failed', error: String(error) })
+  throw error
 } finally {
-  stopTree(service)
-  stopTree(game)
+  await Promise.allSettled([modPortReservation.release(), httpPortReservation.release()])
+  const cleanup = {
+    service_terminated: cleanupOwned('collector', service, serviceIdentity),
+    game_terminated: cleanupOwned('Celeste', game, gameIdentity),
+  }
+  updateRunManifest(runContext, {
+    status: runError ? 'failed-cleanup-finished' : 'cleanup-finished',
+    cleanup,
+  })
 }
 
 function pickCore(state) {
