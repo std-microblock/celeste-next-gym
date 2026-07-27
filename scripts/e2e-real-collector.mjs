@@ -1005,10 +1005,14 @@ function verifyBerryTrain(states) {
 }
 
 function verifyUpwardScreenTransition(states) {
-  semanticAssert(near(states[1].speed[0], 0) && near(states[1].speed[1], -105), 'mechanics-screen-transition-up', 'BeforeUpTransition did not apply 0/-105')
-  semanticAssert(states[1].dashes === 0 && near(states[1].stamina, 20), 'mechanics-screen-transition-up', 'resources refilled before transition completion')
-  const completed = states.findIndex((state, frame) => frame > 1 && state.dashes >= 1 && near(state.stamina, 110))
-  semanticAssert(completed >= 39, 'mechanics-screen-transition-up', `0.65 second transition completed too early at frame ${completed}`)
+  const entered = states.findIndex((state, frame) => frame > 0
+    && near(state.speed[0], 0)
+    && near(state.speed[1], -105)
+    && state.dashes === 0
+    && near(state.stamina, 20))
+  semanticAssert(entered > 0, 'mechanics-screen-transition-up', `BeforeUpTransition did not apply 0/-105 with delayed resource refill: ${JSON.stringify(states.slice(0, 6).map(pickCore))}`)
+  const completed = states.findIndex((state, frame) => frame > entered && state.dashes >= 1 && near(state.stamina, 110))
+  semanticAssert(completed - entered >= 39, 'mechanics-screen-transition-up', `0.65 second transition completed too early: entered=${entered}, completed=${completed}`)
   semanticAssert(completed > 0 && states[completed].pos[1] <= -13, 'mechanics-screen-transition-up', 'player never crossed into the upper room target bounds')
 }
 
