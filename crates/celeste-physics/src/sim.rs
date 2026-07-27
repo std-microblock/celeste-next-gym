@@ -322,7 +322,7 @@ fn step(p: &mut PlayerSnapshot, mut input: InputState, map: &Map) -> Result<(), 
         PlayerState::Climb => climb_update(p, input, map),
         PlayerState::Swim => swim_update(p, input, map),
         PlayerState::Boost => boost_update(p, input, map),
-        PlayerState::RedDash => red_dash_update(p, input),
+        PlayerState::RedDash => red_dash_update(p, input, map),
         PlayerState::HitSquash => hit_squash_update(p),
         PlayerState::Launch => launch_update(p, input, map),
         PlayerState::DreamDash => dream_dash_update(p),
@@ -408,7 +408,7 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         && p.dashes > 0
         && p.dash_cooldown_timer <= 0.0
     {
-        begin_dash(p, input, true, false);
+        begin_dash(p, input, true, false, map);
         return;
     }
 
@@ -527,6 +527,7 @@ fn begin_dash(
     input: InputState,
     consume_dash: bool,
     delayed_coroutine: bool,
+    map: &Map,
 ) {
     p.dash_buffer_timer = 0.0;
     p.crouch_dash_buffer_timer = 0.0;
@@ -547,7 +548,9 @@ fn begin_dash(
     if consume_dash {
         p.dashes = p.dashes.saturating_sub(1);
     }
-    if p.demo_dashed || (!p.ducking && input.move_y > 0) {
+    if !p.on_ground && p.ducking && can_unduck(p, map) {
+        p.ducking = false;
+    } else if !p.ducking && (p.demo_dashed || input.move_y > 0) {
         p.ducking = true;
     }
     if x != 0.0 {
@@ -722,7 +725,7 @@ fn swim_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         && p.dashes > 0
         && p.dash_cooldown_timer <= 0.0
     {
-        begin_dash(p, input, false, false);
+        begin_dash(p, input, false, false, map);
         return;
     }
 
@@ -793,7 +796,7 @@ fn boost_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     if p.boost_red {
         begin_red_dash(p, manual.then_some(input), !manual);
     } else {
-        begin_dash(p, input, false, !manual);
+        begin_dash(p, input, false, !manual, map);
     }
 }
 
@@ -814,12 +817,12 @@ fn begin_red_dash(p: &mut PlayerSnapshot, input: Option<InputState>, delayed_cor
     p.ducking = false;
 }
 
-fn red_dash_update(p: &mut PlayerSnapshot, input: InputState) {
+fn red_dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     if (input.dash_pressed || input.crouch_dash_pressed)
         && p.dashes > 0
         && p.dash_cooldown_timer <= 0.0
     {
-        begin_dash(p, input, true, false);
+        begin_dash(p, input, true, false, map);
         return;
     }
     if p.dash_dir == Vec2::default() {
@@ -852,7 +855,7 @@ fn launch_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         && p.dashes > 0
         && p.dash_cooldown_timer <= 0.0
     {
-        begin_dash(p, input, true, false);
+        begin_dash(p, input, true, false, map);
         return;
     }
     p.speed.y = approach(
@@ -1091,7 +1094,7 @@ fn star_fly_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         && p.dash_cooldown_timer <= 0.0
     {
         end_star_fly(p, map);
-        begin_dash(p, input, true, false);
+        begin_dash(p, input, true, false, map);
         return;
     }
 
@@ -2700,6 +2703,23 @@ mod tests {
             .map(|(normal, archie)| normal.pos.y - archie.pos.y)
             .fold(0.0_f32, f32::max);
         assert_eq!(max_height_gain, 2.0);
+    }
+
+    #[test]
+    fn automatic_booster_dash_unducks_an_airborne_archie_in_open_space() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(160.0, 400.0),
+            ducking: true,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(p, &[InputState::default(); 36], &booster_map(), 36).unwrap();
+        let auto_dash = trace
+            .states
+            .iter()
+            .find(|state| state.state == PlayerState::Dash)
+            .expect("booster coroutine should enter Dash");
+        assert!(!auto_dash.on_ground);
+        assert!(!auto_dash.ducking);
     }
 
     #[test]
