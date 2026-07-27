@@ -75,6 +75,7 @@ export interface PlayerSnapshot {
   current_lift_speed?: Vector2;
   last_lift_speed?: Vector2;
   lift_speed_timer?: number;
+  moving_solid_time?: number;
   climb_no_move_timer?: number;
   dream_dash_can_end_timer?: number;
   launch_approach_x?: number | null;
