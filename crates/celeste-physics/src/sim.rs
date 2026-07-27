@@ -929,7 +929,7 @@ fn boost_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     let aim = input_vector(input);
     let target = Vec2::new(
         p.boost_target.x + aim.x * 3.0,
-        p.boost_target.y + if p.ducking { 3.0 } else { 5.0 } + aim.y * 3.0,
+        p.boost_target.y + if p.ducking { 3.0 } else { 5.5 } + aim.y * 3.0,
     );
     approach_exact_position(p, map, target, 80.0 * DT);
     p.state_timer = (p.state_timer - DT).max(0.0);
@@ -3079,7 +3079,7 @@ mod tests {
     }
 
     #[test]
-    fn archie_centers_the_duck_hitbox_two_pixels_above_a_normal_boost() {
+    fn archie_preserves_the_source_two_and_a_half_pixel_center_offset() {
         let map = booster_map();
         let standing = PlayerSnapshot {
             pos: Vec2::new(160.0, 400.0),
@@ -3100,7 +3100,10 @@ mod tests {
             .zip(&ducking.states)
             .map(|(normal, archie)| normal.pos.y - archie.pos.y)
             .fold(0.0_f32, f32::max);
-        assert_eq!(max_height_gain, 2.0);
+        // The normal collider center is -5.5 while the duck collider center is
+        // -3.0. Their exact 2.5-pixel separation appears as a three-pixel peak
+        // after Monocle's ties-to-even integer movement.
+        assert_eq!(max_height_gain, 3.0);
     }
 
     #[test]
@@ -3227,6 +3230,65 @@ mod tests {
         assert_eq!(trace.states[1].dash_buffer_timer, 0.0);
         assert_eq!(trace.states[1].crouch_dash_buffer_timer, 0.0);
         assert_eq!(trace.states[2].state, PlayerState::Boost);
+    }
+
+    #[test]
+    fn boost_approach_uses_the_normal_collider_half_pixel_center() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
+            entities: vec![crate::Entity {
+                kind: EntityKind::Booster,
+                bounds: Rect::new(712.0, 312.0, 16.0, 16.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "booster".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(720.0, 330.0),
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [
+            InputState {
+                move_x: 1,
+                dash_pressed: true,
+                ..InputState::default()
+            },
+            InputState::default(),
+            InputState::default(),
+            InputState::default(),
+            InputState {
+                move_x: 1,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: 1,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: 1,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: 1,
+                ..InputState::default()
+            },
+        ];
+        let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
+
+        assert_eq!(trace.states[5].pos, Vec2::new(721.0, 329.0));
+        assert!((trace.states[5].movement_remainder.x - 0.024_291_992).abs() < 0.000_001);
+        assert!((trace.states[5].movement_remainder.y - 0.146_423_34).abs() < 0.000_001);
+        assert_eq!(trace.states[6].pos, Vec2::new(722.0, 328.0));
+        assert!((trace.states[6].movement_remainder.x - 0.048_583_984).abs() < 0.000_001);
+        assert!((trace.states[6].movement_remainder.y - 0.292_846_68).abs() < 0.000_001);
+        assert_eq!(trace.states[7].pos, Vec2::new(723.0, 328.0));
+        assert_eq!(trace.states[7].movement_remainder, Vec2::new(0.0, -0.5));
+        assert_eq!(trace.states[8].pos, Vec2::new(723.0, 328.0));
+        assert_eq!(trace.states[8].movement_remainder, Vec2::new(0.0, -0.5));
     }
 
     #[test]
