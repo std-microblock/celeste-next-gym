@@ -14,7 +14,7 @@ export const scenario = defineScenario({
   techniqueIds: ['3.7.7'],
   mapParts,
   name: 'eleven-jump',
-  initial: { pos: [956, 126], speed: [160, -30], stamina: 20 },
+  initial: { pos: [316, 86], speed: [160, -30], stamina: 20 },
   inputs: Array.from({ length: 120 }, (_, frame) => input({
     move_x: 1,
     jump_pressed: frame === 37 || frame === 42 || frame === 43,
@@ -29,5 +29,5 @@ function verifyElevenJump(states: readonly E2EState[]): void {
   semanticAssert(completed === 41, 'eleven-jump', `room transition completed at state ${completed} instead of 41`)
   semanticAssert(near(states[42]?.stamina, 82.5) && near(states[43]?.stamina, 55) && near(states[44]?.stamina, 27.5), 'eleven-jump', 'three buffered climb jumps did not execute immediately after the transition')
   semanticAssert(Number(field(states[44], 'wallSpeedRetained')) > 190, 'eleven-jump', `retained speed was ${String(field(states[44], 'wallSpeedRetained'))}`)
-  semanticAssert(states.some((state) => state.on_ground && state.pos[0] >= 1052), 'eleven-jump', 'player did not land across the eleven-tile gap')
+  semanticAssert(states.some((state) => state.on_ground && state.pos[0] >= 412), 'eleven-jump', 'player did not land across the eleven-tile gap')
 }

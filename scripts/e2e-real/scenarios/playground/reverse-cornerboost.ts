@@ -14,7 +14,7 @@ export const scenario = defineScenario({
   techniqueIds: ['3.7.8'],
   mapParts,
   name: 'reverse-cornerboost',
-  initial: { pos: [132, 242], speed: [160, -30], facing: 'Left' },
+  initial: { pos: [116, 122], speed: [160, -30], facing: 'Left' },
   inputs: Array.from({ length: 20 }, (_, frame) => input({
     move_x: frame === 0 ? -1 : 1,
     jump_pressed: frame === 0,

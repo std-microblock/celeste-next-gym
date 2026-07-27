@@ -14,7 +14,7 @@ export const scenario = defineScenario({
   techniqueIds: ['3.7.10'],
   mapParts,
   name: 'spiked-cornerboost',
-  initial: { pos: [235, 246], speed: [90, -30] },
+  initial: { pos: [35, 46], speed: [90, -30] },
   inputs: Array.from({ length: 20 }, (_, frame) => input({
     move_x: 1,
     jump_pressed: frame === 0,
