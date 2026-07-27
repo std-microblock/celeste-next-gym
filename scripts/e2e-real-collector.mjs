@@ -1001,7 +1001,7 @@ function verifyBerryTrain(states) {
   const second = states.findIndex((state) => Number(field(state, 'StrawberryCollectIndex')) >= 2)
   semanticAssert(first >= 27, 'mechanics-berry-train', `first berry collected too early at frame ${first}; follower delay plus nine safe-ground frames were not observed`)
   semanticAssert(second > first, 'mechanics-berry-train', 'second berry never collected')
-  semanticAssert(second - first === 18, 'mechanics-berry-train', `later berry queue offset was ${second - first} frames instead of 18`)
+  semanticAssert(second - first === 17, 'mechanics-berry-train', `later berry queue offset was ${second - first} frames instead of 17`)
 }
 
 function verifyUpwardScreenTransition(states) {

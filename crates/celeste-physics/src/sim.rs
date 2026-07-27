@@ -1844,7 +1844,10 @@ fn update_strawberry_train(p: &mut PlayerSnapshot) {
             p.strawberry_collect_index = p.strawberry_collect_index.saturating_add(1);
             p.strawberry_collect_reset_timer = 2.5;
             p.strawberry_collect_timer = if p.carried_strawberries > 0 {
-                -0.15
+                // Followers update in train order. Once the first berry calls
+                // OnCollect, the next berry becomes FollowIndex 0 and runs its
+                // own Update later in the same frame, advancing -0.15 by DT.
+                -0.15 + DT
             } else {
                 0.0
             };
@@ -4220,8 +4223,8 @@ mod tests {
             .iter()
             .position(|state| state.strawberry_collect_index == 2)
             .unwrap();
-        assert_eq!(second - first, 18);
-        assert_eq!(trace.states[first].strawberry_collect_timer, -0.15);
+        assert_eq!(second - first, 17);
+        assert!((trace.states[first].strawberry_collect_timer - (-0.15 + DT)).abs() < 0.000_001);
         assert_eq!(trace.states[second].carried_strawberries, 0);
     }
 
