@@ -50,6 +50,7 @@ pub enum EntityKind {
     FlyFeather,
     Bumper,
     BadelineBoost,
+    Spring,
     Wind,
     Unknown,
 }
@@ -272,6 +273,25 @@ pub fn encode_celeste_map(map: &Map, package: &str, room: &str) -> Result<Vec<u8
                     })
                     .collect(),
             )),
+            EntityKind::Spring => {
+                let (name, spring_x, spring_y) = if entity.direction.y < 0.0 {
+                    ("spring", x + 8, y + 6)
+                } else if entity.direction.x > 0.0 {
+                    ("wallSpringLeft", x, y + 8)
+                } else {
+                    ("wallSpringRight", x + 6, y + 8)
+                };
+                Some(element(
+                    name,
+                    [
+                        ("id", BinaryValue::Int(id)),
+                        ("playerCanUse", BinaryValue::Bool(true)),
+                        ("x", BinaryValue::Int(spring_x)),
+                        ("y", BinaryValue::Int(spring_y)),
+                    ],
+                    vec![],
+                ))
+            }
             EntityKind::Wind => {
                 triggers.push(element(
                     "windTrigger",
@@ -543,6 +563,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 "infiniteStar" | "flyFeather" => EntityKind::FlyFeather,
                 "bigSpinner" => EntityKind::Bumper,
                 "badelineBoost" => EntityKind::BadelineBoost,
+                "spring" | "wallSpringLeft" | "wallSpringRight" => EntityKind::Spring,
                 "windTrigger" => EntityKind::Wind,
                 _ => EntityKind::Unknown,
             };
@@ -576,6 +597,15 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                         raw_height,
                     ),
                     Vec2::default(),
+                ),
+                "spring" => (
+                    Rect::new(ex - 8.0, ey - 6.0, 16.0, 6.0),
+                    Vec2::new(0.0, -1.0),
+                ),
+                "wallSpringLeft" => (Rect::new(ex, ey - 8.0, 6.0, 16.0), Vec2::new(1.0, 0.0)),
+                "wallSpringRight" => (
+                    Rect::new(ex - 6.0, ey - 8.0, 6.0, 16.0),
+                    Vec2::new(-1.0, 0.0),
                 ),
                 _ => (Rect::new(ex, ey, raw_width, raw_height), Vec2::default()),
             };
@@ -718,5 +748,46 @@ mod tests {
                 Rect::new(16.0, 8.0, 8.0, 8.0)
             ]
         );
+    }
+
+    #[test]
+    fn celeste_spring_entities_round_trip_with_source_colliders() {
+        let springs = vec![
+            Entity {
+                kind: EntityKind::Spring,
+                bounds: Rect::new(72.0, 90.0, 16.0, 6.0),
+                direction: Vec2::new(0.0, -1.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "spring".to_owned(),
+            },
+            Entity {
+                kind: EntityKind::Spring,
+                bounds: Rect::new(120.0, 72.0, 6.0, 16.0),
+                direction: Vec2::new(1.0, 0.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "wallSpringLeft".to_owned(),
+            },
+            Entity {
+                kind: EntityKind::Spring,
+                bounds: Rect::new(154.0, 72.0, 6.0, 16.0),
+                direction: Vec2::new(-1.0, 0.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "wallSpringRight".to_owned(),
+            },
+        ];
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            entities: springs.clone(),
+            ..Map::default()
+        };
+        let bytes = encode_celeste_map(&map, "CelesteGymPlayground", "springs").unwrap();
+        let decoded = decode_map_room(&bytes, Some("springs")).unwrap();
+        assert_eq!(decoded.entities, springs);
     }
 }

@@ -64,6 +64,15 @@ pub fn mechanics_playground() -> Map {
                 name: "spikesUp".to_owned(),
             },
             Entity {
+                kind: EntityKind::Spring,
+                bounds: Rect::new(72.0, 490.0, 16.0, 6.0),
+                direction: Vec2::new(0.0, -1.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "spring".to_owned(),
+            },
+            Entity {
                 kind: EntityKind::Water,
                 bounds: Rect::new(448.0, 416.0, 112.0, 80.0),
                 direction: Vec2::default(),

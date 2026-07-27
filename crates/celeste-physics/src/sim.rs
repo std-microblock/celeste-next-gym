@@ -29,6 +29,10 @@ const DASH_TIME: f32 = 0.15;
 const DASH_COOLDOWN: f32 = 0.2;
 const DASH_ATTACK_TIME: f32 = 0.3;
 const SUPER_JUMP_H: f32 = 260.0;
+const SUPER_BOUNCE_SPEED: f32 = -185.0;
+const BOUNCE_SPEED: f32 = -140.0;
+const SIDE_BOUNCE_SPEED: f32 = 240.0;
+const SIDE_BOUNCE_FORCE_MOVE_X_TIME: f32 = 0.3;
 const CLIMB_HOP_Y: f32 = -120.0;
 const CLIMB_HOP_X: f32 = 100.0;
 const CLIMB_HOP_FORCE_TIME: f32 = 0.2;
@@ -1619,6 +1623,15 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                     p.bumper_reuse_timer = 0.6;
                 }
             }
+            EntityKind::Spring if p.state != PlayerState::DreamDash => {
+                if entity.direction.y < 0.0 {
+                    if p.speed.y >= 0.0 {
+                        super_bounce(p, entity.bounds.y);
+                    }
+                } else if entity.direction.x != 0.0 {
+                    side_bounce(p, entity.direction.x.signum() as i8, entity.bounds);
+                }
+            }
             EntityKind::Wind => {
                 // WindTrigger changes the global WindController pattern. It
                 // does not apply a local force and leaving the trigger does
@@ -1628,6 +1641,50 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
             _ => {}
         }
     }
+}
+
+fn reset_for_spring_bounce(p: &mut PlayerSnapshot) {
+    p.dashes = p.dashes.max(1);
+    p.stamina = 110.0;
+    p.state = PlayerState::Normal;
+    p.jump_grace_timer = 0.0;
+    p.var_jump_timer = VAR_JUMP_TIME;
+    p.auto_jump = true;
+    p.auto_jump_timer = 0.0;
+    p.dash_attack_timer = 0.0;
+    p.wall_slide_timer = WALL_SLIDE_TIME;
+    p.wall_boost_timer = 0.0;
+    p.launched = false;
+}
+
+fn super_bounce(p: &mut PlayerSnapshot, from_y: f32) {
+    // Player.SuperBounce temporarily uses the normal collider and moves the
+    // player's bottom onto the spring before applying the launch.
+    p.pos.y = from_y;
+    p.movement_remainder.y = 0.0;
+    reset_for_spring_bounce(p);
+    p.speed.x = 0.0;
+    p.speed.y = SUPER_BOUNCE_SPEED;
+    p.var_jump_speed = p.speed.y;
+}
+
+fn side_bounce(p: &mut PlayerSnapshot, dir: i8, spring: Rect) {
+    // SideBounce aligns the normal collider to the spring face and only
+    // corrects vertically by at most four pixels.
+    let from_y = spring.y + spring.height * 0.5;
+    p.pos.y += (from_y - p.pos.y).clamp(-4.0, 4.0);
+    p.pos.x = if dir > 0 {
+        spring.right() + 4.0
+    } else {
+        spring.x - 4.0
+    };
+    p.movement_remainder = Vec2::default();
+    reset_for_spring_bounce(p);
+    p.force_move_x = dir;
+    p.force_move_x_timer = SIDE_BOUNCE_FORCE_MOVE_X_TIME;
+    p.speed.x = SIDE_BOUNCE_SPEED * dir as f32;
+    p.speed.y = BOUNCE_SPEED;
+    p.var_jump_speed = p.speed.y;
 }
 
 fn explode_launch(
@@ -2211,6 +2268,29 @@ mod tests {
                 single_use: false,
                 nodes: vec![],
                 name: "booster".to_owned(),
+            }],
+            ..Map::default()
+        }
+    }
+    fn spring_map(direction: Vec2) -> Map {
+        let bounds = if direction.y < 0.0 {
+            Rect::new(72.0, 94.0, 16.0, 6.0)
+        } else if direction.x > 0.0 {
+            Rect::new(100.0, 72.0, 6.0, 16.0)
+        } else {
+            Rect::new(94.0, 72.0, 6.0, 16.0)
+        };
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            solids: vec![Rect::new(0.0, 100.0, 320.0, 80.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::Spring,
+                bounds,
+                direction,
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "spring".to_owned(),
             }],
             ..Map::default()
         }
@@ -3429,6 +3509,58 @@ mod tests {
         assert_eq!(p.speed, Vec2::new(-280.0, -150.0));
         assert_eq!(p.explode_launch_boost_timer, 0.01);
         assert_eq!(p.explode_launch_boost_speed, -336.0);
+    }
+
+    #[test]
+    fn spring_cancel_uses_the_buffered_dash_after_the_spring_refills_it() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(80.0, 92.0),
+            speed: Vec2::new(0.0, 100.0),
+            dashes: 0,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [
+            InputState {
+                dash_pressed: true,
+                ..InputState::default()
+            },
+            InputState::default(),
+            InputState::default(),
+        ];
+        let trace = simulate_trace(p, &inputs, &spring_map(Vec2::new(0.0, -1.0)), 3).unwrap();
+        assert_eq!(trace.states[2].state, PlayerState::Normal);
+        assert_eq!(trace.states[2].dashes, 1);
+        assert_eq!(trace.states[2].speed, Vec2::new(0.0, SUPER_BOUNCE_SPEED));
+        assert!(trace.states[2].dash_buffer_timer > 0.0);
+        assert_eq!(trace.states[3].state, PlayerState::Dash);
+        assert_eq!(trace.states[3].dashes, 0);
+        assert_eq!(trace.states[3].speed, Vec2::default());
+        assert_eq!(trace.states[3].dash_buffer_timer, 0.0);
+    }
+
+    #[test]
+    fn wall_spring_uses_source_side_bounce_speed_and_force_move() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(103.0, 80.0),
+            speed: Vec2::new(-30.0, 20.0),
+            dashes: 0,
+            stamina: 20.0,
+            ..PlayerSnapshot::default()
+        };
+        let p = simulate(
+            p,
+            &[InputState::default()],
+            &spring_map(Vec2::new(1.0, 0.0)),
+            1,
+        )
+        .unwrap();
+        assert_eq!(p.state, PlayerState::Normal);
+        assert_eq!(p.pos, Vec2::new(110.0, 80.0));
+        assert_eq!(p.speed, Vec2::new(SIDE_BOUNCE_SPEED, BOUNCE_SPEED));
+        assert_eq!(p.force_move_x, 1);
+        assert_eq!(p.force_move_x_timer, SIDE_BOUNCE_FORCE_MOVE_X_TIME);
+        assert_eq!(p.dashes, 1);
+        assert_eq!(p.stamina, 110.0);
     }
 
     #[test]

@@ -156,6 +156,13 @@ try {
       inputs: Array.from({ length: 4 }, () => input()),
     },
     {
+      name: 'dash-spring-cancel',
+      initial: { pos: [80, 488], speed: [0, 100], dashes: 0 },
+      inputs: Array.from({ length: 16 }, (_, frame) => input({
+        dash_pressed: frame === 0,
+      })),
+    },
+    {
       name: 'dash-demodash-gap',
       initial: { pos: [712, 320], speed: [0, 0] },
       inputs: Array.from({ length: 30 }, (_, frame) => input({
