@@ -282,10 +282,18 @@ fn step(
     mut input: InputState,
     map: &mut Map,
 ) -> Result<(), SimulationError> {
-    // Input.Dash and Input.CrouchDash use a 0.08 second VirtualButton buffer.
-    // Input keeps advancing during Celeste.Freeze even though Scene.Update and
-    // Player.Update are skipped, which is the timing window used by a bumper
-    // clip to carry a press out of the hit freeze.
+    // VirtualButton.Update runs in MInput before Celeste.Freeze can skip the
+    // Scene. It subtracts DeltaTime first, then a new press restores the full
+    // buffer; Jump also clears its buffer as soon as the binding is not held.
+    p.jump_buffer_timer -= DT;
+    if input.jump_pressed {
+        p.jump_buffer_timer = 0.1;
+    } else if !input.jump_held {
+        p.jump_buffer_timer = 0.0;
+    }
+    // Dash and CrouchDash use a 0.08 second VirtualButton buffer. Their
+    // portable input contract only records press edges, so keep the existing
+    // press buffer alive across freeze until it is consumed or expires.
     p.dash_buffer_timer = (p.dash_buffer_timer - DT).max(0.0);
     p.crouch_dash_buffer_timer = (p.crouch_dash_buffer_timer - DT).max(0.0);
     if input.dash_pressed {
@@ -370,9 +378,6 @@ fn step(
     }
     if p.state == PlayerState::Swim && !dash_refill_cooldown_active {
         p.dashes = p.dashes.max(1);
-    }
-    if input.jump_pressed {
-        p.jump_buffer_timer = 0.1;
     }
     update_wall_boost(p);
     p.move_x = if force_move_x_active {
@@ -468,7 +473,6 @@ fn tick_timers(p: &mut PlayerSnapshot) {
         &mut p.bounce_reuse_timer,
         &mut p.no_wind_timer,
         &mut p.jump_grace_timer,
-        &mut p.jump_buffer_timer,
         &mut p.var_jump_timer,
         &mut p.force_move_x_timer,
         &mut p.climb_no_move_timer,
@@ -2691,7 +2695,7 @@ mod tests {
         let trace = simulate_trace(p, &inputs, &floor_map(), inputs.len() as u32).unwrap();
         assert!(trace.states.iter().any(|state| state.on_ground));
         assert_eq!(trace.states.last().unwrap().speed.y, JUMP_SPEED);
-        assert_eq!(trace.states.last().unwrap().jump_buffer_timer, 0.0);
+        assert!(trace.states.last().unwrap().jump_buffer_timer <= 0.0);
     }
     #[test]
     fn superdash_sets_source_launch_speed_and_spends_dash() {
@@ -3369,6 +3373,64 @@ mod tests {
         assert_eq!(p.pos, Vec2::new(81.0, 62.0));
         assert_eq!(p.jump_grace_timer, JUMP_GRACE);
         assert_eq!(p.var_jump_timer, VAR_JUMP_TIME);
+    }
+
+    #[test]
+    fn jump_buffer_survives_dream_exit_freeze_for_the_second_jump() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(825.0, -52.0),
+            speed: Vec2::new(280.0, JUMP_SPEED),
+            state: PlayerState::Normal,
+            facing: true,
+            on_ground: false,
+            freeze_timer: 0.05,
+            jump_grace_timer: JUMP_GRACE,
+            var_jump_timer: VAR_JUMP_TIME,
+            var_jump_speed: JUMP_SPEED,
+            movement_remainder: Vec2::new(-0.333_333, 0.25),
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [
+            InputState {
+                move_x: 1,
+                jump_pressed: true,
+                jump_held: true,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: 1,
+                jump_held: true,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: 1,
+                jump_held: true,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: 1,
+                jump_held: true,
+                ..InputState::default()
+            },
+        ];
+        let map = Map {
+            bounds: Rect::new(0.0, -100.0, 960.0, 280.0),
+            ..Map::default()
+        };
+        let trace = simulate_trace(p, &inputs, &map, 4).unwrap();
+
+        assert_eq!(trace.states[1].jump_buffer_timer, 0.1);
+        assert!((trace.states[2].jump_buffer_timer - (0.1 - DT)).abs() < 0.000_001);
+        assert!((trace.states[3].jump_buffer_timer - (0.1 - DT * 2.0)).abs() < 0.000_001);
+        let second_jump = &trace.states[4];
+        assert_eq!(second_jump.speed.y, JUMP_SPEED);
+        assert!(
+            (second_jump.speed.x - 315.666_66).abs() < 0.000_1,
+            "second jump speed was {:?}",
+            second_jump.speed
+        );
+        assert_eq!(second_jump.jump_buffer_timer, 0.0);
+        assert_eq!(second_jump.jump_grace_timer, 0.0);
     }
 
     #[test]
