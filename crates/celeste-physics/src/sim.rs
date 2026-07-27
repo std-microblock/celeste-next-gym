@@ -3193,17 +3193,17 @@ mod tests {
             ..Map::default()
         };
         let p = PlayerSnapshot {
-            pos: Vec2::new(96.0, 91.0),
+            pos: Vec2::new(96.0, 95.0),
             dashes: 1,
             ..PlayerSnapshot::default()
         };
-        let mut on_time = [InputState::default(); 6];
+        let mut on_time = [InputState::default(); 7];
         on_time[0] = InputState {
             move_y: -1,
             dash_pressed: true,
             ..InputState::default()
         };
-        on_time[4] = InputState {
+        on_time[5] = InputState {
             move_y: -1,
             jump_pressed: true,
             jump_held: true,
@@ -3211,16 +3211,16 @@ mod tests {
         };
         let on_time = simulate_trace(p.clone(), &on_time, &map, on_time.len() as u32).unwrap();
         assert!(!on_time.states.last().unwrap().dead);
-        assert_eq!(on_time.states[5].state, PlayerState::Normal);
-        assert_eq!(on_time.states[5].speed, Vec2::new(-170.0, -160.0));
+        assert_eq!(on_time.states[6].state, PlayerState::Normal);
+        assert_eq!(on_time.states[6].speed, Vec2::new(-170.0, -160.0));
 
-        let mut late = [InputState::default(); 6];
+        let mut late = [InputState::default(); 7];
         late[0] = InputState {
             move_y: -1,
             dash_pressed: true,
             ..InputState::default()
         };
-        late[5] = InputState {
+        late[6] = InputState {
             move_y: -1,
             jump_pressed: true,
             jump_held: true,

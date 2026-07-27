@@ -258,22 +258,22 @@ try {
     },
     {
       name: 'dash-spiked-wallbounce',
-      initial: { pos: [396, 203], speed: [0, 0] },
+      initial: { pos: [396, 207], speed: [0, 0] },
       inputs: Array.from({ length: 14 }, (_, frame) => input({
         move_y: -1,
-        jump_pressed: frame === 4,
-        jump_held: frame >= 4 && frame < 12,
+        jump_pressed: frame === 5,
+        jump_held: frame >= 5 && frame < 12,
         dash_pressed: frame === 0,
       })),
       verify: verifySpikedWallbounce,
     },
     {
       name: 'dash-spiked-wallbounce-late',
-      initial: { pos: [396, 203], speed: [0, 0] },
-      inputs: Array.from({ length: 6 }, (_, frame) => input({
+      initial: { pos: [396, 207], speed: [0, 0] },
+      inputs: Array.from({ length: 7 }, (_, frame) => input({
         move_y: -1,
-        jump_pressed: frame === 5,
-        jump_held: frame === 5,
+        jump_pressed: frame === 6,
+        jump_held: frame === 6,
         dash_pressed: frame === 0,
       })),
       verify: verifyLateSpikedWallbounce,
@@ -1021,7 +1021,7 @@ function verifySpringCancel(states) {
 }
 
 function verifySpikedWallbounce(states) {
-  const launch = states[5]
+  const launch = states[6]
   semanticAssert(states.every((state) => !state.dead), 'dash-spiked-wallbounce', 'on-time wallbounce touched the directional spikes lethally')
   semanticAssert(launch?.state === 0 && near(launch.speed[0], -170) && near(launch.speed[1], -160), 'dash-spiked-wallbounce', `entry-frame launch was ${JSON.stringify(launch?.speed)}`)
 }
