@@ -3409,6 +3409,53 @@ mod tests {
     }
 
     #[test]
+    fn double_cornerboost_uses_two_consecutive_climb_jumps_from_a_grounded_setup() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            solids: vec![
+                Rect::new(80.0, 152.0, 128.0, 32.0),
+                Rect::new(144.0, 80.0, 8.0, 72.0),
+            ],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(120.0, 152.0),
+            state: PlayerState::Normal,
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = (0..90)
+            .map(|frame| InputState {
+                move_x: if frame <= 20 || frame >= 78 {
+                    1
+                } else if (75..=77).contains(&frame) {
+                    -1
+                } else {
+                    0
+                },
+                move_y: if (21..=74).contains(&frame) { -1 } else { 0 },
+                jump_pressed: frame == 0 || frame == 79 || frame == 80,
+                jump_held: frame < 12 || frame == 79 || frame == 80,
+                grab_held: frame <= 74 || frame == 79 || frame == 80,
+                ..InputState::default()
+            })
+            .collect::<Vec<_>>();
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+
+        assert_eq!(trace.states[20].state, PlayerState::Climb);
+        assert_eq!(trace.states[79].pos, Vec2::new(139.0, 87.0));
+        assert!((trace.states[79].stamina - 72.1212).abs() < 0.001);
+        assert!((trace.states[79].stamina - trace.states[80].stamina - 27.5).abs() < 0.001);
+        assert!((trace.states[80].stamina - trace.states[81].stamina - 27.5).abs() < 0.001);
+        assert_eq!(trace.states[80].speed.x, JUMP_H_BOOST);
+        assert!((trace.states[81].wall_speed_retained - 90.83336).abs() < 0.001);
+        assert_eq!(trace.states[81].wall_speed_retention_timer, 0.06);
+        assert_eq!(trace.states[85].wall_speed_retention_timer, 0.0);
+        assert!((trace.states[85].speed.x - 90.0).abs() < 0.001);
+        assert!(trace.states[85].pos.x > 140.0);
+    }
+
+    #[test]
     fn dash_spends_dash_and_is_diagonal_normalized() {
         let input = InputState {
             move_x: 1,
