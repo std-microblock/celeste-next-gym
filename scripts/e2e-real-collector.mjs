@@ -235,7 +235,10 @@ try {
           if (before?.on_ground || Math.abs(before?.pos?.[0] - 28) > 0.01
             || jumped?.state !== 0 || Math.abs(jumped.speed[0] - 130) > 0.01
             || Math.abs(jumped.speed[1] + 230.828) > 0.01) {
-            throw new Error('entity-4.8-delayed-blockboost: did not apply retained ZipMover lift to the later static-wall jump')
+            throw new Error(`entity-4.8-delayed-blockboost: did not apply retained ZipMover lift to the later static-wall jump: ${JSON.stringify({
+              before: before && pickCore(before),
+              jumped: jumped && pickCore(jumped),
+            })}`)
           }
         },
       },
