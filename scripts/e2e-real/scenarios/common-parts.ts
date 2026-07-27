@@ -119,22 +119,22 @@ export const TECH_ENTITY_4_6_2_CLOUD_HYPER_BUNNYHOP = fixturePart('tech.entity-4
 })
 export const TECH_ENTITY_4_10_3_DREAM_SMUGGLE = fixturePart('tech.entity-4.10.3-dream-smuggle', {
   entities: [
-    { id: 'tech-4.10.3-dream', kind: 'dream_block', bounds: [240, 432, 96, 64], name: 'dreamBlock' },
+    { id: 'tech-4.10.3-dream', kind: 'dream_block', bounds: [231, 432, 105, 64], name: 'dreamBlock' },
     { id: 'tech-4.10.3-theo', kind: 'theo_crystal', bounds: [228, 486, 8, 10], name: 'theoCrystal' },
   ],
 })
 export const TECH_ENTITY_4_10_3_1_DREAM_GRAB_HYPER = fixturePart('tech.entity-4.10.3.1-dream-grab-hyper', {
-  entities: [{ id: 'tech-4.10.3.1-dream', kind: 'dream_block', bounds: [240, 432, 96, 64], name: 'dreamBlock' }],
+  entities: [{ id: 'tech-4.10.3.1-dream', kind: 'dream_block', bounds: [231, 432, 105, 64], name: 'dreamBlock' }],
 })
 export const TECH_ENTITY_4_10_3_2_HOLDABLE_DREAM_HYPER = fixturePart('tech.entity-4.10.3.2-holdable-dream-hyper', {
   entities: [
-    { id: 'tech-4.10.3.2-dream', kind: 'dream_block', bounds: [240, 432, 96, 64], name: 'dreamBlock' },
+    { id: 'tech-4.10.3.2-dream', kind: 'dream_block', bounds: [231, 432, 105, 64], name: 'dreamBlock' },
     { id: 'tech-4.10.3.2-theo', kind: 'theo_crystal', bounds: [228, 486, 8, 10], name: 'theoCrystal' },
   ],
 })
 export const TECH_ENTITY_4_10_4_HOLDABLE_GRABLESS_DREAM_HYPER = fixturePart('tech.entity-4.10.4-holdable-grabless-dream-hyper', {
   entities: [
-    { id: 'tech-4.10.4-dream', kind: 'dream_block', bounds: [240, 432, 96, 64], name: 'dreamBlock' },
+    { id: 'tech-4.10.4-dream', kind: 'dream_block', bounds: [231, 432, 105, 64], name: 'dreamBlock' },
     { id: 'tech-4.10.4-theo', kind: 'theo_crystal', bounds: [228, 486, 8, 10], name: 'theoCrystal' },
   ],
 })
