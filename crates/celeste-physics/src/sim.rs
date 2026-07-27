@@ -4981,6 +4981,47 @@ mod tests {
     }
 
     #[test]
+    fn playground_bumper_clip_dashes_through_the_triggered_reuse_window() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(589.0, 206.0),
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..70)
+            .map(|frame| InputState {
+                move_x: 1,
+                move_y: if frame == 18 { -1 } else { 0 },
+                dash_pressed: frame == 18,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &crate::mechanics_playground(), 70).unwrap();
+        let first_dash = trace
+            .states
+            .iter()
+            .position(|state| state.state == PlayerState::Dash)
+            .unwrap();
+        let crossed = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(first_dash)
+            .find(|(_, state)| state.pos.x > 600.0)
+            .unwrap();
+        assert_eq!(trace.states[1].state, PlayerState::Launch);
+        assert_eq!(trace.states[1].freeze_timer, 0.1);
+        assert!(first_dash > 18);
+        assert!(crossed.1.bumper_reuse_timer > 0.0);
+        assert!(
+            trace
+                .states
+                .iter()
+                .skip(first_dash)
+                .all(|state| state.state != PlayerState::Launch)
+        );
+        assert_eq!(trace.states[70].last_bumper_target, Vec2::new(600.0, 200.0));
+    }
+
+    #[test]
     fn ice_ball_bounce_cancels_dash_and_preserves_horizontal_speed() {
         let p = PlayerSnapshot {
             pos: Vec2::new(96.0, 100.0),

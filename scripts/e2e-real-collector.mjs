@@ -617,15 +617,38 @@ try {
       {
         name: 'entity-4.3-bumper-clip',
         initial: { pos: [589, 206], speed: [0, 0] },
-        inputs: Array.from({ length: 50 }, (_, frame) => input({
+        inputs: Array.from({ length: 70 }, (_, frame) => input({
           move_x: 1,
-          dash_pressed: frame === 4,
+          move_y: frame === 18 ? -1 : 0,
+          dash_pressed: frame === 18,
         })),
+        verify(states) {
+          const firstDash = states.findIndex((state) => state.state === 2)
+          const crossed = firstDash >= 0 && states.slice(firstDash).some((state) => state.pos[0] > 600)
+          const relaunched = firstDash >= 0 && states.slice(firstDash).some((state) => state.state === 7)
+          if (states[1]?.state !== 7 || Math.abs(states[1].speed[0] + 280) > 0.01
+            || firstDash <= 18 || !crossed || relaunched) {
+            throw new Error(`entity-4.3-bumper-clip: did not dash through the triggered Bumper reuse window: ${JSON.stringify({
+              launch: states[1] && pickCore(states[1]),
+              first_dash: firstDash >= 0 ? pickCore(states[firstDash]) : null,
+              last: pickCore(states.at(-1)),
+            })}`)
+          }
+        },
       },
       {
         name: 'entity-4.4-explosion-boost',
         initial: { pos: [589, 206], speed: [0, 0] },
         inputs: Array.from({ length: 30 }, () => input({ move_x: -1 })),
+        verify(states) {
+          const launched = states[1]
+          if (launched?.state !== 7 || Math.abs(launched.speed[0] + 336) > 0.01
+            || Math.abs(launched.speed[1] + 150) > 0.01) {
+            throw new Error(`entity-4.4-explosion-boost: did not apply the same-direction 1.2 horizontal boost: ${JSON.stringify({
+              launched: launched && pickCore(launched),
+            })}`)
+          }
+        },
       },
       {
         name: 'playground-bumper-left-idle',
