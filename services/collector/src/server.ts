@@ -13,6 +13,13 @@ import {
   encodeResponse,
   validateBackendStates,
 } from "./protocol.js";
+import {
+  decodeRecordingRequest,
+  type RecordingAction,
+  type RecordingControlRequest,
+  type RecordingStartRequest,
+  type RecordingStatus,
+} from "./recording.js";
 
 export interface CollectorServerOptions {
   backend: CollectorBackend;
@@ -101,6 +108,19 @@ async function route(
     return;
   }
 
+  const recordingMatch = /^\/api\/recording\/(start|status|stop|finalize)$/.exec(
+    url.pathname,
+  );
+  if (request.method === "POST" && recordingMatch) {
+    await routeRecording(
+      recordingMatch[1] as RecordingAction,
+      request,
+      response,
+      config,
+    );
+    return;
+  }
+
   if (request.method !== "POST" || url.pathname !== "/api/simulate") {
     sendMessagePackError(response, 404, "NOT_FOUND", "Route not found");
     return;
@@ -164,6 +184,87 @@ async function route(
   }
 }
 
+async function routeRecording(
+  action: RecordingAction,
+  request: IncomingMessage,
+  response: ServerResponse,
+  config: Required<
+    Pick<
+      CollectorServerOptions,
+      "backend" | "timeoutMs" | "maxBodyBytes" | "maxMapBytes" | "maxFrames"
+    >
+  > & Pick<CollectorServerOptions, "logger">,
+): Promise<void> {
+  const mediaType = request.headers["content-type"]?.split(";", 1)[0]?.trim().toLowerCase();
+  if (mediaType !== CONTENT_TYPE) {
+    sendMessagePackError(
+      response,
+      415,
+      "UNSUPPORTED_MEDIA_TYPE",
+      `Content-Type must be ${CONTENT_TYPE}`,
+    );
+    return;
+  }
+
+  try {
+    const body = await readBody(request, Math.min(config.maxBodyBytes, 64 * 1024));
+    const decoded = decodeRecordingRequest(body, action);
+    const signal = AbortSignal.timeout(config.timeoutMs);
+    let recording: RecordingStatus;
+    switch (action) {
+      case "start":
+        if (!config.backend.recordingStart) throw new RecordingNotConfiguredError();
+        recording = await config.backend.recordingStart(
+          decoded as RecordingStartRequest,
+          signal,
+        );
+        break;
+      case "status":
+        if (!config.backend.recordingStatus) throw new RecordingNotConfiguredError();
+        recording = await config.backend.recordingStatus(
+          decoded as RecordingControlRequest,
+          signal,
+        );
+        break;
+      case "stop":
+        if (!config.backend.recordingStop) throw new RecordingNotConfiguredError();
+        recording = await config.backend.recordingStop(
+          decoded as RecordingControlRequest,
+          signal,
+        );
+        break;
+      case "finalize":
+        if (!config.backend.recordingFinalize) throw new RecordingNotConfiguredError();
+        recording = await config.backend.recordingFinalize(
+          decoded as RecordingControlRequest,
+          signal,
+        );
+        break;
+    }
+    sendMessagePack(response, 200, { success: true, recording });
+  } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      sendMessagePackError(response, 413, error.code, error.message);
+      return;
+    }
+    if (error instanceof ProtocolValidationError) {
+      sendMessagePackError(response, 400, error.code, error.message);
+      return;
+    }
+    if (error instanceof RecordingNotConfiguredError) {
+      sendMessagePackError(response, 503, error.code, error.message);
+      return;
+    }
+    config.logger?.error(error);
+    sendMessagePackError(
+      response,
+      502,
+      "RECORDING_BACKEND_ERROR",
+      error instanceof Error ? error.message : "Recording backend failed",
+    );
+  }
+}
+
 async function readBody(
   request: IncomingMessage,
   maxBodyBytes: number,
@@ -193,6 +294,15 @@ class BodyTooLargeError extends Error {
   constructor(limit: number) {
     super(`Request body exceeds the ${limit} byte limit`);
     this.name = "BodyTooLargeError";
+  }
+}
+
+class RecordingNotConfiguredError extends Error {
+  readonly code = "RECORDING_NOT_CONFIGURED";
+
+  constructor() {
+    super("Collector backend does not support authenticated presentation recording");
+    this.name = "RecordingNotConfiguredError";
   }
 }
 
