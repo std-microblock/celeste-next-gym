@@ -1,0 +1,125 @@
+import { defineMapPart } from '../map-parts.js'
+import type { FixtureEntity, MapPart, Rect } from '../types.js'
+
+const PACKAGE = 'CelesteGymPlayground'
+const SID = 'CelesteGymPlayground/Playground'
+const ROOM = 'playground'
+
+function fixturePart(id: string, options: { solids?: readonly Rect[]; entities?: readonly FixtureEntity[] } = {}): MapPart {
+  return defineMapPart({
+    id,
+    dependencies: id === 'playground.base' ? [] : ['playground.base'],
+    package: PACKAGE,
+    sid: SID,
+    rooms: [{ name: ROOM, ...(options.solids ? { solids: options.solids } : {}), ...(options.entities ? { entities: options.entities } : {}) }],
+  })
+}
+
+export const PLAYGROUND_BASE = defineMapPart({
+  id: 'playground.base',
+  dependencies: [],
+  package: PACKAGE,
+  sid: SID,
+  rooms: [{
+    name: ROOM,
+    bounds: [0, 0, 960, 544],
+    spawn: [64, 496],
+    solids: [
+      [0, 496, 960, 48], [0, 0, 24, 496], [936, 0, 24, 496],
+      [272, 304, 32, 192], [400, 80, 24, 200], [480, 240, 96, 24],
+      [688, 360, 24, 136], [720, 304, 120, 8], [720, 320, 120, 16],
+      [800, 248, 120, 16], [864, 240, 24, 256],
+    ],
+  }],
+})
+
+export const PLAYGROUND_ZIP_MOVER = fixturePart('playground.zip-mover', {
+  solids: [[112, 416, 8, 80]],
+  entities: [
+    { id: 'entity-0000', kind: 'jump_thru', bounds: [112, 400, 112, 8], name: 'jumpThru' },
+    { id: 'entity-0001', kind: 'zip_mover', bounds: [32, 440, 64, 16], nodes: [[32, 320]], name: 'zipMover' },
+  ],
+})
+export const PLAYGROUND_BOOSTER = fixturePart('playground.booster', {
+  entities: [
+    { id: 'entity-0002', kind: 'booster', bounds: [252, 384, 16, 16], name: 'booster' },
+    { id: 'entity-0003', kind: 'booster', bounds: [230, 384, 16, 16], name: 'booster' },
+    { id: 'entity-0011', kind: 'booster', bounds: [712, 312, 16, 16], name: 'booster' },
+    { id: 'entity-0012', kind: 'booster', bounds: [752, 432, 16, 16], name: 'booster' },
+    { id: 'entity-0013', kind: 'red_booster', bounds: [816, 432, 16, 16], name: 'booster' },
+  ],
+})
+export const PLAYGROUND_SPIKES = fixturePart('playground.spikes', {
+  entities: [
+    { id: 'entity-0004', kind: 'spikes', bounds: [328, 493, 96, 3], direction: [0, -1], name: 'spikesUp' },
+    { id: 'entity-0005', kind: 'spikes', bounds: [397, 160, 3, 32], direction: [-1, 0], name: 'spikesLeft' },
+  ],
+})
+export const PLAYGROUND_SPRING = fixturePart('playground.spring', {
+  entities: [{ id: 'entity-0006', kind: 'spring', bounds: [72, 490, 16, 6], direction: [0, -1], name: 'spring' }],
+})
+export const PLAYGROUND_BERRY = fixturePart('playground.berry', {
+  entities: [
+    { id: 'entity-0007', kind: 'strawberry', bounds: [153, 461, 14, 14], name: 'strawberry' },
+    { id: 'entity-0008', kind: 'strawberry', bounds: [153, 461, 14, 14], name: 'strawberry' },
+  ],
+})
+export const PLAYGROUND_SWIM = fixturePart('playground.swim', {
+  entities: [{ id: 'entity-0009', kind: 'water', bounds: [448, 416, 112, 80], name: 'water' }],
+})
+export const PLAYGROUND_DREAM_BLOCK = fixturePart('playground.dream-block', {
+  entities: [{ id: 'entity-0010', kind: 'dream_block', bounds: [600, 352, 64, 144], name: 'dreamBlock' }],
+})
+export const PLAYGROUND_STAR_FLY = fixturePart('playground.star-fly', {
+  entities: [
+    { id: 'entity-0014', kind: 'fly_feather', bounds: [110, 190, 20, 20], name: 'infiniteStar' },
+    { id: 'entity-0015', kind: 'fly_feather', bounds: [150, 30, 20, 20], name: 'infiniteStar' },
+    { id: 'entity-0016', kind: 'fly_feather', bounds: [110, 110, 20, 20], shielded: true, name: 'infiniteStar' },
+    { id: 'entity-0017', kind: 'fly_feather', bounds: [350, 390, 20, 20], name: 'infiniteStar' },
+    { id: 'entity-0018', kind: 'fly_feather', bounds: [110, 310, 20, 20], name: 'infiniteStar' },
+    { id: 'entity-0019', kind: 'fly_feather', bounds: [240, 310, 20, 20], name: 'infiniteStar' },
+    { id: 'entity-0020', kind: 'fly_feather', bounds: [310, 110, 20, 20], name: 'infiniteStar' },
+    { id: 'entity-0021', kind: 'fly_feather', bounds: [890, 474, 20, 20], name: 'infiniteStar' },
+  ],
+})
+export const PLAYGROUND_BUMPER = fixturePart('playground.bumper', {
+  entities: [{ id: 'entity-0022', kind: 'bumper', bounds: [588, 188, 24, 24], name: 'bigSpinner' }],
+})
+export const PLAYGROUND_ICE_BALL = fixturePart('playground.ice-ball', {
+  entities: [{ id: 'entity-0023', kind: 'ice_ball', bounds: [314, 154, 12, 12], nodes: [[336, 160]], singleUse: true, name: 'fireBall' }],
+})
+export const PLAYGROUND_BADELINE = fixturePart('playground.badeline', {
+  entities: [
+    { id: 'entity-0024', kind: 'badeline_boost', bounds: [304, 384, 32, 32], nodes: [[320, 288]], name: 'badelineBoost' },
+    { id: 'entity-0025', kind: 'badeline_boost', bounds: [432, 384, 32, 32], name: 'badelineBoost' },
+  ],
+})
+export const PLAYGROUND_THEO = fixturePart('playground.theo', {
+  entities: [{ id: 'entity-0026', kind: 'theo_crystal', bounds: [846, 486, 8, 10], name: 'theoCrystal' }],
+})
+export const PLAYGROUND_BOUNCE_BLOCK = fixturePart('playground.bounce-block', {
+  entities: [{ id: 'entity-0027', kind: 'bounce_block', bounds: [352, 360, 64, 16], name: 'bounceBlock' }],
+})
+export const PLAYGROUND_WIND = fixturePart('playground.wind', {
+  entities: [{ id: 'entity-0028', kind: 'wind', bounds: [640, 128, 280, 120], direction: [400, 0], name: 'windTrigger' }],
+})
+export const PLAYGROUND_DASHLESS = fixturePart('playground.dashless', {
+  solids: [[168, 120, 72, 64], [240, 112, 8, 8], [296, 120, 16, 8], [328, 120, 48, 8], [400, 120, 80, 64], [480, 104, 8, 16], [544, 112, 80, 8], [688, 120, 80, 64], [768, 112, 8, 8], [840, 120, 80, 8]],
+})
+export const PLAYGROUND_LAUNCH = fixturePart('playground.launch')
+export const PLAYGROUND_MISC = fixturePart('playground.misc')
+export const PLAYGROUND_TRANSITION = defineMapPart({
+  id: 'playground.transition',
+  dependencies: ['playground.base'],
+  package: PACKAGE,
+  sid: SID,
+  rooms: [{ name: 'transition_0', bounds: [0, -544, 960, 544], spawn: [24, -16] }],
+})
+
+export const COMMON_MAP_PARTS = new Map<string, MapPart>([
+  PLAYGROUND_BASE, PLAYGROUND_ZIP_MOVER, PLAYGROUND_BOOSTER, PLAYGROUND_SPIKES,
+  PLAYGROUND_SPRING, PLAYGROUND_BERRY, PLAYGROUND_SWIM, PLAYGROUND_DREAM_BLOCK,
+  PLAYGROUND_STAR_FLY, PLAYGROUND_BUMPER, PLAYGROUND_ICE_BALL, PLAYGROUND_BADELINE,
+  PLAYGROUND_THEO, PLAYGROUND_BOUNCE_BLOCK, PLAYGROUND_WIND, PLAYGROUND_DASHLESS,
+  PLAYGROUND_LAUNCH, PLAYGROUND_MISC, PLAYGROUND_TRANSITION,
+].map((part) => [part.id, part]))

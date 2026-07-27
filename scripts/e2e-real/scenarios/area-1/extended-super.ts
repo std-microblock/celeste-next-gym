@@ -1,0 +1,21 @@
+import { input } from '../../inputs.js'
+import { defineScenario } from '../../scenario.js'
+import { AREA_1_TARGET } from '../../targets.js'
+
+export const mapParts = [] as const
+
+export const scenario = defineScenario({
+  target: AREA_1_TARGET,
+  status: 'active',
+  tags: [],
+  techniqueIds: ['2.5'],
+  recording: { primaryFor: ['2.5'], startFrame: 0, endFrame: 16 },
+  mapParts,
+  name: 'extended-super',
+    inputs: Array.from({ length: 16 }, (_, frame) => input({
+      move_x: 1,
+      jump_pressed: frame === 10,
+      jump_held: frame >= 10 && frame < 16,
+      dash_pressed: frame === 0,
+    })),
+})
