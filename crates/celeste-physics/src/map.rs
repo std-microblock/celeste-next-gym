@@ -50,6 +50,11 @@ pub enum EntityKind {
     FlyFeather,
     Bumper,
     IceBall,
+    Puffer,
+    AngryOshiro,
+    Seeker,
+    Snowball,
+    Cloud,
     BadelineBoost,
     Spring,
     Strawberry,
@@ -322,6 +327,53 @@ pub(crate) fn encode_celeste_rooms(
                         ],
                         vec![],
                     )],
+                )),
+                EntityKind::Puffer => Some(element(
+                    "puffer",
+                    [
+                        ("id", BinaryValue::Int(id)),
+                        ("right", BinaryValue::Bool(false)),
+                        ("x", BinaryValue::Int(x + width / 2)),
+                        ("y", BinaryValue::Int(y + height / 2)),
+                    ],
+                    vec![],
+                )),
+                EntityKind::AngryOshiro => Some(element(
+                    "oshiroBoss",
+                    [
+                        ("id", BinaryValue::Int(id)),
+                        ("x", BinaryValue::Int(x + width / 2)),
+                        ("y", BinaryValue::Int(y + height / 2)),
+                    ],
+                    vec![],
+                )),
+                EntityKind::Seeker => Some(element(
+                    "seeker",
+                    [
+                        ("id", BinaryValue::Int(id)),
+                        ("x", BinaryValue::Int(x + width / 2)),
+                        ("y", BinaryValue::Int(y + height / 2)),
+                    ],
+                    vec![],
+                )),
+                EntityKind::Snowball => Some(element(
+                    "snowball",
+                    [
+                        ("id", BinaryValue::Int(id)),
+                        ("x", BinaryValue::Int(x + width / 2)),
+                        ("y", BinaryValue::Int(y + height / 2)),
+                    ],
+                    vec![],
+                )),
+                EntityKind::Cloud => Some(element(
+                    "cloud",
+                    [
+                        ("fragile", BinaryValue::Bool(false)),
+                        ("id", BinaryValue::Int(id)),
+                        ("x", BinaryValue::Int(x + width / 2)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![],
                 )),
                 EntityKind::BadelineBoost => Some(element(
                     "badelineBoost",
@@ -757,6 +809,11 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 "infiniteStar" | "flyFeather" => EntityKind::FlyFeather,
                 "bigSpinner" => EntityKind::Bumper,
                 "fireBall" if attr_bool(el, "notCoreMode", false) => EntityKind::IceBall,
+                "puffer" => EntityKind::Puffer,
+                "oshiroBoss" => EntityKind::AngryOshiro,
+                "seeker" => EntityKind::Seeker,
+                "snowball" => EntityKind::Snowball,
+                "cloud" if !attr_bool(el, "fragile", false) => EntityKind::Cloud,
                 "badelineBoost" => EntityKind::BadelineBoost,
                 "spring" | "wallSpringLeft" | "wallSpringRight" => EntityKind::Spring,
                 "strawberry" => EntityKind::Strawberry,
@@ -772,15 +829,21 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 EntityKind::FlyFeather => 20.0,
                 EntityKind::Bumper => 24.0,
                 EntityKind::IceBall => 12.0,
+                EntityKind::Puffer => 12.0,
+                EntityKind::AngryOshiro => 28.0,
+                EntityKind::Seeker => 12.0,
+                EntityKind::Snowball => 12.0,
+                EntityKind::Cloud => 32.0,
                 EntityKind::BadelineBoost => 32.0,
                 EntityKind::Strawberry => 14.0,
                 EntityKind::TheoCrystal => 8.0,
                 _ => 8.0,
             };
-            let default_h = if kind == EntityKind::TheoCrystal {
-                10.0
-            } else {
-                default_w
+            let default_h = match kind {
+                EntityKind::TheoCrystal | EntityKind::Puffer => 10.0,
+                EntityKind::Snowball => 9.0,
+                EntityKind::Cloud => 5.0,
+                _ => default_w,
             };
             let raw_width = attr_f32(el, "width", default_w);
             let raw_height = attr_f32(el, "height", default_h);
@@ -796,13 +859,18 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 ),
                 "spikesRight" => (Rect::new(ex, ey, 3.0, raw_height), Vec2::new(1.0, 0.0)),
                 "booster" | "redBooster" | "infiniteStar" | "flyFeather" | "bigSpinner"
-                | "fireBall" | "badelineBoost" | "strawberry" => (
+                | "fireBall" | "badelineBoost" | "strawberry" | "puffer" | "oshiroBoss"
+                | "seeker" | "snowball" => (
                     Rect::new(
                         ex - raw_width * 0.5,
                         ey - raw_height * 0.5,
                         raw_width,
                         raw_height,
                     ),
+                    Vec2::default(),
+                ),
+                "cloud" => (
+                    Rect::new(ex - raw_width * 0.5, ey, raw_width, raw_height),
                     Vec2::default(),
                 ),
                 "spring" => (
@@ -958,7 +1026,7 @@ impl Map {
 
     pub fn jump_thru_at(&self, rect: Rect, previous_bottom: f32) -> bool {
         self.entities.iter().any(|e| {
-            e.kind == EntityKind::JumpThru
+            matches!(e.kind, EntityKind::JumpThru | EntityKind::Cloud)
                 && previous_bottom <= e.bounds.y
                 && e.bounds.intersects(rect)
         })

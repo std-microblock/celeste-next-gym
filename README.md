@@ -36,6 +36,7 @@ node scripts\e2e-real-collector.mjs
 - `services/collector`：Celeste/Everest 采集服务协议与可替换后端。
 - `mods/CelesteGymCollector`：真实游戏逐帧输入注入和 126 字段快照采集 Mod。
 - `mods/CelesteGymPlayground`：由 Rust 写入器生成的标准 Celeste `.bin` 机制训练场 Mod。
+- `interactive-recorder`：网页/真实游戏双端游玩逐帧录制、统一 trace 对比器、参考数据及自带地图包。
 - `docs`：架构、原版源码审计和保真边界。
 
 生成 WASM 需要先安装 `wasm32-unknown-unknown` target 和与依赖版本一致的 `wasm-bindgen-cli`。仓库同时包含已生成的浏览器资源；前端物理只运行 Rust WASM，加载失败会明确报错，不提供另一套模拟实现。
