@@ -155,6 +155,41 @@ try {
       initial: { pos: [360, 496], speed: [0, 60] },
       inputs: Array.from({ length: 4 }, () => input()),
     },
+    {
+      name: 'dash-demodash-gap',
+      initial: { pos: [712, 320], speed: [0, 0] },
+      inputs: Array.from({ length: 30 }, (_, frame) => input({
+        move_x: 1,
+        crouch_dash_pressed: frame === 0,
+      })),
+    },
+    {
+      name: 'dash-grounded-ultra',
+      initial: { pos: [820, 496], speed: [300, 0] },
+      inputs: Array.from({ length: 12 }, (_, frame) => input({
+        move_x: 1,
+        move_y: 1,
+        dash_pressed: frame === 0,
+      })),
+    },
+    {
+      name: 'dash-delayed-ultra',
+      initial: { pos: [200, 420], speed: [0, 0] },
+      inputs: Array.from({ length: 36 }, (_, frame) => input({
+        move_x: 1,
+        move_y: 1,
+        dash_pressed: frame === 0,
+      })),
+    },
+    {
+      name: 'dash-chained-ultras',
+      initial: { pos: [200, 461], speed: [0, 0] },
+      inputs: Array.from({ length: 40 }, (_, frame) => input({
+        move_x: 1,
+        move_y: 1,
+        dash_pressed: frame === 0 || frame === 16,
+      })),
+    },
     ...(includePlaygroundSwim ? [
       {
         name: 'playground-swim-idle',

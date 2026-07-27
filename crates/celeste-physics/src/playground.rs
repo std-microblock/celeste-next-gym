@@ -18,6 +18,10 @@ pub fn mechanics_playground() -> Map {
             Rect::new(480.0, 240.0, 96.0, 24.0),
             Rect::new(800.0, 248.0, 120.0, 16.0),
             Rect::new(400.0, 80.0, 24.0, 200.0),
+            // Eight-pixel tile tunnel: the crouched 8x6 collider fits between
+            // these solids while the normal 8x11 collider is rejected.
+            Rect::new(720.0, 320.0, 120.0, 16.0),
+            Rect::new(720.0, 304.0, 120.0, 8.0),
         ],
         entities: vec![
             Entity {

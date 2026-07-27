@@ -737,8 +737,7 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
 fn climb_slip_check(p: &PlayerSnapshot, map: &Map, wall: i8) -> bool {
     let x = p.pos.x + if wall > 0 { 4.0 } else { -5.0 };
     let top = p.pos.y - 11.0;
-    !map.solid_at(Rect::new(x, top + 4.0, 1.0, 1.0))
-        && !map.solid_at(Rect::new(x, top, 1.0, 1.0))
+    !map.solid_at(Rect::new(x, top + 4.0, 1.0, 1.0)) && !map.solid_at(Rect::new(x, top, 1.0, 1.0))
 }
 
 fn climb_hop(p: &mut PlayerSnapshot, map: &Map, wall: i8) {
@@ -1344,11 +1343,8 @@ fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount:
                     for correction in 1..=4 {
                         for direction in [1.0, -1.0] {
                             let offset = correction as f32 * direction;
-                            let corrected = current_player_rect(
-                                p,
-                                p.pos.x + sign as f32,
-                                p.pos.y + offset,
-                            );
+                            let corrected =
+                                current_player_rect(p, p.pos.x + sign as f32, p.pos.y + offset);
                             if !map.solid_at(corrected) {
                                 p.pos.y += offset;
                                 p.pos.x += sign as f32;
@@ -2596,7 +2592,12 @@ mod tests {
             stamina: 100.0,
             ..PlayerSnapshot::default()
         };
-        let input = InputState { move_x: 1, move_y: -1, grab_held: true, ..InputState::default() };
+        let input = InputState {
+            move_x: 1,
+            move_y: -1,
+            grab_held: true,
+            ..InputState::default()
+        };
         let trace = simulate_trace(p, &[input; 4], &map, 4).unwrap();
         assert_eq!(trace.states[1].state, PlayerState::Normal);
         assert_eq!(trace.states[1].speed.y, CLIMB_HOP_Y);
@@ -2655,16 +2656,35 @@ mod tests {
             }],
             ..Map::default()
         };
-        let p = PlayerSnapshot { pos: Vec2::new(55.0, 120.0), dashes: 1, ..PlayerSnapshot::default() };
-        let mut inputs = vec![InputState { move_x: 1, ..InputState::default() }; 32];
+        let p = PlayerSnapshot {
+            pos: Vec2::new(55.0, 120.0),
+            dashes: 1,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = vec![
+            InputState {
+                move_x: 1,
+                ..InputState::default()
+            };
+            32
+        ];
         inputs[0].dash_pressed = true;
         let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
-        let dash_end = trace.states.iter().enumerate().skip(2)
+        let dash_end = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(2)
             .find(|(_, state)| state.state == PlayerState::Normal)
-            .map(|(frame, _)| frame).unwrap();
-        let shield_break = trace.states.iter().enumerate()
+            .map(|(frame, _)| frame)
+            .unwrap();
+        let shield_break = trace
+            .states
+            .iter()
+            .enumerate()
             .find(|(_, state)| state.state == PlayerState::StarFly)
-            .map(|(frame, _)| frame).unwrap();
+            .map(|(frame, _)| frame)
+            .unwrap();
         assert!(shield_break > dash_end);
         assert!(trace.states[dash_end].dash_attack_timer > 0.0);
     }
@@ -2682,20 +2702,200 @@ mod tests {
             }],
             ..Map::default()
         };
-        let away = PlayerSnapshot { pos: Vec2::new(44.0, 92.0), speed: Vec2::new(-60.0, 0.0), ..PlayerSnapshot::default() };
-        let into = PlayerSnapshot { pos: Vec2::new(44.0, 92.0), speed: Vec2::new(60.0, 0.0), ..PlayerSnapshot::default() };
-        assert!(!simulate(away, &[InputState::default()], &map, 1).unwrap().dead);
-        assert!(simulate(into, &[InputState::default()], &map, 1).unwrap().dead);
+        let away = PlayerSnapshot {
+            pos: Vec2::new(44.0, 92.0),
+            speed: Vec2::new(-60.0, 0.0),
+            ..PlayerSnapshot::default()
+        };
+        let into = PlayerSnapshot {
+            pos: Vec2::new(44.0, 92.0),
+            speed: Vec2::new(60.0, 0.0),
+            ..PlayerSnapshot::default()
+        };
+        assert!(
+            !simulate(away, &[InputState::default()], &map, 1)
+                .unwrap()
+                .dead
+        );
+        assert!(
+            simulate(into, &[InputState::default()], &map, 1)
+                .unwrap()
+                .dead
+        );
     }
     #[test]
     fn fastbubble_manual_dash_releases_immediately_without_spending_dash() {
-        let p = PlayerSnapshot { pos: Vec2::new(160.0, 394.0), dashes: 1, ..PlayerSnapshot::default() };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(160.0, 394.0),
+            dashes: 1,
+            ..PlayerSnapshot::default()
+        };
         let entered = simulate(p, &[InputState::default()], &booster_map(), 1).unwrap();
         assert_eq!(entered.state, PlayerState::Boost);
-        let released = simulate(entered, &[InputState { move_x: 1, dash_pressed: true, ..InputState::default() }], &booster_map(), 1).unwrap();
+        let released = simulate(
+            entered,
+            &[InputState {
+                move_x: 1,
+                dash_pressed: true,
+                ..InputState::default()
+            }],
+            &booster_map(),
+            1,
+        )
+        .unwrap();
         assert_eq!(released.state, PlayerState::Dash);
         assert_eq!(released.dashes, 1);
         assert!(released.state_timer > DASH_TIME);
+    }
+    #[test]
+    fn ultradash_landing_applies_the_source_one_point_two_multiplier() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 84.0),
+            dashes: 1,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = vec![
+            InputState {
+                move_x: 1,
+                move_y: 1,
+                ..InputState::default()
+            };
+            12
+        ];
+        inputs[0].dash_pressed = true;
+        let trace = simulate_trace(p, &inputs, &floor_map(), inputs.len() as u32).unwrap();
+        let landed = trace
+            .states
+            .iter()
+            .find(|state| state.on_ground && state.ducking)
+            .unwrap();
+        assert!((landed.speed.x - DASH_SPEED * std::f32::consts::FRAC_1_SQRT_2 * 1.2).abs() < 0.01);
+        assert_eq!(landed.dash_dir, Vec2::new(1.0, 0.0));
+    }
+    #[test]
+    fn grounded_ultra_preserves_faster_entry_speed_before_multiplier() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 100.0),
+            speed: Vec2::new(300.0, 0.0),
+            dashes: 1,
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = [InputState {
+            move_x: 1,
+            move_y: 1,
+            ..InputState::default()
+        }; 5];
+        inputs[0].dash_pressed = true;
+        let p = simulate(p, &inputs, &floor_map(), inputs.len() as u32).unwrap();
+        assert_eq!(p.state, PlayerState::Dash);
+        assert_eq!(p.speed, Vec2::new(360.0, 0.0));
+        assert!(p.ducking);
+    }
+    #[test]
+    fn delayed_ultra_lands_after_dash_state_and_still_multiplies_speed() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 24.0),
+            dashes: 1,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = vec![
+            InputState {
+                move_x: 1,
+                move_y: 1,
+                ..InputState::default()
+            };
+            32
+        ];
+        inputs[0].dash_pressed = true;
+        let trace = simulate_trace(p, &inputs, &floor_map(), inputs.len() as u32).unwrap();
+        let dash_end = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(2)
+            .find(|(_, state)| state.state == PlayerState::Normal)
+            .map(|(frame, _)| frame)
+            .unwrap();
+        let landing = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(dash_end + 1)
+            .find(|(_, state)| state.on_ground)
+            .map(|(frame, state)| (frame, state))
+            .unwrap();
+        assert!(landing.0 > dash_end);
+        let pre_landing = &trace.states[landing.0 - 1];
+        let expected = approach(pre_landing.speed.x, MAX_RUN, RUN_REDUCE * AIR_MULT * DT) * 1.2;
+        assert!((landing.1.speed.x - expected).abs() < 0.01);
+        assert!(landing.1.speed.x > pre_landing.speed.x);
+        assert_eq!(landing.1.dash_dir, Vec2::new(1.0, 0.0));
+    }
+    #[test]
+    fn chained_ultras_compound_two_landing_multipliers() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 65.0),
+            dashes: 1,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = vec![
+            InputState {
+                move_x: 1,
+                move_y: 1,
+                ..InputState::default()
+            };
+            36
+        ];
+        inputs[0].dash_pressed = true;
+        inputs[16].dash_pressed = true;
+        let trace = simulate_trace(p, &inputs, &floor_map(), inputs.len() as u32).unwrap();
+        let landings: Vec<_> = trace
+            .states
+            .windows(2)
+            .enumerate()
+            .filter(|(_, pair)| {
+                pair[1].on_ground && pair[1].ducking && pair[1].speed.x > pair[0].speed.x
+            })
+            .map(|(frame, pair)| (frame + 1, &pair[1]))
+            .collect();
+        assert_eq!(landings.len(), 2);
+        assert_eq!(landings[0].0, 17);
+        assert_eq!(landings[1].0, 22);
+        assert!(landings[1].1.speed.x > landings[0].1.speed.x);
+        assert!(landings[1].1.speed.x > 230.0);
+    }
+    #[test]
+    fn demodash_passes_a_six_pixel_gap_that_blocks_a_normal_dash() {
+        let map = Map {
+            solids: vec![
+                Rect::new(0.0, 100.0, 160.0, 80.0),
+                Rect::new(40.0, 0.0, 80.0, 94.0),
+            ],
+            ..Map::default()
+        };
+        let start = PlayerSnapshot {
+            pos: Vec2::new(24.0, 100.0),
+            dashes: 1,
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let mut demo_inputs = vec![
+            InputState {
+                move_x: 1,
+                ..InputState::default()
+            };
+            20
+        ];
+        demo_inputs[0].crouch_dash_pressed = true;
+        let mut normal_inputs = demo_inputs.clone();
+        normal_inputs[0].crouch_dash_pressed = false;
+        normal_inputs[0].dash_pressed = true;
+        let demo = simulate(start.clone(), &demo_inputs, &map, 20).unwrap();
+        let normal = simulate(start, &normal_inputs, &map, 20).unwrap();
+        assert!(demo.pos.x > 70.0);
+        assert_eq!(normal.pos.x, 36.0);
+        assert!(demo.demo_dashed);
     }
 
     #[test]
