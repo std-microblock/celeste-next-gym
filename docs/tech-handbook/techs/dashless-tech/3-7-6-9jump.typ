@@ -4,7 +4,7 @@
   id: "3.7.6",
   title-zh: "9 格跳",
   title-en: "9jump",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [沿用 8 格跳序列，但依靠更有利的水平子像素使距离延长到 9 格。],
   description-en: [The eight-tile sequence reaches nine tiles when started with a sufficiently favorable horizontal subpixel.],
   source-evidence: evidence(
@@ -23,6 +23,10 @@
     symbol: [nine_jump_lands_nine_tiles_away_only_with_the_favorable_timing],
     note: [候选在第 6、7、8 输入帧执行三次攀跳，第 45 状态帧落到 9 格目标；将整套输入延后一帧的对照明确无法落上平台。],
   ),
-  e2e-evidence: none,
-  candidate-e2e: "nine-jump",
+  e2e-evidence: evidence(
+    path: [scripts/e2e-real-collector.mjs],
+    symbol: [nine-jump],
+    note: [真实 Playground 共 121 个状态帧，从 755/120 地面零速起跑；第 6、7、8 输入帧执行三次攀跳，体力依次为 82.5、55、27.5，第 8 状态帧保存 190.33347 水平速度，第 45 状态帧在中心 x=837 落到前缘 x=840、距墙角 x=768 严格 72 像素的目标平台。九类核心字段逐帧一致，最大位置误差 0、速度误差 0.000001。],
+  ),
+  candidate-e2e: none,
 )

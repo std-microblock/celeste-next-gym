@@ -4,7 +4,7 @@
   id: "3.7.5",
   title-zh: "8 格跳",
   title-en: "8jump",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [地面跳加速、双 Cornerboost 和额外攀跳组合，可跨 8 格，并强烈依赖子像素位置。],
   description-en: [A ground-jump boost, double cornerboost, and extra climb jump combine into a subpixel-sensitive eight-tile crossing.],
   source-evidence: evidence(
@@ -23,6 +23,10 @@
     symbol: [eight_jump_lands_on_a_target_eight_tiles_from_the_cornerboost_wall],
     note: [测试从地面零速起跑，第 11 状态帧到达墙角，三次攀跳把体力依次降至 82.5、55、27.5，并在第 49 状态帧落到 8 格目标平台。],
   ),
-  e2e-evidence: none,
-  candidate-e2e: "eight-jump",
+  e2e-evidence: evidence(
+    path: [scripts/e2e-real-collector.mjs],
+    symbol: [eight-jump],
+    note: [真实 Playground 共 121 个状态帧，从 458/120 地面零速起跑；第 11 状态帧到达墙角，三次攀跳后体力依次为 82.5、55、27.5，第 13 状态帧保存 179.6666 水平速度，第 49 状态帧在中心 x=543 落到前缘 x=544、距墙角 x=480 严格 64 像素的目标平台。九类核心字段逐帧一致，最大位置误差 0、速度误差 0。],
+  ),
+  candidate-e2e: none,
 )
