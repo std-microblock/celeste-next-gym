@@ -2103,7 +2103,7 @@ fn begin_transition(p: &mut PlayerSnapshot, next: Rect, direction: Vec2) {
     } else if direction.y > 0.0 {
         target.y = next.y + 12.0;
     } else {
-        target.y = next.bottom() - 13.0;
+        target.y = next.bottom() - 5.0;
     }
     p.transition_room_bounds = Some(next);
     p.transition_direction = direction;
@@ -4020,7 +4020,7 @@ mod tests {
             .iter()
             .position(|state| state.current_room_bounds == Some(map.transition_rooms[0]))
             .unwrap();
-        assert_eq!(trace.states[completed].pos.y, -13.0);
+        assert_eq!(trace.states[completed].pos.y, -5.0);
         assert_eq!(trace.states[completed].dashes, 1);
         assert_eq!(trace.states[completed].stamina, 110.0);
         assert_eq!(trace.states[completed].wall_slide_timer, WALL_SLIDE_TIME);
