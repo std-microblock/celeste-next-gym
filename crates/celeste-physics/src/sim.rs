@@ -1368,11 +1368,11 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                 // still the active state here, so this is the source's naive
                 // MoveHExact correction rather than normal solid movement.
                 if p.dash_dir.x > 0.0
-                    && map.solid_at(current_player_rect(p, p.pos.x - 5.0, p.pos.y))
+                    && map.static_solid_at(current_player_rect(p, p.pos.x - 5.0, p.pos.y))
                 {
                     p.pos.x -= 5.0;
                 } else if p.dash_dir.x < 0.0
-                    && map.solid_at(current_player_rect(p, p.pos.x + 5.0, p.pos.y))
+                    && map.static_solid_at(current_player_rect(p, p.pos.x + 5.0, p.pos.y))
                 {
                     p.pos.x += 5.0;
                 }
@@ -2880,9 +2880,47 @@ mod tests {
         ];
         let p = simulate(p, &inputs, &dream_exit_map(), 2).unwrap();
         assert_eq!(p.state, PlayerState::Climb);
-        assert_eq!(p.pos, Vec2::new(71.0, 64.0));
+        assert_eq!(p.pos, Vec2::new(76.0, 64.0));
         assert!(!p.facing);
         assert_eq!(p.jump_grace_timer, JUMP_GRACE);
+    }
+
+    #[test]
+    fn dream_grab_uses_v14_five_pixel_static_solid_correction() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            solids: vec![Rect::new(67.0, 40.0, 1.0, 40.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::DreamBlock,
+                bounds: Rect::new(40.0, 40.0, 32.0, 40.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "dreamBlock".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(76.0, 64.0),
+            state: PlayerState::DreamDash,
+            dash_dir: Vec2::new(1.0, 0.0),
+            ..PlayerSnapshot::default()
+        };
+        let p = simulate(
+            p,
+            &[InputState {
+                move_x: -1,
+                grab_held: true,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert_eq!(p.state, PlayerState::Climb);
+        assert_eq!(p.pos, Vec2::new(71.0, 64.0));
+        assert!(!p.facing);
     }
     #[test]
     fn entering_water_halves_downward_speed_and_enters_swim() {
