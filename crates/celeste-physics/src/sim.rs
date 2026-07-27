@@ -5142,6 +5142,57 @@ mod tests {
     }
 
     #[test]
+    fn half_stamina_climbing_chains_wallboost_into_close_wall_climb_jump() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            solids: vec![Rect::new(40.0, 0.0, 8.0, 184.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(36.0, 120.0),
+            state: PlayerState::Climb,
+            facing: true,
+            stamina: 80.0,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [
+            InputState {
+                jump_pressed: true,
+                jump_held: true,
+                grab_held: true,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: -1,
+                jump_held: true,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: 1,
+                jump_pressed: true,
+                jump_held: true,
+                grab_held: true,
+                ..InputState::default()
+            },
+        ];
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+
+        assert_eq!(trace.states[1].stamina, 52.5);
+        assert!(trace.states[1].wall_boost_timer > 0.19);
+        assert_eq!(trace.states[2].stamina, 52.5);
+        assert_eq!(trace.states[3].stamina, 52.5);
+        assert_eq!(trace.states[3].wall_boost_timer, 0.0);
+        assert!((trace.states[3].speed.x + 79.166_64).abs() < 0.000_1);
+        assert_eq!(trace.states[3].speed.y, JUMP_SPEED);
+        assert_eq!(trace.states[3].state, PlayerState::Normal);
+        assert!(trace.states[3].facing);
+        assert_eq!(trace.states[3].dashes, 1);
+        assert!(!trace.states[3].on_ground);
+        assert!(!trace.states[3].ducking);
+        assert!(!trace.states[3].dead);
+    }
+
+    #[test]
     fn neutral_wall_jumps_return_for_a_second_stamina_free_jump() {
         let map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 300.0),

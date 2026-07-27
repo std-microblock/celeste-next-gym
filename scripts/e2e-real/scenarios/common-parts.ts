@@ -122,6 +122,9 @@ export const PLAYGROUND_TRANSITION = defineMapPart({
   sid: SID,
   rooms: [{ name: 'transition_0', bounds: [0, -544, 960, 544], spawn: [24, -16] }],
 })
+export const PLAYGROUND_OTHER_HALF_STAMINA = fixturePart('playground.other-half-stamina', {
+  solids: [[624, 272, 8, 184]],
+})
 
 export const COMMON_MAP_PARTS = new Map<string, MapPart>([
   PLAYGROUND_BASE, PLAYGROUND_JUMP_THRU, PLAYGROUND_ZIP_MOVER, PLAYGROUND_BOOSTER, PLAYGROUND_SPIKES,
@@ -129,4 +132,5 @@ export const COMMON_MAP_PARTS = new Map<string, MapPart>([
   PLAYGROUND_STAR_FLY, PLAYGROUND_BUMPER, PLAYGROUND_ICE_BALL, PLAYGROUND_BADELINE,
   PLAYGROUND_THEO, PLAYGROUND_BOUNCE_BLOCK, PLAYGROUND_WIND, PLAYGROUND_DASHLESS,
   PLAYGROUND_LAUNCH, PLAYGROUND_MISC, PLAYGROUND_TRANSITION,
+  PLAYGROUND_OTHER_HALF_STAMINA,
 ].map((part) => [part.id, part]))
