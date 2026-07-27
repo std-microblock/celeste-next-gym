@@ -47,6 +47,15 @@ function download(name: string, contents: string): void {
   URL.revokeObjectURL(url)
 }
 
+function buttonsFromKeys(keys: ReadonlySet<string>, bindings: Bindings, latched?: ReadonlySet<string>): FrameButtons {
+  const buttons = makeEmptyButtons()
+  for (const action of ACTIONS) {
+    const code = bindings[action]
+    buttons[action] = keys.has(code) || Boolean(latched?.has(code))
+  }
+  return buttons
+}
+
 export default function App() {
   const client = useMemo(() => new WasmClient(), [])
   const [map, setMap] = useState<GymMap>(() => structuredClone(PLAYGROUND))
@@ -60,10 +69,12 @@ export default function App() {
   const [wasmStatus, setWasmStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [notice, setNotice] = useState('WASM 核心启动中…')
   const [bindings, setBindings] = useState<Bindings>(loadBindings)
+  const [liveButtons, setLiveButtons] = useState<FrameButtons>(makeEmptyButtons)
   const [bindingsOpen, setBindingsOpen] = useState(false)
   const keys = useRef(new Set<string>())
   const latched = useRef(new Set<string>())
   const advancing = useRef(false)
+  const calculationRevision = useRef(0)
 
   useEffect(() => cache.subscribe(() => redraw((value) => value + 1)), [cache])
   useEffect(() => { frameRef.current = frame }, [frame])
@@ -97,12 +108,22 @@ export default function App() {
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
       if ((event.target as HTMLElement | null)?.matches('input, textarea, select, button')) return
-      if (!keys.current.has(event.code)) latched.current.add(event.code)
+      if (!keys.current.has(event.code)) {
+        latched.current.add(event.code)
+        keys.current.add(event.code)
+        setLiveButtons(buttonsFromKeys(keys.current, bindings))
+      }
       keys.current.add(event.code)
       if (Object.values(bindings).includes(event.code)) event.preventDefault()
     }
-    const up = (event: KeyboardEvent) => keys.current.delete(event.code)
-    const blur = () => keys.current.clear()
+    const up = (event: KeyboardEvent) => {
+      if (keys.current.delete(event.code)) setLiveButtons(buttonsFromKeys(keys.current, bindings))
+    }
+    const blur = () => {
+      keys.current.clear()
+      latched.current.clear()
+      setLiveButtons(makeEmptyButtons())
+    }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
     window.addEventListener('blur', blur)
@@ -124,10 +145,13 @@ export default function App() {
     frameRef.current = next
     setFrame(next)
     if (!cache.getState(next)) {
+      const requestRevision = ++calculationRevision.current
       setNotice(`从最近检查点计算到 F${next}…`)
       void cache.ensureFrame(next).then((state) => {
-        if (state) setNotice(`F${next} 已由 WASM 计算并缓存`)
-      }).catch((error: Error) => setNotice(error.message))
+        if (state && requestRevision === calculationRevision.current && frameRef.current === next) setNotice(`F${next} 已由 WASM 计算并缓存`)
+      }).catch((error: Error) => {
+        if (requestRevision === calculationRevision.current) setNotice(error.message)
+      })
     }
   }, [cache])
 
@@ -139,12 +163,7 @@ export default function App() {
     let carry = 0
 
     const sampleButtons = (includeLatched: boolean): FrameButtons => {
-      const buttons = makeEmptyButtons()
-      for (const action of ACTIONS) {
-        const code = bindings[action]
-        buttons[action] = keys.current.has(code) || (includeLatched && latched.current.has(code))
-      }
-      return buttons
+      return buttonsFromKeys(keys.current, bindings, includeLatched ? latched.current : undefined)
     }
 
     const tick = (now: number) => {
@@ -159,7 +178,7 @@ export default function App() {
         cache.ensureCapacity(target)
         if (cache.frameCount !== previousCapacity) setNotice(`时间线容量自动扩展到 ${cache.frameCount} 帧`)
         if (recording) {
-          for (let value = start; value < target; value += 1) cache.setButtons(value, sampleButtons(value === start))
+          cache.setButtonsRange(start, Array.from({ length: steps }, (_, offset) => sampleButtons(offset === 0)))
           latched.current.clear()
         }
         advancing.current = true
@@ -273,7 +292,7 @@ export default function App() {
           <div className="input-buttons">
             {ACTIONS.map((action) => {
               const inputFrame = Math.min(frame, inputs.length - 1)
-              const active = inputs[inputFrame]?.[action] ?? false
+              const active = recording ? liveButtons[action] : inputs[inputFrame]?.[action] ?? false
               return <button key={action} className={`${action} ${active ? 'active' : ''}`} onClick={() => {
                 cache.setFrame(inputFrame, action, !active)
                 seek(inputFrame, false)
@@ -290,7 +309,11 @@ export default function App() {
         states={states}
         onSeek={seek}
         onPaint={(action, from, to, value) => cache.paint(action, from, to, value)}
-        onMove={(action, start, end, delta) => cache.moveRun(action, start, end, delta)}
+        onMove={(action, targetAction, start, end, delta) => cache.moveRun(action, targetAction, start, end, delta)}
+        onEditComplete={() => {
+          const current = frameRef.current
+          if (!cache.getState(current)) seek(current, false)
+        }}
         onResize={(frames) => {
           cache.resize(frames)
           if (frameRef.current > cache.frameCount) seek(cache.frameCount)

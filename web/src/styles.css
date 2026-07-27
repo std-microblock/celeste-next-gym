@@ -92,9 +92,10 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .timeline-toolbar { min-height: 55px; display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; border-bottom: 1px solid #5a3e70; background: linear-gradient(90deg, #25143a, #120b28); }
 .timeline-tools { display: flex; align-items: center; gap: 7px; color: #9f8aad; font: 9px Consolas, monospace; }
 .timeline-tools label { display: flex; align-items: center; gap: 5px; }.timeline-tools input { width: 67px; padding: 5px; color: #fff; border: 1px solid #5b426f; background: #0e081e; font: 10px Consolas, monospace; }
-.timeline-tools .timeline-zoom input { width: 118px; padding: 0; accent-color: var(--cyan); }.timeline-zoom output { min-width: 28px; color: #d7c5df; }
+.timeline-tools .timeline-zoom { display: flex; align-items: center; gap: 7px; padding: 5px 8px; color: #b8a4c2; border: 1px solid #4f3a62; background: #0e081e; }.timeline-zoom output { min-width: 32px; color: #fff; }
 .timeline-tools button { width: 27px; height: 27px; color: #fff; border: 1px solid #5b426f; background: #241636; cursor: pointer; }
 .timeline-canvas { display: block; width: 100%; background: #08050f; cursor: crosshair; touch-action: none; image-rendering: pixelated; }
+.timeline-canvas:focus-visible { outline: 2px solid var(--cyan); outline-offset: -2px; }
 .timeline-body { display: grid; grid-template-columns: 92px minmax(0, 1fr); min-height: 253px; background: #0c071b; }
 .lane-labels { position: relative; z-index: 3; border-right: 1px solid #604676; box-shadow: 7px 0 14px #0007; background: #130b27; }
 .ruler-label, .lane-label { height: 28px; display: flex; align-items: center; gap: 7px; padding: 0 9px; color: #a790b1; border-bottom: 1px solid #322442; font: 9px Consolas, monospace; }

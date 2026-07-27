@@ -15,6 +15,8 @@ export class WasmClient implements SimulationRunner {
   private readonly worker = new Worker(new URL('./wasm.worker.ts', import.meta.url), { type: 'module' })
   private readonly pending = new Map<number, { resolve(value: unknown): void; reject(error: Error): void }>()
   private nextId = 1
+  private cachedMap: GymMap | undefined
+  private mapVersion = 0
 
   constructor() {
     this.worker.onmessage = (event: MessageEvent<ResponseMessage>) => {
@@ -51,7 +53,13 @@ export class WasmClient implements SimulationRunner {
   }
 
   simulate(state: SimState, inputs: SimInput[], map: GymMap): Promise<SimState[]> {
-    return this.request({ type: 'simulate', state, inputs, map })
+    let mapPayload: GymMap | undefined
+    if (map !== this.cachedMap) {
+      this.cachedMap = map
+      this.mapVersion += 1
+      mapPayload = map
+    }
+    return this.request({ type: 'simulate', state, inputs, map: mapPayload, mapVersion: this.mapVersion })
   }
 
   dispose(): void {

@@ -1,6 +1,11 @@
 import { readFile } from 'node:fs/promises'
 import { decode, encode } from '@msgpack/msgpack'
-import init, { decode_celeste_map_msgpack, simulate_msgpack } from '../src/wasm/celeste_wasm.js'
+import init, {
+  cache_simulation_map_msgpack,
+  decode_celeste_map_msgpack,
+  simulate_cached_map_msgpack,
+  simulate_msgpack,
+} from '../src/wasm/celeste_wasm.js'
 
 await init({ module_or_path: await readFile(new URL('../src/wasm/celeste_wasm_bg.wasm', import.meta.url)) })
 
@@ -48,7 +53,8 @@ for (const required of ['water', 'dream_block', 'booster', 'red_booster', 'fly_f
   if (!decodedKinds.has(required)) throw new Error(`Decoded playground is missing ${required}`)
 }
 const playgroundState = { ...state, pos: decodedMap.map.spawn }
-const playgroundTrace = decode(simulate_msgpack(encode(playgroundState), encode([input]), encode(decodedMap.map), 1))
+cache_simulation_map_msgpack(encode(decodedMap.map))
+const playgroundTrace = decode(simulate_cached_map_msgpack(encode(playgroundState), encode([input]), 1))
 if (!playgroundTrace.states || playgroundTrace.states.length !== 2) throw new Error(playgroundTrace.error ?? 'Decoded playground simulation failed')
 const runTrace = decode(simulate_msgpack(encode(playgroundState), encode(Array.from({ length: 30 }, () => input)), encode(decodedMap.map), 30))
 if (!runTrace.states || runTrace.states.at(-1).pos.x <= decodedMap.map.spawn.x) throw new Error(runTrace.error ?? 'Playground movement smoke test failed')
