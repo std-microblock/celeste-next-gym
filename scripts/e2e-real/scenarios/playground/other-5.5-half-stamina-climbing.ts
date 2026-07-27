@@ -29,6 +29,6 @@ function verifyHalfStaminaClimbing(states: readonly E2EState[]): void {
   semanticAssert(near(states[1]?.stamina ?? 0, 52.5), 'other-5.5-half-stamina-climbing', `first climb jump did not spend 27.5 stamina: ${JSON.stringify(states.map(pickCore))}`)
   semanticAssert(near(states[3]?.stamina ?? 0, 52.5), 'other-5.5-half-stamina-climbing', `wallboost refund and close-wall climb jump did not net one 27.5 cost: ${JSON.stringify(states.map(pickCore))}`)
   semanticAssert(near(states[3]?.speed[1] ?? 0, -105), 'other-5.5-half-stamina-climbing', `second climb jump did not launch at -105: ${JSON.stringify(states.map(pickCore))}`)
-  semanticAssert(states[3]?.state === 'Normal' && !states[3]?.on_ground && !states[3]?.ducking && !states[3]?.dead,
+  semanticAssert((states[3]?.state === 'Normal' || states[3]?.state === 0) && !states[3]?.on_ground && !states[3]?.ducking && !states[3]?.dead,
     'other-5.5-half-stamina-climbing', `second action did not finish airborne in Normal: ${JSON.stringify(states.map(pickCore))}`)
 }
