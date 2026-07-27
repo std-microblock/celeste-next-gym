@@ -31,7 +31,7 @@ function verifyGroundedUltraCancel(states: readonly E2EState[]): void {
   const lifted = states[pickup]
   semanticAssert(before?.state === 2 && near(before.speed[0], 360) && before.ducking,
     'dash-grounded-ultra-cancel', `pickup was not preceded by the 360 grounded Ultra: ${JSON.stringify(before)}`)
-  semanticAssert(lifted && near(lifted.speed[0], 0) && !lifted.ducking,
+  semanticAssert(lifted && lifted.holding_theo === true && near(lifted.speed[0], 0) && !lifted.ducking,
     'dash-grounded-ultra-cancel', `pickup did not unduck and begin its zero-speed tween: ${JSON.stringify(lifted)}`)
   const restored = states.slice(pickup + 1).find((state) => state.state === 0)
   semanticAssert(restored && near(restored.speed[0], 360), 'dash-grounded-ultra-cancel',

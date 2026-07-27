@@ -16,5 +16,5 @@
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs; crates/celeste-physics/src/types.rs], symbol: [dash_update; try_pickup_theo; pickup_update; PlayerSnapshot.pickup_old_speed]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [grounded_ultra_pickup_cancel_skips_dash_end_speed_normalization]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/dash-grounded-ultra-cancel.ts], symbol: [dash-grounded-ultra-cancel; verifyGroundedUltraCancel], note: [独立 Theo MapPart 候选；真实九字段 E2E 未完成前保持 unimplemented。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/dash-grounded-ultra-cancel.ts; scripts/e2e-real/scenarios/playground/dash-grounded-ultra-cancel-control.ts], symbol: [dash-grounded-ultra-cancel; dash-grounded-ultra-cancel-control; verifyGroundedUltraCancel], note: [同一独立 Theo MapPart 上的取消与自然 DashEnd 对照候选；真实九字段 E2E 未完成前保持 unimplemented。]),
 )
