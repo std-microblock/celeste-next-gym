@@ -243,10 +243,11 @@ async function runHarnessLifecycle(
     throw error
   } finally {
     await Promise.allSettled([modPortReservation.release(), httpPortReservation.release()])
-    const cleanup = {
-      service_terminated: cleanupOwned('collector', service, serviceIdentity),
-      game_terminated: cleanupOwned('Celeste', game, gameIdentity),
-    }
+    const [serviceTerminated, gameTerminated] = await Promise.all([
+      cleanupOwned('collector', service, serviceIdentity),
+      cleanupOwned('Celeste', game, gameIdentity),
+    ])
+    const cleanup = { service_terminated: serviceTerminated, game_terminated: gameTerminated }
     updateRunManifest(runContext, {
       status: runError ? 'failed-cleanup-finished' : 'cleanup-finished',
       cleanup,
@@ -286,11 +287,11 @@ function validateExpectedGit(config: HarnessConfig, git: GitIdentity): void {
   }
 }
 
-function cleanupOwned(
+async function cleanupOwned(
   label: string,
   child: ChildProcess | undefined,
   identity: ProcessIdentity | undefined,
-): boolean {
+): Promise<boolean> {
   if (!identity) {
     if (child?.pid && child.exitCode === null) {
       console.warn(`refusing to terminate ${label} PID ${child.pid}: no recorded process identity`)
@@ -298,7 +299,7 @@ function cleanupOwned(
     return false
   }
   try {
-    return terminateOwnedProcess({ child, expectedIdentity: identity })
+    return await terminateOwnedProcess({ child, expectedIdentity: identity })
   } catch (error) {
     console.warn(`failed to terminate owned ${label} PID ${child?.pid}: ${String(error)}`)
     return false
