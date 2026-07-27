@@ -53,6 +53,8 @@ pub enum EntityKind {
     Spring,
     Strawberry,
     Wind,
+    /// Vanilla TheoCrystal Actor with a Holdable component.
+    TheoCrystal,
     /// Vanilla Celeste ZipMover Solid. The first node is its target position.
     ZipMover,
     /// Simulator-native constant-velocity Solid used to exercise Monocle
@@ -339,6 +341,17 @@ pub fn encode_celeste_map(map: &Map, package: &str, room: &str) -> Result<Vec<u8
                 ));
                 None
             }
+            EntityKind::TheoCrystal => Some(element(
+                "theoCrystal",
+                [
+                    ("id", BinaryValue::Int(id)),
+                    ("originX", BinaryValue::Int(0)),
+                    ("originY", BinaryValue::Int(0)),
+                    ("x", BinaryValue::Int(x + 4)),
+                    ("y", BinaryValue::Int(y + 10)),
+                ],
+                vec![],
+            )),
             EntityKind::ZipMover => {
                 let target = entity
                     .nodes
@@ -703,6 +716,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 "spring" | "wallSpringLeft" | "wallSpringRight" => EntityKind::Spring,
                 "strawberry" => EntityKind::Strawberry,
                 "windTrigger" => EntityKind::Wind,
+                "theoCrystal" => EntityKind::TheoCrystal,
                 "zipMover" => EntityKind::ZipMover,
                 "celesteGymMovingSolid" => EntityKind::MovingSolid,
                 _ => EntityKind::Unknown,
@@ -713,9 +727,14 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 EntityKind::Bumper => 24.0,
                 EntityKind::BadelineBoost => 32.0,
                 EntityKind::Strawberry => 14.0,
+                EntityKind::TheoCrystal => 8.0,
                 _ => 8.0,
             };
-            let default_h = default_w;
+            let default_h = if kind == EntityKind::TheoCrystal {
+                10.0
+            } else {
+                default_w
+            };
             let raw_width = attr_f32(el, "width", default_w);
             let raw_height = attr_f32(el, "height", default_h);
             let (bounds, direction) = match el.name.as_str() {
@@ -748,6 +767,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                     Rect::new(ex - 6.0, ey - 8.0, 6.0, 16.0),
                     Vec2::new(-1.0, 0.0),
                 ),
+                "theoCrystal" => (Rect::new(ex - 4.0, ey - 10.0, 8.0, 10.0), Vec2::default()),
                 "zipMover" => (Rect::new(ex, ey, raw_width, raw_height), Vec2::default()),
                 "celesteGymMovingSolid" => (
                     Rect::new(ex, ey, raw_width, raw_height),
@@ -1031,5 +1051,29 @@ mod tests {
         assert_eq!(entity.bounds, Rect::new(352.0, -120.0, 64.0, 16.0));
         assert_eq!(entity.nodes, vec![Vec2::new(352.0, -200.0)]);
         assert_eq!(entity.name, "zipMover");
+    }
+
+    #[test]
+    fn vanilla_theo_crystal_round_trips_through_celeste_binary() {
+        let map = Map {
+            bounds: Rect::new(320.0, -240.0, 320.0, 184.0),
+            entities: vec![Entity {
+                kind: EntityKind::TheoCrystal,
+                bounds: Rect::new(364.0, -130.0, 8.0, 10.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "theoCrystal".to_owned(),
+            }],
+            ..Map::default()
+        };
+
+        let encoded = encode_celeste_map(&map, "CelesteGymTest", "theo").unwrap();
+        let decoded = decode_map_room(&encoded, Some("theo")).unwrap();
+        let entity = decoded.entities.first().unwrap();
+        assert_eq!(entity.kind, EntityKind::TheoCrystal);
+        assert_eq!(entity.bounds, Rect::new(364.0, -130.0, 8.0, 10.0));
+        assert_eq!(entity.name, "theoCrystal");
     }
 }

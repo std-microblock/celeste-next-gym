@@ -129,6 +129,7 @@ pub fn simulate_trace(
     validate_snapshot(&snapshot)?;
     let mut runtime_map = map.clone();
     initialize_zip_movers(&mut snapshot, &mut runtime_map);
+    initialize_theo_crystals(&mut snapshot, &mut runtime_map);
     position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
     let mut states = Vec::with_capacity(frames + 1);
     states.push(snapshot.clone());
@@ -222,6 +223,11 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         s.crouch_dash_buffer_timer,
         s.movement_remainder.x,
         s.movement_remainder.y,
+        s.min_hold_timer,
+        s.pickup_old_speed.x,
+        s.pickup_old_speed.y,
+        s.pickup_old_var_jump_timer,
+        s.pickup_timer,
     ];
     let zip_movers_are_finite = s.zip_movers.iter().all(|zip| {
         [
@@ -239,10 +245,54 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         .iter()
         .all(|value| value.is_finite())
     });
-    if values.iter().all(|x| x.is_finite()) && zip_movers_are_finite {
+    let theo_crystals_are_finite = s.theo_crystals.iter().all(|theo| {
+        [
+            theo.position.x,
+            theo.position.y,
+            theo.speed.x,
+            theo.speed.y,
+            theo.remainder.x,
+            theo.remainder.y,
+            theo.cannot_hold_timer,
+            theo.gravity_timer,
+        ]
+        .iter()
+        .all(|value| value.is_finite())
+    });
+    if values.iter().all(|x| x.is_finite()) && zip_movers_are_finite && theo_crystals_are_finite {
         Ok(())
     } else {
         Err(SimulationError::NonFinite)
+    }
+}
+
+fn initialize_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
+    let theo_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::TheoCrystal).then_some(index))
+        .collect();
+    p.theo_crystals.truncate(theo_indices.len());
+    for (theo_index, entity_index) in theo_indices.into_iter().enumerate() {
+        let entity = &mut map.entities[entity_index];
+        if theo_index == p.theo_crystals.len() {
+            p.theo_crystals.push(crate::TheoCrystalSnapshot {
+                position: Vec2::new(entity.bounds.x + 4.0, entity.bounds.y + 10.0),
+                ..crate::TheoCrystalSnapshot::default()
+            });
+        }
+        let state = &mut p.theo_crystals[theo_index];
+        state.held = p.holding_theo == Some(theo_index as u16);
+        entity.bounds.x = state.position.x - 4.0;
+        entity.bounds.y = state.position.y - 10.0;
+        entity.bounds.width = 8.0;
+        entity.bounds.height = 10.0;
+    }
+    if p.holding_theo
+        .is_some_and(|index| index as usize >= p.theo_crystals.len())
+    {
+        p.holding_theo = None;
     }
 }
 
@@ -359,6 +409,153 @@ fn move_zip_mover_to(
     state.remainder.y -= exact_move_y;
     move_runtime_solid_exact(p, &mut entity.bounds, false, exact_move_y, state.lift_speed);
     state.position.y += exact_move_y;
+}
+
+fn theo_body_rect(position: Vec2) -> Rect {
+    Rect::new(position.x - 4.0, position.y - 10.0, 8.0, 10.0)
+}
+
+fn theo_pickup_rect(position: Vec2) -> Rect {
+    Rect::new(position.x - 8.0, position.y - 16.0, 16.0, 22.0)
+}
+
+fn try_pickup_theo(p: &mut PlayerSnapshot) -> bool {
+    let player = current_player_rect(p, p.pos.x, p.pos.y);
+    let Some(index) = p.theo_crystals.iter().position(|theo| {
+        !theo.held
+            && theo.cannot_hold_timer <= 0.0
+            && theo_pickup_rect(theo.position).intersects(player)
+    }) else {
+        return false;
+    };
+    let theo = &mut p.theo_crystals[index];
+    theo.held = true;
+    theo.speed = Vec2::default();
+    p.holding_theo = Some(index as u16);
+    p.min_hold_timer = 0.35;
+    p.ducking = false;
+    p.pickup_old_speed = p.speed;
+    p.pickup_old_var_jump_timer = p.var_jump_timer;
+    p.pickup_timer = 0.16;
+    p.speed = Vec2::default();
+    p.demo_dashed = false;
+    p.dash_end_pending = false;
+    p.state = PlayerState::Pickup;
+    true
+}
+
+fn release_theo(p: &mut PlayerSnapshot, input: InputState) {
+    let Some(index) = p.holding_theo.take().map(usize::from) else {
+        return;
+    };
+    let Some(theo) = p.theo_crystals.get_mut(index) else {
+        return;
+    };
+    theo.held = false;
+    theo.gravity_timer = 0.1;
+    theo.cannot_hold_timer = 0.1;
+    if input.move_y > 0 {
+        theo.speed = Vec2::default();
+    } else {
+        let facing = if p.facing { 1.0 } else { -1.0 };
+        theo.speed = Vec2::new(facing * 200.0, -80.0);
+        p.speed.x -= facing * 80.0;
+    }
+}
+
+fn pickup_update(p: &mut PlayerSnapshot) {
+    if p.pickup_timer > 0.0 {
+        return;
+    }
+    p.speed = p.pickup_old_speed;
+    p.speed.y = p.speed.y.min(0.0);
+    p.var_jump_timer = p.pickup_old_var_jump_timer;
+    p.state = PlayerState::Normal;
+}
+
+fn theo_collides(map: &Map, position: Vec2) -> bool {
+    map.solid_at(theo_body_rect(position))
+}
+
+fn move_theo_axis(theo: &mut crate::TheoCrystalSnapshot, map: &Map, horizontal: bool) {
+    let amount = if horizontal {
+        theo.speed.x * DT
+    } else {
+        theo.speed.y * DT
+    };
+    let remainder = if horizontal {
+        &mut theo.remainder.x
+    } else {
+        &mut theo.remainder.y
+    };
+    *remainder += amount;
+    let pixels = remainder.round_ties_even() as i32;
+    *remainder -= pixels as f32;
+    let sign = pixels.signum();
+    for _ in 0..pixels.unsigned_abs() {
+        let next = Vec2::new(
+            theo.position.x + if horizontal { sign as f32 } else { 0.0 },
+            theo.position.y + if horizontal { 0.0 } else { sign as f32 },
+        );
+        if theo_collides(map, next) {
+            if horizontal {
+                theo.speed.x *= -0.4;
+                theo.remainder.x = 0.0;
+            } else if sign > 0 && theo.speed.y > 140.0 {
+                theo.speed.y *= -0.6;
+                theo.remainder.y = 0.0;
+            } else {
+                theo.speed.y = 0.0;
+                theo.remainder.y = 0.0;
+            }
+            break;
+        }
+        theo.position = next;
+    }
+}
+
+fn advance_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
+    let entity_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::TheoCrystal).then_some(index))
+        .collect();
+    for (theo_index, entity_index) in entity_indices.into_iter().enumerate() {
+        let mut theo = p.theo_crystals[theo_index].clone();
+        theo.cannot_hold_timer = (theo.cannot_hold_timer - DT).max(0.0);
+        theo.gravity_timer = (theo.gravity_timer - DT).max(0.0);
+        if p.holding_theo == Some(theo_index as u16) {
+            theo.held = true;
+            theo.position = Vec2::new(p.pos.x, p.pos.y - 12.0);
+            theo.speed = Vec2::default();
+            theo.remainder = Vec2::default();
+        } else {
+            theo.held = false;
+            let on_ground = theo_collides(map, Vec2::new(theo.position.x, theo.position.y + 1.0));
+            if on_ground {
+                theo.speed.x = approach(theo.speed.x, 0.0, 800.0 * DT);
+            } else if theo.gravity_timer <= 0.0 {
+                let gravity = if theo.speed.y.abs() <= 30.0 {
+                    400.0
+                } else {
+                    800.0
+                };
+                theo.speed.x = approach(
+                    theo.speed.x,
+                    0.0,
+                    if theo.speed.y < 0.0 { 175.0 } else { 350.0 } * DT,
+                );
+                theo.speed.y = approach(theo.speed.y, 200.0, gravity * DT);
+            }
+            move_theo_axis(&mut theo, map, true);
+            move_theo_axis(&mut theo, map, false);
+        }
+        let entity = &mut map.entities[entity_index];
+        entity.bounds.x = theo.position.x - 4.0;
+        entity.bounds.y = theo.position.y - 10.0;
+        p.theo_crystals[theo_index] = theo;
+    }
 }
 
 fn advance_zip_movers(p: &mut PlayerSnapshot, map: &mut Map) {
@@ -639,10 +836,12 @@ fn step(
     if p.badeline_boost_active {
         update_badeline_boost(p, map);
         advance_zip_movers(p, map);
+        advance_theo_crystals(p, map);
         p.on_ground = grounded(p, map);
         return Ok(());
     }
 
+    let was_pickup = p.state == PlayerState::Pickup;
     match p.state {
         PlayerState::Normal => normal_update(p, input, map, was_on_ground),
         PlayerState::Dash => dash_update(p, input, map),
@@ -651,6 +850,7 @@ fn step(
         PlayerState::Boost => boost_update(p, input, map),
         PlayerState::RedDash => red_dash_update(p, input, map),
         PlayerState::HitSquash => hit_squash_update(p),
+        PlayerState::Pickup => pickup_update(p),
         PlayerState::Launch => launch_update(p, input, map),
         PlayerState::DreamDash => dream_dash_update(p),
         PlayerState::SummitLaunch => summit_launch_update(p, map),
@@ -661,10 +861,18 @@ fn step(
         PlayerState::ReflectionFall => reflection_fall_update(p, map),
         PlayerState::IntroRespawn => {
             advance_zip_movers(p, map);
+            advance_theo_crystals(p, map);
             p.on_ground = grounded(p, map);
             return Ok(());
         }
         other => return Err(SimulationError::UnsupportedState(other)),
+    }
+
+    // PickupCoroutine observes the tween before Tween.Update. The pickup
+    // frame only creates it; following Pickup frames decrement it here, and
+    // the coroutine restores speed on the frame after it becomes inactive.
+    if was_pickup && p.state == PlayerState::Pickup {
+        p.pickup_timer -= DT;
     }
 
     // Actor.Update runs after the StateMachine component callback. Moving
@@ -691,6 +899,7 @@ fn step(
     // written by the previous ZipMover update is therefore visible to the
     // player's next action before the platform advances again.
     advance_zip_movers(p, map);
+    advance_theo_crystals(p, map);
     p.on_ground = grounded(p, map);
     Ok(())
 }
@@ -703,6 +912,7 @@ fn tick_timers(p: &mut PlayerSnapshot) {
         &mut p.booster_reuse_timer,
         &mut p.feather_reuse_timer,
         &mut p.bumper_reuse_timer,
+        &mut p.min_hold_timer,
         &mut p.no_wind_timer,
         &mut p.jump_grace_timer,
         &mut p.jump_buffer_timer,
@@ -781,7 +991,15 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
     if boost.y < 0.0 && was_on_ground && !p.on_ground && p.speed.y >= 0.0 {
         p.speed.y = boost.y;
     }
-    if (input.dash_pressed || input.crouch_dash_pressed)
+    if p.holding_theo.is_none() {
+        if input.grab_held && p.stamina >= 20.0 && !p.ducking && try_pickup_theo(p) {
+            return;
+        }
+    } else if !input.grab_held && p.min_hold_timer <= 0.0 {
+        release_theo(p, input);
+    }
+    if p.holding_theo.is_none()
+        && (input.dash_pressed || input.crouch_dash_pressed)
         && p.dashes > 0
         && p.dash_cooldown_timer <= 0.0
     {
@@ -791,7 +1009,8 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
     }
 
     let wall = wall_dir(p, map);
-    if input.grab_held
+    if p.holding_theo.is_none()
+        && input.grab_held
         && !p.on_ground
         && wall != 0
         && p.stamina > 0.0
@@ -825,9 +1044,14 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
     if p.ducking && p.on_ground {
         p.speed.x = approach(p.speed.x, 0.0, DUCK_FRICTION * DT);
     } else {
-        let target = move_x as f32 * MAX_RUN;
+        let max_run = if p.holding_theo.is_some() {
+            70.0
+        } else {
+            MAX_RUN
+        };
+        let target = move_x as f32 * max_run;
         let same_direction_over_max = move_x != 0
-            && p.speed.x.abs() > MAX_RUN
+            && p.speed.x.abs() > max_run
             && p.speed.x.signum() == (move_x as f32).signum();
         p.speed.x = approach(
             p.speed.x,
@@ -945,6 +1169,15 @@ fn begin_dash(
 }
 
 fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
+    if p.holding_theo.is_none()
+        && p.dash_dir != Vec2::default()
+        && input.grab_held
+        && p.stamina >= 20.0
+        && can_unduck(p, map)
+        && try_pickup_theo(p)
+    {
+        return;
+    }
     p.state_timer = (p.state_timer - DT).max(0.0);
     if (p.state_timer - DASH_TIME).abs() <= DT * 0.5 {
         p.speed = Vec2::new(p.dash_dir.x * DASH_SPEED, p.dash_dir.y * DASH_SPEED);
@@ -2748,6 +2981,22 @@ mod tests {
             ..Map::default()
         }
     }
+    fn theo_crystal_map() -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 240.0),
+            solids: vec![Rect::new(0.0, 160.0, 320.0, 80.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::TheoCrystal,
+                bounds: Rect::new(64.0, 150.0, 8.0, 10.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "theoCrystal".to_owned(),
+            }],
+            ..Map::default()
+        }
+    }
     fn water_map() -> Map {
         Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
@@ -3123,6 +3372,96 @@ mod tests {
         assert_eq!(trace.states[19].zip_movers[0].position.y, 421.0);
         assert_eq!(trace.states[20].zip_movers[0].position.y, 417.0);
     }
+    #[test]
+    fn dash_pickup_cancels_into_source_pickup_tween_and_restores_speed() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 160.0),
+            speed: Vec2::new(360.0, 0.0),
+            state: PlayerState::Dash,
+            dash_dir: Vec2::new(1.0, 0.0),
+            state_timer: 0.1,
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let held = InputState {
+            move_x: 1,
+            grab_held: true,
+            ..InputState::default()
+        };
+        let trace = simulate_trace(p, &[held; 12], &theo_crystal_map(), 12).unwrap();
+
+        assert_eq!(trace.states[1].state, PlayerState::Pickup);
+        assert_eq!(trace.states[1].speed, Vec2::default());
+        assert_eq!(trace.states[1].pickup_old_speed, Vec2::new(360.0, 0.0));
+        assert_eq!(trace.states[1].holding_theo, Some(0));
+        assert!(trace.states[1].theo_crystals[0].held);
+        assert!(!trace.states[1].dash_end_pending);
+        assert_eq!(trace.states[11].state, PlayerState::Pickup);
+        assert_eq!(trace.states[12].state, PlayerState::Normal);
+        assert_eq!(trace.states[12].speed, Vec2::new(360.0, 0.0));
+    }
+
+    #[test]
+    fn theo_pickup_release_and_runtime_are_split_composable() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 160.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = vec![
+            InputState {
+                grab_held: true,
+                ..InputState::default()
+            };
+            25
+        ];
+        inputs.push(InputState {
+            move_x: 1,
+            ..InputState::default()
+        });
+        let direct = simulate(p.clone(), &inputs, &theo_crystal_map(), 26).unwrap();
+        let first = simulate(p, &inputs[..8], &theo_crystal_map(), 8).unwrap();
+        let split = simulate(first, &inputs[8..], &theo_crystal_map(), 18).unwrap();
+
+        assert_eq!(split, direct);
+        assert_eq!(direct.state, PlayerState::Normal);
+        assert_eq!(direct.holding_theo, None);
+        assert!(!direct.theo_crystals[0].held);
+        assert!(direct.theo_crystals[0].cannot_hold_timer > 0.0);
+        assert_eq!(direct.theo_crystals[0].speed, Vec2::new(200.0, -80.0));
+        assert!((direct.speed.x + 63.333_3).abs() < 0.000_1);
+    }
+
+    #[test]
+    fn playground_theo_cancels_a_grounded_ultra_before_the_right_wall() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(820.0, 496.0),
+            speed: Vec2::new(300.0, 0.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..20)
+            .map(|frame| InputState {
+                move_x: 1,
+                move_y: 1,
+                dash_pressed: frame == 0,
+                grab_held: (5..=12).contains(&frame),
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &crate::mechanics_playground(), 20).unwrap();
+        let pickup_index = trace
+            .states
+            .iter()
+            .position(|state| state.state == PlayerState::Pickup)
+            .unwrap();
+
+        assert!(pickup_index <= 13);
+        assert_eq!(trace.states[pickup_index].pickup_old_speed.x, 360.0);
+        assert!(trace.states[pickup_index].pos.x < 864.0);
+        assert_eq!(trace.states[pickup_index].holding_theo, Some(0));
+    }
+
     #[test]
     fn jump_adds_retained_lift_boost_before_caching_variable_jump_speed() {
         let p = PlayerSnapshot {
@@ -4280,12 +4619,12 @@ mod tests {
     #[test]
     fn unsupported_state_is_explicit() {
         let p = PlayerSnapshot {
-            state: PlayerState::Pickup,
+            state: PlayerState::CassetteFly,
             ..PlayerSnapshot::default()
         };
         assert_eq!(
             simulate(p, &[InputState::default()], &Map::default(), 1),
-            Err(SimulationError::UnsupportedState(PlayerState::Pickup))
+            Err(SimulationError::UnsupportedState(PlayerState::CassetteFly))
         );
     }
 
