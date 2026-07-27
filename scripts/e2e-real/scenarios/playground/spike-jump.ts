@@ -9,11 +9,12 @@ export const mapParts = [SPIKE_JUMP_PART] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: ['feature:zip-mover'],
   techniqueIds: ['3.10'],
   mapParts,
   name: 'spike-jump',
+  recording: { primaryFor: ['3.10'], startFrame: 0, endFrame: 35 },
   initial: { pos: [48, 120], speed: [0, 0], on_ground: true },
   inputs: Array.from({ length: 35 }, (_, frame) => input({
     jump_pressed: frame === 27,

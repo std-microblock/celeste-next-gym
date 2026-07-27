@@ -9,11 +9,12 @@ export const mapParts = [NARROW_SPIKED_CLIMB_PART] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: [],
   techniqueIds: ['3.8.1'],
   mapParts,
   name: 'narrow-spiked-climb',
+  recording: { primaryFor: ['3.8.1'], startFrame: 0, endFrame: 5 },
   initial: { pos: [59, 152], speed: [0, 0], facing: 'Right' },
   inputs: Array.from({ length: 5 }, (_, frame) => input({
     jump_pressed: frame === 0 || frame === 3,

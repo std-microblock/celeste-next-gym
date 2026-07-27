@@ -9,11 +9,12 @@ export const mapParts = [CORNERSLIP_PART] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: [],
   techniqueIds: ['3.13'],
   mapParts,
   name: 'cornerslip',
+  recording: { primaryFor: ['3.13'], startFrame: 0, endFrame: 6 },
   initial: { pos: [37, 40], speed: [-90, 60], dashes: 0, can_dream_dash: false },
   inputs: Array.from({ length: 6 }, () => input({ move_x: -1 })),
   verify: verifyCornerslip,

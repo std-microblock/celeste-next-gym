@@ -9,11 +9,12 @@ export const mapParts = [SPIKE_CLIP_PART] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: [],
   techniqueIds: ['3.9'],
   mapParts,
   name: 'spike-clip',
+  recording: { primaryFor: ['3.9'], startFrame: 0, endFrame: 6 },
   initial: { pos: [92, 103], speed: [0, 240] },
   inputs: Array.from({ length: 6 }, () => input({ move_y: 1 })),
   verify: verifySpikeClip,

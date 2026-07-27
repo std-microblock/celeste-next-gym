@@ -9,11 +9,12 @@ export const mapParts = [COBWOB_PART] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: [],
   techniqueIds: ['3.12.1'],
   mapParts,
   name: 'cornerboost-wallboost',
+  recording: { primaryFor: ['3.12.1'], startFrame: 0, endFrame: 12 },
   initial: { pos: [35, 46], speed: [160, -30], facing: 'Right' },
   inputs: Array.from({ length: 12 }, (_, frame) => input({
     move_x: frame === 0 ? 0 : -1,

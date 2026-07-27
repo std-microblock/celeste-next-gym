@@ -9,11 +9,12 @@ export const mapParts = [SPIKE_CLIMB_PART] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: [],
   techniqueIds: ['3.8'],
   mapParts,
   name: 'spike-climb',
+  recording: { primaryFor: ['3.8'], startFrame: 0, endFrame: 16 },
   initial: { pos: [59, 140], speed: [0, 0], facing: 'Right' },
   inputs: Array.from({ length: 16 }, (_, frame) => input({
     move_x: -1,
