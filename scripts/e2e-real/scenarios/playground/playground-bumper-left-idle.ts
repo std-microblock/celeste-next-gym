@@ -9,10 +9,9 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: ["feature:bumper"],
+  techniqueIds: [],
   mapParts,
   name: 'playground-bumper-left-idle',
     initial: { pos: [589, 206], speed: [0, 0] },
     inputs: Array.from({ length: 80 }, () => input()),
 })
-
-

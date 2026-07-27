@@ -9,10 +9,9 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'candidate',
   tags: ["feature:bumper"],
+  techniqueIds: [],
   mapParts,
   name: 'entity-4.4-explosion-boost',
     initial: { pos: [589, 206], speed: [0, 0] },
     inputs: Array.from({ length: 30 }, () => input({ move_x: -1 })),
 })
-
-

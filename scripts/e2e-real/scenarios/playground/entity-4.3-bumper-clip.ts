@@ -9,6 +9,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'candidate',
   tags: ["feature:bumper"],
+  techniqueIds: [],
   mapParts,
   name: 'entity-4.3-bumper-clip',
     initial: { pos: [589, 206], speed: [0, 0] },
@@ -17,5 +18,3 @@ export const scenario = defineScenario({
       dash_pressed: frame === 4,
     })),
 })
-
-

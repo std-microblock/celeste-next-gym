@@ -8,10 +8,9 @@ export const scenario = defineScenario({
   target: AREA_1_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'spike-death-respawn',
     initial: { pos: [60, 150], speed: [0, 90] },
     inputs: Array.from({ length: 120 }, () => input()),
 })
-
-

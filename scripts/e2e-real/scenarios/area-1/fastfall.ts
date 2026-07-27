@@ -8,10 +8,9 @@ export const scenario = defineScenario({
   target: AREA_1_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'fastfall',
     initial: { pos: [120, 60], speed: [0, 160] },
     inputs: Array.from({ length: 24 }, () => input({ move_y: 1 })),
 })
-
-

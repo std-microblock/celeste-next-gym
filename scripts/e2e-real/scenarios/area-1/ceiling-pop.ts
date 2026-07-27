@@ -8,6 +8,7 @@ export const scenario = defineScenario({
   target: AREA_1_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'ceiling-pop',
     initial: { pos: [244, 78], speed: [0, 30] },
@@ -19,5 +20,3 @@ export const scenario = defineScenario({
       jump_held: frame === 18,
     })),
 })
-
-

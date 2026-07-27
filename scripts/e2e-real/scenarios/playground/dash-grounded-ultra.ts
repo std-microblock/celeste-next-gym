@@ -10,6 +10,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'dash-grounded-ultra',
     initial: { pos: [820, 496], speed: [300, 0] },
@@ -20,5 +21,3 @@ export const scenario = defineScenario({
     })),
     verify: verifyGroundedUltra,
 })
-
-

@@ -9,6 +9,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'seven-jump',
     initial: { pos: [168, 120], speed: [0, 0], on_ground: true },
@@ -19,5 +20,3 @@ export const scenario = defineScenario({
       grab_held: frame === 44 || frame === 45,
     })),
 })
-
-

@@ -9,10 +9,9 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'mechanics-corner-correction-up',
     initial: { pos: [477, 275], speed: [0, -105] },
     inputs: Array.from({ length: 8 }, () => input()),
 })
-
-

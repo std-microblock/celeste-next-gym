@@ -11,6 +11,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'mechanics-liftboost-zip-jump',
     initial: { pos: [64, 440], speed: [0, 0] },
@@ -29,4 +30,3 @@ function verifyZipMoverLiftboost(states: readonly E2EState[]): void {
   semanticAssert(Array.isArray(retained) && retained[1] < 0, 'mechanics-liftboost-zip-jump', `jump frame did not retain an upward lastLiftSpeed: ${JSON.stringify(retained)}`)
   semanticAssert(jumped.on_ground === false && jumped.dead === false, 'mechanics-liftboost-zip-jump', 'liftboost jump did not leave the moving platform alive')
 }
-

@@ -8,6 +8,7 @@ export const scenario = defineScenario({
   target: AREA_1_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'extended-super',
     inputs: Array.from({ length: 16 }, (_, frame) => input({
@@ -17,5 +18,3 @@ export const scenario = defineScenario({
       dash_pressed: frame === 0,
     })),
 })
-
-

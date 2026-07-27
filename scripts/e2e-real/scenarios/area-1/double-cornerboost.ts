@@ -8,6 +8,7 @@ export const scenario = defineScenario({
   target: AREA_1_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'double-cornerboost',
     initial: { pos: [120, 152], speed: [0, 0], on_ground: true },
@@ -23,5 +24,3 @@ export const scenario = defineScenario({
       grab_held: frame <= 74 || frame === 79 || frame === 80,
     })),
 })
-
-

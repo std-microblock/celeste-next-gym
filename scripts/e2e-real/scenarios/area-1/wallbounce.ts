@@ -8,6 +8,7 @@ export const scenario = defineScenario({
   target: AREA_1_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'wallbounce',
     initial: { pos: [140, 112], speed: [0, 0] },
@@ -18,5 +19,3 @@ export const scenario = defineScenario({
       dash_pressed: frame === 0,
     })),
 })
-
-

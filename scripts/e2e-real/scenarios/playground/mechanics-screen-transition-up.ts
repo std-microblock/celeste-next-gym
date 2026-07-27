@@ -11,6 +11,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'mechanics-screen-transition-up',
     initial: { pos: [640, 4], speed: [80, -160], dashes: 0, stamina: 20 },

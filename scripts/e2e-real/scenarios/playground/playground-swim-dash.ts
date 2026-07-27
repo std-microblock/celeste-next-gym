@@ -9,6 +9,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: ["feature:swim"],
+  techniqueIds: [],
   mapParts,
   name: 'playground-swim-dash',
     initial: { pos: [504, 456], speed: [0, 0], state: 'Swim' },
@@ -17,5 +18,3 @@ export const scenario = defineScenario({
       dash_pressed: frame === 0,
     })),
 })
-
-

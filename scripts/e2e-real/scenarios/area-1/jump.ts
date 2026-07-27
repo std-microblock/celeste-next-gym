@@ -8,6 +8,7 @@ export const scenario = defineScenario({
   target: AREA_1_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'jump',
     inputs: Array.from({ length: 45 }, (_, frame) => input({
@@ -15,5 +16,3 @@ export const scenario = defineScenario({
       jump_held: frame < 12,
     })),
 })
-
-

@@ -11,6 +11,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'dash-spiked-wallbounce-late',
     initial: { pos: [396, 207], speed: [0, 0] },
@@ -27,4 +28,3 @@ export const scenario = defineScenario({
 function verifyLateSpikedWallbounce(states: readonly E2EState[]): void {
   semanticAssert(states.some((state) => state.dead), 'dash-spiked-wallbounce-late', 'one-frame-late input unexpectedly survived')
 }
-

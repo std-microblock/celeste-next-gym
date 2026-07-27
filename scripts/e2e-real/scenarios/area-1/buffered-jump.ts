@@ -8,6 +8,7 @@ export const scenario = defineScenario({
   target: AREA_1_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'buffered-jump',
     initial: { pos: [19, 135], speed: [0, 100] },
@@ -16,5 +17,3 @@ export const scenario = defineScenario({
       jump_held: frame >= 3 && frame < 11,
     })),
 })
-
-

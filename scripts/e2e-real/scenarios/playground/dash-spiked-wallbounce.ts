@@ -11,6 +11,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'dash-spiked-wallbounce',
     initial: { pos: [396, 207], speed: [0, 0] },
@@ -29,4 +30,3 @@ function verifySpikedWallbounce(states: readonly E2EState[]): void {
   semanticAssert(states.every((state) => !state.dead), 'dash-spiked-wallbounce', 'on-time wallbounce touched the directional spikes lethally')
   semanticAssert(launch?.state === 0 && near(launch.speed[0], -170) && near(launch.speed[1], -160), 'dash-spiked-wallbounce', `entry-frame launch was ${JSON.stringify(launch?.speed)}`)
 }
-

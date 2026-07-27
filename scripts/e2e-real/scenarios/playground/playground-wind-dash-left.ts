@@ -9,6 +9,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: ["feature:wind"],
+  techniqueIds: [],
   mapParts,
   name: 'playground-wind-dash-left',
     initial: { pos: [760, 200], speed: [0, 0] },
@@ -17,5 +18,3 @@ export const scenario = defineScenario({
       dash_pressed: frame === 8,
     })),
 })
-
-

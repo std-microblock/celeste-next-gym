@@ -9,6 +9,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: ["feature:star-fly"],
+  techniqueIds: [],
   mapParts,
   name: 'entity-4.13-feather-super',
     initial: { pos: [900, 496], speed: [0, 0] },
@@ -18,5 +19,3 @@ export const scenario = defineScenario({
       jump_held: frame >= 28 && frame < 40,
     })),
 })
-
-

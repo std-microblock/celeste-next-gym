@@ -10,6 +10,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: ["feature:zip-mover"],
+  techniqueIds: [],
   mapParts,
   name: 'entity-4.8-delayed-blockboost',
     initial: { pos: [92, 440], speed: [0, 0] },
@@ -38,4 +39,3 @@ export const scenario = defineScenario({
       }
     },
 })
-

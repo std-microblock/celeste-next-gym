@@ -10,6 +10,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'dash-chained-ultras',
     initial: { pos: [200, 461], speed: [0, 0] },
@@ -20,5 +21,3 @@ export const scenario = defineScenario({
     })),
     verify: verifyChainedUltras,
 })
-
-

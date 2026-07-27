@@ -11,6 +11,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'dash-superwave',
     initial: { pos: [240, 496], speed: [0, 0] },

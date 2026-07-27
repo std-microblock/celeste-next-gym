@@ -8,6 +8,7 @@ export const scenario = defineScenario({
   target: AREA_1_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'cornerkick',
     initial: { pos: [242, 90], speed: [0, -30] },
@@ -17,5 +18,3 @@ export const scenario = defineScenario({
       jump_held: frame < 6,
     })),
 })
-
-

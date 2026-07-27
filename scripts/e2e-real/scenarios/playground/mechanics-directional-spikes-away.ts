@@ -11,6 +11,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'mechanics-directional-spikes-away',
     initial: { pos: [360, 496], speed: [0, -60] },
@@ -22,4 +23,3 @@ export const scenario = defineScenario({
 function verifyDirectionalSpikesAway(states: readonly E2EState[]): void {
   semanticAssert(states.every((state) => !state.dead), 'mechanics-directional-spikes-away', 'moving away from upward spikes must remain alive')
 }
-

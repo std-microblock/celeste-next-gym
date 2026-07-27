@@ -8,6 +8,7 @@ export const scenario = defineScenario({
   target: AREA_1_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'up-diagonal-demo',
     inputs: Array.from({ length: 12 }, (_, frame) => input({
@@ -16,5 +17,3 @@ export const scenario = defineScenario({
       crouch_dash_pressed: frame === 0,
     })),
 })
-
-

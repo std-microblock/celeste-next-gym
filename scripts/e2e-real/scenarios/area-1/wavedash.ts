@@ -8,6 +8,7 @@ export const scenario = defineScenario({
   target: AREA_1_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'wavedash',
     initial: { pos: [70, 112], speed: [0, 0] },
@@ -19,5 +20,3 @@ export const scenario = defineScenario({
       dash_pressed: frame === 0,
     })),
 })
-
-

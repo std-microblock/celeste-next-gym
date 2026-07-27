@@ -8,10 +8,9 @@ export const scenario = defineScenario({
   target: AREA_4_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'swim-idle',
     initial: { pos: [1512, -248], speed: [0, 0] },
     inputs: Array.from({ length: 30 }, () => input()),
 })
-
-

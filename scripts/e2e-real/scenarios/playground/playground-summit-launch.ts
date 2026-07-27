@@ -9,10 +9,9 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: ["feature:launch"],
+  techniqueIds: [],
   mapParts,
   name: 'playground-summit-launch',
     initial: { pos: [500, 400], speed: [0, 0], state: 'SummitLaunch' },
     inputs: Array.from({ length: 60 }, () => input()),
 })
-
-

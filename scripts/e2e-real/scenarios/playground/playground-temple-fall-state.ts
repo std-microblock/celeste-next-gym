@@ -9,10 +9,9 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: ["feature:misc-states"],
+  techniqueIds: [],
   mapParts,
   name: 'playground-temple-fall-state',
     initial: { pos: [200, 300], speed: [0, 0], state: 'TempleFall' },
     inputs: Array.from({ length: 140 }, () => input()),
 })
-
-

@@ -9,10 +9,9 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: ["feature:misc-states"],
+  techniqueIds: [],
   mapParts,
   name: 'playground-reflection-fall-state',
     initial: { pos: [504, 300], speed: [0, 0], state: 'ReflectionFall' },
     inputs: Array.from({ length: 260 }, () => input()),
 })
-
-

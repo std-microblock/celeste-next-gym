@@ -9,10 +9,9 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: ["feature:star-fly"],
+  techniqueIds: [],
   mapParts,
   name: 'playground-starfly-shield-bounce',
     initial: { pos: [120, 120], speed: [0, 0] },
     inputs: Array.from({ length: 30 }, () => input()),
 })
-
-

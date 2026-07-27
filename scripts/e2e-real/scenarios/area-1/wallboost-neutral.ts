@@ -8,6 +8,7 @@ export const scenario = defineScenario({
   target: AREA_1_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'wallboost-neutral',
     initial: { pos: [140, 112], speed: [0, 30] },
@@ -22,5 +23,3 @@ export const scenario = defineScenario({
       jump_held: (frame >= 3 && frame < 13) || (frame >= 30 && frame < 40),
     })),
 })
-
-

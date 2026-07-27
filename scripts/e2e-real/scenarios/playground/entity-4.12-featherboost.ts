@@ -9,6 +9,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: ["feature:star-fly"],
+  techniqueIds: [],
   mapParts,
   name: 'entity-4.12-featherboost',
     initial: { pos: [120, 200], speed: [0, 0] },
@@ -16,5 +17,3 @@ export const scenario = defineScenario({
       frame >= 27 ? { move_x: 1, move_y: -1 } : {},
     )),
 })
-
-

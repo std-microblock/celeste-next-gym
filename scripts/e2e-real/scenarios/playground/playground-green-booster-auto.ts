@@ -9,10 +9,9 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: ["feature:booster"],
+  techniqueIds: [],
   mapParts,
   name: 'playground-green-booster-auto',
     initial: { pos: [760, 440], speed: [0, 0] },
     inputs: Array.from({ length: 30 }, () => input()),
 })
-
-

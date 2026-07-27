@@ -9,6 +9,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: ["feature:star-fly"],
+  techniqueIds: [],
   mapParts,
   name: 'playground-starfly-turn-back',
     initial: { pos: [120, 200], speed: [0, 0] },
@@ -16,5 +17,3 @@ export const scenario = defineScenario({
       move_x: frame < 55 ? 1 : -1,
     })),
 })
-
-

@@ -11,6 +11,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'mechanics-directional-spikes-into',
     initial: { pos: [360, 496], speed: [0, 60] },
@@ -22,4 +23,3 @@ export const scenario = defineScenario({
 function verifyDirectionalSpikesInto(states: readonly E2EState[]): void {
   semanticAssert(states[1]?.dead === true, 'mechanics-directional-spikes-into', 'moving into upward spikes must die on frame 1')
 }
-

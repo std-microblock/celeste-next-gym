@@ -8,6 +8,7 @@ export const scenario = defineScenario({
   target: AREA_1_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'five-jump',
     initial: { pos: [44, 156], speed: [0, 0], state: 'Climb', facing: 'Left' },
@@ -18,5 +19,3 @@ export const scenario = defineScenario({
       grab_held: frame === 0 || frame === 5,
     })),
 })
-
-

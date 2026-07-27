@@ -11,6 +11,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'mechanics-berry-train',
     initial: { pos: [160, 468], speed: [0, 0] },
@@ -26,4 +27,3 @@ function verifyBerryTrain(states: readonly E2EState[]): void {
   semanticAssert(second > first, 'mechanics-berry-train', 'second berry never collected')
   semanticAssert(second - first === 17, 'mechanics-berry-train', `later berry queue offset was ${second - first} frames instead of 17`)
 }
-

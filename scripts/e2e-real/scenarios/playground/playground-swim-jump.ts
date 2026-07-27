@@ -9,6 +9,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: ["feature:swim"],
+  techniqueIds: [],
   mapParts,
   name: 'playground-swim-jump',
     initial: { pos: [504, 428], speed: [0, 0], state: 'Swim' },
@@ -17,5 +18,3 @@ export const scenario = defineScenario({
       jump_held: frame < 8,
     })),
 })
-
-

@@ -9,10 +9,9 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: ["feature:misc-states"],
+  techniqueIds: [],
   mapParts,
   name: 'playground-frozen-state',
     initial: { pos: [600, 300], speed: [60, 30], state: 'Frozen' },
     inputs: Array.from({ length: 20 }, () => input()),
 })
-
-

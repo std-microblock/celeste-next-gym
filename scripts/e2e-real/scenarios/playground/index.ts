@@ -160,4 +160,3 @@ export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario77,
   scenario78,
 ])
-

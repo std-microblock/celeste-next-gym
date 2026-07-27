@@ -9,10 +9,9 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: ["feature:wind"],
+  techniqueIds: [],
   mapParts,
   name: 'playground-wind-wall-shield',
     initial: { pos: [892, 248], speed: [0, 0] },
     inputs: Array.from({ length: 45 }, () => input()),
 })
-
-

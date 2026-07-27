@@ -11,6 +11,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'dash-spring-cancel',
     initial: { pos: [80, 488], speed: [0, 100], dashes: 0 },

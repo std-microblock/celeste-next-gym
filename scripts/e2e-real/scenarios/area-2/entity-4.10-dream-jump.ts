@@ -8,6 +8,7 @@ export const scenario = defineScenario({
   target: AREA_2_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'entity-4.10-dream-jump',
     initial: { pos: [776, -50], speed: [0, 0] },
@@ -18,5 +19,3 @@ export const scenario = defineScenario({
       dash_pressed: frame === 0,
     })),
 })
-
-

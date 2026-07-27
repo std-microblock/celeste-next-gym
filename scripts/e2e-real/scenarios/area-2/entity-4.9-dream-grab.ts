@@ -8,6 +8,7 @@ export const scenario = defineScenario({
   target: AREA_2_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'entity-4.9-dream-grab',
     initial: { pos: [776, -50], speed: [0, 0] },
@@ -17,5 +18,3 @@ export const scenario = defineScenario({
       grab_held: frame >= 15,
     })),
 })
-
-

@@ -8,6 +8,7 @@ export const scenario = defineScenario({
   target: AREA_1_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'climb',
     initial: { pos: [140, 112], speed: [0, 30] },
@@ -17,5 +18,3 @@ export const scenario = defineScenario({
       grab_held: true,
     })),
 })
-
-

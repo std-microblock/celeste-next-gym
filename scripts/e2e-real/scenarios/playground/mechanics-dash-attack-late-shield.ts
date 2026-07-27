@@ -9,6 +9,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: ["feature:wind"],
+  techniqueIds: [],
   mapParts,
   name: 'mechanics-dash-attack-late-shield',
     initial: { pos: [55, 120], speed: [0, 0] },
@@ -17,5 +18,3 @@ export const scenario = defineScenario({
       dash_pressed: frame === 0,
     })),
 })
-
-

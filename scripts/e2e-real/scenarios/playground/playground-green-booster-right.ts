@@ -9,6 +9,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: ["feature:booster"],
+  techniqueIds: [],
   mapParts,
   name: 'playground-green-booster-right',
     initial: { pos: [760, 440], speed: [0, 0] },
@@ -17,5 +18,3 @@ export const scenario = defineScenario({
       dash_pressed: frame === 1,
     })),
 })
-
-

@@ -9,6 +9,7 @@ export const scenario = defineScenario({
   target: AREA_2_TARGET,
   status: 'active',
   tags: [],
+  techniqueIds: [],
   mapParts,
   name: 'entity-4.10.2-dream-hyper',
     initial: { pos: [776, -50], speed: [0, 0] },
@@ -26,5 +27,3 @@ export const scenario = defineScenario({
       if (!hyper) throw new Error('entity-4.10.2-dream-hyper: did not execute the expected 325/-52.5 dream-exit hyper')
     },
 })
-
-

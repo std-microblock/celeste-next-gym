@@ -9,6 +9,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: ["feature:launch"],
+  techniqueIds: [],
   mapParts,
   name: 'playground-launch-dash-cancel',
     initial: { pos: [500, 300], speed: [280, -150], state: 'Launch' },
@@ -17,5 +18,3 @@ export const scenario = defineScenario({
       dash_pressed: frame === 0,
     })),
 })
-
-

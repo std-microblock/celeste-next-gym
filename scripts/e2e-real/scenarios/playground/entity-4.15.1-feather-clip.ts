@@ -9,10 +9,9 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: ["feature:star-fly"],
+  techniqueIds: [],
   mapParts,
   name: 'entity-4.15.1-feather-clip',
     initial: { pos: [160, 40], speed: [0, 0] },
     inputs: Array.from({ length: 180 }, () => input({ move_y: 1 })),
 })
-
-

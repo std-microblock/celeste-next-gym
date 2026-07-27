@@ -9,10 +9,9 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: ["feature:swim"],
+  techniqueIds: [],
   mapParts,
   name: 'playground-swim-idle',
     initial: { pos: [504, 456], speed: [0, 0] },
     inputs: Array.from({ length: 30 }, () => input()),
 })
-
-

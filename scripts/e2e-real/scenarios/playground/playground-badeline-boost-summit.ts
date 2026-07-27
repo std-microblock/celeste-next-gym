@@ -9,10 +9,9 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
   status: 'active',
   tags: ["feature:badeline-boost"],
+  techniqueIds: [],
   mapParts,
   name: 'playground-badeline-boost-summit',
     initial: { pos: [448, 400], speed: [0, 0] },
     inputs: Array.from({ length: 80 }, () => input()),
 })
-
-
