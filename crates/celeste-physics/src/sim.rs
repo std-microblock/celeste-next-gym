@@ -533,7 +533,6 @@ fn step(
         p.freeze_timer = (p.freeze_timer - DT).max(0.0);
         return Ok(());
     }
-    advance_zip_movers(p, map);
     advance_moving_solids(p, map);
     advance_badeline_boost_relocation(p);
     // WindController is updated before Player in the level entity order. It
@@ -602,6 +601,7 @@ fn step(
 
     if p.badeline_boost_active {
         update_badeline_boost(p, map);
+        advance_zip_movers(p, map);
         p.on_ground = grounded(p, map);
         return Ok(());
     }
@@ -622,7 +622,11 @@ fn step(
         PlayerState::Frozen => {}
         PlayerState::TempleFall => temple_fall_update(p, map),
         PlayerState::ReflectionFall => reflection_fall_update(p, map),
-        PlayerState::IntroRespawn => return Ok(()),
+        PlayerState::IntroRespawn => {
+            advance_zip_movers(p, map);
+            p.on_ground = grounded(p, map);
+            return Ok(());
+        }
         other => return Err(SimulationError::UnsupportedState(other)),
     }
 
@@ -648,6 +652,11 @@ fn step(
     interact(p, map, input);
     try_begin_badeline_boost(p, map);
     enforce_level_bounds(p, map);
+    // The map loader adds Player before vanilla room entities, so ZipMover's
+    // coroutine and Solid carry/push run after Player.Update. A lift speed
+    // written by the previous ZipMover update is therefore visible to the
+    // player's next action before the platform advances again.
+    advance_zip_movers(p, map);
     p.on_ground = grounded(p, map);
     Ok(())
 }
@@ -2842,7 +2851,7 @@ mod tests {
     }
 
     #[test]
-    fn zip_mover_pixel_carry_writes_lift_speed_for_same_frame_jump() {
+    fn zip_mover_previous_frame_carry_writes_lift_speed_for_next_player_update() {
         let p = PlayerSnapshot {
             pos: Vec2::new(64.0, 440.0),
             on_ground: true,
@@ -2856,17 +2865,48 @@ mod tests {
             .position(|state| state.last_lift_speed.y < 0.0)
             .unwrap();
         let mut inputs = idle;
-        inputs[lift_state - 1] = InputState {
+        inputs[lift_state] = InputState {
             jump_pressed: true,
             jump_held: true,
             ..InputState::default()
         };
         let trace = simulate_trace(p, &inputs, &zip_mover_map(), 20).unwrap();
-        let jumped = &trace.states[lift_state];
+        let jumped = &trace.states[lift_state + 1];
 
         assert!(jumped.speed.y < JUMP_SPEED);
         assert_eq!(jumped.var_jump_speed, jumped.speed.y);
         assert!(jumped.last_lift_speed.y < 0.0);
+    }
+
+    #[test]
+    fn zip_mover_runs_after_player_and_matches_real_vertical_push_order() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(64.0, 440.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..24)
+            .map(|frame| InputState {
+                jump_pressed: frame == 10,
+                jump_held: (10..=15).contains(&frame),
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &zip_mover_map(), 24).unwrap();
+
+        // Real Everest ordering: the first pixel carry is written at the end
+        // of frame 10, then Player consumes that retained lift on frame 11.
+        assert!((trace.states[10].last_lift_speed.y + 29.575_138).abs() < 0.000_01);
+        assert!((trace.states[11].speed.y + 134.575_13).abs() < 0.000_01);
+
+        // At frame 19 Player moves from y=422 to y=420 before ZipMover moves
+        // from y=424 to y=421, so there is no early one-pixel platform push.
+        assert_eq!(trace.states[18].pos.y, 422.0);
+        assert_eq!(trace.states[19].pos.y, 420.0);
+        assert_eq!(trace.states[20].pos.y, 417.0);
+        assert_eq!(trace.states[18].zip_movers[0].position.y, 424.0);
+        assert_eq!(trace.states[19].zip_movers[0].position.y, 421.0);
+        assert_eq!(trace.states[20].zip_movers[0].position.y, 417.0);
     }
     #[test]
     fn jump_adds_retained_lift_boost_before_caching_variable_jump_speed() {
