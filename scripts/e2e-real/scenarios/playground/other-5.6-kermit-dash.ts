@@ -12,11 +12,11 @@ export const scenario = defineScenario({
   status: 'active',
   tags: [],
   techniqueIds: ['5.6'],
-  recording: { primaryFor: ['5.6'], startFrame: 0, endFrame: 48 },
+  recording: { primaryFor: ['5.6'], startFrame: 0, endFrame: 56 },
   mapParts,
   name: 'other-5.6-kermit-dash',
   initial: { pos: [630, 12], speed: [0, 0], dashes: 1 },
-  inputs: Array.from({ length: 48 }, (_, frame) => input({ move_y: -1, dash_pressed: frame === 0 })),
+  inputs: Array.from({ length: 56 }, (_, frame) => input({ move_y: -1, dash_pressed: frame === 0 })),
   verify: verifyKermitDash,
 })
 
