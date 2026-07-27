@@ -4435,6 +4435,61 @@ mod tests {
     }
 
     #[test]
+    fn grounded_ultra_pickup_cancel_skips_dash_end_speed_normalization() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 160.0),
+            speed: Vec2::new(300.0, 0.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..24)
+            .map(|frame| InputState {
+                move_x: 1,
+                move_y: 1,
+                dash_pressed: frame == 0,
+                grab_held: (5..=20).contains(&frame),
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p.clone(), &inputs, &theo_crystal_map(), 24).unwrap();
+        let pickup = trace
+            .states
+            .iter()
+            .position(|state| state.state == PlayerState::Pickup)
+            .unwrap();
+        let restored = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(pickup + 1)
+            .find(|(_, state)| state.state == PlayerState::Normal)
+            .map(|(frame, _)| frame)
+            .unwrap();
+
+        assert_eq!(trace.states[pickup - 1].state, PlayerState::Dash);
+        assert_eq!(trace.states[pickup - 1].speed, Vec2::new(360.0, 0.0));
+        assert!(trace.states[pickup - 1].ducking);
+        assert_eq!(trace.states[pickup].pickup_old_speed, Vec2::new(360.0, 0.0));
+        assert_eq!(trace.states[pickup].speed, Vec2::default());
+        assert!(!trace.states[pickup].ducking);
+        assert!(!trace.states[pickup].dash_end_pending);
+        assert_eq!(trace.states[restored].speed, Vec2::new(360.0, 0.0));
+
+        let without_cancel: Vec<_> = inputs
+            .iter()
+            .map(|input| InputState {
+                grab_held: false,
+                ..*input
+            })
+            .collect();
+        let natural = simulate_trace(p, &without_cancel, &theo_crystal_map(), 24).unwrap();
+        assert!(natural
+            .states
+            .iter()
+            .any(|state| state.state == PlayerState::Normal && state.speed.x <= END_DASH_SPEED));
+    }
+
+    #[test]
     fn playground_hot_bounce_block_grace_adds_core_super_lift() {
         let p = PlayerSnapshot {
             pos: Vec2::new(384.0, 360.0),

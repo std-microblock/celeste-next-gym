@@ -92,6 +92,7 @@ import { scenario as scenario89 } from './spike-clip.js'
 import { scenario as scenario90 } from './spike-jump.js'
 import { scenario as scenario91 } from './cornerboost-wallboost.js'
 import { scenario as scenario92 } from './cornerslip.js'
+import { scenario as scenario93 } from './dash-grounded-ultra-cancel.js'
 
 export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario0,
@@ -187,4 +188,5 @@ export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario90,
   scenario91,
   scenario92,
+  scenario93,
 ])

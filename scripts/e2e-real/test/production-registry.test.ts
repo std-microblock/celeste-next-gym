@@ -8,24 +8,27 @@ describe('production scenario registry', () => {
   const registry = buildRegistry(scenarios)
 
   it('derives all target and status counts from explicit indexes', () => {
-    assert.equal(registry.scenarios.length, 135)
-    assert.equal(registry.byTarget.get('playground')?.length, 93)
+    assert.equal(registry.scenarios.length, 136)
+    assert.equal(registry.byTarget.get('playground')?.length, 94)
     assert.equal(registry.byTarget.get('area-1')?.length, 36)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 134, candidate: 1 })
+    assert.deepEqual(registry.counts, { active: 134, candidate: 2 })
   })
 
-  it('keeps evidence-less entity scenarios as opt-in candidates', () => {
+  it('keeps evidence-less scenarios as opt-in candidates', () => {
     const candidates = registry.scenarios
       .filter((scenario) => scenario.status === 'candidate')
       .map((scenario) => scenario.name)
-    assert.deepEqual(candidates, ['entity-4.15.2-feather-hitbox-preservation'])
+    assert.deepEqual(candidates, [
+      'dash-grounded-ultra-cancel',
+      'entity-4.15.2-feather-hitbox-preservation',
+    ])
     assert.equal(selectScenarios(registry, { target: 'playground' }).some((scenario) => scenario.status === 'candidate'), false)
   })
 
-  it('does not invent the absent 2.8.2.1 scenario and wires map parts by target', () => {
-    assert.equal(registry.scenarios.some((scenario) => scenario.name.includes('2.8.2.1')), false)
+  it('links exactly one 2.8.2.1 scenario and wires map parts by target', () => {
+    assert.equal(registry.scenarios.filter((scenario) => scenario.techniqueIds.includes('2.8.2.1')).length, 1)
     assert.equal(registry.scenarios.filter((scenario) => scenario.target.kind === 'external').every((scenario) => scenario.mapParts.length === 0), true)
     assert.equal(registry.scenarios.filter((scenario) => scenario.target.kind === 'playground').every((scenario) => scenario.mapParts.length > 0), true)
   })
@@ -64,5 +67,13 @@ describe('production scenario registry', () => {
       'tech.3.12.1.cornerboost-wallboost',
       'tech.3.13.cornerslip',
     ])
+  })
+
+  it('keeps grounded ultra cancel in its own Theo-only map part', () => {
+    const scenario = registry.scenarios.find((candidate) => candidate.name === 'dash-grounded-ultra-cancel')
+    assert.ok(scenario)
+    assert.equal(scenario.mapParts.length, 1)
+    assert.equal(scenario.mapParts[0]?.id, 'tech.2.8.2.1.grounded-ultra-cancel')
+    assert.deepEqual(scenario.mapParts[0]?.dependencies, [])
   })
 })

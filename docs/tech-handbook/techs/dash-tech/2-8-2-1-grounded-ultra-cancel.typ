@@ -9,12 +9,12 @@
   description-en: [Interrupting a grounded ultra before dash end, for example with a grab or bounce, preserves speed that the normal dash exit would remove.],
   source-evidence: evidence(
     path: [Source/Player/Player.cs],
-    symbol: [Player.DashUpdate; Player.OnCollideV],
-    snippet: raw(block: true, lang: "cs", "if (Holding == null && DashDir != Vector2.Zero && Input.Grab.Check && !IsTired && CanUnDuck) {\n    if (hold.Check(this) && Pickup(hold)) return StPickup;\n}\n// Grounded ultra speed is otherwise normalized when Dash ends."),
-    note: [源码确认 Dash 可被拾取等状态切换提前打断；但当前模拟器尚无能在贴地 Ultra 精确窗口触发的真实取消实体/机制，因此没有 Rust 回归或有效 E2E，继续明确保持未实现。],
+    symbol: [Player.DashCoroutine; Player.DashUpdate; Player.DashEnd; Player.PickupCoroutine],
+    snippet: raw(block: true, lang: "cs", "if (onGround && DashDir.X != 0 && DashDir.Y > 0 && Speed.Y > 0) {\n    Speed.Y = 0; Speed.X *= 1.2f; Ducking = true;\n}\n...\nif (Holding == null && DashDir != Vector2.Zero && Input.Grab.Check && CanUnDuck)\n    if (hold.Check(this) && Pickup(hold)) return StPickup;\n...\nyield return .15f;\nif (DashDir.Y <= 0) Speed = DashDir * 160f;"),
+    note: [Grounded Ultra 先把保留的 300 水平速度乘 1.2 并切为蹲伏碰撞箱。后续 DashUpdate 在跳跃分支和自然结束前检查 Holdable，且 CanUnDuck 必须先通过；切到 Pickup 会执行 DashEnd 并终止原 Dash coroutine，因此 0.15 秒后的 160 速度归一化不会发生，PickupCoroutine 在 0.16 秒后恢复缓存的 360。],
   ),
-  rust-evidence: none,
-  test-evidence: none,
+  rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs; crates/celeste-physics/src/types.rs], symbol: [dash_update; try_pickup_theo; pickup_update; PlayerSnapshot.pickup_old_speed]),
+  test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [grounded_ultra_pickup_cancel_skips_dash_end_speed_normalization]),
   e2e-evidence: none,
-  candidate-e2e: none,
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/dash-grounded-ultra-cancel.ts], symbol: [dash-grounded-ultra-cancel; verifyGroundedUltraCancel], note: [独立 Theo MapPart 候选；真实九字段 E2E 未完成前保持 unimplemented。]),
 )
