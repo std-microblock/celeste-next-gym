@@ -3274,10 +3274,15 @@ fn update_transition(p: &mut PlayerSnapshot) {
     p.pos.y = approach(p.pos.y, p.transition_target.y, max_move);
     p.transition_timer = (p.transition_timer - DT).max(0.0);
     p.on_ground = false;
-    if p.transition_timer <= 0.0 && p.pos == p.transition_target {
+    // Player.TransitionTo rounds speed and clears Actor remainders as soon as
+    // the player reaches the transfer target; the camera coroutine can keep
+    // the room transition open for many more frames after that return value.
+    if p.pos == p.transition_target {
         p.movement_remainder = Vec2::default();
         p.speed.x = p.speed.x.round();
         p.speed.y = p.speed.y.round();
+    }
+    if p.transition_timer <= 0.0 && p.pos == p.transition_target {
         p.wall_slide_timer = WALL_SLIDE_TIME;
         p.jump_grace_timer = 0.0;
         p.force_move_x_timer = 0.0;
@@ -6017,6 +6022,7 @@ mod tests {
         let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
 
         assert_eq!(trace.states[41].current_room_bounds, Some(next_room));
+        assert_eq!(trace.states[6].speed.x, 156.0);
         assert_eq!(trace.states[42].stamina, 82.5);
         assert_eq!(trace.states[43].stamina, 55.0);
         assert_eq!(trace.states[44].stamina, 27.5);
