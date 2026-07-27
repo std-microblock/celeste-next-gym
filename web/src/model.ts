@@ -52,7 +52,7 @@ export interface SimState {
   [key: string]: unknown
 }
 
-export type EntityKind = 'jump_thru' | 'spikes' | 'water' | 'dream_block' | 'booster' | 'red_booster' | 'fly_feather' | 'bumper' | 'badeline_boost' | 'wind' | 'unknown'
+export type EntityKind = 'jump_thru' | 'spikes' | 'water' | 'dream_block' | 'booster' | 'red_booster' | 'fly_feather' | 'bumper' | 'badeline_boost' | 'spring' | 'strawberry' | 'wind' | 'theo_crystal' | 'zip_mover' | 'moving_solid' | 'unknown'
 
 export interface MapEntity {
   kind: EntityKind
@@ -161,6 +161,7 @@ export const PLAYGROUND: GymMap = {
     { kind: 'fly_feather', bounds: { x: 100, y: 180, width: 20, height: 20 }, direction: { x: 0, y: 0 }, name: 'infiniteStar' },
     { kind: 'bumper', bounds: { x: 588, y: 188, width: 24, height: 24 }, direction: { x: 0, y: 0 }, name: 'bigSpinner' },
     { kind: 'badeline_boost', bounds: { x: 304, y: 384, width: 32, height: 32 }, direction: { x: 0, y: 0 }, nodes: [{ x: 320, y: 288 }], name: 'badelineBoost' },
+    { kind: 'theo_crystal', bounds: { x: 846, y: 486, width: 8, height: 10 }, direction: { x: 0, y: 0 }, name: 'theoCrystal' },
     { kind: 'wind', bounds: { x: 640, y: 128, width: 280, height: 120 }, direction: { x: 400, y: 0 }, name: 'windTrigger' },
   ],
   source_package: 'CelesteGymPlayground',

@@ -50,7 +50,17 @@ pub enum EntityKind {
     FlyFeather,
     Bumper,
     BadelineBoost,
+    Spring,
+    Strawberry,
     Wind,
+    /// Vanilla TheoCrystal Actor with a Holdable component.
+    TheoCrystal,
+    /// Vanilla Celeste ZipMover Solid. The first node is its target position.
+    ZipMover,
+    /// Simulator-native constant-velocity Solid used to exercise Monocle
+    /// carrying, pushing, and Player LiftSpeed inheritance independently of a
+    /// specific vanilla entity state machine.
+    MovingSolid,
     Unknown,
 }
 
@@ -73,6 +83,10 @@ pub struct Entity {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Map {
     pub bounds: Rect,
+    /// Bounds of the other rooms in the same Celeste map. These are retained
+    /// when decoding one room so Level.EnforceBounds can resolve transitions.
+    #[serde(default)]
+    pub transition_rooms: Vec<Rect>,
     #[serde(default)]
     pub spawn: Vec2,
     #[serde(default)]
@@ -87,6 +101,7 @@ impl Default for Map {
     fn default() -> Self {
         Self {
             bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            transition_rooms: vec![],
             spawn: Vec2::new(24.0, 160.0),
             solids: vec![],
             entities: vec![],
@@ -122,6 +137,12 @@ pub fn encode_celeste_map(map: &Map, package: &str, room: &str) -> Result<Vec<u8
         || map.bounds.height <= 0.0
         || map.bounds.width % 8.0 != 0.0
         || map.bounds.height % 8.0 != 0.0
+        || map.transition_rooms.iter().any(|room| {
+            room.width <= 0.0
+                || room.height <= 0.0
+                || room.width % 8.0 != 0.0
+                || room.height % 8.0 != 0.0
+        })
     {
         return Err(MapEncodeError::InvalidBounds);
     }
@@ -272,6 +293,36 @@ pub fn encode_celeste_map(map: &Map, package: &str, room: &str) -> Result<Vec<u8
                     })
                     .collect(),
             )),
+            EntityKind::Spring => {
+                let (name, spring_x, spring_y) = if entity.direction.y < 0.0 {
+                    ("spring", x + 8, y + 6)
+                } else if entity.direction.x > 0.0 {
+                    ("wallSpringLeft", x, y + 8)
+                } else {
+                    ("wallSpringRight", x + 6, y + 8)
+                };
+                Some(element(
+                    name,
+                    [
+                        ("id", BinaryValue::Int(id)),
+                        ("playerCanUse", BinaryValue::Bool(true)),
+                        ("x", BinaryValue::Int(spring_x)),
+                        ("y", BinaryValue::Int(spring_y)),
+                    ],
+                    vec![],
+                ))
+            }
+            EntityKind::Strawberry => Some(element(
+                "strawberry",
+                [
+                    ("id", BinaryValue::Int(id)),
+                    ("moon", BinaryValue::Bool(false)),
+                    ("winged", BinaryValue::Bool(false)),
+                    ("x", BinaryValue::Int(x + width / 2)),
+                    ("y", BinaryValue::Int(y + height / 2)),
+                ],
+                vec![],
+            )),
             EntityKind::Wind => {
                 triggers.push(element(
                     "windTrigger",
@@ -290,6 +341,66 @@ pub fn encode_celeste_map(map: &Map, package: &str, room: &str) -> Result<Vec<u8
                 ));
                 None
             }
+            EntityKind::TheoCrystal => Some(element(
+                "theoCrystal",
+                [
+                    ("id", BinaryValue::Int(id)),
+                    ("originX", BinaryValue::Int(0)),
+                    ("originY", BinaryValue::Int(0)),
+                    ("x", BinaryValue::Int(x + 4)),
+                    ("y", BinaryValue::Int(y + 10)),
+                ],
+                vec![],
+            )),
+            EntityKind::ZipMover => {
+                let target = entity
+                    .nodes
+                    .first()
+                    .copied()
+                    .unwrap_or(Vec2::new(entity.bounds.x, entity.bounds.y));
+                Some(element(
+                    "zipMover",
+                    [
+                        ("height", BinaryValue::Int(height)),
+                        ("id", BinaryValue::Int(id)),
+                        ("originX", BinaryValue::Int(0)),
+                        ("originY", BinaryValue::Int(0)),
+                        ("theme", BinaryValue::String("Normal".to_owned())),
+                        ("width", BinaryValue::Int(width)),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![element(
+                        "node",
+                        [
+                            (
+                                "x",
+                                BinaryValue::Int((target.x - map.bounds.x).round() as i32),
+                            ),
+                            (
+                                "y",
+                                BinaryValue::Int((target.y - map.bounds.y).round() as i32),
+                            ),
+                        ],
+                        vec![],
+                    )],
+                ))
+            }
+            EntityKind::MovingSolid => Some(element(
+                "celesteGymMovingSolid",
+                [
+                    ("height", BinaryValue::Int(height)),
+                    ("id", BinaryValue::Int(id)),
+                    ("originX", BinaryValue::Int(0)),
+                    ("originY", BinaryValue::Int(0)),
+                    ("speedX", BinaryValue::Float(entity.direction.x)),
+                    ("speedY", BinaryValue::Float(entity.direction.y)),
+                    ("width", BinaryValue::Int(width)),
+                    ("x", BinaryValue::Int(x)),
+                    ("y", BinaryValue::Int(y)),
+                ],
+                vec![],
+            )),
             EntityKind::Unknown => None,
         };
         if let Some(encoded) = encoded {
@@ -297,7 +408,71 @@ pub fn encode_celeste_map(map: &Map, package: &str, room: &str) -> Result<Vec<u8
         }
     }
 
-    let level = element(
+    let level = encoded_level(
+        format!("lvl_{room}"),
+        map.bounds,
+        triggers,
+        entities,
+        solids_text(map),
+    );
+    let mut levels = vec![level];
+    for (index, bounds) in map.transition_rooms.iter().copied().enumerate() {
+        let blank = Map {
+            bounds,
+            ..Map::default()
+        };
+        // LevelData marks rooms without a player spawn as Dummy, and
+        // MapData.CanTransitionTo rejects Dummy targets. A transition room
+        // therefore needs a valid spawn even though screen transitions keep
+        // the existing player instead of respawning at it.
+        let transition_spawn = element(
+            "player",
+            [
+                ("id", BinaryValue::Int(0)),
+                ("originX", BinaryValue::Int(4)),
+                ("originY", BinaryValue::Int(8)),
+                ("width", BinaryValue::Int(8)),
+                ("x", BinaryValue::Int(24)),
+                ("y", BinaryValue::Int(bounds.height as i32 - 16)),
+            ],
+            vec![],
+        );
+        levels.push(encoded_level(
+            format!("lvl_transition_{index}"),
+            bounds,
+            vec![],
+            vec![transition_spawn],
+            solids_text(&blank),
+        ));
+    }
+    let root = BinaryElement {
+        package: Some(package.to_owned()),
+        name: "Map".to_owned(),
+        attributes: BTreeMap::new(),
+        children: vec![
+            element("Filler", [], vec![]),
+            element("levels", [], levels),
+            element(
+                "Style",
+                [],
+                vec![
+                    element("Backgrounds", [], vec![]),
+                    element("Foregrounds", [], vec![]),
+                ],
+            ),
+        ],
+    };
+    Ok(encode_celeste_bin(&root)?)
+}
+
+fn encoded_level(
+    name: String,
+    bounds: Rect,
+    triggers: Vec<BinaryElement>,
+    entities: Vec<BinaryElement>,
+    solids: String,
+) -> BinaryElement {
+    element(
         "level",
         [
             ("alt_music", BinaryValue::String(String::new())),
@@ -307,20 +482,20 @@ pub fn encode_celeste_map(map: &Map, package: &str, room: &str) -> Result<Vec<u8
             ("cameraOffsetY", BinaryValue::Int(0)),
             ("dark", BinaryValue::Bool(false)),
             ("disableDownTransition", BinaryValue::Bool(false)),
-            ("height", BinaryValue::Int(map.bounds.height as i32)),
+            ("height", BinaryValue::Int(bounds.height as i32)),
             ("music", BinaryValue::String(String::new())),
             ("musicLayer1", BinaryValue::Bool(true)),
             ("musicLayer2", BinaryValue::Bool(true)),
             ("musicLayer3", BinaryValue::Bool(true)),
             ("musicLayer4", BinaryValue::Bool(true)),
-            ("name", BinaryValue::String(format!("lvl_{room}"))),
+            ("name", BinaryValue::String(name)),
             ("space", BinaryValue::Bool(false)),
             ("underwater", BinaryValue::Bool(false)),
             ("whisper", BinaryValue::Bool(false)),
-            ("width", BinaryValue::Int(map.bounds.width as i32)),
+            ("width", BinaryValue::Int(bounds.width as i32)),
             ("windPattern", BinaryValue::String("None".to_owned())),
-            ("x", BinaryValue::Int(map.bounds.x as i32)),
-            ("y", BinaryValue::Int(map.bounds.y as i32)),
+            ("x", BinaryValue::Int(bounds.x as i32)),
+            ("y", BinaryValue::Int(bounds.y as i32)),
         ],
         vec![
             element(
@@ -333,7 +508,7 @@ pub fn encode_celeste_map(map: &Map, package: &str, room: &str) -> Result<Vec<u8
             ),
             tile_layer("fgtiles", None),
             offset_container("fgdecals", vec![]),
-            tile_layer("solids", Some(solids_text(map))),
+            tile_layer("solids", Some(solids)),
             element(
                 "entities",
                 [
@@ -355,25 +530,7 @@ pub fn encode_celeste_map(map: &Map, package: &str, room: &str) -> Result<Vec<u8
             ),
             tile_layer("objtiles", None),
         ],
-    );
-    let root = BinaryElement {
-        package: Some(package.to_owned()),
-        name: "Map".to_owned(),
-        attributes: BTreeMap::new(),
-        children: vec![
-            element("Filler", [], vec![]),
-            element("levels", [], vec![level]),
-            element(
-                "Style",
-                [],
-                vec![
-                    element("Backgrounds", [], vec![]),
-                    element("Foregrounds", [], vec![]),
-                ],
-            ),
-        ],
-    };
-    Ok(encode_celeste_bin(&root)?)
+    )
 }
 
 fn element<const N: usize>(
@@ -520,6 +677,19 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
     let height = attr_f32(level, "height", 180.0);
     let mut map = Map {
         bounds: Rect::new(x, y, width, height),
+        transition_rooms: levels
+            .children
+            .iter()
+            .filter(|candidate| !std::ptr::eq(*candidate, level))
+            .map(|candidate| {
+                Rect::new(
+                    attr_f32(candidate, "x", 0.0),
+                    attr_f32(candidate, "y", 0.0),
+                    attr_f32(candidate, "width", 320.0),
+                    attr_f32(candidate, "height", 180.0),
+                )
+            })
+            .collect(),
         source_package: root.package,
         ..Map::default()
     };
@@ -543,7 +713,12 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 "infiniteStar" | "flyFeather" => EntityKind::FlyFeather,
                 "bigSpinner" => EntityKind::Bumper,
                 "badelineBoost" => EntityKind::BadelineBoost,
+                "spring" | "wallSpringLeft" | "wallSpringRight" => EntityKind::Spring,
+                "strawberry" => EntityKind::Strawberry,
                 "windTrigger" => EntityKind::Wind,
+                "theoCrystal" => EntityKind::TheoCrystal,
+                "zipMover" => EntityKind::ZipMover,
+                "celesteGymMovingSolid" => EntityKind::MovingSolid,
                 _ => EntityKind::Unknown,
             };
             let default_w = match kind {
@@ -551,9 +726,15 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 EntityKind::FlyFeather => 20.0,
                 EntityKind::Bumper => 24.0,
                 EntityKind::BadelineBoost => 32.0,
+                EntityKind::Strawberry => 14.0,
+                EntityKind::TheoCrystal => 8.0,
                 _ => 8.0,
             };
-            let default_h = default_w;
+            let default_h = if kind == EntityKind::TheoCrystal {
+                10.0
+            } else {
+                default_w
+            };
             let raw_width = attr_f32(el, "width", default_w);
             let raw_height = attr_f32(el, "height", default_h);
             let (bounds, direction) = match el.name.as_str() {
@@ -568,7 +749,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 ),
                 "spikesRight" => (Rect::new(ex, ey, 3.0, raw_height), Vec2::new(1.0, 0.0)),
                 "booster" | "redBooster" | "infiniteStar" | "flyFeather" | "bigSpinner"
-                | "badelineBoost" => (
+                | "badelineBoost" | "strawberry" => (
                     Rect::new(
                         ex - raw_width * 0.5,
                         ey - raw_height * 0.5,
@@ -576,6 +757,21 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                         raw_height,
                     ),
                     Vec2::default(),
+                ),
+                "spring" => (
+                    Rect::new(ex - 8.0, ey - 6.0, 16.0, 6.0),
+                    Vec2::new(0.0, -1.0),
+                ),
+                "wallSpringLeft" => (Rect::new(ex, ey - 8.0, 6.0, 16.0), Vec2::new(1.0, 0.0)),
+                "wallSpringRight" => (
+                    Rect::new(ex - 6.0, ey - 8.0, 6.0, 16.0),
+                    Vec2::new(-1.0, 0.0),
+                ),
+                "theoCrystal" => (Rect::new(ex - 4.0, ey - 10.0, 8.0, 10.0), Vec2::default()),
+                "zipMover" => (Rect::new(ex, ey, raw_width, raw_height), Vec2::default()),
+                "celesteGymMovingSolid" => (
+                    Rect::new(ex, ey, raw_width, raw_height),
+                    Vec2::new(attr_f32(el, "speedX", 0.0), attr_f32(el, "speedY", 0.0)),
                 ),
                 _ => (Rect::new(ex, ey, raw_width, raw_height), Vec2::default()),
             };
@@ -694,7 +890,15 @@ impl Map {
     }
 
     pub fn solid_at(&self, rect: Rect) -> bool {
-        self.static_solid_at(rect) || self.dream_block_at(rect)
+        self.non_dream_solid_at(rect) || self.dream_block_at(rect)
+    }
+
+    pub fn non_dream_solid_at(&self, rect: Rect) -> bool {
+        self.static_solid_at(rect)
+            || self.entities.iter().any(|entity| {
+                matches!(entity.kind, EntityKind::MovingSolid | EntityKind::ZipMover)
+                    && entity.bounds.intersects(rect)
+            })
     }
 
     pub fn jump_thru_at(&self, rect: Rect, previous_bottom: f32) -> bool {
@@ -718,5 +922,158 @@ mod tests {
                 Rect::new(16.0, 8.0, 8.0, 8.0)
             ]
         );
+    }
+
+    #[test]
+    fn celeste_spring_entities_round_trip_with_source_colliders() {
+        let springs = vec![
+            Entity {
+                kind: EntityKind::Spring,
+                bounds: Rect::new(72.0, 90.0, 16.0, 6.0),
+                direction: Vec2::new(0.0, -1.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "spring".to_owned(),
+            },
+            Entity {
+                kind: EntityKind::Spring,
+                bounds: Rect::new(120.0, 72.0, 6.0, 16.0),
+                direction: Vec2::new(1.0, 0.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "wallSpringLeft".to_owned(),
+            },
+            Entity {
+                kind: EntityKind::Spring,
+                bounds: Rect::new(154.0, 72.0, 6.0, 16.0),
+                direction: Vec2::new(-1.0, 0.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "wallSpringRight".to_owned(),
+            },
+        ];
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            entities: springs.clone(),
+            ..Map::default()
+        };
+        let bytes = encode_celeste_map(&map, "CelesteGymPlayground", "springs").unwrap();
+        let decoded = decode_map_room(&bytes, Some("springs")).unwrap();
+        assert_eq!(decoded.entities, springs);
+    }
+
+    #[test]
+    fn celeste_strawberry_round_trips_with_its_fourteen_pixel_collider() {
+        let berry = Entity {
+            kind: EntityKind::Strawberry,
+            bounds: Rect::new(153.0, 81.0, 14.0, 14.0),
+            direction: Vec2::default(),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "strawberry".to_owned(),
+        };
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            entities: vec![berry.clone()],
+            ..Map::default()
+        };
+        let bytes = encode_celeste_map(&map, "CelesteGymPlayground", "berry").unwrap();
+        let decoded = decode_map_room(&bytes, Some("berry")).unwrap();
+        assert_eq!(decoded.entities, vec![berry]);
+    }
+
+    #[test]
+    fn selected_room_retains_adjacent_transition_bounds() {
+        let adjacent = Rect::new(0.0, -184.0, 320.0, 184.0);
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            transition_rooms: vec![adjacent],
+            ..Map::default()
+        };
+        let bytes = encode_celeste_map(&map, "CelesteGymPlayground", "lower").unwrap();
+        let lower = decode_map_room(&bytes, Some("lower")).unwrap();
+        assert_eq!(lower.bounds, map.bounds);
+        assert_eq!(lower.transition_rooms, vec![adjacent]);
+        let upper = decode_map_room(&bytes, Some("transition_0")).unwrap();
+        assert_eq!(upper.bounds, adjacent);
+        assert_eq!(upper.transition_rooms, vec![map.bounds]);
+        assert_eq!(upper.spawn, Vec2::new(24.0, -16.0));
+    }
+
+    #[test]
+    fn simulator_moving_solid_round_trips_through_celeste_binary() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            entities: vec![Entity {
+                kind: EntityKind::MovingSolid,
+                bounds: Rect::new(16.0, 24.0, 32.0, 8.0),
+                direction: Vec2::new(60.0, -120.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "celesteGymMovingSolid".to_owned(),
+            }],
+            ..Map::default()
+        };
+
+        let encoded = encode_celeste_map(&map, "CelesteGymTest", "moving").unwrap();
+        let decoded = decode_map_room(&encoded, Some("moving")).unwrap();
+        let entity = decoded.entities.first().unwrap();
+        assert_eq!(entity.kind, EntityKind::MovingSolid);
+        assert_eq!(entity.bounds, Rect::new(16.0, 24.0, 32.0, 8.0));
+        assert_eq!(entity.direction, Vec2::new(60.0, -120.0));
+    }
+
+    #[test]
+    fn vanilla_zip_mover_round_trips_through_celeste_binary() {
+        let map = Map {
+            bounds: Rect::new(320.0, -240.0, 320.0, 184.0),
+            entities: vec![Entity {
+                kind: EntityKind::ZipMover,
+                bounds: Rect::new(352.0, -120.0, 64.0, 16.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![Vec2::new(352.0, -200.0)],
+                name: "zipMover".to_owned(),
+            }],
+            ..Map::default()
+        };
+
+        let encoded = encode_celeste_map(&map, "CelesteGymTest", "zip").unwrap();
+        let decoded = decode_map_room(&encoded, Some("zip")).unwrap();
+        let entity = decoded.entities.first().unwrap();
+        assert_eq!(entity.kind, EntityKind::ZipMover);
+        assert_eq!(entity.bounds, Rect::new(352.0, -120.0, 64.0, 16.0));
+        assert_eq!(entity.nodes, vec![Vec2::new(352.0, -200.0)]);
+        assert_eq!(entity.name, "zipMover");
+    }
+
+    #[test]
+    fn vanilla_theo_crystal_round_trips_through_celeste_binary() {
+        let map = Map {
+            bounds: Rect::new(320.0, -240.0, 320.0, 184.0),
+            entities: vec![Entity {
+                kind: EntityKind::TheoCrystal,
+                bounds: Rect::new(364.0, -130.0, 8.0, 10.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "theoCrystal".to_owned(),
+            }],
+            ..Map::default()
+        };
+
+        let encoded = encode_celeste_map(&map, "CelesteGymTest", "theo").unwrap();
+        let decoded = decode_map_room(&encoded, Some("theo")).unwrap();
+        let entity = decoded.entities.first().unwrap();
+        assert_eq!(entity.kind, EntityKind::TheoCrystal);
+        assert_eq!(entity.bounds, Rect::new(364.0, -130.0, 8.0, 10.0));
+        assert_eq!(entity.name, "theoCrystal");
     }
 }

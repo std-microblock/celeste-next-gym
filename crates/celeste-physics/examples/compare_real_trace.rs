@@ -166,14 +166,16 @@ fn main() -> ExitCode {
         let end = (frame + 3).min(simulated.len() - 1);
         for (index, rust) in simulated.iter().enumerate().take(end + 1).skip(start) {
             let game = &trace.states[index];
+            let zip = rust.zip_movers.first();
             println!(
-                "f{index}: rust p=({:.3},{:.3}) v=({:.3},{:.3}) rem=({:.3},{:.3}) | game p=({:.3},{:.3}) v=({:.3},{:.3})",
+                "f{index}: rust p=({:.3},{:.3}) v=({:.3},{:.3}) rem=({:.3},{:.3}) zip={:?} | game p=({:.3},{:.3}) v=({:.3},{:.3})",
                 rust.pos.x,
                 rust.pos.y,
                 rust.speed.x,
                 rust.speed.y,
                 rust.movement_remainder.x,
                 rust.movement_remainder.y,
+                zip.map(|zip| (zip.phase, zip.at, zip.position, zip.remainder, zip.lift_speed)),
                 game.pos[0],
                 game.pos[1],
                 game.speed[0],
@@ -229,6 +231,8 @@ fn to_snapshot(value: &PortableSnapshot) -> PlayerSnapshot {
     snapshot.wall_boost_dir = int_field(&value.fields, "wallBoostDir") as i8;
     snapshot.wall_slide_timer = float_field(&value.fields, "wallSlideTimer");
     snapshot.wall_slide_dir = int_field(&value.fields, "wallSlideDir") as i8;
+    snapshot.hop_wait_x = int_field(&value.fields, "hopWaitX") as i8;
+    snapshot.hop_wait_x_speed = float_field(&value.fields, "hopWaitXSpeed");
     snapshot.max_fall = float_field(&value.fields, "maxFall");
     snapshot.launch_approach_x = value
         .fields
@@ -243,6 +247,9 @@ fn to_snapshot(value: &PortableSnapshot) -> PlayerSnapshot {
     snapshot.star_fly_transforming = bool_field(&value.fields, "starFlyTransforming");
     snapshot.star_fly_speed_lerp = float_field(&value.fields, "starFlySpeedLerp");
     snapshot.star_fly_last_dir = vector_field(&value.fields, "starFlyLastDir");
+    snapshot.strawberry_collect_index = int_field(&value.fields, "StrawberryCollectIndex") as u16;
+    snapshot.strawberry_collect_reset_timer =
+        float_field(&value.fields, "StrawberryCollectResetTimer");
     snapshot
 }
 
