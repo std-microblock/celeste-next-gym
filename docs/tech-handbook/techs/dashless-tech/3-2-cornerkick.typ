@@ -4,7 +4,7 @@
   id: "3.2",
   title-zh: "Cornerkick 墙角踢",
   title-en: "Cornerkick",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [从墙角正下方掠过时对角落执行墙跳，可获得少量高度；无方向输入时会形成 neutral 版本。],
   description-en: [A wallkick taken just under a corner gains height from an otherwise tiny wall contact, with a neutral form when no direction is held.],
   source-evidence: evidence(
@@ -23,6 +23,10 @@
     symbol: [cornerkick_uses_the_three_pixel_probe_on_the_last_corner_pixel],
     note: [测试构造悬墙底角：1px 接触与 2px 攀抓探针均失败，3px 墙跳探针在最后一个垂直像素命中；同时覆盖方向墙跳、neutral 墙跳及再低 1px 后失败。],
   ),
-  e2e-evidence: none,
-  candidate-e2e: "cornerkick",
+  e2e-evidence: evidence(
+    path: [scripts/e2e-real-collector.mjs],
+    symbol: [cornerkick],
+    note: [真实游戏从墙角下方 242/90 起步，共 13 个状态帧；首个输入帧命中 3px 墙跳探针并得到 -130/-105。九类核心字段逐帧一致，最大位置误差 0、速度误差 0.000008。],
+  ),
+  candidate-e2e: none,
 )

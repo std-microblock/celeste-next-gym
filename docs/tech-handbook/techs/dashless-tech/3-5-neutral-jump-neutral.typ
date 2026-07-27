@@ -4,7 +4,7 @@
   id: "3.5",
   title-zh: "Neutral 中性墙跳",
   title-en: "Neutral Jump (Neutral)",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [不按方向离墙起跳，再立即按回墙方向，可不消耗体力地反复攀升直墙或不规则墙面。],
   description-en: [Jump away from a wall with no direction held, then steer back toward it to climb repeatedly without stamina.],
   source-evidence: evidence(
@@ -23,6 +23,10 @@
     symbol: [neutral_wall_jumps_return_for_a_second_stamina_free_jump],
     note: [标准直墙上第 0 帧无方向墙跳，第 1 帧起转回墙面，并在第 26 帧再次无方向墙跳；两次跳跃均保持体力与零强制输入计时，并核对九类核心状态字段。],
   ),
-  e2e-evidence: none,
-  candidate-e2e: "neutral-jump",
+  e2e-evidence: evidence(
+    path: [scripts/e2e-real-collector.mjs],
+    symbol: [neutral-jump],
+    note: [真实游戏共 51 个状态帧：第 0 与第 26 输入帧均无方向墙跳，两个下一状态帧都得到 -130/-105 且体力保持 110，再立即转向回墙。九类核心字段逐帧一致，最大位置误差 0、速度误差 0.000069。],
+  ),
+  candidate-e2e: none,
 )

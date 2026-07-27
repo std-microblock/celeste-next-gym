@@ -4,7 +4,7 @@
   id: "3.1",
   title-zh: "Bunnyhop 连跳",
   title-en: "Bunnyhop (Bhop)",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [在接地瞬间起跳可减少地面摩擦并保留高速；普通连续兔跳还会重复利用跳跃的水平加速。],
   description-en: [Jumping on the landing frame minimizes ground friction, preserving incoming speed and repeatedly applying jump acceleration.],
   source-evidence: evidence(
@@ -23,6 +23,10 @@
     symbol: [bunnyhop_buffers_the_landing_and_reapplies_horizontal_jump_boost],
     note: [以 160 水平速度下落并预输入跳跃；测试证明首次接地状态后的下一次更新立即起跳，仅承受一帧 RunReduce，并相对不跳对照精确多出 40 水平速度。],
   ),
-  e2e-evidence: none,
-  candidate-e2e: "bunnyhop",
+  e2e-evidence: evidence(
+    path: [scripts/e2e-real-collector.mjs],
+    symbol: [bunnyhop],
+    note: [真实游戏共 19 个状态帧：第 3 输入帧预输入跳跃，第 4 状态帧以 142.66663/160 接地，第 5 状态帧立即变为 175.99994/-105；位置、速度、状态、朝向、冲刺数、体力、接地、蹲伏、死亡逐帧一致，最大位置误差 0、速度误差 0。],
+  ),
+  candidate-e2e: none,
 )
