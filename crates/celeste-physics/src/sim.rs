@@ -884,7 +884,10 @@ fn try_pickup_theo(p: &mut PlayerSnapshot) -> bool {
     p.ducking = false;
     p.pickup_old_speed = p.speed;
     p.pickup_old_var_jump_timer = p.var_jump_timer;
-    p.pickup_timer = 0.16;
+    // PickupCoroutine observes the Tween one player frame before Tween.Update
+    // can deactivate it. Keep that trailing frame in the portable timer so
+    // speed restoration matches the real state snapshot boundary.
+    p.pickup_timer = 0.16 + DT;
     p.speed = Vec2::default();
     p.demo_dashed = false;
     p.dash_end_pending = false;
@@ -4387,7 +4390,7 @@ mod tests {
             grab_held: true,
             ..InputState::default()
         };
-        let trace = simulate_trace(p, &[held; 12], &theo_crystal_map(), 12).unwrap();
+        let trace = simulate_trace(p, &[held; 13], &theo_crystal_map(), 13).unwrap();
 
         assert_eq!(trace.states[1].state, PlayerState::Pickup);
         assert_eq!(trace.states[1].speed, Vec2::default());
@@ -4396,8 +4399,9 @@ mod tests {
         assert!(trace.states[1].theo_crystals[0].held);
         assert!(!trace.states[1].dash_end_pending);
         assert_eq!(trace.states[11].state, PlayerState::Pickup);
-        assert_eq!(trace.states[12].state, PlayerState::Normal);
-        assert_eq!(trace.states[12].speed, Vec2::new(360.0, 0.0));
+        assert_eq!(trace.states[12].state, PlayerState::Pickup);
+        assert_eq!(trace.states[13].state, PlayerState::Normal);
+        assert_eq!(trace.states[13].speed, Vec2::new(360.0, 0.0));
     }
 
     #[test]
