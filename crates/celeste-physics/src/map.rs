@@ -52,6 +52,8 @@ pub enum EntityKind {
     IceBall,
     BadelineBoost,
     Wind,
+    /// Vanilla Celeste ZipMover Solid. The first node is its target position.
+    ZipMover,
     /// Simulator-native constant-velocity Solid used to exercise Monocle
     /// carrying, pushing, and Player LiftSpeed inheritance independently of a
     /// specific vanilla entity state machine.
@@ -314,6 +316,40 @@ pub fn encode_celeste_map(map: &Map, package: &str, room: &str) -> Result<Vec<u8
                     vec![],
                 ));
                 None
+            }
+            EntityKind::ZipMover => {
+                let target = entity
+                    .nodes
+                    .first()
+                    .copied()
+                    .unwrap_or(Vec2::new(entity.bounds.x, entity.bounds.y));
+                Some(element(
+                    "zipMover",
+                    [
+                        ("height", BinaryValue::Int(height)),
+                        ("id", BinaryValue::Int(id)),
+                        ("originX", BinaryValue::Int(0)),
+                        ("originY", BinaryValue::Int(0)),
+                        ("theme", BinaryValue::String("Normal".to_owned())),
+                        ("width", BinaryValue::Int(width)),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![element(
+                        "node",
+                        [
+                            (
+                                "x",
+                                BinaryValue::Int((target.x - map.bounds.x).round() as i32),
+                            ),
+                            (
+                                "y",
+                                BinaryValue::Int((target.y - map.bounds.y).round() as i32),
+                            ),
+                        ],
+                        vec![],
+                    )],
+                ))
             }
             EntityKind::MovingSolid => Some(element(
                 "celesteGymMovingSolid",
@@ -585,6 +621,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 "fireBall" if attr_bool(el, "notCoreMode", false) => EntityKind::IceBall,
                 "badelineBoost" => EntityKind::BadelineBoost,
                 "windTrigger" => EntityKind::Wind,
+                "zipMover" => EntityKind::ZipMover,
                 "celesteGymMovingSolid" => EntityKind::MovingSolid,
                 _ => EntityKind::Unknown,
             };
@@ -620,6 +657,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                     ),
                     Vec2::default(),
                 ),
+                "zipMover" => (Rect::new(ex, ey, raw_width, raw_height), Vec2::default()),
                 "celesteGymMovingSolid" => (
                     Rect::new(ex, ey, raw_width, raw_height),
                     Vec2::new(attr_f32(el, "speedX", 0.0), attr_f32(el, "speedY", 0.0)),
@@ -747,7 +785,8 @@ impl Map {
     pub fn non_dream_solid_at(&self, rect: Rect) -> bool {
         self.static_solid_at(rect)
             || self.entities.iter().any(|entity| {
-                entity.kind == EntityKind::MovingSolid && entity.bounds.intersects(rect)
+                matches!(entity.kind, EntityKind::MovingSolid | EntityKind::ZipMover)
+                    && entity.bounds.intersects(rect)
             })
     }
 
@@ -796,5 +835,30 @@ mod tests {
         assert_eq!(entity.kind, EntityKind::MovingSolid);
         assert_eq!(entity.bounds, Rect::new(16.0, 24.0, 32.0, 8.0));
         assert_eq!(entity.direction, Vec2::new(60.0, -120.0));
+    }
+
+    #[test]
+    fn vanilla_zip_mover_round_trips_through_celeste_binary() {
+        let map = Map {
+            bounds: Rect::new(320.0, -240.0, 320.0, 184.0),
+            entities: vec![Entity {
+                kind: EntityKind::ZipMover,
+                bounds: Rect::new(352.0, -120.0, 64.0, 16.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![Vec2::new(352.0, -200.0)],
+                name: "zipMover".to_owned(),
+            }],
+            ..Map::default()
+        };
+
+        let encoded = encode_celeste_map(&map, "CelesteGymTest", "zip").unwrap();
+        let decoded = decode_map_room(&encoded, Some("zip")).unwrap();
+        let entity = decoded.entities.first().unwrap();
+        assert_eq!(entity.kind, EntityKind::ZipMover);
+        assert_eq!(entity.bounds, Rect::new(352.0, -120.0, 64.0, 16.0));
+        assert_eq!(entity.nodes, vec![Vec2::new(352.0, -200.0)]);
+        assert_eq!(entity.name, "zipMover");
     }
 }

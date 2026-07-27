@@ -29,6 +29,17 @@ pub fn mechanics_playground() -> Map {
                 nodes: vec![],
                 name: "jumpThru".to_owned(),
             },
+            // Vanilla ZipMover booth for Liftboost. A player whose bottom is
+            // y=440 starts the source 0.1-second delay, then rides it upward.
+            Entity {
+                kind: EntityKind::ZipMover,
+                bounds: Rect::new(32.0, 440.0, 64.0, 16.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![Vec2::new(32.0, 320.0)],
+                name: "zipMover".to_owned(),
+            },
             // Adjacent jumpthrough boosters for coyote-time bubble
             // super/hyper setups.
             Entity {
