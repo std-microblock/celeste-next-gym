@@ -268,6 +268,15 @@ public sealed class CelesteGymCollectorModule : EverestModule {
             }
             InstallScriptedButtons();
             ApplyInitialSnapshot(player, job.Pending.Request.InitialSnapshot);
+            // Player.Update normally eases toward CameraTarget, but scenario
+            // snapshots teleport the player after LevelEnter positioned the
+            // camera at the room spawn. Snap once before state 0 so the first
+            // recorded presentation uses Celeste's native camera offset,
+            // bounds, anchors, and lock rules instead of showing empty space.
+            if (job.Pending.Request.InitialSnapshot?.Pos is { Length: >= 2 }
+                && player.Scene is Level initialLevel) {
+                initialLevel.Camera.Position = player.CameraTarget;
+            }
             job.States.Add(SnapshotCapture.Capture(player, 0));
             captureSession?.UpdateLatestStateIndex(0);
             job.Started = true;

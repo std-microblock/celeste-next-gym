@@ -5,6 +5,7 @@ namespace Celeste.Mod.CelesteGymCollector;
 internal sealed class RecordingTimeline(int startStateIndex, int endStateIndex) {
     private int? previousStateIndex;
     private long? previousTimestampNanoseconds;
+    private int finalStatePresentationCount;
 
     public int StartStateIndex { get; } = startStateIndex;
     public int EndStateIndex { get; } = endStateIndex;
@@ -12,6 +13,15 @@ internal sealed class RecordingTimeline(int startStateIndex, int endStateIndex) 
     public List<StateIndexRange> UnpresentedUpdateRanges { get; } = [];
     public int RepeatedPresentationCount { get; private set; }
     public bool FinalStatePresented { get; private set; }
+
+    public bool HasPresentedFinalStateTail(int trailingPresentationFrames) {
+        if (trailingPresentationFrames < 0) {
+            throw new ArgumentOutOfRangeException(nameof(trailingPresentationFrames));
+        }
+        // The first final-state presentation is the scenario's last frame;
+        // every following presentation belongs to the requested tail.
+        return finalStatePresentationCount > trailingPresentationFrames;
+    }
 
     public RecordingFrameManifest AddFrame(
         int stateIndex,
@@ -54,7 +64,10 @@ internal sealed class RecordingTimeline(int startStateIndex, int endStateIndex) 
         Frames.Add(frame);
         previousStateIndex = stateIndex;
         previousTimestampNanoseconds = timestampNanoseconds;
-        if (stateIndex == EndStateIndex) FinalStatePresented = true;
+        if (stateIndex == EndStateIndex) {
+            FinalStatePresented = true;
+            finalStatePresentationCount++;
+        }
         return frame;
     }
 

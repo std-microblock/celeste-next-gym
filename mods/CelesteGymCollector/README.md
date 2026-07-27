@@ -12,7 +12,7 @@ Everest 代码 Mod，为真实游戏 E2E 提供本地 TCP 采集端点。
 - `CELESTE_GYM_RUN_NONCE` 会随 `ping` 一并返回，同时返回游戏进程 PID 和实际监听端口，供 runner 验证自己连接的是本次启动的子进程。
 - `CELESTE_GYM_RECORDING_ROOT` 是 runner 创建的固定 per-run 录制根目录。协议不接受调用者提供输出路径；scenario、一次性 capture token 和所有派生路径都必须留在该物理目录内。
 
-录制语义是 presentation frame，不是逐 Update frame。Mod 在每次真实 `Celeste.RenderCore` 完成后读取 backbuffer，将 viewport 确定性缩小为 320×180 BGRA，并记录当时最新的 E2E state index 与单调时间戳。固定时间步可能在一次 Draw 前推进多个 Update，也可能重复呈现同一个 state；manifest 会显式记录未呈现的 update 区间和重复呈现，逐 Update 精确性仍由 E2E trace 承担。
+录制语义是 presentation frame，不是逐 Update frame。Mod 在每次真实 `Celeste.RenderCore` 完成后读取 backbuffer，将 viewport 确定性缩小为 320×180 BGRA，并记录当时最新的 E2E state index 与单调时间戳。固定时间步可能在一次 Draw 前推进多个 Update，也可能重复呈现同一个 state；manifest 会显式记录未呈现的 update 区间和重复呈现，逐 Update 精确性仍由 E2E trace 承担。scenario 初始快照移动玩家时，镜头会先同步到原生 `Player.CameraTarget`；最终 state 首次呈现后还会继续采集 60 个 presentation frame，使 60 FPS 成片保留一秒收尾。
 
 构建和真实 E2E：
 

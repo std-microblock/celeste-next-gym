@@ -11,6 +11,8 @@ internal sealed class PresentationCaptureSession {
     public const int OutputWidth = 320;
     public const int OutputHeight = 180;
     public const int OutputByteLength = OutputWidth * OutputHeight * 4;
+    public const int OutputFrameRate = 60;
+    public const int TailPresentationFrames = OutputFrameRate;
 
     private readonly string recordingRoot;
     private readonly string sessionDirectory;
@@ -125,9 +127,9 @@ internal sealed class PresentationCaptureSession {
                 hash,
                 outputPixels.LongLength
             );
-            if (timeline.FinalStatePresented) {
+            if (timeline.HasPresentedFinalStateTail(TailPresentationFrames)) {
                 state = "ready";
-                reason = "final_state_presented";
+                reason = "final_state_tail_presented";
             }
         } catch (Exception error) {
             Fail(error.ToString());
@@ -282,7 +284,7 @@ internal sealed class RecordingManifest {
     public string PixelFormat { get; set; } = "bgra";
 
     [JsonPropertyName("encoding_frame_rate")]
-    public int EncodingFrameRate { get; set; } = 60;
+    public int EncodingFrameRate { get; set; } = PresentationCaptureSession.OutputFrameRate;
 
     [JsonPropertyName("started_at")]
     public DateTimeOffset StartedAt { get; set; }

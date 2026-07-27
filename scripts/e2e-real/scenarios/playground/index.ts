@@ -82,6 +82,8 @@ import { scenario as scenario79 } from './eleven-jump.js'
 import { scenario as scenario80 } from './reverse-cornerboost.js'
 import { scenario as scenario81 } from './neutral-reverse-cornerboost.js'
 import { scenario as scenario82 } from './spiked-cornerboost.js'
+import { scenario as scenario83 } from './other-5.5-half-stamina-climbing.js'
+import { scenario as scenario84 } from './other-5.6-kermit-dash.js'
 
 export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario0,
@@ -167,4 +169,6 @@ export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario80,
   scenario81,
   scenario82,
+  scenario83,
+  scenario84,
 ])
