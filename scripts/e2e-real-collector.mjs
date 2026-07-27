@@ -610,12 +610,12 @@ try {
     },
     {
       name: 'mechanics-directional-spikes-away',
-      initial: { pos: [269, 88], speed: [-60, 0] },
+      initial: { pos: [269, 88], speed: [0, -60] },
       inputs: Array.from({ length: 4 }, () => input()),
     },
     {
       name: 'mechanics-directional-spikes-into',
-      initial: { pos: [269, 88], speed: [60, 0] },
+      initial: { pos: [269, 88], speed: [0, 60] },
       inputs: Array.from({ length: 4 }, () => input()),
     },
     {
