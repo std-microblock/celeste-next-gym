@@ -166,14 +166,16 @@ fn main() -> ExitCode {
         let end = (frame + 3).min(simulated.len() - 1);
         for (index, rust) in simulated.iter().enumerate().take(end + 1).skip(start) {
             let game = &trace.states[index];
+            let zip = rust.zip_movers.first();
             println!(
-                "f{index}: rust p=({:.3},{:.3}) v=({:.3},{:.3}) rem=({:.3},{:.3}) | game p=({:.3},{:.3}) v=({:.3},{:.3})",
+                "f{index}: rust p=({:.3},{:.3}) v=({:.3},{:.3}) rem=({:.3},{:.3}) zip={:?} | game p=({:.3},{:.3}) v=({:.3},{:.3})",
                 rust.pos.x,
                 rust.pos.y,
                 rust.speed.x,
                 rust.speed.y,
                 rust.movement_remainder.x,
                 rust.movement_remainder.y,
+                zip.map(|zip| (zip.phase, zip.at, zip.position, zip.remainder, zip.lift_speed)),
                 game.pos[0],
                 game.pos[1],
                 game.speed[0],
