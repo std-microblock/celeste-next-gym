@@ -65,4 +65,21 @@ describe('production scenario registry', () => {
       'tech.3.13.cornerslip',
     ])
   })
+
+  it('keeps every feather proof in an independently named map part', () => {
+    const techniqueIds = ['4.12', '4.13', '4.15.1', '4.15.2']
+    const parts = techniqueIds.map((techniqueId) => {
+      const scenario = registry.scenarios.find((candidate) => candidate.techniqueIds.includes(techniqueId))
+      assert.ok(scenario, `missing scenario for ${techniqueId}`)
+      assert.equal(scenario.mapParts.length, 1)
+      return scenario.mapParts[0]?.id
+    })
+    assert.equal(new Set(parts).size, techniqueIds.length)
+    assert.deepEqual(parts, [
+      'tech.entity-4.12-featherboost',
+      'tech.entity-4.13-feather-super',
+      'tech.entity-4.15.1-feather-clip',
+      'tech.entity-4.15.2-hitbox-preservation',
+    ])
+  })
 })

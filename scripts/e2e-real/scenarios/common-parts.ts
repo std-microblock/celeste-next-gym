@@ -111,6 +111,24 @@ export const TECH_ENTITY_4_6_CLOUD_JUMP = fixturePart('tech.entity-4.6-cloud-jum
     { id: 'tech-4.6-spikes', kind: 'spikes', bounds: [600, 493, 32, 3], direction: [0, -1], name: 'spikesUp' },
   ],
 })
+export const TECH_ENTITY_4_12_FEATHERBOOST = fixturePart('tech.entity-4.12-featherboost', {
+  entities: [{ id: 'tech-4.12-feather', kind: 'fly_feather', bounds: [110, 190, 20, 20], name: 'infiniteStar' }],
+})
+export const TECH_ENTITY_4_13_FEATHER_SUPER = fixturePart('tech.entity-4.13-feather-super', {
+  entities: [{ id: 'tech-4.13-feather', kind: 'fly_feather', bounds: [890, 474, 20, 20], name: 'infiniteStar' }],
+})
+export const TECH_ENTITY_4_15_1_FEATHER_CLIP = fixturePart('tech.entity-4.15.1-feather-clip', {
+  entities: [
+    { id: 'tech-4.15.1-feather', kind: 'fly_feather', bounds: [150, 30, 20, 20], name: 'infiniteStar' },
+    { id: 'tech-4.15.1-jump-thru', kind: 'jump_thru', bounds: [152, 400, 16, 8], name: 'jumpThru' },
+  ],
+})
+export const TECH_ENTITY_4_15_2_HITBOX_PRESERVATION = fixturePart('tech.entity-4.15.2-hitbox-preservation', {
+  entities: [
+    { id: 'tech-4.15.2-feather', kind: 'fly_feather', bounds: [310, 110, 20, 20], name: 'infiniteStar' },
+    { id: 'tech-4.15.2-ice-ball', kind: 'ice_ball', bounds: [314, 154, 12, 12], nodes: [[336, 160]], singleUse: true, name: 'fireBall' },
+  ],
+})
 export const PLAYGROUND_BADELINE = fixturePart('playground.badeline', {
   entities: [
     { id: 'entity-0024', kind: 'badeline_boost', bounds: [304, 384, 32, 32], nodes: [[320, 288]], name: 'badelineBoost' },
@@ -156,6 +174,8 @@ export const COMMON_MAP_PARTS = new Map<string, MapPart>([
   PLAYGROUND_STAR_FLY, PLAYGROUND_BUMPER, PLAYGROUND_ICE_BALL, PLAYGROUND_BADELINE,
   TECH_ENTITY_4_3_BUMPER_CLIP, TECH_ENTITY_4_4_EXPLOSION_BOOST,
   TECH_ENTITY_4_5_BOUNCE_JUMP, TECH_ENTITY_4_6_CLOUD_JUMP,
+  TECH_ENTITY_4_12_FEATHERBOOST, TECH_ENTITY_4_13_FEATHER_SUPER,
+  TECH_ENTITY_4_15_1_FEATHER_CLIP, TECH_ENTITY_4_15_2_HITBOX_PRESERVATION,
   PLAYGROUND_THEO, PLAYGROUND_BOUNCE_BLOCK, PLAYGROUND_WIND, PLAYGROUND_DASHLESS,
   PLAYGROUND_LAUNCH, PLAYGROUND_MISC, PLAYGROUND_TRANSITION,
   PLAYGROUND_OTHER_HALF_STAMINA,
