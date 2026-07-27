@@ -127,10 +127,12 @@ pub fn simulate_trace(
         });
     }
     validate_snapshot(&snapshot)?;
+    let mut runtime_map = map.clone();
+    position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
     let mut states = Vec::with_capacity(frames + 1);
     states.push(snapshot.clone());
     for input in &inputs[..frames] {
-        step(&mut snapshot, input.normalized(), map)?;
+        step(&mut snapshot, input.normalized(), &mut runtime_map)?;
         states.push(snapshot.clone());
     }
     Ok(SimulationResult {
@@ -214,6 +216,7 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         s.last_lift_speed.x,
         s.last_lift_speed.y,
         s.lift_speed_timer,
+        s.moving_solid_time,
         s.dash_buffer_timer,
         s.crouch_dash_buffer_timer,
         s.movement_remainder.x,
@@ -226,7 +229,85 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
     }
 }
 
-fn step(p: &mut PlayerSnapshot, mut input: InputState, map: &Map) -> Result<(), SimulationError> {
+fn position_moving_solids(map: &mut Map, time: f32) {
+    for entity in &mut map.entities {
+        if entity.kind == EntityKind::MovingSolid {
+            entity.bounds.x += (entity.direction.x * time).round_ties_even();
+            entity.bounds.y += (entity.direction.y * time).round_ties_even();
+        }
+    }
+}
+
+fn set_lift_speed(p: &mut PlayerSnapshot, speed: Vec2) {
+    p.current_lift_speed = speed;
+    if speed != Vec2::default() {
+        p.last_lift_speed = speed;
+        p.lift_speed_timer = 0.16;
+    }
+}
+
+fn advance_moving_solids(p: &mut PlayerSnapshot, map: &mut Map) {
+    let old_time = p.moving_solid_time;
+    let new_time = old_time + DT;
+    for entity in &mut map.entities {
+        if entity.kind != EntityKind::MovingSolid {
+            continue;
+        }
+        let old_offset = Vec2::new(
+            (entity.direction.x * old_time).round_ties_even(),
+            (entity.direction.y * old_time).round_ties_even(),
+        );
+        let new_offset = Vec2::new(
+            (entity.direction.x * new_time).round_ties_even(),
+            (entity.direction.y * new_time).round_ties_even(),
+        );
+        let delta = Vec2::new(new_offset.x - old_offset.x, new_offset.y - old_offset.y);
+        let riding = entity
+            .bounds
+            .intersects(current_player_rect(p, p.pos.x, p.pos.y + 1.0));
+        if riding {
+            set_lift_speed(p, entity.direction);
+        }
+
+        if delta.x != 0.0 {
+            entity.bounds.x += delta.x;
+            if riding {
+                p.pos.x += delta.x;
+            } else {
+                let player = current_player_rect(p, p.pos.x, p.pos.y);
+                if entity.bounds.intersects(player) {
+                    if delta.x > 0.0 {
+                        p.pos.x += entity.bounds.right() - player.x;
+                    } else {
+                        p.pos.x -= player.right() - entity.bounds.x;
+                    }
+                }
+            }
+        }
+        if delta.y != 0.0 {
+            entity.bounds.y += delta.y;
+            if riding {
+                p.pos.y += delta.y;
+            } else {
+                let player = current_player_rect(p, p.pos.x, p.pos.y);
+                if entity.bounds.intersects(player) {
+                    if delta.y > 0.0 {
+                        p.pos.y += entity.bounds.bottom() - player.y;
+                    } else {
+                        p.pos.y -= player.bottom() - entity.bounds.y;
+                    }
+                }
+            }
+        }
+    }
+    p.moving_solid_time = new_time;
+}
+
+fn step(
+    p: &mut PlayerSnapshot,
+    mut input: InputState,
+    map: &mut Map,
+) -> Result<(), SimulationError> {
     // Input.Dash and Input.CrouchDash use a 0.08 second VirtualButton buffer.
     // Input keeps advancing during Celeste.Freeze even though Scene.Update and
     // Player.Update are skipped, which is the timing window used by a bumper
@@ -275,6 +356,7 @@ fn step(p: &mut PlayerSnapshot, mut input: InputState, map: &Map) -> Result<(), 
         p.freeze_timer = (p.freeze_timer - DT).max(0.0);
         return Ok(());
     }
+    advance_moving_solids(p, map);
     if p.transition_timer > 0.0 {
         update_transition(p);
         return Ok(());
@@ -1411,7 +1493,7 @@ fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount:
         let next_y = p.pos.y + if horizontal { 0.0 } else { sign as f32 };
         let next = current_player_rect(p, next_x, next_y);
         let dream_block = map.dream_block_at(next);
-        let collided = map.static_solid_at(next)
+        let collided = map.non_dream_solid_at(next)
             || (dream_block && p.state != PlayerState::DreamDash)
             || (!horizontal
                 && sign > 0
@@ -2254,7 +2336,7 @@ fn move_exact(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, sign: i32) ->
     let next_x = p.pos.x + if horizontal { sign as f32 } else { 0.0 };
     let next_y = p.pos.y + if horizontal { 0.0 } else { sign as f32 };
     let next = current_player_rect(p, next_x, next_y);
-    let collided = map.static_solid_at(next)
+    let collided = map.non_dream_solid_at(next)
         || (map.dream_block_at(next) && p.state != PlayerState::DreamDash)
         || (!horizontal
             && sign > 0
@@ -2424,6 +2506,20 @@ mod tests {
             pos: Vec2::new(32.0, 100.0),
             on_ground: true,
             ..PlayerSnapshot::default()
+        }
+    }
+    fn moving_solid_map(direction: Vec2) -> Map {
+        Map {
+            entities: vec![crate::Entity {
+                kind: EntityKind::MovingSolid,
+                bounds: Rect::new(16.0, 100.0, 64.0, 8.0),
+                direction,
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "celesteGymMovingSolid".to_owned(),
+            }],
+            ..Map::default()
         }
     }
     fn water_map() -> Map {
@@ -2638,6 +2734,65 @@ mod tests {
         tick_lift_speed(&mut p);
         assert_eq!(p.last_lift_speed, Vec2::default());
         assert_eq!(p.lift_speed_timer, 0.0);
+    }
+    #[test]
+    fn moving_solid_carries_its_rider_and_records_lift_speed() {
+        let map = moving_solid_map(Vec2::new(60.0, -120.0));
+        let p = simulate(grounded_player(), &[InputState::default()], &map, 1).unwrap();
+
+        assert_eq!(p.pos, Vec2::new(33.0, 98.0));
+        assert!(p.on_ground);
+        assert_eq!(p.current_lift_speed, Vec2::default());
+        assert_eq!(p.last_lift_speed, Vec2::new(60.0, -120.0));
+        assert!((p.lift_speed_timer - (0.16 - DT)).abs() < 0.000_001);
+    }
+    #[test]
+    fn moving_solid_jump_combines_carrying_with_same_frame_lift_boost() {
+        let map = moving_solid_map(Vec2::new(60.0, -120.0));
+        let input = InputState {
+            jump_pressed: true,
+            jump_held: true,
+            ..InputState::default()
+        };
+        let p = simulate(grounded_player(), &[input], &map, 1).unwrap();
+
+        assert_eq!(p.speed, Vec2::new(60.0, -225.0));
+        assert_eq!(p.var_jump_speed, -225.0);
+        assert_eq!(p.pos, Vec2::new(34.0, 94.0));
+    }
+    #[test]
+    fn moving_solid_clock_keeps_split_simulation_composable() {
+        let map = moving_solid_map(Vec2::new(60.0, 0.0));
+        let inputs = [InputState::default(); 2];
+        let direct = simulate(grounded_player(), &inputs, &map, 2).unwrap();
+        let first = simulate(grounded_player(), &inputs[..1], &map, 1).unwrap();
+        let split = simulate(first, &inputs[1..], &map, 1).unwrap();
+
+        assert_eq!(split, direct);
+        assert_eq!(direct.pos.x, 34.0);
+    }
+    #[test]
+    fn moving_solid_pushes_an_actor_without_granting_rider_lift_speed() {
+        let map = Map {
+            entities: vec![crate::Entity {
+                kind: EntityKind::MovingSolid,
+                bounds: Rect::new(20.0, 70.0, 8.0, 40.0),
+                direction: Vec2::new(60.0, 0.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "celesteGymMovingSolid".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 90.0),
+            ..PlayerSnapshot::default()
+        };
+        let p = simulate(p, &[InputState::default()], &map, 1).unwrap();
+
+        assert_eq!(p.pos.x, 33.0);
+        assert_eq!(p.last_lift_speed, Vec2::default());
     }
     #[test]
     fn jump_adds_retained_lift_boost_before_caching_variable_jump_speed() {

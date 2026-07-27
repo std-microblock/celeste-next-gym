@@ -153,6 +153,10 @@ pub struct PlayerSnapshot {
     /// Last non-zero lift speed retained for `LiftSpeedGraceTime` (0.16 s).
     pub last_lift_speed: Vec2,
     pub lift_speed_timer: f32,
+    /// Shared deterministic clock for simulator-native constant-velocity
+    /// moving solids. Keeping it in the snapshot makes split simulations
+    /// resume from the same platform positions.
+    pub moving_solid_time: f32,
     pub climb_no_move_timer: f32,
     pub dream_dash_can_end_timer: f32,
     pub launch_approach_x: Option<f32>,
@@ -273,6 +277,7 @@ impl Default for PlayerSnapshot {
             current_lift_speed: Vec2::default(),
             last_lift_speed: Vec2::default(),
             lift_speed_timer: 0.0,
+            moving_solid_time: 0.0,
             climb_no_move_timer: 0.0,
             dream_dash_can_end_timer: 0.0,
             launch_approach_x: None,
