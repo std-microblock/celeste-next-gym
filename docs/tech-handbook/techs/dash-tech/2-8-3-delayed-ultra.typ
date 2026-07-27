@@ -7,9 +7,14 @@
   status: "unimplemented",
   description-zh: [只要最后冲刺方向仍是向下斜，玩家可先在别处保存该方向，延迟到之后落地时才触发 1.2 倍加速和蹲伏。],
   description-en: [A stored down-diagonal last-dash direction can trigger the ultra multiplier and crouch on a later landing far from the original dash.],
-  source-evidence: none,
-  rust-evidence: none,
-  test-evidence: none,
+  source-evidence: evidence(
+    path: [Source/Player/Player.cs],
+    symbol: [Player.OnCollideV],
+    snippet: raw(block: true, lang: "cs", "if (DashDir.X != 0 && DashDir.Y > 0 && Speed.Y > 0) {\n    DashDir.X = Math.Sign(DashDir.X);\n    DashDir.Y = 0;\n    Speed.Y = 0;\n    Speed.X *= DodgeSlideSpeedMult;\n    Ducking = true;\n}"),
+    note: [落地分支只检查保存的 DashDir 和当前下降速度，不要求仍处于 Dash 状态；因此冲刺结束后较晚落地仍可触发倍率。],
+  ),
+  rust-evidence: evidence(path: [crates/celeste-physics/src/types.rs; crates/celeste-physics/src/sim.rs], symbol: [PlayerSnapshot.dash_dir; move_axis_amount]),
+  test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [delayed_ultra_lands_after_dash_state_and_still_multiplies_speed], note: [回归先确认玩家已离开 Dash，再以经过空中摩擦的落地前速度计算并断言 1.2 倍结果。]),
   e2e-evidence: none,
-  candidate-e2e: none,
+  candidate-e2e: "dash-delayed-ultra",
 )
