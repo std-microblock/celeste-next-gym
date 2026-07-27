@@ -130,10 +130,7 @@ export const PLAYGROUND_OTHER_KERMIT = defineMapPart({
   dependencies: ['playground.base', 'playground.transition'],
   package: PACKAGE,
   sid: SID,
-  rooms: [{
-    name: 'transition_0',
-    entities: [{ id: 'entity-other-kermit-shield', kind: 'fly_feather', bounds: [620, -40, 20, 20], shielded: true, name: 'infiniteStar' }],
-  }],
+  rooms: [{ name: 'transition_0' }],
 })
 
 export const COMMON_MAP_PARTS = new Map<string, MapPart>([

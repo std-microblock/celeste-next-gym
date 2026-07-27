@@ -15,6 +15,6 @@
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/types.rs; crates/celeste-physics/src/sim.rs], symbol: [PlayerSnapshot.dash_dir; PlayerSnapshot.dash_attack_timer; begin_transition; update_transition; interact], note: [transition_timer 分支先于 tick_timers 返回，精确保留攻击计时；begin_transition 将普通向上 Dash 改为 Normal，但不改 dash_dir。]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [kermit_dash_preserves_attack_and_direction_through_vertical_transition], note: [回归测试断言切房首帧已为 Normal、方向仍为 0/-1、攻击计时冻结，完成后以该窗口打破新房间的护盾实体并进入 StarFly。]),
-  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/playground/other-5.6-kermit-dash.ts], symbol: [other-5.6-kermit-dash; verifyKermitDash], note: [独立双房间 MapPart 从真实上冲开始，语义守卫读取 Everest dashDir/dashAttackTimer，并要求新房间护盾交互成功；九类核心字段逐帧容差不超过 0.01。]),
+  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/playground/other-5.6-kermit-dash.ts], symbol: [other-5.6-kermit-dash; verifyKermitDash], note: [独立双房间 MapPart 从真实上冲开始，语义守卫在 Dash→Normal 首帧和资源恢复完成帧读取 Everest DashDir/dashAttackTimer，确认完整切房后方向与攻击窗口仍保留；九类核心字段逐帧容差不超过 0.01。]),
   candidate-e2e: none,
 )
