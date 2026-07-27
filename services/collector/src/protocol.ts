@@ -60,6 +60,7 @@ export interface PlayerSnapshot {
   player_on_ground_initialized?: boolean;
   ducking: boolean;
   can_dream_dash?: boolean;
+  holding_theo?: boolean;
   freeze_timer?: number;
   dash_dir?: Vector2;
   dash_attack_timer?: number;

@@ -23,6 +23,7 @@ interface EverestFrame {
   on_ground: boolean;
   ducking: boolean;
   can_dream_dash: boolean;
+  holding_theo: boolean;
   dead: boolean;
   freeze_timer: number;
   fields: Record<string, unknown>;
@@ -103,6 +104,7 @@ export class EverestTcpBackend implements CollectorBackend {
       on_ground: frame.on_ground,
       ducking: frame.ducking,
       can_dream_dash: frame.can_dream_dash,
+      holding_theo: frame.holding_theo,
       dead: frame.dead,
       freeze_timer: frame.freeze_timer,
       _frame: frame.frame,
