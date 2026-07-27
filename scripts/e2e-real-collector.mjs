@@ -188,10 +188,18 @@ try {
     ...(includePlaygroundBooster ? [
       {
         name: 'entity-4.1-archie',
-        initial: { pos: [245, 400], speed: [0, 0] },
+        initial: { pos: [680, 330], speed: [0, 0] },
         inputs: Array.from({ length: 36 }, (_, frame) => input({
           move_x: 1,
           crouch_dash_pressed: frame === 0,
+        })),
+      },
+      {
+        name: 'collector-startdash-buffer-consumed-through-boost',
+        initial: { pos: [720, 330], speed: [0, 0] },
+        inputs: Array.from({ length: 8 }, (_, frame) => input({
+          move_x: 1,
+          dash_pressed: frame === 0,
         })),
       },
       {

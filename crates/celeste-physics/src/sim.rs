@@ -1358,8 +1358,23 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
             && p.dream_dash_can_end_timer <= 0.0
         {
             let horizontal_exit = p.dash_dir.x != 0.0;
-            let wall = wall_dir(p, map);
             let dream_jump = input.jump_pressed && horizontal_exit;
+            if !dream_jump && (p.dash_dir.y >= 0.0 || horizontal_exit) {
+                // Celeste 1.4 pulls a horizontal exit five pixels back toward
+                // the DreamBlock before its two-sided ClimbCheck. DreamDash is
+                // still the active state here, so this is the source's naive
+                // MoveHExact correction rather than normal solid movement.
+                if p.dash_dir.x > 0.0
+                    && map.solid_at(current_player_rect(p, p.pos.x - 5.0, p.pos.y))
+                {
+                    p.pos.x -= 5.0;
+                } else if p.dash_dir.x < 0.0
+                    && map.solid_at(current_player_rect(p, p.pos.x + 5.0, p.pos.y))
+                {
+                    p.pos.x += 5.0;
+                }
+            }
+            let wall = wall_dir(p, map);
             let dream_grab = input.grab_held
                 && (p.dash_dir.y >= 0.0 || horizontal_exit)
                 && ((input.move_x == 1 && wall == 1) || (input.move_x == -1 && wall == -1));
@@ -1397,6 +1412,13 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
             p.stamina = 110.0;
             p.dash_attack_timer = 0.0;
             p.freeze_timer = 0.05;
+
+            // DreamDashUpdate performs its naive 240 px/s move before
+            // returning the next state. Player.Update then performs the
+            // ordinary movement pass in that resulting state on the same
+            // frame, which is visible as a second displacement in Everest.
+            move_axis(p, map, true);
+            move_axis(p, map, false);
         }
         return;
     }
@@ -2711,6 +2733,34 @@ mod tests {
         assert_eq!(p.dashes, 0);
         assert_eq!(p.dash_buffer_timer, 0.0);
     }
+
+    #[test]
+    fn start_dash_consumes_both_buffers_even_when_a_booster_wins_the_final_state() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(160.0, 400.0),
+            dashes: 1,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(
+            p,
+            &[
+                InputState {
+                    move_x: 1,
+                    dash_pressed: true,
+                    ..InputState::default()
+                },
+                InputState::default(),
+            ],
+            &booster_map(),
+            2,
+        )
+        .unwrap();
+        assert_eq!(trace.states[1].state, PlayerState::Boost);
+        assert_eq!(trace.states[1].dash_buffer_timer, 0.0);
+        assert_eq!(trace.states[1].crouch_dash_buffer_timer, 0.0);
+        assert_eq!(trace.states[2].state, PlayerState::Boost);
+    }
+
     #[test]
     fn dream_dash_enters_a_dream_block() {
         let map = Map {
@@ -2786,6 +2836,7 @@ mod tests {
         .unwrap();
         assert_eq!(p.state, PlayerState::Normal);
         assert_eq!(p.speed, Vec2::new(280.0, JUMP_SPEED));
+        assert_eq!(p.pos, Vec2::new(81.0, 62.0));
         assert_eq!(p.jump_grace_timer, JUMP_GRACE);
         assert_eq!(p.var_jump_timer, VAR_JUMP_TIME);
     }
@@ -2809,6 +2860,7 @@ mod tests {
         ];
         let p = simulate(p, &inputs, &dream_exit_map(), 2).unwrap();
         assert_eq!(p.state, PlayerState::Climb);
+        assert_eq!(p.pos, Vec2::new(71.0, 64.0));
         assert!(!p.facing);
         assert_eq!(p.jump_grace_timer, JUMP_GRACE);
     }

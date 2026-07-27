@@ -29,9 +29,8 @@ pub fn mechanics_playground() -> Map {
                 nodes: vec![],
                 name: "jumpThru".to_owned(),
             },
-            // Entity-tech booths on the jumpthrough: a demo dash enters the
-            // first booster crouched (Archie), while the second sits just past
-            // the ledge for coyote-time bubble super/hyper setups.
+            // Adjacent jumpthrough boosters for coyote-time bubble
+            // super/hyper setups.
             Entity {
                 kind: EntityKind::Booster,
                 bounds: Rect::new(252.0, 384.0, 16.0, 16.0),
@@ -76,6 +75,18 @@ pub fn mechanics_playground() -> Map {
                 single_use: false,
                 nodes: vec![],
                 name: "dreamBlock".to_owned(),
+            },
+            // Isolated Archie booth. The horizontal demo reaches this booster
+            // several live frames after StartDash without touching a floor,
+            // wall, or either coyote booster.
+            Entity {
+                kind: EntityKind::Booster,
+                bounds: Rect::new(712.0, 312.0, 16.0, 16.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "booster".to_owned(),
             },
             Entity {
                 kind: EntityKind::Booster,

@@ -16,6 +16,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
     public override void Load() {
         On.Monocle.Engine.Update += EngineUpdate;
         On.Celeste.Player.Update += PlayerUpdate;
+        On.Celeste.Player.StartDash += PlayerStartDash;
         On.Celeste.Player.Die += PlayerDie;
         On.Celeste.Input.GetAimVector += GetAimVector;
         server.Start();
@@ -25,6 +26,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         server.Dispose();
         On.Monocle.Engine.Update -= EngineUpdate;
         On.Celeste.Player.Update -= PlayerUpdate;
+        On.Celeste.Player.StartDash -= PlayerStartDash;
         On.Celeste.Player.Die -= PlayerDie;
         On.Celeste.Input.GetAimVector -= GetAimVector;
     }
@@ -99,11 +101,15 @@ public sealed class CelesteGymCollectorModule : EverestModule {
             && (beforeSpeedY >= 0f || (beforeState != 0 && self.StateMachine.State == 0))) {
             job.JumpBufferFrames = 0;
         }
-        if (job is not null && beforeState != self.StateMachine.State
-            && self.StateMachine.State is Player.StDash or Player.StRedDash) {
+    }
+
+    private int PlayerStartDash(On.Celeste.Player.orig_StartDash orig, Player self) {
+        int nextState = orig(self);
+        if (job is not null) {
             job.DashBufferFrames = 0;
             job.CrouchDashBufferFrames = 0;
         }
+        return nextState;
     }
 
     private PlayerDeadBody? PlayerDie(
@@ -214,7 +220,13 @@ public sealed class CelesteGymCollectorModule : EverestModule {
     private void ReplaceNodes(VirtualButton button, Func<bool> check, Func<bool> pressed, Func<bool> released) {
         originalButtonNodes[button] = [.. button.Nodes];
         button.Nodes.Clear();
-        button.Nodes.Add(new ScriptedButtonNode(check, pressed, released));
+        ScriptedButtonNode node = new(check, pressed, released) {
+            // The collector owns the explicit five-frame counters above.
+            // Letting VirtualButton buffer this scripted node as well would
+            // re-press dash after Player.StartDash consumed the source buffer.
+            Bufferable = false
+        };
+        button.Nodes.Add(node);
     }
 
     private void RestoreButtons() {
