@@ -15,7 +15,7 @@ export const scenario = defineScenario({
   recording: { primaryFor: ['5.6'], startFrame: 0, endFrame: 48 },
   mapParts,
   name: 'other-5.6-kermit-dash',
-  initial: { pos: [630, 4], speed: [0, 0], dashes: 1 },
+  initial: { pos: [630, 12], speed: [0, 0], dashes: 1 },
   inputs: Array.from({ length: 48 }, (_, frame) => input({ move_y: -1, dash_pressed: frame === 0 })),
   verify: verifyKermitDash,
 })
