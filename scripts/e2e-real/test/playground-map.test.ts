@@ -16,6 +16,8 @@ import type { ScenarioDefinition } from '../types.js'
 
 const transition = requireScenario('mechanics-screen-transition-up')
 const zipJump = requireScenario('mechanics-liftboost-zip-jump')
+const bubbleSuper = requireScenario('entity-4.2-bubble-super')
+const bubbleDemohyper = requireScenario('entity-4.2-bubble-demohyper')
 
 describe('per-scenario Playground maps', () => {
   it('limits screen-transition fixture contents to its declared closure', () => {
@@ -35,6 +37,15 @@ describe('per-scenario Playground maps', () => {
       transition.name,
       duplicate.name,
     ])
+  })
+
+  it('gives bubble coyote scenarios their source jumpthrough without an unrelated zip mover', () => {
+    for (const scenario of [bubbleSuper, bubbleDemohyper]) {
+      const entities = scenarioFixture(scenario).fixture.rooms.flatMap((room) => room.entities)
+      assert.deepEqual(entities.find((entity) => entity.kind === 'jump_thru')?.bounds, [112, 400, 112, 8])
+      assert.equal(entities.some((entity) => entity.kind === 'booster' && entity.bounds[0] === 230 && entity.bounds[1] === 384), true)
+      assert.equal(entities.some((entity) => entity.kind === 'zip_mover'), false)
+    }
   })
 
   it('rejects a map override instead of silently bypassing scenario parts', () => {

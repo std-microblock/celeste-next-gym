@@ -33,12 +33,19 @@ export const PLAYGROUND_BASE = defineMapPart({
   }],
 })
 
-export const PLAYGROUND_ZIP_MOVER = fixturePart('playground.zip-mover', {
-  solids: [[112, 416, 8, 80]],
-  entities: [
-    { id: 'entity-0000', kind: 'jump_thru', bounds: [112, 400, 112, 8], name: 'jumpThru' },
-    { id: 'entity-0001', kind: 'zip_mover', bounds: [32, 440, 64, 16], nodes: [[32, 320]], name: 'zipMover' },
-  ],
+export const PLAYGROUND_JUMP_THRU = fixturePart('playground.jump-thru', {
+  entities: [{ id: 'entity-0000', kind: 'jump_thru', bounds: [112, 400, 112, 8], name: 'jumpThru' }],
+})
+export const PLAYGROUND_ZIP_MOVER = defineMapPart({
+  id: 'playground.zip-mover',
+  dependencies: ['playground.base', 'playground.jump-thru'],
+  package: PACKAGE,
+  sid: SID,
+  rooms: [{
+    name: ROOM,
+    solids: [[112, 416, 8, 80]],
+    entities: [{ id: 'entity-0001', kind: 'zip_mover', bounds: [32, 440, 64, 16], nodes: [[32, 320]], name: 'zipMover' }],
+  }],
 })
 export const PLAYGROUND_BOOSTER = fixturePart('playground.booster', {
   entities: [
@@ -117,7 +124,7 @@ export const PLAYGROUND_TRANSITION = defineMapPart({
 })
 
 export const COMMON_MAP_PARTS = new Map<string, MapPart>([
-  PLAYGROUND_BASE, PLAYGROUND_ZIP_MOVER, PLAYGROUND_BOOSTER, PLAYGROUND_SPIKES,
+  PLAYGROUND_BASE, PLAYGROUND_JUMP_THRU, PLAYGROUND_ZIP_MOVER, PLAYGROUND_BOOSTER, PLAYGROUND_SPIKES,
   PLAYGROUND_SPRING, PLAYGROUND_BERRY, PLAYGROUND_SWIM, PLAYGROUND_DREAM_BLOCK,
   PLAYGROUND_STAR_FLY, PLAYGROUND_BUMPER, PLAYGROUND_ICE_BALL, PLAYGROUND_BADELINE,
   PLAYGROUND_THEO, PLAYGROUND_BOUNCE_BLOCK, PLAYGROUND_WIND, PLAYGROUND_DASHLESS,

@@ -1,10 +1,10 @@
 import { input } from '../../inputs.js'
 import { defineScenario } from '../../scenario.js'
 import { PLAYGROUND_TARGET } from '../../targets.js'
-import { PLAYGROUND_BOOSTER } from '../common-parts.js'
+import { PLAYGROUND_BOOSTER, PLAYGROUND_JUMP_THRU } from '../common-parts.js'
 import { field, near, pickCore } from '../../verify.js'
 
-export const mapParts = [PLAYGROUND_BOOSTER] as const
+export const mapParts = [PLAYGROUND_BOOSTER, PLAYGROUND_JUMP_THRU] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
