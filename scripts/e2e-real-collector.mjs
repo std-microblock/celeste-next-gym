@@ -16,7 +16,10 @@ import {
 } from './e2e-isolation.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const gameRoot = resolve(root, 'vendor', 'celeste-game')
+const gameRepoRoot = process.env.E2E_GAME_REPO_ROOT
+  ? resolve(process.env.E2E_GAME_REPO_ROOT)
+  : root
+const gameRoot = resolve(gameRepoRoot, 'vendor', 'celeste-game')
 const modRoot = resolve(root, 'mods', 'CelesteGymCollector')
 const playgroundModRoot = resolve(root, 'mods', 'CelesteGymPlayground')
 const serviceRoot = resolve(root, 'services', 'collector')
@@ -82,7 +85,7 @@ const steamRoots = (process.env.E2E_STEAM_CELESTE_ROOTS ?? '')
   .split(process.platform === 'win32' ? ';' : ':')
   .map((path) => path.trim())
   .filter(Boolean)
-const gameInstall = validateGameInstall({ repoRoot: root, gameRoot, steamRoots })
+const gameInstall = validateGameInstall({ repoRoot: gameRepoRoot, gameRoot, steamRoots })
 const git = {
   branch: capture('git', ['branch', '--show-current']),
   head: capture('git', ['rev-parse', 'HEAD']),
