@@ -37,6 +37,7 @@ const includePlaygroundBumper = process.env.E2E_PLAYGROUND_BUMPER !== '0'
 const includePlaygroundBadelineBoost = process.env.E2E_PLAYGROUND_BADELINE_BOOST !== '0'
 const includePlaygroundMiscStates = process.env.E2E_PLAYGROUND_MISC_STATES !== '0'
 const includePlaygroundZipMover = process.env.E2E_PLAYGROUND_ZIP_MOVER !== '0'
+const includePlaygroundBounceBlock = process.env.E2E_PLAYGROUND_BOUNCE_BLOCK !== '0'
 const areaId = Number.parseInt(process.env.E2E_AREA_ID ?? '1', 10)
 if (!Number.isSafeInteger(areaId) || areaId < 0) throw new Error('E2E_AREA_ID must be a non-negative integer')
 const areaSid = process.env.E2E_AREA_SID?.trim() || undefined
@@ -245,6 +246,56 @@ try {
                 last_lift: state._everest_fields?.lastLiftSpeed,
                 lift_timer: state._everest_fields?.liftSpeedTimer,
               })),
+            })}`)
+          }
+        },
+      },
+    ] : []),
+    ...(includePlaygroundBounceBlock ? [
+      {
+        name: 'entity-4.7-core-super',
+        initial: { pos: [384, 360], speed: [0, 0] },
+        inputs: Array.from({ length: 38 }, (_, frame) => input({
+          move_x: frame >= 32 ? 1 : 0,
+          dash_pressed: frame === 32,
+          jump_pressed: frame === 36,
+          jump_held: frame === 36,
+        })),
+        verify(states) {
+          const launch = states.find((state) => Math.abs(state.speed[1] + 200) <= 0.01
+            && Math.abs(state._everest_fields?.jumpGraceTimer - 0.1) <= 0.001
+            && Math.abs(state._everest_fields?.lastLiftSpeed?.[1] + 200) <= 0.01)
+          const superState = states[37]
+          if (!launch || superState?.state !== 0
+            || Math.abs(superState.speed[0] - 260) > 0.01
+            || Math.abs(superState.speed[1] + 235) > 0.01) {
+            throw new Error(`entity-4.7-core-super: missing BounceBlock launch grace/lift or 260/-235 Core Super: ${JSON.stringify({
+              launch: launch && pickCore(launch),
+              result: superState && pickCore(superState),
+            })}`)
+          }
+        },
+      },
+      {
+        name: 'entity-4.7-core-hyper',
+        initial: { pos: [384, 360], speed: [0, 0] },
+        inputs: Array.from({ length: 38 }, (_, frame) => input({
+          move_x: frame >= 32 ? 1 : 0,
+          crouch_dash_pressed: frame === 32,
+          jump_pressed: frame === 36,
+          jump_held: frame === 36,
+        })),
+        verify(states) {
+          const launch = states.find((state) => Math.abs(state.speed[1] + 200) <= 0.01
+            && Math.abs(state._everest_fields?.jumpGraceTimer - 0.1) <= 0.001
+            && Math.abs(state._everest_fields?.lastLiftSpeed?.[1] + 200) <= 0.01)
+          const hyper = states[37]
+          if (!launch || hyper?.state !== 0 || hyper.ducking
+            || Math.abs(hyper.speed[0] - 325) > 0.01
+            || Math.abs(hyper.speed[1] + 117.5) > 0.01) {
+            throw new Error(`entity-4.7-core-hyper: missing BounceBlock launch grace/lift or 325/-117.5 Core Hyper: ${JSON.stringify({
+              launch: launch && pickCore(launch),
+              result: hyper && pickCore(hyper),
             })}`)
           }
         },

@@ -167,6 +167,7 @@ export const PLAYGROUND: GymMap = {
     { kind: 'bumper', bounds: { x: 588, y: 188, width: 24, height: 24 }, direction: { x: 0, y: 0 }, name: 'bigSpinner' },
     { kind: 'badeline_boost', bounds: { x: 304, y: 384, width: 32, height: 32 }, direction: { x: 0, y: 0 }, nodes: [{ x: 320, y: 288 }], name: 'badelineBoost' },
     { kind: 'theo_crystal', bounds: { x: 846, y: 486, width: 8, height: 10 }, direction: { x: 0, y: 0 }, name: 'theoCrystal' },
+    { kind: 'bounce_block', bounds: { x: 352, y: 360, width: 64, height: 16 }, direction: { x: 0, y: 0 }, name: 'bounceBlock' },
     { kind: 'wind', bounds: { x: 640, y: 128, width: 280, height: 120 }, direction: { x: 400, y: 0 }, name: 'windTrigger' },
   ],
   source_package: 'CelesteGymPlayground',

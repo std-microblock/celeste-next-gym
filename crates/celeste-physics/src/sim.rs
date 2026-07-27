@@ -3688,6 +3688,54 @@ mod tests {
     }
 
     #[test]
+    fn playground_hot_bounce_block_grace_adds_core_super_lift() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(384.0, 360.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..38)
+            .map(|frame| InputState {
+                move_x: if frame >= 32 { 1 } else { 0 },
+                dash_pressed: frame == 32,
+                jump_pressed: frame == 36,
+                jump_held: frame == 36,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &crate::mechanics_playground(), 38).unwrap();
+
+        assert_eq!(trace.states[32].speed, Vec2::new(0.0, -200.0));
+        assert_eq!(trace.states[33].state, PlayerState::Dash);
+        assert_eq!(trace.states[37].state, PlayerState::Normal);
+        assert_eq!(trace.states[37].speed, Vec2::new(260.0, -235.0));
+    }
+
+    #[test]
+    fn playground_hot_bounce_block_grace_adds_core_hyper_lift() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(384.0, 360.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..38)
+            .map(|frame| InputState {
+                move_x: if frame >= 32 { 1 } else { 0 },
+                crouch_dash_pressed: frame == 32,
+                jump_pressed: frame == 36,
+                jump_held: frame == 36,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &crate::mechanics_playground(), 38).unwrap();
+
+        assert_eq!(trace.states[32].speed, Vec2::new(0.0, -200.0));
+        assert!(trace.states[33].ducking);
+        assert_eq!(trace.states[37].state, PlayerState::Normal);
+        assert_eq!(trace.states[37].speed, Vec2::new(325.0, -117.5));
+    }
+
+    #[test]
     fn jump_adds_retained_lift_boost_before_caching_variable_jump_speed() {
         let p = PlayerSnapshot {
             pos: Vec2::new(32.0, 100.0),

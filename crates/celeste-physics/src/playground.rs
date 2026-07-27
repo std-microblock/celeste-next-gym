@@ -249,6 +249,17 @@ pub fn mechanics_playground() -> Map {
                 nodes: vec![],
                 name: "theoCrystal".to_owned(),
             },
+            // Isolated hot Core BounceBlock booth for Core Super/Hyper. A
+            // player whose bottom is y=360 starts centered on its top face.
+            Entity {
+                kind: EntityKind::BounceBlock,
+                bounds: Rect::new(352.0, 360.0, 64.0, 16.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "bounceBlock".to_owned(),
+            },
             Entity {
                 kind: EntityKind::Wind,
                 bounds: Rect::new(640.0, 128.0, 280.0, 120.0),
