@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { GymMap, MapEntity, SimState, Vec2 } from '../model'
+import type { EntityKind, GymMap, MapEntity, SimState, Vec2 } from '../model'
 
 interface AtlasEntry {
   x: number
@@ -156,12 +156,14 @@ function drawEntry(
   scaleX = 1,
   scaleY = 1,
   tint?: string,
+  rotation = 0,
 ): void {
   if (!key) return
   const entry = assets.entries[key]
   if (!entry) return
   context.save()
   context.translate(Math.round(x), Math.round(y))
+  context.rotate(rotation)
   context.scale(scaleX, scaleY)
   const source = tint ? tintedEntry(assets, key, tint) : undefined
   if (source) {
@@ -174,6 +176,44 @@ function drawEntry(
     )
   }
   context.restore()
+}
+
+function drawOutlinedEntry(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  key: string | undefined,
+  x: number,
+  y: number,
+  originX: number,
+  originY: number,
+  scaleX = 1,
+  scaleY = 1,
+  rotation = 0,
+): void {
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
+    drawEntry(context, assets, key, x + dx, y + dy, originX, originY, scaleX, scaleY, '#000000', rotation)
+  }
+  drawEntry(context, assets, key, x, y, originX, originY, scaleX, scaleY, undefined, rotation)
+}
+
+function drawCenteredEntry(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  key: string | undefined,
+  x: number,
+  y: number,
+  outlined = false,
+  scaleX = 1,
+  scaleY = 1,
+  rotation = 0,
+): void {
+  if (!key) return
+  const entry = assets.entries[key]
+  if (!entry) return
+  const originX = entry.frameWidth / 2
+  const originY = entry.frameHeight / 2
+  if (outlined) drawOutlinedEntry(context, assets, key, x, y, originX, originY, scaleX, scaleY, rotation)
+  else drawEntry(context, assets, key, x, y, originX, originY, scaleX, scaleY, undefined, rotation)
 }
 
 function hairMetadata(key: string | undefined): { offset: Vec2; frame: number } {
@@ -478,6 +518,36 @@ function targetMatches(target: Vec2 | undefined, x: number, y: number, tolerance
   return Boolean(target && Math.abs(target.x - x) <= tolerance && Math.abs(target.y - y) <= tolerance)
 }
 
+function roundTiesEven(value: number): number {
+  const lower = Math.floor(value)
+  const fraction = value - lower
+  if (fraction < .5) return lower
+  if (fraction > .5) return lower + 1
+  return lower % 2 === 0 ? lower : lower + 1
+}
+
+export function runtimeEntityBounds(entity: MapEntity, state: SimState, kindIndex: number): MapEntity['bounds'] {
+  const box = entity.bounds
+  if (entity.kind === 'zip_mover') {
+    const position = state.zip_movers?.[kindIndex]?.position
+    if (position) return { ...box, x: position.x, y: position.y }
+  } else if (entity.kind === 'bounce_block') {
+    const position = state.bounce_blocks?.[kindIndex]?.position
+    if (position) return { ...box, x: position.x, y: position.y }
+  } else if (entity.kind === 'theo_crystal') {
+    const position = state.theo_crystals?.[kindIndex]?.position
+    if (position) return { ...box, x: position.x - 4, y: position.y - 10, width: 8, height: 10 }
+  } else if (entity.kind === 'moving_solid') {
+    const time = state.moving_solid_time ?? 0
+    return {
+      ...box,
+      x: box.x + roundTiesEven(entity.direction.x * time),
+      y: box.y + roundTiesEven(entity.direction.y * time),
+    }
+  }
+  return { ...box }
+}
+
 export function activeBoosterCenter(entity: MapEntity, state: SimState): Vec2 | undefined {
   const center = { x: entity.bounds.x + entity.bounds.width / 2, y: entity.bounds.y + entity.bounds.height / 2 }
   const active = (state.booster_reuse_timer ?? 0) > 0 && targetMatches(state.last_booster_target, center.x, center.y + 2)
@@ -540,7 +610,167 @@ function drawBadelineBoost(context: CanvasRenderingContext2D, assets: GameAssets
   drawEntry(context, assets, `objects/badelineboost/idle${String(index).padStart(2, '0')}`, position.x, position.y, 12, 12)
 }
 
-function drawEntity(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState): void {
+function drawSpring(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity): void {
+  const box = entity.bounds
+  let position = { x: box.x + 8, y: box.y + 6 }
+  let rotation = 0
+  if (entity.direction.x > 0) {
+    position = { x: box.x, y: box.y + 8 }
+    rotation = Math.PI / 2
+  } else if (entity.direction.x < 0) {
+    position = { x: box.x + 6, y: box.y + 8 }
+    rotation = -Math.PI / 2
+  }
+  const key = 'objects/spring/00'
+  const entry = assets.entries[key]
+  if (!entry) return
+  drawOutlinedEntry(context, assets, key, position.x, position.y, entry.frameWidth / 2, entry.frameHeight, 1, 1, rotation)
+}
+
+function drawStrawberry(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number): void {
+  const box = entity.bounds
+  const centerX = box.x + box.width / 2
+  const centerY = box.y + box.height / 2 + Math.sin(frame / 24 + centerX * .05) * 2
+  const index = Math.floor(frame / 6) % 7
+  drawCenteredEntry(context, assets, `collectables/strawberry/normal${String(index).padStart(2, '0')}`, centerX, centerY)
+}
+
+function drawIceBall(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState): void {
+  const box = entity.bounds
+  const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  const broken = (state.bounce_reuse_timer ?? 0) > 0 && targetMatches(state.last_bounce_target, center.x, center.y)
+  if (broken) return
+  const sequence = [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+  const index = sequence[Math.floor(frame / 5) % sequence.length]
+  drawCenteredEntry(context, assets, `objects/fireball/fireball${String(index).padStart(2, '0')}`, center.x, center.y, true)
+}
+
+function drawTheoCrystal(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, state: SimState, kindIndex: number): void {
+  const runtime = state.theo_crystals?.[kindIndex]
+  const position = runtime?.position ?? { x: entity.bounds.x + 4, y: entity.bounds.y + 10 }
+  drawOutlinedEntry(context, assets, 'characters/theoCrystal/idle00', position.x, position.y, 32, 42, -1)
+}
+
+function drawAtlasTile(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  key: string,
+  sourceX: number,
+  sourceY: number,
+  width: number,
+  height: number,
+  x: number,
+  y: number,
+): void {
+  const entry = assets.entries[key]
+  if (!entry || width <= 0 || height <= 0) return
+  context.drawImage(assets.image, entry.x + sourceX, entry.y + sourceY, width, height, x, y, width, height)
+}
+
+function drawZipMover(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState, kindIndex: number): void {
+  const runtime = state.zip_movers?.[kindIndex]
+  const box = runtimeEntityBounds(entity, state, kindIndex)
+  const start = runtime?.start ?? { x: entity.bounds.x, y: entity.bounds.y }
+  const target = entity.nodes?.[0] ?? start
+  const from = { x: start.x + box.width / 2, y: start.y + box.height / 2 }
+  const to = { x: target.x + box.width / 2, y: target.y + box.height / 2 }
+  const dx = to.x - from.x
+  const dy = to.y - from.y
+  const length = Math.hypot(dx, dy)
+  if (length > 0) {
+    const normal = { x: -dy / length, y: dx / length }
+    for (const [offsetY, color] of [[1, '#000000'], [0, '#663931']] as const) {
+      context.strokeStyle = color
+      context.lineWidth = 1
+      context.beginPath()
+      context.moveTo(from.x + normal.x * 3, from.y + normal.y * 3 + offsetY)
+      context.lineTo(to.x + normal.x * 3, to.y + normal.y * 3 + offsetY)
+      context.moveTo(from.x - normal.x * 4, from.y - normal.y * 4 + offsetY)
+      context.lineTo(to.x - normal.x * 4, to.y - normal.y * 4 + offsetY)
+      context.stroke()
+    }
+    drawCenteredEntry(context, assets, 'objects/zipmover/cog', from.x, from.y, true)
+    drawCenteredEntry(context, assets, 'objects/zipmover/cog', to.x, to.y, true)
+  }
+
+  context.fillStyle = '#000000'
+  context.fillRect(box.x + 1, box.y + 1, Math.max(0, box.width - 2), Math.max(0, box.height - 2))
+  const cogFrames = frames(assets, 'objects/zipmover/innercog')
+  for (let y = 4; y <= box.height - 4; y += 8) {
+    for (let x = 4; x <= box.width - 4; x += 8) {
+      const key = cogFrames[(Math.floor(frame / 4) + Math.floor(x / 8) + Math.floor(y / 8)) % Math.max(1, cogFrames.length)]
+      drawCenteredEntry(context, assets, key, box.x + x, box.y + y)
+    }
+  }
+  for (let y = 0; y < box.height; y += 8) {
+    for (let x = 0; x < box.width; x += 8) {
+      if (x > 0 && x + 8 < box.width && y > 0 && y + 8 < box.height) continue
+      const width = Math.min(8, box.width - x)
+      const height = Math.min(8, box.height - y)
+      const sourceX = x === 0 ? 0 : x + 8 >= box.width ? 16 : 8
+      const sourceY = y === 0 ? 0 : y + 8 >= box.height ? 16 : 8
+      drawAtlasTile(context, assets, 'objects/zipmover/block', sourceX, sourceY, width, height, box.x + x, box.y + y)
+    }
+  }
+  const lightIndex = runtime?.phase === 0 ? 1 : Math.floor(frame / 4) % 4
+  const lightKey = `objects/zipmover/light${String(lightIndex).padStart(2, '0')}`
+  const light = assets.entries[lightKey]
+  if (light) drawEntry(context, assets, lightKey, box.x + box.width / 2, box.y, light.frameWidth / 2, 0)
+}
+
+function drawBounceBlock(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState, kindIndex: number): void {
+  const runtime = state.bounce_blocks?.[kindIndex]
+  if (runtime?.phase === 4) return
+  const box = runtimeEntityBounds(entity, state, kindIndex)
+  const source = assets.entries['objects/BumpBlockNew/fire00']
+  if (source) {
+    const columns = Math.max(1, Math.floor(source.width / 8))
+    const rows = Math.max(1, Math.floor(source.height / 8))
+    for (let y = 0; y < box.height; y += 8) {
+      for (let x = 0; x < box.width; x += 8) {
+        const width = Math.min(8, box.width - x)
+        const height = Math.min(8, box.height - y)
+        const column = x === 0 ? 0 : x + 8 >= box.width ? columns - 1 : 1 + Math.abs(Math.floor(x / 8 + y / 8)) % Math.max(1, columns - 2)
+        const row = y === 0 ? 0 : y + 8 >= box.height ? rows - 1 : 1 + Math.abs(Math.floor(x / 8 * 3 + y / 8)) % Math.max(1, rows - 2)
+        drawAtlasTile(context, assets, 'objects/BumpBlockNew/fire00', column * 8, row * 8, width, height, box.x + x, box.y + y)
+      }
+    }
+  }
+  const centerFrames = frames(assets, 'objects/BumpBlockNew/fire_center')
+  const key = centerFrames[Math.floor(frame / 5) % Math.max(1, centerFrames.length)]
+  drawCenteredEntry(context, assets, key, box.x + box.width / 2, box.y + box.height / 2, true)
+}
+
+function drawMovingSolid(context: CanvasRenderingContext2D, entity: MapEntity, state: SimState, kindIndex: number): void {
+  const box = runtimeEntityBounds(entity, state, kindIndex)
+  context.fillStyle = '#183b57'
+  context.fillRect(box.x, box.y, box.width, box.height)
+  context.strokeStyle = '#67d9ff'
+  context.lineWidth = 1
+  context.strokeRect(box.x + .5, box.y + .5, Math.max(0, box.width - 1), Math.max(0, box.height - 1))
+  context.strokeStyle = 'rgba(103, 217, 255, .45)'
+  for (let offset = -box.height; offset < box.width; offset += 8) {
+    context.beginPath()
+    context.moveTo(box.x + offset, box.y + box.height)
+    context.lineTo(box.x + offset + box.height, box.y)
+    context.stroke()
+  }
+}
+
+function drawUnknownEntity(context: CanvasRenderingContext2D, entity: MapEntity): void {
+  const box = entity.bounds
+  context.fillStyle = 'rgba(255, 0, 180, .18)'
+  context.fillRect(box.x, box.y, Math.max(8, box.width), Math.max(8, box.height))
+  context.strokeStyle = '#ff4fc3'
+  context.lineWidth = 1
+  context.strokeRect(box.x + .5, box.y + .5, Math.max(7, box.width - 1), Math.max(7, box.height - 1))
+  context.fillStyle = '#ffffff'
+  context.font = '6px monospace'
+  context.textBaseline = 'bottom'
+  context.fillText(entity.name || entity.kind, box.x + 1, box.y - 1)
+}
+
+function drawEntity(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState, kindIndex: number): void {
   const box = entity.bounds
   if (entity.kind === 'spikes') {
     const direction = entity.direction.x < 0 ? 'left' : entity.direction.x > 0 ? 'right' : entity.direction.y > 0 ? 'down' : 'up'
@@ -559,8 +789,24 @@ function drawEntity(context: CanvasRenderingContext2D, assets: GameAssets, entit
     drawFlyFeather(context, assets, entity, frame, state)
   } else if (entity.kind === 'bumper') {
     drawBumper(context, assets, entity, frame, state)
+  } else if (entity.kind === 'ice_ball') {
+    drawIceBall(context, assets, entity, frame, state)
   } else if (entity.kind === 'badeline_boost') {
     drawBadelineBoost(context, assets, entity, frame, state)
+  } else if (entity.kind === 'spring') {
+    drawSpring(context, assets, entity)
+  } else if (entity.kind === 'strawberry') {
+    drawStrawberry(context, assets, entity, frame)
+  } else if (entity.kind === 'bounce_block') {
+    drawBounceBlock(context, assets, entity, frame, state, kindIndex)
+  } else if (entity.kind === 'theo_crystal') {
+    drawTheoCrystal(context, assets, entity, state, kindIndex)
+  } else if (entity.kind === 'zip_mover') {
+    drawZipMover(context, assets, entity, frame, state, kindIndex)
+  } else if (entity.kind === 'moving_solid') {
+    drawMovingSolid(context, entity, state, kindIndex)
+  } else if (entity.kind !== 'wind') {
+    drawUnknownEntity(context, entity)
   }
 }
 
@@ -601,7 +847,12 @@ export function GameView({ map, state, states, frame, stale }: { map: GymMap; st
     context.translate(offsetX - map.bounds.x * scale, offsetY - map.bounds.y * scale)
     context.scale(scale, scale)
     drawTiles(context, assets, map, solidGrid)
-    for (const entity of map.entities) drawEntity(context, assets, entity, frame, state)
+    const kindCounts = new Map<EntityKind, number>()
+    for (const entity of map.entities) {
+      const kindIndex = kindCounts.get(entity.kind) ?? 0
+      drawEntity(context, assets, entity, frame, state, kindIndex)
+      kindCounts.set(entity.kind, kindIndex + 1)
+    }
     context.globalAlpha = stale ? .45 : 1
     drawPlayer(context, assets, states, state, frame)
     drawWind(context, assets, map, state, frame)

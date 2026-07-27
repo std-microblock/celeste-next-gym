@@ -19,6 +19,38 @@ export interface Vec2 {
   y: number
 }
 
+export interface ZipMoverState {
+  phase: number
+  wait_timer: number
+  at: number
+  position: Vec2
+  remainder: Vec2
+  lift_speed: Vec2
+  start: Vec2
+}
+
+export interface BounceBlockState {
+  phase: number
+  move_speed: number
+  bounce_dir: Vec2
+  bounce_lift: Vec2
+  bounce_end_timer: number
+  respawn_timer: number
+  position: Vec2
+  remainder: Vec2
+  lift_speed: Vec2
+  start: Vec2
+}
+
+export interface TheoCrystalState {
+  position: Vec2
+  speed: Vec2
+  remainder: Vec2
+  held: boolean
+  cannot_hold_timer: number
+  gravity_timer: number
+}
+
 export interface SimState {
   pos: Vec2
   speed: Vec2
@@ -45,6 +77,13 @@ export interface SimState {
   feather_reuse_timer?: number
   last_bumper_target?: Vec2
   bumper_reuse_timer?: number
+  last_bounce_target?: Vec2
+  bounce_reuse_timer?: number
+  moving_solid_time?: number
+  zip_movers?: ZipMoverState[]
+  bounce_blocks?: BounceBlockState[]
+  theo_crystals?: TheoCrystalState[]
+  holding_theo?: number | null
   badeline_boost_active?: boolean
   badeline_boost_entity_origin?: Vec2
   badeline_boost_current_position?: Vec2
@@ -52,7 +91,7 @@ export interface SimState {
   [key: string]: unknown
 }
 
-export type EntityKind = 'jump_thru' | 'spikes' | 'water' | 'dream_block' | 'booster' | 'red_booster' | 'fly_feather' | 'bumper' | 'badeline_boost' | 'wind' | 'unknown'
+export type EntityKind = 'jump_thru' | 'spikes' | 'water' | 'dream_block' | 'booster' | 'red_booster' | 'fly_feather' | 'bumper' | 'ice_ball' | 'badeline_boost' | 'spring' | 'strawberry' | 'wind' | 'bounce_block' | 'theo_crystal' | 'zip_mover' | 'moving_solid' | 'unknown'
 
 export interface MapEntity {
   kind: EntityKind

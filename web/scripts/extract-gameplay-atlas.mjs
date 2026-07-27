@@ -107,6 +107,10 @@ const GAMEPLAY_PATHS = [
   'objects/booster/booster', 'objects/booster/boosterRed', 'objects/booster/outline',
   'objects/dreamblock/active', 'objects/dreamblock/particles',
   'objects/flyFeather/', 'objects/Bumper/', 'objects/badelineboost/',
+  'objects/spring/', 'objects/fireball/', 'characters/theoCrystal/idle',
+  'collectables/strawberry/normal',
+  'objects/zipmover/',
+  'objects/BumpBlockNew/fire00', 'objects/BumpBlockNew/fire_center',
   'particles/snow',
 ]
 
