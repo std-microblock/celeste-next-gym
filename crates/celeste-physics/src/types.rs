@@ -117,6 +117,21 @@ pub struct TheoCrystalSnapshot {
     pub gravity_timer: f32,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct CloudSnapshot {
+    /// Vanilla Cloud.Update phase: waiting, rebounding, or returning.
+    pub phase: u8,
+    /// Vertical speed integrated by the cloud's source-ordered state machine.
+    pub speed: f32,
+    /// Integer JumpThru position used for collision and carrying.
+    pub position: Vec2,
+    /// Platform movementCounter retained by MoveV across frames.
+    pub remainder_y: f32,
+    /// Original entity position captured before the runtime map is moved.
+    pub start: Vec2,
+}
+
 fn default_stamina() -> f32 {
     110.0
 }
@@ -221,6 +236,8 @@ pub struct PlayerSnapshot {
     pub bounce_blocks: Vec<BounceBlockSnapshot>,
     /// Per-entity vanilla TheoCrystal actor and Holdable state.
     pub theo_crystals: Vec<TheoCrystalSnapshot>,
+    /// Per-entity vanilla non-fragile Cloud movement state.
+    pub clouds: Vec<CloudSnapshot>,
     /// Map-order TheoCrystal index currently held by Player.
     pub holding_theo: Option<u16>,
     pub min_hold_timer: f32,
@@ -259,6 +276,9 @@ pub struct PlayerSnapshot {
     pub star_fly_hitbox_preserved: bool,
     pub last_bounce_target: Vec2,
     pub bounce_reuse_timer: f32,
+    /// A PlayerCollider top-bounce observed after Player.Update. The portable
+    /// trace exposes it on the following player frame, so retain the source Y.
+    pub pending_bounce_from_y: Option<f32>,
     pub explode_launch_boost_timer: f32,
     pub explode_launch_boost_speed: f32,
     pub badeline_boost_active: bool,
@@ -359,6 +379,7 @@ impl Default for PlayerSnapshot {
             zip_movers: vec![],
             bounce_blocks: vec![],
             theo_crystals: vec![],
+            clouds: vec![],
             holding_theo: None,
             min_hold_timer: 0.0,
             pickup_old_speed: Vec2::default(),
@@ -387,6 +408,7 @@ impl Default for PlayerSnapshot {
             star_fly_hitbox_preserved: false,
             last_bounce_target: Vec2::default(),
             bounce_reuse_timer: 0.0,
+            pending_bounce_from_y: None,
             explode_launch_boost_timer: 0.0,
             explode_launch_boost_speed: 0.0,
             badeline_boost_active: false,
