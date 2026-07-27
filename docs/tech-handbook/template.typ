@@ -41,16 +41,22 @@
   ]
 }
 
-#let field-badges(zh, en) = [
-  #badge(zh, fill: rgb("#e2e8f0"), color: rgb("#334155"))
-  #h(4pt)
-  #badge(en, fill: rgb("#f1f5f9"), color: rgb("#64748b"))
-]
-
 #let identifier(value) = {
   show regex("[_;/]"): it => [#it#text("\u{200b}")]
   value
 }
+
+#let evidence-row(zh, en, value, technical: false) = grid(
+  columns: (auto, auto, 1fr),
+  gutter: 5pt,
+  align: top,
+  badge(zh, fill: rgb("#e2e8f0"), color: rgb("#334155")),
+  badge(en, fill: rgb("#f1f5f9"), color: rgb("#64748b")),
+  block(width: 100%)[
+    #set par(justify: false)
+    #if technical { identifier(value) } else { value }
+  ],
+)
 
 #let evidence(path: none, symbol: none, snippet: none, note: none) = block(
   width: 100%,
@@ -61,15 +67,15 @@
   stroke: 0.5pt + rgb("#cbd5e1"),
   [
     #if path != none [
-      #field-badges([文件], [FILE]) #h(5pt) #path
-      #linebreak()
+      #evidence-row([文件], [FILE], path, technical: true)
+      #v(5pt)
     ]
     #if symbol != none [
-      #field-badges([符号], [SYMBOL]) #h(5pt) #identifier(symbol)
-      #linebreak()
+      #evidence-row([符号], [SYMBOL], symbol, technical: true)
+      #v(5pt)
     ]
     #if note != none [
-      #field-badges([说明], [NOTE]) #h(5pt) #note
+      #evidence-row([说明], [NOTE], note)
     ]
     #if snippet != none [#v(5pt)#snippet]
   ],
