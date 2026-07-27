@@ -19,6 +19,6 @@
     note: [Rust 保持 Player.Update 先结算 wallboost、再执行 NormalUpdate 攀跳的顺序；缓存 move_x 与两像素 ClimbCheck 让返还和第二次攀跳在同一状态帧发生。],
   ),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [half_stamina_climbing_chains_wallboost_into_close_wall_climb_jump], note: [三输入帧从 80 体力开始，第一攀跳降到 52.5，第二攀跳后仍为 52.5，并断言 Normal、朝向、冲刺数、接地、蹲伏与死亡字段。]),
-  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/playground/other-5.5-half-stamina-climbing.ts], symbol: [other-5.5-half-stamina-climbing; verifyHalfStaminaClimbing], note: [专属 MapPart 的直墙场景记录四个真实状态；wallboost 返还与第二次近墙攀跳后体力仍为 52.5，九类核心字段逐帧比较容差不超过 0.01。]),
+  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/playground/other-5.5-half-stamina-climbing.ts], symbol: [other-5.5-half-stamina-climbing; verifyHalfStaminaClimbing], note: [专属 MapPart 的直墙场景记录 4 个真实状态；wallboost 返还与第二次近墙攀跳后体力仍为 52.5，九类核心字段逐帧一致，最大位置误差 0、速度误差 0.000008。]),
   candidate-e2e: none,
 )
