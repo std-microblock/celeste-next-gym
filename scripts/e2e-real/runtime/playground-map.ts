@@ -39,6 +39,12 @@ export function scenarioLifecycleKey(scenario: ScenarioDefinition): string {
     : scenario.target.id
 }
 
+export function assertNoPlaygroundMapOverride(scenario: ScenarioDefinition, mapPath?: string): void {
+  if (scenario.target.kind === 'playground' && mapPath) {
+    throw new Error('E2E_MAP_PATH cannot override generated per-scenario Playground maps')
+  }
+}
+
 export function groupScenariosByLifecycle(scenarios: readonly ScenarioDefinition[]): readonly ScenarioLifecycleGroup[] {
   const groups = new Map<string, ScenarioDefinition[]>()
   for (const scenario of scenarios) {

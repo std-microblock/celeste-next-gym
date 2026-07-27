@@ -1202,10 +1202,15 @@ fn step(
     tick_lift_speed(p);
 
     // After components/coroutines update but before movement, Player.Update
-    // restores the normal collider while falling in open air when CanUnDuck
-    // succeeds. A downward air dash therefore only becomes crouched again
-    // when it lands.
-    if p.ducking && p.speed.y > 0.0 && !p.on_ground && can_unduck(p, map) {
+    // restores the normal collider while falling in open air only after
+    // jumpGraceTimer expires and CanUnDuck succeeds. DashBegin's downward
+    // crouch therefore survives while the source coyote window is active.
+    if p.ducking
+        && p.speed.y > 0.0
+        && !p.on_ground
+        && p.jump_grace_timer <= 0.0
+        && can_unduck(p, map)
+    {
         p.ducking = false;
     }
 
@@ -4417,6 +4422,28 @@ mod tests {
         .unwrap();
         assert!(falling_under_ceiling.ducking);
         assert!(!can_unduck(&falling_under_ceiling, &low_ceiling));
+    }
+    #[test]
+    fn downward_air_dash_keeps_ducking_until_coyote_grace_expires() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(160.0, 100.0),
+            jump_grace_timer: JUMP_GRACE,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = [InputState {
+            move_x: 1,
+            move_y: 1,
+            ..InputState::default()
+        }; 10];
+        inputs[0].dash_pressed = true;
+        let trace = simulate_trace(p, &inputs, &Map::default(), inputs.len() as u32).unwrap();
+
+        assert_eq!(trace.states[5].state, PlayerState::Dash);
+        assert!(trace.states[5].speed.y > 0.0);
+        assert!(trace.states[5].jump_grace_timer > 0.0);
+        assert!(trace.states[5].ducking);
+        assert_eq!(trace.states[9].jump_grace_timer, 0.0);
+        assert!(!trace.states[9].ducking);
     }
     #[test]
     fn superdash_sets_source_launch_speed_and_spends_dash() {

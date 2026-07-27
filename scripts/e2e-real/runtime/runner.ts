@@ -22,7 +22,7 @@ import { captureScenario, encodeScenarioArtifacts, writeArtifactManifest } from 
 import { createCollectorClient } from './collector-client.js'
 import { captureCommand, waitForPort } from './commands.js'
 import { createHarnessPaths, prepareMods } from './prepare-mods.js'
-import { groupScenariosByLifecycle, materializePlaygroundMap } from './playground-map.js'
+import { assertNoPlaygroundMapOverride, groupScenariosByLifecycle, materializePlaygroundMap } from './playground-map.js'
 import { compareRealTrace } from './rust-compare.js'
 import { executeScenario, type ScenarioSummary } from './scenario-runner.js'
 import { writeTrace } from './trace.js'
@@ -90,6 +90,7 @@ async function runHarnessLifecycle(
   if (targets.size !== 1) throw new Error(`one E2E invocation cannot mix targets: ${[...targets].join(', ')}`)
   const scenarioTarget = scenarios[0]?.target
   if (!scenarioTarget) throw new Error('scenario target is missing')
+  assertNoPlaygroundMapOverride(scenarios[0]!, config.mapPath)
 
   const paths = createHarnessPaths(config.repoRoot)
   const gameInstall = validateGameInstall({

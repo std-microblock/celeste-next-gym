@@ -6,6 +6,7 @@ import { describe, it } from 'node:test'
 
 import { scenarios } from '../scenarios/index.js'
 import {
+  assertNoPlaygroundMapOverride,
   groupScenariosByLifecycle,
   materializePlaygroundMap,
   scenarioFixture,
@@ -34,6 +35,10 @@ describe('per-scenario Playground maps', () => {
       transition.name,
       duplicate.name,
     ])
+  })
+
+  it('rejects a map override instead of silently bypassing scenario parts', () => {
+    assert.throws(() => assertNoPlaygroundMapOverride(transition, 'custom.bin'), /cannot override/)
   })
 
   it('stages the exact compiled scenario bin that Rust comparison reads', () => {
