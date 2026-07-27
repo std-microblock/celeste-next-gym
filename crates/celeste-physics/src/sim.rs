@@ -29,6 +29,10 @@ const DASH_TIME: f32 = 0.15;
 const DASH_COOLDOWN: f32 = 0.2;
 const DASH_ATTACK_TIME: f32 = 0.3;
 const SUPER_JUMP_H: f32 = 260.0;
+const CLIMB_HOP_Y: f32 = -120.0;
+const CLIMB_HOP_X: f32 = 100.0;
+const CLIMB_HOP_FORCE_TIME: f32 = 0.2;
+const CLIMB_HOP_NO_WIND_TIME: f32 = 0.3;
 const CLIMB_UP_SPEED: f32 = -45.0;
 const CLIMB_DOWN_SPEED: f32 = 80.0;
 const CLIMB_ACCEL: f32 = 900.0;
@@ -182,6 +186,7 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         s.wall_speed_retention_timer,
         s.wall_speed_retained,
         s.wall_boost_timer,
+        s.hop_wait_x_speed,
         s.dash_buffer_timer,
         s.crouch_dash_buffer_timer,
         s.movement_remainder.x,
@@ -309,6 +314,7 @@ fn step(p: &mut PlayerSnapshot, mut input: InputState, map: &Map) -> Result<(), 
     // NormalUpdate accelerates it, and retained wall speed is restored before
     // the same callback applies air control.
     update_wall_speed_retention(p, map);
+    update_climb_hop_wait(p, map);
 
     if p.badeline_boost_active {
         update_badeline_boost(p, map);
@@ -413,7 +419,13 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     }
 
     let wall = wall_dir(p, map);
-    if input.grab_held && !p.on_ground && wall != 0 && p.stamina > 0.0 {
+    if input.grab_held
+        && !p.on_ground
+        && wall != 0
+        && p.stamina > 0.0
+        && p.speed.y >= 0.0
+        && p.speed.x.signum() != -(wall as f32)
+    {
         p.state = PlayerState::Climb;
         p.facing = wall > 0;
         p.auto_jump = false;
@@ -658,7 +670,14 @@ fn super_wall_jump(p: &mut PlayerSnapshot, dir: i8) {
 
 fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     let wall = if p.facing { 1 } else { -1 };
-    if !input.grab_held || p.stamina <= 0.0 || !touching_wall(p, map, wall) {
+    if !input.grab_held || p.stamina <= 0.0 {
+        p.state = PlayerState::Normal;
+        return;
+    }
+    if !touching_wall(p, map, wall) {
+        if p.speed.y < 0.0 {
+            climb_hop(p, map, wall);
+        }
         p.state = PlayerState::Normal;
         return;
     }
@@ -691,6 +710,11 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         0.0
     } else {
         match input.move_y {
+            -1 if climb_slip_check(p, map, wall) => {
+                climb_hop(p, map, wall);
+                p.state = PlayerState::Normal;
+                return;
+            }
             -1 => CLIMB_UP_SPEED,
             1 => CLIMB_DOWN_SPEED,
             // Player.cs only targets 30 when SlipCheck succeeds (the wall no
@@ -707,6 +731,42 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
             CLIMB_STILL_COST
         };
         p.stamina = (p.stamina - cost * DT).max(0.0);
+    }
+}
+
+fn climb_slip_check(p: &PlayerSnapshot, map: &Map, wall: i8) -> bool {
+    let x = p.pos.x + if wall > 0 { 4.0 } else { -5.0 };
+    let top = p.pos.y - 11.0;
+    !map.solid_at(Rect::new(x, top + 4.0, 1.0, 1.0))
+        && !map.solid_at(Rect::new(x, top, 1.0, 1.0))
+}
+
+fn climb_hop(p: &mut PlayerSnapshot, map: &Map, wall: i8) {
+    if touching_wall(p, map, wall) {
+        p.hop_wait_x = wall;
+        p.hop_wait_x_speed = wall as f32 * CLIMB_HOP_X;
+    } else {
+        p.hop_wait_x = 0;
+        p.hop_wait_x_speed = 0.0;
+        p.speed.x = wall as f32 * CLIMB_HOP_X;
+    }
+    p.speed.y = p.speed.y.min(CLIMB_HOP_Y);
+    p.force_move_x = 0;
+    p.force_move_x_timer = CLIMB_HOP_FORCE_TIME;
+    p.no_wind_timer = CLIMB_HOP_NO_WIND_TIME;
+}
+
+fn update_climb_hop_wait(p: &mut PlayerSnapshot, map: &Map) {
+    if p.hop_wait_x == 0 {
+        return;
+    }
+    if p.speed.x.signum() == -(p.hop_wait_x as f32) || p.speed.y > 0.0 {
+        p.hop_wait_x = 0;
+        p.hop_wait_x_speed = 0.0;
+    } else if !touching_wall(p, map, p.hop_wait_x) {
+        p.speed.x = p.hop_wait_x_speed;
+        p.hop_wait_x = 0;
+        p.hop_wait_x_speed = 0.0;
     }
 }
 
@@ -2501,6 +2561,103 @@ mod tests {
         let p = simulate(p, &[input; 16], &Map::default(), 16).unwrap();
         assert_eq!(p.max_fall, FAST_MAX_FALL);
         assert_eq!(p.speed.y, FAST_MAX_FALL);
+    }
+    #[test]
+    fn climbhop_waits_for_the_body_to_clear_the_ledge_before_horizontal_launch() {
+        let map = Map {
+            solids: vec![Rect::new(40.0, 80.0, 8.0, 100.0)],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(36.0, 84.0),
+            speed: Vec2::new(0.0, -45.0),
+            state: PlayerState::Climb,
+            facing: true,
+            stamina: 100.0,
+            ..PlayerSnapshot::default()
+        };
+        let input = InputState { move_x: 1, move_y: -1, grab_held: true, ..InputState::default() };
+        let trace = simulate_trace(p, &[input; 4], &map, 4).unwrap();
+        assert_eq!(trace.states[1].state, PlayerState::Normal);
+        assert_eq!(trace.states[1].speed.y, CLIMB_HOP_Y);
+        assert_eq!(trace.states[1].speed.x, 0.0);
+        assert_eq!(trace.states[1].hop_wait_x, 1);
+        assert_eq!(trace.states[1].force_move_x_timer, CLIMB_HOP_FORCE_TIME);
+        assert_eq!(trace.states[1].no_wind_timer, CLIMB_HOP_NO_WIND_TIME);
+        assert!((trace.states[3].speed.x - 89.166_64).abs() < 0.001);
+        assert_eq!(trace.states[3].hop_wait_x, 0);
+    }
+    #[test]
+    fn upward_corner_correction_moves_around_a_one_pixel_ceiling_overlap() {
+        let map = Map {
+            solids: vec![Rect::new(40.0, 40.0, 32.0, 8.0)],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(37.0, 59.0),
+            speed: Vec2::new(0.0, JUMP_SPEED),
+            ..PlayerSnapshot::default()
+        };
+        let p = simulate(p, &[InputState::default()], &map, 1).unwrap();
+        assert_eq!(p.pos, Vec2::new(36.0, 58.0));
+        assert!(p.speed.y < 0.0);
+    }
+    #[test]
+    fn dash_attack_survives_dash_end_and_breaks_a_late_feather_shield() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            entities: vec![crate::Entity {
+                kind: EntityKind::FlyFeather,
+                bounds: Rect::new(110.0, 110.0, 20.0, 20.0),
+                direction: Vec2::default(),
+                shielded: true,
+                single_use: false,
+                nodes: vec![],
+                name: "infiniteStar".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot { pos: Vec2::new(55.0, 120.0), dashes: 1, ..PlayerSnapshot::default() };
+        let mut inputs = vec![InputState { move_x: 1, ..InputState::default() }; 32];
+        inputs[0].dash_pressed = true;
+        let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
+        let dash_end = trace.states.iter().enumerate().skip(2)
+            .find(|(_, state)| state.state == PlayerState::Normal)
+            .map(|(frame, _)| frame).unwrap();
+        let shield_break = trace.states.iter().enumerate()
+            .find(|(_, state)| state.state == PlayerState::StarFly)
+            .map(|(frame, _)| frame).unwrap();
+        assert!(shield_break > dash_end);
+        assert!(trace.states[dash_end].dash_attack_timer > 0.0);
+    }
+    #[test]
+    fn directional_spikes_only_kill_motion_into_their_points() {
+        let map = Map {
+            entities: vec![crate::Entity {
+                kind: EntityKind::Spikes,
+                bounds: Rect::new(40.0, 80.0, 3.0, 16.0),
+                direction: Vec2::new(-1.0, 0.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "spikesLeft".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let away = PlayerSnapshot { pos: Vec2::new(44.0, 92.0), speed: Vec2::new(-60.0, 0.0), ..PlayerSnapshot::default() };
+        let into = PlayerSnapshot { pos: Vec2::new(44.0, 92.0), speed: Vec2::new(60.0, 0.0), ..PlayerSnapshot::default() };
+        assert!(!simulate(away, &[InputState::default()], &map, 1).unwrap().dead);
+        assert!(simulate(into, &[InputState::default()], &map, 1).unwrap().dead);
+    }
+    #[test]
+    fn fastbubble_manual_dash_releases_immediately_without_spending_dash() {
+        let p = PlayerSnapshot { pos: Vec2::new(160.0, 394.0), dashes: 1, ..PlayerSnapshot::default() };
+        let entered = simulate(p, &[InputState::default()], &booster_map(), 1).unwrap();
+        assert_eq!(entered.state, PlayerState::Boost);
+        let released = simulate(entered, &[InputState { move_x: 1, dash_pressed: true, ..InputState::default() }], &booster_map(), 1).unwrap();
+        assert_eq!(released.state, PlayerState::Dash);
+        assert_eq!(released.dashes, 1);
+        assert!(released.state_timer > DASH_TIME);
     }
 
     #[test]

@@ -132,6 +132,11 @@ try {
       initial: { pos: [64, 496], speed: [0, 0] },
       inputs: Array.from({ length: 30 }, () => input({ move_x: 1 })),
     },
+    {
+      name: 'mechanics-corner-correction-up',
+      initial: { pos: [477, 275], speed: [0, -105] },
+      inputs: Array.from({ length: 8 }, () => input()),
+    },
     ...(includePlaygroundSwim ? [
       {
         name: 'playground-swim-idle',
@@ -268,6 +273,14 @@ try {
       },
     ] : []),
     ...(includePlaygroundStarFly ? [
+      {
+        name: 'mechanics-dash-attack-late-shield',
+        initial: { pos: [55, 120], speed: [0, 0] },
+        inputs: Array.from({ length: 40 }, (_, frame) => input({
+          move_x: 1,
+          dash_pressed: frame === 0,
+        })),
+      },
       {
         name: 'entity-4.12-featherboost',
         initial: { pos: [120, 200], speed: [0, 0] },
@@ -596,6 +609,16 @@ try {
       inputs: Array.from({ length: 24 }, () => input({ move_y: 1 })),
     },
     {
+      name: 'mechanics-directional-spikes-away',
+      initial: { pos: [269, 88], speed: [-60, 0] },
+      inputs: Array.from({ length: 4 }, () => input()),
+    },
+    {
+      name: 'mechanics-directional-spikes-into',
+      initial: { pos: [269, 88], speed: [60, 0] },
+      inputs: Array.from({ length: 4 }, () => input()),
+    },
+    {
       name: 'wall-slide',
       initial: { pos: [140, 96], speed: [0, 60] },
       inputs: Array.from({ length: 20 }, () => input({ move_x: 1 })),
@@ -613,6 +636,15 @@ try {
       name: 'climb',
       initial: { pos: [140, 112], speed: [0, 30] },
       inputs: Array.from({ length: 20 }, () => input({
+        move_x: 1,
+        move_y: -1,
+        grab_held: true,
+      })),
+    },
+    {
+      name: 'mechanics-climbhop',
+      initial: { pos: [140, 112], speed: [0, 30] },
+      inputs: Array.from({ length: 90 }, () => input({
         move_x: 1,
         move_y: -1,
         grab_held: true,

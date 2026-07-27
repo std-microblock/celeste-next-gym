@@ -229,6 +229,8 @@ fn to_snapshot(value: &PortableSnapshot) -> PlayerSnapshot {
     snapshot.wall_boost_dir = int_field(&value.fields, "wallBoostDir") as i8;
     snapshot.wall_slide_timer = float_field(&value.fields, "wallSlideTimer");
     snapshot.wall_slide_dir = int_field(&value.fields, "wallSlideDir") as i8;
+    snapshot.hop_wait_x = int_field(&value.fields, "hopWaitX") as i8;
+    snapshot.hop_wait_x_speed = float_field(&value.fields, "hopWaitXSpeed");
     snapshot.max_fall = float_field(&value.fields, "maxFall");
     snapshot.launch_approach_x = value
         .fields
