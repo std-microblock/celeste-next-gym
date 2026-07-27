@@ -31,6 +31,7 @@ const DASH_ATTACK_TIME: f32 = 0.3;
 const SUPER_JUMP_H: f32 = 260.0;
 const CLIMB_UP_SPEED: f32 = -45.0;
 const CLIMB_DOWN_SPEED: f32 = 80.0;
+const CLIMB_SLIP_SPEED: f32 = 30.0;
 const CLIMB_ACCEL: f32 = 900.0;
 const CLIMB_CHECK_DIST: f32 = 2.0;
 const CLIMB_TIRED_THRESHOLD: f32 = 20.0;
@@ -705,15 +706,20 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         p.var_jump_timer = VAR_JUMP_TIME;
         return;
     }
+    let slipping = slip_check(p, map, 0.0);
     let target = if p.climb_no_move_timer > 0.0 {
-        0.0
+        if slipping { CLIMB_SLIP_SPEED } else { 0.0 }
     } else {
         match input.move_y {
             -1 => CLIMB_UP_SPEED,
             1 => CLIMB_DOWN_SPEED,
-            // Player.cs only targets 30 when SlipCheck succeeds (the wall no
-            // longer supports the lower probe). A full wall holds at zero.
-            _ => 0.0,
+            _ => {
+                if slipping {
+                    CLIMB_SLIP_SPEED
+                } else {
+                    0.0
+                }
+            }
         }
     };
     p.speed.y = approach(p.speed.y, target, CLIMB_ACCEL * DT);
@@ -1265,6 +1271,14 @@ fn climb_check(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
             p.pos.x + dir as f32 * CLIMB_CHECK_DIST,
             p.pos.y,
         ))
+}
+
+fn slip_check(p: &PlayerSnapshot, map: &Map, add_y: f32) -> bool {
+    let rect = current_player_rect(p, p.pos.x, p.pos.y);
+    let x = if p.facing { rect.right() } else { rect.x - 1.0 };
+    let lower_y = rect.y + 4.0 + add_y;
+    !map.solid_at(Rect::new(x, lower_y, 1.0, 1.0))
+        && !map.solid_at(Rect::new(x, lower_y - 4.0 + add_y, 1.0, 1.0))
 }
 fn wall_dir(p: &PlayerSnapshot, map: &Map) -> i8 {
     if touching_wall(p, map, -1) {
@@ -2615,6 +2629,30 @@ mod tests {
         assert_eq!(trace.states[30].wall_boost_timer, 0.0);
         assert_eq!(trace.states[30].stamina, 80.0);
         assert!(trace.states[30].speed.x < -110.0);
+    }
+
+    #[test]
+    fn climb_begin_at_a_ledge_uses_slip_speed_during_the_no_move_window() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 300.0),
+            solids: vec![Rect::new(40.0, 100.0, 8.0, 200.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(36.0, 106.0),
+            speed: Vec2::new(0.0, 24.0),
+            state: PlayerState::Climb,
+            facing: true,
+            climb_no_move_timer: 0.1,
+            ..PlayerSnapshot::default()
+        };
+        let input = InputState {
+            grab_held: true,
+            ..InputState::default()
+        };
+        let player = simulate(player, &[input], &map, 1).unwrap();
+        assert_eq!(player.state, PlayerState::Climb);
+        assert_eq!(player.speed.y, CLIMB_SLIP_SPEED);
     }
 
     #[test]
