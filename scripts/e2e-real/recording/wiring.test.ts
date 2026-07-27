@@ -33,7 +33,7 @@ describe('recording planning and lifecycle orchestration', () => {
     assert.throws(() => collectorOwnershipEnvironment('nonce-1', 0), /positive process id/)
   })
 
-  it('validates all 52 handbook primaries before running one isolated lifecycle per target', async () => {
+  it('validates all 54 handbook primaries before running one isolated lifecycle per target', async () => {
     const config = parseConfig(['--record-all'], {
       FFMPEG_PATH: path.resolve(repoRoot, 'fake-ffmpeg'),
       FFPROBE_PATH: path.resolve(repoRoot, 'fake-ffprobe'),
@@ -41,8 +41,8 @@ describe('recording planning and lifecycle orchestration', () => {
     const catalog = loadTechniqueCatalog(repoRoot)
     const registry = buildRegistry(scenarios, { implementedTechniqueIds: catalog.implementedIds })
     const plan = createRecordingPlan(config, registry, catalog)
-    assert.equal(plan.techniqueCount, 52)
-    assert.ok(plan.scenarioCount <= 52)
+    assert.equal(plan.techniqueCount, 54)
+    assert.ok(plan.scenarioCount <= 54)
     assert.deepEqual(plan.groups.map((group) => group.target.id), ['playground', 'area-1', 'area-2'])
 
     const calls: string[] = []
@@ -54,7 +54,7 @@ describe('recording planning and lifecycle orchestration', () => {
       },
     })
     assert.deepEqual(calls, ['playground', 'area-1', 'area-2'])
-    assert.equal(summary.techniqueCount, 52)
+    assert.equal(summary.techniqueCount, 54)
   })
 
   it('rejects unknown, unimplemented, and candidate selections while deduplicating multi-primary scenarios', () => {
@@ -102,6 +102,22 @@ describe('recording service state machine', () => {
     })
     assert.equal(result.execution, 7)
     assert.deepEqual(events, [`start:${token}`, `simulate:${token}`, 'status', 'finalize'])
+  })
+
+  it('rejects a raw manifest without the one-second final-state tail', async () => {
+    const token = 'd'.repeat(32)
+    const fixture = await createRawFixture(token)
+    const manifest = JSON.parse(await readFile(fixture.manifestPath, 'utf8')) as PresentationManifest
+    manifest.frames.splice(1)
+    manifest.repeated_presentation_count = 0
+    await writeFile(fixture.manifestPath, JSON.stringify(manifest), 'utf8')
+
+    await assert.rejects(() => captureScenario({
+      service: fakeService(fixture.manifestPath, [], 'ready'),
+      recordingRoot: fixture.root, scenarioId: 'scenario-1', endStateIndex: 1,
+      runNonce: 'nonce-1', gameProcessId: 42, timeoutMs: 1000, pollTimeoutMs: 1000,
+      createToken: () => token, execute: async () => undefined,
+    }), /one-second final-state tail/)
   })
 
   it('stops and finalizes on poll timeout while preserving the finalized manifest', async () => {
@@ -227,8 +243,18 @@ async function createRawFixture(token: string): Promise<{ root: string; manifest
   const frames = path.join(session, 'frames')
   await mkdir(frames, { recursive: true })
   const raw = Buffer.alloc(RAW_FRAME_BYTES)
-  const rawPath = path.join(frames, '000000.bgra')
-  await writeFile(rawPath, raw)
+  const presentationFrames = Array.from({ length: 61 }, (_, renderIndex) => ({
+    render_index: renderIndex,
+    state_index: 1,
+    timestamp_ns: renderIndex * 16_666_667,
+    path: `frames/${renderIndex.toString().padStart(6, '0')}.bgra`,
+    sha256: createHash('sha256').update(raw).digest('hex'),
+    bytes: raw.byteLength,
+    repeated_state_presentation: renderIndex > 0,
+  }))
+  await Promise.all(presentationFrames.map(async (frame) => {
+    await writeFile(path.join(session, frame.path), raw)
+  }))
   const manifest: PresentationManifest = {
     schema_version: 1, capture_semantics: 'presentation_frames', scenario_id: 'scenario-1',
     run_nonce: 'nonce-1', process_id: 42,
@@ -236,10 +262,8 @@ async function createRawFixture(token: string): Promise<{ root: string; manifest
     width: 320, height: 180, pixel_format: 'bgra', encoding_frame_rate: 60,
     started_at: new Date(0).toISOString(), finalized_at: new Date(1).toISOString(), outcome: 'ready',
     start_state_index: 0, end_state_index: 1, latest_state_index: 1, final_state_presented: true,
-    repeated_presentation_count: 0, unpresented_update_ranges: [],
-    frames: [{ render_index: 0, state_index: 1, timestamp_ns: 0, path: 'frames/000000.bgra',
-      sha256: createHash('sha256').update(raw).digest('hex'), bytes: raw.byteLength,
-      repeated_state_presentation: false }],
+    repeated_presentation_count: 60, unpresented_update_ranges: [],
+    frames: presentationFrames,
   }
   const manifestPath = path.join(session, 'manifest.json')
   await writeFile(manifestPath, JSON.stringify(manifest), 'utf8')

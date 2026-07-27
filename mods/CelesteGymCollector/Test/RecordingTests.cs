@@ -78,6 +78,24 @@ public sealed class RecordingTests : IDisposable {
         );
     }
 
+    [Fact]
+    public void PresentationTimelineWaitsSixtyFramesAfterTheFinalState() {
+        RecordingTimeline timeline = new(0, 1);
+        timeline.AddFrame(1, 0, "frames/0.bgra", "a", 4);
+
+        Assert.False(timeline.HasPresentedFinalStateTail(60));
+        for (int frame = 1; frame < 60; frame++) {
+            timeline.AddFrame(1, frame, $"frames/{frame}.bgra", "a", 4);
+        }
+        Assert.False(timeline.HasPresentedFinalStateTail(60));
+
+        timeline.AddFrame(1, 60, "frames/60.bgra", "a", 4);
+        Assert.True(timeline.HasPresentedFinalStateTail(60));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => timeline.HasPresentedFinalStateTail(-1)
+        );
+    }
+
     public void Dispose() {
         if (Directory.Exists(temporaryRoot)) Directory.Delete(temporaryRoot, recursive: true);
     }

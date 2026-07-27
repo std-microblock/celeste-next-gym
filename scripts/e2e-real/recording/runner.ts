@@ -3,6 +3,8 @@ import { createHash, randomBytes } from 'node:crypto'
 import type { RecordingControlRequest, RecordingStartRequest, RecordingStatus } from '../runtime/collector-client.js'
 import { loadPresentationManifest, type LoadedPresentationManifest } from './manifest.js'
 
+const FINAL_STATE_TAIL_PRESENTATION_FRAMES = 60
+
 export interface RecordingService {
   recordingStart(request: RecordingStartRequest): Promise<RecordingStatus>
   recordingStatus(request: RecordingControlRequest): Promise<RecordingStatus>
@@ -86,6 +88,10 @@ export async function captureScenario<T>(options: {
   }
   if (!manifest.final_state_presented || manifest.latest_state_index < options.endStateIndex) {
     throw new Error('recording manifest does not present the final state')
+  }
+  const finalStatePresentations = manifest.frames.filter((frame) => frame.state_index === options.endStateIndex)
+  if (finalStatePresentations.length <= FINAL_STATE_TAIL_PRESENTATION_FRAMES) {
+    throw new Error('recording manifest does not include the one-second final-state tail')
   }
   return { captureToken, execution, status: finalized, presentation }
 }
