@@ -1,6 +1,6 @@
 # Celeste Next Gym 技巧手册
 
-`main.typ` 是双语技巧手册入口，`techs/` 下每个技巧一个 Typst 文件，`techs.typ` 负责按固定的 120 项基线统一 `include`。`techs.typ` 的顺序和这 120 个条目文件是唯一权威覆盖清单与证据载体。
+`main.typ` 是双语技巧手册入口，`techs/` 下每个技巧一个 Typst 文件，`techs.typ` 负责按固定的 120 项基线统一 `include`。`techs.typ` 的顺序和这 120 个条目文件是唯一权威覆盖清单与证据载体。`template.typ` 统一控制条目版式、证据卡片与媒体展示，不要在单个条目里复制样式。
 
 编译：
 
@@ -54,3 +54,31 @@ typst compile docs/tech-handbook/main.typ .tmp/tech-handbook.pdf
 真实 E2E 必须比较 position、speed、state、facing、dashes、stamina、grounded、ducking、death，数值误差不得超过 `0.01`。
 
 每次修改条目状态时，首页会直接查询各条目的 `status` 并自动统计覆盖数；编译时也会断言 `techs.typ` 仍恰好 include 120 个条目，不再手工维护计数。
+
+## 图片、GIF 与视频
+
+媒体文件统一放在 `docs/tech-handbook/media/`。PDF 不能播放动画或视频，因此 GIF 使用静态预览帧，视频使用封面图；如提供 `url`，整张卡片和“打开媒体”提示都可点击。一个条目可以传入一张或多张媒体卡：
+
+```typst
+#import "../../template.typ": tech, evidence, media-gallery, media-item
+
+#tech(
+  // 其余字段省略
+  media: media-gallery((
+    media-item(
+      preview: "media/2-2-super.webp",
+      caption: [Super 的输入与位移演示],
+      url: "https://example.com/super.mp4",
+      kind: "video",
+      alt: "Superdash demonstration",
+    ),
+    media-item(
+      preview: "media/2-2-super-frames.webp",
+      caption: [关键帧拆解],
+      kind: "gif",
+    ),
+  )),
+)
+```
+
+`kind` 可选 `"image"`、`"gif"` 或 `"video"`。为保证打印和离线阅读质量，预览图建议使用 16:9 的 WebP/PNG，宽度至少 1280 px；即使原始素材是 GIF，也建议单独导出一张代表性静态帧。
