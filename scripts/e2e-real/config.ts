@@ -23,7 +23,19 @@ export interface HarnessConfig {
   readonly listOnly: boolean
   readonly fixtureOutput?: string
   readonly disabledTags: ReadonlySet<string>
+  readonly targetExplicit: boolean
+  readonly explicitScenarioNames: ReadonlySet<string>
+  readonly recording?: RecordingCliSelection
+  readonly ffmpegPath?: string
+  readonly ffprobePath?: string
+  readonly recordingTimeoutMs: number
+  readonly recordingPollTimeoutMs: number
 }
+
+export type RecordingCliSelection =
+  | { readonly kind: 'scenario' }
+  | { readonly kind: 'techniques'; readonly techniqueIds: ReadonlySet<string> }
+  | { readonly kind: 'all' }
 
 const FEATURE_ENV = Object.freeze({
   E2E_PLAYGROUND_SWIM: 'feature:swim',
@@ -53,6 +65,9 @@ export function parseConfig(
   let includeCandidates = false
   let cliTarget: TargetId | undefined
   let fixtureOutput: string | undefined
+  let recordScenario = false
+  let recordAll = false
+  const recordTechniqueIds = new Set<string>()
   const cliNames = new Set<string>()
   for (let index = 0; index < argv.length; index++) {
     const argument = argv[index]
@@ -61,8 +76,28 @@ export function parseConfig(
     else if (argument === '--scenario') cliNames.add(requireValue(argv, ++index, argument))
     else if (argument === '--target') cliTarget = parseTarget(requireValue(argv, ++index, argument))
     else if (argument === '--fixture-output') fixtureOutput = resolve(repoRoot, requireValue(argv, ++index, argument))
+    else if (argument === '--record') recordScenario = true
+    else if (argument === '--record-tech') recordTechniqueIds.add(requireValue(argv, ++index, argument))
+    else if (argument === '--record-all') recordAll = true
     else throw new Error(`unknown E2E harness argument: ${argument}`)
   }
+
+  const recordingModeCount = Number(recordScenario) + Number(recordAll) + Number(recordTechniqueIds.size > 0)
+  if (recordingModeCount > 1) throw new Error('--record, --record-tech, and --record-all are mutually exclusive')
+  const recording: RecordingCliSelection | undefined = recordScenario
+    ? { kind: 'scenario' }
+    : recordAll
+      ? { kind: 'all' }
+      : recordTechniqueIds.size > 0
+        ? { kind: 'techniques', techniqueIds: recordTechniqueIds }
+        : undefined
+  if (recording && listOnly) throw new Error('recording modes cannot be combined with --list')
+  if (recording && fixtureOutput) throw new Error('recording modes cannot be combined with --fixture-output')
+  if (recordScenario && cliNames.size !== 1) throw new Error('--record requires exactly one explicit --scenario')
+  if ((recordAll || recordTechniqueIds.size > 0) && cliNames.size > 0) {
+    throw new Error('--record-tech and --record-all cannot be combined with --scenario')
+  }
+  if (recordAll && cliTarget !== undefined) throw new Error('--record-all cannot be constrained to one --target')
 
   const areaId = parseAreaId(env.E2E_AREA_ID ?? '1')
   const areaSid = trimmed(env.E2E_AREA_SID)
@@ -82,6 +117,10 @@ export function parseConfig(
   const expectedGitHead = trimmed(env.E2E_EXPECT_GIT_HEAD)
   const mapPath = trimmed(env.E2E_MAP_PATH)
   const room = trimmed(env.E2E_ROOM)
+  const ffmpegPath = trimmed(env.FFMPEG_PATH)
+  const ffprobePath = trimmed(env.FFPROBE_PATH)
+  const recordingTimeoutMs = parseBoundedMilliseconds(env.E2E_RECORDING_TIMEOUT_MS, 60_000, 'E2E_RECORDING_TIMEOUT_MS')
+  const recordingPollTimeoutMs = parseBoundedMilliseconds(env.E2E_RECORDING_POLL_TIMEOUT_MS, 65_000, 'E2E_RECORDING_POLL_TIMEOUT_MS')
   return Object.freeze({
     repoRoot: resolve(repoRoot),
     showGameWindow,
@@ -101,6 +140,13 @@ export function parseConfig(
     listOnly,
     ...(fixtureOutput ? { fixtureOutput } : {}),
     disabledTags,
+    targetExplicit: cliTarget !== undefined || env.E2E_AREA_ID !== undefined || env.E2E_AREA_SID !== undefined,
+    explicitScenarioNames: cliNames,
+    ...(recording ? { recording } : {}),
+    ...(ffmpegPath ? { ffmpegPath } : {}),
+    ...(ffprobePath ? { ffprobePath } : {}),
+    recordingTimeoutMs,
+    recordingPollTimeoutMs,
   })
 }
 
@@ -133,4 +179,14 @@ function commaSet(value: string | undefined): ReadonlySet<string> {
 
 function splitPaths(value: string | undefined): readonly string[] {
   return Object.freeze((value ?? '').split(process.platform === 'win32' ? ';' : ':').map((path) => path.trim()).filter(Boolean))
+}
+
+function parseBoundedMilliseconds(value: string | undefined, fallback: number, name: string): number {
+  if (value === undefined) return fallback
+  const milliseconds = Number.parseInt(value, 10)
+  if (!Number.isSafeInteger(milliseconds) || String(milliseconds) !== value.trim()
+    || milliseconds < 1_000 || milliseconds > 600_000) {
+    throw new Error(`${name} must be an integer from 1000 through 600000`)
+  }
+  return milliseconds
 }

@@ -29,6 +29,8 @@ export async function executeScenario(options: {
   readonly room?: string
   readonly skipTransitions: boolean
   readonly collectOnly: boolean
+  readonly captureToken?: string
+  readonly tracePath?: string
   readonly dependencies: ScenarioExecutionDependencies
 }): Promise<ScenarioSummary> {
   const request = createRequest({
@@ -36,11 +38,12 @@ export async function executeScenario(options: {
     map: options.map,
     ...(options.room ? { room: options.room } : {}),
     skipTransitions: options.skipTransitions,
+    ...(options.captureToken ? { captureToken: options.captureToken } : {}),
   })
   const collected = await options.dependencies.simulate(request)
   validateCollectedStates(collected, request)
   const states = collected
-  const tracePath = resolve(options.repoRoot, '.tmp', `e2e-${options.scenario.name}-trace.json`)
+  const tracePath = options.tracePath ?? resolve(options.repoRoot, '.tmp', `e2e-${options.scenario.name}-trace.json`)
 
   // A failed semantic guard must still leave the authoritative Everest trace behind.
   options.dependencies.writeTrace(tracePath, request.inputs, states)

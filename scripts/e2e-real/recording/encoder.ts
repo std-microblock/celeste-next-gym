@@ -44,6 +44,7 @@ export interface EncodingResult {
   bytes: number;
   probe: VideoProbe;
   processes: ToolProcessIdentity[];
+  poster?: { output_path: string; sha256: string; bytes: number };
 }
 
 export interface EncodePresentationOptions {
@@ -52,6 +53,8 @@ export interface EncodePresentationOptions {
   outputPath: string;
   ffmpegPath: string;
   ffprobePath: string;
+  stateWindow?: { readonly startStateIndex: number; readonly endStateIndex: number };
+  posterPath?: string;
 }
 
 export async function encodePresentationRecording(
@@ -59,7 +62,8 @@ export async function encodePresentationRecording(
 ): Promise<EncodingResult> {
   const recordingRoot = await canonicalDirectory(options.recordingRoot);
   const loaded = await loadPresentationManifest(recordingRoot, options.manifestPath);
-  if (loaded.framePaths.length === 0) throw new Error("cannot encode an empty presentation recording");
+  const selectedFrames = selectFrames(loaded, options.stateWindow);
+  if (selectedFrames.length === 0) throw new Error("cannot encode an empty presentation recording window");
   const outputPath = await validateNewOutputPath(recordingRoot, options.outputPath);
   const partialPath = partialMp4Path(outputPath);
   await assertMissing(outputPath, "output");
@@ -98,7 +102,7 @@ export async function encodePresentationRecording(
     partialPath,
   ]);
   try {
-    for (const framePath of loaded.framePaths) {
+    for (const framePath of selectedFrames) {
       const frame = await readFile(framePath);
       if (frame.byteLength !== RAW_FRAME_BYTES) {
         throw new Error(`raw frame changed size during encoding: ${framePath}`);
@@ -121,13 +125,50 @@ export async function encodePresentationRecording(
   validateProbe(probeRun.probe);
   await rename(partialPath, outputPath);
   const bytes = await readFile(outputPath);
+  const poster = options.posterPath
+    ? await createPoster(recordingRoot, ffmpeg, outputPath, options.posterPath, processes)
+    : undefined;
   return {
     output_path: outputPath,
     sha256: createHash("sha256").update(bytes).digest("hex"),
     bytes: bytes.byteLength,
     probe: probeRun.probe,
     processes,
+    ...(poster ? { poster } : {}),
   };
+}
+
+function selectFrames(
+  loaded: Awaited<ReturnType<typeof loadPresentationManifest>>,
+  window: EncodePresentationOptions['stateWindow'],
+): string[] {
+  if (!window) return loaded.framePaths;
+  if (!Number.isSafeInteger(window.startStateIndex) || !Number.isSafeInteger(window.endStateIndex)
+    || window.startStateIndex < 0 || window.endStateIndex < window.startStateIndex) {
+    throw new Error('invalid recording state window');
+  }
+  return loaded.manifest.frames.flatMap((frame, index) =>
+    frame.state_index >= window.startStateIndex && frame.state_index <= window.endStateIndex
+      ? [loaded.framePaths[index]!] : []);
+}
+
+async function createPoster(
+  root: string,
+  ffmpeg: string,
+  videoPath: string,
+  requestedPath: string,
+  processes: ToolProcessIdentity[],
+): Promise<{ output_path: string; sha256: string; bytes: number }> {
+  const posterPath = await validateNewArtifactPath(root, requestedPath, '.png', 'poster');
+  const partialPath = posterPath.slice(0, -4) + '.partial.png';
+  await assertMissing(posterPath, 'poster');
+  await assertMissing(partialPath, 'partial poster');
+  const run = startTool(ffmpeg, ['-hide_banner', '-nostdin', '-loglevel', 'error', '-i', videoPath, '-frames:v', '1', '-n', partialPath]);
+  run.child.stdin.end();
+  processes.push(await run.completion);
+  await rename(partialPath, posterPath);
+  const bytes = await readFile(posterPath);
+  return { output_path: posterPath, sha256: createHash('sha256').update(bytes).digest('hex'), bytes: bytes.byteLength };
 }
 
 export async function runLavfiSmokeTest(options: {
@@ -299,14 +340,18 @@ function validateProbe(probe: VideoProbe): void {
 }
 
 async function validateNewOutputPath(root: string, outputPath: string): Promise<string> {
-  if (!path.isAbsolute(outputPath) || path.extname(outputPath).toLowerCase() !== ".mp4") {
-    throw new Error("output path must be an absolute .mp4 path");
+  return await validateNewArtifactPath(root, outputPath, '.mp4', 'output');
+}
+
+async function validateNewArtifactPath(root: string, outputPath: string, extension: string, label: string): Promise<string> {
+  if (!path.isAbsolute(outputPath) || path.extname(outputPath).toLowerCase() !== extension) {
+    throw new Error(`${label} path must be an absolute ${extension} path`);
   }
   const resolved = path.resolve(outputPath);
-  ensurePathInside(root, resolved, "output");
+  ensurePathInside(root, resolved, label);
   await mkdir(path.dirname(resolved), { recursive: true });
   const canonicalParent = await realpath(path.dirname(resolved));
-  ensurePathInside(root, canonicalParent, "output parent");
+  ensurePathInside(root, canonicalParent, `${label} parent`);
   return path.join(canonicalParent, path.basename(resolved));
 }
 

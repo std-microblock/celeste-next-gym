@@ -12,7 +12,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "e2e:real": "tsx ../../scripts/e2e-real/run.ts",
     "test:e2e-harness": "tsx --test ../../scripts/e2e-real/test/**/*.test.ts ../../scripts/e2e-real/scenarios/**/*.test.ts",
-    "typecheck:e2e-harness": "tsc -p ../../scripts/e2e-real/tsconfig.json"
+    "typecheck:e2e-harness": "tsc -p ../../scripts/e2e-real/tsconfig.json",
+    "test:e2e-recording": "tsx --test ../../scripts/e2e-real/recording/**/*.test.ts",
+    "typecheck:e2e-recording": "tsc -p ../../scripts/e2e-real/recording/tsconfig.json"
   },
   "dependencies": {
     "@msgpack/msgpack": "^3.1.2"

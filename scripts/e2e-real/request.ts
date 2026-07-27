@@ -16,6 +16,7 @@ export function createRequest(options: {
   map: Uint8Array
   room?: string
   skipTransitions: boolean
+  captureToken?: string
 }): SimulateRequest {
   const initialSnapshot: PlayerSnapshot = {
     ...DEFAULT_INITIAL_SNAPSHOT,
@@ -30,5 +31,6 @@ export function createRequest(options: {
     initial_snapshot: initialSnapshot,
     frames: options.scenario.inputs.length,
     skip_transitions: options.skipTransitions,
+    ...(options.captureToken ? { capture_token: options.captureToken } : {}),
   }
 }

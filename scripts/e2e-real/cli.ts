@@ -6,12 +6,15 @@ import { assembleFixturePackage } from './map-parts.js'
 import { buildRegistry, selectScenarios } from './registry.js'
 import { scenarios } from './scenarios/index.js'
 import { runHarness } from './runtime/runner.js'
-import type { HarnessSummary } from './runtime/runner.js'
+import { runRecordingHarness, type HarnessSummary, type RecordingHarnessSummary } from './runtime/runner.js'
+import { createRecordingPlan, loadTechniqueCatalog, type RecordingPlan } from './recording/index.js'
 import type { HarnessConfig } from './config.js'
 import type { ScenarioDefinition } from './types.js'
 
 export interface MainDependencies {
   run(config: HarnessConfig, selected: readonly ScenarioDefinition[]): Promise<HarnessSummary>
+  runRecording?(config: HarnessConfig, plan: RecordingPlan): Promise<RecordingHarnessSummary>
+  planRecording?(config: HarnessConfig, registry: ReturnType<typeof buildRegistry>, catalog: ReturnType<typeof loadTechniqueCatalog>): RecordingPlan
 }
 
 export async function main(
@@ -21,7 +24,14 @@ export async function main(
   dependencies: MainDependencies = { run: runHarness },
 ): Promise<void> {
   const config = parseConfig(argv, env, repoRoot)
-  const registry = buildRegistry(scenarios)
+  const catalog = config.recording ? loadTechniqueCatalog(repoRoot) : undefined
+  const registry = buildRegistry(scenarios, catalog ? { implementedTechniqueIds: catalog.implementedIds } : {})
+  if (config.recording) {
+    const plan = (dependencies.planRecording ?? createRecordingPlan)(config, registry, catalog!)
+    const summary = await (dependencies.runRecording ?? runRecordingHarness)(config, plan)
+    console.log(JSON.stringify(summary, null, 2))
+    return
+  }
   const selected = selectScenarios(registry, {
     ...(config.requestedScenarios.size > 0 ? { names: config.requestedScenarios } : {}),
     ...(config.target ? { target: config.target } : {}),

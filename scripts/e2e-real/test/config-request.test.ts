@@ -25,6 +25,9 @@ describe('configuration and requests', () => {
     assert.throws(() => parseConfig(['--wat'], {}, 'D:\\repo'), /unknown/)
     assert.throws(() => parseConfig([], { E2E_AREA_ID: '2oops' }, 'D:\\repo'), /non-negative integer/)
     assert.throws(() => parseConfig(['--target', 'area-4'], { E2E_AREA_ID: '2' }, 'D:\\repo'), /conflicts/)
+    assert.throws(() => parseConfig(['--record', '--record-all', '--scenario', 'dash'], {}, 'D:\\repo'), /mutually exclusive/)
+    assert.throws(() => parseConfig(['--record'], {}, 'D:\\repo'), /exactly one/)
+    assert.throws(() => parseConfig(['--record-all', '--target', 'area-1'], {}, 'D:\\repo'), /cannot be constrained/)
   })
 
   it('derives area and default map from a CLI target', () => {
@@ -46,5 +49,7 @@ describe('configuration and requests', () => {
     assert.equal(request.dream_dash, true)
     assert.equal(request.frames, 1)
     assert.equal(request.room, 'room')
+    const captured = createRequest({ scenario, map: new Uint8Array([1]), skipTransitions: false, captureToken: 'x'.repeat(32) })
+    assert.equal(captured.capture_token, 'x'.repeat(32))
   })
 })

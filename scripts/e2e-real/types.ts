@@ -190,6 +190,7 @@ export interface SimulateRequest {
   readonly initial_snapshot: PlayerSnapshot
   readonly frames: number
   readonly skip_transitions: boolean
+  readonly capture_token?: string
 }
 
 export interface ProcessIdentity {
