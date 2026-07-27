@@ -255,6 +255,14 @@ public sealed class CelesteGymCollectorModule : EverestModule {
             if (ReferenceEquals(Engine.Scene, job.SceneAtRequest)) return;
             Player? player = ActivePlayer(job.AreaId);
             if (player is null) return;
+            // Recording starts before the fresh LevelEnter so that the capture
+            // token owns the entire request. Do not advance scripted state 0
+            // behind that entry wipe: wait for ScreenWipe to clear itself,
+            // while leaving later room transitions entirely untouched.
+            if (captureSession is not null
+                && !job.Pending.Request.SkipTransitions
+                && Engine.Scene is Level recordingLevel
+                && recordingLevel.Wipe is not null) return;
             if (job.Pending.Request.SkipTransitions && Engine.Scene is Level level) {
                 level.Wipe?.Cancel();
             }
