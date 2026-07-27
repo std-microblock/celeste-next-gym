@@ -689,11 +689,10 @@ fn super_wall_jump(p: &mut PlayerSnapshot, dir: i8) {
 
 fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     let wall = if p.facing { 1 } else { -1 };
-    if !input.grab_held || p.stamina <= 0.0 || !touching_wall(p, map, wall) {
-        p.state = PlayerState::Normal;
-        return;
-    }
-    if input.jump_pressed {
+    // Player.ClimbUpdate checks jump and dash before letting go or checking
+    // whether the one-pixel wall contact still exists. Ceiling pops rely on
+    // that ordering for the first Climb frame just below a wall's bottom edge.
+    if input.jump_pressed && (!p.ducking || can_unduck(p, map)) {
         p.state = PlayerState::Normal;
         p.jump_buffer_timer = 0.0;
         p.jump_grace_timer = 0.0;
@@ -702,6 +701,7 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         p.wall_slide_timer = WALL_SLIDE_TIME;
         p.wall_boost_timer = 0.0;
         if p.move_x == -wall {
+            p.ducking = false;
             p.speed = Vec2::new(-(wall as f32) * WALL_JUMP_H, JUMP_SPEED);
         } else {
             p.speed.x += p.move_x as f32 * JUMP_H_BOOST;
@@ -716,6 +716,21 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         }
         p.var_jump_speed = p.speed.y;
         p.var_jump_timer = VAR_JUMP_TIME;
+        return;
+    }
+    if (input.dash_pressed || input.crouch_dash_pressed)
+        && p.dashes > 0
+        && p.dash_cooldown_timer <= 0.0
+    {
+        begin_dash(p, input, true, false);
+        return;
+    }
+    if !input.grab_held {
+        p.state = PlayerState::Normal;
+        return;
+    }
+    if !touching_wall(p, map, wall) {
+        p.state = PlayerState::Normal;
         return;
     }
     let slipping = slip_check(p, map, 0.0);
@@ -737,12 +752,17 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     p.speed.y = approach(p.speed.y, target, CLIMB_ACCEL * DT);
     p.speed.x = 0.0;
     if p.climb_no_move_timer <= 0.0 {
-        let cost = if input.move_y < 0 {
+        let cost = if target < 0.0 {
             CLIMB_UP_COST
-        } else {
+        } else if target == 0.0 {
             CLIMB_STILL_COST
+        } else {
+            0.0
         };
         p.stamina = (p.stamina - cost * DT).max(0.0);
+    }
+    if p.stamina <= 0.0 {
+        p.state = PlayerState::Normal;
     }
 }
 
@@ -2755,6 +2775,127 @@ mod tests {
     }
 
     #[test]
+    fn cornerkick_uses_the_three_pixel_probe_on_the_last_corner_pixel() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            solids: vec![Rect::new(40.0, 0.0, 8.0, 40.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(34.0, 50.0),
+            speed: Vec2::new(0.0, -30.0),
+            facing: true,
+            stamina: 80.0,
+            ..PlayerSnapshot::default()
+        };
+        assert!(!touching_wall(&player, &map, 1));
+        assert!(!climb_check(&player, &map, 1));
+        assert!(wall_jump_check(&player, &map, 1));
+
+        let directional = simulate(
+            player.clone(),
+            &[InputState {
+                move_x: 1,
+                jump_pressed: true,
+                jump_held: true,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert_eq!(directional.speed, Vec2::new(-WALL_JUMP_H, JUMP_SPEED));
+        assert_eq!(directional.force_move_x, -1);
+        assert_eq!(directional.force_move_x_timer, 0.16);
+        assert_eq!(directional.stamina, 80.0);
+
+        let neutral = simulate(
+            player.clone(),
+            &[InputState {
+                jump_pressed: true,
+                jump_held: true,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert_eq!(neutral.speed, Vec2::new(-WALL_JUMP_H, JUMP_SPEED));
+        assert_eq!(neutral.force_move_x_timer, 0.0);
+
+        let too_low = PlayerSnapshot {
+            pos: Vec2::new(34.0, 51.0),
+            ..player
+        };
+        assert!(!wall_jump_check(&too_low, &map, 1));
+        let too_low = simulate(
+            too_low,
+            &[InputState {
+                jump_pressed: true,
+                jump_held: true,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert_ne!(too_low.speed.y, JUMP_SPEED);
+        assert!(too_low.jump_buffer_timer > 0.0);
+    }
+
+    #[test]
+    fn ceiling_pop_climb_jumps_before_the_lost_wall_check() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            solids: vec![Rect::new(40.0, 0.0, 40.0, 40.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(36.0, 38.0),
+            speed: Vec2::new(0.0, 30.0),
+            facing: true,
+            stamina: 80.0,
+            ..PlayerSnapshot::default()
+        };
+        let descend = [InputState {
+            move_y: 1,
+            grab_held: true,
+            ..InputState::default()
+        }; 30];
+        let descend_trace = simulate_trace(player.clone(), &descend, &map, 30).unwrap();
+        let pop_frame = (1..descend_trace.states.len())
+            .find(|&frame| {
+                descend_trace.states[frame].state == PlayerState::Climb
+                    && !touching_wall(&descend_trace.states[frame], &map, 1)
+            })
+            .expect("downward climb reaches the one-frame lost-wall window");
+        assert_eq!(pop_frame, 18);
+        assert_eq!(
+            descend_trace.states[pop_frame + 1].state,
+            PlayerState::Normal
+        );
+
+        let inputs = std::array::from_fn::<_, 30, _>(|frame| InputState {
+            move_x: if frame == pop_frame { 1 } else { 0 },
+            move_y: 1,
+            grab_held: true,
+            jump_pressed: frame == pop_frame,
+            jump_held: frame == pop_frame,
+            ..InputState::default()
+        });
+        let trace = simulate_trace(player, &inputs, &map, 30).unwrap();
+        let popped = &trace.states[pop_frame + 1];
+        assert_eq!(popped.state, PlayerState::Normal);
+        assert_eq!(popped.stamina, 52.5);
+        assert!(popped.pos.x > descend_trace.states[pop_frame + 1].pos.x);
+        assert_eq!(popped.speed.x, JUMP_H_BOOST);
+        assert_eq!(popped.speed.y, 0.0);
+        assert!(!popped.on_ground);
+        assert!(!popped.ducking);
+        assert!(!popped.dead);
+    }
+
+    #[test]
     fn wallboost_neutral_returns_to_the_wall_for_a_second_stamina_free_cycle() {
         let map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 300.0),
@@ -2847,6 +2988,48 @@ mod tests {
             cancelled_trace.states[17].stamina
         );
         assert!(held_trace.states[17].stamina < cancelled_trace.states[17].stamina);
+    }
+
+    #[test]
+    fn climbing_down_does_not_pay_the_stationary_stamina_cost() {
+        let map = Map {
+            solids: vec![Rect::new(40.0, 0.0, 8.0, 100.0)],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(36.0, 64.0),
+            state: PlayerState::Climb,
+            facing: true,
+            stamina: 80.0,
+            ..PlayerSnapshot::default()
+        };
+        let descending = simulate(
+            player.clone(),
+            &[InputState {
+                move_y: 1,
+                grab_held: true,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert_eq!(descending.state, PlayerState::Climb);
+        assert!(descending.speed.y > 0.0);
+        assert_eq!(descending.stamina, 80.0);
+
+        let stationary = simulate(
+            player,
+            &[InputState {
+                grab_held: true,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert_eq!(stationary.state, PlayerState::Climb);
+        assert!(stationary.stamina < 80.0);
     }
 
     #[test]

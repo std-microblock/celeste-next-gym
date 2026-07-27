@@ -715,6 +715,15 @@ try {
       })),
     },
     {
+      name: 'cornerkick',
+      initial: { pos: [242, 90], speed: [0, -30] },
+      inputs: Array.from({ length: 12 }, (_, frame) => input({
+        move_x: 1,
+        jump_pressed: frame === 0,
+        jump_held: frame < 6,
+      })),
+    },
+    {
       name: 'neutral-jump',
       initial: { pos: [140, 112], speed: [0, 30] },
       inputs: Array.from({ length: 50 }, (_, frame) => input({
@@ -740,6 +749,17 @@ try {
         grab_held: frame <= 8,
         jump_pressed: frame === 8,
         jump_held: frame >= 8 && frame < 14,
+      })),
+    },
+    {
+      name: 'ceiling-pop',
+      initial: { pos: [244, 78], speed: [0, 30] },
+      inputs: Array.from({ length: 30 }, (_, frame) => input({
+        move_x: frame === 18 ? 1 : 0,
+        move_y: 1,
+        grab_held: true,
+        jump_pressed: frame === 18,
+        jump_held: frame === 18,
       })),
     },
     {
