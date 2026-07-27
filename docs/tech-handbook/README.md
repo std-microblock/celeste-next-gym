@@ -53,4 +53,4 @@ typst compile docs/tech-handbook/main.typ .tmp/tech-handbook.pdf
 
 真实 E2E 必须比较 position、speed、state、facing、dashes、stamina、grounded、ducking、death，数值误差不得超过 `0.01`。
 
-每次修改条目状态时，同时核对 `techs.typ` 仍恰好 include 120 个不同条目，并更新 `main.typ` 首页的当前覆盖计数。
+每次修改条目状态时，首页会直接查询各条目的 `status` 并自动统计覆盖数；编译时也会断言 `techs.typ` 仍恰好 include 120 个条目，不再手工维护计数。
