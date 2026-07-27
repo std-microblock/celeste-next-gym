@@ -123,6 +123,7 @@ pub fn simulate_trace(
     }
     let mut runtime_map = map.clone();
     initialize_zip_movers(&mut snapshot, &mut runtime_map);
+    initialize_bounce_blocks(&mut snapshot, &mut runtime_map);
     position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
     let mut states = Vec::with_capacity(frames + 1);
     states.push(snapshot.clone());
@@ -217,10 +218,63 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         .iter()
         .all(|value| value.is_finite())
     });
-    if values.iter().all(|x| x.is_finite()) && zip_movers_are_finite {
+    let bounce_blocks_are_finite = s.bounce_blocks.iter().all(|block| {
+        [
+            block.move_speed,
+            block.bounce_dir.x,
+            block.bounce_dir.y,
+            block.bounce_lift.x,
+            block.bounce_lift.y,
+            block.bounce_end_timer,
+            block.respawn_timer,
+            block.position.x,
+            block.position.y,
+            block.remainder.x,
+            block.remainder.y,
+            block.lift_speed.x,
+            block.lift_speed.y,
+            block.start.x,
+            block.start.y,
+        ]
+        .iter()
+        .all(|value| value.is_finite())
+    });
+    if values.iter().all(|x| x.is_finite()) && zip_movers_are_finite && bounce_blocks_are_finite {
         Ok(())
     } else {
         Err(SimulationError::NonFinite)
+    }
+}
+
+fn initialize_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
+    let block_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::BounceBlock).then_some(index))
+        .collect();
+    p.bounce_blocks.truncate(block_indices.len());
+    for (block_index, entity_index) in block_indices.into_iter().enumerate() {
+        let entity = &mut map.entities[entity_index];
+        if block_index == p.bounce_blocks.len() {
+            let start = Vec2::new(entity.bounds.x, entity.bounds.y);
+            p.bounce_blocks.push(crate::BounceBlockSnapshot {
+                position: start,
+                start,
+                ..crate::BounceBlockSnapshot::default()
+            });
+        }
+        let state = &p.bounce_blocks[block_index];
+        if state.phase == 4 {
+            // Broken BounceBlocks remain in the scene but are non-collidable.
+            // Runtime maps do not carry a separate Collidable bit, so park the
+            // collision rectangle outside the room until the reform succeeds.
+            entity.bounds.x = -1_000_000.0;
+            entity.bounds.y = -1_000_000.0;
+        } else {
+            entity.bounds.x = state.position.x;
+            entity.bounds.y = state.position.y;
+        }
     }
 }
 
@@ -320,6 +374,8 @@ fn move_zip_mover_to(
     state: &mut crate::ZipMoverSnapshot,
     target: Vec2,
 ) {
+    // Platform.Update clears LiftSpeed before the entity calls MoveTo.
+    state.lift_speed = Vec2::default();
     let exact_x = state.position.x + state.remainder.x;
     let move_x = target.x - exact_x;
     state.lift_speed.x = move_x / DT;
@@ -337,6 +393,244 @@ fn move_zip_mover_to(
     state.remainder.y -= exact_move_y;
     move_runtime_solid_exact(p, &mut entity.bounds, false, exact_move_y, state.lift_speed);
     state.position.y += exact_move_y;
+}
+
+fn vector_length(value: Vec2) -> f32 {
+    (value.x * value.x + value.y * value.y).sqrt()
+}
+
+fn safe_normalize(value: Vec2, length: f32) -> Vec2 {
+    let magnitude = vector_length(value);
+    if magnitude == 0.0 {
+        Vec2::default()
+    } else {
+        Vec2::new(value.x / magnitude * length, value.y / magnitude * length)
+    }
+}
+
+fn approach_vec(value: Vec2, target: Vec2, max_move: f32) -> Vec2 {
+    if max_move == 0.0 || value == target {
+        return value;
+    }
+    let delta = Vec2::new(target.x - value.x, target.y - value.y);
+    if vector_length(delta) < max_move {
+        target
+    } else {
+        let move_by = safe_normalize(delta, max_move);
+        Vec2::new(value.x + move_by.x, value.y + move_by.y)
+    }
+}
+
+fn bounce_block_player_check(p: &PlayerSnapshot, bounds: Rect) -> bool {
+    let player = current_player_rect(p, p.pos.x, p.pos.y);
+    let above = Rect::new(bounds.x, bounds.y - 1.0, bounds.width, bounds.height);
+    if above.intersects(player) && p.speed.y >= 0.0 {
+        return true;
+    }
+    let right = Rect::new(bounds.x + 1.0, bounds.y, bounds.width, bounds.height);
+    if right.intersects(player) && p.state == PlayerState::Climb && !p.facing {
+        return true;
+    }
+    let left = Rect::new(bounds.x - 1.0, bounds.y, bounds.width, bounds.height);
+    left.intersects(player) && p.state == PlayerState::Climb && p.facing
+}
+
+fn move_bounce_block_to(
+    p: &mut PlayerSnapshot,
+    entity: &mut crate::Entity,
+    state: &mut crate::BounceBlockSnapshot,
+    target: Vec2,
+    lift_speed: Vec2,
+) {
+    // Platform.Update clears LiftSpeed before BounceBlock.Update calls MoveTo.
+    state.lift_speed = Vec2::default();
+    let exact_x = state.position.x + state.remainder.x;
+    state.lift_speed.x = lift_speed.x;
+    state.remainder.x += target.x - exact_x;
+    let move_x = state.remainder.x.round_ties_even();
+    state.remainder.x -= move_x;
+    move_runtime_solid_exact(p, &mut entity.bounds, true, move_x, state.lift_speed);
+    state.position.x += move_x;
+
+    let exact_y = state.position.y + state.remainder.y;
+    state.lift_speed.y = lift_speed.y;
+    state.remainder.y += target.y - exact_y;
+    let move_y = state.remainder.y.round_ties_even();
+    state.remainder.y -= move_y;
+    move_runtime_solid_exact(p, &mut entity.bounds, false, move_y, state.lift_speed);
+    state.position.y += move_y;
+}
+
+fn bounce_block_exact_position(state: &crate::BounceBlockSnapshot) -> Vec2 {
+    Vec2::new(
+        state.position.x + state.remainder.x,
+        state.position.y + state.remainder.y,
+    )
+}
+
+fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
+    let block_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::BounceBlock).then_some(index))
+        .collect();
+    for (block_index, entity_index) in block_indices.into_iter().enumerate() {
+        let mut state = p.bounce_blocks[block_index].clone();
+        let reform_blocked = if state.phase == 4 && state.respawn_timer <= 0.0 {
+            let source_bounds = map.entities[entity_index].bounds;
+            let restored = Rect::new(
+                state.start.x,
+                state.start.y,
+                source_bounds.width,
+                source_bounds.height,
+            );
+            Some(
+                restored.intersects(current_player_rect(p, p.pos.x, p.pos.y))
+                    || map.static_solid_at(restored)
+                    || map.entities.iter().enumerate().any(|(other_index, other)| {
+                        other_index != entity_index
+                            && matches!(
+                                other.kind,
+                                EntityKind::BounceBlock
+                                    | EntityKind::DreamBlock
+                                    | EntityKind::MovingSolid
+                                    | EntityKind::ZipMover
+                            )
+                            && other.bounds.intersects(restored)
+                    }),
+            )
+        } else {
+            None
+        };
+        let entity = &mut map.entities[entity_index];
+        match state.phase {
+            0 => {
+                state.move_speed = approach(state.move_speed, 100.0, 400.0 * DT);
+                let exact = bounce_block_exact_position(&state);
+                let desired = approach_vec(exact, state.start, state.move_speed * DT);
+                let delta = Vec2::new(desired.x - exact.x, desired.y - exact.y);
+                let mut lift = safe_normalize(delta, state.move_speed);
+                lift.x *= 0.75;
+                move_bounce_block_to(p, entity, &mut state, desired, lift);
+                if bounce_block_player_check(p, entity.bounds) {
+                    state.move_speed = 80.0;
+                    let player_center = Vec2::new(
+                        p.pos.x,
+                        current_player_rect(p, p.pos.x, p.pos.y).y
+                            + current_player_rect(p, p.pos.x, p.pos.y).height * 0.5,
+                    );
+                    let block_center = Vec2::new(
+                        entity.bounds.x + entity.bounds.width * 0.5,
+                        entity.bounds.y + entity.bounds.height * 0.5,
+                    );
+                    state.bounce_dir = safe_normalize(
+                        Vec2::new(
+                            player_center.x - block_center.x,
+                            player_center.y - block_center.y,
+                        ),
+                        1.0,
+                    );
+                    state.phase = 1;
+                }
+            }
+            1 => {
+                if bounce_block_player_check(p, entity.bounds) {
+                    let player_rect = current_player_rect(p, p.pos.x, p.pos.y);
+                    let player_center = Vec2::new(
+                        player_rect.x + player_rect.width * 0.5,
+                        player_rect.y + player_rect.height * 0.5,
+                    );
+                    let block_center = Vec2::new(
+                        entity.bounds.x + entity.bounds.width * 0.5,
+                        entity.bounds.y + entity.bounds.height * 0.5,
+                    );
+                    state.bounce_dir = safe_normalize(
+                        Vec2::new(
+                            player_center.x - block_center.x,
+                            player_center.y - block_center.y,
+                        ),
+                        1.0,
+                    );
+                }
+                state.move_speed = approach(state.move_speed, 40.0, 600.0 * DT);
+                let target = Vec2::new(
+                    state.start.x - state.bounce_dir.x * 10.0,
+                    state.start.y - state.bounce_dir.y * 10.0,
+                );
+                let exact = bounce_block_exact_position(&state);
+                let desired = approach_vec(exact, target, state.move_speed * DT);
+                let delta = Vec2::new(desired.x - exact.x, desired.y - exact.y);
+                let mut lift = safe_normalize(delta, state.move_speed);
+                lift.x *= 0.75;
+                move_bounce_block_to(p, entity, &mut state, desired, lift);
+                let remaining = Vec2::new(
+                    bounce_block_exact_position(&state).x - target.x,
+                    bounce_block_exact_position(&state).y - target.y,
+                );
+                if remaining.x * remaining.x + remaining.y * remaining.y <= 2.0 {
+                    state.phase = 2;
+                    state.move_speed = 0.0;
+                }
+            }
+            2 => {
+                state.move_speed = approach(state.move_speed, 140.0, 800.0 * DT);
+                let target = Vec2::new(
+                    state.start.x + state.bounce_dir.x * 24.0,
+                    state.start.y + state.bounce_dir.y * 24.0,
+                );
+                let exact = bounce_block_exact_position(&state);
+                let desired = approach_vec(exact, target, state.move_speed * DT);
+                let delta = Vec2::new(desired.x - exact.x, desired.y - exact.y);
+                state.bounce_lift = safe_normalize(delta, (state.move_speed * 3.0).min(200.0));
+                state.bounce_lift.x *= 0.75;
+                let lift = state.bounce_lift;
+                move_bounce_block_to(p, entity, &mut state, desired, lift);
+                if bounce_block_exact_position(&state) == target
+                    || !bounce_block_player_check(p, entity.bounds)
+                {
+                    state.phase = 3;
+                    state.move_speed = 0.0;
+                    state.bounce_end_timer = 0.05;
+                    if bounce_block_player_check(p, entity.bounds) {
+                        p.state = PlayerState::Normal;
+                        p.speed = state.bounce_lift;
+                        p.jump_grace_timer = JUMP_GRACE;
+                    }
+                }
+            }
+            3 => {
+                state.bounce_end_timer -= DT;
+                if state.bounce_end_timer <= 0.0 {
+                    state.phase = 4;
+                    state.respawn_timer = 1.6;
+                    entity.bounds.x = -1_000_000.0;
+                    entity.bounds.y = -1_000_000.0;
+                }
+            }
+            4 => {
+                if state.respawn_timer > 0.0 {
+                    state.respawn_timer -= DT;
+                } else if reform_blocked == Some(false) {
+                    entity.bounds.x = state.start.x;
+                    entity.bounds.y = state.start.y;
+                    state.position = state.start;
+                    state.remainder = Vec2::default();
+                    state.lift_speed = Vec2::default();
+                    state.phase = 0;
+                }
+            }
+            _ => {
+                state.phase = 0;
+                state.move_speed = 0.0;
+                state.position = state.start;
+                state.remainder = Vec2::default();
+                entity.bounds.x = state.start.x;
+                entity.bounds.y = state.start.y;
+            }
+        }
+        p.bounce_blocks[block_index] = state;
+    }
 }
 
 fn advance_zip_movers(p: &mut PlayerSnapshot, map: &mut Map) {
@@ -610,6 +904,7 @@ fn step(
     if p.badeline_boost_active {
         update_badeline_boost(p, map);
         advance_zip_movers(p, map);
+        advance_bounce_blocks(p, map);
         p.on_ground = grounded(p, map);
         return Ok(());
     }
@@ -632,6 +927,7 @@ fn step(
         PlayerState::ReflectionFall => reflection_fall_update(p, map),
         PlayerState::IntroRespawn => {
             advance_zip_movers(p, map);
+            advance_bounce_blocks(p, map);
             p.on_ground = grounded(p, map);
             return Ok(());
         }
@@ -665,6 +961,7 @@ fn step(
     // written by the previous ZipMover update is therefore visible to the
     // player's next action before the platform advances again.
     advance_zip_movers(p, map);
+    advance_bounce_blocks(p, map);
     p.on_ground = grounded(p, map);
     Ok(())
 }
@@ -2567,6 +2864,21 @@ mod tests {
             ..Map::default()
         }
     }
+    fn bounce_block_map() -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 240.0),
+            entities: vec![crate::Entity {
+                kind: EntityKind::BounceBlock,
+                bounds: Rect::new(32.0, 160.0, 64.0, 16.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "bounceBlock".to_owned(),
+            }],
+            ..Map::default()
+        }
+    }
     fn water_map() -> Map {
         Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
@@ -2955,6 +3267,84 @@ mod tests {
         let split = simulate(first, &inputs[16..], &map, 9).unwrap();
         assert_eq!(&split, jumped);
     }
+
+    #[test]
+    fn hot_bounce_block_shakes_off_player_with_source_lift_and_jump_grace() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(64.0, 160.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = vec![InputState::default(); 48];
+        let trace = simulate_trace(p, &inputs, &bounce_block_map(), 48).unwrap();
+        let launch_index = trace
+            .states
+            .iter()
+            .position(|state| state.bounce_blocks[0].phase == 3)
+            .unwrap();
+        let launched = &trace.states[launch_index];
+
+        assert_eq!(launched.state, PlayerState::Normal);
+        assert_eq!(launched.speed, launched.bounce_blocks[0].bounce_lift);
+        assert_eq!(launched.jump_grace_timer, JUMP_GRACE);
+        assert!(launched.speed.y < -100.0);
+        assert!(launched.on_ground);
+        assert!(!trace.states[launch_index + 1].on_ground);
+    }
+
+    #[test]
+    fn bounce_block_runtime_keeps_split_simulation_composable() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(64.0, 160.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = vec![InputState::default(); 48];
+        let direct = simulate(p.clone(), &inputs, &bounce_block_map(), 48).unwrap();
+        let first = simulate(p, &inputs[..18], &bounce_block_map(), 18).unwrap();
+        let split = simulate(first, &inputs[18..], &bounce_block_map(), 30).unwrap();
+
+        assert_eq!(split, direct);
+        assert_eq!(direct.bounce_blocks.len(), 1);
+    }
+
+    #[test]
+    fn broken_bounce_block_reforms_after_source_respawn_timer() {
+        let mut map = bounce_block_map();
+        map.solids.push(Rect::new(160.0, 160.0, 160.0, 80.0));
+        let initialized = simulate(
+            PlayerSnapshot {
+                pos: Vec2::new(200.0, 160.0),
+                on_ground: true,
+                ..PlayerSnapshot::default()
+            },
+            &[InputState::default()],
+            &map,
+            1,
+        )
+        .unwrap();
+        let mut broken = initialized;
+        broken.bounce_blocks[0].phase = 3;
+        broken.bounce_blocks[0].bounce_end_timer = 0.0;
+        broken.bounce_blocks[0].position = Vec2::new(32.0, 136.0);
+        let inputs = vec![InputState::default(); 110];
+        let trace = simulate_trace(broken, &inputs, &map, 110).unwrap();
+        let reform_index = trace
+            .states
+            .iter()
+            .position(|state| state.bounce_blocks[0].phase == 0)
+            .unwrap();
+
+        assert_eq!(trace.states[1].bounce_blocks[0].phase, 4);
+        assert!(trace.states[96].bounce_blocks[0].respawn_timer > 0.0);
+        assert!(trace.states[97].bounce_blocks[0].respawn_timer <= 0.0);
+        assert_eq!(reform_index, 98);
+        assert_eq!(
+            trace.states[reform_index].bounce_blocks[0].position,
+            Vec2::new(32.0, 160.0)
+        );
+    }
+
     #[test]
     fn jump_adds_retained_lift_boost_before_caching_variable_jump_speed() {
         let p = PlayerSnapshot {

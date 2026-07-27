@@ -87,6 +87,22 @@ pub struct ZipMoverSnapshot {
     pub start: Vec2,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct BounceBlockSnapshot {
+    /// Waiting, winding up, bouncing, bounce end, or broken.
+    pub phase: u8,
+    pub move_speed: f32,
+    pub bounce_dir: Vec2,
+    pub bounce_lift: Vec2,
+    pub bounce_end_timer: f32,
+    pub respawn_timer: f32,
+    pub position: Vec2,
+    pub remainder: Vec2,
+    pub lift_speed: Vec2,
+    pub start: Vec2,
+}
+
 fn default_stamina() -> f32 {
     110.0
 }
@@ -178,6 +194,8 @@ pub struct PlayerSnapshot {
     /// Per-entity vanilla ZipMover coroutine and Platform movement state, in
     /// map entity order. This keeps segmented simulation composable.
     pub zip_movers: Vec<ZipMoverSnapshot>,
+    /// Per-entity hot BounceBlock state, in map entity order.
+    pub bounce_blocks: Vec<BounceBlockSnapshot>,
     pub climb_no_move_timer: f32,
     pub dream_dash_can_end_timer: f32,
     pub launch_approach_x: Option<f32>,
@@ -290,6 +308,7 @@ impl Default for PlayerSnapshot {
             lift_speed_timer: 0.0,
             moving_solid_time: 0.0,
             zip_movers: vec![],
+            bounce_blocks: vec![],
             climb_no_move_timer: 0.0,
             dream_dash_can_end_timer: 0.0,
             launch_approach_x: None,

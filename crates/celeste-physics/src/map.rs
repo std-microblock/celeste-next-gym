@@ -52,6 +52,8 @@ pub enum EntityKind {
     IceBall,
     BadelineBoost,
     Wind,
+    /// Vanilla hot-state Core BounceBlock Solid.
+    BounceBlock,
     /// Vanilla Celeste ZipMover Solid. The first node is its target position.
     ZipMover,
     /// Simulator-native constant-velocity Solid used to exercise Monocle
@@ -317,6 +319,19 @@ pub fn encode_celeste_map(map: &Map, package: &str, room: &str) -> Result<Vec<u8
                 ));
                 None
             }
+            EntityKind::BounceBlock => Some(element(
+                "bounceBlock",
+                [
+                    ("height", BinaryValue::Int(height)),
+                    ("id", BinaryValue::Int(id)),
+                    ("originX", BinaryValue::Int(0)),
+                    ("originY", BinaryValue::Int(0)),
+                    ("width", BinaryValue::Int(width)),
+                    ("x", BinaryValue::Int(x)),
+                    ("y", BinaryValue::Int(y)),
+                ],
+                vec![],
+            )),
             EntityKind::ZipMover => {
                 let target = entity
                     .nodes
@@ -621,6 +636,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 "fireBall" if attr_bool(el, "notCoreMode", false) => EntityKind::IceBall,
                 "badelineBoost" => EntityKind::BadelineBoost,
                 "windTrigger" => EntityKind::Wind,
+                "bounceBlock" => EntityKind::BounceBlock,
                 "zipMover" => EntityKind::ZipMover,
                 "celesteGymMovingSolid" => EntityKind::MovingSolid,
                 _ => EntityKind::Unknown,
@@ -657,7 +673,9 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                     ),
                     Vec2::default(),
                 ),
-                "zipMover" => (Rect::new(ex, ey, raw_width, raw_height), Vec2::default()),
+                "bounceBlock" | "zipMover" => {
+                    (Rect::new(ex, ey, raw_width, raw_height), Vec2::default())
+                }
                 "celesteGymMovingSolid" => (
                     Rect::new(ex, ey, raw_width, raw_height),
                     Vec2::new(attr_f32(el, "speedX", 0.0), attr_f32(el, "speedY", 0.0)),
@@ -785,8 +803,10 @@ impl Map {
     pub fn non_dream_solid_at(&self, rect: Rect) -> bool {
         self.static_solid_at(rect)
             || self.entities.iter().any(|entity| {
-                matches!(entity.kind, EntityKind::MovingSolid | EntityKind::ZipMover)
-                    && entity.bounds.intersects(rect)
+                matches!(
+                    entity.kind,
+                    EntityKind::BounceBlock | EntityKind::MovingSolid | EntityKind::ZipMover
+                ) && entity.bounds.intersects(rect)
             })
     }
 
@@ -860,5 +880,29 @@ mod tests {
         assert_eq!(entity.bounds, Rect::new(352.0, -120.0, 64.0, 16.0));
         assert_eq!(entity.nodes, vec![Vec2::new(352.0, -200.0)]);
         assert_eq!(entity.name, "zipMover");
+    }
+
+    #[test]
+    fn vanilla_bounce_block_round_trips_through_celeste_binary() {
+        let map = Map {
+            bounds: Rect::new(320.0, -240.0, 320.0, 184.0),
+            entities: vec![Entity {
+                kind: EntityKind::BounceBlock,
+                bounds: Rect::new(352.0, -120.0, 64.0, 16.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "bounceBlock".to_owned(),
+            }],
+            ..Map::default()
+        };
+
+        let encoded = encode_celeste_map(&map, "CelesteGymTest", "bounce").unwrap();
+        let decoded = decode_map_room(&encoded, Some("bounce")).unwrap();
+        let entity = decoded.entities.first().unwrap();
+        assert_eq!(entity.kind, EntityKind::BounceBlock);
+        assert_eq!(entity.bounds, Rect::new(352.0, -120.0, 64.0, 16.0));
+        assert_eq!(entity.name, "bounceBlock");
     }
 }
