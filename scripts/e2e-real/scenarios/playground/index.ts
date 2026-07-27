@@ -86,6 +86,13 @@ import { scenario as scenario83 } from './spiked-cornerboost.js'
 import { scenario as scenario84 } from './other-5.5-half-stamina-climbing.js'
 import { scenario as scenario85 } from './other-5.6-kermit-dash.js'
 import { scenario as scenario86 } from './other-5.12-subpixel-manipulation.js'
+import { scenario as scenario87 } from './entity-4.6.1-cloud-super.js'
+import { scenario as scenario88 } from './entity-4.6.1-cloud-hyper.js'
+import { scenario as scenario89 } from './entity-4.6.2-cloud-hyper-bunnyhop.js'
+import { scenario as scenario90 } from './entity-4.10.3-dream-smuggle.js'
+import { scenario as scenario91 } from './entity-4.10.3.1-dream-grab-hyper.js'
+import { scenario as scenario92 } from './entity-4.10.3.2-holdable-dream-hyper.js'
+import { scenario as scenario93 } from './entity-4.10.4-holdable-grabless-dream-hyper.js'
 
 export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario0,
@@ -175,4 +182,11 @@ export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario84,
   scenario85,
   scenario86,
+  scenario87,
+  scenario88,
+  scenario89,
+  scenario90,
+  scenario91,
+  scenario92,
+  scenario93,
 ])

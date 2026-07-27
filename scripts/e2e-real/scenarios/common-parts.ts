@@ -111,6 +111,33 @@ export const TECH_ENTITY_4_6_CLOUD_JUMP = fixturePart('tech.entity-4.6-cloud-jum
     { id: 'tech-4.6-spikes', kind: 'spikes', bounds: [600, 493, 32, 3], direction: [0, -1], name: 'spikesUp' },
   ],
 })
+export const TECH_ENTITY_4_6_1_CLOUD_HYPER_SUPER = fixturePart('tech.entity-4.6.1-cloud-hyper-super', {
+  entities: [{ id: 'tech-4.6.1-cloud', kind: 'cloud', bounds: [600, 440, 32, 5], name: 'cloud' }],
+})
+export const TECH_ENTITY_4_6_2_CLOUD_HYPER_BUNNYHOP = fixturePart('tech.entity-4.6.2-cloud-hyper-bunnyhop', {
+  entities: [{ id: 'tech-4.6.2-cloud', kind: 'cloud', bounds: [504, 440, 32, 5], name: 'cloud' }],
+})
+export const TECH_ENTITY_4_10_3_DREAM_SMUGGLE = fixturePart('tech.entity-4.10.3-dream-smuggle', {
+  entities: [
+    { id: 'tech-4.10.3-dream', kind: 'dream_block', bounds: [240, 432, 96, 64], name: 'dreamBlock' },
+    { id: 'tech-4.10.3-theo', kind: 'theo_crystal', bounds: [228, 486, 8, 10], name: 'theoCrystal' },
+  ],
+})
+export const TECH_ENTITY_4_10_3_1_DREAM_GRAB_HYPER = fixturePart('tech.entity-4.10.3.1-dream-grab-hyper', {
+  entities: [{ id: 'tech-4.10.3.1-dream', kind: 'dream_block', bounds: [240, 432, 96, 64], name: 'dreamBlock' }],
+})
+export const TECH_ENTITY_4_10_3_2_HOLDABLE_DREAM_HYPER = fixturePart('tech.entity-4.10.3.2-holdable-dream-hyper', {
+  entities: [
+    { id: 'tech-4.10.3.2-dream', kind: 'dream_block', bounds: [240, 432, 96, 64], name: 'dreamBlock' },
+    { id: 'tech-4.10.3.2-theo', kind: 'theo_crystal', bounds: [228, 486, 8, 10], name: 'theoCrystal' },
+  ],
+})
+export const TECH_ENTITY_4_10_4_HOLDABLE_GRABLESS_DREAM_HYPER = fixturePart('tech.entity-4.10.4-holdable-grabless-dream-hyper', {
+  entities: [
+    { id: 'tech-4.10.4-dream', kind: 'dream_block', bounds: [240, 432, 96, 64], name: 'dreamBlock' },
+    { id: 'tech-4.10.4-theo', kind: 'theo_crystal', bounds: [228, 486, 8, 10], name: 'theoCrystal' },
+  ],
+})
 export const PLAYGROUND_BADELINE = fixturePart('playground.badeline', {
   entities: [
     { id: 'entity-0024', kind: 'badeline_boost', bounds: [304, 384, 32, 32], nodes: [[320, 288]], name: 'badelineBoost' },
@@ -156,6 +183,9 @@ export const COMMON_MAP_PARTS = new Map<string, MapPart>([
   PLAYGROUND_STAR_FLY, PLAYGROUND_BUMPER, PLAYGROUND_ICE_BALL, PLAYGROUND_BADELINE,
   TECH_ENTITY_4_3_BUMPER_CLIP, TECH_ENTITY_4_4_EXPLOSION_BOOST,
   TECH_ENTITY_4_5_BOUNCE_JUMP, TECH_ENTITY_4_6_CLOUD_JUMP,
+  TECH_ENTITY_4_6_1_CLOUD_HYPER_SUPER, TECH_ENTITY_4_6_2_CLOUD_HYPER_BUNNYHOP,
+  TECH_ENTITY_4_10_3_DREAM_SMUGGLE, TECH_ENTITY_4_10_3_1_DREAM_GRAB_HYPER,
+  TECH_ENTITY_4_10_3_2_HOLDABLE_DREAM_HYPER, TECH_ENTITY_4_10_4_HOLDABLE_GRABLESS_DREAM_HYPER,
   PLAYGROUND_THEO, PLAYGROUND_BOUNCE_BLOCK, PLAYGROUND_WIND, PLAYGROUND_DASHLESS,
   PLAYGROUND_LAUNCH, PLAYGROUND_MISC, PLAYGROUND_TRANSITION,
   PLAYGROUND_OTHER_HALF_STAMINA,
