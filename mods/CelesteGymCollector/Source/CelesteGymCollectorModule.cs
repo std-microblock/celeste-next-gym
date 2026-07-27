@@ -6,6 +6,8 @@ namespace Celeste.Mod.CelesteGymCollector;
 
 public sealed class CelesteGymCollectorModule : EverestModule {
     private readonly CollectorServer server = new();
+    private readonly int collectorPort = ReadCollectorPort();
+    private readonly string runNonce = Environment.GetEnvironmentVariable("CELESTE_GYM_RUN_NONCE") ?? "";
     private SimulationJob? job;
     private readonly Dictionary<VirtualButton, List<VirtualButton.Node>> originalButtonNodes = [];
     private static readonly PropertyInfo FeatherValueProperty = typeof(VirtualJoystick)
@@ -18,7 +20,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         On.Celeste.Player.Update += PlayerUpdate;
         On.Celeste.Player.Die += PlayerDie;
         On.Celeste.Input.GetAimVector += GetAimVector;
-        server.Start();
+        server.Start(collectorPort);
     }
 
     public override void Unload() {
@@ -46,7 +48,10 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                 pending.Completion.SetResult(new CollectorResponse {
                     Success = ready,
                     Version = "0.1.0",
-                    Error = ready ? null : "game content is still loading"
+                    Error = ready ? null : "game content is still loading",
+                    RunNonce = runNonce,
+                    ProcessId = Environment.ProcessId,
+                    CollectorPort = collectorPort
                 });
                 return;
             }
@@ -80,6 +85,15 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                 pending.Completion.SetResult(new CollectorResponse { Success = false, Error = error.ToString() });
             }
         }
+    }
+
+    private static int ReadCollectorPort() {
+        string? raw = Environment.GetEnvironmentVariable("CELESTE_GYM_COLLECTOR_PORT");
+        if (string.IsNullOrWhiteSpace(raw)) return 32270;
+        if (!int.TryParse(raw, out int port) || port is <= 0 or > 65535) {
+            throw new InvalidOperationException($"CELESTE_GYM_COLLECTOR_PORT must be between 1 and 65535, got {raw}");
+        }
+        return port;
     }
 
     private void PlayerUpdate(On.Celeste.Player.orig_Update orig, Player self) {
