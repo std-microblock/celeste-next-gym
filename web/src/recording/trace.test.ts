@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { PLAYGROUND, createInitialState, makeEmptyButtons } from '../model'
-import { compareTraces, createWebTrace, parseTrace } from './trace'
+import { compareTraces, createWebTrace, initialStateFromTrace, parseTrace } from './trace'
 
 describe('portable frame traces', () => {
   it('exports one state more than inputs and validates the result', () => {
@@ -29,5 +29,16 @@ describe('portable frame traces', () => {
     const initial = createInitialState(PLAYGROUND)
     const trace = createWebTrace(PLAYGROUND, [], [initial], 0)
     expect(() => parseTrace({ ...trace, states: [] })).toThrow(/inputs \+ 1/)
+  })
+
+  it('uses a game trace F0 as the simulator replay checkpoint', () => {
+    const state = initialStateFromTrace({
+      frame: 0, pos: [80, 120], speed: [90, -10], state: 2, facing: 'Left',
+      dashes: 0, stamina: 88, on_ground: true, ducking: true, dead: false,
+    }, PLAYGROUND)
+    expect(state).toMatchObject({
+      pos: { x: 80, y: 120 }, speed: { x: 90, y: -10 }, state: 'Dash',
+      facing: false, dashes: 0, stamina: 88, on_ground: true, ducking: true,
+    })
   })
 })

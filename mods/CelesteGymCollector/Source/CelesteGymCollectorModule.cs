@@ -13,6 +13,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
     private readonly HashSet<string> usedCaptureTokens = new(StringComparer.Ordinal);
     private SimulationJob? job;
     private PresentationCaptureSession? captureSession;
+    private InteractiveRecordingSession? interactiveSession;
     private readonly Dictionary<VirtualButton, List<VirtualButton.Node>> originalButtonNodes = [];
     private static readonly PropertyInfo FeatherValueProperty = typeof(VirtualJoystick)
         .GetProperty(nameof(VirtualJoystick.Value), BindingFlags.Instance | BindingFlags.Public)!;
@@ -44,6 +45,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         PrepareSimulationFrame();
         orig(self, gameTime);
         FinishSimulationFrame();
+        interactiveSession?.FinishPlayerFrame();
     }
 
     private void CelesteRenderCore(
@@ -75,11 +77,18 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                 HandleCaptureCommand(pending);
                 return;
             }
+            if (pending.Request.Command.StartsWith("interactive_", StringComparison.Ordinal)) {
+                HandleInteractiveCommand(pending);
+                return;
+            }
             if (pending.Request.Command != "simulate_area") {
                 pending.Completion.SetResult(new CollectorResponse { Success = false, Error = "unknown command" });
                 return;
             }
             try {
+                if (interactiveSession?.IsRunning == true) {
+                    throw new InvalidOperationException("cannot inject a simulation while interactive recording is active");
+                }
                 BindCaptureToSimulation(pending.Request);
                 if (SaveData.Instance is null) SaveData.InitializeDebugMode(loadExisting: false);
                 int areaId = ResolveAreaId(pending.Request);
@@ -110,6 +119,9 @@ public sealed class CelesteGymCollectorModule : EverestModule {
 
     private void HandleCaptureCommand(PendingRequest pending) {
         try {
+            if (interactiveSession?.IsRunning == true) {
+                throw new InvalidOperationException("cannot capture a scripted scenario while interactive recording is active");
+            }
             CollectorRequest request = pending.Request;
             RecordingSecurity.Authenticate(
                 runNonce,
@@ -167,6 +179,75 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         }
     }
 
+    private void HandleInteractiveCommand(PendingRequest pending) {
+        try {
+            CollectorRequest request = pending.Request;
+            RecordingSecurity.Authenticate(runNonce, Environment.ProcessId, request.RunNonce, request.ProcessId);
+            string token = RecordingSecurity.ValidateToken(request.CaptureToken);
+            switch (request.Command) {
+                case "interactive_start":
+                    if (job is not null || captureSession?.IsCapturing == true) {
+                        throw new InvalidOperationException("another collector job is active");
+                    }
+                    if (interactiveSession?.IsRunning == true) {
+                        throw new InvalidOperationException("another interactive recording is active");
+                    }
+                    if (usedCaptureTokens.Contains(token)) {
+                        throw new InvalidOperationException("capture token is one-time and was already used");
+                    }
+                    if (string.IsNullOrWhiteSpace(request.AreaSid) || string.IsNullOrWhiteSpace(request.Room)) {
+                        throw new InvalidOperationException("interactive recording requires area_sid and room");
+                    }
+                    if (!string.Equals(request.AreaSid, "CelesteGymPlayground/Playground", StringComparison.Ordinal)
+                        || !string.Equals(request.Room, "playground", StringComparison.Ordinal)) {
+                        throw new InvalidOperationException("interactive recording only accepts the bundled Playground map");
+                    }
+                    int areaId = ResolveAreaId(request);
+                    interactiveSession = new InteractiveRecordingSession(
+                        configuredRecordingRoot
+                            ?? throw new InvalidOperationException("CELESTE_GYM_RECORDING_ROOT is not configured"),
+                        token,
+                        request.RecordingId ?? "manual-play",
+                        areaId,
+                        request.AreaSid,
+                        request.Room,
+                        request.MaxFrames
+                    );
+                    usedCaptureTokens.Add(token);
+                    if (SaveData.Instance is null) SaveData.InitializeDebugMode(loadExisting: false);
+                    Session session = new(new AreaKey(areaId)) {
+                        Level = request.Room,
+                        RespawnPoint = null
+                    };
+                    session.Inventory.DreamDash = true;
+                    LevelEnter.Go(session, fromSaveData: true);
+                    break;
+                case "interactive_status":
+                    RequireInteractiveSession(token);
+                    break;
+                case "interactive_stop":
+                    RequireInteractiveSession(token).Stop(request.Reason ?? "explicit_stop");
+                    break;
+                default:
+                    throw new InvalidOperationException("unknown interactive recording command");
+            }
+            pending.Completion.SetResult(new CollectorResponse {
+                Success = true,
+                InteractiveRecording = RequireInteractiveSession(token).GetStatus()
+            });
+        } catch (Exception error) {
+            pending.Completion.SetResult(new CollectorResponse { Success = false, Error = error.Message });
+        }
+    }
+
+    private InteractiveRecordingSession RequireInteractiveSession(string token) {
+        if (interactiveSession is null
+            || !string.Equals(interactiveSession.Token, token, StringComparison.Ordinal)) {
+            throw new UnauthorizedAccessException("capture token does not identify the interactive recording");
+        }
+        return interactiveSession;
+    }
+
     private PresentationCaptureSession RequireCaptureSession(string token) {
         if (captureSession is null
             || !string.Equals(captureSession.Token, token, StringComparison.Ordinal)) {
@@ -196,6 +277,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
     }
 
     private void PlayerUpdate(On.Celeste.Player.orig_Update orig, Player self) {
+        interactiveSession?.BeginPlayerFrame(self);
         FrameInput? input = job?.CurrentInput;
         if (input is not null) {
             Input.MoveX.Value = Math.Clamp(input.MoveX, -1, 1);
@@ -246,11 +328,17 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         if (body is not null && job is { Started: true, CurrentInput: not null }) {
             job.DeathFrame = SnapshotCapture.Capture(self, job.Index + 1);
         }
+        if (body is not null) interactiveSession?.CaptureDeath(self);
         return body;
     }
 
     private void PrepareSimulationFrame() {
-        if (job is null) return;
+        if (job is null) {
+            if (interactiveSession?.IsRunning == true && Engine.Scene is Level interactiveLevel) {
+                interactiveSession.TryBegin(interactiveLevel);
+            }
+            return;
+        }
         if (!job.Started) {
             if (ReferenceEquals(Engine.Scene, job.SceneAtRequest)) return;
             Player? player = ActivePlayer(job.AreaId);

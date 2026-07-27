@@ -1,4 +1,4 @@
-import { buttonsToInput, makeEmptyButtons, type Action, type FrameButtons, type GymMap, type SimState } from '../model'
+import { buttonsToInput, makeEmptyButtons, type Action, type FrameButtons, type GymMap, type SimInput, type SimState } from '../model'
 import type { SimulationRunner } from './wasmClient'
 
 type Listener = () => void
@@ -16,6 +16,7 @@ function sameButtons(left: FrameButtons, right: FrameButtons): boolean {
 export class FrameCache {
   private buttons: FrameButtons[]
   private states: Array<SimState | undefined>
+  private inputOverrides: Array<SimInput | undefined>
   private revision = 0
   private queue: Promise<void> = Promise.resolve()
   private readonly pendingFrames = new Map<number, Promise<SimState | undefined>>()
@@ -30,6 +31,7 @@ export class FrameCache {
     this.buttons = Array.from({ length: frameCount }, makeEmptyButtons)
     this.states = Array.from({ length: frameCount + 1 })
     this.states[0] = initial
+    this.inputOverrides = Array.from({ length: frameCount })
   }
 
   subscribe(listener: Listener): () => void {
@@ -51,6 +53,12 @@ export class FrameCache {
 
   getStates(): readonly (SimState | undefined)[] {
     return this.states
+  }
+
+  getSimulationInputs(count = this.buttons.length): SimInput[] {
+    return this.buttons.slice(0, count).map((buttons, index) => ({
+      ...(this.inputOverrides[index] ?? buttonsToInput(buttons, index > 0 ? this.buttons[index - 1] : undefined)),
+    }))
   }
 
   getState(frame: number): SimState | undefined {
@@ -79,6 +87,7 @@ export class FrameCache {
     const added = size - this.buttons.length
     this.buttons = [...this.buttons, ...Array.from({ length: added }, makeEmptyButtons)]
     this.states = [...this.states, ...Array.from<SimState | undefined>({ length: added }).fill(undefined)]
+    this.inputOverrides = [...this.inputOverrides, ...Array.from<SimInput | undefined>({ length: added }).fill(undefined)]
     this.emit()
     return size
   }
@@ -90,6 +99,7 @@ export class FrameCache {
     const next = this.buttons.slice()
     next[frame] = { ...current, [action]: value }
     this.buttons = next
+    this.clearInputOverrides()
     this.invalidateAfterInput(frame)
   }
 
@@ -110,6 +120,7 @@ export class FrameCache {
     }
     if (!Number.isFinite(firstChanged)) return
     this.buttons = next
+    this.clearInputOverrides()
     this.invalidateAfterInput(firstChanged)
   }
 
@@ -126,6 +137,7 @@ export class FrameCache {
     }
     if (changed) {
       this.buttons = next
+      this.clearInputOverrides()
       this.invalidateAfterInput(start)
     }
   }
@@ -142,6 +154,7 @@ export class FrameCache {
     for (let frame = runStart; frame < runEnd; frame += 1) next[frame] = { ...next[frame], [action]: false }
     for (let frame = targetStart; frame < targetEnd; frame += 1) next[frame] = { ...next[frame], [targetAction]: true }
     this.buttons = next
+    this.clearInputOverrides()
     this.invalidateAfterInput(Math.min(runStart, targetStart))
     return { start: targetStart, end: targetEnd }
   }
@@ -153,9 +166,11 @@ export class FrameCache {
       const added = size - this.buttons.length
       this.buttons = [...this.buttons, ...Array.from({ length: added }, makeEmptyButtons)]
       this.states = [...this.states, ...Array.from<SimState | undefined>({ length: added }).fill(undefined)]
+      this.inputOverrides = [...this.inputOverrides, ...Array.from<SimInput | undefined>({ length: added }).fill(undefined)]
     } else {
       this.buttons = this.buttons.slice(0, size)
       this.states = this.states.slice(0, size + 1)
+      this.inputOverrides = this.inputOverrides.slice(0, size)
       this.revision += 1
     }
     this.emit()
@@ -166,6 +181,19 @@ export class FrameCache {
     this.buttons = inputs.length ? inputs.map((input) => ({ ...makeEmptyButtons(), ...input })) : [makeEmptyButtons()]
     this.states = Array.from({ length: this.buttons.length + 1 })
     this.states[0] = initial
+    this.inputOverrides = Array.from({ length: this.buttons.length })
+    this.revision += 1
+    this.emit()
+  }
+
+  replaceSimulationInputs(map: GymMap, initial: SimState, inputs: readonly SimInput[]): void {
+    this.map = map
+    this.buttons = inputs.length ? inputs.map(inputToButtons) : [makeEmptyButtons()]
+    this.inputOverrides = inputs.length
+      ? inputs.map((input) => ({ ...input }))
+      : [undefined]
+    this.states = Array.from({ length: this.buttons.length + 1 })
+    this.states[0] = initial
     this.revision += 1
     this.emit()
   }
@@ -174,6 +202,7 @@ export class FrameCache {
     this.buttons = this.buttons.map(makeEmptyButtons)
     this.states = Array.from({ length: this.buttons.length + 1 })
     this.states[0] = initial
+    this.inputOverrides = Array.from({ length: this.buttons.length })
     this.revision += 1
     this.emit()
   }
@@ -202,7 +231,8 @@ export class FrameCache {
         const revision = this.revision
         const inputs = this.buttons.slice(start, currentTarget).map((buttons, offset) => {
           const absolute = start + offset
-          return buttonsToInput(buttons, absolute > 0 ? this.buttons[absolute - 1] : undefined)
+          return this.inputOverrides[absolute]
+            ?? buttonsToInput(buttons, absolute > 0 ? this.buttons[absolute - 1] : undefined)
         })
         const trace = await this.runner.simulate(checkpoint, inputs, this.map)
         if (revision !== this.revision) continue
@@ -221,5 +251,21 @@ export class FrameCache {
       () => { if (this.pendingFrames.get(clamped) === task) this.pendingFrames.delete(clamped) },
     )
     return task
+  }
+
+  private clearInputOverrides(): void {
+    this.inputOverrides = Array.from({ length: this.buttons.length })
+  }
+}
+
+function inputToButtons(input: SimInput): FrameButtons {
+  return {
+    up: input.move_y < 0,
+    down: input.move_y > 0,
+    left: input.move_x < 0,
+    right: input.move_x > 0,
+    jump: input.jump_held,
+    dash: input.dash_pressed || input.crouch_dash_pressed,
+    grab: input.grab_held,
   }
 }

@@ -20,7 +20,7 @@ import {
 } from './model'
 import { FrameCache } from './simulator/frameCache'
 import { WasmClient } from './simulator/wasmClient'
-import { compareTraces, createWebTrace, parseTrace } from './recording/trace'
+import { compareTraces, createWebTrace, initialStateFromTrace, parseTrace } from './recording/trace'
 
 interface RunDocument {
   version: 2
@@ -242,7 +242,7 @@ export default function App() {
     try {
       const endFrame = frameRef.current
       await cache.ensureFrame(endFrame)
-      const trace = createWebTrace(map, cache.getInputs(), cache.getStates(), endFrame)
+      const trace = createWebTrace(map, cache.getInputs(), cache.getStates(), endFrame, undefined, cache.getSimulationInputs(endFrame))
       download(`celeste-gym-web-${endFrame}-frames.trace.json`, JSON.stringify(trace, null, 2))
       setNotice(`已导出 F0–F${endFrame} 的输入和 ${trace.states.length} 个逐帧状态`)
     } catch (error) {
@@ -254,9 +254,15 @@ export default function App() {
     try {
       const expected = parseTrace(JSON.parse(await file.text()))
       const endFrame = expected.inputs.length
-      cache.ensureCapacity(endFrame)
+      const comparisonMap = expected.map.data ?? map
+      setPlaying(false)
+      setRecording(false)
+      setMap(comparisonMap)
+      cache.replaceSimulationInputs(comparisonMap, initialStateFromTrace(expected.states[0], comparisonMap), expected.inputs)
       await cache.ensureFrame(endFrame)
-      const actual = createWebTrace(map, cache.getInputs(), cache.getStates(), endFrame)
+      frameRef.current = endFrame
+      setFrame(endFrame)
+      const actual = createWebTrace(comparisonMap, cache.getInputs(), cache.getStates(), endFrame, undefined, cache.getSimulationInputs(endFrame))
       const result = compareTraces(actual, expected)
       setNotice(result.matched
         ? `对比通过：${result.compared_frames} 帧，位置 ${result.max_position_error.toFixed(6)}，速度 ${result.max_speed_error.toFixed(6)}`

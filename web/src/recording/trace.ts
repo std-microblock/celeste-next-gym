@@ -55,14 +55,17 @@ export function createWebTrace(
   states: readonly (SimState | undefined)[],
   endFrame: number,
   recordedAt = new Date().toISOString(),
+  simulationInputs?: readonly SimInput[],
 ): FrameTrace {
   const end = Math.max(0, Math.min(Math.round(endFrame), buttons.length))
   const selectedStates = states.slice(0, end + 1)
   const missing = selectedStates.findIndex((state) => state === undefined)
   if (missing >= 0) throw new Error(`帧 ${missing} 尚未计算，不能导出逐帧数据`)
-  const inputs = buttons.slice(0, end).map((value, index) => (
-    buttonsToInput(value, index > 0 ? buttons[index - 1] : undefined)
-  ))
+  const inputs = simulationInputs
+    ? simulationInputs.slice(0, end).map((input) => ({ ...input }))
+    : buttons.slice(0, end).map((value, index) => (
+        buttonsToInput(value, index > 0 ? buttons[index - 1] : undefined)
+      ))
   return {
     format: TRACE_FORMAT,
     version: TRACE_VERSION,
@@ -76,6 +79,22 @@ export function createWebTrace(
     },
     inputs,
     states: selectedStates.map((state, frame) => portableState(state!, frame)),
+  }
+}
+
+export function initialStateFromTrace(state: PortableState, map: GymMap): SimState {
+  const initial = createTraceInitialState(map)
+  return {
+    ...initial,
+    pos: { x: state.pos[0], y: state.pos[1] },
+    speed: { x: state.speed[0], y: state.speed[1] },
+    state: stateName(state.state),
+    facing: state.facing === true || state.facing === 'Right',
+    dashes: state.dashes,
+    stamina: state.stamina,
+    on_ground: state.on_ground,
+    ducking: state.ducking,
+    dead: state.dead,
   }
 }
 
@@ -183,4 +202,19 @@ function normalizeState(value: PortableState['state']): string | number {
   const known = ['Normal', 'Climb', 'Dash', 'Swim', 'Boost', 'RedDash', 'HitSquash', 'Launch', 'Pickup', 'DreamDash', 'SummitLaunch', 'Dummy', 'IntroWalk', 'IntroJump', 'IntroRespawn', 'IntroWakeUp', 'BirdDashTutorial', 'Frozen', 'ReflectionFall', 'StarFly', 'TempleFall', 'CassetteFly', 'Attract', 'IntroMoonJump', 'FlingBird', 'IntroThinkForABit']
   const index = known.indexOf(value)
   return index >= 0 ? index : value
+}
+
+function stateName(value: PortableState['state']): string {
+  if (typeof value === 'string') return value
+  const known = ['Normal', 'Climb', 'Dash', 'Swim', 'Boost', 'RedDash', 'HitSquash', 'Launch', 'Pickup', 'DreamDash', 'SummitLaunch', 'Dummy', 'IntroWalk', 'IntroJump', 'IntroRespawn', 'IntroWakeUp', 'BirdDashTutorial', 'Frozen', 'ReflectionFall', 'StarFly', 'TempleFall', 'CassetteFly', 'Attract', 'IntroMoonJump', 'FlingBird', 'IntroThinkForABit']
+  return known[value] ?? `State${value}`
+}
+
+function createTraceInitialState(map: GymMap): SimState {
+  return {
+    pos: { ...map.spawn }, speed: { x: 0, y: 0 }, state: 'Normal', facing: true,
+    dashes: 1, stamina: 110, on_ground: false, ducking: false,
+    can_dream_dash: true, dead: false, death_freeze_pending: false,
+    respawn_frames: 0, dash_dir: { x: 0, y: 0 },
+  }
 }

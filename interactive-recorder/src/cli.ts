@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 import { compareTraces, validateTrace } from './trace.js'
+import { recordGame } from './game.js'
 
 const [command, ...args] = process.argv.slice(2)
 
@@ -16,7 +17,9 @@ if (command === 'compare') {
   console.log(JSON.stringify(result, null, 2))
   if (!result.matched) process.exitCode = 1
 } else if (command === 'game') {
-  throw new Error('game recorder is not built yet')
+  const maxFramesArgument = args.find((argument) => argument.startsWith('--max-frames='))
+  const maxFrames = maxFramesArgument ? Number(maxFramesArgument.slice('--max-frames='.length)) : undefined
+  await recordGame(maxFrames === undefined ? {} : { maxFrames })
 } else {
   throw new Error('usage: cli.ts <compare|game>')
 }
