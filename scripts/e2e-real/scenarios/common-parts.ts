@@ -125,6 +125,16 @@ export const PLAYGROUND_TRANSITION = defineMapPart({
 export const PLAYGROUND_OTHER_HALF_STAMINA = fixturePart('playground.other-half-stamina', {
   solids: [[624, 272, 8, 184]],
 })
+export const PLAYGROUND_OTHER_KERMIT = defineMapPart({
+  id: 'playground.other-kermit',
+  dependencies: ['playground.base', 'playground.transition'],
+  package: PACKAGE,
+  sid: SID,
+  rooms: [{
+    name: 'transition_0',
+    entities: [{ id: 'entity-other-kermit-shield', kind: 'fly_feather', bounds: [620, -40, 20, 20], shielded: true, name: 'infiniteStar' }],
+  }],
+})
 
 export const COMMON_MAP_PARTS = new Map<string, MapPart>([
   PLAYGROUND_BASE, PLAYGROUND_JUMP_THRU, PLAYGROUND_ZIP_MOVER, PLAYGROUND_BOOSTER, PLAYGROUND_SPIKES,
@@ -133,4 +143,5 @@ export const COMMON_MAP_PARTS = new Map<string, MapPart>([
   PLAYGROUND_THEO, PLAYGROUND_BOUNCE_BLOCK, PLAYGROUND_WIND, PLAYGROUND_DASHLESS,
   PLAYGROUND_LAUNCH, PLAYGROUND_MISC, PLAYGROUND_TRANSITION,
   PLAYGROUND_OTHER_HALF_STAMINA,
+  PLAYGROUND_OTHER_KERMIT,
 ].map((part) => [part.id, part]))

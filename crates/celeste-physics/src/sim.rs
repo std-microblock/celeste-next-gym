@@ -6642,6 +6642,54 @@ mod tests {
     }
 
     #[test]
+    fn kermit_dash_preserves_attack_and_direction_through_vertical_transition() {
+        let upper = Rect::new(0.0, -184.0, 320.0, 184.0);
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            transition_rooms: vec![upper],
+            entities: vec![crate::Entity {
+                kind: EntityKind::FlyFeather,
+                bounds: Rect::new(150.0, -40.0, 20.0, 20.0),
+                direction: Vec2::default(),
+                shielded: true,
+                single_use: false,
+                nodes: vec![],
+                name: "infiniteStar".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(160.0, 4.0),
+            speed: Vec2::new(0.0, -240.0),
+            state: PlayerState::Dash,
+            dash_dir: Vec2::new(0.0, -1.0),
+            dash_attack_timer: 0.3,
+            state_timer: 0.1,
+            dashes: 0,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(player, &[InputState::default(); 48], &map, 48).unwrap();
+
+        assert_eq!(trace.states[1].state, PlayerState::Normal);
+        assert_eq!(trace.states[1].transition_direction, Vec2::new(0.0, -1.0));
+        assert_eq!(trace.states[1].dash_dir, Vec2::new(0.0, -1.0));
+        assert!(trace.states[1].dash_attack_timer > 0.28);
+        let completed = trace.states.iter().position(|state| state.current_room_bounds == Some(upper)).unwrap();
+        assert_eq!(completed, 41);
+        assert_eq!(trace.states[completed].dash_dir, Vec2::new(0.0, -1.0));
+        assert!(trace.states[completed].dash_attack_timer > 0.28);
+        let hit_index = trace.states.iter().position(|state| state.state == PlayerState::StarFly).unwrap();
+        assert!(hit_index > completed);
+        let hit = &trace.states[hit_index];
+        assert_eq!(hit.state, PlayerState::StarFly);
+        assert_eq!(hit.dashes, 1);
+        assert_eq!(hit.stamina, 110.0);
+        assert!(!hit.on_ground);
+        assert!(!hit.ducking);
+        assert!(!hit.dead);
+    }
+
+    #[test]
     fn downward_screen_transition_clamps_upward_speed_before_transfer() {
         let map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
