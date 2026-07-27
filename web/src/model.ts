@@ -27,6 +27,8 @@ export interface SimState {
   dashes: number
   stamina: number
   on_ground: boolean
+  player_on_ground?: boolean
+  player_on_ground_initialized?: boolean
   ducking: boolean
   can_dream_dash: boolean
   dead: boolean
@@ -45,6 +47,9 @@ export interface SimState {
   feather_reuse_timer?: number
   last_bumper_target?: Vec2
   bumper_reuse_timer?: number
+  star_fly_hitbox_preserved?: boolean
+  last_bounce_target?: Vec2
+  bounce_reuse_timer?: number
   badeline_boost_active?: boolean
   badeline_boost_entity_origin?: Vec2
   badeline_boost_current_position?: Vec2
@@ -52,7 +57,7 @@ export interface SimState {
   [key: string]: unknown
 }
 
-export type EntityKind = 'jump_thru' | 'spikes' | 'water' | 'dream_block' | 'booster' | 'red_booster' | 'fly_feather' | 'bumper' | 'badeline_boost' | 'spring' | 'strawberry' | 'wind' | 'theo_crystal' | 'zip_mover' | 'moving_solid' | 'unknown'
+export type EntityKind = 'jump_thru' | 'spikes' | 'water' | 'dream_block' | 'booster' | 'red_booster' | 'fly_feather' | 'bumper' | 'ice_ball' | 'badeline_boost' | 'spring' | 'strawberry' | 'wind' | 'bounce_block' | 'theo_crystal' | 'zip_mover' | 'moving_solid' | 'unknown'
 
 export interface MapEntity {
   kind: EntityKind
@@ -150,9 +155,10 @@ export const PLAYGROUND: GymMap = {
     { x: 864, y: 240, width: 24, height: 256 },
     { x: 480, y: 240, width: 96, height: 24 },
     { x: 800, y: 248, width: 120, height: 16 },
-    { x: 160, y: 120, width: 80, height: 64 },
+    { x: 168, y: 120, width: 72, height: 64 },
     { x: 240, y: 112, width: 8, height: 8 },
-    { x: 296, y: 120, width: 80, height: 8 },
+    { x: 296, y: 120, width: 16, height: 8 },
+    { x: 328, y: 120, width: 48, height: 8 },
     { x: 400, y: 120, width: 80, height: 64 },
     { x: 480, y: 104, width: 8, height: 16 },
     { x: 544, y: 112, width: 80, height: 8 },
@@ -171,6 +177,7 @@ export const PLAYGROUND: GymMap = {
     { kind: 'bumper', bounds: { x: 588, y: 188, width: 24, height: 24 }, direction: { x: 0, y: 0 }, name: 'bigSpinner' },
     { kind: 'badeline_boost', bounds: { x: 304, y: 384, width: 32, height: 32 }, direction: { x: 0, y: 0 }, nodes: [{ x: 320, y: 288 }], name: 'badelineBoost' },
     { kind: 'theo_crystal', bounds: { x: 846, y: 486, width: 8, height: 10 }, direction: { x: 0, y: 0 }, name: 'theoCrystal' },
+    { kind: 'bounce_block', bounds: { x: 352, y: 360, width: 64, height: 16 }, direction: { x: 0, y: 0 }, name: 'bounceBlock' },
     { kind: 'wind', bounds: { x: 640, y: 128, width: 280, height: 120 }, direction: { x: 400, y: 0 }, name: 'windTrigger' },
   ],
   source_package: 'CelesteGymPlayground',

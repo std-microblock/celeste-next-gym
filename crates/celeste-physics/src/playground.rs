@@ -13,6 +13,10 @@ pub fn mechanics_playground() -> Map {
             Rect::new(0.0, 496.0, 960.0, 48.0),
             Rect::new(0.0, 0.0, 24.0, 496.0),
             Rect::new(936.0, 0.0, 24.0, 496.0),
+            // Isolated wall for Delayed Blockboost. Its eight-pixel gap from
+            // the ZipMover keeps the later wall jump clear of the platform's
+            // own side collider.
+            Rect::new(112.0, 416.0, 8.0, 80.0),
             Rect::new(272.0, 304.0, 32.0, 192.0),
             Rect::new(688.0, 360.0, 24.0, 136.0),
             Rect::new(864.0, 240.0, 24.0, 256.0),
@@ -23,11 +27,15 @@ pub fn mechanics_playground() -> Map {
             // these solids while the normal 8x11 collider is rejected.
             Rect::new(720.0, 320.0, 120.0, 16.0),
             Rect::new(720.0, 304.0, 120.0, 8.0),
-            // Dedicated seven-tile Double Cornerboost booth. The wall corner
-            // and target leading edge are exactly 56 pixels apart.
-            Rect::new(160.0, 120.0, 80.0, 64.0),
+            // Dedicated seven-tile Double Cornerboost booth. Keep its right
+            // wall and target leading edge exactly 56 pixels apart while the
+            // left edge leaves an eight-pixel Feather Clip flight lane.
+            Rect::new(168.0, 120.0, 72.0, 64.0),
             Rect::new(240.0, 112.0, 8.0, 8.0),
-            Rect::new(296.0, 120.0, 80.0, 8.0),
+            // The target's tile-aligned center gap isolates the downward
+            // Feather/IceBall booth without changing its leading landing tile.
+            Rect::new(296.0, 120.0, 16.0, 8.0),
+            Rect::new(328.0, 120.0, 48.0, 8.0),
             // Dedicated eight-tile booth. The wall corner and raised target
             // leading edge are exactly 64 pixels apart.
             Rect::new(400.0, 120.0, 80.0, 64.0),
@@ -144,6 +152,18 @@ pub fn mechanics_playground() -> Map {
                 nodes: vec![],
                 name: "dreamBlock".to_owned(),
             },
+            // Isolated Archie booth. The horizontal demo reaches this booster
+            // several live frames after StartDash without touching a floor,
+            // wall, or either coyote booster.
+            Entity {
+                kind: EntityKind::Booster,
+                bounds: Rect::new(712.0, 312.0, 16.0, 16.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "booster".to_owned(),
+            },
             Entity {
                 kind: EntityKind::Booster,
                 bounds: Rect::new(752.0, 432.0, 16.0, 16.0),
@@ -165,6 +185,18 @@ pub fn mechanics_playground() -> Map {
             Entity {
                 kind: EntityKind::FlyFeather,
                 bounds: Rect::new(110.0, 190.0, 20.0, 20.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "infiniteStar".to_owned(),
+            },
+            // High isolated feather aligned with the long jumpthrough below;
+            // a downward flight reaches it close to StarFly expiry for the
+            // Feather Clip setup without drifting into the booster booths.
+            Entity {
+                kind: EntityKind::FlyFeather,
+                bounds: Rect::new(150.0, 30.0, 20.0, 20.0),
                 direction: Vec2::default(),
                 shielded: false,
                 single_use: false,
@@ -207,6 +239,17 @@ pub fn mechanics_playground() -> Map {
                 nodes: vec![],
                 name: "infiniteStar".to_owned(),
             },
+            // Feather aligned above the stationary Ice Ball for the
+            // Player.Bounce StarFly-collider preservation setup.
+            Entity {
+                kind: EntityKind::FlyFeather,
+                bounds: Rect::new(310.0, 110.0, 20.0, 20.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "infiniteStar".to_owned(),
+            },
             // Grounded feather booth for Feather Super without injecting a
             // StarFly state into the initial snapshot.
             Entity {
@@ -226,6 +269,17 @@ pub fn mechanics_playground() -> Map {
                 single_use: false,
                 nodes: vec![],
                 name: "bigSpinner".to_owned(),
+            },
+            // Stationary cold Core fireball. The zero path speed keeps its
+            // top-bounce position deterministic across fresh E2E room loads.
+            Entity {
+                kind: EntityKind::IceBall,
+                bounds: Rect::new(314.0, 154.0, 12.0, 12.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: true,
+                nodes: vec![Vec2::new(336.0, 160.0)],
+                name: "fireBall".to_owned(),
             },
             Entity {
                 kind: EntityKind::BadelineBoost,
@@ -255,6 +309,17 @@ pub fn mechanics_playground() -> Map {
                 single_use: false,
                 nodes: vec![],
                 name: "theoCrystal".to_owned(),
+            },
+            // Isolated hot Core BounceBlock booth for Core Super/Hyper. A
+            // player whose bottom is y=360 starts centered on its top face.
+            Entity {
+                kind: EntityKind::BounceBlock,
+                bounds: Rect::new(352.0, 360.0, 64.0, 16.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "bounceBlock".to_owned(),
             },
             Entity {
                 kind: EntityKind::Wind,

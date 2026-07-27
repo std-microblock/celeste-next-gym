@@ -36,6 +36,8 @@ const includePlaygroundLaunch = process.env.E2E_PLAYGROUND_LAUNCH !== '0'
 const includePlaygroundBumper = process.env.E2E_PLAYGROUND_BUMPER !== '0'
 const includePlaygroundBadelineBoost = process.env.E2E_PLAYGROUND_BADELINE_BOOST !== '0'
 const includePlaygroundMiscStates = process.env.E2E_PLAYGROUND_MISC_STATES !== '0'
+const includePlaygroundZipMover = process.env.E2E_PLAYGROUND_ZIP_MOVER !== '0'
+const includePlaygroundBounceBlock = process.env.E2E_PLAYGROUND_BOUNCE_BLOCK !== '0'
 const areaId = Number.parseInt(process.env.E2E_AREA_ID ?? '1', 10)
 if (!Number.isSafeInteger(areaId) || areaId < 0) throw new Error('E2E_AREA_ID must be a non-negative integer')
 const areaSid = process.env.E2E_AREA_SID?.trim() || undefined
@@ -386,6 +388,86 @@ try {
         grab_held: frame === 6 || frame === 7 || frame === 8,
       })),
     },
+    ...(includePlaygroundZipMover ? [
+      {
+        name: 'entity-4.8-delayed-blockboost',
+        initial: { pos: [92, 440], speed: [0, 0] },
+        inputs: Array.from({ length: 25 }, (_, frame) => input({
+          move_x: frame >= 8 ? 1 : 0,
+          jump_pressed: frame === 24,
+          jump_held: frame === 24,
+        })),
+        verify(states) {
+          const before = states[24]
+          const jumped = states[25]
+          if (before?.on_ground || Math.abs(before?.pos?.[0] - 108) > 0.01
+            || jumped?.state !== 0 || Math.abs(jumped.speed[0] + 130) > 0.01
+            || Math.abs(jumped.speed[1] + 230.828) > 0.01) {
+            throw new Error(`entity-4.8-delayed-blockboost: did not apply retained ZipMover lift to the later static-wall jump: ${JSON.stringify({
+              before: before && pickCore(before),
+              jumped: jumped && pickCore(jumped),
+              timeline: states.slice(14, 26).map((state) => ({
+                ...pickCore(state),
+                jump_grace: state._everest_fields?.jumpGraceTimer,
+                current_lift: state._everest_fields?.currentLiftSpeed,
+                last_lift: state._everest_fields?.lastLiftSpeed,
+                lift_timer: state._everest_fields?.liftSpeedTimer,
+              })),
+            })}`)
+          }
+        },
+      },
+    ] : []),
+    ...(includePlaygroundBounceBlock ? [
+      {
+        name: 'entity-4.7-core-super',
+        initial: { pos: [384, 360], speed: [0, 0] },
+        inputs: Array.from({ length: 38 }, (_, frame) => input({
+          move_x: frame >= 32 ? 1 : 0,
+          dash_pressed: frame === 32,
+          jump_pressed: frame === 36,
+          jump_held: frame === 36,
+        })),
+        verify(states) {
+          const launch = states.find((state) => Math.abs(state.speed[1] + 200) <= 0.01
+            && Math.abs(state._everest_fields?.jumpGraceTimer - 0.1) <= 0.001
+            && Math.abs(state._everest_fields?.lastLiftSpeed?.[1] + 200) <= 0.01)
+          const superState = states[37]
+          if (!launch || superState?.state !== 0
+            || Math.abs(superState.speed[0] - 260) > 0.01
+            || Math.abs(superState.speed[1] + 235) > 0.01) {
+            throw new Error(`entity-4.7-core-super: missing BounceBlock launch grace/lift or 260/-235 Core Super: ${JSON.stringify({
+              launch: launch && pickCore(launch),
+              result: superState && pickCore(superState),
+            })}`)
+          }
+        },
+      },
+      {
+        name: 'entity-4.7-core-hyper',
+        initial: { pos: [384, 360], speed: [0, 0] },
+        inputs: Array.from({ length: 38 }, (_, frame) => input({
+          move_x: frame >= 32 ? 1 : 0,
+          crouch_dash_pressed: frame === 32,
+          jump_pressed: frame === 36,
+          jump_held: frame === 36,
+        })),
+        verify(states) {
+          const launch = states.find((state) => Math.abs(state.speed[1] + 200) <= 0.01
+            && Math.abs(state._everest_fields?.jumpGraceTimer - 0.1) <= 0.001
+            && Math.abs(state._everest_fields?.lastLiftSpeed?.[1] + 200) <= 0.01)
+          const hyper = states[37]
+          if (!launch || hyper?.state !== 0 || hyper.ducking
+            || Math.abs(hyper.speed[0] - 325) > 0.01
+            || Math.abs(hyper.speed[1] + 117.5) > 0.01) {
+            throw new Error(`entity-4.7-core-hyper: missing BounceBlock launch grace/lift or 325/-117.5 Core Hyper: ${JSON.stringify({
+              launch: launch && pickCore(launch),
+              result: hyper && pickCore(hyper),
+            })}`)
+          }
+        },
+      },
+    ] : []),
     ...(includePlaygroundSwim ? [
       {
         name: 'playground-swim-idle',
@@ -442,11 +524,68 @@ try {
     ...(includePlaygroundBooster ? [
       {
         name: 'entity-4.1-archie',
-        initial: { pos: [245, 400], speed: [0, 0] },
+        initial: { pos: [680, 330], speed: [0, 0] },
         inputs: Array.from({ length: 36 }, (_, frame) => input({
           move_x: 1,
           crouch_dash_pressed: frame === 0,
         })),
+      },
+      {
+        name: 'collector-startdash-buffer-consumed-through-boost',
+        initial: { pos: [720, 330], speed: [0, 0] },
+        inputs: Array.from({ length: 8 }, (_, frame) => input({
+          move_x: 1,
+          dash_pressed: frame === 0,
+        })),
+      },
+      {
+        name: 'entity-4.2-bubble-super',
+        initial: { pos: [220, 400], speed: [90, 0] },
+        inputs: Array.from({ length: 10 }, (_, frame) => input({
+          move_x: 1,
+          dash_pressed: frame === 5,
+          jump_pressed: frame === 9,
+          jump_held: frame >= 9,
+        })),
+        verify(states) {
+          const last = states.at(-1)
+          if (last?.state !== 0 || Math.abs(last.speed[0] - 260) > 0.01
+            || Math.abs(last.speed[1] + 105) > 0.01 || last.dashes !== 1) {
+            throw new Error('entity-4.2-bubble-super: did not end on the expected 260/-105 super with the booster dash retained')
+          }
+        },
+      },
+      {
+        name: 'entity-4.2-bubble-demohyper',
+        initial: { pos: [220, 400], speed: [90, 0] },
+        inputs: Array.from({ length: 10 }, (_, frame) => input({
+          move_x: 1,
+          crouch_dash_pressed: frame === 5,
+          jump_pressed: frame === 9,
+          jump_held: frame >= 9,
+        })),
+        verify(states) {
+          const last = states.at(-1)
+          if (last?.state !== 0 || Math.abs(last.speed[0] - 325) > 0.01
+            || Math.abs(last.speed[1] + 52.5) > 0.01 || last.dashes !== 1) {
+            throw new Error('entity-4.2-bubble-demohyper: did not end on the expected 325/-52.5 demohyper with the booster dash retained')
+          }
+        },
+      },
+      {
+        name: 'entity-4.5-iceball-jump',
+        initial: { pos: [317, 155], speed: [0, 0] },
+        inputs: Array.from({ length: 24 }, (_, frame) => input({
+          move_x: 1,
+          move_y: 1,
+          jump_held: true,
+          dash_pressed: frame === 0,
+        })),
+      },
+      {
+        name: 'entity-4.15.2-feather-hitbox-preservation',
+        initial: { pos: [320, 120], speed: [0, 0] },
+        inputs: Array.from({ length: 60 }, () => input({ move_y: 1 })),
       },
       {
         name: 'playground-green-booster-auto',
@@ -548,7 +687,7 @@ try {
       },
       {
         name: 'entity-4.15.1-feather-clip',
-        initial: { pos: [120, 320], speed: [0, 0] },
+        initial: { pos: [160, 40], speed: [0, 0] },
         inputs: Array.from({ length: 180 }, () => input({ move_y: 1 })),
       },
       {
@@ -721,6 +860,52 @@ try {
         move_x: 1,
         dash_pressed: frame === 0,
       })),
+    },
+    {
+      name: 'entity-4.9-dream-grab',
+      initial: { pos: [776, -50], speed: [0, 0] },
+      inputs: Array.from({ length: 28 }, (_, frame) => input({
+        move_x: frame < 15 ? 1 : -1,
+        dash_pressed: frame === 0,
+        grab_held: frame >= 15,
+      })),
+    },
+    {
+      name: 'entity-4.10-dream-jump',
+      initial: { pos: [776, -50], speed: [0, 0] },
+      inputs: Array.from({ length: 32 }, (_, frame) => input({
+        move_x: 1,
+        jump_pressed: frame === 15,
+        jump_held: frame >= 15 && frame < 25,
+        dash_pressed: frame === 0,
+      })),
+    },
+    {
+      name: 'entity-4.10.1-dream-double-jump',
+      initial: { pos: [776, -50], speed: [0, 0] },
+      inputs: Array.from({ length: 36 }, (_, frame) => input({
+        move_x: 1,
+        jump_pressed: frame === 15 || frame === 17,
+        jump_held: frame >= 15 && frame < 29,
+        dash_pressed: frame === 0,
+      })),
+    },
+    {
+      name: 'entity-4.10.2-dream-hyper',
+      initial: { pos: [776, -50], speed: [0, 0] },
+      inputs: Array.from({ length: 38 }, (_, frame) => input({
+        move_x: 1,
+        jump_pressed: frame === 24,
+        jump_held: frame >= 24 && frame < 34,
+        dash_pressed: frame === 0,
+        crouch_dash_pressed: frame === 17,
+      })),
+      verify(states) {
+        const hyper = states.find((state) => state.state === 0
+          && Math.abs(state.speed[0] - 325) <= 0.01
+          && Math.abs(state.speed[1] + 52.5) <= 0.01)
+        if (!hyper) throw new Error('entity-4.10.2-dream-hyper: did not execute the expected 325/-52.5 dream-exit hyper')
+      },
     },
   ] : areaId === 4 ? [
     {

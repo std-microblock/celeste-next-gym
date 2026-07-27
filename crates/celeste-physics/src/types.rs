@@ -91,6 +91,22 @@ pub struct ZipMoverSnapshot {
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
+pub struct BounceBlockSnapshot {
+    /// Waiting, winding up, bouncing, bounce end, or broken.
+    pub phase: u8,
+    pub move_speed: f32,
+    pub bounce_dir: Vec2,
+    pub bounce_lift: Vec2,
+    pub bounce_end_timer: f32,
+    pub respawn_timer: f32,
+    pub position: Vec2,
+    pub remainder: Vec2,
+    pub lift_speed: Vec2,
+    pub start: Vec2,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct TheoCrystalSnapshot {
     /// Actor.Position: bottom-center of the 8x10 body collider.
     pub position: Vec2,
@@ -121,7 +137,15 @@ pub struct PlayerSnapshot {
     pub facing: bool,
     pub dashes: u8,
     pub stamina: f32,
+    /// Geometric `Player.OnGround()` value exposed by the portable snapshot
+    /// after every entity in the Scene has updated.
     pub on_ground: bool,
+    /// Source-private `Player.onGround` captured during Player.Update, before
+    /// later room entities such as ZipMover can carry or push the player.
+    pub player_on_ground: bool,
+    /// Distinguishes legacy/input snapshots from a persisted internal ground
+    /// value so segmented simulation can resume the one-frame separation.
+    pub player_on_ground_initialized: bool,
     pub ducking: bool,
     pub can_dream_dash: bool,
     pub dead: bool,
@@ -193,6 +217,8 @@ pub struct PlayerSnapshot {
     /// Per-entity vanilla ZipMover coroutine and Platform movement state, in
     /// map entity order. This keeps segmented simulation composable.
     pub zip_movers: Vec<ZipMoverSnapshot>,
+    /// Per-entity hot BounceBlock state, in map entity order.
+    pub bounce_blocks: Vec<BounceBlockSnapshot>,
     /// Per-entity vanilla TheoCrystal actor and Holdable state.
     pub theo_crystals: Vec<TheoCrystalSnapshot>,
     /// Map-order TheoCrystal index currently held by Player.
@@ -228,6 +254,11 @@ pub struct PlayerSnapshot {
     pub strawberry_collect_timer: f32,
     pub strawberry_collect_index: u16,
     pub strawberry_collect_reset_timer: f32,
+    /// `Player.Bounce` can restore the cached StarFly collider after
+    /// `StarFlyEnd` has already restored the normal hurtbox.
+    pub star_fly_hitbox_preserved: bool,
+    pub last_bounce_target: Vec2,
+    pub bounce_reuse_timer: f32,
     pub explode_launch_boost_timer: f32,
     pub explode_launch_boost_speed: f32,
     pub badeline_boost_active: bool,
@@ -271,6 +302,8 @@ impl Default for PlayerSnapshot {
             dashes: default_dashes(),
             stamina: default_stamina(),
             on_ground: false,
+            player_on_ground: false,
+            player_on_ground_initialized: false,
             ducking: false,
             can_dream_dash: false,
             dead: false,
@@ -324,6 +357,7 @@ impl Default for PlayerSnapshot {
             lift_speed_timer: 0.0,
             moving_solid_time: 0.0,
             zip_movers: vec![],
+            bounce_blocks: vec![],
             theo_crystals: vec![],
             holding_theo: None,
             min_hold_timer: 0.0,
@@ -350,6 +384,9 @@ impl Default for PlayerSnapshot {
             strawberry_collect_timer: 0.0,
             strawberry_collect_index: 0,
             strawberry_collect_reset_timer: 0.0,
+            star_fly_hitbox_preserved: false,
+            last_bounce_target: Vec2::default(),
+            bounce_reuse_timer: 0.0,
             explode_launch_boost_timer: 0.0,
             explode_launch_boost_speed: 0.0,
             badeline_boost_active: false,

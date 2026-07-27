@@ -559,6 +559,16 @@ function drawEntity(context: CanvasRenderingContext2D, assets: GameAssets, entit
     drawFlyFeather(context, assets, entity, frame, state)
   } else if (entity.kind === 'bumper') {
     drawBumper(context, assets, entity, frame, state)
+  } else if (entity.kind === 'ice_ball') {
+    const centerX = box.x + box.width / 2
+    const centerY = box.y + box.height / 2
+    context.fillStyle = '#9de7ff'
+    context.strokeStyle = '#ffffff'
+    context.lineWidth = 2
+    context.beginPath()
+    context.arc(centerX, centerY, box.width / 2, 0, Math.PI * 2)
+    context.fill()
+    context.stroke()
   } else if (entity.kind === 'badeline_boost') {
     drawBadelineBoost(context, assets, entity, frame, state)
   }
