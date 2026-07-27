@@ -15,7 +15,7 @@ export interface PortableState {
   pos: [number, number]
   speed: [number, number]
   state: string | number
-  facing: boolean | 'Left' | 'Right'
+  facing: boolean | 'Left' | 'Right' | -1 | 1
   dashes: number
   stamina: number
   on_ground: boolean
@@ -89,7 +89,7 @@ export function initialStateFromTrace(state: PortableState, map: GymMap): SimSta
     pos: { x: state.pos[0], y: state.pos[1] },
     speed: { x: state.speed[0], y: state.speed[1] },
     state: stateName(state.state),
-    facing: state.facing === true || state.facing === 'Right',
+    facing: state.facing === true || state.facing === 'Right' || state.facing === 1,
     dashes: state.dashes,
     stamina: state.stamina,
     on_ground: state.on_ground,
@@ -176,7 +176,7 @@ function validatePortableState(value: unknown, frame: number): asserts value is 
   const state = value as Partial<PortableState>
   if (!vector(state.pos) || !vector(state.speed)) throw new Error(`states[${frame}] 的位置或速度无效`)
   if (typeof state.state !== 'string' && !Number.isInteger(state.state)) throw new Error(`states[${frame}].state 无效`)
-  if (typeof state.facing !== 'boolean' && state.facing !== 'Left' && state.facing !== 'Right') throw new Error(`states[${frame}].facing 无效`)
+  if (typeof state.facing !== 'boolean' && state.facing !== 'Left' && state.facing !== 'Right' && state.facing !== -1 && state.facing !== 1) throw new Error(`states[${frame}].facing 无效`)
   for (const key of ['dashes', 'stamina'] as const) {
     if (typeof state[key] !== 'number' || !Number.isFinite(state[key])) throw new Error(`states[${frame}].${key} 无效`)
   }
@@ -194,7 +194,7 @@ function maxVectorError(left: [number, number], right: [number, number]): number
 }
 
 function normalizeFacing(value: PortableState['facing']): boolean {
-  return value === true || value === 'Right'
+  return value === true || value === 'Right' || value === 1
 }
 
 function normalizeState(value: PortableState['state']): string | number {

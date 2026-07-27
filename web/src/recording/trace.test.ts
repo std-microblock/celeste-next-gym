@@ -41,4 +41,13 @@ describe('portable frame traces', () => {
       facing: false, dashes: 0, stamina: 88, on_ground: true, ducking: true,
     })
   })
+
+  it('accepts raw Celeste -1/1 facing values from game traces', () => {
+    const initial = createInitialState(PLAYGROUND)
+    const gameTrace = structuredClone(createWebTrace(PLAYGROUND, [], [initial], 0))
+    gameTrace.source = 'game'
+    gameTrace.states[0].facing = -1
+    expect(parseTrace(gameTrace).states[0].facing).toBe(-1)
+    expect(initialStateFromTrace(gameTrace.states[0], PLAYGROUND).facing).toBe(false)
+  })
 })
