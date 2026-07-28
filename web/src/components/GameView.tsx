@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { atlasFrameKeys } from '../atlasFrames'
 import type { EntityKind, GymMap, MapEntity, SimState, Vec2 } from '../model'
 import type { VisualTheme, VisualThemeLayer } from '../visualThemes'
 
@@ -68,9 +69,7 @@ function loadAssets(): Promise<GameAssets> {
 function frames(assets: GameAssets, prefix: string): string[] {
   const cached = assets.frameLists.get(prefix)
   if (cached) return cached
-  const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const matcher = new RegExp(`^${escaped}\\d+$`)
-  const found = assets.keys.filter((key) => matcher.test(key)).sort((left, right) => left.localeCompare(right, undefined, { numeric: true }))
+  const found = atlasFrameKeys(assets.keys, prefix)
   assets.frameLists.set(prefix, found)
   return found
 }
