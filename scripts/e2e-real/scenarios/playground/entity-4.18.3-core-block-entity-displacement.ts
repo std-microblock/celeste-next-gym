@@ -13,8 +13,13 @@ export const scenario = defineScenario({
   techniqueIds: ['4.18.3'],
   mapParts,
   name: 'entity-4.18.3-core-block-entity-displacement',
-  initial: { pos: [736, 440], speed: [0, 0] },
-  inputs: inputFrames(280, (frame) => input({ move_x: frame < 80 ? -1 : 0 })),
+  initial: { pos: [720, 440], speed: [0, 0] },
+  inputs: inputFrames(220, (frame) => input({
+    // Offset the launch leftward so its descending arc lands on the isolated
+    // ledge. The source body is then clear at reform and can receive a
+    // grounded rightward re-trigger during the StaticMover alarm.
+    move_x: frame >= 130 && frame < 170 ? 1 : 0,
+  })),
   verify(states) {
     const broken = states.findIndex((state) => field(state, 'reformBlockCollidable') === false
       && field(state, 'reformSpikeCollidable') === false)

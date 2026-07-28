@@ -572,7 +572,7 @@ export default function App() {
         <button onClick={() => void exportTrace()}>导出逐帧</button>
         <label className="file-button">对比逐帧<input type="file" accept="application/json,.json" onChange={(event) => event.target.files?.[0] && void compareTrace(event.target.files[0])} /></label>
       </div> : mode === 'training' ? <div className="play-quick-actions training-context">
-        <div className="play-room"><small>LESSON MODE</small><strong>{selectedTrainingTechnique.title} · {selectedTrainingVariant.title}</strong><span>{selectedTrainingVariant.summary}</span></div>
+        <div className="play-room"><small>TRAINING MAP</small><strong>{selectedTrainingTechnique.title} · {selectedTrainingVariant.title}</strong><span>{selectedTrainingVariant.training.modules.length} 个教程模块 · {selectedTrainingVariant.summary}</span></div>
         <div className="top-actions"><button onClick={() => setBindingsOpen(true)}>控制</button></div>
       </div> : mode === 'editor' ? <div className="play-quick-actions editor-context">
         <div className="play-room"><small>{editorExperiencing ? 'LIVE EXPERIENCE' : 'MAP EDITOR'}</small><strong>{map.name}</strong><span>{map.room ?? DEFAULT_ROOM}</span></div>
