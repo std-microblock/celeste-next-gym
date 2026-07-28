@@ -32,6 +32,7 @@ export interface PlayerSnapshot {
   readonly ducking: boolean
   readonly dead?: boolean
   readonly can_dream_dash?: boolean
+  readonly holding_theo?: boolean
   readonly [key: string]: unknown
 }
 

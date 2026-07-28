@@ -92,6 +92,15 @@ import { scenario as scenario89 } from './spike-clip.js'
 import { scenario as scenario90 } from './spike-jump.js'
 import { scenario as scenario91 } from './cornerboost-wallboost.js'
 import { scenario as scenario92 } from './cornerslip.js'
+import { scenario as scenario93 } from './dash-grounded-ultra-cancel.js'
+import { scenario as scenario94 } from './dash-grounded-ultra-cancel-control.js'
+import { scenario as scenario95 } from './entity-4.6.1-cloud-super.js'
+import { scenario as scenario96 } from './entity-4.6.1-cloud-hyper.js'
+import { scenario as scenario97 } from './entity-4.6.2-cloud-hyper-bunnyhop.js'
+import { scenario as scenario98 } from './entity-4.10.3-dream-smuggle.js'
+import { scenario as scenario99 } from './entity-4.10.3.1-dream-grab-hyper.js'
+import { scenario as scenario100 } from './entity-4.10.3.2-holdable-dream-hyper.js'
+import { scenario as scenario101 } from './entity-4.10.4-holdable-grabless-dream-hyper.js'
 
 export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario0,
@@ -187,4 +196,13 @@ export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario90,
   scenario91,
   scenario92,
+  scenario93,
+  scenario94,
+  scenario95,
+  scenario96,
+  scenario97,
+  scenario98,
+  scenario99,
+  scenario100,
+  scenario101,
 ])
