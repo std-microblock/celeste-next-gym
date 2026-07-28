@@ -30,6 +30,33 @@ internal static class SnapshotCapture {
         "nodePercent",
         BindingFlags.Instance | BindingFlags.NonPublic
     );
+    // Temporary source-level audit fields for entity 4.19. They capture the
+    // state machine and Pathfinder inputs that Player-only traces cannot
+    // distinguish; no simulation input or game behavior is changed.
+    private static readonly FieldInfo? seekerState = typeof(Seeker).GetField(
+        "State",
+        BindingFlags.Instance | BindingFlags.NonPublic
+    );
+    private static readonly FieldInfo? seekerCanSeePlayer = typeof(Seeker).GetField(
+        "canSeePlayer",
+        BindingFlags.Instance | BindingFlags.NonPublic
+    );
+    private static readonly FieldInfo? seekerLastSpottedAt = typeof(Seeker).GetField(
+        "lastSpottedAt",
+        BindingFlags.Instance | BindingFlags.NonPublic
+    );
+    private static readonly FieldInfo? seekerLastPathTo = typeof(Seeker).GetField(
+        "lastPathTo",
+        BindingFlags.Instance | BindingFlags.NonPublic
+    );
+    private static readonly FieldInfo? seekerPathIndex = typeof(Seeker).GetField(
+        "pathIndex",
+        BindingFlags.Instance | BindingFlags.NonPublic
+    );
+    private static readonly FieldInfo? seekerLastPathFound = typeof(Seeker).GetField(
+        "lastPathFound",
+        BindingFlags.Instance | BindingFlags.NonPublic
+    );
     // `Lookout.Removed` restores StNormal but intentionally does not call
     // StopInteracting. The entity is gone by the next PlayerFrame, so retain
     // this source-side observation for a transition trace to prove the split
@@ -107,6 +134,17 @@ internal static class SnapshotCapture {
             Booster? booster = level.Entities.FindFirst<Booster>();
             if (booster is not null) {
                 values["boosterBoostingPlayer"] = booster.BoostingPlayer;
+            }
+            Seeker? seeker = level.Entities.FindFirst<Seeker>();
+            if (seeker is not null) {
+                values["seekerPosition"] = Simplify(seeker.Position);
+                values["seekerSpeed"] = Simplify(seeker.Speed);
+                values["seekerState"] = (seekerState?.GetValue(seeker) as StateMachine)?.State ?? -1;
+                values["seekerCanSeePlayer"] = seekerCanSeePlayer?.GetValue(seeker) as bool? ?? false;
+                values["seekerLastSpottedAt"] = Simplify(seekerLastSpottedAt?.GetValue(seeker));
+                values["seekerLastPathTo"] = Simplify(seekerLastPathTo?.GetValue(seeker));
+                values["seekerPathIndex"] = seekerPathIndex?.GetValue(seeker) as int? ?? -1;
+                values["seekerLastPathFound"] = seekerLastPathFound?.GetValue(seeker) as bool? ?? false;
             }
             List<Dictionary<string, object?>> cassetteBlocks = [];
             foreach (Entity entity in level.Entities) {
