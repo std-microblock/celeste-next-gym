@@ -81,6 +81,7 @@ export interface RoomContribution {
   readonly name: string
   readonly bounds?: Rect
   readonly spawn?: Vector2
+  readonly additionalSpawns?: readonly Vector2[]
   readonly solids?: readonly Rect[]
   readonly entities?: readonly FixtureEntity[]
 }
@@ -97,6 +98,7 @@ export interface FixtureRoom {
   readonly name: string
   readonly bounds: Rect
   readonly spawn: Vector2
+  readonly additionalSpawns?: readonly Vector2[]
   readonly solids: readonly Rect[]
   readonly entities: readonly CanonicalFixtureEntity[]
 }

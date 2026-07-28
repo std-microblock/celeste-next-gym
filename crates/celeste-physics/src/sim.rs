@@ -48,6 +48,7 @@ const CLIMB_TIRED_THRESHOLD: f32 = 20.0;
 const CLIMB_JUMP_COST: f32 = 27.5;
 const CLIMB_UP_COST: f32 = 45.454_544;
 const CLIMB_STILL_COST: f32 = 10.0;
+const JUMP_THRU_ASSIST_SPEED: f32 = -40.0;
 const SWIM_Y_SPEED_MULT: f32 = 0.5;
 const SWIM_MAX_RISE: f32 = -60.0;
 const SWIM_MAX: f32 = 80.0;
@@ -3662,7 +3663,12 @@ fn step(
     // Engine computes DeltaTime once at the beginning of the raw frame. A
     // HeartGem can write TimeRate during Scene.Update, but that write only
     // changes movement and timers from the next engine frame onward.
-    p.frame_delta_time = DT * p.time_rate;
+    let raw_delta_time = input
+        .frame_delta_time_bits
+        .map(f32::from_bits)
+        .filter(|delta| delta.is_finite() && *delta > 0.0)
+        .unwrap_or(DT);
+    p.frame_delta_time = raw_delta_time * p.time_rate;
     // VirtualButton.Update runs in MInput before Celeste.Freeze can skip the
     // Scene. It subtracts DeltaTime first, then a new press restores the full
     // buffer; Jump also clears its buffer as soon as the binding is not held.
@@ -3714,7 +3720,7 @@ fn step(
             return Ok(());
         }
         if p.freeze_timer > 0.0 {
-            p.freeze_timer = (p.freeze_timer - DT).max(0.0);
+            p.freeze_timer = (p.freeze_timer - raw_delta_time).max(0.0);
         }
         return Ok(());
     }
@@ -3728,7 +3734,7 @@ fn step(
     if p.just_respawned && p.speed != Vec2::default() {
         p.just_respawned = false;
     }
-    p.scene_time_active += DT;
+    p.scene_time_active += raw_delta_time;
     advance_moving_solids(p, map);
     if p.transition_timer > 0.0 {
         update_transition(p, map);
@@ -3878,6 +3884,21 @@ fn step(
         p.star_fly_hitbox_preserved = false;
     }
 
+    // This is deliberately after the state callback (including WallJump) and
+    // before the ordinary Actor movement below. Player.Update performs this
+    // extra -40 px/s MoveV while rising through a JumpThru; its own sub-pixel
+    // remainder is therefore observable before Speed.Y's -105 px/s MoveV.
+    // Bubsdrop first overlaps the upper-room platform on the frame after the
+    // neutral wall jump, so omitting this pass leaves its Y position one pixel
+    // too low from that frame onward.
+    if !p.on_ground
+        && p.speed.y <= 0.0
+        && p.state != PlayerState::Climb
+        && touching_jump_thru(p, map)
+    {
+        move_axis_amount(p, map, false, JUMP_THRU_ASSIST_SPEED * p.frame_delta_time);
+    }
+
     if p.state != PlayerState::DreamDash {
         move_axis(p, map, true);
     }
@@ -3992,6 +4013,8 @@ fn update_wall_speed_retention(p: &mut PlayerSnapshot, map: &Map) {
 }
 
 fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_ground: bool) {
+    let is_first_normal_update_after_transition = p.post_transition_normal_updates > 0;
+    p.post_transition_normal_updates = 0;
     let boost = lift_boost(p);
     if boost.y < 0.0 && was_on_ground && !p.on_ground && p.speed.y >= 0.0 {
         p.speed.y = boost.y;
@@ -4067,7 +4090,10 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
         AIR_MULT
     };
     let move_x = p.move_x;
-    if p.ducking && p.on_ground {
+    let neutral_wall_jump_friction_delayed = p.neutral_wall_jump_friction_delay > 0;
+    if neutral_wall_jump_friction_delayed {
+        p.neutral_wall_jump_friction_delay -= 1;
+    } else if p.ducking && p.on_ground {
         p.speed.x = approach(p.speed.x, 0.0, DUCK_FRICTION * p.frame_delta_time);
     } else {
         let max_run = if p.holding_theo.is_some() {
@@ -4200,6 +4226,12 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
                 if move_x != 0 {
                     p.force_move_x = -jump_wall;
                     p.force_move_x_timer = 0.16;
+                } else if is_first_normal_update_after_transition {
+                    // At the just-finished transition boundary, Everest
+                    // retains this neutral wall-jump launch through the next
+                    // update before air friction resumes. Ordinary neutral
+                    // wall jumps must retain their existing timing.
+                    p.neutral_wall_jump_friction_delay = 1;
                 }
                 p.var_jump_speed = p.speed.y;
                 p.var_jump_timer = VAR_JUMP_TIME;
@@ -5133,6 +5165,22 @@ fn wall_dir(p: &PlayerSnapshot, map: &Map) -> i8 {
 fn move_axis(p: &mut PlayerSnapshot, map: &Map, horizontal: bool) {
     let speed = if horizontal { p.speed.x } else { p.speed.y };
     move_axis_amount(p, map, horizontal, speed * p.frame_delta_time);
+}
+
+fn touching_jump_thru(p: &PlayerSnapshot, map: &Map) -> bool {
+    let player = current_player_rect(p, p.pos.x, p.pos.y);
+    map.entities.iter().any(|entity| {
+        // The map element gives JumpThru its visual height, but its vanilla
+        // collider is always only five pixels tall (JumpThru.cs ctor).
+        let collider = Rect::new(
+            entity.bounds.x,
+            entity.bounds.y,
+            entity.bounds.width,
+            entity.bounds.height.min(5.0),
+        );
+        matches!(entity.kind, EntityKind::JumpThru | EntityKind::Cloud)
+            && collider.intersects(player)
+    })
 }
 
 fn naive_move(p: &mut PlayerSnapshot, amount: Vec2) {
@@ -6075,17 +6123,16 @@ fn point_bounce(p: &mut PlayerSnapshot, from: Vec2) {
         collider.x + collider.width * 0.5,
         collider.y + collider.height * 0.5,
     );
-    let mut direction = normalize(Vec2::new(center.x - from.x, center.y - from.y));
-    if direction.y > -0.2 && direction.y <= 0.4 {
-        direction.y = -0.2;
-    }
-    p.speed = scale(direction, 220.0);
-    p.speed.x *= 1.5;
-    if p.speed.x.abs() < 100.0 {
+    // Player.PointBounce uses the regular actor center without an artificial
+    // vertical-angle clamp. The horizontal multiplier and minimum are applied
+    // after SafeNormalize, which matters for the nearly level Seeker contact.
+    p.speed = scale(normalize(Vec2::new(center.x - from.x, center.y - from.y)), 200.0);
+    p.speed.x *= 1.2;
+    if p.speed.x.abs() < 120.0 {
         p.speed.x = if p.speed.x == 0.0 {
-            if p.facing { -100.0 } else { 100.0 }
+            if p.facing { -120.0 } else { 120.0 }
         } else {
-            p.speed.x.signum() * 100.0
+            p.speed.x.signum() * 120.0
         };
     }
 }
@@ -6209,7 +6256,7 @@ fn begin_transition(p: &mut PlayerSnapshot, next: Rect, direction: Vec2) {
     p.on_ground = false;
 }
 
-fn update_transition(p: &mut PlayerSnapshot, map: &Map) {
+fn update_transition(p: &mut PlayerSnapshot, map: &mut Map) {
     let max_move = TRANSITION_MOVE_SPEED * p.frame_delta_time;
     p.pos.x = approach(p.pos.x, p.transition_target.x, max_move);
     p.pos.y = approach(p.pos.y, p.transition_target.y, max_move);
@@ -6249,9 +6296,42 @@ fn update_transition(p: &mut PlayerSnapshot, map: &Map) {
                     p.dummy_moving = false;
                 }
             }
+            // Level.TransitionRoutine invokes LoadLevel for the destination
+            // room while the global CassetteBlockManager keeps its beat. Do
+            // not leave source-room solids/entities alive after transfer.
+            if let Some(room) = map
+                .transition_runtime
+                .iter()
+                .find(|room| room.bounds == next)
+                .cloned()
+            {
+                map.solids = room.solids;
+                map.entities = room.entities;
+                map.room_spawns = room.spawns.clone();
+                if let Some(spawn) = room.spawns.iter().copied().min_by(|left, right| {
+                    let left_dx = left.x - p.pos.x;
+                    let left_dy = left.y - p.pos.y;
+                    let right_dx = right.x - p.pos.x;
+                    let right_dy = right.y - p.pos.y;
+                    (left_dx * left_dx + left_dy * left_dy)
+                        .partial_cmp(&(right_dx * right_dx + right_dy * right_dy))
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                }) {
+                    // Level.LoadLevel assigns Session.RespawnPoint from this
+                    // room's closest player spawn after the transfer.
+                    map.spawn = spawn;
+                }
+                p.cassette_blocks.clear();
+                p.spinners.clear();
+                p.lookouts.clear();
+                initialize_cassette_blocks(p, map);
+                initialize_spinners(p, map);
+                initialize_lookouts(p, map);
+            }
         }
         p.current_room_bounds = next_room;
         p.transition_direction = Vec2::default();
+        p.post_transition_normal_updates = 1;
     }
 }
 
@@ -7505,14 +7585,20 @@ mod tests {
             .unwrap();
         assert!(spikes_reenabled > body_reform);
         assert_eq!(spikes_reenabled - body_reform, 21);
+        let reenabled = &trace.states[spikes_reenabled].bounce_blocks[0];
+        // The player is still standing on the newly collidable body, so the
+        // block begins another bounce during Alarm's 0.35-second window.
+        // MoveStaticMovers must retain the original top-spike offset while it
+        // is disabled; enabling it at the source coordinate would erase CED.
+        assert_eq!(
+            reenabled.attached_spike_position,
+            Vec2::new(reenabled.position.x, reenabled.position.y - 3.0)
+        );
         assert_ne!(
-            trace.states[spikes_reenabled].bounce_blocks[0].attached_spike_position,
+            reenabled.attached_spike_position,
             Vec2::new(32.0, 157.0)
         );
-        assert_ne!(
-            trace.states[spikes_reenabled].bounce_blocks[0].position,
-            Vec2::new(32.0, 160.0)
-        );
+        assert_ne!(reenabled.position, Vec2::new(32.0, 160.0));
     }
 
     #[test]
@@ -12883,6 +12969,100 @@ mod tests {
     }
 
     #[test]
+    fn bubsdrop_wall_jump_misses_upper_jumpthru_and_restores_old_room_spawn_set() {
+        let lower = Rect::new(0.0, 0.0, 320.0, 184.0);
+        let upper = Rect::new(0.0, -184.0, 320.0, 184.0);
+        let map = Map {
+            bounds: lower,
+            transition_rooms: vec![upper],
+            transition_runtime: vec![
+                crate::RoomRuntime {
+                    bounds: lower,
+                    spawns: vec![Vec2::new(24.0, 32.0), Vec2::new(280.0, 32.0)],
+                    solids: vec![],
+                    entities: vec![],
+                },
+                crate::RoomRuntime {
+                    bounds: upper,
+                    spawns: vec![Vec2::new(160.0, -16.0)],
+                    // The upward transition ends beside this wall. A normal
+                    // auto-jump lands on the JumpThru; the wall jump below
+                    // instead sends the player left and back into `lower`.
+                    solids: vec![Rect::new(168.0, -80.0, 8.0, 80.0)],
+                    entities: vec![crate::Entity {
+                        kind: crate::EntityKind::JumpThru,
+                        bounds: Rect::new(160.0, -24.0, 40.0, 8.0),
+                        direction: Vec2::default(),
+                        shielded: false,
+                        single_use: false,
+                        nodes: vec![],
+                        name: "bubsdropJumpThru".to_owned(),
+                    }],
+                },
+            ],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(164.0, 4.0),
+            speed: Vec2::new(0.0, -160.0),
+            dashes: 0,
+            stamina: 20.0,
+            ..PlayerSnapshot::default()
+        };
+        let baseline =
+            simulate_trace(player.clone(), &[InputState::default(); 120], &map, 120).unwrap();
+        assert!(baseline.states.iter().any(|state| {
+            state.current_room_bounds == Some(upper) && state.on_ground && state.pos.y == -24.0
+        }));
+        let inputs = (0..360)
+            .map(|frame| InputState {
+                // State 41 is the first normal-update frame after the
+                // transition coroutine calls Player.OnTransition.
+                jump_pressed: frame == 41,
+                jump_held: (41..51).contains(&frame),
+                ..InputState::default()
+            })
+            .collect::<Vec<_>>();
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+
+        assert_eq!(trace.states[1].speed, Vec2::new(0.0, JUMP_SPEED));
+        // The real Bubsdrop trace wall-jumps on state 42. Its neutral launch
+        // remains (-130, -105) on state 43; air friction first applies on
+        // state 44, producing -119.16665 horizontal speed. The real f44
+        // Player.Update also runs JumpThruAssistSpeed (-40) before Actor's
+        // -105 vertical move, so preserve both the integer position and the
+        // sub-pixel remainder through f45.
+        assert_eq!(trace.states[42].pos, Vec2::new(162.0, -7.0));
+        assert_eq!(trace.states[42].speed, Vec2::new(-WALL_JUMP_H, JUMP_SPEED));
+        assert!((trace.states[42].movement_remainder.x + 0.166_670_8).abs() < 0.000_001);
+        assert!((trace.states[42].movement_remainder.y - 0.249_996_54).abs() < 0.000_001);
+        assert_eq!(trace.states[43].pos, Vec2::new(160.0, -9.0));
+        assert_eq!(trace.states[43].speed, Vec2::new(-WALL_JUMP_H, JUMP_SPEED));
+        assert!((trace.states[43].movement_remainder.x + 0.333_341_6).abs() < 0.000_001);
+        assert!((trace.states[43].movement_remainder.y - 0.499_993_1).abs() < 0.000_001);
+        assert_eq!(trace.states[44].pos, Vec2::new(158.0, -11.0));
+        assert!((trace.states[44].speed.x + 119.166_65).abs() < 0.000_1);
+        assert_eq!(trace.states[44].speed.y, JUMP_SPEED);
+        assert!((trace.states[44].movement_remainder.x + 0.319_456_34).abs() < 0.000_001);
+        assert!((trace.states[44].movement_remainder.y - 0.083_321_69).abs() < 0.000_001);
+        assert_eq!(trace.states[45].pos, Vec2::new(156.0, -13.0));
+        assert!((trace.states[45].speed.x + 108.333_3).abs() < 0.000_1);
+        assert_eq!(trace.states[45].speed.y, JUMP_SPEED);
+        assert!((trace.states[45].movement_remainder.x + 0.125_014_78).abs() < 0.000_001);
+        assert!((trace.states[45].movement_remainder.y + 0.333_349_7).abs() < 0.000_001);
+        assert!(trace.states.iter().any(|state| {
+            state.current_room_bounds == Some(upper)
+                && state.speed == Vec2::new(-WALL_JUMP_H, JUMP_SPEED)
+        }));
+        assert!(trace.states.iter().any(|state| {
+            state.current_room_bounds == Some(lower) && state.transition_room_bounds.is_none()
+        }));
+        assert!(trace.states.iter().any(|state| {
+            state.state == PlayerState::IntroRespawn && state.pos == Vec2::new(24.0, 32.0)
+        }));
+    }
+
+    #[test]
     fn climb_jump_buffer_uses_the_real_five_frame_transition_boundary() {
         let upper = Rect::new(0.0, -184.0, 320.0, 184.0);
         let map = Map {
@@ -13381,14 +13561,14 @@ mod tests {
     }
 
     #[test]
-    fn shielded_feather_uses_v14_point_bounce() {
+    fn shielded_feather_uses_source_point_bounce() {
         let p = PlayerSnapshot {
             pos: Vec2::new(120.0, 200.0),
             ..PlayerSnapshot::default()
         };
         let p = simulate(p, &[InputState::default()], &feather_map(true), 1).unwrap();
         assert_eq!(p.state, PlayerState::Normal);
-        assert_eq!(p.speed, Vec2::new(-100.0, -220.0));
+        assert_eq!(p.speed, Vec2::new(-120.0, -200.0));
     }
 
     #[test]
@@ -13761,7 +13941,14 @@ mod tests {
         assert!(!p.dead);
         assert_eq!(p.dashes, 1);
         assert_eq!(p.stamina, 110.0);
-        assert!(p.speed.x < -300.0);
+        // Player.PointBounce uses 200 speed, a 1.2 horizontal multiplier,
+        // and only then applies its 120-pixel horizontal minimum.
+        assert!(
+            (p.speed.x + 238.146_68).abs() < 0.000_01,
+            "unexpected point-bounce speed: {:?}",
+            p.speed
+        );
+        assert!((p.speed.y + 24.806_946).abs() < 0.000_01);
         assert_eq!(p.seekers[0].speed, Vec2::new(100.0, 0.0));
         assert_eq!(p.seekers[0].state, 4);
     }
@@ -14459,6 +14646,26 @@ mod tests {
         assert!(trace.states[36].pos.x > 544.0);
         assert!(trace.states[38].on_ground);
         assert!(trace.states[39].speed.x > 300.0 && trace.states[39].speed.y < -160.0);
+    }
+
+    #[test]
+    fn real_trace_delta_time_controls_the_matching_player_frame() {
+        let state = simulate(
+            PlayerSnapshot {
+                pos: Vec2::new(160.0, 160.0),
+                ..PlayerSnapshot::default()
+            },
+            &[InputState {
+                frame_delta_time_bits: Some(0.02_f32.to_bits()),
+                ..InputState::default()
+            }],
+            &Map::default(),
+            1,
+        )
+        .unwrap();
+
+        assert!((state.frame_delta_time - 0.02).abs() < 0.000_001);
+        assert!((state.speed.y - 18.0).abs() < 0.000_001);
     }
 
     #[test]

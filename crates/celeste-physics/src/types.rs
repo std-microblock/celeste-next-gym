@@ -60,6 +60,10 @@ pub struct InputState {
     pub grab_held: bool,
     #[serde(default)]
     pub talk_pressed: bool,
+    /// Exact `Engine.DeltaTime` bits captured from a real Everest frame. This
+    /// is diagnostic replay data only, so portable scenario inputs omit it.
+    #[serde(skip)]
+    pub frame_delta_time_bits: Option<u32>,
 }
 
 impl InputState {
@@ -368,6 +372,9 @@ pub struct PlayerSnapshot {
     pub transition_direction: Vec2,
     pub transition_target: Vec2,
     pub transition_timer: f32,
+    /// Set by transition completion so its next NormalUpdate can preserve the
+    /// source transition's immediate player-state ordering.
+    pub post_transition_normal_updates: u8,
     /// Level.Camera.Position used by camera-driven hazards.
     pub camera: Vec2,
     pub camera_initialized: bool,
@@ -424,6 +431,10 @@ pub struct PlayerSnapshot {
     pub move_x: i8,
     pub force_move_x: i8,
     pub force_move_x_timer: f32,
+    /// A neutral wall jump performed on the first NormalUpdate after a room
+    /// transition retains its launch speed through the following update.
+    #[serde(default)]
+    pub neutral_wall_jump_friction_delay: u8,
     pub wall_speed_retention_timer: f32,
     pub wall_speed_retained: f32,
     pub wall_boost_timer: f32,
@@ -573,6 +584,7 @@ impl Default for PlayerSnapshot {
             transition_direction: Vec2::default(),
             transition_target: Vec2::default(),
             transition_timer: 0.0,
+            post_transition_normal_updates: 0,
             camera: Vec2::default(),
             camera_initialized: false,
             core_mode: CoreMode::None,
@@ -611,6 +623,7 @@ impl Default for PlayerSnapshot {
             move_x: 0,
             force_move_x: 0,
             force_move_x_timer: 0.0,
+            neutral_wall_jump_friction_delay: 0,
             wall_speed_retention_timer: 0.0,
             wall_speed_retained: 0.0,
             wall_boost_timer: 0.0,
