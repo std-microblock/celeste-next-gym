@@ -9,6 +9,22 @@ public sealed class RecordingTests : IDisposable {
         Guid.NewGuid().ToString("N")
     );
 
+    [Theory]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, true)]
+    [InlineData(false, true, true)]
+    [InlineData(false, false, false)]
+    public void InitialEntryWipeIsCancelledOnlyForAnActiveCaptureOrSkippedTransitions(
+        bool captureActive,
+        bool skipTransitions,
+        bool expected
+    ) {
+        Assert.Equal(
+            expected,
+            RecordingLifecycle.ShouldCancelInitialEntryWipe(captureActive, skipTransitions)
+        );
+    }
+
     [Fact]
     public void AuthenticationRequiresExactNonceAndProcessId() {
         RecordingSecurity.Authenticate("nonce", 42, "nonce", 42);
