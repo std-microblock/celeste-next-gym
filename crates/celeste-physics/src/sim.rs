@@ -2424,7 +2424,11 @@ fn glider_body_rect(position: Vec2) -> Rect {
 }
 
 fn glider_pickup_rect(position: Vec2) -> Rect {
-    Rect::new(position.x - 10.0, position.y - 16.0, 20.0, 22.0)
+    // Glider's holdable pickup collider begins one pixel below the previous
+    // 20x22 approximation.  This strict edge is observable when a falling
+    // Player and a rising spring-boosted glider cross: the player moves first
+    // and can only regrab on the following frame.
+    Rect::new(position.x - 10.0, position.y - 15.0, 20.0, 21.0)
 }
 
 fn try_pickup_glider(p: &mut PlayerSnapshot) -> bool {
@@ -4234,7 +4238,15 @@ fn begin_dash(
 }
 
 fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
-    if !holding_holdable(p)
+    // StateMachine starts DashCoroutine beside DashUpdate. Its initial yield
+    // occupies the first unfrozen DashUpdate; when that yield resumes, the
+    // coroutine publishes DashDir/Speed after this callback. Holdable.Check
+    // must therefore wait until the following DashUpdate, where it sees the
+    // live dash velocity (rather than cancelling an up-dash at zero speed).
+    let dash_coroutine_initial_yield =
+        p.dash_dir == Vec2::default() && p.state_timer > DASH_TIME + p.frame_delta_time * 0.5;
+    if !dash_coroutine_initial_yield
+        && !holding_holdable(p)
         && input.grab_held
         && p.stamina >= 20.0
         && can_unduck(p, map)
@@ -8031,7 +8043,10 @@ mod tests {
                     0
                 },
                 dash_pressed: frame == 42,
-                grab_held: frame <= 22 || frame >= 48,
+                // Keep Grab held through the DashCoroutine launch frame. The
+                // coroutine owns that frame, so the regrab must wait until
+                // the next DashUpdate and cache the live -240 speed.
+                grab_held: frame <= 22 || frame >= 45,
                 ..InputState::default()
             })
             .collect();
@@ -8055,6 +8070,9 @@ mod tests {
             .map(|(frame, _)| frame)
             .unwrap();
 
+        assert_eq!(trace.states[47].state, PlayerState::Dash);
+        assert_eq!(trace.states[47].speed, Vec2::new(0.0, -DASH_SPEED));
+        assert_eq!(pickup, 48);
         assert_eq!(trace.states[pickup].pickup_old_speed.y, -DASH_SPEED);
         assert_eq!(trace.states[restored].speed.y, -DASH_SPEED);
     }
@@ -8219,6 +8237,13 @@ mod tests {
                         .collect::<Vec<_>>()
                 )
             });
+        // The source's strict holdable edge does not overlap at the frame the
+        // player is at y=460. Normal movement advances to y=462 first; only
+        // the next Player.Update is eligible to start Pickup.
+        assert_eq!(trace.states[103].state, PlayerState::Normal);
+        assert_eq!(trace.states[103].pos, Vec2::new(126.0, 462.0));
+        assert_eq!(trace.states[103].speed, Vec2::new(0.0, MAX_FALL));
+        assert_eq!(regrab, 104);
         assert!(regrab > spring);
     }
 
