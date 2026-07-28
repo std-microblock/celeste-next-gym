@@ -8,7 +8,7 @@ export const mapParts = [TECH_OTHER_5_1_BINO_TECH] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: ['feature:lookout'],
   techniqueIds: ['5.1'],
   mapParts,
