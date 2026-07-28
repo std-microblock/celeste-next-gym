@@ -107,6 +107,7 @@ internal static class SnapshotCapture {
             Booster? booster = level.Entities.FindFirst<Booster>();
             if (booster is not null) {
                 values["boosterBoostingPlayer"] = booster.BoostingPlayer;
+                values["boosterCollider"] = ColliderGeometry(booster.Collider);
             }
             List<Dictionary<string, object?>> cassetteBlocks = [];
             foreach (Entity entity in level.Entities) {
