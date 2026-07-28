@@ -4,7 +4,7 @@
   id: "4.10.4",
   title-zh: "无抓墙携物 Dream Hyper",
   title-en: "Holdable Grabless Dream Hyper",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [出口侧无法抓墙时，可先松开投掷物，利用 Dream Jump／土狼窗口做 Hyper，再重新抓回物品。],
   description-en: [When the exit wall cannot be grabbed, release the holdable, use dream-exit jump timing to hyper, then catch the item again.],
   source-evidence: evidence(
@@ -15,10 +15,10 @@
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [interact / release_theo / super_jump / try_pickup_theo]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [holdable_grabless_dream_hyper_uses_exit_grace_without_a_climb_state]),
-  e2e-evidence: none,
-  candidate-e2e: evidence(
-    path: [scripts/e2e-real-collector.mjs],
+  e2e-evidence: evidence(
+    path: [scripts/e2e-real/scenarios/playground/entity-4.10.4-holdable-grabless-dream-hyper.ts],
     symbol: [entity-4.10.4-holdable-grabless-dream-hyper],
-    note: [真实候选已观测 `exit=49, release=53, blocked=true, regrab=true`，但 `hyper=-1`；出口、投掷、CannotHold 与回抓证据不足以证明核心 Hyper，因此保持未实现。],
+    note: [独立 DreamBlock／Theo MapPart 的真实轨迹依次观测水平 Dream 出口、松物、0.1 秒 CannotHold 阻止立即回抓，以及出口 grace 上的 325 Hyper。101 个状态的 position／speed 最大误差均为 0，其余七类字段逐帧一致。],
   ),
+  candidate-e2e: none,
 )

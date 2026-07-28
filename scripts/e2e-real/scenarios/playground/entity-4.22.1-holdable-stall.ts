@@ -7,8 +7,9 @@ import { ENTITY_4_22_1_HOLDABLE_STALL_PART } from '../glider-parts.js'
 
 export const mapParts = [ENTITY_4_22_1_HOLDABLE_STALL_PART] as const
 export const scenario = defineScenario({
-  target: PLAYGROUND_TARGET, status: 'candidate', tags: ['feature:glider'], techniqueIds: ['4.22.1'], mapParts,
+  target: PLAYGROUND_TARGET, status: 'active', tags: ['feature:glider'], techniqueIds: ['4.22.1'], mapParts,
   name: 'entity-4.22.1-holdable-stall', initial: { pos: [80, 320], speed: [0, -20] },
+  recording: { primaryFor: ['4.22.1'], startFrame: 0, endFrame: 96 },
   inputs: Array.from({ length: 96 }, (_, frame) => input({
     move_y: frame === 23 || frame === 65 ? 1 : -1,
     grab_held: frame <= 22 || (frame >= 24 && frame <= 64) || frame >= 66,

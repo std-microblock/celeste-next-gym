@@ -116,7 +116,7 @@ describe('FrameCache', () => {
     const cache = new FrameCache(runner, PLAYGROUND, createInitialState(PLAYGROUND), 2)
     const direct: SimInput = {
       move_x: 1, move_y: 1, jump_pressed: false, jump_held: false,
-      dash_pressed: false, crouch_dash_pressed: true, grab_held: false,
+      dash_pressed: false, crouch_dash_pressed: true, grab_held: false, talk_pressed: false,
     }
     cache.replaceSimulationInputs(PLAYGROUND, createInitialState(PLAYGROUND), [direct])
     await cache.ensureFrame(1)
