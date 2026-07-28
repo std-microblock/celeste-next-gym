@@ -8194,7 +8194,7 @@ mod tests {
         let inputs: Vec<_> = (0..120)
             .map(|frame| InputState {
                 move_x: if frame >= 13 { 1 } else { 0 },
-                move_y: if frame == 26 || (45..=47).contains(&frame) {
+                move_y: if frame == 26 || (45..=52).contains(&frame) {
                     1
                 } else {
                     0
@@ -8771,7 +8771,13 @@ mod tests {
 
         let whole = trace.states.last().unwrap().clone();
         let first = simulate(p, &inputs[..32], &runtime_map, 32).unwrap();
-        let split = simulate(first, &inputs[32..], &runtime_map, (inputs.len() - 32) as u32).unwrap();
+        let split = simulate(
+            first,
+            &inputs[32..],
+            &runtime_map,
+            (inputs.len() - 32) as u32,
+        )
+        .unwrap();
         assert_eq!(split, whole);
     }
 
@@ -9109,13 +9115,16 @@ mod tests {
     }
     #[test]
     fn reverse_super_uses_jump_frame_facing_not_dash_direction() {
-        let mut inputs = [InputState::default(); 5];
+        let mut inputs = [InputState::default(); 7];
         inputs[0] = InputState {
             move_x: 1,
             dash_pressed: true,
             ..InputState::default()
         };
-        inputs[4] = InputState {
+        for input in &mut inputs[1..=5] {
+            input.move_x = 1;
+        }
+        inputs[6] = InputState {
             move_x: -1,
             jump_pressed: true,
             jump_held: true,
@@ -9254,6 +9263,9 @@ mod tests {
             dash_pressed: true,
             ..InputState::default()
         };
+        for input in &mut inputs[1..=5] {
+            input.move_y = -1;
+        }
         inputs[5] = InputState {
             move_y: -1,
             jump_pressed: true,
@@ -9291,6 +9303,9 @@ mod tests {
             dash_pressed: true,
             ..InputState::default()
         };
+        for input in &mut on_time[1..=5] {
+            input.move_y = -1;
+        }
         on_time[5] = InputState {
             move_y: -1,
             jump_pressed: true,
@@ -9308,6 +9323,9 @@ mod tests {
             dash_pressed: true,
             ..InputState::default()
         };
+        for input in &mut late[1..=6] {
+            input.move_y = -1;
+        }
         late[6] = InputState {
             move_y: -1,
             jump_pressed: true,
@@ -11076,11 +11094,16 @@ mod tests {
         assert_eq!(first.speed, Vec2::default());
         assert_eq!(first.freeze_timer, 0.05);
         assert!(first.facing);
-        let frozen = simulate(first, &[InputState::default(); 3], &floor_map(), 3).unwrap();
+        let aim = InputState {
+            move_x: 1,
+            move_y: -1,
+            ..InputState::default()
+        };
+        let frozen = simulate(first, &[aim; 3], &floor_map(), 3).unwrap();
         assert_eq!(frozen.speed, Vec2::default());
         assert_eq!(frozen.freeze_timer, 0.0);
         assert!(frozen.facing);
-        let p = simulate(frozen, &[InputState::default()], &floor_map(), 1).unwrap();
+        let p = simulate(frozen, &[aim], &floor_map(), 1).unwrap();
         assert_eq!(p.state, PlayerState::Dash);
         assert_eq!(p.dashes, 0);
         assert!((p.speed.x.abs() - 169.70563).abs() < 0.01);
