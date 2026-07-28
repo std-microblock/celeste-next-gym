@@ -75,6 +75,7 @@ describe('per-scenario Playground maps', () => {
     assert.equal(binoInteractionStorage.inputs.length, 300)
     assert.equal(binoInteractionStorage.inputs[120]?.move_x, 1)
     assert.equal(binoExtensions.inputs.length, 720)
+    assert.equal(binoExtensions.inputs[460]?.jump_pressed, true)
     assert.equal(binoExtensions.inputs.at(-1)?.move_y, -1)
   })
 

@@ -2907,7 +2907,6 @@ fn advance_node_lookout_camera(
             state.node_percent = 0.0;
         } else {
             state.node_percent = 1.0;
-            return entity.direction.y != 0.0;
         }
     }
     false
@@ -14532,6 +14531,11 @@ mod tests {
             .map(|frame| InputState {
                 talk_pressed: frame == 0,
                 move_y: if frame >= 55 { -1 } else { 0 },
+                // Reaching the summit node clamps nodePercent at one. The
+                // source LookRoutine still waits for MenuCancel/Dash before
+                // beginning its long-distance exit wipe.
+                jump_pressed: frame == 460,
+                jump_held: frame == 460,
                 ..InputState::default()
             })
             .collect();

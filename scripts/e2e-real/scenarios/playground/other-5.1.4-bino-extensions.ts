@@ -14,10 +14,15 @@ export const scenario = defineScenario({
   mapParts,
   name: 'other-5.1.4-bino-extensions',
   initial: { pos: [512, 496], speed: [0, 0], on_ground: true },
-  // Summit LookRoutine needs the node travel, HUD close, and its one-second
-  // top-end FadeWipe.  560 frames stops during that source coroutine; 720
-  // leaves a full post-wipe observation window.
-  inputs: Array.from({ length: 720 }, (_, frame) => input({ talk_pressed: frame === 0, move_y: frame >= 55 ? -1 : 0 })),
+  // Summit LookRoutine clamps at the final node and still waits for
+  // MenuCancel/Dash. The portable jump at frame 460 drives MenuCancel, then
+  // leaves a complete one-second top-end FadeWipe observation window.
+  inputs: Array.from({ length: 720 }, (_, frame) => input({
+    talk_pressed: frame === 0,
+    move_y: frame >= 55 ? -1 : 0,
+    jump_pressed: frame === 460,
+    jump_held: frame === 460,
+  })),
   verify(states) {
     const cameras = states.map((state) => field<readonly number[]>(state, 'levelCamera'))
     semanticAssert(states.some((state) => (field<number>(state, 'lookoutNode') ?? 0) >= 2), scenario.name,
