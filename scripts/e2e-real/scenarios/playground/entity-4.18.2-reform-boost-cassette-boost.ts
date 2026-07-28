@@ -8,12 +8,11 @@ export const mapParts = [TECH_ENTITY_4_18_2_REFORM_BOOST] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'active',
+  status: 'candidate',
   tags: ['feature:cassette-block'],
   techniqueIds: ['4.18.2'],
   mapParts,
   name: 'entity-4.18.2-reform-boost-cassette-boost',
-  recording: { primaryFor: ['4.18.2'], startFrame: 0, endFrame: 100, posterFrame: 82 },
   initial: { pos: [96, 496], speed: [0, 0], on_ground: true },
   inputs: Array.from({ length: 100 }, () => input()),
   verify(states) {
