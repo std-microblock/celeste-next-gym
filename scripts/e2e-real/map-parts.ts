@@ -108,7 +108,7 @@ const ENTITY_KINDS = new Set<FixtureEntity['kind']>([
   'jump_thru', 'dream_block', 'spikes', 'water', 'booster', 'red_booster',
   'fly_feather', 'bumper', 'ice_ball', 'badeline_boost', 'spring', 'strawberry',
   'puffer', 'angry_oshiro', 'seeker', 'snowball', 'cloud',
-  'wind', 'bounce_block', 'theo_crystal', 'glider', 'zip_mover', 'moving_solid',
+  'wind', 'bounce_block', 'theo_crystal', 'glider', 'zip_mover', 'move_block', 'moving_solid',
 ])
 
 export function validateFixturePackage(fixture: FixturePackage): void {
@@ -146,7 +146,7 @@ function validateAuthoringEntity(entity: FixtureEntity, roomName: string): void 
   if (entity.kind === 'fly_feather') { allowed.add('shielded'); allowed.add('singleUse') }
   if (entity.kind === 'ice_ball') { allowed.add('nodes'); allowed.add('singleUse') }
   if (entity.kind === 'badeline_boost' || entity.kind === 'zip_mover') allowed.add('nodes')
-  if (entity.kind === 'spikes' || entity.kind === 'spring' || entity.kind === 'wind' || entity.kind === 'moving_solid') allowed.add('direction')
+  if (entity.kind === 'spikes' || entity.kind === 'spring' || entity.kind === 'wind' || entity.kind === 'move_block' || entity.kind === 'moving_solid') allowed.add('direction')
   for (const key of Object.keys(entity)) if (!allowed.has(key)) throw new Error(`entity ${entity.id} kind ${entity.kind} forbids field ${key}`)
 
   if ('direction' in entity) {
@@ -156,8 +156,8 @@ function validateAuthoringEntity(entity: FixtureEntity, roomName: string): void 
       if (Math.abs(x) + Math.abs(y) !== 1) throw new Error(`entity ${entity.id} requires a cardinal unit direction`)
     } else if (entity.kind === 'wind' && (x === 0) === (y === 0)) {
       throw new Error(`entity ${entity.id} wind direction must have exactly one nonzero axis`)
-    } else if (entity.kind === 'moving_solid' && x === 0 && y === 0) {
-      throw new Error(`entity ${entity.id} moving_solid direction must be nonzero`)
+    } else if ((entity.kind === 'move_block' || entity.kind === 'moving_solid') && x === 0 && y === 0) {
+      throw new Error(`entity ${entity.id} ${entity.kind} direction must be nonzero`)
     }
   }
   if ('nodes' in entity && entity.nodes) {
@@ -201,7 +201,7 @@ function validateCanonicalEntity(entity: CanonicalFixtureEntity, roomName: strin
     if (Math.abs(x) + Math.abs(y) !== 1) throw new Error(`entity ${entity.id} requires a cardinal unit direction`)
   } else if (entity.kind === 'wind') {
     if ((x === 0) === (y === 0)) throw new Error(`entity ${entity.id} wind direction must have exactly one nonzero axis`)
-  } else if (entity.kind !== 'moving_solid' && (x !== 0 || y !== 0)) {
+  } else if (entity.kind !== 'move_block' && entity.kind !== 'moving_solid' && (x !== 0 || y !== 0)) {
     throw new Error(`entity ${entity.id} kind ${entity.kind} forbids nonzero direction`)
   }
   if (entity.kind === 'zip_mover' && entity.nodes.length !== 1) throw new Error(`entity ${entity.id} zip_mover requires exactly one node`)

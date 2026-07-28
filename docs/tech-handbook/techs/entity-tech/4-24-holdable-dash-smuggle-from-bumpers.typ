@@ -16,5 +16,5 @@
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [normal_update / interact / launch_update / try_pickup_theo]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [bumper_freeze_smuggle_releases_dashes_and_regrabs_theo]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.24-bumper-holdable-dash-smuggle.ts], symbol: [entity-4.24-bumper-holdable-dash-smuggle], note: [独立 Theo＋Bumper MapPart 要求依次观测 Pickup、无持物 Launch、无持物 Dash 与 Dash 后重抓；尚待共享 Everest FIFO 内录制和九字段逐帧比较。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.24-bumper-holdable-dash-smuggle.ts], symbol: [entity-4.24-bumper-holdable-dash-smuggle], note: [真实 Everest 第二轮已观测 pickup、frame 27 无持物 Launch 与 frame 46 无持物 Dash，但 121 个状态内 regrab=-1；按单轮最小修正规则停止调参。缺少完整 Dash 后重抓链与九字段 Rust 对照，因此保持未实现。]),
 )

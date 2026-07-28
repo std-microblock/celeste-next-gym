@@ -103,6 +103,31 @@ pub struct BounceBlockSnapshot {
     pub remainder: Vec2,
     pub lift_speed: Vec2,
     pub start: Vec2,
+    /// Alarm delay between the body becoming collidable again and its
+    /// attached StaticMovers being enabled.
+    pub reform_timer: f32,
+    pub static_movers_enabled: bool,
+    pub attached_spike_index: Option<u16>,
+    pub attached_spike_position: Vec2,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct MoveBlockSnapshot {
+    /// Idling, activation delay, moving, break delay, hidden, or reforming.
+    pub phase: u8,
+    pub wait_timer: f32,
+    pub speed: f32,
+    pub angle: f32,
+    pub crash_timer: f32,
+    pub crash_reset_timer: f32,
+    pub no_steer_timer: f32,
+    pub position: Vec2,
+    pub remainder: Vec2,
+    pub lift_speed: Vec2,
+    pub start: Vec2,
+    pub visible: bool,
+    pub static_movers_enabled: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -248,6 +273,8 @@ pub struct PlayerSnapshot {
     pub zip_movers: Vec<ZipMoverSnapshot>,
     /// Per-entity hot BounceBlock state, in map entity order.
     pub bounce_blocks: Vec<BounceBlockSnapshot>,
+    /// Per-entity vanilla MoveBlock controller and reform state.
+    pub move_blocks: Vec<MoveBlockSnapshot>,
     /// Per-entity vanilla TheoCrystal actor and Holdable state.
     pub theo_crystals: Vec<TheoCrystalSnapshot>,
     /// Per-entity vanilla Glider actor and Holdable state.
@@ -396,6 +423,7 @@ impl Default for PlayerSnapshot {
             moving_solid_time: 0.0,
             zip_movers: vec![],
             bounce_blocks: vec![],
+            move_blocks: vec![],
             theo_crystals: vec![],
             gliders: vec![],
             clouds: vec![],

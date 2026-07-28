@@ -6,6 +6,7 @@ export const mapParts = [] as const
 
 export const scenario = defineScenario({
   target: AREA_2_TARGET,
+  room: '1',
   status: 'active',
   tags: [],
   techniqueIds: ['4.10.1'],
