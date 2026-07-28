@@ -7,11 +7,12 @@ export const mapParts = [TECH_ENTITY_4_6_1_CLOUD_HYPER_SUPER] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: ['feature:cloud'],
   techniqueIds: ['4.6.1'],
   mapParts,
   name: 'entity-4.6.1-cloud-hyper',
+  recording: { primaryFor: ['4.6.1'], startFrame: 0, endFrame: 70 },
   initial: { pos: [616, 440], speed: [0, 0] },
   inputs: inputFrames(70, (frame) => ({
     move_x: frame >= 24 ? 1 : 0,

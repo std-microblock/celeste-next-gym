@@ -7,11 +7,12 @@ export const mapParts = [TECH_ENTITY_4_10_3_DREAM_SMUGGLE] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: ['feature:dream-block', 'feature:theo'],
   techniqueIds: ['4.10.3'],
   mapParts,
   name: 'entity-4.10.3-dream-smuggle',
+  recording: { primaryFor: ['4.10.3'], startFrame: 0, endFrame: 80 },
   initial: { pos: [208, 496], speed: [0, 0], can_dream_dash: true },
   inputs: inputFrames(80, (frame) => ({
     move_x: 1,
