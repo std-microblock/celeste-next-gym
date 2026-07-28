@@ -2,17 +2,10 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { DEFAULT_BINDINGS, buttonsToInput, makeEmptyButtons, type FrameButtons, type GymMap, type KeyBindings, type SimState } from '../model'
 import { WasmClient } from '../simulator/wasmClient'
 import { assistedRate, candidateWindow, createTrainingSession, keySemantics, nextTargetFrame, rebuildTrainingSession, verifiedInputs, verifyTrainingInput, type TrainingCandidate, type TrainingDefinition, type TrainingSession } from '../training/session'
+import { trainingCatalog, type TrainingDocument, type TrainingVariant } from '../training/catalog'
 import { GameView } from './GameView'
 import { TrainingPrompt } from './TrainingPrompt'
 import { TrainingResultTimeline, TrainingTimeline } from './TrainingTimeline'
-
-interface TrainingDocument extends TrainingDefinition {
-  scene: { map_fixture: string; initial_snapshot: string }
-  entry: TrainingDefinition['entry'] & { check: string[]; failure: { title: string; body: string } }
-  teaching: { steps: Array<{ prompt: string; order_error: { title: string; body: string }; window_error: { title: string; body: string } }> }
-  assist: { result_sample_after_input_frames: number; auto_slowdown: { enabled_by_default: boolean; radius_frames: number; minimum_multiplier: number } }
-  fuzz: TrainingDefinition['fuzz'] & { observe_until: number | string }
-}
 
 interface Attempt { frame: number; keys: string[]; entryCheckPassed?: boolean }
 interface PredictionPreview {
@@ -75,8 +68,11 @@ export function verificationKeys(buttons: FrameButtons, previous: FrameButtons, 
 }
 
 /** The lesson runner owns simulation and review state, while its timeline is read-only. */
-export function TrainingGround() {
+export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { techniqueId: string; variantId: string; onSelectTraining(techniqueId: string, variantId: string): void }) {
   const client = useMemo(() => new WasmClient(), [])
+  const technique = trainingCatalog.find((item) => item.id === techniqueId) ?? trainingCatalog[0]
+  const variantIndex = Math.max(0, technique.variants.findIndex((variant) => variant.id === variantId))
+  const selectedVariant = technique.variants[variantIndex] ?? technique.variants[0]
   const [document, setDocument] = useState<TrainingDocument | null>(null)
   const [map, setMap] = useState<GymMap | null>(null)
   const [initial, setInitial] = useState<SimState | null>(null)
@@ -105,6 +101,35 @@ export function TrainingGround() {
   const outcomeButtons = useRef<FrameButtons>(makeEmptyButtons())
   const attempts = useRef<Attempt[]>([])
   const simulating = useRef(false)
+
+  const installVariant = async (variant: TrainingVariant) => {
+    setPlaying(false)
+    clearOutcome()
+    setNotice(`正在加载 ${technique.title} · ${variant.title}…`)
+    const result = await client.fuzzSearch(variant.initial, JSON.stringify(variant.document.fuzz), variant.map)
+    if (result.candidates.length === 0) throw new Error('该训练 Variant 没有成功候选，无法开始')
+    setDocument(variant.document)
+    setMap(variant.map)
+    setInitial(variant.initial)
+    setCandidates(result.candidates)
+    applySession(createTrainingSession(result.candidates))
+    snapshotsRef.current = [variant.initial]
+    setSnapshots([variant.initial])
+    frameRef.current = 0
+    setFrame(0)
+    setResetFrame(0)
+    fuzzStartRef.current = null
+    setFuzzStartFrame(null)
+    attempts.current = []
+    previousButtons.current = makeEmptyButtons()
+    outcomeButtons.current = makeEmptyButtons()
+    keys.current.clear()
+    applyPrediction({ windows: [] })
+    setFollowReference(true)
+    setAutoSlowdown(variant.document.assist.auto_slowdown.enabled_by_default)
+    console.info('[training] loaded', { technique: technique.id, variant: variant.id, candidates: result.candidates.length })
+    setNotice(`已加载 ${technique.title} · ${variant.title} · ${result.candidates.length} 个可行候选`)
+  }
 
   const applySession = (next: TrainingSession) => { sessionRef.current = next; setSession(next) }
   const applyPrediction = (next: PredictionPreview) => setPrediction(next)
@@ -150,34 +175,16 @@ export function TrainingGround() {
     void (async () => {
       try {
         await client.ready()
-        const root = '/training/hyper-basic.training.json'
-        const training = await fetch(root).then(async (response) => {
-          if (!response.ok) throw new Error(`训练定义加载失败：HTTP ${response.status}`)
-          return response.json() as Promise<TrainingDocument>
-        })
-        const [loadedMap, loadedInitial] = await Promise.all([
-          fetch(`/${training.scene.map_fixture}`).then((response) => response.json() as Promise<GymMap>),
-          fetch(`/${training.scene.initial_snapshot}`).then((response) => response.json() as Promise<SimState>),
-        ])
-        const result = await client.fuzzSearch(loadedInitial, JSON.stringify(training.fuzz), loadedMap)
         if (!active) return
-        if (result.candidates.length === 0) throw new Error('该训练定义没有成功候选，无法生成教学窗口')
-        setDocument(training)
-        setMap(loadedMap)
-        setInitial(loadedInitial)
-        setCandidates(result.candidates)
-        applySession(createTrainingSession(result.candidates))
-        snapshotsRef.current = [loadedInitial]
-        setSnapshots([loadedInitial])
-        setAutoSlowdown(training.assist.auto_slowdown.enabled_by_default)
-        console.info('[training] loaded', { lesson: training.id, candidates: result.candidates.length })
-        setNotice(`已加载 ${training.title} · ${result.candidates.length} 个可行候选`)
+        await installVariant(selectedVariant)
       } catch (error) {
         if (active) setNotice(error instanceof Error ? error.message : '训练加载失败')
       }
     })()
     return () => { active = false }
-  }, [client])
+  // installVariant reads the selected catalog entry for this render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client, selectedVariant])
 
   const seek = (requested: number) => {
     const next = Math.max(0, Math.min(snapshotsRef.current.length - 1, Math.round(requested)))
@@ -367,11 +374,14 @@ export function TrainingGround() {
       <div><span>输入时机</span><b>{timing}</b></div>
     </div>
     <p>{outcome.phase === 'success' ? '' : notice}</p>
-    <button onClick={() => outcome.phase === 'success' ? resetTo(0) : resetTo()}>{outcome.phase === 'success' ? '再试一次' : 'R 重试'}</button>
+    <div className="training-result-actions">
+      <button onClick={() => outcome.phase === 'success' ? resetTo(0) : resetTo()}>{outcome.phase === 'success' ? '再试一次' : 'R 重试'}</button>
+      {outcome.phase === 'success' && variantIndex + 1 < technique.variants.length && <button className="primary" onClick={() => onSelectTraining(technique.id, technique.variants[variantIndex + 1].id)}>下一个 {variantIndex + 2}</button>}
+    </div>
   </div>
   return <main className="training-workspace">
     <section className="training-stage panel-frame">
-      <div className="stage-header"><div><small>TRAINING / {document.id}</small><h1>{document.title} <em>第 {Math.min(session.nextVerifiedInput + 1, document.teaching.steps.length)}/{document.teaching.steps.length} 步</em></h1></div><div className="cache-meter"><span>{bestFinalSpeed === undefined ? '有效倍率' : '当前最佳候选最终 X 速度'}</span><strong>{bestFinalSpeed === undefined ? `${effective.toFixed(2)}×` : bestFinalSpeed.toFixed(2)}</strong></div></div>
+      <div className="stage-header"><div><small>TRAINING / {document.technique_id} / {document.variant_id}</small><h1>{document.title} · {document.variant_title} <em>第 {Math.min(session.nextVerifiedInput + 1, document.teaching.steps.length)}/{document.teaching.steps.length} 步</em></h1></div><div className="cache-meter"><span>{bestFinalSpeed === undefined ? '有效倍率' : '当前最佳候选最终 X 速度'}</span><strong>{bestFinalSpeed === undefined ? `${effective.toFixed(2)}×` : bestFinalSpeed.toFixed(2)}</strong></div></div>
       <GameView map={map} state={state} states={snapshots} frame={frame} stale={false}>
         {(viewport) => <TrainingPrompt map={map} state={state} viewport={viewport} text={prompt} hidden={outcome !== null} />}
       </GameView>
