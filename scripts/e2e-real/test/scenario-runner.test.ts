@@ -8,9 +8,9 @@ describe('scenario execution ordering', () => {
   it('validates structure, writes the trace, verifies semantics, then compares Rust', async () => {
     const events: string[] = []
     const scenario = testScenario('ordered', {
-      room: 'lvl_1',
+      room: '1',
       verify: (_states, context) => {
-        assert.equal(context.room, 'lvl_1')
+        assert.equal(context.room, '1')
         events.push('verify')
       },
     })
@@ -23,13 +23,13 @@ describe('scenario execution ordering', () => {
       collectOnly: false,
       dependencies: {
         simulate: async (request) => {
-          assert.equal(request.room, 'lvl_1')
+          assert.equal(request.room, '1')
           events.push('simulate')
           return [reflectedState(), reflectedState({ _frame: 1 })]
         },
         writeTrace: () => { events.push('trace') },
         compare: (options) => {
-          assert.equal(options.room, 'lvl_1')
+          assert.equal(options.room, '1')
           events.push('compare')
         },
       },
