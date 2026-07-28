@@ -6167,7 +6167,7 @@ fn begin_transition(p: &mut PlayerSnapshot, next: Rect, direction: Vec2) {
     p.on_ground = false;
 }
 
-fn update_transition(p: &mut PlayerSnapshot, map: &Map) {
+fn update_transition(p: &mut PlayerSnapshot, map: &mut Map) {
     let max_move = TRANSITION_MOVE_SPEED * p.frame_delta_time;
     p.pos.x = approach(p.pos.x, p.transition_target.x, max_move);
     p.pos.y = approach(p.pos.y, p.transition_target.y, max_move);
@@ -6206,6 +6206,37 @@ fn update_transition(p: &mut PlayerSnapshot, map: &Map) {
                     p.state = PlayerState::Normal;
                     p.dummy_moving = false;
                 }
+            }
+            // Level.TransitionRoutine invokes LoadLevel for the destination
+            // room while the global CassetteBlockManager keeps its beat. Do
+            // not leave source-room solids/entities alive after transfer.
+            if let Some(room) = map
+                .transition_runtime
+                .iter()
+                .find(|room| room.bounds == next)
+                .cloned()
+            {
+                map.solids = room.solids;
+                map.entities = room.entities;
+                if let Some(spawn) = room.spawns.into_iter().min_by(|left, right| {
+                    let left_dx = left.x - p.pos.x;
+                    let left_dy = left.y - p.pos.y;
+                    let right_dx = right.x - p.pos.x;
+                    let right_dy = right.y - p.pos.y;
+                    (left_dx * left_dx + left_dy * left_dy)
+                        .partial_cmp(&(right_dx * right_dx + right_dy * right_dy))
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                }) {
+                    // Level.LoadLevel assigns Session.RespawnPoint from this
+                    // room's closest player spawn after the transfer.
+                    map.spawn = spawn;
+                }
+                p.cassette_blocks.clear();
+                p.spinners.clear();
+                p.lookouts.clear();
+                initialize_cassette_blocks(p, map);
+                initialize_spinners(p, map);
+                initialize_lookouts(p, map);
             }
         }
         p.current_room_bounds = next_room;
@@ -13022,6 +13053,48 @@ mod tests {
         assert_eq!(result.cassette_manager.beat_index, 7);
         assert_eq!(result.cassette_blocks[0].position.y, 102.0);
         assert_eq!(result.cassette_blocks[1].position.y, 102.0);
+    }
+
+    #[test]
+    fn transition_loads_destination_cassettes_and_nearest_room_spawn() {
+        let mut map = cassette_map();
+        let next = Rect::new(0.0, -184.0, 320.0, 184.0);
+        map.transition_rooms = vec![next];
+        map.transition_runtime = vec![crate::RoomRuntime {
+            bounds: next,
+            spawns: vec![Vec2::new(24.0, -16.0), Vec2::new(280.0, -16.0)],
+            solids: vec![Rect::new(0.0, -8.0, 320.0, 8.0)],
+            entities: vec![crate::Entity {
+                kind: crate::EntityKind::CassetteBlock,
+                bounds: Rect::new(128.0, -48.0, 64.0, 16.0),
+                direction: Vec2::new(1.0, 1.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "cassetteBlock".to_owned(),
+            }],
+        }];
+        let p = PlayerSnapshot {
+            pos: Vec2::new(250.0, -172.0),
+            state: PlayerState::Frozen,
+            current_room_bounds: Some(map.bounds),
+            transition_room_bounds: Some(next),
+            transition_target: Vec2::new(250.0, -172.0),
+            transition_timer: DT,
+            cassette_manager: crate::CassetteManagerSnapshot {
+                initialized: true,
+                current_index: 1,
+                max_beat: 2,
+                tempo_mult: 1.0,
+                ..crate::CassetteManagerSnapshot::default()
+            },
+            ..PlayerSnapshot::default()
+        };
+        let result = simulate(p, &[InputState::default()], &map, 1).unwrap();
+        assert_eq!(result.current_room_bounds, Some(next));
+        assert_eq!(result.cassette_blocks.len(), 1);
+        assert_eq!(result.cassette_blocks[0].position, Vec2::new(128.0, -48.0));
+        assert!(result.cassette_blocks[0].collidable);
     }
 
     #[test]

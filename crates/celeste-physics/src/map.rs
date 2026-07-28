@@ -107,6 +107,20 @@ pub struct Entity {
     pub name: String,
 }
 
+/// Runtime data for one adjacent Celeste room.  `Level.LoadLevel` replaces
+/// room-local solids and entities during a transition while the session-wide
+/// state (notably CassetteBlockManager) remains alive.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct RoomRuntime {
+    pub bounds: Rect,
+    #[serde(default)]
+    pub spawns: Vec<Vec2>,
+    #[serde(default)]
+    pub solids: Vec<Rect>,
+    #[serde(default)]
+    pub entities: Vec<Entity>,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Map {
     pub bounds: Rect,
@@ -114,6 +128,11 @@ pub struct Map {
     /// when decoding one room so Level.EnforceBounds can resolve transitions.
     #[serde(default)]
     pub transition_rooms: Vec<Rect>,
+    /// Decoded room-local data for `transition_rooms`, in the same map. This
+    /// lets TransitionRoutine model `LoadLevel` instead of carrying old-room
+    /// CassetteBlocks and spawn points into the new room.
+    #[serde(default)]
+    pub transition_runtime: Vec<RoomRuntime>,
     #[serde(default)]
     pub spawn: Vec2,
     #[serde(default)]
@@ -129,6 +148,7 @@ impl Default for Map {
         Self {
             bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
             transition_rooms: vec![],
+            transition_runtime: vec![],
             spawn: Vec2::new(24.0, 160.0),
             solids: vec![],
             entities: vec![],
@@ -903,6 +923,14 @@ fn attr_bool(el: &BinaryElement, key: &str, default: bool) -> bool {
 }
 
 fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapError> {
+    map_from_binary_inner(root, room, true)
+}
+
+fn map_from_binary_inner(
+    root: BinaryElement,
+    room: Option<&str>,
+    include_transition_runtime: bool,
+) -> Result<Map, MapError> {
     let levels = root
         .children
         .iter()
@@ -938,7 +966,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 )
             })
             .collect(),
-        source_package: root.package,
+        source_package: root.package.clone(),
         ..Map::default()
     };
 
@@ -1160,6 +1188,23 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
         {
             map.solids.extend(tile_rects(text, room_x, room_y));
         }
+    }
+    if include_transition_runtime {
+        map.transition_runtime = levels
+            .children
+            .iter()
+            .filter(|candidate| !std::ptr::eq(*candidate, level))
+            .map(|candidate| {
+                let name = attr_text(candidate, "name").ok_or(MapError::NoLevel)?;
+                let decoded = map_from_binary_inner(root.clone(), Some(name), false)?;
+                Ok(RoomRuntime {
+                    bounds: decoded.bounds,
+                    spawns: vec![decoded.spawn],
+                    solids: decoded.solids,
+                    entities: decoded.entities,
+                })
+            })
+            .collect::<Result<Vec<_>, MapError>>()?;
     }
     Ok(map)
 }
