@@ -197,6 +197,7 @@ export const PLAYGROUND_OTHER_KERMIT = defineMapPart({
   rooms: [{ name: 'transition_0' }],
 })
 export const PLAYGROUND_OTHER_SUBPIXEL = fixturePart('playground.other-subpixel')
+export const TECH_OTHER_5_13_UNDEMO_DASHING = fixturePart('tech.other-5.13-undemo-dashing')
 
 export const COMMON_MAP_PARTS = new Map<string, MapPart>([
   PLAYGROUND_BASE, PLAYGROUND_JUMP_THRU, PLAYGROUND_ZIP_MOVER, PLAYGROUND_BOOSTER, PLAYGROUND_SPIKES,
@@ -214,6 +215,7 @@ export const COMMON_MAP_PARTS = new Map<string, MapPart>([
   PLAYGROUND_OTHER_HALF_STAMINA,
   PLAYGROUND_OTHER_KERMIT,
   PLAYGROUND_OTHER_SUBPIXEL,
+  TECH_OTHER_5_13_UNDEMO_DASHING,
   ...REFORM_MAP_PARTS,
   ...CASSETTE_SPINNER_MAP_PARTS,
   ...CORE_HEART_SQUISH_MAP_PARTS,

@@ -134,6 +134,7 @@ import { scenario as scenario131 } from './entity-4.21-holdable-slash.js'
 import { scenario as scenario132 } from './entity-4.19-seeker-bounce.js'
 import { scenario as scenario133 } from './entity-4.28-koral-clip.js'
 import { scenario as scenario134 } from './entity-4.16-lava-neutral.js'
+import { scenario as scenario135 } from './other-5.13-undemo-omed-dashing.js'
 
 export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario0,
@@ -271,4 +272,5 @@ export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario132,
   scenario133,
   scenario134,
+  scenario135,
 ])

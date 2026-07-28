@@ -3749,8 +3749,10 @@ fn begin_dash(
 ) {
     p.dash_buffer_timer = 0.0;
     p.crouch_dash_buffer_timer = 0.0;
-    let Vec2 { x, y } = input_aim(input, p.facing);
-    p.dash_dir = Vec2::new(x, y);
+    // DashBegin clears DashDir. DashCoroutine yields one scene update before
+    // it reads lastAim, so freeze-time aim changes can redirect the dash
+    // without changing the launch-frame demo/duck collider decision below.
+    p.dash_dir = Vec2::default();
     p.before_dash_speed = p.speed;
     p.demo_dashed = input.crouch_dash_pressed;
     p.dash_started_on_ground = p.on_ground;
@@ -3785,6 +3787,7 @@ fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     }
     p.state_timer = (p.state_timer - p.frame_delta_time).max(0.0);
     if (p.state_timer - DASH_TIME).abs() <= p.frame_delta_time * 0.5 {
+        p.dash_dir = p.last_aim;
         p.speed = Vec2::new(p.dash_dir.x * DASH_SPEED, p.dash_dir.y * DASH_SPEED);
         if p.before_dash_speed.x.signum() == p.speed.x.signum()
             && p.before_dash_speed.x.abs() > p.speed.x.abs()
@@ -11140,6 +11143,50 @@ mod tests {
         assert!(p.demo_dashed);
         assert!(p.ducking);
         assert_eq!(p.dashes, 0);
+    }
+    #[test]
+    fn undemo_redirects_after_dash_begin_without_changing_the_standing_collider() {
+        let inputs = [
+            InputState {
+                move_x: 1,
+                dash_pressed: true,
+                ..InputState::default()
+            },
+            InputState {
+                move_y: 1,
+                ..InputState::default()
+            },
+            InputState {
+                move_y: 1,
+                ..InputState::default()
+            },
+            InputState {
+                move_y: 1,
+                ..InputState::default()
+            },
+            InputState {
+                move_y: 1,
+                ..InputState::default()
+            },
+        ];
+        let trace = simulate_trace(
+            PlayerSnapshot {
+                pos: Vec2::new(160.0, 80.0),
+                ..PlayerSnapshot::default()
+            },
+            &inputs,
+            &Map::default(),
+            inputs.len() as u32,
+        )
+        .unwrap();
+
+        assert_eq!(trace.states[1].state, PlayerState::Dash);
+        assert_eq!(trace.states[1].dash_dir, Vec2::default());
+        assert!(!trace.states[1].demo_dashed);
+        assert!(!trace.states[1].ducking);
+        assert_eq!(trace.states[5].dash_dir, Vec2::new(0.0, 1.0));
+        assert_eq!(trace.states[5].speed, Vec2::new(0.0, DASH_SPEED));
+        assert!(!trace.states[5].ducking);
     }
     #[test]
     fn crouching_uses_source_duck_friction_and_six_pixel_collider() {
