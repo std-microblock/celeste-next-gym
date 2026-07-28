@@ -4110,8 +4110,6 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
     let target_max_fall = if holding_slow_fall(p) && p.force_move_x_timer <= 0.0 {
         if input.move_y > 0 {
             120.0
-        } else if input.move_y < 0 {
-            24.0
         } else {
             40.0
         }
@@ -8223,6 +8221,11 @@ mod tests {
         // the previous Glider cap (375 / 25).
         assert_eq!(trace.states[55].pos, Vec2::new(96.0, 376.0));
         assert!((trace.states[55].speed.y - 30.0).abs() <= 0.01);
+        // After maxFall reaches the held-Glider neutral cap, the next source
+        // frame preserves that cap (rather than applying another 5 px/s
+        // approach) before the second pickup starts.
+        assert_eq!(trace.states[62].pos, Vec2::new(96.0, 381.0));
+        assert!((trace.states[62].speed.y - 40.0).abs() <= 0.01);
     }
 
     #[test]
