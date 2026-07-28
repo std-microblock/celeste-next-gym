@@ -1677,9 +1677,6 @@ fn begin_dash(
     } else if !p.ducking && (p.demo_dashed || input.move_y > 0) {
         p.ducking = true;
     }
-    if x != 0.0 {
-        p.facing = x > 0.0;
-    }
 }
 
 fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
@@ -1695,6 +1692,11 @@ fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     p.state_timer = (p.state_timer - DT).max(0.0);
     if (p.state_timer - DASH_TIME).abs() <= DT * 0.5 {
         p.speed = Vec2::new(p.dash_dir.x * DASH_SPEED, p.dash_dir.y * DASH_SPEED);
+        if p.dash_dir.x != 0.0 {
+            // DashCoroutine assigns Facing only when the post-freeze launch
+            // speed is applied, not when DashBegin captures the aim.
+            p.facing = p.dash_dir.x > 0.0;
+        }
         if p.before_dash_speed.x.signum() == p.speed.x.signum()
             && p.before_dash_speed.x.abs() > p.speed.x.abs()
         {
@@ -6905,16 +6907,28 @@ mod tests {
             dash_pressed: true,
             ..InputState::default()
         };
-        let first = simulate(grounded_player(), &[input], &floor_map(), 1).unwrap();
+        let first = simulate(
+            PlayerSnapshot {
+                facing: false,
+                ..grounded_player()
+            },
+            &[input],
+            &floor_map(),
+            1,
+        )
+        .unwrap();
         assert_eq!(first.speed, Vec2::default());
         assert_eq!(first.freeze_timer, 0.05);
+        assert!(!first.facing);
         let frozen = simulate(first, &[InputState::default(); 3], &floor_map(), 3).unwrap();
         assert_eq!(frozen.speed, Vec2::default());
         assert_eq!(frozen.freeze_timer, 0.0);
+        assert!(!frozen.facing);
         let p = simulate(frozen, &[InputState::default()], &floor_map(), 1).unwrap();
         assert_eq!(p.state, PlayerState::Dash);
         assert_eq!(p.dashes, 0);
         assert!((p.speed.x.abs() - 169.70563).abs() < 0.01);
+        assert!(p.facing);
     }
 
     #[test]
