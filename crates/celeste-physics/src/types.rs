@@ -189,6 +189,9 @@ fn default_dashes() -> u8 {
 fn default_facing() -> bool {
     true
 }
+fn default_frame_delta_time() -> f32 {
+    0.016_666_7
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -233,6 +236,13 @@ pub struct PlayerSnapshot {
     pub freeze_timer: f32,
     /// Engine.TimeRate written by HeartGem. Raw engine-frame time remains DT.
     pub time_rate: f32,
+    /// Engine.DeltaTime captured once at the beginning of the current raw
+    /// engine frame. It is derived from `time_rate`, is not part of the
+    /// portable wire snapshot, and prevents an entity that writes TimeRate
+    /// mid-frame from changing later entities' delta until the next frame.
+    #[serde(skip, default = "default_frame_delta_time")]
+    #[doc(hidden)]
+    pub frame_delta_time: f32,
     pub state_timer: f32,
     pub boost_target: Vec2,
     pub boost_red: bool,
@@ -403,6 +413,7 @@ impl Default for PlayerSnapshot {
             dash_refill_cooldown_timer: 0.0,
             freeze_timer: 0.0,
             time_rate: 1.0,
+            frame_delta_time: default_frame_delta_time(),
             state_timer: 0.0,
             boost_target: Vec2::default(),
             boost_red: false,

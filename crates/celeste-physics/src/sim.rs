@@ -651,9 +651,9 @@ fn advance_clouds(p: &mut PlayerSnapshot, map: &mut Map) {
             }
             1 => {
                 if state.position.y >= state.start.y {
-                    state.speed -= 1200.0 * DT;
+                    state.speed -= 1200.0 * p.frame_delta_time;
                 } else {
-                    state.speed += 1200.0 * DT;
+                    state.speed += 1200.0 * p.frame_delta_time;
                     if state.speed >= -100.0 {
                         if player_riding_jump_thru(p, entity.bounds) && p.speed.y >= 0.0 {
                             p.speed.y = -200.0;
@@ -667,12 +667,12 @@ fn advance_clouds(p: &mut PlayerSnapshot, map: &mut Map) {
                     state.speed
                 };
                 let speed = state.speed;
-                move_cloud_v(p, entity, &mut state, speed * DT, lift_y);
+                move_cloud_v(p, entity, &mut state, speed * p.frame_delta_time, lift_y);
             }
             2 => {
-                state.speed = approach(state.speed, 180.0, 600.0 * DT);
+                state.speed = approach(state.speed, 180.0, 600.0 * p.frame_delta_time);
                 let exact_y = state.position.y + state.remainder_y;
-                let desired_y = approach(exact_y, state.start.y, state.speed * DT);
+                let desired_y = approach(exact_y, state.start.y, state.speed * p.frame_delta_time);
                 let amount = desired_y - exact_y;
                 let speed = state.speed;
                 move_cloud_v(p, entity, &mut state, amount, speed);
@@ -908,7 +908,7 @@ fn move_zip_mover_to(
     state.lift_speed = Vec2::default();
     let exact_x = state.position.x + state.remainder.x;
     let move_x = target.x - exact_x;
-    state.lift_speed.x = move_x / DT;
+    state.lift_speed.x = move_x / p.frame_delta_time;
     state.remainder.x += move_x;
     let exact_move_x = state.remainder.x.round_ties_even();
     state.remainder.x -= exact_move_x;
@@ -924,7 +924,7 @@ fn move_zip_mover_to(
 
     let exact_y = state.position.y + state.remainder.y;
     let move_y = target.y - exact_y;
-    state.lift_speed.y = move_y / DT;
+    state.lift_speed.y = move_y / p.frame_delta_time;
     state.remainder.y += move_y;
     let exact_move_y = state.remainder.y.round_ties_even();
     state.remainder.y -= exact_move_y;
@@ -1055,9 +1055,10 @@ fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
         let entity = &mut map.entities[entity_index];
         match state.phase {
             0 => {
-                state.move_speed = approach(state.move_speed, 100.0, 400.0 * DT);
+                state.move_speed = approach(state.move_speed, 100.0, 400.0 * p.frame_delta_time);
                 let exact = bounce_block_exact_position(&state);
-                let desired = approach_vec(exact, state.start, state.move_speed * DT);
+                let desired =
+                    approach_vec(exact, state.start, state.move_speed * p.frame_delta_time);
                 let delta = Vec2::new(desired.x - exact.x, desired.y - exact.y);
                 let mut lift = safe_normalize(delta, state.move_speed);
                 lift.x *= 0.75;
@@ -1102,13 +1103,13 @@ fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
                         1.0,
                     );
                 }
-                state.move_speed = approach(state.move_speed, 40.0, 600.0 * DT);
+                state.move_speed = approach(state.move_speed, 40.0, 600.0 * p.frame_delta_time);
                 let target = Vec2::new(
                     state.start.x - state.bounce_dir.x * 10.0,
                     state.start.y - state.bounce_dir.y * 10.0,
                 );
                 let exact = bounce_block_exact_position(&state);
-                let desired = approach_vec(exact, target, state.move_speed * DT);
+                let desired = approach_vec(exact, target, state.move_speed * p.frame_delta_time);
                 let delta = Vec2::new(desired.x - exact.x, desired.y - exact.y);
                 let mut lift = safe_normalize(delta, state.move_speed);
                 lift.x *= 0.75;
@@ -1123,13 +1124,13 @@ fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
                 }
             }
             2 => {
-                state.move_speed = approach(state.move_speed, 140.0, 800.0 * DT);
+                state.move_speed = approach(state.move_speed, 140.0, 800.0 * p.frame_delta_time);
                 let target = Vec2::new(
                     state.start.x + state.bounce_dir.x * 24.0,
                     state.start.y + state.bounce_dir.y * 24.0,
                 );
                 let exact = bounce_block_exact_position(&state);
-                let desired = approach_vec(exact, target, state.move_speed * DT);
+                let desired = approach_vec(exact, target, state.move_speed * p.frame_delta_time);
                 let delta = Vec2::new(desired.x - exact.x, desired.y - exact.y);
                 state.bounce_lift = safe_normalize(delta, (state.move_speed * 3.0).min(200.0));
                 state.bounce_lift.x *= 0.75;
@@ -1149,7 +1150,7 @@ fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
                 }
             }
             3 => {
-                state.bounce_end_timer -= DT;
+                state.bounce_end_timer -= p.frame_delta_time;
                 if state.bounce_end_timer <= 0.0 {
                     state.phase = 4;
                     state.respawn_timer = 1.6;
@@ -1161,7 +1162,7 @@ fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
             }
             4 => {
                 if state.respawn_timer > 0.0 {
-                    state.respawn_timer -= DT;
+                    state.respawn_timer -= p.frame_delta_time;
                 } else if reform_blocked == Some(false) {
                     entity.bounds.x = state.start.x;
                     entity.bounds.y = state.start.y;
@@ -1194,7 +1195,7 @@ fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
             state.attached_spike_position.y += block_delta.y;
         }
         if state.reform_timer > 0.0 && !started_reform_alarm {
-            state.reform_timer -= DT;
+            state.reform_timer -= p.frame_delta_time;
             if state.reform_timer <= 0.0 {
                 state.static_movers_enabled = true;
             }
@@ -1348,8 +1349,8 @@ fn advance_move_blocks(p: &mut PlayerSnapshot, map: &mut Map, input: InputState)
                 }
             }
             1 => {
-                if state.wait_timer > DT {
-                    state.wait_timer -= DT;
+                if state.wait_timer > p.frame_delta_time {
+                    state.wait_timer -= p.frame_delta_time;
                 } else {
                     state.wait_timer = 0.0;
                     state.phase = 2;
@@ -1363,7 +1364,7 @@ fn advance_move_blocks(p: &mut PlayerSnapshot, map: &mut Map, input: InputState)
                 let mut target_angle = home_angle;
                 if riding {
                     if state.no_steer_timer > 0.0 {
-                        state.no_steer_timer -= DT;
+                        state.no_steer_timer -= p.frame_delta_time;
                     }
                     if state.no_steer_timer <= 0.0 {
                         let steer = if horizontal_source {
@@ -1382,15 +1383,19 @@ fn advance_move_blocks(p: &mut PlayerSnapshot, map: &mut Map, input: InputState)
                 } else {
                     state.no_steer_timer = 0.2;
                 }
-                state.speed = approach(state.speed, 60.0, 300.0 * DT);
-                state.angle = approach(state.angle, target_angle, std::f32::consts::PI * 16.0 * DT);
+                state.speed = approach(state.speed, 60.0, 300.0 * p.frame_delta_time);
+                state.angle = approach(
+                    state.angle,
+                    target_angle,
+                    std::f32::consts::PI * 16.0 * p.frame_delta_time,
+                );
                 let velocity = Vec2::new(
                     state.angle.cos() * state.speed,
                     state.angle.sin() * state.speed,
                 );
                 state.lift_speed = velocity;
-                state.remainder.x += velocity.x * DT;
-                state.remainder.y += velocity.y * DT;
+                state.remainder.x += velocity.x * p.frame_delta_time;
+                state.remainder.y += velocity.y * p.frame_delta_time;
                 let move_x = state.remainder.x.round_ties_even();
                 let move_y = state.remainder.y.round_ties_even();
                 state.remainder.x -= move_x;
@@ -1448,7 +1453,7 @@ fn advance_move_blocks(p: &mut PlayerSnapshot, map: &mut Map, input: InputState)
                 if primary_blocked {
                     state.crash_reset_timer = 0.1;
                     if state.crash_timer > 0.0 {
-                        state.crash_timer -= DT;
+                        state.crash_timer -= p.frame_delta_time;
                     } else {
                         state.phase = 3;
                         state.wait_timer = 0.2;
@@ -1456,7 +1461,7 @@ fn advance_move_blocks(p: &mut PlayerSnapshot, map: &mut Map, input: InputState)
                         state.angle = home_angle;
                     }
                 } else if state.crash_reset_timer > 0.0 {
-                    state.crash_reset_timer -= DT;
+                    state.crash_reset_timer -= p.frame_delta_time;
                 } else {
                     state.crash_timer = 0.15;
                 }
@@ -1469,7 +1474,7 @@ fn advance_move_blocks(p: &mut PlayerSnapshot, map: &mut Map, input: InputState)
             }
             3 => {
                 if state.wait_timer > 0.0 {
-                    state.wait_timer -= DT;
+                    state.wait_timer -= p.frame_delta_time;
                 } else {
                     state.position = state.start;
                     state.remainder = Vec2::default();
@@ -1484,7 +1489,7 @@ fn advance_move_blocks(p: &mut PlayerSnapshot, map: &mut Map, input: InputState)
             }
             4 => {
                 if state.wait_timer > 0.0 {
-                    state.wait_timer -= DT;
+                    state.wait_timer -= p.frame_delta_time;
                 } else {
                     let source = map.entities[entity_index].bounds;
                     let restored =
@@ -1501,7 +1506,7 @@ fn advance_move_blocks(p: &mut PlayerSnapshot, map: &mut Map, input: InputState)
             }
             5 => {
                 if state.wait_timer > 0.0 {
-                    state.wait_timer -= DT;
+                    state.wait_timer -= p.frame_delta_time;
                 } else {
                     state.visible = true;
                     state.static_movers_enabled = true;
@@ -1561,7 +1566,7 @@ fn try_pickup_theo(p: &mut PlayerSnapshot) -> bool {
     // PickupCoroutine observes the Tween one player frame before Tween.Update
     // can deactivate it. Keep that trailing frame in the portable timer so
     // speed restoration matches the real state snapshot boundary.
-    p.pickup_timer = 0.16 + DT;
+    p.pickup_timer = 0.16 + p.frame_delta_time;
     p.speed = Vec2::default();
     p.demo_dashed = false;
     p.dash_end_pending = false;
@@ -1614,7 +1619,7 @@ fn try_pickup_glider(p: &mut PlayerSnapshot) -> bool {
     p.ducking = false;
     p.pickup_old_speed = p.speed;
     p.pickup_old_var_jump_timer = p.var_jump_timer;
-    p.pickup_timer = 0.16 + DT;
+    p.pickup_timer = 0.16 + p.frame_delta_time;
     p.speed = Vec2::default();
     p.demo_dashed = false;
     p.dash_end_pending = false;
@@ -1667,11 +1672,16 @@ fn theo_collides(map: &Map, position: Vec2) -> bool {
     map.solid_at(theo_body_rect(position))
 }
 
-fn move_theo_axis(theo: &mut crate::TheoCrystalSnapshot, map: &Map, horizontal: bool) {
+fn move_theo_axis(
+    theo: &mut crate::TheoCrystalSnapshot,
+    map: &Map,
+    horizontal: bool,
+    delta_time: f32,
+) {
     let amount = if horizontal {
-        theo.speed.x * DT
+        theo.speed.x * delta_time
     } else {
-        theo.speed.y * DT
+        theo.speed.y * delta_time
     };
     let remainder = if horizontal {
         &mut theo.remainder.x
@@ -1713,8 +1723,8 @@ fn advance_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
         .collect();
     for (theo_index, entity_index) in entity_indices.into_iter().enumerate() {
         let mut theo = p.theo_crystals[theo_index].clone();
-        theo.cannot_hold_timer = (theo.cannot_hold_timer - DT).max(0.0);
-        theo.gravity_timer = (theo.gravity_timer - DT).max(0.0);
+        theo.cannot_hold_timer = (theo.cannot_hold_timer - p.frame_delta_time).max(0.0);
+        theo.gravity_timer = (theo.gravity_timer - p.frame_delta_time).max(0.0);
         if p.holding_theo == Some(theo_index as u16) {
             theo.held = true;
             theo.position = Vec2::new(p.pos.x, p.pos.y - 12.0);
@@ -1724,7 +1734,7 @@ fn advance_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
             theo.held = false;
             let on_ground = theo_collides(map, Vec2::new(theo.position.x, theo.position.y + 1.0));
             if on_ground {
-                theo.speed.x = approach(theo.speed.x, 0.0, 800.0 * DT);
+                theo.speed.x = approach(theo.speed.x, 0.0, 800.0 * p.frame_delta_time);
             } else if theo.gravity_timer <= 0.0 {
                 let gravity = if theo.speed.y.abs() <= 30.0 {
                     400.0
@@ -1734,12 +1744,12 @@ fn advance_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
                 theo.speed.x = approach(
                     theo.speed.x,
                     0.0,
-                    if theo.speed.y < 0.0 { 175.0 } else { 350.0 } * DT,
+                    if theo.speed.y < 0.0 { 175.0 } else { 350.0 } * p.frame_delta_time,
                 );
-                theo.speed.y = approach(theo.speed.y, 200.0, gravity * DT);
+                theo.speed.y = approach(theo.speed.y, 200.0, gravity * p.frame_delta_time);
             }
-            move_theo_axis(&mut theo, map, true);
-            move_theo_axis(&mut theo, map, false);
+            move_theo_axis(&mut theo, map, true, p.frame_delta_time);
+            move_theo_axis(&mut theo, map, false, p.frame_delta_time);
         }
         let entity = &mut map.entities[entity_index];
         entity.bounds.x = theo.position.x - 4.0;
@@ -1780,11 +1790,16 @@ fn glider_collides(map: &Map, position: Vec2) -> bool {
     map.solid_at(glider_body_rect(position))
 }
 
-fn move_glider_axis(glider: &mut crate::GliderSnapshot, map: &Map, horizontal: bool) {
+fn move_glider_axis(
+    glider: &mut crate::GliderSnapshot,
+    map: &Map,
+    horizontal: bool,
+    delta_time: f32,
+) {
     let amount = if horizontal {
-        glider.speed.x * DT
+        glider.speed.x * delta_time
     } else {
-        glider.speed.y * DT
+        glider.speed.y * delta_time
     };
     let remainder = if horizontal {
         &mut glider.remainder.x
@@ -1860,10 +1875,10 @@ fn advance_gliders(p: &mut PlayerSnapshot, map: &mut Map) {
         .collect();
     for (glider_index, entity_index) in entity_indices.into_iter().enumerate() {
         let mut glider = p.gliders[glider_index].clone();
-        glider.cannot_hold_timer = (glider.cannot_hold_timer - DT).max(0.0);
-        glider.gravity_timer = (glider.gravity_timer - DT).max(0.0);
-        glider.no_gravity_timer = (glider.no_gravity_timer - DT).max(0.0);
-        glider.high_friction_timer = (glider.high_friction_timer - DT).max(0.0);
+        glider.cannot_hold_timer = (glider.cannot_hold_timer - p.frame_delta_time).max(0.0);
+        glider.gravity_timer = (glider.gravity_timer - p.frame_delta_time).max(0.0);
+        glider.no_gravity_timer = (glider.no_gravity_timer - p.frame_delta_time).max(0.0);
+        glider.high_friction_timer = (glider.high_friction_timer - p.frame_delta_time).max(0.0);
         if p.holding_glider == Some(glider_index as u16) {
             glider.held = true;
             glider.position = Vec2::new(p.pos.x, p.pos.y - 12.0);
@@ -1874,7 +1889,7 @@ fn advance_gliders(p: &mut PlayerSnapshot, map: &mut Map) {
             let on_ground =
                 glider_collides(map, Vec2::new(glider.position.x, glider.position.y + 1.0));
             if on_ground {
-                glider.speed.x = approach(glider.speed.x, 0.0, 800.0 * DT);
+                glider.speed.x = approach(glider.speed.x, 0.0, 800.0 * p.frame_delta_time);
             } else if glider.gravity_timer <= 0.0 {
                 let gravity = if glider.speed.y >= -30.0 {
                     100.0
@@ -1886,13 +1901,13 @@ fn advance_gliders(p: &mut PlayerSnapshot, map: &mut Map) {
                 } else {
                     10.0
                 };
-                glider.speed.x = approach(glider.speed.x, 0.0, friction * DT);
+                glider.speed.x = approach(glider.speed.x, 0.0, friction * p.frame_delta_time);
                 if glider.no_gravity_timer <= 0.0 {
-                    glider.speed.y = approach(glider.speed.y, 30.0, gravity * DT);
+                    glider.speed.y = approach(glider.speed.y, 30.0, gravity * p.frame_delta_time);
                 }
             }
-            move_glider_axis(&mut glider, map, true);
-            move_glider_axis(&mut glider, map, false);
+            move_glider_axis(&mut glider, map, true, p.frame_delta_time);
+            move_glider_axis(&mut glider, map, false, p.frame_delta_time);
             hit_glider_spring(&mut glider, map);
         }
         let entity = &mut map.entities[entity_index];
@@ -1923,14 +1938,14 @@ fn advance_zip_movers(p: &mut PlayerSnapshot, map: &mut Map) {
             }
             1 => {
                 if state.wait_timer > 0.0 {
-                    state.wait_timer -= DT;
+                    state.wait_timer -= p.frame_delta_time;
                 } else {
                     state.phase = 2;
                     state.at = 0.0;
                 }
             }
             2 => {
-                state.at = approach(state.at, 1.0, 2.0 * DT);
+                state.at = approach(state.at, 1.0, 2.0 * p.frame_delta_time);
                 let eased = sine_in(state.at);
                 let desired = Vec2::new(
                     state.start.x + (target.x - state.start.x) * eased,
@@ -1944,14 +1959,14 @@ fn advance_zip_movers(p: &mut PlayerSnapshot, map: &mut Map) {
             }
             3 => {
                 if state.wait_timer > 0.0 {
-                    state.wait_timer -= DT;
+                    state.wait_timer -= p.frame_delta_time;
                 } else {
                     state.phase = 4;
                     state.at = 0.0;
                 }
             }
             4 => {
-                state.at = approach(state.at, 1.0, 0.5 * DT);
+                state.at = approach(state.at, 1.0, 0.5 * p.frame_delta_time);
                 let eased = sine_in(state.at);
                 let desired = Vec2::new(
                     target.x + (state.start.x - target.x) * eased,
@@ -1965,7 +1980,7 @@ fn advance_zip_movers(p: &mut PlayerSnapshot, map: &mut Map) {
             }
             5 => {
                 if state.wait_timer > 0.0 {
-                    state.wait_timer -= DT;
+                    state.wait_timer -= p.frame_delta_time;
                 } else if player_riding_solid(p, entity.bounds) {
                     state.phase = 1;
                     state.wait_timer = 0.1;
@@ -1985,7 +2000,7 @@ fn advance_zip_movers(p: &mut PlayerSnapshot, map: &mut Map) {
 
 fn advance_moving_solids(p: &mut PlayerSnapshot, map: &mut Map) {
     let old_time = p.moving_solid_time;
-    let new_time = old_time + DT;
+    let new_time = old_time + p.frame_delta_time;
     for entity in &mut map.entities {
         if entity.kind != EntityKind::MovingSolid {
             continue;
@@ -2045,10 +2060,14 @@ fn step(
     mut input: InputState,
     map: &mut Map,
 ) -> Result<(), SimulationError> {
+    // Engine computes DeltaTime once at the beginning of the raw frame. A
+    // HeartGem can write TimeRate during Scene.Update, but that write only
+    // changes movement and timers from the next engine frame onward.
+    p.frame_delta_time = DT * p.time_rate;
     // VirtualButton.Update runs in MInput before Celeste.Freeze can skip the
     // Scene. It subtracts DeltaTime first, then a new press restores the full
     // buffer; Jump also clears its buffer as soon as the binding is not held.
-    p.jump_buffer_timer -= DT;
+    p.jump_buffer_timer -= p.frame_delta_time;
     if input.jump_pressed {
         p.jump_buffer_timer = JUMP_BUFFER_TIME;
     } else if !input.jump_held {
@@ -2057,8 +2076,8 @@ fn step(
     // Dash and CrouchDash use a 0.08 second VirtualButton buffer. Their
     // portable input contract only records press edges, so keep the existing
     // press buffer alive across freeze until it is consumed or expires.
-    p.dash_buffer_timer = (p.dash_buffer_timer - DT).max(0.0);
-    p.crouch_dash_buffer_timer = (p.crouch_dash_buffer_timer - DT).max(0.0);
+    p.dash_buffer_timer = (p.dash_buffer_timer - p.frame_delta_time).max(0.0);
+    p.crouch_dash_buffer_timer = (p.crouch_dash_buffer_timer - p.frame_delta_time).max(0.0);
     if input.dash_pressed {
         p.dash_buffer_timer = 0.08;
     }
@@ -2127,16 +2146,17 @@ fn step(
             p.speed.x = p.explode_launch_boost_speed;
             p.explode_launch_boost_timer = 0.0;
         } else {
-            p.explode_launch_boost_timer -= DT;
+            p.explode_launch_boost_timer -= p.frame_delta_time;
         }
     }
     tick_timers(p);
     if p.wall_slide_dir != 0 {
-        p.wall_slide_timer = (p.wall_slide_timer - DT).max(0.0);
+        p.wall_slide_timer = (p.wall_slide_timer - p.frame_delta_time).max(0.0);
     }
     p.wall_slide_dir = 0;
     if p.strawberry_collect_reset_timer > 0.0 {
-        p.strawberry_collect_reset_timer = (p.strawberry_collect_reset_timer - DT).max(0.0);
+        p.strawberry_collect_reset_timer =
+            (p.strawberry_collect_reset_timer - p.frame_delta_time).max(0.0);
         if p.strawberry_collect_reset_timer <= 0.0 {
             p.strawberry_collect_index = 0;
         }
@@ -2236,7 +2256,7 @@ fn step(
     // frame only creates it; following Pickup frames decrement it here, and
     // the coroutine restores speed on the frame after it becomes inactive.
     if was_pickup && p.state == PlayerState::Pickup {
-        p.pickup_timer -= DT;
+        p.pickup_timer -= p.frame_delta_time;
     }
 
     // Actor.Update runs after the StateMachine component callback. Moving
@@ -2287,7 +2307,7 @@ fn step(
 fn tick_timers(p: &mut PlayerSnapshot) {
     if p.auto_jump_timer > 0.0 {
         if p.auto_jump {
-            p.auto_jump_timer = (p.auto_jump_timer - DT).max(0.0);
+            p.auto_jump_timer = (p.auto_jump_timer - p.frame_delta_time).max(0.0);
             if p.auto_jump_timer <= 0.0 {
                 p.auto_jump = false;
             }
@@ -2311,7 +2331,7 @@ fn tick_timers(p: &mut PlayerSnapshot) {
         &mut p.climb_no_move_timer,
         &mut p.dream_dash_can_end_timer,
     ] {
-        *timer = (*timer - DT).max(0.0);
+        *timer = (*timer - p.frame_delta_time).max(0.0);
     }
 }
 
@@ -2337,7 +2357,7 @@ fn add_lift_boost(p: &mut PlayerSnapshot) {
 fn tick_lift_speed(p: &mut PlayerSnapshot) {
     p.current_lift_speed = Vec2::default();
     if p.lift_speed_timer > 0.0 {
-        p.lift_speed_timer -= DT;
+        p.lift_speed_timer -= p.frame_delta_time;
         if p.lift_speed_timer <= 0.0 {
             p.lift_speed_timer = 0.0;
             p.last_lift_speed = Vec2::default();
@@ -2349,7 +2369,7 @@ fn update_wall_boost(p: &mut PlayerSnapshot) {
     if p.wall_boost_timer <= 0.0 {
         return;
     }
-    p.wall_boost_timer = (p.wall_boost_timer - DT).max(0.0);
+    p.wall_boost_timer = (p.wall_boost_timer - p.frame_delta_time).max(0.0);
     if p.move_x == p.wall_boost_dir {
         p.speed.x = WALL_JUMP_H * p.move_x as f32;
         p.stamina += 27.5;
@@ -2371,7 +2391,7 @@ fn update_wall_speed_retention(p: &mut PlayerSnapshot, map: &Map) {
         p.speed.x = p.wall_speed_retained;
         p.wall_speed_retention_timer = 0.0;
     } else {
-        p.wall_speed_retention_timer = (p.wall_speed_retention_timer - DT).max(0.0);
+        p.wall_speed_retention_timer = (p.wall_speed_retention_timer - p.frame_delta_time).max(0.0);
     }
 }
 
@@ -2452,7 +2472,7 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
     };
     let move_x = p.move_x;
     if p.ducking && p.on_ground {
-        p.speed.x = approach(p.speed.x, 0.0, DUCK_FRICTION * DT);
+        p.speed.x = approach(p.speed.x, 0.0, DUCK_FRICTION * p.frame_delta_time);
     } else {
         let max_run = if p.holding_theo.is_some() {
             70.0
@@ -2473,7 +2493,7 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
             } else {
                 RUN_ACCEL
             } * mult
-                * DT,
+                * p.frame_delta_time,
         );
     }
     if move_x != 0 {
@@ -2493,7 +2513,11 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
     } else {
         MAX_FALL
     };
-    p.max_fall = approach(p.max_fall, target_max_fall, FAST_MAX_ACCEL * DT);
+    p.max_fall = approach(
+        p.max_fall,
+        target_max_fall,
+        FAST_MAX_ACCEL * p.frame_delta_time,
+    );
     let mut fall_target = p.max_fall;
     if !holding_holdable(p) && wall != 0 && input.move_x == wall && p.speed.y >= 0.0 && !p.on_ground
     {
@@ -2511,7 +2535,11 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
         gravity_mult *= 0.5;
     }
     if !p.on_ground {
-        p.speed.y = approach(p.speed.y, fall_target, GRAVITY * gravity_mult * DT);
+        p.speed.y = approach(
+            p.speed.y,
+            fall_target,
+            GRAVITY * gravity_mult * p.frame_delta_time,
+        );
     }
     if p.var_jump_timer > 0.0 {
         if input.jump_held || p.auto_jump {
@@ -2602,7 +2630,7 @@ fn begin_dash(
     p.speed = Vec2::default();
     p.state = PlayerState::Dash;
     // Player.cs DashCoroutine yields once before applying dash speed.
-    p.state_timer = DASH_TIME + DT * if delayed_coroutine { 2.0 } else { 1.0 };
+    p.state_timer = DASH_TIME + p.frame_delta_time * if delayed_coroutine { 2.0 } else { 1.0 };
     p.dash_attack_timer = DASH_ATTACK_TIME;
     p.dash_cooldown_timer = DASH_COOLDOWN;
     p.dash_refill_cooldown_timer = 0.1;
@@ -2627,8 +2655,8 @@ fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     {
         return;
     }
-    p.state_timer = (p.state_timer - DT).max(0.0);
-    if (p.state_timer - DASH_TIME).abs() <= DT * 0.5 {
+    p.state_timer = (p.state_timer - p.frame_delta_time).max(0.0);
+    if (p.state_timer - DASH_TIME).abs() <= p.frame_delta_time * 0.5 {
         p.speed = Vec2::new(p.dash_dir.x * DASH_SPEED, p.dash_dir.y * DASH_SPEED);
         if p.before_dash_speed.x.signum() == p.speed.x.signum()
             && p.before_dash_speed.x.abs() > p.speed.x.abs()
@@ -2818,7 +2846,7 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
             }
         }
     };
-    p.speed.y = approach(p.speed.y, target, CLIMB_ACCEL * DT);
+    p.speed.y = approach(p.speed.y, target, CLIMB_ACCEL * p.frame_delta_time);
     p.speed.x = 0.0;
     if p.climb_no_move_timer <= 0.0 {
         let cost = if target < 0.0 {
@@ -2828,7 +2856,7 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         } else {
             0.0
         };
-        p.stamina = (p.stamina - cost * DT).max(0.0);
+        p.stamina = (p.stamina - cost * p.frame_delta_time).max(0.0);
     }
     if p.stamina <= 0.0 {
         enter_normal(p);
@@ -2869,17 +2897,21 @@ fn swim_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     } else {
         SWIM_ACCEL
     };
-    p.speed.x = approach(p.speed.x, horizontal_max * x, horizontal_accel * DT);
+    p.speed.x = approach(
+        p.speed.x,
+        horizontal_max * x,
+        horizontal_accel * p.frame_delta_time,
+    );
 
     if y == 0.0 && swim_rise_check(p, map) {
-        p.speed.y = approach(p.speed.y, SWIM_MAX_RISE, SWIM_ACCEL * DT);
+        p.speed.y = approach(p.speed.y, SWIM_MAX_RISE, SWIM_ACCEL * p.frame_delta_time);
     } else if y >= 0.0 || underwater {
         let vertical_accel = if p.speed.y.abs() > SWIM_MAX && p.speed.y.signum() == y.signum() {
             SWIM_REDUCE
         } else {
             SWIM_ACCEL
         };
-        p.speed.y = approach(p.speed.y, SWIM_MAX * y, vertical_accel * DT);
+        p.speed.y = approach(p.speed.y, SWIM_MAX * y, vertical_accel * p.frame_delta_time);
     }
 
     if p.jump_buffer_timer > 0.0 && swim_jump_check(p, map) {
@@ -2899,7 +2931,13 @@ fn swim_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
 
 fn dream_dash_update(p: &mut PlayerSnapshot) {
     p.on_ground = false;
-    naive_move(p, Vec2::new(p.speed.x * DT, p.speed.y * DT));
+    naive_move(
+        p,
+        Vec2::new(
+            p.speed.x * p.frame_delta_time,
+            p.speed.y * p.frame_delta_time,
+        ),
+    );
 }
 
 fn boost_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
@@ -2909,8 +2947,8 @@ fn boost_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         p.boost_target.x + aim.x * 3.0,
         p.boost_target.y + if p.ducking { 3.0 } else { 5.5 } + aim.y * 3.0,
     );
-    approach_exact_position(p, map, target, 80.0 * DT);
-    p.state_timer = (p.state_timer - DT).max(0.0);
+    approach_exact_position(p, map, target, 80.0 * p.frame_delta_time);
+    p.state_timer = (p.state_timer - p.frame_delta_time).max(0.0);
     let manual = input.dash_pressed || input.crouch_dash_pressed;
     if !manual && p.state_timer > 0.0 {
         return;
@@ -2936,7 +2974,7 @@ fn begin_red_dash(p: &mut PlayerSnapshot, input: Option<InputState>, delayed_cor
     p.dash_cooldown_timer = DASH_COOLDOWN;
     p.dash_refill_cooldown_timer = 0.1;
     p.freeze_timer = 0.05;
-    p.state_timer = DT * if delayed_coroutine { 2.0 } else { 1.0 };
+    p.state_timer = p.frame_delta_time * if delayed_coroutine { 2.0 } else { 1.0 };
     p.ducking = false;
 }
 
@@ -2949,7 +2987,7 @@ fn red_dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         return;
     }
     if p.dash_dir == Vec2::default() {
-        p.state_timer = (p.state_timer - DT).max(0.0);
+        p.state_timer = (p.state_timer - p.frame_delta_time).max(0.0);
         if p.state_timer <= 0.0 {
             p.dash_dir = p.last_aim;
             p.speed = Vec2::new(p.dash_dir.x * DASH_SPEED, p.dash_dir.y * DASH_SPEED);
@@ -2961,10 +2999,10 @@ fn red_dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
 }
 
 fn hit_squash_update(p: &mut PlayerSnapshot) {
-    p.speed.x = approach(p.speed.x, 0.0, 800.0 * DT);
-    p.speed.y = approach(p.speed.y, 0.0, 800.0 * DT);
+    p.speed.x = approach(p.speed.x, 0.0, 800.0 * p.frame_delta_time);
+    p.speed.y = approach(p.speed.y, 0.0, 800.0 * p.frame_delta_time);
     if p.state_timer > 0.0 {
-        p.state_timer -= DT;
+        p.state_timer -= p.frame_delta_time;
     } else {
         p.state = PlayerState::Normal;
     }
@@ -2972,7 +3010,7 @@ fn hit_squash_update(p: &mut PlayerSnapshot) {
 
 fn launch_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     if let Some(target_x) = p.launch_approach_x {
-        move_towards_x(p, map, target_x, 60.0 * DT);
+        move_towards_x(p, map, target_x, 60.0 * p.frame_delta_time);
     }
     if (input.dash_pressed || input.crouch_dash_pressed)
         && p.dashes > 0
@@ -2984,9 +3022,9 @@ fn launch_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     p.speed.y = approach(
         p.speed.y,
         MAX_FALL,
-        GRAVITY * if p.speed.y < 0.0 { 0.5 } else { 0.25 } * DT,
+        GRAVITY * if p.speed.y < 0.0 { 0.5 } else { 0.25 } * p.frame_delta_time,
     );
-    p.speed.x = approach(p.speed.x, 0.0, RUN_ACCEL * 0.2 * DT);
+    p.speed.x = approach(p.speed.x, 0.0, RUN_ACCEL * 0.2 * p.frame_delta_time);
     if length(p.speed) < LAUNCH_CANCEL_THRESHOLD {
         p.state = PlayerState::Normal;
         p.launch_approach_x = None;
@@ -2994,9 +3032,9 @@ fn launch_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
 }
 
 fn summit_launch_update(p: &mut PlayerSnapshot, map: &Map) {
-    p.summit_launch_particle_timer -= DT;
+    p.summit_launch_particle_timer -= p.frame_delta_time;
     p.facing = true;
-    move_towards_x(p, map, p.summit_launch_target_x, 20.0 * DT);
+    move_towards_x(p, map, p.summit_launch_target_x, 20.0 * p.frame_delta_time);
     p.speed = Vec2::new(0.0, -DASH_SPEED);
 }
 
@@ -3011,7 +3049,11 @@ fn dummy_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
             } else {
                 1.0
             };
-        p.speed.y = approach(p.speed.y, p.max_fall, GRAVITY * gravity_mult * DT);
+        p.speed.y = approach(
+            p.speed.y,
+            p.max_fall,
+            GRAVITY * gravity_mult * p.frame_delta_time,
+        );
     }
     if p.var_jump_timer > 0.0 {
         if p.auto_jump || input.jump_held {
@@ -3025,11 +3067,11 @@ fn dummy_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
             p.speed.x = approach(
                 p.speed.x,
                 MAX_RUN * p.speed.x.signum(),
-                RUN_ACCEL * 2.5 * DT,
+                RUN_ACCEL * 2.5 * p.frame_delta_time,
             );
         }
         if p.dummy_friction {
-            p.speed.x = approach(p.speed.x, 0.0, RUN_ACCEL * DT);
+            p.speed.x = approach(p.speed.x, 0.0, RUN_ACCEL * p.frame_delta_time);
         }
     }
 }
@@ -3043,9 +3085,17 @@ fn temple_fall_update(p: &mut PlayerSnapshot, map: &Map) {
         } else {
             0.0
         };
-        p.speed.x = approach(p.speed.x, MAX_RUN * 0.6 * move_x, 325.0 * DT);
+        p.speed.x = approach(
+            p.speed.x,
+            MAX_RUN * 0.6 * move_x,
+            325.0 * p.frame_delta_time,
+        );
         if p.dummy_gravity {
-            p.speed.y = approach(p.speed.y, MAX_FALL * 2.0, GRAVITY * 0.25 * DT);
+            p.speed.y = approach(
+                p.speed.y,
+                MAX_FALL * 2.0,
+                GRAVITY * 0.25 * p.frame_delta_time,
+            );
         }
         return;
     }
@@ -3070,9 +3120,13 @@ fn reflection_fall_update(p: &mut PlayerSnapshot, map: &Map) {
                 .bounds
                 .intersects(current_player_rect(p, p.pos.x, p.pos.y))
     }) {
-        p.speed.y = approach(p.speed.y, -20.0, 400.0 * DT);
+        p.speed.y = approach(p.speed.y, -20.0, 400.0 * p.frame_delta_time);
     } else {
-        p.speed.y = approach(p.speed.y, MAX_FALL * 2.0, GRAVITY * 0.25 * DT);
+        p.speed.y = approach(
+            p.speed.y,
+            MAX_FALL * 2.0,
+            GRAVITY * 0.25 * p.frame_delta_time,
+        );
     }
     match p.reflection_fall_phase {
         0 if p.reflection_fall_frames < 120 => {
@@ -3094,7 +3148,7 @@ fn reflection_fall_update(p: &mut PlayerSnapshot, map: &Map) {
             p.reflection_fall_wait_timer = 1.2;
         }
         2 if p.reflection_fall_wait_timer > 0.0 => {
-            p.reflection_fall_wait_timer -= DT;
+            p.reflection_fall_wait_timer -= p.frame_delta_time;
         }
         2 => {
             p.ignore_jump_thrus = false;
@@ -3118,7 +3172,11 @@ fn begin_star_fly(p: &mut PlayerSnapshot) {
 
 fn star_fly_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     if p.star_fly_transforming {
-        p.speed = approach_vector(p.speed, Vec2::default(), STAR_FLY_TRANSFORM_DECEL * DT);
+        p.speed = approach_vector(
+            p.speed,
+            Vec2::default(),
+            STAR_FLY_TRANSFORM_DECEL * p.frame_delta_time,
+        );
         p.star_fly_transform_frames = p.star_fly_transform_frames.saturating_sub(1);
         if p.star_fly_transform_frames == 0 {
             p.star_fly_transforming = false;
@@ -3145,7 +3203,11 @@ fn star_fly_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     if current_dir == Vec2::default() {
         current_dir = aim;
     } else {
-        current_dir = rotate_towards(current_dir, angle(aim), STAR_FLY_ROTATE_SPEED * DT);
+        current_dir = rotate_towards(
+            current_dir,
+            angle(aim),
+            STAR_FLY_ROTATE_SPEED * p.frame_delta_time,
+        );
     }
     p.star_fly_last_dir = current_dir;
 
@@ -3153,13 +3215,17 @@ fn star_fly_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         p.star_fly_speed_lerp = 0.0;
         STAR_FLY_SLOW_SPEED
     } else if current_dir != Vec2::default() && dot(current_dir, aim) >= 0.45 {
-        p.star_fly_speed_lerp = approach(p.star_fly_speed_lerp, 1.0, DT);
+        p.star_fly_speed_lerp = approach(p.star_fly_speed_lerp, 1.0, p.frame_delta_time);
         STAR_FLY_TARGET_SPEED + (STAR_FLY_MAX_SPEED - STAR_FLY_TARGET_SPEED) * p.star_fly_speed_lerp
     } else {
         p.star_fly_speed_lerp = 0.0;
         STAR_FLY_TARGET_SPEED
     };
-    let speed = approach(length(p.speed), max_speed, STAR_FLY_ACCEL * DT);
+    let speed = approach(
+        length(p.speed),
+        max_speed,
+        STAR_FLY_ACCEL * p.frame_delta_time,
+    );
     p.speed = scale(current_dir, speed);
 
     if input.jump_pressed {
@@ -3222,7 +3288,7 @@ fn star_fly_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         return;
     }
 
-    p.star_fly_timer -= DT;
+    p.star_fly_timer -= p.frame_delta_time;
     if p.star_fly_timer <= 0.0 {
         if input.move_y < 0 {
             p.speed.y = STAR_FLY_EXIT_UP;
@@ -3448,7 +3514,7 @@ fn wall_dir(p: &PlayerSnapshot, map: &Map) -> i8 {
 
 fn move_axis(p: &mut PlayerSnapshot, map: &Map, horizontal: bool) {
     let speed = if horizontal { p.speed.x } else { p.speed.y };
-    move_axis_amount(p, map, horizontal, speed * DT);
+    move_axis_amount(p, map, horizontal, speed * p.frame_delta_time);
 }
 
 fn naive_move(p: &mut PlayerSnapshot, amount: Vec2) {
@@ -3810,7 +3876,7 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                 p.boost_red = entity.kind == EntityKind::RedBooster;
                 p.last_booster_target = p.boost_target;
                 p.booster_reuse_timer = 0.45;
-                p.state_timer = 0.25 + DT * 2.0;
+                p.state_timer = 0.25 + p.frame_delta_time * 2.0;
                 p.dashes = p.dashes.max(1);
                 p.stamina = 110.0;
             }
@@ -3975,7 +4041,8 @@ fn update_strawberry_train(p: &mut PlayerSnapshot) {
         return;
     }
     if p.strawberry_follow_delay_timer > 0.0 {
-        p.strawberry_follow_delay_timer = (p.strawberry_follow_delay_timer - DT).max(0.0);
+        p.strawberry_follow_delay_timer =
+            (p.strawberry_follow_delay_timer - p.frame_delta_time).max(0.0);
         return;
     }
 
@@ -3983,7 +4050,7 @@ fn update_strawberry_train(p: &mut PlayerSnapshot) {
     // jumpthroughs are safe in the supported map subset, and Swim is always
     // treated as safe ground by Player.Update.
     if p.on_ground || p.state == PlayerState::Swim {
-        p.strawberry_collect_timer += DT;
+        p.strawberry_collect_timer += p.frame_delta_time;
         if p.strawberry_collect_timer > 0.15 {
             p.carried_strawberries -= 1;
             p.strawberry_collect_index = p.strawberry_collect_index.saturating_add(1);
@@ -3991,8 +4058,8 @@ fn update_strawberry_train(p: &mut PlayerSnapshot) {
             p.strawberry_collect_timer = if p.carried_strawberries > 0 {
                 // Followers update in train order. Once the first berry calls
                 // OnCollect, the next berry becomes FollowIndex 0 and runs its
-                // own Update later in the same frame, advancing -0.15 by DT.
-                -0.15 + DT
+                // own Update later in the same frame, advancing -0.15 by p.frame_delta_time.
+                -0.15 + p.frame_delta_time
             } else {
                 0.0
             };
@@ -4207,7 +4274,7 @@ fn advance_badeline_boost_relocation(p: &mut PlayerSnapshot) {
     if !p.badeline_boost_relocating {
         return;
     }
-    p.badeline_boost_relocation_elapsed += DT;
+    p.badeline_boost_relocation_elapsed += p.frame_delta_time;
     let progress = if p.badeline_boost_relocation_duration <= 0.0 {
         1.0
     } else {
@@ -4241,7 +4308,7 @@ fn update_badeline_boost(p: &mut PlayerSnapshot, map: &Map) {
     let wait_frames = if p.badeline_boost_final { 12 } else { 6 };
     match p.badeline_boost_phase {
         0 if p.badeline_boost_frame < 11 => {
-            let progress = (p.badeline_boost_frame as f32 + 1.0) * DT / 0.2;
+            let progress = (p.badeline_boost_frame as f32 + 1.0) * p.frame_delta_time / 0.2;
             let target = Vec2::new(
                 p.badeline_boost_start.x
                     + (p.badeline_boost_target.x - p.badeline_boost_start.x) * progress,
@@ -4463,15 +4530,15 @@ fn begin_transition(p: &mut PlayerSnapshot, next: Rect, direction: Vec2) {
     // TransitionRoutine updates cameraAt after yielding, then resumes once
     // more to observe cameraAt == 1 and run OnTransition. Preserve that final
     // coroutine-resume frame in addition to the 0.65-second camera duration.
-    p.transition_timer = TRANSITION_TIME + DT;
+    p.transition_timer = TRANSITION_TIME + p.frame_delta_time;
     p.on_ground = false;
 }
 
 fn update_transition(p: &mut PlayerSnapshot) {
-    let max_move = TRANSITION_MOVE_SPEED * DT;
+    let max_move = TRANSITION_MOVE_SPEED * p.frame_delta_time;
     p.pos.x = approach(p.pos.x, p.transition_target.x, max_move);
     p.pos.y = approach(p.pos.y, p.transition_target.y, max_move);
-    p.transition_timer = (p.transition_timer - DT).max(0.0);
+    p.transition_timer = (p.transition_timer - p.frame_delta_time).max(0.0);
     p.on_ground = false;
     // Player.TransitionTo rounds speed and clears Actor remainders as soon as
     // the player reaches the transfer target; the camera coroutine can keep
@@ -4550,8 +4617,8 @@ fn move_exact(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, sign: i32) ->
 }
 
 fn advance_wind_controller(p: &mut PlayerSnapshot) {
-    p.wind.x = approach(p.wind.x, p.wind_target.x, WIND_ACCEL * DT);
-    p.wind.y = approach(p.wind.y, p.wind_target.y, WIND_ACCEL * DT);
+    p.wind.x = approach(p.wind.x, p.wind_target.x, WIND_ACCEL * p.frame_delta_time);
+    p.wind.y = approach(p.wind.y, p.wind_target.y, WIND_ACCEL * p.frame_delta_time);
 }
 
 fn apply_wind_movement(p: &mut PlayerSnapshot, map: &Map) {
@@ -4565,7 +4632,7 @@ fn apply_wind_movement(p: &mut PlayerSnapshot, map: &Map) {
         return;
     }
 
-    let mut move_x = p.wind.x * WIND_MOVE_MULT * DT;
+    let mut move_x = p.wind.x * WIND_MOVE_MULT * p.frame_delta_time;
     if move_x != 0.0 && p.state != PlayerState::Climb {
         let shield_x = p.pos.x - move_x.signum() * WIND_WALL_DISTANCE;
         if !map.solid_at(current_player_rect(p, shield_x, p.pos.y)) {
@@ -4576,7 +4643,7 @@ fn apply_wind_movement(p: &mut PlayerSnapshot, map: &Map) {
         }
     }
 
-    let mut move_y = p.wind.y * WIND_MOVE_MULT * DT;
+    let mut move_y = p.wind.y * WIND_MOVE_MULT * p.frame_delta_time;
     if move_y != 0.0 && (p.speed.y < 0.0 || !grounded(p, map)) {
         if p.state == PlayerState::Climb {
             if move_y > 0.0 && p.climb_no_move_timer <= 0.0 {
@@ -6700,6 +6767,25 @@ mod tests {
                 .windows(2)
                 .all(|states| states[0].pos == states[1].pos)
         );
+    }
+
+    #[test]
+    fn engine_time_rate_scales_the_entire_next_player_update() {
+        let initial = PlayerSnapshot {
+            pos: Vec2::new(100.0, 100.0),
+            speed: Vec2::new(360.0, 0.0),
+            time_rate: 0.5,
+            ..PlayerSnapshot::default()
+        };
+
+        let state = simulate(initial, &[InputState::default()], &Map::default(), 1).unwrap();
+        let scaled_dt = DT * 0.5;
+        let expected_x = approach(360.0, 0.0, RUN_ACCEL * AIR_MULT * scaled_dt);
+
+        assert!((state.frame_delta_time - scaled_dt).abs() < 0.000_001);
+        assert!((state.speed.x - expected_x).abs() < 0.000_001);
+        assert!((state.speed.y - GRAVITY * scaled_dt).abs() < 0.000_001);
+        assert_eq!(state.pos, Vec2::new(103.0, 100.0));
     }
 
     #[test]
