@@ -48,6 +48,6 @@ export const ENTITY_4_29_SPRINGBOOST_CANCEL_PART = gliderPart('tech.entity-4.29-
   name: 'playground', bounds: [0, 0, 320, 544], spawn: [100, 496], solids: [[0, 496, 320, 48]],
   entities: [
     { id: 'tech-4.29-jelly', kind: 'glider', bounds: [96, 486, 8, 10], name: 'glider' },
-    { id: 'tech-4.29-spring', kind: 'spring', bounds: [152, 490, 16, 6], direction: [0, -1], name: 'spring' },
+    { id: 'tech-4.29-spring', kind: 'spring', bounds: [128, 490, 16, 6], direction: [0, -1], name: 'spring' },
   ],
 })

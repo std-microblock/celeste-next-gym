@@ -62,6 +62,53 @@ export interface GliderState {
   high_friction_timer: number
 }
 
+export interface CloudState {
+  phase: number
+  speed: number
+  position: Vec2
+  remainder_y: number
+  start: Vec2
+}
+
+export interface MoveBlockState {
+  phase: number
+  wait_timer: number
+  speed: number
+  angle: number
+  crash_timer: number
+  crash_reset_timer: number
+  no_steer_timer: number
+  position: Vec2
+  remainder: Vec2
+  lift_speed: Vec2
+  start: Vec2
+  visible: boolean
+  static_movers_enabled: boolean
+}
+
+export interface HeartGemState {
+  phase: number
+  wait_frames: number
+  collected: boolean
+}
+
+export interface CassetteBlockState {
+  position: Vec2
+  start: Vec2
+  width: number
+  height: number
+  index: number
+  activated: boolean
+  collidable: boolean
+}
+
+export interface SpinnerState {
+  position: Vec2
+  offset: number
+  visible: boolean
+  collidable: boolean
+}
+
 export interface SimState {
   pos: Vec2
   speed: Vec2
@@ -90,6 +137,8 @@ export interface SimState {
   feather_reuse_timer?: number
   last_bumper_target?: Vec2
   bumper_reuse_timer?: number
+  strawberry_picked_mask?: number | bigint
+  carried_strawberries?: number
   star_fly_hitbox_preserved?: boolean
   last_bounce_target?: Vec2
   bounce_reuse_timer?: number
@@ -98,6 +147,12 @@ export interface SimState {
   bounce_blocks?: BounceBlockState[]
   theo_crystals?: TheoCrystalState[]
   gliders?: GliderState[]
+  clouds?: CloudState[]
+  move_blocks?: MoveBlockState[]
+  heart_gems?: HeartGemState[]
+  cassette_blocks?: CassetteBlockState[]
+  spinners?: SpinnerState[]
+  cassette_manager?: { current_index?: number; beat_index?: number }
   holding_theo?: number | null
   holding_glider?: number | null
   badeline_boost_active?: boolean
@@ -107,7 +162,7 @@ export interface SimState {
   [key: string]: unknown
 }
 
-export type EntityKind = 'jump_thru' | 'spikes' | 'water' | 'dream_block' | 'booster' | 'red_booster' | 'fly_feather' | 'bumper' | 'ice_ball' | 'badeline_boost' | 'spring' | 'strawberry' | 'wind' | 'bounce_block' | 'theo_crystal' | 'glider' | 'zip_mover' | 'moving_solid' | 'unknown'
+export type EntityKind = 'jump_thru' | 'spikes' | 'water' | 'dream_block' | 'booster' | 'red_booster' | 'fly_feather' | 'bumper' | 'ice_ball' | 'puffer' | 'angry_oshiro' | 'seeker' | 'snowball' | 'cloud' | 'badeline_boost' | 'spring' | 'strawberry' | 'wind' | 'bounce_block' | 'theo_crystal' | 'heart_gem' | 'glider' | 'zip_mover' | 'move_block' | 'cassette_block' | 'crystal_static_spinner' | 'moving_solid' | 'unknown'
 
 export interface MapEntity {
   kind: EntityKind

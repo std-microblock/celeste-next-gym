@@ -140,6 +140,8 @@ pub struct TheoCrystalSnapshot {
     pub held: bool,
     pub cannot_hold_timer: f32,
     pub gravity_timer: f32,
+    /// TheoCrystal.Die disables pushing and kills the player after failed squish escape.
+    pub dead: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -163,6 +165,8 @@ pub struct GliderSnapshot {
     pub gravity_timer: f32,
     pub no_gravity_timer: f32,
     pub high_friction_timer: f32,
+    /// Glider.OnSquish removes the actor when both wiggle searches fail.
+    pub removed: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -178,6 +182,84 @@ pub struct CloudSnapshot {
     pub remainder_y: f32,
     /// Original entity position captured before the runtime map is moved.
     pub start: Vec2,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SeekerSnapshot {
+    /// Actor.Position / physics-hitbox center.
+    pub position: Vec2,
+    pub speed: Vec2,
+    pub remainder: Vec2,
+    /// Vanilla Seeker state index (Attack=3, Stunned=4, Skidding=5).
+    pub state: u8,
+    /// Coroutine time remaining for the supported Stunned lifecycle.
+    pub state_timer: f32,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct CassetteManagerSnapshot {
+    /// Whether Level.LoadLevel has run CassetteBlockManager.OnLevelStart.
+    pub initialized: bool,
+    /// The non-level-music manager creates its cassette song on its first
+    /// Update and does not call AdvanceMusic until the following frame.
+    pub startup_music_pending: bool,
+    /// Accumulated sixteenth-note time, advanced in single precision.
+    pub beat_timer: f32,
+    pub beat_index: u8,
+    pub current_index: u8,
+    pub max_beat: u8,
+    pub tempo_mult: f32,
+}
+
+impl Default for CassetteManagerSnapshot {
+    fn default() -> Self {
+        Self {
+            initialized: false,
+            startup_music_pending: false,
+            beat_timer: 0.0,
+            beat_index: 0,
+            current_index: 0,
+            max_beat: 0,
+            tempo_mult: 1.0,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct TempleGateSnapshot {
+    /// Original top-left entity position restored after SetHeight.
+    pub position: Vec2,
+    pub current_height: f32,
+    pub closed_height: f32,
+    pub open: bool,
+    pub triggered: bool,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct CassetteBlockSnapshot {
+    /// Current Solid position, including the two one-pixel ShiftSize phases.
+    pub position: Vec2,
+    pub start: Vec2,
+    pub width: f32,
+    pub height: f32,
+    pub index: u8,
+    pub activated: bool,
+    pub collidable: bool,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SpinnerSnapshot {
+    /// CrystalStaticSpinner world-space center.
+    pub position: Vec2,
+    /// Per-instance Calc.Random.NextFloat offset used by Scene.OnInterval.
+    pub offset: f32,
+    pub visible: bool,
+    pub collidable: bool,
 }
 
 fn default_stamina() -> f32 {
@@ -279,6 +361,14 @@ pub struct PlayerSnapshot {
     /// moving solids. Keeping it in the snapshot makes split simulations
     /// resume from the same platform positions.
     pub moving_solid_time: f32,
+    /// Monocle Scene.TimeActive. This intentionally remains f32 so the
+    /// long-running spinner interval freeze is represented faithfully.
+    pub scene_time_active: f32,
+    pub cassette_manager: CassetteManagerSnapshot,
+    /// Per-entity CassetteBlock state, in map entity order.
+    pub cassette_blocks: Vec<CassetteBlockSnapshot>,
+    /// Per-entity CrystalStaticSpinner state, in map entity order.
+    pub spinners: Vec<SpinnerSnapshot>,
     /// Per-entity vanilla ZipMover coroutine and Platform movement state, in
     /// map entity order. This keeps segmented simulation composable.
     pub zip_movers: Vec<ZipMoverSnapshot>,
@@ -294,6 +384,10 @@ pub struct PlayerSnapshot {
     pub gliders: Vec<GliderSnapshot>,
     /// Per-entity vanilla non-fragile Cloud movement state.
     pub clouds: Vec<CloudSnapshot>,
+    /// Per-entity Seeker Actor and StateMachine state, in map entity order.
+    pub seekers: Vec<SeekerSnapshot>,
+    /// Per-entity CloseBehindPlayerAlways TempleGate state.
+    pub temple_gates: Vec<TempleGateSnapshot>,
     /// Map-order TheoCrystal index currently held by Player.
     pub holding_theo: Option<u16>,
     /// Map-order Glider index currently held by Player.
@@ -435,6 +529,10 @@ impl Default for PlayerSnapshot {
             last_lift_speed: Vec2::default(),
             lift_speed_timer: 0.0,
             moving_solid_time: 0.0,
+            scene_time_active: 0.0,
+            cassette_manager: CassetteManagerSnapshot::default(),
+            cassette_blocks: vec![],
+            spinners: vec![],
             zip_movers: vec![],
             bounce_blocks: vec![],
             move_blocks: vec![],
@@ -442,6 +540,8 @@ impl Default for PlayerSnapshot {
             heart_gems: vec![],
             gliders: vec![],
             clouds: vec![],
+            seekers: vec![],
+            temple_gates: vec![],
             holding_theo: None,
             holding_glider: None,
             min_hold_timer: 0.0,
