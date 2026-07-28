@@ -24,7 +24,7 @@ export function loadTechniqueCatalog(repoRoot: string): TechniqueCatalog {
     byId.set(technique.id, technique)
   }
   const implementedIds = new Set(techniques.filter((technique) => technique.status === 'implemented').map((technique) => technique.id))
-  if (techniques.length !== 120) throw new Error(`unexpected handbook coverage count: ${techniques.length} total`)
+  if (techniques.length !== 121) throw new Error(`unexpected handbook coverage count: ${techniques.length} total`)
   return Object.freeze({ techniques: Object.freeze(techniques), byId, implementedIds })
 }
 
