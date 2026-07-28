@@ -57,7 +57,10 @@ describe('per-scenario Playground maps', () => {
     const lookout = interactionFixture.rooms
       .find((room) => room.name === 'playground')?.entities
       .find((entity) => entity.id === 'tech-5.1.3-lookout')
-    assert.deepEqual(lookout?.bounds, [956, 493, 4, 4])
+    assert.deepEqual(lookout?.bounds, [938, 493, 4, 4])
+    assert.deepEqual(interactionFixture.rooms
+      .find((room) => room.name === 'playground')?.entities
+      .find((entity) => entity.id === 'tech-5.1.3-interrupting-booster')?.bounds, [944, 491, 16, 16])
 
     // The spinner starts in view, then the Lookout input travels left far
     // enough to put it outside the viewport for a full 0.25-second interval.
@@ -69,6 +72,8 @@ describe('per-scenario Playground maps', () => {
     // overlap window, and Summit's endpoint retains a complete exit window.
     assert.equal(binoControlStorage.inputs.length, 280)
     assert.equal(binoControlStorage.inputs[220]?.jump_pressed, true)
+    assert.equal(binoInteractionStorage.inputs.length, 300)
+    assert.equal(binoInteractionStorage.inputs[120]?.move_x, 1)
     assert.equal(binoExtensions.inputs.length, 720)
     assert.equal(binoExtensions.inputs.at(-1)?.move_y, -1)
   })

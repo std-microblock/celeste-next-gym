@@ -35,10 +35,14 @@ export const TECH_OTHER_5_1_2_BINO_CONTROL_STORAGE = part('tech.other-5.1.2-bino
 export const TECH_OTHER_5_1_3_BINO_INTERACTION_STORAGE = part('tech.other-5.1.3-bino-interaction-storage', [
   {
     name: 'playground',
-    // Lookout's center is x=958, so the 8px-wide Player hitbox crosses the
-    // 960px edge during DummyWalkToExact.  The 4x4 entity itself remains
-    // contained by this room, as required by the fixture validator.
-    entities: [{ id: 'tech-5.1.3-lookout', kind: 'lookout', bounds: [956, 493, 4, 4], name: 'lookout' }],
+    // Dummy is outside Player.InControl, so DummyWalkToExact cannot itself
+    // initiate a room transition.  It first reaches x=940; the native
+    // Booster then interrupts the completed walk, leaving the Lookout's
+    // entity coroutine alive while Normal movement crosses the boundary.
+    entities: [
+      { id: 'tech-5.1.3-lookout', kind: 'lookout', bounds: [938, 493, 4, 4], name: 'lookout' },
+      { id: 'tech-5.1.3-interrupting-booster', kind: 'booster', bounds: [944, 491, 16, 16], name: 'booster' },
+    ],
   },
   {
     name: 'transition_5_1_3',

@@ -44,9 +44,12 @@ internal static class SnapshotCapture {
         lookoutRemovalPlayerState = null;
     }
 
-    public static void ObserveLookoutRemoved(Lookout lookout, Scene scene) {
+    public static bool IsLookoutInteracting(Lookout lookout) =>
+        lookoutInteracting?.GetValue(lookout) as bool? ?? false;
+
+    public static void ObserveLookoutRemoved(bool wasInteracting, Scene scene) {
         lookoutRemovalObserved = true;
-        lookoutRemovedWhileInteracting = lookoutInteracting?.GetValue(lookout) as bool? ?? false;
+        lookoutRemovedWhileInteracting = wasInteracting;
         lookoutRemovalPlayerState = scene.Tracker.GetEntity<Player>()?.StateMachine.State;
     }
 

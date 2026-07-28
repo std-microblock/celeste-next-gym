@@ -353,8 +353,12 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         Lookout self,
         Scene scene
     ) {
+        // Lookout.Removed restores StNormal without calling StopInteracting.
+        // Capture the entity-owned flag before its original removal callback,
+        // then record the Player state established by that callback.
+        bool wasInteracting = SnapshotCapture.IsLookoutInteracting(self);
         orig(self, scene);
-        SnapshotCapture.ObserveLookoutRemoved(self, scene);
+        SnapshotCapture.ObserveLookoutRemoved(wasInteracting, scene);
     }
 
     private void PrepareSimulationFrame() {

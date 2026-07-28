@@ -14449,6 +14449,65 @@ mod tests {
     }
 
     #[test]
+    fn bino_interaction_storage_uses_a_native_booster_after_dummy_walk() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
+            transition_rooms: vec![Rect::new(960.0, 0.0, 960.0, 544.0)],
+            solids: vec![Rect::new(0.0, 496.0, 1920.0, 48.0)],
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::Lookout,
+                    bounds: Rect::new(938.0, 493.0, 4.0, 4.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "lookout".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::Booster,
+                    bounds: Rect::new(944.0, 491.0, 16.0, 16.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "booster".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(916.0, 496.0),
+            on_ground: true,
+            current_room_bounds: Some(map.bounds),
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..300)
+            .map(|frame| InputState {
+                talk_pressed: frame == 0,
+                move_x: if frame >= 120 { 1 } else { 0 },
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+
+        assert!(trace.states.iter().any(|state| state.state == PlayerState::Boost));
+        assert!(trace.states.iter().any(|state| {
+            state.state == PlayerState::Normal
+                && state.lookouts[0].interacting
+                && !state.lookouts[0].removed
+        }));
+        let completed = trace
+            .states
+            .iter()
+            .find(|state| state.current_room_bounds == Some(map.transition_rooms[0]))
+            .expect("Normal movement should transition after the native Booster interruption");
+        assert_eq!(completed.state, PlayerState::Normal);
+        assert!(completed.lookouts[0].removed);
+        assert!(completed.lookouts[0].interacting);
+    }
+
+    #[test]
     fn bino_extensions_follow_nodes_and_run_long_distance_exit_wipe() {
         let map = Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
