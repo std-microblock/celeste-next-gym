@@ -1,0 +1,336 @@
+{
+  "entries": {
+    "sj/tilesets/gym/beginner": {
+      "x": 2,
+      "y": 2,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "sj/tilesets/gym/intermediate": {
+      "x": 28,
+      "y": 2,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "sj/tilesets/gym/advanced": {
+      "x": 54,
+      "y": 2,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "sj/tilesets/gym/expert": {
+      "x": 80,
+      "y": 2,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "sj/tilesets/gym/grandmaster": {
+      "x": 106,
+      "y": 2,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "sj/bgs/gym/beginner-dark": {
+      "x": 132,
+      "y": 2,
+      "width": 64,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 64,
+      "frameHeight": 8
+    },
+    "sj/bgs/gym/intermediate-dark": {
+      "x": 198,
+      "y": 2,
+      "width": 64,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 64,
+      "frameHeight": 8
+    },
+    "sj/bgs/gym/advanced-dark": {
+      "x": 264,
+      "y": 2,
+      "width": 64,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 64,
+      "frameHeight": 8
+    },
+    "sj/bgs/gym/expert-dark": {
+      "x": 330,
+      "y": 2,
+      "width": 64,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 64,
+      "frameHeight": 8
+    },
+    "sj/bgs/gym/grandmaster-dark": {
+      "x": 396,
+      "y": 2,
+      "width": 64,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 64,
+      "frameHeight": 8
+    },
+    "sj/tilesets/lobby/beginner-cliff": {
+      "x": 462,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "sj/bgs/lobby/beginner/sky": {
+      "x": 512,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "sj/bgs/lobby/beginner/clouds": {
+      "x": 2,
+      "y": 184,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "sj/bgs/lobby/beginner/islands": {
+      "x": 324,
+      "y": 184,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "sj/tilesets/lobby/intermediate-girder": {
+      "x": 646,
+      "y": 184,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "sj/bgs/lobby/intermediate/skybox": {
+      "x": 696,
+      "y": 184,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "sj/bgs/lobby/intermediate/hills": {
+      "x": 2,
+      "y": 366,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "sj/bgs/lobby/intermediate/foreground-hills": {
+      "x": 324,
+      "y": 366,
+      "width": 500,
+      "height": 260,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 500,
+      "frameHeight": 260
+    },
+    "sj/tilesets/lobby/advanced-cloud": {
+      "x": 826,
+      "y": 366,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "sj/bgs/lobby/advanced/sunset": {
+      "x": 2,
+      "y": 628,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "sj/bgs/lobby/advanced/mountains": {
+      "x": 324,
+      "y": 628,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "sj/bgs/lobby/advanced/dunes": {
+      "x": 646,
+      "y": 628,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "sj/tilesets/lobby/expert-vegetation": {
+      "x": 968,
+      "y": 628,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "sj/bgs/lobby/expert/space": {
+      "x": 2,
+      "y": 810,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "sj/bgs/lobby/expert/nebulae": {
+      "x": 324,
+      "y": 810,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "sj/bgs/lobby/expert/planets": {
+      "x": 646,
+      "y": 810,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "sj/tilesets/lobby/grandmaster-grass": {
+      "x": 968,
+      "y": 810,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "sj/bgs/lobby/grandmaster/sky": {
+      "x": 2,
+      "y": 992,
+      "width": 320,
+      "height": 224,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 224
+    },
+    "sj/bgs/lobby/grandmaster/mountains": {
+      "x": 2,
+      "y": 1218,
+      "width": 880,
+      "height": 168,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 880,
+      "frameHeight": 168
+    },
+    "sj/bgs/lobby/grandmaster/clouds": {
+      "x": 2,
+      "y": 1388,
+      "width": 152,
+      "height": 128,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 152,
+      "frameHeight": 128
+    }
+  },
+  "sources": {
+    "sj/tilesets/gym/beginner": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Gym/BeginnerGym.png",
+    "sj/tilesets/gym/intermediate": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Gym/IntermediateGym.png",
+    "sj/tilesets/gym/advanced": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Gym/AdvancedGym.png",
+    "sj/tilesets/gym/expert": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Gym/ExpertGym.png",
+    "sj/tilesets/gym/grandmaster": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Gym/GrandmasterGym.png",
+    "sj/bgs/gym/beginner-dark": "Graphics/Atlases/Gameplay/bgs/SJ2021/Gym/begGymDarkBG.png",
+    "sj/bgs/gym/intermediate-dark": "Graphics/Atlases/Gameplay/bgs/SJ2021/Gym/intGymDarkBG.png",
+    "sj/bgs/gym/advanced-dark": "Graphics/Atlases/Gameplay/bgs/SJ2021/Gym/advGymDarkBG.png",
+    "sj/bgs/gym/expert-dark": "Graphics/Atlases/Gameplay/bgs/SJ2021/Gym/expGymDarkBG.png",
+    "sj/bgs/gym/grandmaster-dark": "Graphics/Atlases/Gameplay/bgs/SJ2021/Gym/gmGymDarkBG.png",
+    "sj/tilesets/lobby/beginner-cliff": "Graphics/Atlases/Gameplay/tilesets/SJ2021/BeginnerLobby/lobbyCliff.png",
+    "sj/bgs/lobby/beginner/sky": "Graphics/Atlases/Gameplay/bgs/SJ2021/BeginnerLobby/main/sky.png",
+    "sj/bgs/lobby/beginner/clouds": "Graphics/Atlases/Gameplay/bgs/SJ2021/BeginnerLobby/main/clouds.png",
+    "sj/bgs/lobby/beginner/islands": "Graphics/Atlases/Gameplay/bgs/SJ2021/BeginnerLobby/main/islands.png",
+    "sj/tilesets/lobby/intermediate-girder": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Int_Lobby/IntGirderFg.png",
+    "sj/bgs/lobby/intermediate/skybox": "Graphics/Atlases/Gameplay/bgs/SJ2021/Int_Lobby/skybox.png",
+    "sj/bgs/lobby/intermediate/hills": "Graphics/Atlases/Gameplay/bgs/SJ2021/Int_Lobby/bghills.png",
+    "sj/bgs/lobby/intermediate/foreground-hills": "Graphics/Atlases/Gameplay/bgs/SJ2021/Int_Lobby/fghills.png",
+    "sj/tilesets/lobby/advanced-cloud": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Advanced_Lobby/advCloudSunset.png",
+    "sj/bgs/lobby/advanced/sunset": "Graphics/Atlases/Gameplay/bgs/SJ2021/Advanced Lobby/sunset/sunset.png",
+    "sj/bgs/lobby/advanced/mountains": "Graphics/Atlases/Gameplay/bgs/SJ2021/Advanced Lobby/sunset/sunsetmountains.png",
+    "sj/bgs/lobby/advanced/dunes": "Graphics/Atlases/Gameplay/bgs/SJ2021/Advanced Lobby/sunset/sunsetdunes.png",
+    "sj/tilesets/lobby/expert-vegetation": "Graphics/Atlases/Gameplay/tilesets/SJ2021/ExpertLobby/spaceVegetation.png",
+    "sj/bgs/lobby/expert/space": "Graphics/Atlases/Gameplay/bgs/SJ2021/ExpertLobby/space.png",
+    "sj/bgs/lobby/expert/nebulae": "Graphics/Atlases/Gameplay/bgs/SJ2021/ExpertLobby/nebulae.png",
+    "sj/bgs/lobby/expert/planets": "Graphics/Atlases/Gameplay/bgs/SJ2021/ExpertLobby/planets.png",
+    "sj/tilesets/lobby/grandmaster-grass": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Grandmaster/elysianGrass.png",
+    "sj/bgs/lobby/grandmaster/sky": "Graphics/Atlases/Gameplay/bgs/SJ2021/GMLobby/sky.png",
+    "sj/bgs/lobby/grandmaster/mountains": "Graphics/Atlases/Gameplay/bgs/SJ2021/GMLobby/mountains.png",
+    "sj/bgs/lobby/grandmaster/clouds": "Graphics/Atlases/Gameplay/bgs/SJ2021/GMLobby/cloud-group-1.png"
+  }
+}
