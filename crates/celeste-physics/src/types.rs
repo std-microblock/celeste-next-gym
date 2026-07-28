@@ -180,6 +180,60 @@ pub struct CloudSnapshot {
     pub start: Vec2,
 }
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct CassetteManagerSnapshot {
+    /// Whether Level.LoadLevel has run CassetteBlockManager.OnLevelStart.
+    pub initialized: bool,
+    /// The non-level-music manager creates its cassette song on its first
+    /// Update and does not call AdvanceMusic until the following frame.
+    pub startup_music_pending: bool,
+    /// Accumulated sixteenth-note time, advanced in single precision.
+    pub beat_timer: f32,
+    pub beat_index: u8,
+    pub current_index: u8,
+    pub max_beat: u8,
+    pub tempo_mult: f32,
+}
+
+impl Default for CassetteManagerSnapshot {
+    fn default() -> Self {
+        Self {
+            initialized: false,
+            startup_music_pending: false,
+            beat_timer: 0.0,
+            beat_index: 0,
+            current_index: 0,
+            max_beat: 0,
+            tempo_mult: 1.0,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct CassetteBlockSnapshot {
+    /// Current Solid position, including the two one-pixel ShiftSize phases.
+    pub position: Vec2,
+    pub start: Vec2,
+    pub width: f32,
+    pub height: f32,
+    pub index: u8,
+    pub activated: bool,
+    pub collidable: bool,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SpinnerSnapshot {
+    /// CrystalStaticSpinner world-space center.
+    pub position: Vec2,
+    /// Per-instance Calc.Random.NextFloat offset used by Scene.OnInterval.
+    pub offset: f32,
+    pub visible: bool,
+    pub collidable: bool,
+}
+
 fn default_stamina() -> f32 {
     110.0
 }
@@ -279,6 +333,14 @@ pub struct PlayerSnapshot {
     /// moving solids. Keeping it in the snapshot makes split simulations
     /// resume from the same platform positions.
     pub moving_solid_time: f32,
+    /// Monocle Scene.TimeActive. This intentionally remains f32 so the
+    /// long-running spinner interval freeze is represented faithfully.
+    pub scene_time_active: f32,
+    pub cassette_manager: CassetteManagerSnapshot,
+    /// Per-entity CassetteBlock state, in map entity order.
+    pub cassette_blocks: Vec<CassetteBlockSnapshot>,
+    /// Per-entity CrystalStaticSpinner state, in map entity order.
+    pub spinners: Vec<SpinnerSnapshot>,
     /// Per-entity vanilla ZipMover coroutine and Platform movement state, in
     /// map entity order. This keeps segmented simulation composable.
     pub zip_movers: Vec<ZipMoverSnapshot>,
@@ -435,6 +497,10 @@ impl Default for PlayerSnapshot {
             last_lift_speed: Vec2::default(),
             lift_speed_timer: 0.0,
             moving_solid_time: 0.0,
+            scene_time_active: 0.0,
+            cassette_manager: CassetteManagerSnapshot::default(),
+            cassette_blocks: vec![],
+            spinners: vec![],
             zip_movers: vec![],
             bounce_blocks: vec![],
             move_blocks: vec![],
