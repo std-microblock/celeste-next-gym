@@ -1,5 +1,6 @@
-// Pinned authoritative 120-item coverage order. Do not regenerate from the
-// online Wiki unless the user explicitly requests a baseline refresh.
+// Pinned authoritative 121-item coverage order. Do not regenerate from the
+// online Wiki unless the user explicitly requests a baseline refresh. Item
+// 1.13 is the explicitly requested local dash-aim sampling addition.
 
 #import "template.typ": badge
 
@@ -28,6 +29,8 @@
 #include "techs/mechanics/1-11-screen-transition.typ"
 
 #include "techs/mechanics/1-12-wind-resistance.typ"
+
+#include "techs/mechanics/1-13-dash-aim-sampling.typ"
 
 #pagebreak()
 

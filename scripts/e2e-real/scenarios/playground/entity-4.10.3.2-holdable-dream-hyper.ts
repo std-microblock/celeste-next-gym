@@ -14,13 +14,13 @@ export const scenario = defineScenario({
   name: 'entity-4.10.3.2-holdable-dream-hyper',
   initial: { pos: [208, 496], speed: [0, 0], can_dream_dash: true },
   inputs: inputFrames(150, (frame) => ({
-    move_x: frame >= 43 && frame < 52 ? -1 : frame >= 85 ? -1 : 1,
+    move_x: frame >= 43 && frame < 54 ? -1 : frame >= 85 ? -1 : 1,
     move_y: 0,
-    jump_pressed: frame === 52,
-    jump_held: frame === 52,
+    jump_pressed: frame === 62,
+    jump_held: frame === 62,
     dash_pressed: frame === 0,
-    crouch_dash_pressed: frame === 48,
-    grab_held: frame < 48 || frame >= 65,
+    crouch_dash_pressed: frame === 54,
+    grab_held: frame < 52 || frame >= 65,
   })),
   verify(states) {
     const exitGrab = states.findIndex((state, frame) => frame > 0 && state.state === 1 && states[frame - 1]?.state === 9 && state.holding_theo)

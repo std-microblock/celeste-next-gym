@@ -68,7 +68,7 @@ This handbook is both a bilingual player-facing guide and an implementation audi
 + 有覆盖关键帧、速度与状态不变量的回归测试；
 + 有标准实体和正常输入触发的真实 Celeste/Everest E2E，完整比较九类字段且误差不超过 0.01。
 
-候选场景只是一条待核证线索，不计入完成数。`FinalBoss` 与玩家 `Attract` 状态是明确产品排除项，不进入 120 项分母。
+候选场景只是一条待核证线索，不计入完成数。`FinalBoss` 与玩家 `Attract` 状态是明确产品排除项，不进入 121 项分母。
 
 #outline(title: [目录 #h(5pt) #badge([CONTENTS])], depth: 2, indent: auto)
 

@@ -45,6 +45,20 @@ const map = {
 
 const response = decode(simulate_msgpack(encode(state), encode([input]), encode(map), 1))
 if (!response.states || response.states.length !== 2) throw new Error(response.error ?? 'WASM smoke test failed')
+const delayedLeftInputs = Array.from({ length: 6 }, (_, frame) => ({
+  ...input,
+  move_x: frame >= 2 ? -1 : 0,
+  dash_pressed: frame === 1,
+}))
+const delayedLeftTrace = decode(simulate_msgpack(encode(state), encode(delayedLeftInputs), encode(map), delayedLeftInputs.length))
+const dashBegin = delayedLeftTrace.states?.[2]
+const dashLaunch = delayedLeftTrace.states?.[6]
+if (!dashBegin || dashBegin.speed.x !== 0 || dashBegin.speed.y !== 0 || dashBegin.dash_dir.x !== 0 || dashBegin.dash_dir.y !== 0) {
+  throw new Error(delayedLeftTrace.error ?? 'DashBegin locked aim before DashCoroutine resumed')
+}
+if (!dashLaunch || dashLaunch.speed.x !== -240 || dashLaunch.speed.y !== 0 || dashLaunch.dash_dir.x !== -1 || dashLaunch.dash_dir.y !== 0 || dashLaunch.facing !== false) {
+  throw new Error(delayedLeftTrace.error ?? 'DashCoroutine did not sample frame-3 left input')
+}
 const mapBytes = await readFile(new URL('../public/assets/original/maps/CelesteGymPlayground-Playground.bin', import.meta.url))
 const decodedMap = decode(decode_celeste_map_msgpack(mapBytes, 'playground'))
 if (!decodedMap.map || decodedMap.map.source_package !== 'CelesteGymPlayground') throw new Error(decodedMap.error ?? 'WASM map decode failed')

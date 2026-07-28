@@ -4,7 +4,7 @@
   id: "4.23",
   title-zh: "Theo／水母 Ultra",
   title-en: "Theo/Jelly Ultras",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [在贴地 Ultra 中重抓 Theo 或水母，可提前取消冲刺结束逻辑并保留倍增后的高速。],
   description-en: [Regrabbing Theo or a jelly interrupts a grounded ultra before dash-end speed cleanup, preserving the multiplied velocity.],
   source-evidence: evidence(
@@ -15,6 +15,6 @@
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [dash_update / try_pickup_holdable / pickup_update]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [grounded_ultra_pickup_cancel_skips_dash_end_speed_normalization / grounded_ultra_glider_pickup_cancel_preserves_multiplied_speed]),
-  e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.23-theo-ultra.ts / scripts/e2e-real/scenarios/playground/entity-4.23-jelly-ultra.ts], symbol: [entity-4.23-theo-ultra / entity-4.23-jelly-ultra], note: [Jelly 真实场景已完成 Pickup Ultra 语义，但第 22 帧首先偏离：游戏速度 353.333 且未蹲，Rust 速度 351.667 且仍蹲；全程最大速度误差 4.999969，超过 0.01，故双变体仍保留 candidate。]),
+  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.23-theo-ultra.ts / scripts/e2e-real/scenarios/playground/entity-4.23-jelly-ultra.ts], symbol: [entity-4.23-theo-ultra / entity-4.23-jelly-ultra], note: [Theo 与 Jelly 使用各自独立 MapPart；两条真实轨迹均先形成 360 grounded Ultra、在 DashUpdate 抓物进入 Pickup，再恢复 360。每条 25 个状态的 position／speed 最大误差均为 0，其余七类字段逐帧一致；Theo 场景作为正式视频主证据。]),
+  candidate-e2e: none,
 )

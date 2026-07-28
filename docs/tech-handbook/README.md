@@ -1,6 +1,6 @@
 # Celeste Next Gym 技巧手册
 
-`main.typ` 是双语技巧手册入口，`techs/` 下每个技巧一个 Typst 文件，`techs.typ` 负责按固定的 120 项基线统一 `include`。`techs.typ` 的顺序和这 120 个条目文件是唯一权威覆盖清单与证据载体。`template.typ` 统一控制条目版式、证据卡片与媒体展示，不要在单个条目里复制样式。
+`main.typ` 是双语技巧手册入口，`techs/` 下每个技巧一个 Typst 文件，`techs.typ` 负责按固定的 121 项清单统一 `include`。`techs.typ` 的顺序和这 121 个条目文件是唯一权威覆盖清单与证据载体。`template.typ` 统一控制条目版式、证据卡片与媒体展示，不要在单个条目里复制样式。
 
 编译：
 
@@ -8,7 +8,7 @@
 typst compile docs/tech-handbook/main.typ .tmp/tech-handbook.pdf
 ```
 
-该基线来自 Celeste Wiki Tech 页面最后修订于 2026-05-28 的本地快照。不要自行刷新在线 Wiki；只有用户明确要求时才能更新基线。`FinalBoss` 与玩家 `Attract` 状态是产品排除项，不进入 120 项分母。
+前 120 项基线来自 Celeste Wiki Tech 页面最后修订于 2026-05-28 的本地快照；第 121 项是用户明确要求加入的冲刺方向延迟采样机制。不要自行刷新在线 Wiki；只有用户明确要求时才能更新清单。`FinalBoss` 与玩家 `Attract` 状态是产品排除项，不进入 121 项分母。
 
 ## 标记完成的规则
 
@@ -53,7 +53,7 @@ typst compile docs/tech-handbook/main.typ .tmp/tech-handbook.pdf
 
 真实 E2E 必须比较 position、speed、state、facing、dashes、stamina、grounded、ducking、death，数值误差不得超过 `0.01`。
 
-每次修改条目状态时，首页会直接查询各条目的 `status` 并自动统计覆盖数；编译时也会断言 `techs.typ` 仍恰好 include 120 个条目，不再手工维护计数。
+每次修改条目状态时，首页会直接查询各条目的 `status` 并自动统计覆盖数；编译时也会断言 `techs.typ` 仍恰好 include 121 个条目，不再手工维护计数。
 
 ## 图片、GIF 与视频
 
