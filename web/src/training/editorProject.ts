@@ -24,6 +24,18 @@ export interface ProjectValidationIssue {
 const WORKSPACE_MANIFEST = 'celeste-gym.workspace.json'
 const DIRECTION_KEYS = new Set(['up', 'down', 'left', 'right'])
 
+export function createBlankGymMap(id = 'untitled-room'): GymMap {
+  return {
+    name: '未命名房间',
+    room: id,
+    bounds: { x: 0, y: 0, width: 320, height: 180 },
+    spawn: { x: 32, y: 152 },
+    solids: [{ x: 0, y: 152, width: 320, height: 28 }],
+    entities: [],
+    source_package: null,
+  }
+}
+
 function slug(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'training-map'
 }

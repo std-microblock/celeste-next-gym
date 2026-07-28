@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { KeyBindings, GymMap, SimState } from '../model'
 import type { VisualTheme } from '../visualThemes'
-import { createTrainingProject, openTrainingWorkspace, saveTrainingWorkspace, type TrainingProject } from '../training/editorProject'
+import { createBlankGymMap, createTrainingProject, openTrainingWorkspace, saveTrainingWorkspace, type TrainingProject } from '../training/editorProject'
 import { MapEditor } from './MapEditor'
 import { TrainingFlowEditor } from './TrainingFlowEditor'
 
@@ -29,7 +29,7 @@ export interface EditorWorkspaceProps {
 
 export function EditorWorkspace(props: EditorWorkspaceProps) {
   const [section, setSection] = useState<'map' | 'training'>('map')
-  const [projects, setProjects] = useState<TrainingProject[]>(() => [createTrainingProject(props.map)])
+  const [projects, setProjects] = useState<TrainingProject[]>(() => [createTrainingProject(createBlankGymMap())])
   const [projectIndex, setProjectIndex] = useState(0)
   const [directory, setDirectory] = useState<FileSystemDirectoryHandle | null>(null)
   const [saveState, setSaveState] = useState<'memory' | 'dirty' | 'saving' | 'saved' | 'error'>('memory')
@@ -37,6 +37,12 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
   const importRef = useRef<HTMLInputElement>(null)
   const revision = useRef(0)
   const current = projects[projectIndex] ?? projects[0]
+
+  useEffect(() => {
+    props.onMapChange(projects[0].map)
+    // The editor deliberately starts from a small blank room instead of the playground.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const replaceProjects = (next: TrainingProject[], nextIndex = projectIndex) => {
     revision.current += 1
@@ -131,7 +137,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
   }
 
   const addProject = () => {
-    const project = createTrainingProject(current.map)
+    const project = createTrainingProject(createBlankGymMap(`untitled-room-${projects.length + 1}`))
     project.id = `training-map-${projects.length + 1}`
     project.training.id = project.id
     project.mapFileName = `${project.id}.map.json`

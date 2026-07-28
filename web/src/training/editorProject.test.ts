@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { PLAYGROUND } from '../model'
-import { createTrainingProject, openTrainingWorkspace, saveTrainingWorkspace, validateTrainingProject } from './editorProject'
+import { createBlankGymMap, createTrainingProject, openTrainingWorkspace, saveTrainingWorkspace, validateTrainingProject } from './editorProject'
 
 function memoryDirectory() {
   const files = new Map<string, string>()
@@ -29,6 +29,14 @@ function memoryDirectory() {
 }
 
 describe('training editor projects', () => {
+  it('starts new projects with only a floor and spawn point', () => {
+    const map = createBlankGymMap()
+    expect(map.bounds).toEqual({ x: 0, y: 0, width: 320, height: 180 })
+    expect(map.solids).toEqual([{ x: 0, y: 152, width: 320, height: 28 }])
+    expect(map.entities).toEqual([])
+    expect(map.spawn).toEqual({ x: 32, y: 152 })
+  })
+
   it('creates a valid map-owned training project', () => {
     const project = createTrainingProject(PLAYGROUND)
     expect(project.training.version).toBe(2)
