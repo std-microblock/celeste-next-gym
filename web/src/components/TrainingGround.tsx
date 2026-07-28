@@ -23,7 +23,7 @@ interface OutcomeAnimation {
   phase: 'failed' | 'success'
   startedAt: number
   durationMs: number
-  resultFrame: number
+  resultSpeedX: number
 }
 
 const FAILURE_SLOWDOWN_MS = 1_000
@@ -50,6 +50,10 @@ export function timingAssessment(actualFrame: number | undefined, targetFrame: n
   const difference = actualFrame - targetFrame
   if (difference === 0) return '正中最佳点'
   return difference < 0 ? `早了 ${Math.abs(difference)} 帧` : `晚了 ${difference} 帧`
+}
+
+export function outcomeSpeedX(after: SimState): number {
+  return after.speed.x
 }
 
 function verificationKeys(buttons: FrameButtons, document: TrainingDefinition, step: number): string[] {
@@ -96,12 +100,12 @@ export function TrainingGround() {
 
   const applySession = (next: TrainingSession) => { sessionRef.current = next; setSession(next) }
   const applyPrediction = (next: PredictionPreview) => setPrediction(next)
-  const beginOutcome = (phase: OutcomeAnimation['phase'], resultFrame: number) => {
+  const beginOutcome = (phase: OutcomeAnimation['phase'], after: SimState) => {
     const next = {
       phase,
       startedAt: performance.now(),
       durationMs: phase === 'success' ? SUCCESS_SLOWDOWN_MS : FAILURE_SLOWDOWN_MS,
-      resultFrame,
+      resultSpeedX: outcomeSpeedX(after),
     }
     outcomeRef.current = next
     setOutcome(next)
@@ -222,8 +226,8 @@ export function TrainingGround() {
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
     return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up) }
-  // resetTo intentionally reads current state through React's render closure.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // resetTo intentionally reads current state through React's render closure.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetFrame, initial, document, candidates])
 
   useEffect(() => {
@@ -290,6 +294,7 @@ export function TrainingGround() {
               actual: semanticKeys,
               expected,
               outcome: verificationOutcome,
+              after
             })
             if (beforeSession.phase === 'pre_fuzz' && nextSession.phase === 'fuzz') {
               fuzzStartRef.current = currentFrame
@@ -299,10 +304,10 @@ export function TrainingGround() {
             applySession(nextSession)
             if (nextSession.phase === 'failed') {
               setNotice(nextSession.failure?.kind === 'input_order_mismatch' ? document.teaching.steps[nextSession.nextVerifiedInput]?.order_error.body ?? '输入顺序不正确。' : nextSession.failure?.kind === 'timing_window_miss' ? document.teaching.steps[nextSession.nextVerifiedInput]?.window_error.body ?? '错过输入窗口。' : document.entry.failure.body)
-              beginOutcome('failed', nextFrame)
+              beginOutcome('failed', after)
             } else if (nextSession.phase === 'success') {
               setNotice('成功：已命中可行候选。')
-              beginOutcome('success', currentFrame + document.assist.result_sample_after_input_frames)
+              beginOutcome('success', after)
             }
           }
         }).catch((error: Error) => { if (active) { setPlaying(false); setNotice(error.message) } }).finally(() => { simulating.current = false })
@@ -323,8 +328,7 @@ export function TrainingGround() {
   const actualInputs = session.actualInputs.map((input) => ({ ...input, frame: (fuzzStartFrame ?? 0) + input.frame }))
   const actualActionFrame = actualInputs.at(-1)?.frame
   const timing = timingAssessment(actualActionFrame, prediction.targetFrame)
-  const resultState = outcome === null ? state : snapshots[outcome.resultFrame]
-  const finalSpeed = resultState?.speed.x
+  const finalSpeed = outcome?.resultSpeedX
   const failureFrame = session.failure ? (fuzzStartFrame ?? 0) + session.failure.frame : undefined
   const resultPanel = outcome && <div className={`training-result-card ${outcome.phase}`}>
     <div className="training-result-heading">
@@ -333,7 +337,7 @@ export function TrainingGround() {
     </div>
     <TrainingResultTimeline targetFrame={prediction.targetFrame} windows={prediction.windows} actualInputs={actualInputs} failureFrame={failureFrame} />
     <div className="training-result-stats">
-      <div><span>本次最终 X 速度</span><b>{finalSpeed === undefined ? '采样中…' : finalSpeed.toFixed(2)}</b></div>
+      <div><span>本次最终 X 速度</span><b>{finalSpeed === undefined ? '—' : finalSpeed.toFixed(2)}</b></div>
       <div><span>最佳点结算速度</span><b>{bestFinalSpeed === undefined ? '—' : bestFinalSpeed.toFixed(2)}</b></div>
       <div><span>输入时机</span><b>{timing}</b></div>
     </div>

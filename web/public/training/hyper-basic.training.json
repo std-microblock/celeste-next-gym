@@ -11,19 +11,19 @@
   },
   "fuzz": {
     "version": 1,
-    "variables": [{ "name": "jump_frame", "range": { "from": 5, "to": 16 } }],
+    "variables": [{ "name": "jump_frame", "range": { "from": 5, "to": 30 } }],
     "inputs": [
       { "id": "hold_diagonal", "keys": ["right", "down"], "at": 0, "held_time": "hold::inf", "verify": false },
       { "id": "diagonal_dash", "keys": ["dash"], "at": 0, "verify": true },
       { "id": "jump", "keys": ["jump"], "at": "jump_frame", "verify": true }
     ],
-    "observe_until": "jump_frame + 8", "success": ["!final.dead", "final.speed.x > 220"],
+    "observe_until": "jump_frame+1", "success": ["!final.dead", "final.speed.x == 325"],
     "objectives": [{ "type": "maximize", "expression": "final.speed.x" }], "search": { "bindings": {}, "output": ["best", "windows", "coverage"] }
   },
   "teaching": { "preview_interval_frames": 10, "steps": [
     { "input_id": "diagonal_dash", "prompt": "按住右下并冲刺。", "order_error": { "title": "先右下冲", "body": "第一步需要右下冲刺。" }, "window_error": { "title": "冲刺时机不对", "body": "从训练开始时输入右下冲。" } },
     { "input_id": "jump", "prompt": "接近最佳点时按 Jump。", "order_error": { "title": "这里需要 Jump", "body": "右下冲后的下一关键输入是跳跃。" }, "window_error": { "title": "跳跃错过窗口", "body": "查看时间线中的绿色可行区间。" } }
   ] },
-  "assist": { "preview_interval_frames": 10, "result_sample_after_input_frames": 8, "auto_slowdown": { "enabled_by_default": true, "radius_frames": 12, "minimum_multiplier": 0.35 } },
+  "assist": { "preview_interval_frames": 10, "result_sample_after_input_frames": 0, "auto_slowdown": { "enabled_by_default": true, "radius_frames": 12, "minimum_multiplier": 0.85 } },
   "reset": { "default_frame": 0, "allow_temporary_scrub_reset": true, "safe_checkpoints": [0] }
 }

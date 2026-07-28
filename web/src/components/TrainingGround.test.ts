@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { makeEmptyButtons } from '../model'
-import { timingAssessment, trainingEntryDirectionPassed } from './TrainingGround'
+import { outcomeSpeedX, timingAssessment, trainingEntryDirectionPassed } from './TrainingGround'
+import type { SimState } from '../model'
 
 describe('training entry direction', () => {
   it('accepts a held down-right direction independently of the simulated last-aim timing', () => {
@@ -15,5 +16,9 @@ describe('training result timing', () => {
     expect(timingAssessment(9, 11)).toBe('早了 2 帧')
     expect(timingAssessment(11, 11)).toBe('正中最佳点')
     expect(timingAssessment(14, 11)).toBe('晚了 3 帧')
+  })
+
+  it('samples the same post-input X speed used by the outcome state', () => {
+    expect(outcomeSpeedX({ speed: { x: 325, y: -80 } } as SimState)).toBe(325)
   })
 })
