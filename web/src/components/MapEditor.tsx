@@ -116,7 +116,10 @@ function normalizedRect(from: { x: number; y: number }, to: { x: number; y: numb
 }
 
 function toolLabel(tool: EditorTool): string {
-  if (!tool.startsWith('entity:')) return ({ select: '选择', solid: '实心块', spawn: '出生点', erase: '删除' } as const)[tool]
+  if (tool === 'select') return '选择'
+  if (tool === 'solid') return '实心块'
+  if (tool === 'spawn') return '出生点'
+  if (tool === 'erase') return '删除'
   const kind = tool.slice('entity:'.length) as EntityKind
   return ENTITY_TEMPLATES.find((template) => template.kind === kind)?.label ?? kind
 }
