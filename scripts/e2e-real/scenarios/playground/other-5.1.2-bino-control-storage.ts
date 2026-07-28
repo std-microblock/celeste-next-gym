@@ -14,11 +14,14 @@ export const scenario = defineScenario({
   mapParts,
   name: 'other-5.1.2-bino-control-storage',
   initial: { pos: [496, 496], speed: [0, 0], on_ground: true },
-  inputs: Array.from({ length: 240 }, (_, frame) => input({
+  inputs: Array.from({ length: 280 }, (_, frame) => input({
     talk_pressed: frame === 0,
-    move_x: frame >= 100 && frame < 180 ? 1 : 0,
-    jump_pressed: frame === 180,
-    jump_held: frame === 180,
+    move_x: frame >= 100 && frame < 220 ? 1 : 0,
+    // Wait until the Booster has returned Player to Normal and the stored
+    // entity coroutine is demonstrably driving the camera, then use its
+    // MenuCancel/Jump exit path.
+    jump_pressed: frame === 220,
+    jump_held: frame === 220,
   })),
   verify(states) {
     const interruptedAt = states.findIndex((state) => field<boolean>(state, 'boosterBoostingPlayer') === true)
@@ -29,6 +32,7 @@ export const scenario = defineScenario({
     const storedControl = states.some((state, frame) => {
       if (frame === 0 || state.state !== 0 || field<boolean>(state, 'lookoutInteracting') !== true) return false
       const previous = states[frame - 1]
+      if (!previous) return false
       const camera = field<readonly number[]>(state, 'levelCamera')
       const previousCamera = field<readonly number[]>(previous, 'levelCamera')
       return Math.abs(state.pos[0] - previous.pos[0]) > 0.01
@@ -36,7 +40,9 @@ export const scenario = defineScenario({
     })
     semanticAssert(storedControl, scenario.name,
       'Normal movement and the entity-owned Lookout camera never advanced on the same frame')
-    semanticAssert(field<boolean>(states.at(-1), 'lookoutInteracting') === false, scenario.name,
-      'jump exit did not clear the stored Lookout interaction')
+    const clearedAt = states.findIndex((state, frame) => frame > 220
+      && field<boolean>(state, 'lookoutInteracting') === false)
+    semanticAssert(clearedAt >= 0, scenario.name,
+      'jump exit did not clear the stored Lookout interaction after Booster recovery')
   },
 })
