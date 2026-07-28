@@ -15,10 +15,11 @@ export const scenario = defineScenario({
   name: 'entity-4.18.3-core-block-entity-displacement',
   initial: { pos: [720, 480], speed: [0, 0] },
   inputs: inputFrames(220, (frame) => input({
-    // Clear to the one-pixel-separated right platform first. The leftward
-    // crossing begins only after the observed respawn frame, while the spike
-    // is still disabled by BounceBlock's 0.35-second reform alarm.
-    move_x: frame >= 36 && frame < 108 ? 1 : frame >= 135 && frame < 170 ? -1 : 0,
+    // Clear to the one-pixel-separated right platform first.  Begin the
+    // leftward return early enough to enter the native 12-frame WindingUp
+    // just after reform, while still remaining outside the source body at
+    // its real BlockedCheck frame.
+    move_x: frame >= 36 && frame < 108 ? 1 : frame >= 105 && frame < 170 ? -1 : 0,
     jump_pressed: frame === 80,
     jump_held: frame >= 80 && frame < 90,
   })),
