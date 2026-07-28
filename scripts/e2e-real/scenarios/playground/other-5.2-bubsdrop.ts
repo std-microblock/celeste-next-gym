@@ -9,7 +9,7 @@ export const mapParts = [TECH_OTHER_5_2_BUBSDROP] as const
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET, status: 'candidate',
   tags: ['feature:transition', 'feature:jump-thru', 'feature:wall-jump', 'debt:respawn-point'],
-  techniqueIds: ['5.2'], mapParts, name: 'other-5.2-bubsdrop',
+  techniqueIds: ['5.2'], mapParts, name: 'other-5.2-bubsdrop', room: 'playground',
   initial: { pos: [452, 4], speed: [0, -160], dashes: 0, stamina: 20 },
   inputs: Array.from({ length: 140 }, (_, frame) => input({
     jump_pressed: frame === 41,
