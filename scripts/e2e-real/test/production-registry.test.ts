@@ -8,12 +8,12 @@ describe('production scenario registry', () => {
   const registry = buildRegistry(scenarios)
 
   it('derives all target and status counts from explicit indexes', () => {
-    assert.equal(registry.scenarios.length, 186)
+    assert.equal(registry.scenarios.length, 188)
     assert.equal(registry.byTarget.get('playground')?.length, 144)
-    assert.equal(registry.byTarget.get('area-1')?.length, 36)
+    assert.equal(registry.byTarget.get('area-1')?.length, 38)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 164, candidate: 22 })
+    assert.deepEqual(registry.counts, { active: 168, candidate: 20 })
   })
 
   it('keeps evidence-less scenarios as opt-in candidates', () => {
@@ -33,8 +33,6 @@ describe('production scenario registry', () => {
       'entity-4.26-theovator',
       'entity-4.29-springboost-cancel',
       'entity-4.6.2-cloud-hyper-bunnyhop',
-      'other-5.1-bino-tech',
-      'other-5.1.1-bino-clip',
       'other-5.1.2-bino-control-storage',
       'other-5.1.3-bino-interaction-storage',
       'other-5.1.4-bino-extensions',
