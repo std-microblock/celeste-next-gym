@@ -1617,10 +1617,15 @@ fn player_on_squish(p: &mut PlayerSnapshot, env: &SolidCollisionEnv, pusher: Rec
                     for y_sign in [1.0, -1.0] {
                         let candidate =
                             Vec2::new(origin.x + x as f32 * x_sign, origin.y + y as f32 * y_sign);
+                        // Player.OnSquish re-enables the pusher only for the
+                        // two initial Solid checks, then sets
+                        // data.Pusher.Collidable = false before calling
+                        // TrySquishWiggle. The wiggle itself must therefore
+                        // search against the room solids alone.
                         if !env_solid_at(
                             env,
                             current_player_rect(p, candidate.x, candidate.y),
-                            Some(pusher),
+                            None,
                         ) {
                             p.pos = candidate;
                             if ducked && !env_solid_at(env, player_rect(p.pos.x, p.pos.y), None) {
@@ -3261,6 +3266,9 @@ fn advance_gliders(p: &mut PlayerSnapshot, map: &mut Map) {
             map.entities[entity_index].bounds.y = -1_000_000.0;
             continue;
         }
+        // Glider.Update checks this timer before its DeltaTime subtraction,
+        // so the final positive frame still suppresses gravity.
+        let spring_no_gravity_active = glider.no_gravity_timer > 0.0;
         glider.cannot_hold_timer = (glider.cannot_hold_timer - p.frame_delta_time).max(0.0);
         glider.gravity_timer = (glider.gravity_timer - p.frame_delta_time).max(0.0);
         glider.no_gravity_timer = (glider.no_gravity_timer - p.frame_delta_time).max(0.0);
@@ -3288,7 +3296,7 @@ fn advance_gliders(p: &mut PlayerSnapshot, map: &mut Map) {
                     10.0
                 };
                 glider.speed.x = approach(glider.speed.x, 0.0, friction * p.frame_delta_time);
-                if glider.no_gravity_timer <= 0.0 {
+                if !spring_no_gravity_active {
                     glider.speed.y = approach(glider.speed.y, 30.0, gravity * p.frame_delta_time);
                 }
             }
@@ -4232,7 +4240,6 @@ fn begin_dash(
 
 fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     if !holding_holdable(p)
-        && p.dash_dir != Vec2::default()
         && input.grab_held
         && p.stamina >= 20.0
         && can_unduck(p, map)
@@ -7081,6 +7088,27 @@ mod tests {
         assert!(!p.dead);
         assert_eq!(p.last_lift_speed, Vec2::new(0.0, 120.0));
     }
+
+    #[test]
+    fn squish_wiggle_disables_the_pusher_after_target_position_checks() {
+        let env = SolidCollisionEnv::default();
+        let pusher = Rect::new(52.0, 43.0, 8.0, 11.0);
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(56.0, 48.0),
+            ..PlayerSnapshot::default()
+        };
+
+        let target = p.pos;
+        player_on_squish(&mut p, &env, pusher, target);
+
+        // The original position and TargetPosition are both inside the
+        // pusher. Player.OnSquish disables it before TrySquishWiggle, which
+        // lets the first one-pixel wiggle succeed instead of killing Player.
+        assert_eq!(p.pos, Vec2::new(56.0, 49.0));
+        assert!(!p.ducking);
+        assert!(!p.dead);
+    }
+
     #[test]
     fn zip_mover_runtime_invokes_target_position_jump_thru_clip() {
         let map = Map {
@@ -7127,6 +7155,57 @@ mod tests {
         assert!(!state.dead);
         assert!(state.zip_movers[0].position.y > 20.0);
         assert!(state.last_lift_speed.y > 0.0);
+    }
+
+    #[test]
+    fn zip_mover_departure_and_return_pushes_player_through_jump_thru() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 800.0, 600.0),
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::ZipMover,
+                    bounds: Rect::new(592.0, 400.0, 64.0, 16.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![Vec2::new(592.0, 300.0)],
+                    name: "zipMover".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::JumpThru,
+                    bounds: Rect::new(568.0, 416.0, 112.0, 8.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "jumpThru".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let inputs: Vec<_> = (0..260).map(|frame| InputState {
+            move_x: if frame < 10 { 1 } else if (20..30).contains(&frame) { -1 } else { 0 },
+            ..InputState::default()
+        }).collect();
+        let trace = simulate_trace(PlayerSnapshot {
+            pos: Vec2::new(652.0, 400.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        }, &inputs, &map, inputs.len() as u32).unwrap();
+        let landed = trace
+            .states
+            .iter()
+            .position(|state| state.on_ground && state.pos.y == 416.0)
+            .expect("player should land on the JumpThru after leaving the ZipMover");
+        let clipped = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(landed + 1)
+            .find(|(_, state)| state.pos.y > 416.0 && !state.dead)
+            .expect("the returning ZipMover should push the player through the JumpThru");
+        assert_eq!(clipped.1.zip_movers[0].phase, 4);
+        assert!(trace.states[..=clipped.0].iter().all(|state| !state.dead));
     }
     #[test]
     fn ordinary_downward_solid_push_moves_the_actor_without_squish() {
@@ -7623,12 +7702,14 @@ mod tests {
     }
 
     #[test]
-    fn dash_pickup_cancels_into_source_pickup_tween_and_restores_speed() {
+    fn dash_pickup_runs_before_the_dash_coroutine_samples_direction() {
         let p = PlayerSnapshot {
             pos: Vec2::new(60.0, 160.0),
             speed: Vec2::new(360.0, 0.0),
             state: PlayerState::Dash,
-            dash_dir: Vec2::new(1.0, 0.0),
+            // DashCoroutine sets DashDir only after its initial yield, but
+            // DashUpdate's Holdable loop executes before that coroutine.
+            dash_dir: Vec2::default(),
             state_timer: 0.1,
             on_ground: true,
             ..PlayerSnapshot::default()
@@ -7650,6 +7731,46 @@ mod tests {
         assert_eq!(trace.states[12].state, PlayerState::Pickup);
         assert_eq!(trace.states[13].state, PlayerState::Normal);
         assert_eq!(trace.states[13].speed, Vec2::new(360.0, 0.0));
+    }
+
+    #[test]
+    fn dash_pickup_after_the_initial_yield_caches_live_updash_speed() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 160.0),
+            state: PlayerState::Dash,
+            // This is the state at the first DashUpdate following the
+            // coroutine's initial `yield return null`: it must publish the
+            // up-dash speed before a later holdable check can cache it.
+            state_timer: DASH_TIME + DT,
+            last_aim: Vec2::new(0.0, -1.0),
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(
+            p,
+            &[
+                InputState {
+                    move_y: -1,
+                    ..InputState::default()
+                },
+                InputState {
+                    move_y: -1,
+                    grab_held: true,
+                    ..InputState::default()
+                },
+            ],
+            &theo_crystal_map(),
+            2,
+        )
+        .unwrap();
+
+        assert_eq!(trace.states[1].state, PlayerState::Dash);
+        assert_eq!(trace.states[1].dash_dir, Vec2::new(0.0, -1.0));
+        assert_eq!(trace.states[1].speed, Vec2::new(0.0, -DASH_SPEED));
+        assert_eq!(trace.states[2].state, PlayerState::Pickup);
+        assert_eq!(
+            trace.states[2].pickup_old_speed,
+            Vec2::new(0.0, -DASH_SPEED)
+        );
     }
 
     #[test]
@@ -8043,6 +8164,26 @@ mod tests {
         assert_eq!(next.gliders[0].speed.y, -160.0);
         assert!((next.gliders[0].speed.x - 39.666_668).abs() < 0.000_1);
         assert_eq!(next.gliders[0].no_gravity_timer, 0.15);
+    }
+
+    #[test]
+    fn glider_spring_no_gravity_keeps_its_final_source_frame() {
+        let map = glider_map();
+        let p = PlayerSnapshot {
+            pos: Vec2::new(200.0, 100.0),
+            gliders: vec![crate::GliderSnapshot {
+                position: Vec2::new(80.0, 100.0),
+                speed: Vec2::new(0.0, -160.0),
+                no_gravity_timer: DT,
+                ..crate::GliderSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+
+        let next = simulate(p, &[InputState::default()], &map, 1).unwrap();
+
+        assert_eq!(next.gliders[0].speed.y, -160.0);
+        assert_eq!(next.gliders[0].no_gravity_timer, 0.0);
     }
 
     #[test]
