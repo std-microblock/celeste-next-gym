@@ -1788,13 +1788,14 @@ fn step(
     // restores the normal collider while falling in open air only after
     // jumpGraceTimer expires and CanUnDuck succeeds. DashBegin's downward
     // crouch therefore survives while the source coyote window is active.
-    if p.ducking
+    if (p.ducking || p.star_fly_hitbox_preserved)
         && p.speed.y > 0.0
         && !p.on_ground
         && p.jump_grace_timer <= 0.0
         && can_unduck(p, map)
     {
         p.ducking = false;
+        p.star_fly_hitbox_preserved = false;
     }
 
     if p.state != PlayerState::DreamDash {
@@ -2064,7 +2065,11 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
             if jump_wall == 0 {
                 return;
             }
-            if input.grab_held && p.stamina > 0.0 && facing_dir == jump_wall {
+            if p.holding_theo.is_none()
+                && input.grab_held
+                && p.stamina > 0.0
+                && facing_dir == jump_wall
+            {
                 climb_jump(p, jump_wall);
             } else {
                 p.jump_buffer_timer = 0.0;
@@ -2772,9 +2777,18 @@ fn star_fly_rect(x: f32, y: f32) -> Rect {
     Rect::new(x - 4.0, y - 10.0, 8.0, 8.0)
 }
 
+fn star_fly_hurt_rect(x: f32, y: f32) -> Rect {
+    Rect::new(x - 3.0, y - 9.0, 6.0, 6.0)
+}
+
 fn current_player_rect(p: &PlayerSnapshot, x: f32, y: f32) -> Rect {
-    if p.state == PlayerState::StarFly || p.star_fly_hitbox_preserved {
+    if p.state == PlayerState::StarFly {
         star_fly_rect(x, y)
+    } else if p.star_fly_hitbox_preserved {
+        // Player.Update temporarily assigns the StarFly hurtbox while running
+        // PlayerCollider callbacks. Player.Bounce caches that active collider,
+        // so an IceBall cancellation restores the 6x6 hurtbox as Collider.
+        star_fly_hurt_rect(x, y)
     } else if p.ducking {
         duck_player_rect(x, y)
     } else {
@@ -3089,9 +3103,8 @@ fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount:
 
 fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
     if let Some(from_y) = p.pending_bounce_from_y.take() {
-        // FireBall's PlayerCollider runs after the player has entered its top
-        // collider. Collector snapshots expose that callback on the next
-        // player frame, after one final movement using the previous state.
+        // Backward compatibility for portable snapshots produced before
+        // FireBall callbacks were aligned to the source's same-frame order.
         bounce(p, map, from_y);
         return;
     }
@@ -3207,7 +3220,11 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
     for (entity_index, entity) in map.entities.iter().enumerate() {
         let player_box = if matches!(
             entity.kind,
-            EntityKind::Spikes | EntityKind::FlyFeather | EntityKind::Bumper | EntityKind::Spring
+            EntityKind::Spikes
+                | EntityKind::FlyFeather
+                | EntityKind::Bumper
+                | EntityKind::Spring
+                | EntityKind::IceBall
         ) {
             current_player_hurt_rect(p)
         } else {
@@ -3362,12 +3379,15 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                 );
                 if (p.bounce_reuse_timer <= 0.0 || p.last_bounce_target != target)
                     && p.speed.y >= 0.0
-                    && current_player_rect(p, p.pos.x, p.pos.y).bottom() <= target.y + 4.0
+                    && current_player_hurt_rect(p).bottom() <= target.y + 4.0
                 {
                     p.last_bounce_target = target;
                     // A cold FireBall becomes non-collidable after the bounce.
                     p.bounce_reuse_timer = f32::MAX;
-                    p.pending_bounce_from_y = Some(target.y - 2.0);
+                    // Player.Update runs PlayerCollider checks after its
+                    // movement pass. FireBall.OnBounce therefore corrects the
+                    // just-moved position and changes state on this same frame.
+                    bounce(p, map, target.y - 2.0);
                 }
             }
             EntityKind::Puffer
@@ -5073,6 +5093,218 @@ mod tests {
     }
 
     #[test]
+    fn neutral_drop_releases_theo_without_throw_speed_or_player_recoil() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 160.0),
+            on_ground: true,
+            holding_theo: Some(0),
+            theo_crystals: vec![crate::TheoCrystalSnapshot {
+                position: Vec2::new(60.0, 148.0),
+                held: true,
+                ..crate::TheoCrystalSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let dropped = simulate(
+            p,
+            &[InputState {
+                move_y: 1,
+                ..InputState::default()
+            }],
+            &theo_crystal_map(),
+            1,
+        )
+        .unwrap();
+
+        assert_eq!(dropped.holding_theo, None);
+        assert_eq!(dropped.speed.x, 0.0);
+        assert_eq!(dropped.theo_crystals[0].speed, Vec2::default());
+        assert!(dropped.theo_crystals[0].cannot_hold_timer > 0.0);
+        assert!(dropped.theo_crystals[0].gravity_timer > 0.0);
+    }
+
+    #[test]
+    fn neutral_drop_can_start_a_dash_on_the_same_normal_update() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 120.0),
+            holding_theo: Some(0),
+            theo_crystals: vec![crate::TheoCrystalSnapshot {
+                position: Vec2::new(60.0, 108.0),
+                held: true,
+                ..crate::TheoCrystalSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let dropped = simulate(
+            p,
+            &[InputState {
+                move_x: 1,
+                move_y: 1,
+                dash_pressed: true,
+                ..InputState::default()
+            }],
+            &theo_crystal_map(),
+            1,
+        )
+        .unwrap();
+
+        assert_eq!(dropped.state, PlayerState::Dash);
+        assert_eq!(dropped.holding_theo, None);
+        assert_eq!(dropped.theo_crystals[0].speed, Vec2::default());
+        assert!(dropped.theo_crystals[0].cannot_hold_timer > 0.0);
+    }
+
+    #[test]
+    fn held_theo_turns_grabbed_wall_jump_into_a_normal_neutral() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 160.0, 180.0),
+            solids: vec![Rect::new(64.0, 0.0, 16.0, 180.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::TheoCrystal,
+                bounds: Rect::new(56.0, 90.0, 8.0, 10.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "theoCrystal".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 100.0),
+            facing: true,
+            holding_theo: Some(0),
+            theo_crystals: vec![crate::TheoCrystalSnapshot {
+                position: Vec2::new(60.0, 88.0),
+                held: true,
+                ..crate::TheoCrystalSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let jumped = simulate(
+            p,
+            &[InputState {
+                jump_pressed: true,
+                jump_held: true,
+                grab_held: true,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+
+        assert_eq!(jumped.state, PlayerState::Normal);
+        assert_eq!(jumped.speed, Vec2::new(-WALL_JUMP_H, JUMP_SPEED));
+        assert_eq!(jumped.holding_theo, Some(0));
+        assert_eq!(jumped.wall_boost_timer, 0.0);
+    }
+
+    #[test]
+    fn theo_neutral_drop_dash_regrab_waits_out_cannot_hold() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 160.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..60)
+            .map(|frame| InputState {
+                move_x: if (14..28).contains(&frame) {
+                    -1
+                } else if frame >= 28 {
+                    1
+                } else {
+                    0
+                },
+                move_y: if frame == 23 { 1 } else { 0 },
+                dash_pressed: frame == 28,
+                grab_held: frame <= 22 || frame >= 35,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &theo_crystal_map(), inputs.len() as u32).unwrap();
+        let released = trace
+            .states
+            .iter()
+            .position(|state| {
+                state.holding_theo.is_none() && state.theo_crystals[0].cannot_hold_timer > 0.0
+            })
+            .unwrap();
+        let regrabbed = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(released + 1)
+            .find(|(_, state)| state.state == PlayerState::Pickup && state.holding_theo == Some(0))
+            .map(|(frame, _)| frame)
+            .unwrap();
+
+        assert_eq!(released, 24);
+        assert!(
+            trace.states[released + 1..regrabbed]
+                .iter()
+                .all(|state| state.holding_theo.is_none())
+        );
+        assert_eq!(trace.states[regrabbed].pickup_old_speed.x, DASH_SPEED);
+        assert_eq!(trace.states[regrabbed].speed, Vec2::default());
+    }
+
+    #[test]
+    fn neutral_drop_climb_jump_regrabs_theo_after_the_lockout() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 160.0, 180.0),
+            solids: vec![
+                Rect::new(0.0, 176.0, 160.0, 4.0),
+                Rect::new(64.0, 0.0, 16.0, 176.0),
+            ],
+            entities: vec![crate::Entity {
+                kind: EntityKind::TheoCrystal,
+                bounds: Rect::new(56.0, 90.0, 8.0, 10.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "theoCrystal".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 100.0),
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..50)
+            .map(|frame| InputState {
+                move_y: if frame == 23 { 1 } else { 0 },
+                jump_pressed: frame == 25,
+                jump_held: frame == 25,
+                grab_held: frame <= 22 || frame >= 24,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
+        let dropped = trace
+            .states
+            .iter()
+            .position(|state| {
+                state.holding_theo.is_none() && state.theo_crystals[0].cannot_hold_timer > 0.0
+            })
+            .unwrap();
+        let jumped = dropped + 2;
+        let regrabbed = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(jumped + 1)
+            .find(|(_, state)| state.state == PlayerState::Pickup && state.holding_theo == Some(0))
+            .map(|(frame, _)| frame)
+            .unwrap();
+
+        assert_eq!(trace.states[jumped].speed.y, JUMP_SPEED);
+        assert!(trace.states[jumped].wall_boost_timer > 0.0);
+        assert!(trace.states[regrabbed].pos.y < 160.0);
+    }
+
+    #[test]
     fn playground_theo_cancels_a_grounded_ultra_before_the_right_wall() {
         let p = PlayerSnapshot {
             pos: Vec2::new(820.0, 496.0),
@@ -5100,6 +5332,63 @@ mod tests {
         assert_eq!(trace.states[pickup_index].pickup_old_speed.x, 360.0);
         assert!(trace.states[pickup_index].pos.x < 864.0);
         assert_eq!(trace.states[pickup_index].holding_theo, Some(0));
+    }
+
+    #[test]
+    fn grounded_ultra_pickup_cancel_skips_dash_end_speed_normalization() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 160.0),
+            speed: Vec2::new(300.0, 0.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..24)
+            .map(|frame| InputState {
+                move_x: 1,
+                move_y: 1,
+                dash_pressed: frame == 0,
+                grab_held: (5..=20).contains(&frame),
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p.clone(), &inputs, &theo_crystal_map(), 24).unwrap();
+        let pickup = trace
+            .states
+            .iter()
+            .position(|state| state.state == PlayerState::Pickup)
+            .unwrap();
+        let restored = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(pickup + 1)
+            .find(|(_, state)| state.state == PlayerState::Normal)
+            .map(|(frame, _)| frame)
+            .unwrap();
+
+        assert_eq!(trace.states[pickup - 1].state, PlayerState::Dash);
+        assert_eq!(trace.states[pickup - 1].speed, Vec2::new(360.0, 0.0));
+        assert!(trace.states[pickup - 1].ducking);
+        assert_eq!(trace.states[pickup].pickup_old_speed, Vec2::new(360.0, 0.0));
+        assert_eq!(trace.states[pickup].speed, Vec2::default());
+        assert!(!trace.states[pickup].ducking);
+        assert!(!trace.states[pickup].dash_end_pending);
+        assert_eq!(trace.states[restored].speed, Vec2::new(360.0, 0.0));
+
+        let without_cancel: Vec<_> = inputs
+            .iter()
+            .map(|input| InputState {
+                grab_held: false,
+                ..*input
+            })
+            .collect();
+        let natural = simulate_trace(p, &without_cancel, &theo_crystal_map(), 24).unwrap();
+        assert!(
+            natural
+                .states
+                .iter()
+                .any(|state| state.state == PlayerState::Normal && state.speed.x <= END_DASH_SPEED)
+        );
     }
 
     #[test]
@@ -8872,10 +9161,8 @@ mod tests {
         };
         let map = ice_ball_map();
         interact(&mut bounced, &map, InputState::default());
-        assert_eq!(bounced.state, PlayerState::Dash);
-        assert_eq!(bounced.pending_bounce_from_y, Some(98.0));
-        interact(&mut bounced, &map, InputState::default());
         assert_eq!(bounced.state, PlayerState::Normal);
+        assert_eq!(bounced.pending_bounce_from_y, None);
         assert_eq!(bounced.pos, Vec2::new(96.0, 98.0));
         assert_eq!(bounced.speed, Vec2::new(240.0, -140.0));
         assert_eq!(bounced.dashes, 1);
@@ -8902,7 +9189,7 @@ mod tests {
     }
 
     #[test]
-    fn ice_ball_pending_callback_keeps_split_simulation_composable() {
+    fn ice_ball_same_frame_callback_keeps_split_simulation_composable() {
         let initial = PlayerSnapshot {
             pos: Vec2::new(317.0, 155.0),
             ..PlayerSnapshot::default()
@@ -8917,11 +9204,17 @@ mod tests {
             })
             .collect();
         let map = crate::mechanics_playground();
+        let trace = simulate_trace(initial.clone(), &inputs[..6], &map, 6).unwrap();
+        assert_eq!(trace.states[5].state, PlayerState::Dash);
+        assert_eq!(trace.states[5].speed, Vec2::new(169.705_63, 169.705_63));
+        assert_eq!(trace.states[6].state, PlayerState::Normal);
+        assert_eq!(trace.states[6].speed.y, -140.0);
+        assert_eq!(trace.states[6].pending_bounce_from_y, None);
         let whole = simulate(initial.clone(), &inputs, &map, inputs.len() as u32).unwrap();
-        let pending = simulate(initial, &inputs[..5], &map, 5).unwrap();
-        assert_eq!(pending.pending_bounce_from_y, Some(158.0));
-        assert_eq!(pending.state, PlayerState::Dash);
-        let split = simulate(pending, &inputs[5..], &map, (inputs.len() - 5) as u32).unwrap();
+        let first = simulate(initial, &inputs[..5], &map, 5).unwrap();
+        assert_eq!(first.pending_bounce_from_y, None);
+        assert_eq!(first.state, PlayerState::Dash);
+        let split = simulate(first, &inputs[5..], &map, (inputs.len() - 5) as u32).unwrap();
         assert_eq!(split, whole);
     }
 
@@ -9003,24 +9296,43 @@ mod tests {
     #[test]
     fn ice_ball_feather_cancel_restores_star_fly_collider_after_normal_hurtbox() {
         let mut bounced = PlayerSnapshot {
-            pos: Vec2::new(100.0, 100.0),
+            pos: Vec2::new(100.0, 101.0),
             state: PlayerState::StarFly,
             star_fly_timer: 1.0,
             ..PlayerSnapshot::default()
         };
         let map = ice_ball_map();
         interact(&mut bounced, &map, InputState::default());
-        interact(&mut bounced, &map, InputState::default());
         assert_eq!(bounced.state, PlayerState::Normal);
         assert!(bounced.star_fly_hitbox_preserved);
         assert!(!bounced.ducking);
         assert_eq!(
             current_player_rect(&bounced, bounced.pos.x, bounced.pos.y),
-            star_fly_rect(bounced.pos.x, bounced.pos.y)
+            star_fly_hurt_rect(bounced.pos.x, bounced.pos.y)
         );
         assert_eq!(
             current_player_hurt_rect(&bounced),
             player_hurt_rect(bounced.pos.x, bounced.pos.y)
+        );
+    }
+
+    #[test]
+    fn preserved_star_fly_hurtbox_returns_to_normal_when_falling() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(100.0, 80.0),
+            speed: Vec2::new(0.0, 1.0),
+            star_fly_hitbox_preserved: true,
+            ..PlayerSnapshot::default()
+        };
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            ..Map::default()
+        };
+        let p = simulate(p, &[InputState::default()], &map, 1).unwrap();
+        assert!(!p.star_fly_hitbox_preserved);
+        assert_eq!(
+            current_player_rect(&p, p.pos.x, p.pos.y),
+            player_rect(p.pos.x, p.pos.y)
         );
     }
 

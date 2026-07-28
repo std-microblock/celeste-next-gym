@@ -8,26 +8,28 @@ describe('production scenario registry', () => {
   const registry = buildRegistry(scenarios)
 
   it('derives all target and status counts from explicit indexes', () => {
-    assert.equal(registry.scenarios.length, 146)
-    assert.equal(registry.byTarget.get('playground')?.length, 104)
+    assert.equal(registry.scenarios.length, 152)
+    assert.equal(registry.byTarget.get('playground')?.length, 110)
     assert.equal(registry.byTarget.get('area-1')?.length, 36)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 138, candidate: 8 })
+    assert.deepEqual(registry.counts, { active: 142, candidate: 10 })
   })
 
-  it('keeps evidence-less entity scenarios as opt-in candidates', () => {
+  it('keeps evidence-less scenarios as opt-in candidates', () => {
     const candidates = registry.scenarios
       .filter((scenario) => scenario.status === 'candidate')
       .map((scenario) => scenario.name)
     assert.deepEqual(candidates, [
       'entity-4.10.3.2-holdable-dream-hyper',
       'entity-4.10.4-holdable-grabless-dream-hyper',
-      'entity-4.15.2-feather-hitbox-preservation',
       'entity-4.17-moon-boost',
       'entity-4.18-reform-tech',
       'entity-4.18.1-reform-kick',
       'entity-4.18.3-core-block-entity-displacement',
+      'entity-4.20-theo-regrab',
+      'entity-4.22.2-holdable-climb',
+      'entity-4.22.3-holdable-neutral-jump',
       'entity-4.6.2-cloud-hyper-bunnyhop',
     ])
     assert.equal(selectScenarios(registry, { target: 'playground' }).some((scenario) => scenario.status === 'candidate'), false)
@@ -50,8 +52,8 @@ describe('production scenario registry', () => {
     assert.equal(new Set(parts).size, techniqueIds.length)
   })
 
-  it('does not invent the absent 2.8.2.1 scenario and wires map parts by target', () => {
-    assert.equal(registry.scenarios.some((scenario) => scenario.name.includes('2.8.2.1')), false)
+  it('links the 2.8.2.1 proof and control scenarios and wires map parts by target', () => {
+    assert.equal(registry.scenarios.filter((scenario) => scenario.techniqueIds.includes('2.8.2.1')).length, 2)
     assert.equal(registry.scenarios.filter((scenario) => scenario.target.kind === 'external').every((scenario) => scenario.mapParts.length === 0), true)
     assert.equal(registry.scenarios.filter((scenario) => scenario.target.kind === 'playground').every((scenario) => scenario.mapParts.length > 0), true)
   })
@@ -90,5 +92,31 @@ describe('production scenario registry', () => {
       'tech.3.12.1.cornerboost-wallboost',
       'tech.3.13.cornerslip',
     ])
+  })
+
+  it('keeps every feather proof in an independently named map part', () => {
+    const techniqueIds = ['4.12', '4.13', '4.15.1', '4.15.2']
+    const parts = techniqueIds.map((techniqueId) => {
+      const scenario = registry.scenarios.find((candidate) => candidate.techniqueIds.includes(techniqueId))
+      assert.ok(scenario, `missing scenario for ${techniqueId}`)
+      assert.equal(scenario.mapParts.length, 1)
+      return scenario.mapParts[0]?.id
+    })
+    assert.equal(new Set(parts).size, techniqueIds.length)
+    assert.deepEqual(parts, [
+      'tech.entity-4.12-featherboost',
+      'tech.entity-4.13-feather-super',
+      'tech.entity-4.15.1-feather-clip',
+      'tech.entity-4.15.2-hitbox-preservation',
+    ])
+  })
+
+  it('keeps grounded ultra cancel in its own Theo-only map part', () => {
+    const linked = registry.scenarios.filter((scenario) => scenario.techniqueIds.includes('2.8.2.1'))
+    for (const scenario of linked) {
+      assert.equal(scenario.mapParts.length, 1)
+      assert.equal(scenario.mapParts[0]?.id, 'tech.2.8.2.1.grounded-ultra-cancel')
+      assert.deepEqual(scenario.mapParts[0]?.dependencies, [])
+    }
   })
 })
