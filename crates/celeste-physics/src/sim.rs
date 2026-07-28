@@ -1763,8 +1763,9 @@ fn advance_heart_gems(p: &mut PlayerSnapshot) {
             }
             2 => {
                 // The coroutine resumes on the first scene update after the
-                // raw-time freeze and writes Engine.TimeRate before its loop.
-                p.time_rate = 0.5;
+                // raw-time freeze, writes Engine.TimeRate, and immediately
+                // executes the first raw-time approach before yielding.
+                p.time_rate = approach(0.5, 0.0, DT * 0.25);
                 heart.phase = 3;
             }
             3 => {
@@ -3887,7 +3888,11 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                     if let Some(heart) = p.heart_gems.get_mut(index) {
                         heart.collected = true;
                         heart.phase = 1;
-                        heart.wait_frames = 1;
+                        // HeartGem.Update has already advanced components when
+                        // OnPlayer creates the coroutine. It first runs and
+                        // yields on the next entity frame, then freezes on the
+                        // following frame.
+                        heart.wait_frames = 2;
                     }
                 } else {
                     point_bounce(p, target);
@@ -6660,7 +6665,7 @@ mod tests {
                 shielded: false,
                 single_use: false,
                 nodes: vec![],
-                name: "heartGem".to_owned(),
+                name: "blackGem".to_owned(),
             }],
             ..Map::default()
         };
@@ -6684,10 +6689,11 @@ mod tests {
         let half_time = trace
             .states
             .iter()
-            .position(|state| (state.time_rate - 0.5).abs() < 0.001)
+            .position(|state| (state.time_rate - (0.5 - DT * 0.25)).abs() < 0.001)
             .unwrap();
 
-        assert_eq!(frozen, collected + 1);
+        assert_eq!(frozen, collected + 2);
+        assert!((trace.states[half_time].time_rate - (0.5 - DT * 0.25)).abs() < 0.001);
         assert!(half_time > frozen + 10);
         assert!(
             trace.states[frozen..half_time]
@@ -6707,7 +6713,7 @@ mod tests {
                 shielded: false,
                 single_use: false,
                 nodes: vec![],
-                name: "heartGem".to_owned(),
+                name: "blackGem".to_owned(),
             }],
             ..Map::default()
         };
