@@ -40,7 +40,14 @@ internal static class SnapshotCapture {
                 values["zipMoverLiftSpeed"] = Simplify(zipMover.LiftSpeed);
                 values["zipMoverMovementCounter"] = Simplify(platformMovementCounter?.GetValue(zipMover));
             }
-            if (level.Entities.FindFirst<HeartGem>() is HeartGem heartGem) {
+            HeartGem? heartGem = null;
+            foreach (Entity entity in level.Entities) {
+                if (entity is HeartGem candidate) {
+                    heartGem = candidate;
+                    break;
+                }
+            }
+            if (heartGem is not null) {
                 values["heartGemPosition"] = Simplify(heartGem.Position);
                 values["heartGemCollected"] = heartGemCollected?.GetValue(heartGem) as bool? ?? false;
                 values["heartGemCollidable"] = heartGem.Collidable;
