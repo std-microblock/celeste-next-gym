@@ -537,6 +537,9 @@ export function runtimeEntityBounds(entity: MapEntity, state: SimState, kindInde
   } else if (entity.kind === 'theo_crystal') {
     const position = state.theo_crystals?.[kindIndex]?.position
     if (position) return { ...box, x: position.x - 4, y: position.y - 10, width: 8, height: 10 }
+  } else if (entity.kind === 'glider') {
+    const position = state.gliders?.[kindIndex]?.position
+    if (position) return { ...box, x: position.x - 4, y: position.y - 10, width: 8, height: 10 }
   } else if (entity.kind === 'moving_solid') {
     const time = state.moving_solid_time ?? 0
     return {
@@ -649,6 +652,23 @@ function drawTheoCrystal(context: CanvasRenderingContext2D, assets: GameAssets, 
   const runtime = state.theo_crystals?.[kindIndex]
   const position = runtime?.position ?? { x: entity.bounds.x + 4, y: entity.bounds.y + 10 }
   drawOutlinedEntry(context, assets, 'characters/theoCrystal/idle00', position.x, position.y, 32, 42, -1)
+}
+
+function drawGlider(context: CanvasRenderingContext2D, entity: MapEntity, state: SimState, kindIndex: number): void {
+  const runtime = state.gliders?.[kindIndex]
+  const position = runtime?.position ?? { x: entity.bounds.x + 4, y: entity.bounds.y + 10 }
+  context.save()
+  context.translate(position.x, position.y - 5)
+  context.fillStyle = '#d9f3ff'
+  context.strokeStyle = '#29495a'
+  context.lineWidth = 1
+  context.beginPath()
+  context.moveTo(-12, 0)
+  context.quadraticCurveTo(0, -10, 12, 0)
+  context.quadraticCurveTo(0, 7, -12, 0)
+  context.fill()
+  context.stroke()
+  context.restore()
 }
 
 function drawAtlasTile(
@@ -801,6 +821,8 @@ function drawEntity(context: CanvasRenderingContext2D, assets: GameAssets, entit
     drawBounceBlock(context, assets, entity, frame, state, kindIndex)
   } else if (entity.kind === 'theo_crystal') {
     drawTheoCrystal(context, assets, entity, state, kindIndex)
+  } else if (entity.kind === 'glider') {
+    drawGlider(context, entity, state, kindIndex)
   } else if (entity.kind === 'zip_mover') {
     drawZipMover(context, assets, entity, frame, state, kindIndex)
   } else if (entity.kind === 'moving_solid') {

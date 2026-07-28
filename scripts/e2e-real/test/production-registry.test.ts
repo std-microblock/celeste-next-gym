@@ -8,12 +8,12 @@ describe('production scenario registry', () => {
   const registry = buildRegistry(scenarios)
 
   it('derives all target and status counts from explicit indexes', () => {
-    assert.equal(registry.scenarios.length, 163)
-    assert.equal(registry.byTarget.get('playground')?.length, 121)
+    assert.equal(registry.scenarios.length, 170)
+    assert.equal(registry.byTarget.get('playground')?.length, 128)
     assert.equal(registry.byTarget.get('area-1')?.length, 36)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 147, candidate: 16 })
+    assert.deepEqual(registry.counts, { active: 149, candidate: 21 })
   })
 
   it('keeps evidence-less scenarios as opt-in candidates', () => {
@@ -26,12 +26,17 @@ describe('production scenario registry', () => {
       'entity-4.18.2-reform-boost-cassette-boost',
       'entity-4.18.2.1-cassoosted-fuper',
       'entity-4.18.3-core-block-entity-displacement',
-      'entity-4.20-theo-regrab',
+      'entity-4.22.1-holdable-stall',
       'entity-4.22.2-holdable-climb',
       'entity-4.22.3-holdable-neutral-jump',
+      'entity-4.22.3-jelly-neutral-jump',
+      'entity-4.22.4-holdable-laddering',
+      'entity-4.23-jelly-ultra',
       'entity-4.23-theo-ultra',
       'entity-4.24-bumper-holdable-dash-smuggle',
+      'entity-4.26-jellyvator',
       'entity-4.26-theovator',
+      'entity-4.29-springboost-cancel',
       'entity-4.6.2-cloud-hyper-bunnyhop',
       'other-5.10-spinner-stunning',
       'other-5.11-spinner-freeze',
@@ -141,7 +146,7 @@ describe('production scenario registry', () => {
   it('keeps every entity-tail proof in an independently named map part', () => {
     const techniqueIds = ['4.23', '4.24', '4.25', '4.26', '4.27']
     const parts = techniqueIds.map((techniqueId) => {
-      const scenario = registry.scenarios.find((candidate) => candidate.techniqueIds.includes(techniqueId))
+      const scenario = registry.scenarios.find((candidate) => candidate.techniqueIds.includes(techniqueId) && !candidate.tags.includes('feature:glider'))
       assert.ok(scenario, `missing scenario for ${techniqueId}`)
       assert.equal(scenario.mapParts.length, 1)
       return scenario.mapParts[0]?.id
@@ -154,6 +159,26 @@ describe('production scenario registry', () => {
       'tech.entity-4.26-theovator',
       'tech.entity-4.27-waterboost',
     ])
+  })
+
+  it('keeps every Glider proof variant in an independently named map part', () => {
+    const names = [
+      'entity-4.20-jelly-regrab',
+      'entity-4.22.1-holdable-stall',
+      'entity-4.22.3-jelly-neutral-jump',
+      'entity-4.22.4-holdable-laddering',
+      'entity-4.23-jelly-ultra',
+      'entity-4.26-jellyvator',
+      'entity-4.29-springboost-cancel',
+    ]
+    const parts = names.map((name) => {
+      const scenario = registry.byName.get(name)
+      assert.ok(scenario, `missing scenario ${name}`)
+      assert.equal(scenario.mapParts.length, 1)
+      assert.equal(scenario.mapParts[0]?.dependencies.length, 0)
+      return scenario.mapParts[0]?.id
+    })
+    assert.equal(new Set(parts).size, names.length)
   })
 
   it('keeps grounded ultra cancel in its own Theo-only map part', () => {

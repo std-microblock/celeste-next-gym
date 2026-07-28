@@ -114,12 +114,19 @@ import { scenario as scenario111 } from './entity-4.24-bumper-holdable-dash-smug
 import { scenario as scenario112 } from './entity-4.25-throwable-backboost.js'
 import { scenario as scenario113 } from './entity-4.26-theovator.js'
 import { scenario as scenario114 } from './entity-4.27-waterboost.js'
-import { scenario as scenario115 } from './entity-4.18.2-reform-boost-cassette-boost.js'
-import { scenario as scenario116 } from './entity-4.18.2.1-cassoosted-fuper.js'
-import { scenario as scenario117 } from './other-5.3-cassette-raise.js'
-import { scenario as scenario118 } from './other-5.9-screen-transition-cassette-offset.js'
-import { scenario as scenario119 } from './other-5.10-spinner-stunning.js'
-import { scenario as scenario120 } from './other-5.11-spinner-freeze.js'
+import { scenario as scenario115 } from './entity-4.20-jelly-regrab.js'
+import { scenario as scenario116 } from './entity-4.22.1-holdable-stall.js'
+import { scenario as scenario117 } from './entity-4.22.3-jelly-neutral-jump.js'
+import { scenario as scenario118 } from './entity-4.22.4-holdable-laddering.js'
+import { scenario as scenario119 } from './entity-4.23-jelly-ultra.js'
+import { scenario as scenario120 } from './entity-4.26-jellyvator.js'
+import { scenario as scenario121 } from './entity-4.29-springboost-cancel.js'
+import { scenario as scenario122 } from './entity-4.18.2-reform-boost-cassette-boost.js'
+import { scenario as scenario123 } from './entity-4.18.2.1-cassoosted-fuper.js'
+import { scenario as scenario124 } from './other-5.3-cassette-raise.js'
+import { scenario as scenario125 } from './other-5.9-screen-transition-cassette-offset.js'
+import { scenario as scenario126 } from './other-5.10-spinner-stunning.js'
+import { scenario as scenario127 } from './other-5.11-spinner-freeze.js'
 
 export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario0,
@@ -243,4 +250,11 @@ export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario118,
   scenario119,
   scenario120,
+  scenario121,
+  scenario122,
+  scenario123,
+  scenario124,
+  scenario125,
+  scenario126,
+  scenario127,
 ])

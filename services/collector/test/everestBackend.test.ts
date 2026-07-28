@@ -33,6 +33,7 @@ describe("Everest TCP backend", () => {
           on_ground: true,
           ducking: false,
           holding_theo: frame === 1,
+          holding_glider: frame === 0,
           dead: false,
           fields: { dashAttackTimer: 0.25 },
         })),
@@ -48,6 +49,7 @@ describe("Everest TCP backend", () => {
     assert.equal(states.length, 2);
     assert.equal(states[1]?.facing, true);
     assert.equal(states[1]?.holding_theo, true);
+    assert.equal(states[0]?.holding_glider, true);
     assert.deepEqual(states[1]?._everest_fields, { dashAttackTimer: 0.25 });
   });
 
