@@ -30,6 +30,18 @@ internal static class SnapshotCapture {
         "nodePercent",
         BindingFlags.Instance | BindingFlags.NonPublic
     );
+    private static readonly FieldInfo? bounceBlockState = typeof(BounceBlock).GetField(
+        "state",
+        BindingFlags.Instance | BindingFlags.NonPublic
+    );
+    private static readonly FieldInfo? bounceBlockRespawnTimer = typeof(BounceBlock).GetField(
+        "respawnTimer",
+        BindingFlags.Instance | BindingFlags.NonPublic
+    );
+    private static readonly FieldInfo? bounceBlockReformed = typeof(BounceBlock).GetField(
+        "reformed",
+        BindingFlags.Instance | BindingFlags.NonPublic
+    );
     // `Lookout.Removed` restores StNormal but intentionally does not call
     // StopInteracting. The entity is gone by the next PlayerFrame, so retain
     // this source-side observation for a transition trace to prove the split
@@ -65,7 +77,8 @@ internal static class SnapshotCapture {
         values["playerCollider"] = ColliderGeometry(player.Collider);
         values["engineTimeRate"] = Engine.TimeRate;
         values["engineDeltaTime"] = Engine.DeltaTime;
-        if (playerHurtbox?.GetValue(player) is Collider hurtbox) {
+        Collider? hurtbox = playerHurtbox?.GetValue(player) as Collider;
+        if (hurtbox is not null) {
             values["playerHurtbox"] = ColliderGeometry(hurtbox);
         }
         if (player.Scene is Level level) {
@@ -148,12 +161,57 @@ internal static class SnapshotCapture {
                 values["reformBlockPosition"] = Simplify(reformBlock.Position);
                 values["reformBlockCollidable"] = reformBlock.Collidable;
                 values["reformBlockVisible"] = reformBlock.Visible;
+                // CED needs to distinguish three otherwise identical-looking
+                // frames: the Broken respawn countdown, body-only reform, and
+                // the later StaticMover alarm callback. These fields are
+                // intentionally limited to BounceBlock, whose private state
+                // and respawnTimer own that ordering.
+                if (reformBlock is BounceBlock bounceBlock) {
+                    values["reformBlockColliderPresent"] = bounceBlock.Collider is not null;
+                    if (bounceBlock.Collider is Collider reformBlockCollider) {
+                        values["reformBlockCollider"] = ColliderGeometry(reformBlockCollider);
+                        // This is an observable BlockedCheck proxy, not an
+                        // attempt to reproduce BounceBlock's private check: it
+                        // records whether the live Player body/hurtbox intersects
+                        // the source body, and whether the player is geometrically
+                        // grounded on its top face this frame.
+                        values["reformBlockPlayerColliderOverlaps"] = CollidersOverlap(
+                            player.Collider,
+                            reformBlockCollider
+                        );
+                        values["reformBlockPlayerHurtboxOverlaps"] = hurtbox is not null
+                            && CollidersOverlap(hurtbox, reformBlockCollider);
+                        values["reformBlockPlayerGroundedOnSource"] = PlayerGroundedOnCollider(
+                            player,
+                            reformBlockCollider
+                        );
+                    }
+                    object? state = bounceBlockState?.GetValue(bounceBlock);
+                    values["reformBounceBlockState"] = Simplify(state);
+                    values["reformBounceBlockStateName"] = state?.ToString();
+                    values["reformBounceBlockRespawnTimer"] = Simplify(
+                        bounceBlockRespawnTimer?.GetValue(bounceBlock)
+                    );
+                    values["reformBounceBlockReformed"] = bounceBlockReformed?.GetValue(bounceBlock) as bool? ?? false;
 
-                Spikes? attachedSpike = level.Entities.FindAll<Spikes>()
-                    .Find(spike => spike.Get<StaticMover>()?.Platform == reformBlock);
-                if (attachedSpike is not null) {
-                    values["reformSpikePosition"] = Simplify(attachedSpike.Position);
-                    values["reformSpikeCollidable"] = attachedSpike.Collidable;
+                    Alarm? staticMoverAlarm = bounceBlock.Get<Alarm>();
+                    values["reformStaticMoverAlarmPresent"] = staticMoverAlarm is not null;
+                    if (staticMoverAlarm is not null) {
+                        values["reformStaticMoverAlarmActive"] = staticMoverAlarm.Active;
+                        values["reformStaticMoverAlarmDuration"] = staticMoverAlarm.Duration;
+                        values["reformStaticMoverAlarmTimeLeft"] = staticMoverAlarm.TimeLeft;
+                    }
+
+                    Spikes? attachedSpike = level.Entities.FindAll<Spikes>()
+                        .Find(spike => spike.Get<StaticMover>()?.Platform == bounceBlock);
+                    if (attachedSpike is not null) {
+                        StaticMover? staticMover = attachedSpike.Get<StaticMover>();
+                        values["reformSpikePosition"] = Simplify(attachedSpike.Position);
+                        values["reformSpikeActive"] = attachedSpike.Active;
+                        values["reformSpikeCollidable"] = attachedSpike.Collidable;
+                        values["reformSpikeColliderPresent"] = attachedSpike.Collider is not null;
+                        values["reformSpikeStaticMoverEnabled"] = staticMover?.Active ?? false;
+                    }
                 }
             }
         }
@@ -217,4 +275,16 @@ internal static class SnapshotCapture {
         collider.Width,
         collider.Height
     ];
+
+    private static bool CollidersOverlap(Collider first, Collider second) =>
+        first.Left < second.Right
+        && first.Right > second.Left
+        && first.Top < second.Bottom
+        && first.Bottom > second.Top;
+
+    private static bool PlayerGroundedOnCollider(Player player, Collider source) =>
+        player.OnGround()
+        && player.Collider.Left < source.Right
+        && player.Collider.Right > source.Left
+        && MathF.Abs(player.Collider.Bottom - source.Top) <= 1f;
 }
