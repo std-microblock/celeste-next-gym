@@ -2796,9 +2796,10 @@ fn prepare_lookout_player(p: &mut PlayerSnapshot) {
             p.dummy_moving = true;
         }
         2 | 3 => {
-            p.state = PlayerState::Dummy;
+            // After DummyWalkToExact finishes it has already cleared Speed
+            // and DummyMoving. LookRoutine's delay/HUD coroutine does not
+            // assign StDummy again, so retain an intervening Booster Dash.
             p.dummy_moving = false;
-            p.speed.x = 0.0;
         }
         _ => {}
     }
@@ -14544,6 +14545,8 @@ mod tests {
         let facing_after_interruption = &trace.states[boost_frame + 9];
         assert_eq!(facing_after_interruption.state, PlayerState::Boost);
         assert!(facing_after_interruption.facing);
+        let after_dummy_walk = &trace.states[boost_frame + 24];
+        assert_eq!(after_dummy_walk.state, PlayerState::Dash);
         assert!(trace.states.iter().any(|state| {
             state.state == PlayerState::Normal
                 && state.lookouts[0].interacting
