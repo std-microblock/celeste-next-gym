@@ -2,7 +2,7 @@
   "name": "Hyper Basic Training",
   "room": "hyper-basic",
   "bounds": { "x": 0, "y": 0, "width": 480, "height": 270 },
-  "spawn": { "x": 64, "y": 238 },
+  "spawn": { "x": 64, "y": 246 },
   "solids": [
     { "x": 0, "y": 246, "width": 480, "height": 24 },
     { "x": 0, "y": 0, "width": 8, "height": 270 },
