@@ -1524,6 +1524,42 @@ fn move_theo_axis(theo: &mut crate::TheoCrystalSnapshot, map: &Map, horizontal: 
     }
 }
 
+fn hit_theo_spring(theo: &mut crate::TheoCrystalSnapshot, map: &Map) {
+    if theo.held {
+        return;
+    }
+    let body = theo_body_rect(theo.position);
+    for spring in map
+        .entities
+        .iter()
+        .filter(|entity| entity.kind == EntityKind::Spring)
+    {
+        if !spring.bounds.intersects(body) {
+            continue;
+        }
+        if spring.direction.y < 0.0 && theo.speed.y >= 0.0 {
+            theo.speed.x *= 0.5;
+            theo.speed.y = -160.0;
+            theo.gravity_timer = 0.15;
+            return;
+        }
+        if spring.direction.x > 0.0 && theo.speed.x <= 0.0 {
+            theo.position.y = approach(theo.position.y, spring.bounds.y + 13.0, 4.0);
+            theo.speed.x = 220.0;
+            theo.speed.y = -80.0;
+            theo.gravity_timer = 0.1;
+            return;
+        }
+        if spring.direction.x < 0.0 && theo.speed.x >= 0.0 {
+            theo.position.y = approach(theo.position.y, spring.bounds.y + 13.0, 4.0);
+            theo.speed.x = -220.0;
+            theo.speed.y = -80.0;
+            theo.gravity_timer = 0.1;
+            return;
+        }
+    }
+}
+
 fn advance_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
     let entity_indices: Vec<usize> = map
         .entities
@@ -1560,6 +1596,7 @@ fn advance_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
             }
             move_theo_axis(&mut theo, map, true);
             move_theo_axis(&mut theo, map, false);
+            hit_theo_spring(&mut theo, map);
         }
         let entity = &mut map.entities[entity_index];
         entity.bounds.x = theo.position.x - 4.0;
@@ -5771,6 +5808,70 @@ mod tests {
         assert_eq!(next.gliders[0].speed.y, -160.0);
         assert!((next.gliders[0].speed.x - 39.666_668).abs() < 0.000_1);
         assert_eq!(next.gliders[0].no_gravity_timer, 0.15);
+    }
+
+    #[test]
+    fn holdable_springs_apply_theo_floor_and_wall_source_speeds() {
+        let mut floor_map = theo_crystal_map();
+        floor_map.solids.clear();
+        floor_map.entities[0].bounds = Rect::new(76.0, 88.0, 8.0, 10.0);
+        floor_map.entities.push(crate::Entity {
+            kind: EntityKind::Spring,
+            bounds: Rect::new(72.0, 94.0, 16.0, 6.0),
+            direction: Vec2::new(0.0, -1.0),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "spring".to_owned(),
+        });
+        let floor = simulate(
+            PlayerSnapshot {
+                pos: Vec2::new(200.0, 100.0),
+                theo_crystals: vec![crate::TheoCrystalSnapshot {
+                    position: Vec2::new(80.0, 98.0),
+                    speed: Vec2::new(80.0, 20.0),
+                    ..crate::TheoCrystalSnapshot::default()
+                }],
+                ..PlayerSnapshot::default()
+            },
+            &[InputState::default()],
+            &floor_map,
+            1,
+        )
+        .unwrap();
+        assert_eq!(floor.theo_crystals[0].speed.y, -160.0);
+        assert!((floor.theo_crystals[0].speed.x - 37.083_332).abs() < 0.000_1);
+        assert_eq!(floor.theo_crystals[0].gravity_timer, 0.15);
+
+        let mut wall_map = theo_crystal_map();
+        wall_map.solids.clear();
+        wall_map.entities[0].bounds = Rect::new(76.0, 88.0, 8.0, 10.0);
+        wall_map.entities.push(crate::Entity {
+            kind: EntityKind::Spring,
+            bounds: Rect::new(72.0, 84.0, 6.0, 16.0),
+            direction: Vec2::new(1.0, 0.0),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "wallSpringLeft".to_owned(),
+        });
+        let wall = simulate(
+            PlayerSnapshot {
+                pos: Vec2::new(200.0, 100.0),
+                theo_crystals: vec![crate::TheoCrystalSnapshot {
+                    position: Vec2::new(80.0, 98.0),
+                    speed: Vec2::new(-20.0, 0.0),
+                    ..crate::TheoCrystalSnapshot::default()
+                }],
+                ..PlayerSnapshot::default()
+            },
+            &[InputState::default()],
+            &wall_map,
+            1,
+        )
+        .unwrap();
+        assert_eq!(wall.theo_crystals[0].speed, Vec2::new(220.0, -80.0));
+        assert_eq!(wall.theo_crystals[0].gravity_timer, 0.1);
     }
 
     #[test]
