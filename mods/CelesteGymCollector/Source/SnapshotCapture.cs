@@ -49,6 +49,7 @@ internal static class SnapshotCapture {
             Ducking = player.Ducking,
             CanDreamDash = (player.Scene as Level)?.Session.Inventory.DreamDash ?? false,
             HoldingTheo = player.Holding?.Entity is TheoCrystal,
+            HoldingGlider = player.Holding?.Entity is Glider,
             Dead = player.Dead,
             FreezeTimer = Engine.FreezeTimer,
             Fields = values
@@ -67,6 +68,7 @@ internal static class SnapshotCapture {
         Ducking = previous.Ducking,
         CanDreamDash = previous.CanDreamDash,
         HoldingTheo = previous.HoldingTheo,
+        HoldingGlider = previous.HoldingGlider,
         Dead = true,
         FreezeTimer = Engine.FreezeTimer,
         Fields = new Dictionary<string, object?>(previous.Fields) { ["collectorPlayerMissing"] = true }

@@ -110,6 +110,13 @@ import { scenario as scenario107 } from './entity-4.24-bumper-holdable-dash-smug
 import { scenario as scenario108 } from './entity-4.25-throwable-backboost.js'
 import { scenario as scenario109 } from './entity-4.26-theovator.js'
 import { scenario as scenario110 } from './entity-4.27-waterboost.js'
+import { scenario as scenario111 } from './entity-4.20-jelly-regrab.js'
+import { scenario as scenario112 } from './entity-4.22.1-holdable-stall.js'
+import { scenario as scenario113 } from './entity-4.22.3-jelly-neutral-jump.js'
+import { scenario as scenario114 } from './entity-4.22.4-holdable-laddering.js'
+import { scenario as scenario115 } from './entity-4.23-jelly-ultra.js'
+import { scenario as scenario116 } from './entity-4.26-jellyvator.js'
+import { scenario as scenario117 } from './entity-4.29-springboost-cancel.js'
 
 export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario0,
@@ -223,4 +230,11 @@ export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario108,
   scenario109,
   scenario110,
+  scenario111,
+  scenario112,
+  scenario113,
+  scenario114,
+  scenario115,
+  scenario116,
+  scenario117,
 ])

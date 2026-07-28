@@ -108,7 +108,7 @@ const ENTITY_KINDS = new Set<FixtureEntity['kind']>([
   'jump_thru', 'dream_block', 'spikes', 'water', 'booster', 'red_booster',
   'fly_feather', 'bumper', 'ice_ball', 'badeline_boost', 'spring', 'strawberry',
   'puffer', 'angry_oshiro', 'seeker', 'snowball', 'cloud',
-  'wind', 'bounce_block', 'theo_crystal', 'zip_mover', 'moving_solid',
+  'wind', 'bounce_block', 'theo_crystal', 'glider', 'zip_mover', 'moving_solid',
 ])
 
 export function validateFixturePackage(fixture: FixturePackage): void {
