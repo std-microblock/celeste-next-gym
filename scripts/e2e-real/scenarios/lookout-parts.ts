@@ -35,9 +35,10 @@ export const TECH_OTHER_5_1_2_BINO_CONTROL_STORAGE = part('tech.other-5.1.2-bino
 export const TECH_OTHER_5_1_3_BINO_INTERACTION_STORAGE = part('tech.other-5.1.3-bino-interaction-storage', [
   {
     name: 'playground',
-    // Player's 8px-wide hitbox crosses the right room edge when
-    // DummyWalkToExact reaches x=958, causing the native side transition.
-    entities: [{ id: 'tech-5.1.3-lookout', kind: 'lookout', bounds: [958, 493, 4, 4], name: 'lookout' }],
+    // Lookout's center is x=958, so the 8px-wide Player hitbox crosses the
+    // 960px edge during DummyWalkToExact.  The 4x4 entity itself remains
+    // contained by this room, as required by the fixture validator.
+    entities: [{ id: 'tech-5.1.3-lookout', kind: 'lookout', bounds: [956, 493, 4, 4], name: 'lookout' }],
   },
   {
     name: 'transition_5_1_3',

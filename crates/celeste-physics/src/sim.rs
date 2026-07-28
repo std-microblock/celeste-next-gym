@@ -2927,6 +2927,23 @@ fn finish_lookout(p: &mut PlayerSnapshot, state: &mut crate::LookoutSnapshot) {
     p.dummy_moving = false;
 }
 
+/// Lookout.LookRoutine starts HUD hide in the same coroutine resume that
+/// observes its exit input.  Keeping this separate from the following entity
+/// update would leave the player in StDummy for one frame too long.
+fn advance_lookout_exit(p: &mut PlayerSnapshot, state: &mut crate::LookoutSnapshot) {
+    state.hud_easer = approach(state.hud_easer, 0.0, p.frame_delta_time * 3.0);
+    if state.hud_easer <= 0.0 {
+        let delta = Vec2::new(p.camera.x - state.cam_start.x, p.camera.y - state.cam_start.y);
+        if length(delta) > 600.0 {
+            state.phase = 6;
+            state.timer = 0.0;
+            state.wipe_start = p.camera;
+        } else {
+            finish_lookout(p, state);
+        }
+    }
+}
+
 fn advance_lookouts(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
     let indices = lookout_entity_indices(map);
     let Some((lookout_index, entity_index)) = indices
@@ -2991,20 +3008,11 @@ fn advance_lookouts(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
             };
             if exit_pressed || summit_end {
                 state.phase = 5;
+                advance_lookout_exit(p, &mut state);
             }
         }
         5 => {
-            state.hud_easer = approach(state.hud_easer, 0.0, p.frame_delta_time * 3.0);
-            if state.hud_easer <= 0.0 {
-                let delta = Vec2::new(p.camera.x - state.cam_start.x, p.camera.y - state.cam_start.y);
-                if length(delta) > 600.0 {
-                    state.phase = 6;
-                    state.timer = 0.0;
-                    state.wipe_start = p.camera;
-                } else {
-                    finish_lookout(p, &mut state);
-                }
-            }
+            advance_lookout_exit(p, &mut state);
         }
         6 => {
             let at_summit_top = entity.direction.y != 0.0
@@ -14273,6 +14281,10 @@ mod tests {
         assert_eq!(trace.states[2].state, PlayerState::Dummy);
         assert!(trace.states[70].lookouts[0].phase >= 4);
         assert!(trace.states[110].camera.x > 0.0);
+        // LookRoutine begins `hud.Display.Hide()` on the exit-input frame;
+        // the 20th hide step therefore restores Normal at trace frame 130.
+        assert_eq!(trace.states[130].state, PlayerState::Normal);
+        assert!(!trace.states[130].lookouts[0].interacting);
         assert!(!trace.states[150].lookouts[0].interacting);
         assert_eq!(trace.states[150].state, PlayerState::Normal);
     }
@@ -14294,6 +14306,17 @@ mod tests {
 
         assert!(trace.states.iter().any(|state| state.spinners[0].visible));
         assert!(trace.states[260].camera.x > 500.0);
+        let first_offscreen = trace
+            .states
+            .iter()
+            .position(|state| state.camera.x > 256.0)
+            .expect("camera leaves the spinner view");
+        assert!(
+            trace.states[first_offscreen..=first_offscreen + 16]
+                .iter()
+                .any(|state| !state.spinners[0].visible),
+            "CrystalStaticSpinner's 0.25-second interval hides it within 16 frames"
+        );
         assert!(!trace.states[260].spinners[0].visible);
         assert!(!trace.states[260].spinners[0].collidable);
     }
@@ -14315,14 +14338,14 @@ mod tests {
             on_ground: true,
             ..PlayerSnapshot::default()
         };
-        let mut inputs = vec![InputState::default(); 240];
+        let mut inputs = vec![InputState::default(); 280];
         inputs[0].talk_pressed = true;
-        for input in &mut inputs[100..180] {
+        for input in &mut inputs[100..220] {
             input.move_x = 1;
         }
-        inputs[180].jump_pressed = true;
-        inputs[180].jump_held = true;
-        let trace = simulate_trace(player, &inputs, &map, 240).unwrap();
+        inputs[220].jump_pressed = true;
+        inputs[220].jump_held = true;
+        let trace = simulate_trace(player, &inputs, &map, 280).unwrap();
 
         assert!(trace.states.iter().any(|state| state.state == PlayerState::Boost));
         assert!(trace.states.iter().any(|state| {
@@ -14335,7 +14358,14 @@ mod tests {
                 && (after.pos.x - before.pos.x).abs() > 0.01
                 && (after.camera.x - before.camera.x).abs() > 0.01
         }));
-        assert!(!trace.states[240].lookouts[0].interacting);
+        let exit = trace
+            .states
+            .iter()
+            .skip(221)
+            .find(|state| !state.lookouts[0].interacting)
+            .expect("jump clears the stored Lookout interaction after Booster recovery");
+        assert_eq!(exit.state, PlayerState::Normal);
+        assert!(!trace.states[280].lookouts[0].interacting);
     }
 
     #[test]
@@ -14374,39 +14404,57 @@ mod tests {
 
     #[test]
     fn bino_extensions_follow_nodes_and_run_long_distance_exit_wipe() {
-        let map = lookout_map(vec![Vec2::new(960.0, 90.0)], true, false);
-        let player = PlayerSnapshot {
-            pos: Vec2::new(160.0, 160.0),
-            state: PlayerState::Dummy,
-            on_ground: true,
-            camera_initialized: true,
-            lookouts: vec![crate::LookoutSnapshot {
-                interacting: true,
-                phase: 4,
-                position: Vec2::new(160.0, 160.0),
-                cam: Vec2::default(),
-                cam_start: Vec2::default(),
-                hud_easer: 1.0,
-                ..crate::LookoutSnapshot::default()
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
+            solids: vec![Rect::new(0.0, 496.0, 960.0, 48.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::Lookout,
+                bounds: Rect::new(510.0, 493.0, 4.0, 4.0),
+                direction: Vec2::new(0.0, 1.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![Vec2::new(896.0, 400.0), Vec2::new(896.0, 72.0), Vec2::new(24.0, 24.0)],
+                name: "lookout".to_owned(),
             }],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(512.0, 496.0),
+            on_ground: true,
             ..PlayerSnapshot::default()
         };
-        let inputs = [InputState {
-            move_y: -1,
-            ..InputState::default()
-        }; 330];
-        let trace = simulate_trace(player, &inputs, &map, 330).unwrap();
+        let inputs: Vec<_> = (0..720)
+            .map(|frame| InputState {
+                talk_pressed: frame == 0,
+                move_y: if frame >= 55 { -1 } else { 0 },
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(player, &inputs, &map, 720).unwrap();
 
-        assert!(trace.states.iter().any(|state| state.camera.x > 600.0));
+        assert!(trace.states.iter().any(|state| state.lookouts[0].node >= 2));
+        assert!(trace.states.iter().any(|state| {
+            length(Vec2::new(state.camera.x - 352.0, state.camera.y - 364.0)) > 600.0
+        }));
         assert!(trace.states.iter().any(|state| state.lookouts[0].phase == 6));
         let exit = trace
             .states
             .iter()
+            .skip(1)
             .find(|state| !state.lookouts[0].interacting)
             .expect("long-distance wipe completes");
-        assert!((exit.camera.x - 32.0).abs() < 0.01);
-        assert!(!trace.states[330].lookouts[0].interacting);
-        assert_eq!(trace.states[330].state, PlayerState::Normal);
+        let wipe_direction = normalize(Vec2::new(
+            exit.lookouts[0].wipe_start.x - exit.lookouts[0].cam_start.x,
+            exit.lookouts[0].wipe_start.y - exit.lookouts[0].cam_start.y,
+        ));
+        assert!(
+            length(Vec2::new(
+                exit.camera.x - (exit.lookouts[0].cam_start.x + wipe_direction.x * 32.0),
+                exit.camera.y - (exit.lookouts[0].cam_start.y + wipe_direction.y * 32.0),
+            )) < 0.01
+        );
+        assert!(!trace.states[720].lookouts[0].interacting);
+        assert_eq!(trace.states[720].state, PlayerState::Normal);
     }
 
     #[test]

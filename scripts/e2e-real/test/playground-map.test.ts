@@ -18,6 +18,10 @@ const transition = requireScenario('mechanics-screen-transition-up')
 const zipJump = requireScenario('mechanics-liftboost-zip-jump')
 const bubbleSuper = requireScenario('entity-4.2-bubble-super')
 const bubbleDemohyper = requireScenario('entity-4.2-bubble-demohyper')
+const binoClip = requireScenario('other-5.1.1-bino-clip')
+const binoControlStorage = requireScenario('other-5.1.2-bino-control-storage')
+const binoInteractionStorage = requireScenario('other-5.1.3-bino-interaction-storage')
+const binoExtensions = requireScenario('other-5.1.4-bino-extensions')
 
 describe('per-scenario Playground maps', () => {
   it('limits screen-transition fixture contents to its declared closure', () => {
@@ -46,6 +50,27 @@ describe('per-scenario Playground maps', () => {
       assert.equal(entities.some((entity) => entity.kind === 'booster' && entity.bounds[0] === 230 && entity.bounds[1] === 384), true)
       assert.equal(entities.some((entity) => entity.kind === 'zip_mover'), false)
     }
+  })
+
+  it('keeps Bino candidates in valid, source-timed fixture and input windows', () => {
+    const interactionFixture = scenarioFixture(binoInteractionStorage).fixture
+    const lookout = interactionFixture.rooms
+      .find((room) => room.name === 'playground')?.entities
+      .find((entity) => entity.id === 'tech-5.1.3-lookout')
+    assert.deepEqual(lookout?.bounds, [956, 493, 4, 4])
+
+    // The spinner starts in view, then the Lookout input travels left far
+    // enough to put it outside the viewport for a full 0.25-second interval.
+    assert.equal(binoClip.inputs[55]?.move_x, -1)
+    assert.equal(binoClip.inputs[204]?.move_x, -1)
+    assert.equal(binoClip.inputs[205]?.move_x, 0)
+
+    // The stored interaction is only cancelled after the Booster/Normal
+    // overlap window, and Summit's endpoint retains a complete exit window.
+    assert.equal(binoControlStorage.inputs.length, 280)
+    assert.equal(binoControlStorage.inputs[220]?.jump_pressed, true)
+    assert.equal(binoExtensions.inputs.length, 720)
+    assert.equal(binoExtensions.inputs.at(-1)?.move_y, -1)
   })
 
   it('rejects a map override instead of silently bypassing scenario parts', () => {

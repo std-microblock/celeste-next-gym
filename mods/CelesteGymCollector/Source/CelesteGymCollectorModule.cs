@@ -466,6 +466,14 @@ public sealed class CelesteGymCollectorModule : EverestModule {
             () => job?.CurrentInput?.JumpHeld ?? false,
             () => job?.JumpBufferFrames > 0,
             () => job?.PreviousInput?.JumpHeld == true && job?.CurrentInput?.JumpHeld != true);
+        // Lookout.LookRoutine exits through MenuCancel.  In the portable
+        // protocol a jump press represents that shared confirm/cancel action,
+        // so it must drive both virtual buttons; otherwise a stored Lookout
+        // can never receive its source exit input during a scripted run.
+        ReplaceNodes(Input.MenuCancel,
+            () => job?.CurrentInput?.JumpHeld ?? false,
+            () => job?.JumpBufferFrames > 0,
+            () => job?.PreviousInput?.JumpHeld == true && job?.CurrentInput?.JumpHeld != true);
         ReplaceNodes(Input.Dash,
             () => job?.CurrentInput?.DashPressed ?? false,
             () => job?.DashBufferFrames > 0,
