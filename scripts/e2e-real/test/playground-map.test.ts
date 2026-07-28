@@ -53,6 +53,14 @@ describe('per-scenario Playground maps', () => {
   })
 
   it('keeps Bino candidates in valid, source-timed fixture and input windows', () => {
+    const controlFixture = scenarioFixture(binoControlStorage).fixture
+    const controlBooster = controlFixture.rooms
+      .find((room) => room.name === 'playground')?.entities
+      .find((entity) => entity.id === 'tech-5.1.2-interrupting-booster')
+    // The 20px fixture encodes the source Booster's 10px Circle at (520,501)
+    // after its (0,2) collider offset; do not move it to hide frame ordering.
+    assert.deepEqual(controlBooster?.bounds, [510, 489, 20, 20])
+
     const interactionFixture = scenarioFixture(binoInteractionStorage).fixture
     const lookout = interactionFixture.rooms
       .find((room) => room.name === 'playground')?.entities
