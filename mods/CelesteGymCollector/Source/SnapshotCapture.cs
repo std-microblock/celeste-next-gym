@@ -170,17 +170,22 @@ internal static class SnapshotCapture {
                     values["reformBlockColliderPresent"] = bounceBlock.Collider is not null;
                     if (bounceBlock.Collider is Collider reformBlockCollider) {
                         values["reformBlockCollider"] = ColliderGeometry(reformBlockCollider);
+                        values["reformBlockWorldBounds"] = ColliderWorldGeometry(reformBlockCollider);
+                        values["reformPlayerColliderWorldBounds"] = ColliderWorldGeometry(player.Collider);
+                        if (hurtbox is not null) {
+                            values["reformPlayerHurtboxWorldBounds"] = ColliderWorldGeometry(hurtbox);
+                        }
                         // This is an observable BlockedCheck proxy, not an
                         // attempt to reproduce BounceBlock's private check: it
                         // records whether the live Player body/hurtbox intersects
                         // the source body, and whether the player is geometrically
                         // grounded on its top face this frame.
-                        values["reformBlockPlayerColliderOverlaps"] = CollidersOverlap(
+                        values["reformBlockPlayerColliderOverlaps"] = WorldCollidersOverlap(
                             player.Collider,
                             reformBlockCollider
                         );
                         values["reformBlockPlayerHurtboxOverlaps"] = hurtbox is not null
-                            && CollidersOverlap(hurtbox, reformBlockCollider);
+                            && WorldCollidersOverlap(hurtbox, reformBlockCollider);
                         values["reformBlockPlayerGroundedOnSource"] = PlayerGroundedOnCollider(
                             player,
                             reformBlockCollider
@@ -276,15 +281,30 @@ internal static class SnapshotCapture {
         collider.Height
     ];
 
-    private static bool CollidersOverlap(Collider first, Collider second) =>
-        first.Left < second.Right
-        && first.Right > second.Left
-        && first.Top < second.Bottom
-        && first.Bottom > second.Top;
+    private static float[] ColliderWorldGeometry(Collider collider) => [
+        WorldLeft(collider),
+        WorldTop(collider),
+        collider.Width,
+        collider.Height
+    ];
+
+    private static float WorldLeft(Collider collider) => collider.Entity.Position.X + collider.Left;
+
+    private static float WorldTop(Collider collider) => collider.Entity.Position.Y + collider.Top;
+
+    private static float WorldRight(Collider collider) => WorldLeft(collider) + collider.Width;
+
+    private static float WorldBottom(Collider collider) => WorldTop(collider) + collider.Height;
+
+    private static bool WorldCollidersOverlap(Collider first, Collider second) =>
+        WorldLeft(first) < WorldRight(second)
+        && WorldRight(first) > WorldLeft(second)
+        && WorldTop(first) < WorldBottom(second)
+        && WorldBottom(first) > WorldTop(second);
 
     private static bool PlayerGroundedOnCollider(Player player, Collider source) =>
         player.OnGround()
-        && player.Collider.Left < source.Right
-        && player.Collider.Right > source.Left
-        && MathF.Abs(player.Collider.Bottom - source.Top) <= 1f;
+        && WorldLeft(player.Collider) < WorldRight(source)
+        && WorldRight(player.Collider) > WorldLeft(source)
+        && MathF.Abs(WorldBottom(player.Collider) - WorldTop(source)) <= 1f;
 }
