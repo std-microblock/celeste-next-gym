@@ -768,17 +768,24 @@ fn initialize_bumpers(p: &mut PlayerSnapshot, map: &mut Map) {
 }
 
 fn advance_bumpers(p: &mut PlayerSnapshot, map: &mut Map) {
-    // Bumper.cs: `new SineWave(0.44f, 0f).Randomize()` and its OnUpdate
-    // writes `Position = start + Vector2.UnitY * sine.Value * 3f`. Bumper is
-    // a room entity, so this happens after Player.Update: collision on this
-    // frame observes the previous live Circle(12) position.
+    // Bumper.cs adds PlayerCollider before SineWave, so `base.Update()` tests
+    // the previous live Circle(12) position, then advances the wave. Its
+    // following UpdatePosition writes the two source components:
+    // `anchor + new Vector2(sine.Value * 3f, sine.ValueOverTwo * 2f)`.
+    // Thus `interact` runs the callback before this function, while this
+    // function publishes the position sampled by the next frame's callback.
     for (bumper_index, entity_index) in bumper_entity_indices(map).into_iter().enumerate() {
         let state = &mut p.bumpers[bumper_index];
         let entity = &mut map.entities[entity_index];
-        state.sine_counter += 0.44 * p.frame_delta_time;
+        // Monocle.SineWave.Update advances in cycles/second, not radians:
+        // Counter += 2π * Frequency * DeltaTime, then Counter's setter
+        // refreshes Value, ValueOverTwo, and TwoValue.
+        state.sine_counter = (state.sine_counter
+            + std::f32::consts::TAU * 0.44 * p.frame_delta_time)
+            .rem_euclid(std::f32::consts::TAU * 4.0);
         state.position = Vec2::new(
-            state.anchor.x,
-            state.anchor.y + state.sine_counter.sin() * 3.0,
+            state.anchor.x + state.sine_counter.sin() * 3.0,
+            state.anchor.y + (state.sine_counter * 0.5).sin() * 2.0,
         );
         state.respawn_timer = (state.respawn_timer - p.frame_delta_time).max(0.0);
         entity.bounds = Rect::new(state.position.x - 12.0, state.position.y - 12.0, 24.0, 24.0);
@@ -9119,6 +9126,14 @@ mod tests {
         let p = PlayerSnapshot {
             pos: Vec2::new(100.0, 496.0),
             on_ground: true,
+            // Physical collector state 0 for this map. The Bumper starts at
+            // its randomly sampled SineWave phase rather than map centre.
+            bumpers: vec![crate::BumperSnapshot {
+                anchor: Vec2::new(132.0, 492.0),
+                position: Vec2::new(132.483_75, 490.006_56),
+                sine_counter: 9.262_819,
+                respawn_timer: 0.0,
+            }],
             ..PlayerSnapshot::default()
         };
         let inputs: Vec<_> = (0..120)
@@ -9135,6 +9150,33 @@ mod tests {
             })
             .collect();
         let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
+        // Physical 4.24 collector states 26–28. Bumper's PlayerCollider is
+        // updated by Bumper.base.Update before SineWave advances, so f27's
+        // launch uses f26's Circle(12), then captures the f27 sine position.
+        let f26 = &trace.states[26];
+        assert_eq!(f26.pos, Vec2::new(113.0, 496.0));
+        assert_eq!(f26.speed, Vec2::new(70.0, 0.0));
+        assert_eq!(f26.state, PlayerState::Normal);
+        assert_eq!(f26.holding_theo, Some(0));
+        assert!((f26.bumpers[0].position.x - 129.418_82).abs() < 0.000_1);
+        assert!((f26.bumpers[0].position.y - 490.262_4).abs() < 0.000_1);
+
+        let f27 = &trace.states[27];
+        assert_eq!(f27.pos, Vec2::new(114.0, 496.0));
+        assert_eq!(f27.speed, Vec2::new(-280.0, -150.0));
+        assert_eq!(f27.state, PlayerState::Launch);
+        assert_eq!(f27.holding_theo, None);
+        assert!((f27.bumpers[0].position.x - 129.351_15).abs() < 0.000_1);
+        assert!((f27.bumpers[0].position.y - 490.285_7).abs() < 0.000_1);
+        assert!((f27.bumpers[0].sine_counter - 10.506_892).abs() < 0.000_1);
+
+        // The 0.1-second ExplodeLaunch freeze skips the next Scene.Update,
+        // preserving the f27 player and Bumper state at f28.
+        let f28 = &trace.states[28];
+        assert_eq!(f28.pos, f27.pos);
+        assert_eq!(f28.speed, f27.speed);
+        assert_eq!(f28.state, PlayerState::Launch);
+        assert_eq!(f28.bumpers[0].position, f27.bumpers[0].position);
         let pickup = trace
             .states
             .iter()
@@ -14061,9 +14103,9 @@ mod tests {
         let initial = PlayerSnapshot {
             bumpers: vec![crate::BumperSnapshot {
                 anchor: Vec2::new(600.0, 200.0),
-                // The map anchor is (600, 200); this is the source Bumper's
-                // captured Circle(12) centre at sin(pi / 2) * 3.
-                position: Vec2::new(600.0, 203.0),
+                // The map anchor is (600, 200); this is Bumper.UpdatePosition
+                // at Counter=pi/2: (sin(counter)*3, sin(counter/2)*2).
+                position: Vec2::new(603.0, 201.414_213_5),
                 sine_counter: phase,
                 respawn_timer: 0.0,
             }],
@@ -14075,9 +14117,13 @@ mod tests {
         let split = simulate(first, &inputs[7..], &bumper_map(), 13).unwrap();
 
         assert_eq!(split, whole);
-        let expected = 200.0 + (phase + 0.44 * DT * 20.0).sin() * 3.0;
-        assert!((whole.bumpers[0].position.y - expected).abs() < 0.000_1);
-        assert!((whole.bumpers[0].position.x - 600.0).abs() < 0.000_1);
+        let expected_counter = phase + std::f32::consts::TAU * 0.44 * DT * 20.0;
+        let expected = Vec2::new(
+            600.0 + expected_counter.sin() * 3.0,
+            200.0 + (expected_counter * 0.5).sin() * 2.0,
+        );
+        assert!((whole.bumpers[0].position.x - expected.x).abs() < 0.000_1);
+        assert!((whole.bumpers[0].position.y - expected.y).abs() < 0.000_1);
     }
 
     #[test]
