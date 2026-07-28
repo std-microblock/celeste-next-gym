@@ -7,11 +7,12 @@ export const mapParts = [TECH_ENTITY_4_10_3_2_HOLDABLE_DREAM_HYPER] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: ['feature:dream-block', 'feature:theo'],
   techniqueIds: ['4.10.3.2'],
   mapParts,
   name: 'entity-4.10.3.2-holdable-dream-hyper',
+  recording: { primaryFor: ['4.10.3.2'], startFrame: 0, endFrame: 240 },
   initial: { pos: [208, 496], speed: [0, 0], can_dream_dash: true },
   inputs: inputFrames(240, (frame) => ({
     move_x: frame >= 43 && frame < 54 ? -1 : frame >= 85 ? -1 : 1,
