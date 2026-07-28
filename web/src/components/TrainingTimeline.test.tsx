@@ -7,7 +7,7 @@ describe('TrainingTimeline', () => {
     const onSeek = vi.fn()
     const onSetReset = vi.fn()
     const view = render(<TrainingTimeline frame={4} frameCount={20} fuzzStart={0} targetFrame={6} windows={[{ from: 5, to: 6 }]} actualInputs={[]} resetFrame={0} onSeek={onSeek} onSetReset={onSetReset} />)
-    const timeline = view.getByRole('slider', { name: '训练回看时间线' })
+    const timeline = view.container.querySelector('[role="slider"][aria-label="训练回看时间线"]') as HTMLElement
     vi.spyOn(timeline, 'getBoundingClientRect').mockReturnValue({ x: 0, y: 0, left: 0, top: 0, right: 200, bottom: 50, width: 200, height: 50, toJSON: () => ({}) })
     fireEvent.pointerDown(timeline, { pointerId: 1, clientX: 100 })
     expect(onSeek).toHaveBeenCalledWith(10, true)
@@ -21,7 +21,7 @@ describe('TrainingTimeline', () => {
   it('centers the review window and retains an offscreen next-key hint', () => {
     const view = render(<TrainingTimeline frame={50} frameCount={100} fuzzStart={0} targetFrame={90} windows={[{ from: 88, to: 92 }]} actualInputs={[]} resetFrame={0} onSeek={vi.fn()} onSetReset={vi.fn()} />)
 
-    expect(view.getByText('TRAINING REVIEW · F26–F74')).toBeInTheDocument()
+    expect(view.container).toHaveTextContent('TRAINING REVIEW · F26–F74')
     expect(view.getByText('›')).toHaveClass('offscreen', 'after')
     expect(view.getByText(/下一最佳关键点：F90/)).toBeInTheDocument()
     expect(view.queryByTitle('成功窗口 F88–F92')).not.toBeInTheDocument()
@@ -32,5 +32,18 @@ describe('TrainingTimeline', () => {
 
     expect(view.getByText('TRAINING REVIEW · F46–F94')).toBeInTheDocument()
     expect(view.getByTitle('成功窗口 F68–F72')).toBeInTheDocument()
+  })
+
+  it('keeps the viewport fixed during a middle drag', () => {
+    const onSeek = vi.fn()
+    const view = render(<TrainingTimeline frame={50} frameCount={100} fuzzStart={0} windows={[]} actualInputs={[]} resetFrame={0} onSeek={onSeek} onSetReset={vi.fn()} />)
+    const timeline = view.container.querySelector('[role="slider"][aria-label="训练回看时间线"]') as HTMLElement
+    vi.spyOn(timeline, 'getBoundingClientRect').mockReturnValue({ x: 0, y: 0, left: 0, top: 0, right: 200, bottom: 50, width: 200, height: 50, toJSON: () => ({}) })
+
+    fireEvent.pointerDown(timeline, { pointerId: 1, clientX: 100 })
+    fireEvent.pointerMove(timeline, { pointerId: 1, clientX: 150 })
+
+    expect(view.container).toHaveTextContent('TRAINING REVIEW · F26–F74')
+    expect(onSeek).toHaveBeenLastCalledWith(62, true)
   })
 })

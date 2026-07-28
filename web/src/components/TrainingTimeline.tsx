@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { FrameWindow } from '../training/session'
 
 export interface TrainingTimelineProps {
@@ -20,10 +20,13 @@ export interface TrainingTimelineProps {
 export function TrainingTimeline({ frame, frameCount, fuzzStart, targetFrame, windows, actualInputs, failureFrame, resetFrame, bestFinalSpeed, followTarget = false, onSeek, onSetReset }: TrainingTimelineProps) {
   const track = useRef<HTMLDivElement>(null)
   const pointerStart = useRef<number | null>(null)
+  const dragViewportStartRef = useRef<number | null>(null)
+  const [dragViewportStart, setDragViewportStart] = useState<number | null>(null)
   const maximum = Math.max(1, frameCount)
   const viewportFrames = Math.min(maximum, 48)
   const viewportFocus = followTarget && targetFrame !== undefined ? targetFrame : frame
-  const viewportStart = Math.max(0, Math.min(maximum - viewportFrames, viewportFocus - Math.floor(viewportFrames / 2)))
+  const automaticViewportStart = Math.max(0, Math.min(maximum - viewportFrames, viewportFocus - Math.floor(viewportFrames / 2)))
+  const viewportStart = dragViewportStart ?? automaticViewportStart
   const viewportEnd = viewportStart + viewportFrames
   const inViewport = (value: number) => value >= viewportStart && value <= viewportEnd
   const percent = (value: number) => `${(value - viewportStart) / Math.max(1, viewportFrames) * 100}%`
@@ -34,10 +37,18 @@ export function TrainingTimeline({ frame, frameCount, fuzzStart, targetFrame, wi
     return from <= to ? [{ ...window, from, to }] : []
   })
   const inputLabels = useMemo(() => actualInputs.map((input) => ({ ...input, label: input.keys.join('+').toUpperCase() })), [actualInputs])
-  const selectFrame = (clientX: number): number | undefined => {
+  const selectFrame = (clientX: number, allowEdgeScroll = false): number | undefined => {
     const rect = track.current?.getBoundingClientRect()
     if (!rect) return undefined
-    const next = Math.round(viewportStart + Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * viewportFrames)
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    let start = dragViewportStartRef.current ?? viewportStart
+    if (allowEdgeScroll && ratio <= .04 && start > 0) start -= 1
+    else if (allowEdgeScroll && ratio >= .96 && start < maximum - viewportFrames) start += 1
+    if (start !== dragViewportStartRef.current) {
+      dragViewportStartRef.current = start
+      setDragViewportStart(start)
+    }
+    const next = Math.round(start + ratio * viewportFrames)
     onSeek(next, true)
     return next
   }
@@ -52,12 +63,20 @@ export function TrainingTimeline({ frame, frameCount, fuzzStart, targetFrame, wi
       aria-valuemax={maximum}
       aria-valuenow={frame}
       tabIndex={0}
-      onPointerDown={(event) => { pointerStart.current = event.clientX; event.currentTarget.setPointerCapture?.(event.pointerId); selectFrame(event.clientX) }}
-      onPointerMove={(event) => { if (!event.currentTarget.hasPointerCapture || event.currentTarget.hasPointerCapture(event.pointerId)) selectFrame(event.clientX) }}
+      onPointerDown={(event) => {
+        pointerStart.current = event.clientX
+        dragViewportStartRef.current = viewportStart
+        setDragViewportStart(viewportStart)
+        event.currentTarget.setPointerCapture?.(event.pointerId)
+        selectFrame(event.clientX)
+      }}
+      onPointerMove={(event) => { if (!event.currentTarget.hasPointerCapture || event.currentTarget.hasPointerCapture(event.pointerId)) selectFrame(event.clientX, true) }}
       onPointerUp={(event) => {
         const selected = selectFrame(event.clientX)
         if (pointerStart.current !== null && Math.abs(pointerStart.current - event.clientX) < 4 && selected !== undefined) onSetReset(selected)
         pointerStart.current = null
+        dragViewportStartRef.current = null
+        setDragViewportStart(null)
         if (event.currentTarget.hasPointerCapture?.(event.pointerId)) event.currentTarget.releasePointerCapture?.(event.pointerId)
       }}
       onKeyDown={(event) => {

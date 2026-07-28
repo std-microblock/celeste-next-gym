@@ -3,6 +3,7 @@ import { DEFAULT_BINDINGS, buttonsToInput, makeEmptyButtons, type FrameButtons, 
 import { WasmClient } from '../simulator/wasmClient'
 import { assistedRate, candidateWindow, createTrainingSession, keySemantics, nextTargetFrame, rebuildTrainingSession, verifiedInputs, verifyTrainingInput, type TrainingCandidate, type TrainingDefinition, type TrainingSession } from '../training/session'
 import { GameView } from './GameView'
+import { TrainingPrompt } from './TrainingPrompt'
 import { TrainingResultTimeline, TrainingTimeline } from './TrainingTimeline'
 
 interface TrainingDocument extends TrainingDefinition {
@@ -24,6 +25,7 @@ export interface OutcomeAnimation {
   startedAt: number
   durationMs: number
   resultSpeedX: number
+  timelineFrame: number
 }
 
 const FAILURE_SLOWDOWN_MS = 1_000
@@ -99,26 +101,28 @@ export function TrainingGround() {
   const [notice, setNotice] = useState('正在加载训练定义…')
   const keys = useRef(new Set<string>())
   const previousButtons = useRef<FrameButtons>(makeEmptyButtons())
+  const outcomeButtons = useRef<FrameButtons>(makeEmptyButtons())
   const attempts = useRef<Attempt[]>([])
   const simulating = useRef(false)
 
   const applySession = (next: TrainingSession) => { sessionRef.current = next; setSession(next) }
   const applyPrediction = (next: PredictionPreview) => setPrediction(next)
-  const beginOutcome = (phase: OutcomeAnimation['phase'], after: SimState) => {
+  const beginOutcome = (phase: OutcomeAnimation['phase'], after: SimState, timelineFrame: number) => {
     const next = {
       phase,
       startedAt: performance.now(),
       durationMs: phase === 'success' ? SUCCESS_SLOWDOWN_MS : FAILURE_SLOWDOWN_MS,
       resultSpeedX: outcomeSpeedX(after),
+      timelineFrame,
     }
     outcomeRef.current = next
-    keys.current.clear()
-    previousButtons.current = makeEmptyButtons()
+    outcomeButtons.current = { ...previousButtons.current }
     setOutcome(next)
     setOutcomeProgress(0)
   }
   const clearOutcome = () => {
     outcomeRef.current = null
+    outcomeButtons.current = makeEmptyButtons()
     setOutcome(null)
     setOutcomeProgress(0)
   }
@@ -208,6 +212,8 @@ export function TrainingGround() {
       setFuzzStartFrame(null)
     }
     previousButtons.current = makeEmptyButtons()
+    outcomeButtons.current = makeEmptyButtons()
+    keys.current.clear()
     seek(target)
     setNotice(`已回到 R 点 F${target}`)
   }
@@ -217,6 +223,10 @@ export function TrainingGround() {
       if (event.target instanceof HTMLElement && event.target.matches('input, select, button')) return
       const gameInput = Object.values(DEFAULT_BINDINGS).includes(event.code)
       if (gameInput || event.code === 'KeyR') event.preventDefault()
+      if (event.code === 'KeyR' && !event.repeat) {
+        resetTo()
+        return
+      }
       if (trainingInputLocked(outcomeRef.current)) return
       keys.current.add(event.code)
       if (gameInput) {
@@ -227,9 +237,11 @@ export function TrainingGround() {
         }
         setPlaying(true)
       }
-      if (event.code === 'KeyR' && !event.repeat) resetTo()
     }
-    const up = (event: KeyboardEvent) => { keys.current.delete(event.code) }
+    const up = (event: KeyboardEvent) => {
+      if (trainingInputLocked(outcomeRef.current)) return
+      keys.current.delete(event.code)
+    }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
     return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up) }
@@ -269,7 +281,7 @@ export function TrainingGround() {
         const currentFrame = frameRef.current
         const current = activeOutcome === null
           ? buttonsFromKeyboard(keys.current, DEFAULT_BINDINGS)
-          : makeEmptyButtons()
+          : outcomeButtons.current
         const input = buttonsToInput(current, previousButtons.current)
         const beforeSession = sessionRef.current
         const triggers = pressedVerification(current, previousButtons.current)
@@ -313,10 +325,10 @@ export function TrainingGround() {
             applySession(nextSession)
             if (nextSession.phase === 'failed') {
               setNotice(nextSession.failure?.kind === 'input_order_mismatch' ? document.teaching.steps[nextSession.nextVerifiedInput]?.order_error.body ?? '输入顺序不正确。' : nextSession.failure?.kind === 'timing_window_miss' ? document.teaching.steps[nextSession.nextVerifiedInput]?.window_error.body ?? '错过输入窗口。' : document.entry.failure.body)
-              beginOutcome('failed', after)
+              beginOutcome('failed', after, nextFrame)
             } else if (nextSession.phase === 'success') {
               setNotice('成功：已命中可行候选。')
-              beginOutcome('success', after)
+              beginOutcome('success', after, nextFrame)
             }
           }
         }).catch((error: Error) => { if (active) { setPlaying(false); setNotice(error.message) } }).finally(() => { simulating.current = false })
@@ -339,6 +351,8 @@ export function TrainingGround() {
   const timing = timingAssessment(actualActionFrame, prediction.targetFrame)
   const finalSpeed = outcome?.resultSpeedX
   const failureFrame = session.failure ? (fuzzStartFrame ?? 0) + session.failure.frame : undefined
+  const timelineFrame = outcome?.timelineFrame ?? frame
+  const timelineFrameCount = outcome?.timelineFrame ?? Math.max(40, snapshots.length - 1, (prediction.targetFrame ?? 0) + 24)
   const resultPanel = outcome && <div className={`training-result-card ${outcome.phase}`}>
     <div className="training-result-heading">
       <div><small>ATTEMPT RESULT</small><strong>{outcome.phase === 'success' ? '成功' : session.failure?.kind === 'entry_check_failed' ? document.entry.failure.title : session.failure?.kind === 'input_order_mismatch' ? document.teaching.steps[session.nextVerifiedInput]?.order_error.title : document.teaching.steps[session.nextVerifiedInput]?.window_error.title}</strong></div>
@@ -356,11 +370,12 @@ export function TrainingGround() {
   return <main className="training-workspace">
     <section className="training-stage panel-frame">
       <div className="stage-header"><div><small>TRAINING / {document.id}</small><h1>{document.title} <em>第 {Math.min(session.nextVerifiedInput + 1, document.teaching.steps.length)}/{document.teaching.steps.length} 步</em></h1></div><div className="cache-meter"><span>{bestFinalSpeed === undefined ? '有效倍率' : '当前最佳候选最终 X 速度'}</span><strong>{bestFinalSpeed === undefined ? `${effective.toFixed(2)}×` : bestFinalSpeed.toFixed(2)}</strong></div></div>
-      <GameView map={map} state={state} states={snapshots} frame={frame} stale={false} />
-      <div className="training-prompt">{prompt}</div>
+      <GameView map={map} state={state} states={snapshots} frame={frame} stale={false}>
+        <TrainingPrompt map={map} state={state} text={prompt} hidden={outcome !== null} />
+      </GameView>
       {outcome && <div className={outcome.phase === 'success' ? 'training-success' : 'training-failure'} style={{ '--outcome-progress': outcomeProgress } as CSSProperties}>{resultPanel}</div>}
       <div className="transport"><button aria-label="回到 R 点" onClick={() => resetTo()}>R</button><button aria-label="上一帧" onClick={() => seek(frame - 1)}>◀</button><button className="play-button" onClick={() => { if (!playing && predictionDirty.current) { predictionDirty.current = false; applyPrediction({ windows: [] }) } setPlaying((value) => !value) }}>{playing ? 'Ⅱ' : '▶'}</button><button aria-label="下一帧" onClick={() => { if (predictionDirty.current) { predictionDirty.current = false; applyPrediction({ windows: [] }) } setPlaying(true) }}>▶</button><select aria-label="训练基础速度" value={baseRate} onChange={(event) => setBaseRate(Number(event.target.value))}><option value={.25}>0.25×</option><option value={.5}>0.5×</option><option value={1}>1×</option><option value={2}>2×</option></select><label className="training-assist"><input type="checkbox" checked={autoSlowdown} onChange={(event) => setAutoSlowdown(event.target.checked)} />自动慢放</label></div>
     </section>
-    <TrainingTimeline frame={frame} frameCount={Math.max(40, snapshots.length - 1, (prediction.targetFrame ?? 0) + 24)} fuzzStart={fuzzStartFrame} targetFrame={prediction.targetFrame} windows={prediction.windows} actualInputs={actualInputs} failureFrame={failureFrame} resetFrame={resetFrame} bestFinalSpeed={bestFinalSpeed} followTarget={followReference && !outcome} onSeek={(value, manual) => { if (manual && value < frame) setFollowReference(false); seek(value) }} onSetReset={(value) => { setResetFrame(value); setNotice(`临时 R 点已设为 F${value}`) }} />
+    <TrainingTimeline frame={timelineFrame} frameCount={timelineFrameCount} fuzzStart={fuzzStartFrame} targetFrame={prediction.targetFrame} windows={prediction.windows} actualInputs={actualInputs} failureFrame={failureFrame} resetFrame={resetFrame} bestFinalSpeed={bestFinalSpeed} followTarget={followReference && !outcome} onSeek={(value, manual) => { if (manual && value < timelineFrame) setFollowReference(false); seek(value) }} onSetReset={(value) => { setResetFrame(value); setNotice(`临时 R 点已设为 F${value}`) }} />
   </main>
 }

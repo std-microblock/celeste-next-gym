@@ -24,6 +24,6 @@ describe('training result timing', () => {
 
   it('locks game input whenever a result overlay is active', () => {
     expect(trainingInputLocked(null)).toBe(false)
-    expect(trainingInputLocked({ phase: 'success', startedAt: 0, durationMs: 3_000, resultSpeedX: 325 })).toBe(true)
+    expect(trainingInputLocked({ phase: 'success', startedAt: 0, durationMs: 3_000, resultSpeedX: 325, timelineFrame: 12 })).toBe(true)
   })
 })
