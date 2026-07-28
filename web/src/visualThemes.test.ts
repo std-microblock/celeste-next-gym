@@ -7,6 +7,9 @@ describe('visual themes', () => {
     expect(new Set(VISUAL_THEMES.map((theme) => theme.id)).size).toBe(VISUAL_THEMES.length)
     expect(new Set(VISUAL_THEMES.map((theme) => theme.tileset)).size).toBe(VISUAL_THEMES.length)
     for (const theme of VISUAL_THEMES) expect(theme.tileset).toMatch(/^tilesets\//)
+    expect(visualThemeById('celestial-resort').spike).toBe('default')
+    expect(visualThemeById('golden-ridge').spike).toBe('cliffside')
+    expect(visualThemeById('summit').spike).toBe('outline')
   })
 
   it('validates persisted ids and safely resolves the default', () => {

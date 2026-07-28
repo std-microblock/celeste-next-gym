@@ -985,17 +985,32 @@ fn move_cloud_v(
     if move_y == 0.0 {
         return;
     }
+
+    // JumpThru.MoveVExact checks an upward non-rider against the destination
+    // before committing its own Y.  It only pushes an actor that enters the
+    // platform on this exact step; actors already overlapping are deliberately
+    // left alone.  The ordering is observable when a cloud rises past the
+    // corner of a solid during a hyper.
+    let previous_bounds = entity.bounds;
+    if !riding && move_y < 0.0 {
+        let player = current_player_rect(p, p.pos.x, p.pos.y);
+        let destination = Rect::new(
+            previous_bounds.x,
+            previous_bounds.y + move_y,
+            previous_bounds.width,
+            previous_bounds.height,
+        );
+        if destination.intersects(player) && !previous_bounds.intersects(player) {
+            p.pos.y += previous_bounds.y + move_y - player.bottom();
+            set_lift_speed(p, Vec2::new(0.0, lift_y));
+        }
+    }
+
     entity.bounds.y += move_y;
     state.position.y += move_y;
     if riding {
         p.pos.y += move_y;
         set_lift_speed(p, Vec2::new(0.0, lift_y));
-    } else if move_y < 0.0 {
-        let player = current_player_rect(p, p.pos.x, p.pos.y);
-        if entity.bounds.intersects(player) && player.bottom() > entity.bounds.y {
-            p.pos.y += entity.bounds.y - player.bottom();
-            set_lift_speed(p, Vec2::new(0.0, lift_y));
-        }
     }
 }
 
@@ -1043,8 +1058,12 @@ fn advance_clouds(p: &mut PlayerSnapshot, map: &mut Map) {
                 let exact_y = state.position.y + state.remainder_y;
                 let desired_y = approach(exact_y, state.start.y, state.speed * p.frame_delta_time);
                 let amount = desired_y - exact_y;
-                let speed = state.speed;
-                move_cloud_v(p, entity, &mut state, amount, speed);
+                // Platform.MoveTowardsY delegates to MoveV(amount), whose
+                // LiftSpeed is the requested displacement divided by DeltaTime,
+                // not Cloud.speed.  Its rounded one-pixel step is therefore
+                // still reported as the exact fractional return velocity.
+                let lift_y = amount / p.frame_delta_time;
+                move_cloud_v(p, entity, &mut state, amount, lift_y);
                 if state.position.y + state.remainder_y == state.start.y {
                     state.phase = 0;
                     state.speed = 0.0;
@@ -15353,7 +15372,9 @@ mod tests {
         .unwrap();
 
         assert_eq!(trace.states[30].speed.x, 325.0);
-        assert_eq!(trace.states[35].pos.y, 414.0);
+        assert_eq!(trace.states[30].pos, Vec2::new(521.0, 418.0));
+        assert_eq!(trace.states[35].pos, Vec2::new(547.0, 415.0));
+        assert!((trace.states[35].movement_remainder.y + 0.5).abs() < 0.000_1);
         assert!(trace.states[36].pos.x > 544.0);
         assert!(trace.states[38].on_ground);
         assert!(trace.states[39].speed.x > 300.0 && trace.states[39].speed.y < -160.0);

@@ -7,7 +7,7 @@ export const mapParts = [TECH_ENTITY_4_6_2_CLOUD_HYPER_BUNNYHOP] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: ['feature:cloud'],
   techniqueIds: ['4.6.2'],
   mapParts,

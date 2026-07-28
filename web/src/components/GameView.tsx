@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { atlasFrameKeys } from '../atlasFrames'
 import type { EntityKind, GymMap, MapEntity, SimState, Vec2 } from '../model'
 import { playerHairMetadata } from '../playerHair'
+import { spikeDirection, spikePlacement } from '../spikeRendering'
 import type { VisualTheme, VisualThemeLayer } from '../visualThemes'
 
 interface AtlasEntry {
@@ -382,22 +383,19 @@ function buildTileLayer(assets: GameAssets, map: GymMap, grid: string[][], tiles
   return layer
 }
 
-function drawRepeated(context: CanvasRenderingContext2D, assets: GameAssets, key: string, entity: MapEntity, step: number): void {
-  const entry = assets.entries[key]
-  if (!entry) return
+function drawSpikes(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, style: VisualTheme['spike']): void {
   const box = entity.bounds
-  const horizontal = box.width >= box.height
-  const length = horizontal ? box.width : box.height
-  for (let offset = 0; offset < length; offset += step) {
-    const x = horizontal ? box.x + offset : box.x
-    const y = horizontal ? box.y : box.y + offset
-    context.save()
-    context.translate(x, y)
-    if (entity.direction.x < 0) context.rotate(-Math.PI / 2)
-    else if (entity.direction.x > 0) context.rotate(Math.PI / 2)
-    else if (entity.direction.y > 0) context.rotate(Math.PI)
-    context.drawImage(assets.image, entry.x, entry.y, entry.width, entry.height, 0, -entry.height, entry.width, entry.height)
-    context.restore()
+  const direction = spikeDirection(entity.direction)
+  const available = frames(assets, `danger/spikes/${style}_${direction}`)
+  if (available.length === 0) return
+  const length = direction === 'up' || direction === 'down' ? box.width : box.height
+  for (let index = 0; index < Math.floor(length / 8); index += 1) {
+    const variant = Math.floor(pseudo(box.x * .13 + box.y * .17 + index * 7.11) * available.length)
+    const key = available[variant]
+    const entry = assets.entries[key]
+    if (!entry) continue
+    const placement = spikePlacement(box, direction, index, entry.frameWidth, entry.frameHeight)
+    drawEntry(context, assets, key, placement.x, placement.y, placement.originX, placement.originY)
   }
 }
 
@@ -412,6 +410,10 @@ function waterSurfaceY(box: MapEntity['bounds'], x: number, frame: number): numb
 
 function drawWater(context: CanvasRenderingContext2D, entity: MapEntity, frame: number): void {
   const box = entity.bounds
+  context.save()
+  context.beginPath()
+  context.rect(box.x, box.y, box.width, box.height)
+  context.clip()
   context.beginPath()
   context.moveTo(box.x, waterSurfaceY(box, box.x, frame))
   for (let x = box.x + 4; x <= box.x + box.width; x += 4) context.lineTo(x, waterSurfaceY(box, x, frame))
@@ -456,6 +458,7 @@ function drawWater(context: CanvasRenderingContext2D, entity: MapEntity, frame: 
   context.closePath()
   context.fillStyle = 'rgba(135, 206, 250, .80)'
   context.fill()
+  context.restore()
 }
 
 function drawWind(context: CanvasRenderingContext2D, assets: GameAssets, map: GymMap, state: SimState, frame: number): void {
@@ -950,11 +953,10 @@ function drawUnknownEntity(context: CanvasRenderingContext2D, entity: MapEntity)
   context.fillText(entity.name || entity.kind, box.x + 1, box.y - 1)
 }
 
-function drawEntity(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState, kindIndex: number, entityIndex: number): void {
+function drawEntity(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState, kindIndex: number, entityIndex: number, theme: VisualTheme): void {
   const box = entity.bounds
   if (entity.kind === 'spikes') {
-    const direction = entity.direction.x < 0 ? 'left' : entity.direction.x > 0 ? 'right' : entity.direction.y > 0 ? 'down' : 'up'
-    drawRepeated(context, assets, `danger/spikes/default_${direction}00`, entity, 8)
+    drawSpikes(context, assets, entity, theme.spike)
   } else if (entity.kind === 'jump_thru') {
     const entry = assets.entries['objects/jumpthru/wood']
     if (!entry) return
@@ -1055,7 +1057,7 @@ export function GameView({ map, state, states, frame, stale, theme, children }: 
     const kindCounts = new Map<EntityKind, number>()
     for (const [entityIndex, entity] of map.entities.entries()) {
       const kindIndex = kindCounts.get(entity.kind) ?? 0
-      drawEntity(context, assets, entity, frame, state, kindIndex, entityIndex)
+      drawEntity(context, assets, entity, frame, state, kindIndex, entityIndex, theme)
       kindCounts.set(entity.kind, kindIndex + 1)
     }
     context.globalAlpha = stale ? .45 : 1
