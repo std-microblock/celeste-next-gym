@@ -37,7 +37,7 @@ pub use sim::{
     fidelity, simulate, simulate_trace,
 };
 pub use types::{
-    BounceBlockSnapshot, CassetteBlockSnapshot, CassetteManagerSnapshot, CloudSnapshot, CoreMode,
+    BounceBlockSnapshot, BumperSnapshot, CassetteBlockSnapshot, CassetteManagerSnapshot, CloudSnapshot, CoreMode,
     GliderSnapshot, HeartGemSnapshot, InputState, LookoutSnapshot, MoveBlockSnapshot, PlayerSnapshot, PlayerState,
     RisingLavaSnapshot, SandwichLavaSnapshot, SeekerSnapshot, SpinnerSnapshot, TempleGateSnapshot,
     TheoCrystalSnapshot, Vec2, ZipMoverSnapshot,

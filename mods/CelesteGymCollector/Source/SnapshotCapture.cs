@@ -125,6 +125,19 @@ internal static class SnapshotCapture {
                 values["theoPosition"] = Simplify(theoCrystal.Position);
                 values["theoCollidable"] = theoCrystal.Collidable;
             }
+            List<float[]> bumperPositions = [];
+            List<float> bumperSineCounters = [];
+            foreach (Bumper bumper in level.Entities.FindAll<Bumper>()) {
+                bumperPositions.Add(Simplify(bumper.Position) as float[] ?? [bumper.Position.X, bumper.Position.Y]);
+                // SineWave.Counter is the source randomized phase. Persist it
+                // with Position so a replay starts from this exact Bumper
+                // Circle(12) location instead of inventing a random seed.
+                bumperSineCounters.Add(bumper.Get<SineWave>()?.Counter ?? 0f);
+            }
+            if (bumperPositions.Count > 0) {
+                values["bumperPositions"] = bumperPositions;
+                values["bumperSineCounters"] = bumperSineCounters;
+            }
             Entity? reformBlock = level.Entities.FindFirst<MoveBlock>();
             reformBlock ??= level.Entities.FindFirst<BounceBlock>();
             if (reformBlock is not null) {

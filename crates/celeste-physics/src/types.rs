@@ -308,6 +308,21 @@ pub struct SpinnerSnapshot {
     pub collidable: bool,
 }
 
+/// Per-entity Bumper state. `position` is its live Entity.Position (the
+/// centre of the Circle(12) collider), while `sine_counter` is the randomized
+/// SineWave phase which advances at 0.44 radians per second.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct BumperSnapshot {
+    /// Immutable room position passed to Bumper's constructor.
+    pub anchor: Vec2,
+    pub position: Vec2,
+    pub sine_counter: f32,
+    /// Bumper's own respawn timer. This belongs to the entity rather than
+    /// Player, because its moving position cannot safely identify it.
+    pub respawn_timer: f32,
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct LookoutSnapshot {
@@ -461,6 +476,10 @@ pub struct PlayerSnapshot {
     pub cassette_blocks: Vec<CassetteBlockSnapshot>,
     /// Per-entity CrystalStaticSpinner state, in map entity order.
     pub spinners: Vec<SpinnerSnapshot>,
+    /// Per-entity Bumper position and randomized SineWave phase, in map
+    /// entity order. This is captured from Everest because `Randomize()` is
+    /// deliberately not reproducible from a portable map alone.
+    pub bumpers: Vec<BumperSnapshot>,
     /// Per-entity Lookout coroutine state, in map entity order.
     pub lookouts: Vec<LookoutSnapshot>,
     /// Per-entity vanilla ZipMover coroutine and Platform movement state, in
@@ -638,6 +657,7 @@ impl Default for PlayerSnapshot {
             cassette_manager: CassetteManagerSnapshot::default(),
             cassette_blocks: vec![],
             spinners: vec![],
+            bumpers: vec![],
             lookouts: vec![],
             zip_movers: vec![],
             bounce_blocks: vec![],

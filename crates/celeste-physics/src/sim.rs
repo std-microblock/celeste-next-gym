@@ -139,6 +139,7 @@ impl Simulator {
         initialize_temple_gates(&mut snapshot, &mut runtime_map);
         initialize_cassette_blocks(&mut snapshot, &mut runtime_map);
         initialize_spinners(&mut snapshot, &mut runtime_map);
+        initialize_bumpers(&mut snapshot, &mut runtime_map);
         initialize_lookouts(&mut snapshot, &runtime_map);
         position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
         Ok(Self {
@@ -726,6 +727,61 @@ fn initialize_spinners(p: &mut PlayerSnapshot, map: &mut Map) {
             });
         }
         park_entity(&mut map.entities[entity_index]);
+    }
+}
+
+fn bumper_entity_indices(map: &Map) -> Vec<usize> {
+    map.entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::Bumper).then_some(index))
+        .collect()
+}
+
+fn initialize_bumpers(p: &mut PlayerSnapshot, map: &mut Map) {
+    let indices = bumper_entity_indices(map);
+    p.bumpers.truncate(indices.len());
+    for (bumper_index, entity_index) in indices.into_iter().enumerate() {
+        let entity = &mut map.entities[entity_index];
+        let anchor = Vec2::new(
+            entity.bounds.x + entity.bounds.width * 0.5,
+            entity.bounds.y + entity.bounds.height * 0.5,
+        );
+        if bumper_index == p.bumpers.len() {
+            // Fresh portable simulations have no source Randomize() sample.
+            // Keep their default phase deterministic; real comparisons replace
+            // it with the collector's live SineWave.Counter at state zero.
+            p.bumpers.push(crate::BumperSnapshot {
+                anchor,
+                position: anchor,
+                sine_counter: 0.0,
+                respawn_timer: 0.0,
+            });
+        } else {
+            // Map data carries Bumper's immutable constructor position;
+            // captured state supplies only its live Position and phase.
+            p.bumpers[bumper_index].anchor = anchor;
+        }
+        let state = &p.bumpers[bumper_index];
+        entity.bounds = Rect::new(state.position.x - 12.0, state.position.y - 12.0, 24.0, 24.0);
+    }
+}
+
+fn advance_bumpers(p: &mut PlayerSnapshot, map: &mut Map) {
+    // Bumper.cs: `new SineWave(0.44f, 0f).Randomize()` and its OnUpdate
+    // writes `Position = start + Vector2.UnitY * sine.Value * 3f`. Bumper is
+    // a room entity, so this happens after Player.Update: collision on this
+    // frame observes the previous live Circle(12) position.
+    for (bumper_index, entity_index) in bumper_entity_indices(map).into_iter().enumerate() {
+        let state = &mut p.bumpers[bumper_index];
+        let entity = &mut map.entities[entity_index];
+        state.sine_counter += 0.44 * p.frame_delta_time;
+        state.position = Vec2::new(
+            state.anchor.x,
+            state.anchor.y + state.sine_counter.sin() * 3.0,
+        );
+        state.respawn_timer = (state.respawn_timer - p.frame_delta_time).max(0.0);
+        entity.bounds = Rect::new(state.position.x - 12.0, state.position.y - 12.0, 24.0, 24.0);
     }
 }
 
@@ -3658,6 +3714,7 @@ fn advance_post_player_entities(p: &mut PlayerSnapshot, map: &mut Map, input: In
     advance_cassette_blocks(p, map);
     advance_cassette_manager(p, map);
     advance_spinners(p, map);
+    advance_bumpers(p, map);
 }
 
 fn step(
@@ -5440,7 +5497,13 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
     let mut heart_index = 0usize;
     let mut rising_lava_index = 0usize;
     let mut sandwich_lava_index = 0usize;
+    let mut bumper_index = 0usize;
     for (entity_index, entity) in map.entities.iter().enumerate() {
+        let current_bumper = (entity.kind == EntityKind::Bumper).then(|| {
+            let index = bumper_index;
+            bumper_index += 1;
+            index
+        });
         let current_heart = if entity.kind == EntityKind::HeartGem {
             let index = heart_index;
             heart_index += 1;
@@ -5631,10 +5694,12 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                     entity.bounds.x + entity.bounds.width * 0.5,
                     entity.bounds.y + entity.bounds.height * 0.5,
                 );
-                if p.bumper_reuse_timer <= 0.0 || p.last_bumper_target != target {
+                let index = current_bumper.expect("Bumper has runtime state");
+                if p.bumpers[index].respawn_timer <= 0.0 {
                     explode_launch(p, input, target, false, false);
                     p.last_bumper_target = target;
                     p.bumper_reuse_timer = 0.6;
+                    p.bumpers[index].respawn_timer = 0.6;
                 }
             }
             EntityKind::Spring if p.state != PlayerState::DreamDash => {
@@ -13980,6 +14045,31 @@ mod tests {
         assert_eq!(p.speed, Vec2::new(-280.0, -150.0));
         assert_eq!(p.explode_launch_boost_timer, 0.01);
         assert_eq!(p.explode_launch_boost_speed, -336.0);
+    }
+
+    #[test]
+    fn bumper_replays_the_collected_sine_phase_and_position_across_split_runs() {
+        let phase = std::f32::consts::FRAC_PI_2;
+        let initial = PlayerSnapshot {
+            bumpers: vec![crate::BumperSnapshot {
+                anchor: Vec2::new(600.0, 200.0),
+                // The map anchor is (600, 200); this is the source Bumper's
+                // captured Circle(12) centre at sin(pi / 2) * 3.
+                position: Vec2::new(600.0, 203.0),
+                sine_counter: phase,
+                respawn_timer: 0.0,
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let inputs = vec![InputState::default(); 20];
+        let whole = simulate(initial.clone(), &inputs, &bumper_map(), inputs.len() as u32).unwrap();
+        let first = simulate(initial, &inputs[..7], &bumper_map(), 7).unwrap();
+        let split = simulate(first, &inputs[7..], &bumper_map(), 13).unwrap();
+
+        assert_eq!(split, whole);
+        let expected = 200.0 + (phase + 0.44 * DT * 20.0).sin() * 3.0;
+        assert!((whole.bumpers[0].position.y - expected).abs() < 0.000_1);
+        assert!((whole.bumpers[0].position.x - 600.0).abs() < 0.000_1);
     }
 
     #[test]

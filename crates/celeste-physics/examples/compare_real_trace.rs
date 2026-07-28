@@ -1,7 +1,7 @@
 use std::{env, fs, process::ExitCode};
 
 use celeste_physics::{
-    decode_map_room, simulate_trace, InputState, PlayerSnapshot, PlayerState, Vec2,
+    decode_map_room, simulate_trace, BumperSnapshot, InputState, PlayerSnapshot, PlayerState, Vec2,
 };
 use serde::Deserialize;
 use serde_json::Value;
@@ -278,6 +278,21 @@ fn to_snapshot(value: &PortableSnapshot) -> PlayerSnapshot {
     snapshot.strawberry_collect_index = int_field(&value.fields, "StrawberryCollectIndex") as u16;
     snapshot.strawberry_collect_reset_timer =
         float_field(&value.fields, "StrawberryCollectResetTimer");
+    snapshot.bumpers = vector_list_field(&value.fields, "bumperPositions")
+        .into_iter()
+        .enumerate()
+        .map(|(index, position)| BumperSnapshot {
+            // `initialize_bumpers` replaces this fallback using the fixture
+            // Bumper's immutable room anchor.
+            anchor: position,
+            position,
+            sine_counter: float_list_field(&value.fields, "bumperSineCounters")
+                .get(index)
+                .copied()
+                .unwrap_or(0.0),
+            respawn_timer: 0.0,
+        })
+        .collect();
     snapshot
 }
 
@@ -301,6 +316,31 @@ fn vector_field(fields: &serde_json::Map<String, Value>, name: &str) -> Vec2 {
         values.first().and_then(Value::as_f64).unwrap_or(0.0) as f32,
         values.get(1).and_then(Value::as_f64).unwrap_or(0.0) as f32,
     )
+}
+
+fn vector_list_field(fields: &serde_json::Map<String, Value>, name: &str) -> Vec<Vec2> {
+    fields
+        .get(name)
+        .and_then(Value::as_array)
+        .map(|values| {
+            values
+                .iter()
+                .filter_map(Value::as_array)
+                .map(|value| Vec2::new(
+                    value.first().and_then(Value::as_f64).unwrap_or(0.0) as f32,
+                    value.get(1).and_then(Value::as_f64).unwrap_or(0.0) as f32,
+                ))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn float_list_field(fields: &serde_json::Map<String, Value>, name: &str) -> Vec<f32> {
+    fields
+        .get(name)
+        .and_then(Value::as_array)
+        .map(|values| values.iter().filter_map(Value::as_f64).map(|value| value as f32).collect())
+        .unwrap_or_default()
 }
 
 #[cfg(test)]
