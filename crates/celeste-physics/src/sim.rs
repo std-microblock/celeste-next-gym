@@ -768,12 +768,11 @@ fn initialize_bumpers(p: &mut PlayerSnapshot, map: &mut Map) {
 }
 
 fn advance_bumpers(p: &mut PlayerSnapshot, map: &mut Map) {
-    // Bumper.cs adds PlayerCollider before SineWave, so `base.Update()` tests
-    // the previous live Circle(12) position, then advances the wave. Its
-    // following UpdatePosition writes the two source components:
+    // Bumper's SineWave runs before its PlayerCollider callback. Its following
+    // UpdatePosition writes the two source components:
     // `anchor + new Vector2(sine.Value * 3f, sine.ValueOverTwo * 2f)`.
-    // Thus `interact` runs the callback before this function, while this
-    // function publishes the position sampled by the next frame's callback.
+    // Therefore a collision this entity frame samples the newly published
+    // Circle(12) position, rather than the previous frame's one.
     for (bumper_index, entity_index) in bumper_entity_indices(map).into_iter().enumerate() {
         let state = &mut p.bumpers[bumper_index];
         let entity = &mut map.entities[entity_index];
@@ -3721,7 +3720,6 @@ fn advance_post_player_entities(p: &mut PlayerSnapshot, map: &mut Map, input: In
     advance_cassette_blocks(p, map);
     advance_cassette_manager(p, map);
     advance_spinners(p, map);
-    advance_bumpers(p, map);
 }
 
 fn step(
@@ -3960,6 +3958,10 @@ fn step(
         move_axis(p, map, false);
     }
     update_camera(p, map);
+    // Bumper.Update advances its SineWave and updates Position before its
+    // PlayerCollider invokes OnPlayer. Keep it immediately before the
+    // portable collider callbacks, after Player has completed its movement.
+    advance_bumpers(p, map);
     interact(p, map, input);
     try_begin_lookout(p, map, input);
     advance_lookouts(p, map, input);
@@ -9139,7 +9141,7 @@ mod tests {
         let inputs: Vec<_> = (0..120)
             .map(|frame| InputState {
                 move_x: if frame >= 13 { 1 } else { 0 },
-                move_y: if frame == 26 || (45..=51).contains(&frame) {
+                move_y: if frame == 26 || (45..=47).contains(&frame) {
                     1
                 } else {
                     0
@@ -9177,6 +9179,23 @@ mod tests {
         assert_eq!(f28.speed, f27.speed);
         assert_eq!(f28.state, PlayerState::Launch);
         assert_eq!(f28.bumpers[0].position, f27.bumpers[0].position);
+        // Physical collector states 85–86. The second Bumper collision uses
+        // the position published by that entity update, before PlayerCollider
+        // calls OnPlayer. This is deliberately non-horizontal, so it catches
+        // an old-position callback that the f27 horizontal launch cannot.
+        let f85 = &trace.states[85];
+        assert_eq!(f85.pos, Vec2::new(134.0, 482.0));
+        assert_eq!(f85.speed, Vec2::new(107.999_88, 30.000_06));
+        assert!((f85.bumpers[0].position.x - 132.590_96).abs() < 0.000_1);
+        assert!((f85.bumpers[0].position.y - 492.197_97).abs() < 0.000_1);
+
+        let f86 = &trace.states[86];
+        assert_eq!(f86.pos, Vec2::new(135.0, 483.0));
+        assert_eq!(f86.state, PlayerState::Launch);
+        assert!((f86.speed.x - 48.036_976).abs() < 0.000_1);
+        assert!((f86.speed.y + 277.123_7).abs() < 0.000_1);
+        assert!((f86.last_bumper_target.x - 132.725_8).abs() < 0.000_1);
+        assert!((f86.last_bumper_target.y - 492.243_74).abs() < 0.000_1);
         let pickup = trace
             .states
             .iter()
@@ -14081,7 +14100,8 @@ mod tests {
         assert_eq!(p.freeze_timer, 0.1);
         assert_eq!(p.explode_launch_boost_timer, 0.0);
         assert_eq!(p.bumper_reuse_timer, 0.6);
-        assert_eq!(p.last_bumper_target, Vec2::new(600.0, 200.0));
+        assert!((p.last_bumper_target.x - 600.138_2).abs() < 0.000_1);
+        assert!((p.last_bumper_target.y - 200.046_07).abs() < 0.000_1);
     }
 
     #[test]
