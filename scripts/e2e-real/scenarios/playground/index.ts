@@ -146,6 +146,8 @@ import { scenario as scenario143 } from './other-5.1.4-bino-extensions.js'
 import { scenario as scenario144 } from './other-5.2-bubsdrop.js'
 import { scenario as scenario145 } from './mechanics-corner-correction-down.js'
 import { scenario as scenario146 } from './delayed-wallbounce.js'
+import { scenario as scenario147 } from './mechanics-move-block-side-grab.js'
+import { scenario as scenario148 } from './mechanics-bounce-block-side-grab.js'
 
 export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario0,
@@ -295,4 +297,6 @@ export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario144,
   scenario145,
   scenario146,
+  scenario147,
+  scenario148,
 ])
