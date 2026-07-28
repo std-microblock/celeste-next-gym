@@ -18,6 +18,7 @@ const transition = requireScenario('mechanics-screen-transition-up')
 const zipJump = requireScenario('mechanics-liftboost-zip-jump')
 const bubbleSuper = requireScenario('entity-4.2-bubble-super')
 const bubbleDemohyper = requireScenario('entity-4.2-bubble-demohyper')
+const binoInteractionStorage = requireScenario('other-5.1.3-bino-interaction-storage')
 
 describe('per-scenario Playground maps', () => {
   it('limits screen-transition fixture contents to its declared closure', () => {
@@ -46,6 +47,19 @@ describe('per-scenario Playground maps', () => {
       assert.equal(entities.some((entity) => entity.kind === 'booster' && entity.bounds[0] === 230 && entity.bounds[1] === 384), true)
       assert.equal(entities.some((entity) => entity.kind === 'zip_mover'), false)
     }
+  })
+
+  it('keeps the Bino interaction-storage candidate in its native Booster window', () => {
+    const fixture = scenarioFixture(binoInteractionStorage).fixture
+    const playground = fixture.rooms.find((room) => room.name === 'playground')
+    const lookout = playground?.entities.find((entity) => entity.id === 'tech-5.1.3-lookout')
+    const booster = playground?.entities.find((entity) => entity.id === 'tech-5.1.3-interrupting-booster')
+
+    assert.deepEqual(lookout?.bounds, [938, 493, 4, 4])
+    assert.deepEqual(booster?.bounds, [924, 491, 16, 16])
+    assert.equal(playground?.solids.some(([x, y, width, height]) => x === 936 && y === 0 && width === 24 && height === 496), false)
+    assert.equal(binoInteractionStorage.inputs.length, 300)
+    assert.equal(binoInteractionStorage.inputs[120]?.move_x, 1)
   })
 
   it('rejects a map override instead of silently bypassing scenario parts', () => {
