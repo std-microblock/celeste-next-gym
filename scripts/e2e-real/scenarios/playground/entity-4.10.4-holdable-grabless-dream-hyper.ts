@@ -16,11 +16,11 @@ export const scenario = defineScenario({
   inputs: inputFrames(150, (frame) => ({
     move_x: frame >= 85 ? -1 : 1,
     move_y: 0,
-    jump_pressed: frame === 48,
-    jump_held: frame === 48,
+    jump_pressed: frame === 62,
+    jump_held: frame === 62,
     dash_pressed: frame === 0,
-    crouch_dash_pressed: frame === 44,
-    grab_held: frame < 44 || frame >= 65,
+    crouch_dash_pressed: frame === 54,
+    grab_held: frame < 53 || frame >= 65,
   })),
   verify(states) {
     const exit = states.findIndex((state, frame) => frame > 0 && state.state === 0 && states[frame - 1]?.state === 9 && state.holding_theo)

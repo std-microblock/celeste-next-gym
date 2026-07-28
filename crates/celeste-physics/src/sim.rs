@@ -11227,6 +11227,11 @@ mod tests {
             jump_held: true,
             ..InputState::default()
         });
+        inputs.extend((0..60).map(|frame| InputState {
+            move_x: if frame < 25 { 1 } else { -1 },
+            grab_held: true,
+            ..InputState::default()
+        }));
         let trace = simulate_trace(initial, &inputs, &map, inputs.len() as u32).unwrap();
         assert_eq!(trace.states[1].state, PlayerState::Normal);
         assert_eq!(trace.states[1].jump_grace_timer, JUMP_GRACE);
@@ -11244,6 +11249,11 @@ mod tests {
         assert!(released > 1);
         assert_eq!(trace.states[released].before_dash_speed.x, 160.0);
         assert!(trace.states[released].theo_crystals[0].cannot_hold_timer > 0.0);
+        assert!(
+            trace.states[released + 1..released + 6]
+                .iter()
+                .all(|state| state.holding_theo.is_none())
+        );
         assert!(
             trace.states.iter().any(|state| {
                 state.state == PlayerState::Normal && (state.speed.x - 325.0).abs() < 0.001
@@ -11264,6 +11274,13 @@ mod tests {
                     state.ducking
                 ))
                 .collect::<Vec<_>>()
+        );
+        assert!(
+            trace
+                .states
+                .iter()
+                .skip(released + 6)
+                .any(|state| state.state == PlayerState::Pickup && state.holding_theo == Some(0))
         );
     }
     #[test]
