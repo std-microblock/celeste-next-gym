@@ -969,7 +969,7 @@ function drawEntity(context: CanvasRenderingContext2D, assets: GameAssets, entit
   }
 }
 
-export function GameView({ map, state, states, frame, stale, children }: { map: GymMap; state: SimState; states: readonly (SimState | undefined)[]; frame: number; stale: boolean; children?: ReactNode }) {
+export function GameView({ map, state, states, frame, stale, children }: { map: GymMap; state: SimState; states: readonly (SimState | undefined)[]; frame: number; stale: boolean; children?: ReactNode | ((viewport: { width: number; height: number }) => ReactNode) }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [assets, setAssets] = useState<GameAssets | null>(null)
   const [viewportRevision, setViewportRevision] = useState(0)
@@ -1020,7 +1020,7 @@ export function GameView({ map, state, states, frame, stale, children }: { map: 
 
   return <div className="game-screen">
     <canvas ref={canvasRef} aria-label="CelesteGymPlayground 原版资源渲染画面" />
-    {children}
+    {typeof children === 'function' ? children({ width: canvasRef.current?.clientWidth ?? 0, height: canvasRef.current?.clientHeight ?? 0 }) : children}
     <div className="screen-vignette" />
     <div className="screen-noise" />
     {!assets && <div className="recompute-flag"><span />加载 Gameplay atlas</div>}

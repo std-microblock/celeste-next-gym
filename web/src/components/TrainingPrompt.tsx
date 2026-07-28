@@ -9,15 +9,21 @@ function approach(current: number, target: number, amount: number): number {
   return current < target ? Math.min(target, current + amount) : Math.max(target, current - amount)
 }
 
-export function promptTargetPercent(map: GymMap, state: SimState): Vec2 {
+export function promptTargetPercent(map: GymMap, state: SimState, viewport: { width: number; height: number }): Vec2 {
+  if (viewport.width <= 0 || viewport.height <= 0) return { x: 50, y: 50 }
+  const scale = Math.min(viewport.width / map.bounds.width, viewport.height / map.bounds.height)
+  const contentWidth = map.bounds.width * scale
+  const contentHeight = map.bounds.height * scale
+  const offsetX = (viewport.width - contentWidth) / 2
+  const offsetY = (viewport.height - contentHeight) / 2
   return {
-    x: (state.pos.x - map.bounds.x) / map.bounds.width * 100,
-    y: (state.pos.y - map.bounds.y) / map.bounds.height * 100,
+    x: (offsetX + (state.pos.x - map.bounds.x) * scale) / viewport.width * 100,
+    y: (offsetY + (state.pos.y - map.bounds.y) * scale) / viewport.height * 100,
   }
 }
 
-export function TrainingPrompt({ map, state, text, hidden = false }: { map: GymMap; state: SimState; text: string; hidden?: boolean }) {
-  const target = promptTargetPercent(map, state)
+export function TrainingPrompt({ map, state, viewport, text, hidden = false }: { map: GymMap; state: SimState; viewport: { width: number; height: number }; text: string; hidden?: boolean }) {
+  const target = promptTargetPercent(map, state, viewport)
   const position = useRef<Vec2>(target)
   const velocity = useRef<Vec2>({ x: 0, y: 0 })
   const targetRef = useRef(target)
