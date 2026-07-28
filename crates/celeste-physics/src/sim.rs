@@ -3209,6 +3209,8 @@ fn step(
     } else if !input.jump_held {
         p.jump_buffer_timer = 0.0;
     }
+    // Player state callbacks read VirtualButton.Pressed, not the raw edge.
+    input.jump_pressed = p.jump_buffer_timer > 0.0;
     // Dash and CrouchDash use a 0.08 second VirtualButton buffer. Their
     // portable input contract only records press edges, so keep the existing
     // press buffer alive across freeze until it is consumed or expires.
@@ -9121,6 +9123,64 @@ mod tests {
         assert_eq!(trace.states.last().unwrap().state, PlayerState::Normal);
         assert_eq!(trace.states.last().unwrap().speed.y, -52.5);
         assert!(trace.states.last().unwrap().speed.x >= 320.0);
+    }
+    #[test]
+    fn wavedash_buffers_jump_at_the_fourteen_pixel_minimum_height() {
+        let p = PlayerSnapshot {
+            // At fourteen pixels the fifth dash step ends exactly flush with
+            // the floor. The following frame checks Jump.Pressed while the
+            // dash is still diagonal, then the vertical collision converts
+            // DashDir. The buffered press must survive one more Dash frame.
+            pos: Vec2::new(32.0, 86.0),
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = vec![InputState::default(); 12];
+        for input in &mut inputs {
+            input.move_x = 1;
+            input.move_y = 1;
+        }
+        inputs[0].dash_pressed = true;
+        inputs[9].jump_pressed = true;
+        inputs[9].jump_held = true;
+        inputs[10].jump_held = true;
+
+        let trace = simulate_trace(p, &inputs, &floor_map(), inputs.len() as u32).unwrap();
+        let landing = &trace.states[10];
+        assert_eq!(landing.state, PlayerState::Dash);
+        assert!(landing.on_ground);
+        assert!(landing.ducking);
+        assert_eq!(landing.dash_dir, Vec2::new(1.0, 0.0));
+        assert!(landing.jump_buffer_timer > 0.0);
+        assert_eq!(landing.dashes, 0);
+        assert_eq!(landing.dash_refill_cooldown_timer, 0.0);
+
+        let wavedash = &trace.states[11];
+        assert_eq!(wavedash.state, PlayerState::Normal);
+        assert_eq!(wavedash.speed, Vec2::new(325.0, -52.5));
+        assert_eq!(wavedash.dashes, 1);
+        assert!(!wavedash.ducking);
+        assert_eq!(wavedash.jump_buffer_timer, 0.0);
+    }
+    #[test]
+    fn thirteen_pixel_wavedash_control_jumps_before_dash_refill() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 87.0),
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = vec![InputState::default(); 12];
+        for input in &mut inputs {
+            input.move_x = 1;
+            input.move_y = 1;
+        }
+        inputs[0].dash_pressed = true;
+        inputs[9].jump_pressed = true;
+        inputs[9].jump_held = true;
+
+        let trace = simulate_trace(p, &inputs, &floor_map(), inputs.len() as u32).unwrap();
+        let too_low = &trace.states[10];
+        assert_eq!(too_low.state, PlayerState::Normal);
+        assert_eq!(too_low.speed, Vec2::new(325.0, -52.5));
+        assert_eq!(too_low.dashes, 0);
     }
     #[test]
     fn reverse_super_uses_jump_frame_facing_not_dash_direction() {
