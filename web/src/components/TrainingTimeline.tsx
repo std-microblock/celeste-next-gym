@@ -53,7 +53,7 @@ export function TrainingTimeline({ frame, frameCount, fuzzStart, targetFrame, wi
     return next
   }
   return <section className="training-timeline panel-frame" aria-label="训练时间线">
-    <div className="training-timeline-head"><div><small>TRAINING REVIEW · F{viewportStart}–F{viewportStart + viewportFrames}</small><h2>参考输入 / 成功窗口 / 玩家输入</h2></div><output>F{frame}</output></div>
+    <div className="training-timeline-head"><div><small>TIMELINE · F{viewportStart}–F{viewportStart + viewportFrames}</small><h2>时间线</h2></div><output>F{frame}</output></div>
     <div
       ref={track}
       className="training-track"
