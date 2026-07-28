@@ -3,6 +3,7 @@ import type { FixtureEntity, MapPart, Rect } from '../types.js'
 import { REFORM_MAP_PARTS } from './reform-parts.js'
 import { CASSETTE_SPINNER_MAP_PARTS } from './cassette-spinner-parts.js'
 import { CORE_HEART_SQUISH_MAP_PARTS } from './core-heart-squish-parts.js'
+import { LOOKOUT_MAP_PARTS } from './lookout-parts.js'
 
 const PACKAGE = 'CelesteGymPlayground'
 const SID = 'CelesteGymPlayground/Playground'
@@ -225,5 +226,5 @@ export const COMMON_MAP_PARTS = new Map<string, MapPart>([
   ...REFORM_MAP_PARTS,
   ...CASSETTE_SPINNER_MAP_PARTS,
   ...CORE_HEART_SQUISH_MAP_PARTS,
-  ...CASSETTE_SPINNER_MAP_PARTS,
+  ...LOOKOUT_MAP_PARTS,
 ].map((part) => [part.id, part]))

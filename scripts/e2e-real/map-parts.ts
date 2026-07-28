@@ -109,7 +109,7 @@ const ENTITY_KINDS = new Set<FixtureEntity['kind']>([
   'fly_feather', 'bumper', 'ice_ball', 'badeline_boost', 'spring', 'strawberry',
   'puffer', 'angry_oshiro', 'seeker', 'snowball', 'cloud',
   'wind', 'bounce_block', 'theo_crystal', 'glider', 'zip_mover', 'move_block', 'moving_solid',
-  'cassette_block', 'crystal_static_spinner',
+  'cassette_block', 'crystal_static_spinner', 'lookout',
   'heart_gem', 'rising_lava', 'sandwich_lava', 'temple_gate',
 ])
 
@@ -148,7 +148,8 @@ function validateAuthoringEntity(entity: FixtureEntity, roomName: string): void 
   if (entity.kind === 'fly_feather') { allowed.add('shielded'); allowed.add('singleUse') }
   if (entity.kind === 'rising_lava') allowed.add('singleUse')
   if (entity.kind === 'ice_ball') { allowed.add('nodes'); allowed.add('singleUse') }
-  if (entity.kind === 'badeline_boost' || entity.kind === 'zip_mover') allowed.add('nodes')
+  if (entity.kind === 'badeline_boost' || entity.kind === 'zip_mover' || entity.kind === 'lookout') allowed.add('nodes')
+  if (entity.kind === 'lookout') allowed.add('direction')
   if (entity.kind === 'spikes' || entity.kind === 'spring' || entity.kind === 'wind' || entity.kind === 'move_block' || entity.kind === 'moving_solid' || entity.kind === 'cassette_block') allowed.add('direction')
   for (const key of Object.keys(entity)) if (!allowed.has(key)) throw new Error(`entity ${entity.id} kind ${entity.kind} forbids field ${key}`)
 
@@ -208,12 +209,12 @@ function validateCanonicalEntity(entity: CanonicalFixtureEntity, roomName: strin
     if ((x === 0) === (y === 0)) throw new Error(`entity ${entity.id} wind direction must have exactly one nonzero axis`)
   } else if (entity.kind === 'cassette_block') {
     if (!Number.isInteger(x) || x < 0 || x > 3 || !Number.isInteger(y) || y <= 0) throw new Error(`entity ${entity.id} cassette metadata is invalid`)
-  } else if (entity.kind !== 'move_block' && entity.kind !== 'moving_solid' && (x !== 0 || y !== 0)) {
+  } else if (entity.kind !== 'move_block' && entity.kind !== 'moving_solid' && entity.kind !== 'lookout' && (x !== 0 || y !== 0)) {
     throw new Error(`entity ${entity.id} kind ${entity.kind} forbids nonzero direction`)
   }
   if (entity.kind === 'zip_mover' && entity.nodes.length !== 1) throw new Error(`entity ${entity.id} zip_mover requires exactly one node`)
   if (entity.kind === 'ice_ball' && entity.nodes.length > 1) throw new Error(`entity ${entity.id} ice_ball accepts at most one node`)
-  if (entity.nodes.length > 0 && entity.kind !== 'zip_mover' && entity.kind !== 'ice_ball' && entity.kind !== 'badeline_boost') {
+  if (entity.nodes.length > 0 && entity.kind !== 'zip_mover' && entity.kind !== 'ice_ball' && entity.kind !== 'badeline_boost' && entity.kind !== 'lookout') {
     throw new Error(`entity ${entity.id} kind ${entity.kind} forbids nodes`)
   }
   if (entity.shielded && entity.kind !== 'fly_feather') throw new Error(`entity ${entity.id} kind ${entity.kind} forbids shielded`)

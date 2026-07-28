@@ -33,6 +33,7 @@ const input = {
   dash_pressed: false,
   crouch_dash_pressed: false,
   grab_held: false,
+  talk_pressed: false,
 }
 
 const map = {

@@ -18,6 +18,18 @@ internal static class SnapshotCapture {
         "collected",
         BindingFlags.Instance | BindingFlags.NonPublic
     );
+    private static readonly FieldInfo? lookoutInteracting = typeof(Lookout).GetField(
+        "interacting",
+        BindingFlags.Instance | BindingFlags.NonPublic
+    );
+    private static readonly FieldInfo? lookoutNode = typeof(Lookout).GetField(
+        "node",
+        BindingFlags.Instance | BindingFlags.NonPublic
+    );
+    private static readonly FieldInfo? lookoutNodePercent = typeof(Lookout).GetField(
+        "nodePercent",
+        BindingFlags.Instance | BindingFlags.NonPublic
+    );
 
     public static PlayerFrame Capture(Player player, int frame) {
         Dictionary<string, object?> values = [];
@@ -35,6 +47,7 @@ internal static class SnapshotCapture {
         }
         if (player.Scene is Level level) {
             values["levelWind"] = new[] { level.Wind.X, level.Wind.Y };
+            values["levelCamera"] = new[] { level.Camera.Position.X, level.Camera.Position.Y };
             if (level.Entities.FindFirst<ZipMover>() is ZipMover zipMover) {
                 values["zipMoverPosition"] = Simplify(zipMover.Position);
                 values["zipMoverLiftSpeed"] = Simplify(zipMover.LiftSpeed);
@@ -52,6 +65,19 @@ internal static class SnapshotCapture {
                 values["heartGemCollected"] = heartGemCollected?.GetValue(heartGem) as bool? ?? false;
                 values["heartGemCollidable"] = heartGem.Collidable;
                 values["heartGemVisible"] = heartGem.Visible;
+            }
+            Lookout? lookout = level.Entities.FindFirst<Lookout>();
+            if (lookout is not null) {
+                values["lookoutPosition"] = Simplify(lookout.Position);
+                values["lookoutInteracting"] = lookoutInteracting?.GetValue(lookout) as bool? ?? false;
+                values["lookoutNode"] = lookoutNode?.GetValue(lookout) as int? ?? 0;
+                values["lookoutNodePercent"] = lookoutNodePercent?.GetValue(lookout) as float? ?? 0f;
+            }
+            CrystalStaticSpinner? spinner = level.Entities.FindFirst<CrystalStaticSpinner>();
+            if (spinner is not null) {
+                values["crystalSpinnerPosition"] = Simplify(spinner.Position);
+                values["crystalSpinnerVisible"] = spinner.Visible;
+                values["crystalSpinnerCollidable"] = spinner.Collidable;
             }
             TheoCrystal? theoCrystal = level.Entities.FindFirst<TheoCrystal>();
             if (theoCrystal is not null) {

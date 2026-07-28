@@ -12,6 +12,7 @@ export interface SimInput {
   dash_pressed: boolean
   crouch_dash_pressed: boolean
   grab_held: boolean
+  talk_pressed: boolean
 }
 
 export interface Vec2 {
@@ -239,6 +240,7 @@ export function buttonsToInput(current: FrameButtons, previous: FrameButtons = E
     dash_pressed: current.dash && !previous.dash,
     crouch_dash_pressed: false,
     grab_held: current.grab,
+    talk_pressed: false,
   }
 }
 

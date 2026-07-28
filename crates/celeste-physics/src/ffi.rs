@@ -2,7 +2,8 @@ use crate::{InputState, Map, PlayerSnapshot, PlayerState, Simulator, Vec2, decod
 use std::{mem::size_of, panic::catch_unwind, ptr, slice};
 
 /// Compact, C-compatible action. `flags` uses bit 0=jump pressed, bit 1=jump
-/// held, bit 2=dash pressed, bit 3=crouch dash pressed, and bit 4=grab held.
+/// held, bit 2=dash pressed, bit 3=crouch dash pressed, bit 4=grab held, and
+/// bit 5=talk pressed.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CelesteInputPod {
@@ -50,6 +51,7 @@ impl CelesteInputPod {
             dash_pressed: self.flags & (1 << 2) != 0,
             crouch_dash_pressed: self.flags & (1 << 3) != 0,
             grab_held: self.flags & (1 << 4) != 0,
+            talk_pressed: self.flags & (1 << 5) != 0,
         }
     }
 }

@@ -87,6 +87,9 @@ public sealed class FrameInput {
 
     [JsonPropertyName("grab_held")]
     public bool GrabHeld { get; set; }
+
+    [JsonPropertyName("talk_pressed")]
+    public bool TalkPressed { get; set; }
 }
 
 public sealed class InitialSnapshot {

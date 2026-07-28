@@ -118,7 +118,7 @@ function validRequest(): SimulateRequest {
     map: Uint8Array.of(1),
     room: "1",
     dream_dash: true,
-    inputs: [{ move_x: 1, move_y: 0, jump_pressed: false, jump_held: false, dash_pressed: false, crouch_dash_pressed: false, grab_held: false }],
+    inputs: [{ move_x: 1, move_y: 0, jump_pressed: false, jump_held: false, dash_pressed: false, crouch_dash_pressed: false, grab_held: false, talk_pressed: false }],
     initial_snapshot: createDefaultSnapshot(),
     frames: 1,
   };
