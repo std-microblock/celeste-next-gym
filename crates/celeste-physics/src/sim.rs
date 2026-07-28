@@ -3062,6 +3062,17 @@ fn lookout_wipe_duration(state: &crate::LookoutSnapshot, entity: &crate::Entity)
     if at_summit_top { 1.0 } else { 0.5 }
 }
 
+/// `LookRoutine` starts `hud.Display.Hide()` in the same coroutine resume
+/// that consumes its exit input.  A nearby camera therefore stays in Dummy
+/// for the remaining HUD ease, whereas a long-distance camera takes the
+/// immediate FadeWipe branch below.
+fn advance_lookout_exit(p: &mut PlayerSnapshot, state: &mut crate::LookoutSnapshot) {
+    state.hud_easer = approach(state.hud_easer, 0.0, p.frame_delta_time * 3.0);
+    if state.hud_easer <= 0.0 {
+        finish_lookout(p, state);
+    }
+}
+
 fn advance_lookouts(
     p: &mut PlayerSnapshot,
     map: &Map,
@@ -3162,13 +3173,12 @@ fn advance_lookouts(
             // endpoint. It exits only through MenuCancel or Dash; reaching a
             // final `summit` node is not a synthetic timeout.
             if exit_pressed {
-                // The source leaves its input loop straight into the exit
-                // branch. A long-distance camera begins its FadeWipe on the
-                // following scene update; it does not wait for a synthetic
-                // HUD ease-out before starting that one-second wipe.
-                state.hud_easer = 0.0;
                 let delta = Vec2::new(p.camera.x - state.cam_start.x, p.camera.y - state.cam_start.y);
                 if length(delta) > 600.0 {
+                    // The source leaves its input loop straight into the
+                    // long-distance FadeWipe branch; it does not wait for
+                    // the HUD ease-out before starting the summit wipe.
+                    state.hud_easer = 0.0;
                     state.phase = 6;
                     // FadeWipe advances once when LookRoutine creates it,
                     // even though its first rendered sample remains at
@@ -3177,22 +3187,16 @@ fn advance_lookouts(
                     state.timer = (p.frame_delta_time / lookout_wipe_duration(&state, entity)).min(1.0);
                     state.wipe_start = p.camera;
                 } else {
-                    finish_lookout(p, &mut state);
+                    state.phase = 5;
+                    // The coroutine calls `hud.Display.Hide()` before its
+                    // next yield, so consume the first 3/s easing step on
+                    // this same MenuCancel/Dash frame.
+                    advance_lookout_exit(p, &mut state);
                 }
             }
         }
         5 => {
-            state.hud_easer = approach(state.hud_easer, 0.0, p.frame_delta_time * 3.0);
-            if state.hud_easer <= 0.0 {
-                let delta = Vec2::new(p.camera.x - state.cam_start.x, p.camera.y - state.cam_start.y);
-                if length(delta) > 600.0 {
-                    state.phase = 6;
-                    state.timer = 0.0;
-                    state.wipe_start = p.camera;
-                } else {
-                    finish_lookout(p, &mut state);
-                }
-            }
+            advance_lookout_exit(p, &mut state);
         }
         6 => {
             let duration = lookout_wipe_duration(&state, entity);
@@ -15454,6 +15458,12 @@ mod tests {
         assert_eq!(trace.states[2].state, PlayerState::Dummy);
         assert!(trace.states[70].lookouts[0].phase >= 4);
         assert!(trace.states[110].camera.x > 0.0);
+        // Raw MenuCancel enters HUD hide on f110.  At 3/s the twentieth
+        // hide step restores Normal on f130, matching the archived Everest
+        // candidate trace's former first mismatch.
+        assert_eq!(trace.states[129].state, PlayerState::Dummy);
+        assert_eq!(trace.states[130].state, PlayerState::Normal);
+        assert!(!trace.states[130].lookouts[0].interacting);
         assert!(!trace.states[150].lookouts[0].interacting);
         assert_eq!(trace.states[150].state, PlayerState::Normal);
     }
