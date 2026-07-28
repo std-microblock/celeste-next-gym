@@ -14467,6 +14467,55 @@ mod tests {
     }
 
     #[test]
+    fn cloud_hyper_bunnyhop_f34_to_f36_preserves_the_real_player_counter_boundary() {
+        // Captured f33 from the cloud-apex trace. The subsequent frames are no
+        // longer carried by the Cloud; they exercise Actor.MoveV's independent
+        // player counter while landing beside the apex platform. At f35 the
+        // exact counter is -0.49999508, so the C# rounded move must remain 0.
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
+            solids: vec![Rect::new(544.0, 416.0, 168.0, 8.0)],
+            ..Map::default()
+        };
+        let initial = PlayerSnapshot {
+            pos: Vec2::new(537.0, 415.0),
+            speed: Vec2::new(311.999_97, -37.499_847),
+            movement_remainder: Vec2::new(0.233_366_49, -0.000_000_715_255_74),
+            dash_dir: Vec2::new(-1.0, 0.0),
+            dashes: 0,
+            dash_cooldown_timer: 0.116_666_526,
+            dash_refill_cooldown_timer: 0.016_666_505,
+            wall_slide_timer: WALL_SLIDE_TIME,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [
+            InputState {
+                move_x: 1,
+                frame_delta_time_bits: Some(0.016_666_7_f32.to_bits()),
+                ..InputState::default()
+            },
+            InputState {
+                move_x: 1,
+                frame_delta_time_bits: Some(0.016_666_7_f32.to_bits()),
+                ..InputState::default()
+            },
+            InputState {
+                move_x: 1,
+                frame_delta_time_bits: Some(0.016_666_7_f32.to_bits()),
+                ..InputState::default()
+            },
+        ];
+        let trace = simulate_trace(initial, &inputs, &map, inputs.len() as u32).unwrap();
+
+        assert_eq!(trace.states[1].pos, Vec2::new(542.0, 415.0));
+        assert_eq!(trace.states[2].pos, Vec2::new(547.0, 415.0));
+        assert_eq!(trace.states[3].pos, Vec2::new(552.0, 415.0));
+        assert!((trace.states[1].movement_remainder.y + 0.374_998_4).abs() < 0.000_001);
+        assert!((trace.states[2].movement_remainder.y + 0.499_995_08).abs() < 0.000_001);
+        assert!((trace.states[3].movement_remainder.y + 0.374_990_82).abs() < 0.000_001);
+    }
+
+    #[test]
     fn real_trace_delta_time_controls_the_matching_player_frame() {
         let state = simulate(
             PlayerSnapshot {

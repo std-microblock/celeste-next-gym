@@ -61,6 +61,10 @@ internal static class SnapshotCapture {
         }
         values["playerCollider"] = ColliderGeometry(player.Collider);
         values["engineTimeRate"] = Engine.TimeRate;
+        // JSON's shortest decimal representation can be a different f32 when
+        // parsed by the Rust comparator. Keep the exact frame value alongside
+        // the human-readable decimal for movementCounter boundary replays.
+        values["engineDeltaTimeBits"] = BitConverter.SingleToInt32Bits(Engine.DeltaTime);
         values["engineDeltaTime"] = Engine.DeltaTime;
         if (playerHurtbox?.GetValue(player) is Collider hurtbox) {
             values["playerHurtbox"] = ColliderGeometry(hurtbox);

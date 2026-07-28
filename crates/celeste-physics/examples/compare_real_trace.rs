@@ -78,13 +78,11 @@ fn main() -> ExitCode {
     let initial = to_snapshot(&trace.states[0]);
     let mut inputs = trace.inputs.clone();
     // State 0 precedes the first scripted Player.Update. Each later capture
-    // contains the Engine.DeltaTime consumed by its matching input frame.
+    // contains the Engine.DeltaTime consumed by its matching input frame. New
+    // Collector traces preserve its f32 bits; old decimal-only traces remain
+    // readable but cannot reproduce a movementCounter rounding boundary.
     for (input, state) in inputs.iter_mut().zip(trace.states.iter().skip(1)) {
-        input.frame_delta_time_bits = state
-            .fields
-            .get("engineDeltaTime")
-            .and_then(Value::as_f64)
-            .map(|delta| (delta as f32).to_bits());
+        input.frame_delta_time_bits = captured_delta_time_bits(&state.fields);
     }
     let simulated = match simulate_trace(initial, &inputs, &map, inputs.len() as u32) {
         Ok(result) => result.states,
@@ -285,6 +283,21 @@ fn float_field(fields: &serde_json::Map<String, Value>, name: &str) -> f32 {
     fields.get(name).and_then(Value::as_f64).unwrap_or(0.0) as f32
 }
 
+fn captured_delta_time_bits(fields: &serde_json::Map<String, Value>) -> Option<u32> {
+    fields
+        .get("engineDeltaTimeBits")
+        .and_then(Value::as_i64)
+        .and_then(|bits| u32::try_from(bits).ok())
+        // Pre-bit captures used a JSON decimal. It is useful for broad
+        // comparison but can be one or more ULPs away from Engine.DeltaTime.
+        .or_else(|| {
+            fields
+                .get("engineDeltaTime")
+                .and_then(Value::as_f64)
+                .map(|delta| (delta as f32).to_bits())
+        })
+}
+
 fn int_field(fields: &serde_json::Map<String, Value>, name: &str) -> i64 {
     fields.get(name).and_then(Value::as_i64).unwrap_or(0)
 }
@@ -340,6 +353,20 @@ mod tests {
 
         assert!((after.climb_no_move_timer - (0.1 - 1.0 / 60.0)).abs() < 0.0001);
         assert!((after.stamina - 110.0).abs() < 0.0001);
+    }
+
+    #[test]
+    fn captured_delta_time_bits_take_priority_over_decimal_fallback() {
+        let exact = 0.016_666_668_f32.to_bits();
+        let fields = serde_json::Map::from_iter([
+            ("engineDeltaTimeBits".to_owned(), Value::from(exact)),
+            ("engineDeltaTime".to_owned(), Value::from(0.02)),
+        ]);
+        assert_eq!(captured_delta_time_bits(&fields), Some(exact));
+
+        let legacy =
+            serde_json::Map::from_iter([("engineDeltaTime".to_owned(), Value::from(0.02))]);
+        assert_eq!(captured_delta_time_bits(&legacy), Some(0.02_f32.to_bits()));
     }
 }
 
