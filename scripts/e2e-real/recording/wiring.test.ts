@@ -33,7 +33,7 @@ describe('recording planning and lifecycle orchestration', () => {
     assert.throws(() => collectorOwnershipEnvironment('nonce-1', 0), /positive process id/)
   })
 
-  it('validates all 84 handbook primaries before running one isolated lifecycle per target', async () => {
+  it('validates all 88 handbook primaries before running one isolated lifecycle per target', async () => {
     const config = parseConfig(['--record-all'], {
       FFMPEG_PATH: path.resolve(repoRoot, 'fake-ffmpeg'),
       FFPROBE_PATH: path.resolve(repoRoot, 'fake-ffprobe'),
@@ -41,8 +41,8 @@ describe('recording planning and lifecycle orchestration', () => {
     const catalog = loadTechniqueCatalog(repoRoot)
     const registry = buildRegistry(scenarios, { implementedTechniqueIds: catalog.implementedIds })
     const plan = createRecordingPlan(config, registry, catalog)
-    assert.equal(plan.techniqueCount, 84)
-    assert.ok(plan.scenarioCount <= 84)
+    assert.equal(plan.techniqueCount, 88)
+    assert.ok(plan.scenarioCount <= 88)
     assert.deepEqual(plan.groups.map((group) => group.target.id), ['playground', 'area-1', 'area-2'])
 
     const calls: string[] = []
@@ -54,10 +54,10 @@ describe('recording planning and lifecycle orchestration', () => {
       },
     })
     assert.deepEqual(calls, ['playground', 'area-1', 'area-2'])
-    assert.equal(summary.techniqueCount, 84)
+    assert.equal(summary.techniqueCount, 88)
   })
 
-  it('rejects unknown, unimplemented, and candidate selections while deduplicating multi-primary scenarios', () => {
+  it('requires explicit opt-in for candidate master captures while deduplicating multi-primary scenarios', () => {
     const catalog = loadTechniqueCatalog(repoRoot)
     const registry = buildRegistry(scenarios, { implementedTechniqueIds: catalog.implementedIds })
     const unknown = parseConfig(['--record-tech', '999.999'], {}, repoRoot)
@@ -68,6 +68,15 @@ describe('recording planning and lifecycle orchestration', () => {
     const candidate = registry.scenarios.find((scenario) => scenario.status === 'candidate')!
     const candidateConfig = parseConfig(['--record', '--scenario', candidate.name], {}, repoRoot)
     assert.throws(() => createRecordingPlan(candidateConfig, registry, catalog), /candidate|excluded/)
+    const candidatePlan = createRecordingPlan(
+      parseConfig(['--record', '--scenario', candidate.name, '--include-candidates'], {}, repoRoot),
+      registry,
+      catalog,
+    )
+    assert.equal(candidatePlan.scenarioCount, 1)
+    assert.equal(candidatePlan.techniqueCount, 0)
+    assert.equal(candidatePlan.groups[0]?.scenarios[0]?.scenario, candidate)
+    assert.deepEqual(candidatePlan.groups[0]?.scenarios[0]?.techniqueIds, [])
 
     const base = scenarios.find((scenario) => scenario.status === 'active')!
     const shared = { ...base, name: 'shared-primary-test', techniqueIds: ['a', 'b'],

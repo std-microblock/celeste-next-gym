@@ -45,8 +45,22 @@ export const TECH_ENTITY_4_15_JUMPTHROUGH_CLIP = defineMapPart({
   }],
 })
 
+export const TECH_ENTITY_4_16_LAVA_NEUTRAL = defineMapPart({
+  id: 'tech.entity-4.16-lava-neutral',
+  dependencies: ['playground.base'],
+  package: PACKAGE,
+  sid: SID,
+  rooms: [{
+    name: ROOM,
+    entities: [
+      { id: 'tech-4.16-rising-lava', kind: 'rising_lava', bounds: [760, 0, 8, 8], name: 'risingLava' },
+    ],
+  }],
+})
+
 export const CORE_HEART_SQUISH_MAP_PARTS = [
   TECH_ENTITY_4_11_HOLDABLE_CORE_HYPER,
   TECH_ENTITY_4_14_HEART_ULTRA,
   TECH_ENTITY_4_15_JUMPTHROUGH_CLIP,
+  TECH_ENTITY_4_16_LAVA_NEUTRAL,
 ] as const
