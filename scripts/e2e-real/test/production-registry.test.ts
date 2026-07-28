@@ -8,12 +8,12 @@ describe('production scenario registry', () => {
   const registry = buildRegistry(scenarios)
 
   it('derives all target and status counts from explicit indexes', () => {
-    assert.equal(registry.scenarios.length, 186)
-    assert.equal(registry.byTarget.get('playground')?.length, 144)
+    assert.equal(registry.scenarios.length, 187)
+    assert.equal(registry.byTarget.get('playground')?.length, 145)
     assert.equal(registry.byTarget.get('area-1')?.length, 36)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 163, candidate: 23 })
+    assert.deepEqual(registry.counts, { active: 163, candidate: 24 })
   })
 
   it('keeps evidence-less scenarios as opt-in candidates', () => {
@@ -41,11 +41,20 @@ describe('production scenario registry', () => {
       'other-5.1.4-bino-extensions',
       'other-5.10-spinner-stunning',
       'other-5.11-spinner-freeze',
+      'other-5.2-bubsdrop',
       'other-5.3-cassette-raise',
       'other-5.8-roboboost',
       'other-5.9-screen-transition-cassette-offset',
     ])
     assert.equal(selectScenarios(registry, { target: 'playground' }).some((scenario) => scenario.status === 'candidate'), false)
+  })
+
+  it('keeps Bubsdrop in its own two-room map part', () => {
+    const bubsdrop = registry.scenarios.find((scenario) => scenario.techniqueIds.includes('5.2'))
+    assert.ok(bubsdrop)
+    assert.equal(bubsdrop.mapParts.length, 1)
+    assert.equal(bubsdrop.mapParts[0]?.id, 'tech.other-5.2-bubsdrop')
+    assert.equal(bubsdrop.mapParts[0]?.rooms.length, 2)
   })
 
   it('keeps every Lookout proof in an independently named map part', () => {
