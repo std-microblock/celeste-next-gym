@@ -30,7 +30,7 @@ export const ENTITY_4_22_4_HOLDABLE_LADDER_PART = gliderPart('tech.entity-4.22.4
   name: 'playground', bounds: [0, 0, 320, 544], spawn: [96, 400], solids: [[0, 496, 320, 48]],
   entities: [
     { id: 'tech-4.22.4-jelly-a', kind: 'glider', bounds: [92, 390, 8, 10], name: 'glider' },
-    { id: 'tech-4.22.4-jelly-b', kind: 'glider', bounds: [92, 430, 8, 10], name: 'glider' },
+    { id: 'tech-4.22.4-jelly-b', kind: 'glider', bounds: [92, 380, 8, 10], name: 'glider' },
   ],
 })
 

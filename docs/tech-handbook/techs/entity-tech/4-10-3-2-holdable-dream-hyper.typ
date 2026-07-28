@@ -19,6 +19,6 @@
   candidate-e2e: evidence(
     path: [scripts/e2e-real-collector.mjs],
     symbol: [entity-4.10.3.2-holdable-dream-hyper],
-    note: [修正后的真实候选已形成出口抓持 `grab=49`、松物 `release=54`、CannotHold 阻止立即回抓与 325 Hyper `hyper=63`；最终 `regrab=false`，因此完整链仍缺重新抓回 Theo，保持未实现。],
+    note: [延长后的最终候选已完整形成出口抓持、松物、CannotHold、325 Hyper 与重新抓回 Theo；但第 169 帧先差：Rust 在 (370,496) 仍以 -90 移动，Everest 在 (371,496) 已进入 Pickup 且速度为零，最大位置／速度误差 3／90，故保持未实现。],
   ),
 )

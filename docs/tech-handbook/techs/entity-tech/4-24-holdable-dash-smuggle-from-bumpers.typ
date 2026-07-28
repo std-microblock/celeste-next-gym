@@ -16,5 +16,5 @@
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [normal_update / interact / launch_update / try_pickup_theo]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [bumper_freeze_smuggle_releases_dashes_and_regrabs_theo / bumper_smuggle_releases_down_after_buffered_diagonal_dash_to_regrab_theo]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.24-bumper-holdable-dash-smuggle.ts], symbol: [entity-4.24-bumper-holdable-dash-smuggle], note: [唯一一次 source-informed 修正只在缓冲 Dash 真正开始前保留 Down，到 frame 48 释放，允许落地后的 NormalUpdate 解除蹲姿并执行 Holdable 抓取。Rust 已形成 pickup→无持物 Launch→Dash→regrab；真实 Everest 尚待最终候选重验，因此保持未实现。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.24-bumper-holdable-dash-smuggle.ts], symbol: [entity-4.24-bumper-holdable-dash-smuggle], note: [最终真实候选第 27 帧先差：Rust 仍为 Normal、速度 (61.667,0)，Everest 已由 Bumper 进入 Launch、速度 (-280,-150)；最大位置／速度误差 110／358.333344，保持未实现。]),
 )

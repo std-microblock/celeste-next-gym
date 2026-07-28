@@ -16,5 +16,5 @@
   rust-evidence: evidence(path: [crates/celeste-physics/src/types.rs; crates/celeste-physics/src/sim.rs], symbol: [BounceBlockSnapshot.static_movers_enabled / advance_bounce_blocks]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [core_block_moves_disabled_spikes_before_the_reform_alarm_reenables_them / core_block_candidate_clears_source_body_before_reform_blocked_check]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.18.3-core-block-entity-displacement.ts], symbol: [entity-4.18.3-core-block-entity-displacement], note: [唯一一次 source-informed 修正在前 80 帧持续向左离开 source body，使 BounceBlock 的 `!CollideCheck<Actor>()` reform 条件能够成立；Rust 候选已观测 body 先恢复、0.35 秒后 StaticMover 启用，真实 Everest 尚待最终重验。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.18.3-core-block-entity-displacement.ts], symbol: [entity-4.18.3-core-block-entity-displacement], note: [最终真实候选能观测破碎 body 与 disabled StaticMover，但 280 帧内没有出现 body 已恢复而 spike 仍 disabled 的中间态，语义门报 `block body did not reform`；保持未实现。]),
 )
