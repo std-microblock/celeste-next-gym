@@ -10,26 +10,26 @@ function part(id: string, rooms: MapPart['rooms']): MapPart {
 
 export const TECH_OTHER_5_1_BINO_TECH = part('tech.other-5.1-bino-tech', [{
   name: 'playground',
-  entities: [{ id: 'tech-5.1-lookout', kind: 'lookout', bounds: [510, 492, 4, 4], name: 'lookout' }],
+  entities: [{ id: 'tech-5.1-lookout', kind: 'lookout', bounds: [510, 493, 4, 4], name: 'lookout' }],
 }])
 
 export const TECH_OTHER_5_1_1_BINO_CLIP = part('tech.other-5.1.1-bino-clip', [{
   name: 'playground',
   entities: [
-    { id: 'tech-5.1.1-lookout', kind: 'lookout', bounds: [510, 492, 4, 4], name: 'lookout' },
+    { id: 'tech-5.1.1-lookout', kind: 'lookout', bounds: [510, 493, 4, 4], name: 'lookout' },
     { id: 'tech-5.1.1-spinner', kind: 'crystal_static_spinner', bounds: [628, 484, 16, 12], name: 'spinner' },
   ],
 }])
 
 export const TECH_OTHER_5_1_2_BINO_CONTROL_STORAGE = part('tech.other-5.1.2-bino-control-storage', [{
   name: 'playground',
-  entities: [{ id: 'tech-5.1.2-lookout', kind: 'lookout', bounds: [510, 492, 4, 4], name: 'lookout' }],
+  entities: [{ id: 'tech-5.1.2-lookout', kind: 'lookout', bounds: [510, 493, 4, 4], name: 'lookout' }],
 }])
 
 export const TECH_OTHER_5_1_3_BINO_INTERACTION_STORAGE = part('tech.other-5.1.3-bino-interaction-storage', [
   {
     name: 'playground',
-    entities: [{ id: 'tech-5.1.3-lookout', kind: 'lookout', bounds: [510, 492, 4, 4], name: 'lookout' }],
+    entities: [{ id: 'tech-5.1.3-lookout', kind: 'lookout', bounds: [510, 493, 4, 4], name: 'lookout' }],
   },
   {
     name: 'transition_5_1_3',
@@ -44,7 +44,7 @@ export const TECH_OTHER_5_1_4_BINO_EXTENSIONS = part('tech.other-5.1.4-bino-exte
   entities: [{
     id: 'tech-5.1.4-lookout',
     kind: 'lookout',
-    bounds: [510, 492, 4, 4],
+    bounds: [510, 493, 4, 4],
     direction: [0, 1],
     nodes: [[896, 400], [896, 72], [24, 24]],
     name: 'lookout',
