@@ -3031,7 +3031,20 @@ fn finish_lookout(p: &mut PlayerSnapshot, state: &mut crate::LookoutSnapshot) {
     p.dummy_moving = false;
 }
 
-fn advance_lookouts(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
+fn lookout_wipe_duration(state: &crate::LookoutSnapshot, entity: &crate::Entity) -> f32 {
+    let at_summit_top = entity.direction.y != 0.0
+        && !entity.nodes.is_empty()
+        && state.node as usize >= entity.nodes.len() - 1
+        && state.node_percent >= 0.95;
+    if at_summit_top { 1.0 } else { 0.5 }
+}
+
+fn advance_lookouts(
+    p: &mut PlayerSnapshot,
+    map: &Map,
+    input: InputState,
+    menu_cancel_pressed: bool,
+) {
     let indices = lookout_entity_indices(map);
     let Some((lookout_index, entity_index)) = indices
         .into_iter()
@@ -3112,7 +3125,11 @@ fn advance_lookouts(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
             }
         }
         4 => {
-            let exit_pressed = input.jump_pressed || input.dash_pressed || input.crouch_dash_pressed;
+            // The portable Jump edge also drives Lookout's MenuCancel.  It
+            // must remain a raw edge rather than Player's buffered Jump:
+            // Player.Update can consume that buffer before LookRoutine reads
+            // Input.MenuCancel.Pressed later in the same scene update.
+            let exit_pressed = menu_cancel_pressed || input.dash_pressed || input.crouch_dash_pressed;
             if entity.nodes.is_empty() {
                 advance_free_lookout_camera(&mut state, entity, p, map, input);
             } else {
@@ -3122,7 +3139,23 @@ fn advance_lookouts(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
             // endpoint. It exits only through MenuCancel or Dash; reaching a
             // final `summit` node is not a synthetic timeout.
             if exit_pressed {
-                state.phase = 5;
+                // The source leaves its input loop straight into the exit
+                // branch. A long-distance camera begins its FadeWipe on the
+                // following scene update; it does not wait for a synthetic
+                // HUD ease-out before starting that one-second wipe.
+                state.hud_easer = 0.0;
+                let delta = Vec2::new(p.camera.x - state.cam_start.x, p.camera.y - state.cam_start.y);
+                if length(delta) > 600.0 {
+                    state.phase = 6;
+                    // FadeWipe advances once when LookRoutine creates it,
+                    // even though its first rendered sample remains at
+                    // progress zero. Store the next-frame progress here so
+                    // its Wait resumes exactly sixty summit frames later.
+                    state.timer = (p.frame_delta_time / lookout_wipe_duration(&state, entity)).min(1.0);
+                    state.wipe_start = p.camera;
+                } else {
+                    finish_lookout(p, &mut state);
+                }
             }
         }
         5 => {
@@ -3139,11 +3172,7 @@ fn advance_lookouts(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
             }
         }
         6 => {
-            let at_summit_top = entity.direction.y != 0.0
-                && !entity.nodes.is_empty()
-                && state.node as usize >= entity.nodes.len() - 1
-                && state.node_percent >= 0.95;
-            let duration = if at_summit_top { 1.0 } else { 0.5 };
+            let duration = lookout_wipe_duration(&state, entity);
             let direction = normalize(Vec2::new(
                 state.wipe_start.x - state.cam_start.x,
                 state.wipe_start.y - state.cam_start.y,
@@ -3155,7 +3184,10 @@ fn advance_lookouts(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                     state.wipe_start.y - direction.y * 64.0 * cube,
                 );
                 state.cam = p.camera;
-                state.timer += p.frame_delta_time / duration;
+                // FadeWipe's eased progress is clamped at its duration.  In
+                // particular, sixty 1/60 updates must resume LookRoutine on
+                // the next frame rather than accumulate below one forever.
+                state.timer = (state.timer + p.frame_delta_time / duration).min(1.0);
             } else {
                 p.camera = Vec2::new(
                     state.cam_start.x + direction.x * 32.0,
@@ -3810,6 +3842,10 @@ fn step(
         .filter(|delta| delta.is_finite() && *delta > 0.0)
         .unwrap_or(DT);
     p.frame_delta_time = raw_delta_time * p.time_rate;
+    // Collector installs the portable jump edge as Input.MenuCancel.Pressed
+    // as well as Input.Jump. Preserve the former before Player state code can
+    // consume the latter's VirtualButton buffer.
+    let menu_cancel_pressed = input.jump_pressed;
     // VirtualButton.Update runs in MInput before Celeste.Freeze can skip the
     // Scene. It subtracts DeltaTime first, then a new press restores the full
     // buffer; Jump also clears its buffer as soon as the binding is not held.
@@ -4051,7 +4087,7 @@ fn step(
     advance_bumpers(p, map);
     interact(p, map, input, lookout_booster_box);
     try_begin_lookout(p, map, input);
-    advance_lookouts(p, map, input);
+    advance_lookouts(p, map, input, menu_cancel_pressed);
     update_strawberry_train(p);
     try_begin_badeline_boost(p, map);
     enforce_level_bounds(p, map);
@@ -15651,22 +15687,24 @@ mod tests {
             }],
             ..PlayerSnapshot::default()
         };
-        let inputs: Vec<_> = (0..330)
+        let inputs: Vec<_> = (0..600)
             .map(|frame| InputState {
                 move_y: -1,
                 // Summit arrival alone keeps LookRoutine active. The
                 // collector maps this press to MenuCancel, which begins the
                 // source exit and its one-second summit wipe.
-                jump_pressed: frame == 220,
-                jump_held: frame == 220,
+                jump_pressed: frame == 520,
+                jump_held: frame == 520,
                 ..InputState::default()
             })
             .collect();
-        let trace = simulate_trace(player, &inputs, &map, 330).unwrap();
+        let trace = simulate_trace(player, &inputs, &map, 600).unwrap();
 
         assert!(trace.states.iter().any(|state| state.camera.x > 600.0));
-        assert_eq!(trace.states[219].lookouts[0].phase, 4);
-        assert_eq!(trace.states[219].lookouts[0].node_percent, 1.0);
+        assert_eq!(trace.states[519].lookouts[0].phase, 4);
+        assert_eq!(trace.states[519].lookouts[0].node_percent, 1.0);
+        assert_eq!(trace.states[520].state, PlayerState::Dummy);
+        assert!(trace.states[520].lookouts[0].interacting);
         assert!(trace.states.iter().any(|state| state.lookouts[0].phase == 6));
         let exit = trace
             .states
@@ -15674,8 +15712,11 @@ mod tests {
             .find(|state| !state.lookouts[0].interacting)
             .expect("long-distance wipe completes");
         assert!((exit.camera.x - 32.0).abs() < 0.01);
-        assert!(!trace.states[330].lookouts[0].interacting);
-        assert_eq!(trace.states[330].state, PlayerState::Normal);
+        // A 1-second summit FadeWipe starts after frame 520's MenuCancel.
+        // At f581 LookRoutine resumes, clears interacting, and restores
+        // StNormal; this mirrors the physical 5.1.4 trace.
+        assert!(!trace.states[581].lookouts[0].interacting);
+        assert_eq!(trace.states[581].state, PlayerState::Normal);
     }
 
     #[test]
