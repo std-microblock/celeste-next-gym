@@ -4,7 +4,7 @@
   id: "4.22.2",
   title-zh: "携物攀墙",
   title-en: "Holdable Climb",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [中性放下物品后立刻攀跳，再快速重抓，可在保留物品的同时完成攀墙动作。],
   description-en: [Neutral-drop the item, climb jump immediately, and regrab it to climb while keeping the holdable.],
   source-evidence: evidence(
@@ -15,6 +15,6 @@
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [release_theo / normal_update / climb_update / try_pickup_theo]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [neutral_drop_climb_jump_regrabs_theo_after_the_lockout]),
-  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.22.2-holdable-climb.ts], symbol: [entity-4.22.2-holdable-climb], note: [独立 Theo + 墙面 MapPart 的真实 Everest 轨迹完整通过 pickup→neutral drop→Climb→ClimbJump→regrab。51 个状态的九类核心字段逐帧一致，最大 position／speed 误差均为 0。]),
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.22.2-holdable-climb.ts], symbol: [entity-4.22.2-holdable-climb], note: [普通隔离 Everest E2E 已以 51 个状态、九字段零误差通过；但 `--record-tech 4.22.2` 的组合录制与单项原样重跑都在首帧得到 `pickup=-1, release=0`，无法生成可信视频。保留真实 E2E partial evidence，等待录制生命周期与起始实体状态问题闭环后再判 implemented。]),
+  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.22.2-holdable-climb.ts], symbol: [entity-4.22.2-holdable-climb], note: [独立 Theo + 墙面 MapPart 的真实 Everest 轨迹完整通过 pickup→neutral drop→Climb→ClimbJump→regrab：frame 24 已放下，frame 25 进入 Climb，frame 26 以 -105px/s 攀跳，frame 30 重抓。最终合并 HEAD 的 record lifecycle 复录共 51 个状态，position、speed、state、facing、dashes、stamina、grounded、ducking、death 逐帧一致，最大 position／speed 误差均为 0；同时生成可信 scenario master，录像作为附加证据而非转正门槛。]),
+  candidate-e2e: none,
 )
