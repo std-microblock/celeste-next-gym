@@ -1120,9 +1120,10 @@ fn advance_move_blocks(p: &mut PlayerSnapshot, map: &mut Map, input: InputState)
                 }
             }
             1 => {
-                if state.wait_timer > 0.0 {
+                if state.wait_timer > DT {
                     state.wait_timer -= DT;
                 } else {
+                    state.wait_timer = 0.0;
                     state.phase = 2;
                     state.crash_timer = 0.15;
                     state.crash_reset_timer = 0.1;
@@ -4925,6 +4926,7 @@ mod tests {
             })
             .collect();
         let trace = simulate_trace(p, &inputs, &move_block_map(), inputs.len() as u32).unwrap();
+        assert_eq!(trace.states[16].pos.x, 81.0);
         assert!(
             trace.states.iter().any(|state| {
                 state.move_blocks[0].lift_speed.y < -20.0 && state.last_lift_speed.y < -20.0
