@@ -1014,7 +1014,7 @@ fn seeker_bounce_rect(position: Vec2, state: u8, speed: Vec2) -> Rect {
     } else if state == 3 && speed.y < 0.0 {
         Rect::new(position.x - 6.0, position.y - 8.0, 16.0, 6.0)
     } else {
-        Rect::new(position.x - 6.0, position.y - 8.0, 12.0, 6.0)
+        Rect::new(position.x - 8.0, position.y - 8.0, 16.0, 6.0)
     }
 }
 
@@ -13781,6 +13781,28 @@ mod tests {
         assert!((p.speed.y + 24.806_946).abs() < 0.000_01);
         assert_eq!(p.seekers[0].speed, Vec2::new(100.0, 0.0));
         assert_eq!(p.seekers[0].state, 4);
+    }
+
+    #[test]
+    fn seeker_bounce_callback_uses_the_source_sixteen_pixel_hitbox() {
+        // Seeker.cs constructs bounceHitbox as (16, 6, -8, -8).  This player
+        // just reaches that outer two-pixel wing: the narrower physics/attack
+        // body must not be substituted for the PlayerCollider callback.
+        let mut map = bounce_actor_map(EntityKind::Seeker);
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(110.0, 97.0),
+            seekers: vec![crate::SeekerSnapshot {
+                position: Vec2::new(100.0, 102.0),
+                ..crate::SeekerSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        initialize_seekers(&mut p, &mut map);
+        advance_seekers(&mut p, &mut map);
+
+        assert!(!p.dead);
+        assert_eq!(p.speed.y, -140.0);
+        assert_eq!(p.seekers[0].state, 6);
     }
 
     #[test]
