@@ -10,7 +10,7 @@ export const scenario = defineScenario({
   target: PLAYGROUND_TARGET, status: 'candidate', tags: ['feature:glider'], techniqueIds: ['4.22.3'], mapParts,
   name: 'entity-4.22.3-jelly-neutral-jump', initial: { pos: [140, 420], facing: 'Right' },
   inputs: Array.from({ length: 72 }, (_, frame) => input({
-    move_y: frame === 23 ? 1 : 0, jump_pressed: frame === 25, jump_held: frame === 25,
+    move_y: frame === 23 ? 1 : 0, jump_pressed: frame === 23, jump_held: frame === 23,
     grab_held: frame <= 22 || frame >= 24,
   })),
   verify: verifyJellyNeutral,

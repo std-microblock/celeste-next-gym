@@ -6925,8 +6925,8 @@ mod tests {
         let inputs: Vec<_> = (0..24)
             .map(|frame| InputState {
                 move_y: if frame == 0 { 1 } else { 0 },
-                jump_pressed: frame == 2,
-                jump_held: frame == 2,
+                jump_pressed: frame == 0,
+                jump_held: frame == 0,
                 ..InputState::default()
             })
             .collect();
@@ -6946,7 +6946,7 @@ mod tests {
                         .collect::<Vec<_>>()
                 )
             });
-        assert_eq!(neutral, 3);
+        assert_eq!(neutral, 1);
         assert!(trace.states[10].gliders[0].cannot_hold_timer > 0.0);
         let mut after_lockout = trace.states[24].clone();
         assert_eq!(after_lockout.gliders[0].cannot_hold_timer, 0.0);
