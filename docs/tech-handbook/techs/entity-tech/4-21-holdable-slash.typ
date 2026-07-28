@@ -15,6 +15,6 @@
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [release_theo / normal_update / dash_update / pickup_update]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [holdable_slash_regrabs_theo_in_horizontal_dash_with_airborne_vertical_speed]),
-  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.21-holdable-slash.ts], symbol: [entity-4.21-holdable-slash], note: [独立 Theo MapPart 的真实 Everest 轨迹依次完成 Pickup、带非零纵速的空中中性放下、直线 240 水平 Dash 与 Dash 内重抓。71 个状态的 position 最大误差为 0、speed 最大误差为 0.000008，state、facing、dashes、stamina、grounded、ducking、death 全部逐帧一致。]),
+  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.21-holdable-slash.ts], symbol: [entity-4.21-holdable-slash], note: [独立 Theo MapPart 的真实 Everest 轨迹依次完成 Pickup、带非零纵速的空中中性放下、直线 240 水平 Dash 与 Dash 内重抓。71 个状态的 position 最大误差为 0、speed 最大误差为 0.000008，state、facing、dashes、stamina、grounded、ducking、death 全部逐帧一致；正式 `--record-tech 4.21` 已生成绑定本次 trace 的 MP4、poster 与 artifacts manifest。]),
   candidate-e2e: none,
 )
