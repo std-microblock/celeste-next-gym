@@ -33136,5 +33136,64 @@
     "dash": "KeyX",
     "crouch_dash": "KeyV",
     "grab": "KeyZ"
+  },
+  "regression": {
+    "e2e_scenario": "delayed-wallbounce",
+    "assertions": [
+      {
+        "frame": 1565,
+        "path": "state",
+        "op": "eq",
+        "value": "Normal"
+      },
+      {
+        "frame": 1565,
+        "path": "dash_dir",
+        "op": "eq",
+        "value": {
+          "x": 0,
+          "y": -1
+        }
+      },
+      {
+        "frame": 1565,
+        "path": "dash_attack_timer",
+        "op": "gt",
+        "value": 0.08
+      },
+      {
+        "frame": 1566,
+        "path": "state",
+        "op": "eq",
+        "value": "Normal"
+      },
+      {
+        "frame": 1566,
+        "path": "speed",
+        "op": "eq",
+        "value": {
+          "x": 170,
+          "y": -160
+        }
+      },
+      {
+        "frame": 1566,
+        "path": "dash_attack_timer",
+        "op": "eq",
+        "value": 0
+      },
+      {
+        "frame": 1566,
+        "path": "force_move_x_timer",
+        "op": "eq",
+        "value": 0
+      },
+      {
+        "frame": 1566,
+        "path": "dead",
+        "op": "eq",
+        "value": false
+      }
+    ]
   }
 }
