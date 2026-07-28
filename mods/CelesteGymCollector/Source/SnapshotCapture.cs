@@ -14,6 +14,10 @@ internal static class SnapshotCapture {
         "hurtbox",
         BindingFlags.Instance | BindingFlags.NonPublic
     );
+    private static readonly FieldInfo? heartGemCollected = typeof(HeartGem).GetField(
+        "collected",
+        BindingFlags.Instance | BindingFlags.NonPublic
+    );
 
     public static PlayerFrame Capture(Player player, int frame) {
         Dictionary<string, object?> values = [];
@@ -25,6 +29,7 @@ internal static class SnapshotCapture {
             } catch { }
         }
         values["playerCollider"] = ColliderGeometry(player.Collider);
+        values["engineTimeRate"] = Engine.TimeRate;
         if (playerHurtbox?.GetValue(player) is Collider hurtbox) {
             values["playerHurtbox"] = ColliderGeometry(hurtbox);
         }
@@ -34,6 +39,12 @@ internal static class SnapshotCapture {
                 values["zipMoverPosition"] = Simplify(zipMover.Position);
                 values["zipMoverLiftSpeed"] = Simplify(zipMover.LiftSpeed);
                 values["zipMoverMovementCounter"] = Simplify(platformMovementCounter?.GetValue(zipMover));
+            }
+            if (level.Entities.FindFirst<HeartGem>() is HeartGem heartGem) {
+                values["heartGemPosition"] = Simplify(heartGem.Position);
+                values["heartGemCollected"] = heartGemCollected?.GetValue(heartGem) as bool? ?? false;
+                values["heartGemCollidable"] = heartGem.Collidable;
+                values["heartGemVisible"] = heartGem.Visible;
             }
             Entity? reformBlock = level.Entities.FindFirst<MoveBlock>();
             reformBlock ??= level.Entities.FindFirst<BounceBlock>();

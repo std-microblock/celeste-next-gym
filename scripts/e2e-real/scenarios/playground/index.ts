@@ -109,6 +109,9 @@ import { scenario as scenario106 } from './entity-4.17-moon-boost.js'
 import { scenario as scenario107 } from './entity-4.18-reform-tech.js'
 import { scenario as scenario108 } from './entity-4.18.1-reform-kick.js'
 import { scenario as scenario109 } from './entity-4.18.3-core-block-entity-displacement.js'
+import { scenario as scenario110 } from './entity-4.11-holdable-core-hyper.js'
+import { scenario as scenario111 } from './entity-4.14-heart-ultra.js'
+import { scenario as scenario112 } from './entity-4.15-jumpthrough-clip.js'
 
 export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario0,
@@ -221,4 +224,7 @@ export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario107,
   scenario108,
   scenario109,
+  scenario110,
+  scenario111,
+  scenario112,
 ])

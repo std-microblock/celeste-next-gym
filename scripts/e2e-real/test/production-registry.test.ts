@@ -8,12 +8,12 @@ describe('production scenario registry', () => {
   const registry = buildRegistry(scenarios)
 
   it('derives all target and status counts from explicit indexes', () => {
-    assert.equal(registry.scenarios.length, 152)
-    assert.equal(registry.byTarget.get('playground')?.length, 110)
+    assert.equal(registry.scenarios.length, 155)
+    assert.equal(registry.byTarget.get('playground')?.length, 113)
     assert.equal(registry.byTarget.get('area-1')?.length, 36)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 145, candidate: 7 })
+    assert.deepEqual(registry.counts, { active: 145, candidate: 10 })
   })
 
   it('keeps evidence-less scenarios as opt-in candidates', () => {
@@ -23,6 +23,9 @@ describe('production scenario registry', () => {
     assert.deepEqual(candidates, [
       'entity-4.10.3.2-holdable-dream-hyper',
       'entity-4.10.4-holdable-grabless-dream-hyper',
+      'entity-4.11-holdable-core-hyper',
+      'entity-4.14-heart-ultra',
+      'entity-4.15-jumpthrough-clip',
       'entity-4.18.3-core-block-entity-displacement',
       'entity-4.20-theo-regrab',
       'entity-4.22.2-holdable-climb',

@@ -1,6 +1,7 @@
 import { defineMapPart } from '../map-parts.js'
 import type { FixtureEntity, MapPart, Rect } from '../types.js'
 import { REFORM_MAP_PARTS } from './reform-parts.js'
+import { CORE_HEART_SQUISH_MAP_PARTS } from './core-heart-squish-parts.js'
 
 const PACKAGE = 'CelesteGymPlayground'
 const SID = 'CelesteGymPlayground/Playground'
@@ -213,4 +214,5 @@ export const COMMON_MAP_PARTS = new Map<string, MapPart>([
   PLAYGROUND_OTHER_KERMIT,
   PLAYGROUND_OTHER_SUBPIXEL,
   ...REFORM_MAP_PARTS,
+  ...CORE_HEART_SQUISH_MAP_PARTS,
 ].map((part) => [part.id, part]))
