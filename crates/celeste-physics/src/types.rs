@@ -185,6 +185,9 @@ pub struct CloudSnapshot {
 pub struct CassetteManagerSnapshot {
     /// Whether Level.LoadLevel has run CassetteBlockManager.OnLevelStart.
     pub initialized: bool,
+    /// The non-level-music manager creates its cassette song on its first
+    /// Update and does not call AdvanceMusic until the following frame.
+    pub startup_music_pending: bool,
     /// Accumulated sixteenth-note time, advanced in single precision.
     pub beat_timer: f32,
     pub beat_index: u8,
@@ -197,6 +200,7 @@ impl Default for CassetteManagerSnapshot {
     fn default() -> Self {
         Self {
             initialized: false,
+            startup_music_pending: false,
             beat_timer: 0.0,
             beat_index: 0,
             current_index: 0,

@@ -508,6 +508,10 @@ fn initialize_cassette_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
         } else {
             p.cassette_manager.max_beat.saturating_sub(1)
         };
+        // The repository-owned Playground is a custom area with cassette
+        // music. CassetteBlockManager.Update creates its sfx on the first
+        // frame and takes the branch which skips AdvanceMusic once.
+        p.cassette_manager.startup_music_pending = true;
         p.cassette_manager.initialized = true;
     }
 
@@ -2284,6 +2288,10 @@ fn advance_cassette_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
 
 fn advance_cassette_manager(p: &mut PlayerSnapshot, map: &mut Map) {
     if !p.cassette_manager.initialized || p.cassette_manager.max_beat == 0 {
+        return;
+    }
+    if p.cassette_manager.startup_music_pending {
+        p.cassette_manager.startup_music_pending = false;
         return;
     }
     p.cassette_manager.beat_timer += DT * p.cassette_manager.tempo_mult;
@@ -10581,6 +10589,7 @@ mod tests {
             state: PlayerState::Frozen,
             cassette_manager: crate::CassetteManagerSnapshot {
                 initialized: true,
+                startup_music_pending: false,
                 beat_timer: CASSETTE_BEAT_INTERVAL - DT * 0.5,
                 beat_index: 6,
                 current_index: 1,
@@ -10603,6 +10612,22 @@ mod tests {
         assert_eq!(activated.cassette_blocks[1].position.y, 103.0);
         assert!(activated.cassette_blocks[0].collidable);
         assert!(!activated.cassette_blocks[1].collidable);
+    }
+
+    #[test]
+    fn fresh_custom_cassette_manager_skips_music_advance_on_its_first_update() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(96.0, 106.0),
+            state: PlayerState::Frozen,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(p, &[InputState::default(); 82], &cassette_map(), 82).unwrap();
+
+        assert!(trace.states[0].cassette_manager.startup_music_pending);
+        assert!(!trace.states[1].cassette_manager.startup_music_pending);
+        assert_eq!(trace.states[1].cassette_manager.beat_timer, 0.0);
+        assert_eq!(trace.states[81].pos.y, 106.0);
+        assert_eq!(trace.states[82].pos.y, 101.0);
     }
 
     #[test]
@@ -10715,6 +10740,7 @@ mod tests {
             transition_target: Vec2::new(300.0, 100.0),
             cassette_manager: crate::CassetteManagerSnapshot {
                 initialized: true,
+                startup_music_pending: false,
                 beat_timer: CASSETTE_BEAT_INTERVAL - DT * 0.5,
                 beat_index: 6,
                 current_index: 1,
