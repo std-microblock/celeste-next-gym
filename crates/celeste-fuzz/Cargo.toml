@@ -1,0 +1,25 @@
+[package]
+name = "celeste-fuzz"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Native Celeste physics input-space searcher"
+
+[features]
+default = []
+parallel = ["dep:rayon", "rhai/sync"]
+
+[dependencies]
+celeste-physics = { path = "../celeste-physics" }
+rhai = "1.20"
+rayon = { version = "1.10", optional = true }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "search"
+harness = false
