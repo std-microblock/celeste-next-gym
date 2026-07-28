@@ -13,11 +13,9 @@ export const scenario = defineScenario({
   techniqueIds: ['4.15'],
   mapParts,
   name: 'entity-4.15-jumpthrough-clip',
-  initial: { pos: [624, 304], speed: [0, 0], on_ground: true },
+  initial: { pos: [652, 304], speed: [0, 0], on_ground: true },
   inputs: inputFrames(100, (frame) => input({
-    move_x: frame < 20 ? 1 : frame < 48 ? -1 : 0,
-    jump_pressed: frame === 2,
-    jump_held: frame >= 2 && frame <= 10,
+    move_x: frame < 3 ? 1 : frame < 20 ? -1 : 0,
   })),
   verify(states) {
     const landed = states.findIndex((state, frame) => frame > 10 && state.on_ground && state.pos[1] <= 416)
