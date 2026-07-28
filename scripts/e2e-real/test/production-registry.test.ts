@@ -8,12 +8,12 @@ describe('production scenario registry', () => {
   const registry = buildRegistry(scenarios)
 
   it('derives all target and status counts from explicit indexes', () => {
-    assert.equal(registry.scenarios.length, 137)
-    assert.equal(registry.byTarget.get('playground')?.length, 95)
+    assert.equal(registry.scenarios.length, 144)
+    assert.equal(registry.byTarget.get('playground')?.length, 102)
     assert.equal(registry.byTarget.get('area-1')?.length, 36)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 134, candidate: 3 })
+    assert.deepEqual(registry.counts, { active: 138, candidate: 6 })
   })
 
   it('keeps evidence-less scenarios as opt-in candidates', () => {
@@ -23,7 +23,10 @@ describe('production scenario registry', () => {
     assert.deepEqual(candidates, [
       'dash-grounded-ultra-cancel',
       'dash-grounded-ultra-cancel-control',
+      'entity-4.10.3.2-holdable-dream-hyper',
+      'entity-4.10.4-holdable-grabless-dream-hyper',
       'entity-4.15.2-feather-hitbox-preservation',
+      'entity-4.6.2-cloud-hyper-bunnyhop',
     ])
     assert.equal(selectScenarios(registry, { target: 'playground' }).some((scenario) => scenario.status === 'candidate'), false)
   })

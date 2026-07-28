@@ -884,7 +884,10 @@ fn try_pickup_theo(p: &mut PlayerSnapshot) -> bool {
     p.ducking = false;
     p.pickup_old_speed = p.speed;
     p.pickup_old_var_jump_timer = p.var_jump_timer;
-    p.pickup_timer = 0.16;
+    // PickupCoroutine observes the Tween one player frame before Tween.Update
+    // can deactivate it. Keep that trailing frame in the portable timer so
+    // speed restoration matches the real state snapshot boundary.
+    p.pickup_timer = 0.16 + DT;
     p.speed = Vec2::default();
     p.demo_dashed = false;
     p.dash_end_pending = false;
@@ -1673,9 +1676,6 @@ fn begin_dash(
         p.ducking = false;
     } else if !p.ducking && (p.demo_dashed || input.move_y > 0) {
         p.ducking = true;
-    }
-    if x != 0.0 {
-        p.facing = x > 0.0;
     }
 }
 
@@ -3985,6 +3985,33 @@ mod tests {
             ..Map::default()
         }
     }
+    fn dream_smuggle_map() -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            solids: vec![Rect::new(0.0, 100.0, 320.0, 80.0)],
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::DreamBlock,
+                    bounds: Rect::new(80.0, 40.0, 96.0, 60.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "dreamBlock".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::TheoCrystal,
+                    bounds: Rect::new(68.0, 90.0, 8.0, 10.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "theoCrystal".to_owned(),
+                },
+            ],
+            ..Map::default()
+        }
+    }
     fn badeline_boost_map(final_boost: bool) -> Map {
         Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
@@ -4360,7 +4387,7 @@ mod tests {
             grab_held: true,
             ..InputState::default()
         };
-        let trace = simulate_trace(p, &[held; 12], &theo_crystal_map(), 12).unwrap();
+        let trace = simulate_trace(p, &[held; 13], &theo_crystal_map(), 13).unwrap();
 
         assert_eq!(trace.states[1].state, PlayerState::Pickup);
         assert_eq!(trace.states[1].speed, Vec2::default());
@@ -4369,8 +4396,9 @@ mod tests {
         assert!(trace.states[1].theo_crystals[0].held);
         assert!(!trace.states[1].dash_end_pending);
         assert_eq!(trace.states[11].state, PlayerState::Pickup);
-        assert_eq!(trace.states[12].state, PlayerState::Normal);
-        assert_eq!(trace.states[12].speed, Vec2::new(360.0, 0.0));
+        assert_eq!(trace.states[12].state, PlayerState::Pickup);
+        assert_eq!(trace.states[13].state, PlayerState::Normal);
+        assert_eq!(trace.states[13].speed, Vec2::new(360.0, 0.0));
     }
 
     #[test]
@@ -4535,6 +4563,110 @@ mod tests {
         assert!(trace.states[33].ducking);
         assert_eq!(trace.states[37].state, PlayerState::Normal);
         assert_eq!(trace.states[37].speed, Vec2::new(325.0, -117.5));
+    }
+
+    #[test]
+    fn cloud_super_and_hyper_stack_the_cloud_lift_with_source_dash_jump_speeds() {
+        for (hyper, expected_x, maximum_y) in [(false, 260.0, -105.0), (true, 325.0, -52.5)] {
+            let p = PlayerSnapshot {
+                pos: Vec2::new(100.0, 100.0),
+                on_ground: true,
+                ..PlayerSnapshot::default()
+            };
+            let inputs: Vec<_> = (0..60)
+                .map(|frame| InputState {
+                    move_x: if frame >= 23 { 1 } else { 0 },
+                    dash_pressed: !hyper && frame == 23,
+                    crouch_dash_pressed: hyper && frame == 23,
+                    jump_pressed: frame == 27,
+                    jump_held: frame == 27,
+                    ..InputState::default()
+                })
+                .collect();
+            let trace = simulate_trace(p, &inputs, &cloud_map(false), inputs.len() as u32).unwrap();
+            let launch = trace
+                .states
+                .iter()
+                .find(|state| {
+                    state.state == PlayerState::Normal && (state.speed.x - expected_x).abs() < 0.001
+                })
+                .expect("cloud dash jump should return to Normal at source horizontal speed");
+            assert!(
+                launch.speed.y < maximum_y,
+                "hyper={hyper}, launch={:?}",
+                launch.speed
+            );
+            assert!(launch.last_lift_speed.y <= -220.0);
+        }
+    }
+
+    #[test]
+    fn cloud_hyper_speed_composes_with_an_apex_bunnyhop_snapshot() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(88.0, 100.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..110)
+            .map(|frame| InputState {
+                move_x: if frame == 23 {
+                    -1
+                } else if frame > 23 {
+                    1
+                } else {
+                    0
+                },
+                crouch_dash_pressed: frame == 23,
+                jump_pressed: frame == 27,
+                jump_held: frame == 27,
+                ..InputState::default()
+            })
+            .collect();
+        let setup =
+            simulate_trace(p.clone(), &inputs, &cloud_map(false), inputs.len() as u32).unwrap();
+        let hyper = setup
+            .states
+            .iter()
+            .position(|state| {
+                state.state == PlayerState::Normal && (state.speed.x - 325.0).abs() < 0.001
+            })
+            .expect("short cloud hyper");
+        let apex = setup
+            .states
+            .iter()
+            .enumerate()
+            .min_by(|(_, left), (_, right)| {
+                left.clouds[0]
+                    .position
+                    .y
+                    .total_cmp(&right.clouds[0].position.y)
+            })
+            .map(|(frame, state)| (frame, state.clone()))
+            .unwrap();
+        assert!(apex.0 > hyper);
+        let mut apex_player = apex.1;
+        apex_player.pos = Vec2::new(100.0, apex_player.clouds[0].position.y);
+        apex_player.speed = Vec2::new(300.0, 0.0);
+        apex_player.state = PlayerState::Normal;
+        apex_player.on_ground = true;
+        apex_player.player_on_ground = true;
+        apex_player.movement_remainder = Vec2::default();
+        let jump = InputState {
+            move_x: 1,
+            jump_pressed: true,
+            jump_held: true,
+            ..InputState::default()
+        };
+        let bunnyhop = simulate(apex_player.clone(), &[jump], &cloud_map(false), 1).unwrap();
+        assert_eq!(bunnyhop.state, PlayerState::Normal);
+        assert!(bunnyhop.speed.x > 250.0);
+        assert_eq!(bunnyhop.speed.y, -235.0);
+
+        let inputs = [jump, InputState::default()];
+        let whole = simulate(apex_player.clone(), &inputs, &cloud_map(false), 2).unwrap();
+        let first = simulate(apex_player, &inputs[..1], &cloud_map(false), 1).unwrap();
+        let split = simulate(first, &inputs[1..], &cloud_map(false), 1).unwrap();
+        assert_eq!(split, whole);
     }
 
     #[test]
@@ -6825,16 +6957,28 @@ mod tests {
             dash_pressed: true,
             ..InputState::default()
         };
-        let first = simulate(grounded_player(), &[input], &floor_map(), 1).unwrap();
+        let first = simulate(
+            PlayerSnapshot {
+                facing: false,
+                ..grounded_player()
+            },
+            &[input],
+            &floor_map(),
+            1,
+        )
+        .unwrap();
         assert_eq!(first.speed, Vec2::default());
         assert_eq!(first.freeze_timer, 0.05);
+        assert!(first.facing);
         let frozen = simulate(first, &[InputState::default(); 3], &floor_map(), 3).unwrap();
         assert_eq!(frozen.speed, Vec2::default());
         assert_eq!(frozen.freeze_timer, 0.0);
+        assert!(frozen.facing);
         let p = simulate(frozen, &[InputState::default()], &floor_map(), 1).unwrap();
         assert_eq!(p.state, PlayerState::Dash);
         assert_eq!(p.dashes, 0);
         assert!((p.speed.x.abs() - 169.70563).abs() < 0.01);
+        assert!(p.facing);
     }
 
     #[test]
@@ -7359,6 +7503,229 @@ mod tests {
         assert_eq!(p.state, PlayerState::Climb);
         assert_eq!(p.pos, Vec2::new(71.0, 64.0));
         assert!(!p.facing);
+    }
+
+    #[test]
+    fn dream_smuggle_keeps_theo_through_pickup_and_lingering_attack_entry() {
+        let map = dream_smuggle_map();
+        let initial = PlayerSnapshot {
+            pos: Vec2::new(60.0, 100.0),
+            speed: Vec2::new(240.0, 0.0),
+            state: PlayerState::Dash,
+            dash_dir: Vec2::new(1.0, 0.0),
+            dash_attack_timer: DASH_ATTACK_TIME,
+            state_timer: 0.1,
+            on_ground: true,
+            can_dream_dash: true,
+            ..PlayerSnapshot::default()
+        };
+        let held = InputState {
+            move_x: 1,
+            grab_held: true,
+            ..InputState::default()
+        };
+        let inputs = [held; 30];
+        let trace = simulate_trace(initial.clone(), &inputs, &map, inputs.len() as u32).unwrap();
+        let pickup = trace
+            .states
+            .iter()
+            .position(|state| state.state == PlayerState::Pickup)
+            .unwrap();
+        let dream = trace
+            .states
+            .iter()
+            .position(|state| state.state == PlayerState::DreamDash)
+            .unwrap();
+        assert!(pickup < dream);
+        assert!(
+            trace.states[pickup..=dream]
+                .iter()
+                .all(|state| { state.holding_theo == Some(0) && state.theo_crystals[0].held })
+        );
+
+        let whole = trace.states.last().unwrap().clone();
+        let first = simulate(initial, &inputs[..13], &map, 13).unwrap();
+        let split = simulate(first, &inputs[13..], &map, 17).unwrap();
+        assert_eq!(split, whole);
+    }
+
+    #[test]
+    fn holdable_dream_hyper_throw_cannot_hold_hyper_and_regrab_are_split_composable() {
+        let map = dream_smuggle_map();
+        let initial = PlayerSnapshot {
+            pos: Vec2::new(180.0, 88.0),
+            speed: Vec2::new(0.0, 0.0),
+            state: PlayerState::Climb,
+            facing: false,
+            dashes: 1,
+            jump_grace_timer: JUMP_GRACE,
+            holding_theo: Some(0),
+            theo_crystals: vec![crate::TheoCrystalSnapshot {
+                position: Vec2::new(180.0, 76.0),
+                held: true,
+                ..crate::TheoCrystalSnapshot::default()
+            }],
+            min_hold_timer: 0.0,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = Vec::new();
+        inputs.push(InputState {
+            move_x: -1,
+            ..InputState::default()
+        });
+        inputs.push(InputState {
+            move_x: 1,
+            crouch_dash_pressed: true,
+            ..InputState::default()
+        });
+        inputs.extend(
+            [InputState {
+                move_x: 1,
+                ..InputState::default()
+            }; 3],
+        );
+        inputs.push(InputState {
+            move_x: 1,
+            jump_pressed: true,
+            jump_held: true,
+            ..InputState::default()
+        });
+        inputs.extend(
+            [InputState {
+                move_x: -1,
+                grab_held: true,
+                ..InputState::default()
+            }; 30],
+        );
+
+        let trace = simulate_trace(initial.clone(), &inputs, &map, inputs.len() as u32).unwrap();
+        let released = &trace.states[2];
+        assert_eq!(released.holding_theo, None);
+        assert_eq!(released.before_dash_speed.x, -80.0);
+        assert!(released.theo_crystals[0].cannot_hold_timer > 0.0);
+        assert!(
+            trace.states[2..7]
+                .iter()
+                .all(|state| state.holding_theo.is_none())
+        );
+        assert!(
+            trace.states.iter().any(|state| {
+                state.state == PlayerState::Normal && (state.speed.x - 325.0).abs() < 0.001
+            }),
+            "trace={:?}",
+            trace
+                .states
+                .iter()
+                .enumerate()
+                .map(|(frame, state)| (
+                    frame,
+                    state.state,
+                    state.speed,
+                    state.holding_theo,
+                    state.freeze_timer,
+                    state.jump_grace_timer,
+                    state.dash_buffer_timer,
+                    state.ducking
+                ))
+                .collect::<Vec<_>>()
+        );
+        assert!(
+            trace
+                .states
+                .iter()
+                .skip(7)
+                .any(|state| state.holding_theo == Some(0))
+        );
+
+        let whole = trace.states.last().unwrap().clone();
+        let first = simulate(initial, &inputs[..7], &map, 7).unwrap();
+        let split = simulate(first, &inputs[7..], &map, (inputs.len() - 7) as u32).unwrap();
+        assert_eq!(split, whole);
+    }
+
+    #[test]
+    fn holdable_grabless_dream_hyper_uses_exit_grace_without_a_climb_state() {
+        let map = dream_smuggle_map();
+        let initial = PlayerSnapshot {
+            pos: Vec2::new(176.0, 64.0),
+            speed: Vec2::new(240.0, 0.0),
+            state: PlayerState::DreamDash,
+            dash_dir: Vec2::new(1.0, 0.0),
+            holding_theo: Some(0),
+            theo_crystals: vec![crate::TheoCrystalSnapshot {
+                position: Vec2::new(176.0, 52.0),
+                held: true,
+                ..crate::TheoCrystalSnapshot::default()
+            }],
+            min_hold_timer: 0.0,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = vec![
+            InputState {
+                move_x: 1,
+                grab_held: true,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: 1,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: 1,
+                crouch_dash_pressed: true,
+                ..InputState::default()
+            },
+        ];
+        inputs.extend(
+            [InputState {
+                move_x: 1,
+                ..InputState::default()
+            }; 5],
+        );
+        inputs.push(InputState {
+            move_x: 1,
+            jump_pressed: true,
+            jump_held: true,
+            ..InputState::default()
+        });
+        let trace = simulate_trace(initial, &inputs, &map, inputs.len() as u32).unwrap();
+        assert_eq!(trace.states[1].state, PlayerState::Normal);
+        assert_eq!(trace.states[1].jump_grace_timer, JUMP_GRACE);
+        assert!(
+            !trace
+                .states
+                .iter()
+                .any(|state| state.state == PlayerState::Climb)
+        );
+        let released = trace
+            .states
+            .iter()
+            .position(|state| state.holding_theo.is_none())
+            .unwrap();
+        assert!(released > 1);
+        assert_eq!(trace.states[released].before_dash_speed.x, 160.0);
+        assert!(trace.states[released].theo_crystals[0].cannot_hold_timer > 0.0);
+        assert!(
+            trace.states.iter().any(|state| {
+                state.state == PlayerState::Normal && (state.speed.x - 325.0).abs() < 0.001
+            }),
+            "trace={:?}",
+            trace
+                .states
+                .iter()
+                .enumerate()
+                .map(|(frame, state)| (
+                    frame,
+                    state.state,
+                    state.speed,
+                    state.holding_theo,
+                    state.freeze_timer,
+                    state.jump_grace_timer,
+                    state.dash_buffer_timer,
+                    state.ducking
+                ))
+                .collect::<Vec<_>>()
+        );
     }
     #[test]
     fn entering_water_halves_downward_speed_and_enters_swim() {
