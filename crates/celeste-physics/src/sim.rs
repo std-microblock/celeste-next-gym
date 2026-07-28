@@ -144,6 +144,7 @@ pub fn simulate_trace(
     initialize_theo_crystals(&mut snapshot, &mut runtime_map);
     initialize_gliders(&mut snapshot, &mut runtime_map);
     initialize_clouds(&mut snapshot, &mut runtime_map);
+    initialize_seekers(&mut snapshot, &mut runtime_map);
     position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
     let mut states = Vec::with_capacity(frames + 1);
     states.push(snapshot.clone());
@@ -347,6 +348,19 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         .iter()
         .all(|value| value.is_finite())
     });
+    let seekers_are_finite = s.seekers.iter().all(|seeker| {
+        [
+            seeker.position.x,
+            seeker.position.y,
+            seeker.speed.x,
+            seeker.speed.y,
+            seeker.remainder.x,
+            seeker.remainder.y,
+            seeker.state_timer,
+        ]
+        .iter()
+        .all(|value| value.is_finite())
+    });
     if values.iter().all(|x| x.is_finite())
         && zip_movers_are_finite
         && bounce_blocks_are_finite
@@ -354,6 +368,7 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         && theo_crystals_are_finite
         && gliders_are_finite
         && clouds_are_finite
+        && seekers_are_finite
     {
         Ok(())
     } else {
@@ -689,6 +704,181 @@ fn advance_clouds(p: &mut PlayerSnapshot, map: &mut Map) {
             }
         }
         p.clouds[cloud_index] = state;
+    }
+}
+
+fn seeker_physics_rect(position: Vec2) -> Rect {
+    Rect::new(position.x - 3.0, position.y - 3.0, 6.0, 6.0)
+}
+
+fn seeker_attack_rect(position: Vec2) -> Rect {
+    Rect::new(position.x - 6.0, position.y - 2.0, 12.0, 8.0)
+}
+
+fn seeker_bounce_rect(position: Vec2, state: u8, speed: Vec2) -> Rect {
+    if state == 3 && speed.x > 0.0 {
+        Rect::new(position.x - 10.0, position.y - 8.0, 16.0, 6.0)
+    } else if state == 3 && speed.y < 0.0 {
+        Rect::new(position.x - 6.0, position.y - 8.0, 16.0, 6.0)
+    } else {
+        Rect::new(position.x - 6.0, position.y - 8.0, 12.0, 6.0)
+    }
+}
+
+fn seeker_collides(map: &Map, position: Vec2) -> bool {
+    let collider = seeker_physics_rect(position);
+    map.solid_at(collider)
+        || collider.x < map.bounds.x
+        || collider.right() > map.bounds.right()
+        || collider.bottom() > map.bounds.bottom()
+        || collider.y < map.bounds.y - 8.0
+}
+
+fn move_seeker_vertical_exact(
+    seeker: &mut crate::SeekerSnapshot,
+    map: &Map,
+    amount: i32,
+) -> bool {
+    let sign = amount.signum();
+    for _ in 0..amount.unsigned_abs() {
+        let next = Vec2::new(seeker.position.x, seeker.position.y + sign as f32);
+        if seeker_collides(map, next) {
+            return false;
+        }
+        seeker.position = next;
+    }
+    true
+}
+
+fn move_seeker_axis(seeker: &mut crate::SeekerSnapshot, map: &Map, horizontal: bool) {
+    let amount = if horizontal {
+        seeker.speed.x * DT
+    } else {
+        seeker.speed.y * DT
+    };
+    let remainder = if horizontal {
+        &mut seeker.remainder.x
+    } else {
+        &mut seeker.remainder.y
+    };
+    *remainder += amount;
+    let pixels = remainder.round_ties_even() as i32;
+    *remainder -= pixels as f32;
+    let sign = pixels.signum();
+    for _ in 0..pixels.unsigned_abs() {
+        let next = Vec2::new(
+            seeker.position.x + if horizontal { sign as f32 } else { 0.0 },
+            seeker.position.y + if horizontal { 0.0 } else { sign as f32 },
+        );
+        if seeker_collides(map, next) {
+            if horizontal {
+                if seeker.state == 3 {
+                    let original_y = seeker.position.y;
+                    let corrected = [4, -4].into_iter().any(|offset| {
+                        seeker.position.y = original_y;
+                        !seeker_collides(map, Vec2::new(next.x, original_y + offset as f32))
+                            && move_seeker_vertical_exact(seeker, map, offset)
+                    });
+                    if corrected {
+                        seeker.position.x = next.x;
+                        continue;
+                    }
+                    seeker.position.y = original_y;
+                }
+                if matches!(seeker.state, 3 | 5) && seeker.speed.x.abs() >= 100.0 {
+                    seeker.speed.x = seeker.speed.x.signum() * -100.0;
+                    seeker.speed.y *= 0.4;
+                    seeker.state = 4;
+                    seeker.state_timer = 0.8;
+                } else {
+                    seeker.speed.x *= -0.2;
+                }
+                seeker.remainder.x = 0.0;
+            } else {
+                seeker.speed.y *= if seeker.state == 3 { -0.6 } else { -0.2 };
+                seeker.remainder.y = 0.0;
+            }
+            break;
+        }
+        seeker.position = next;
+    }
+}
+
+fn seeker_player_center(p: &PlayerSnapshot) -> Vec2 {
+    let collider = current_player_rect(p, p.pos.x, p.pos.y);
+    Vec2::new(
+        collider.x + collider.width * 0.5,
+        collider.y + collider.height * 0.5,
+    )
+}
+
+fn advance_seekers(p: &mut PlayerSnapshot, map: &mut Map) {
+    let entity_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::Seeker).then_some(index))
+        .collect();
+    for (seeker_index, entity_index) in entity_indices.into_iter().enumerate() {
+        let mut seeker = p.seekers[seeker_index].clone();
+        if seeker.state == 4 {
+            seeker.speed = approach_vec(seeker.speed, Vec2::default(), 150.0 * DT);
+            if seeker.state_timer > 0.0 {
+                seeker.state_timer -= DT;
+            } else {
+                seeker.state = 0;
+                seeker.state_timer = 0.0;
+            }
+        }
+
+        move_seeker_axis(&mut seeker, map, true);
+        move_seeker_axis(&mut seeker, map, false);
+
+        if !p.dead {
+            let player = current_player_rect(p, p.pos.x, p.pos.y);
+            let attack = seeker_attack_rect(seeker.position);
+            if attack.intersects(player) {
+                if seeker.state == 4 {
+                    let player_center = seeker_player_center(p);
+                    point_bounce(p, seeker.position);
+                    seeker.speed = scale(
+                        normalize(Vec2::new(
+                            seeker.position.x - player_center.x,
+                            seeker.position.y - player_center.y,
+                        )),
+                        100.0,
+                    );
+                } else {
+                    p.dead = true;
+                    p.speed = Vec2::default();
+                    p.death_freeze_pending = true;
+                    p.respawn_frames = 95;
+                }
+            } else if seeker_bounce_rect(seeker.position, seeker.state, seeker.speed)
+                .intersects(player)
+            {
+                let player_center = seeker_player_center(p);
+                bounce(p, map, seeker.position.y - 3.0);
+                seeker.speed = scale(
+                    normalize(Vec2::new(
+                        seeker.position.x - player_center.x,
+                        seeker.position.y - player_center.y,
+                    )),
+                    200.0,
+                );
+                seeker.state = 6;
+                seeker.state_timer = 0.0;
+                p.freeze_timer = 0.15;
+            }
+        }
+
+        map.entities[entity_index].bounds = Rect::new(
+            seeker.position.x - 6.0,
+            seeker.position.y - 6.0,
+            12.0,
+            12.0,
+        );
+        p.seekers[seeker_index] = seeker;
     }
 }
 
@@ -1524,6 +1714,30 @@ fn move_theo_axis(theo: &mut crate::TheoCrystalSnapshot, map: &Map, horizontal: 
     }
 }
 
+fn initialize_seekers(p: &mut PlayerSnapshot, map: &mut Map) {
+    let seeker_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::Seeker).then_some(index))
+        .collect();
+    p.seekers.truncate(seeker_indices.len());
+    for (seeker_index, entity_index) in seeker_indices.into_iter().enumerate() {
+        let entity = &mut map.entities[entity_index];
+        if seeker_index == p.seekers.len() {
+            p.seekers.push(crate::SeekerSnapshot {
+                position: Vec2::new(
+                    entity.bounds.x + entity.bounds.width * 0.5,
+                    entity.bounds.y + entity.bounds.height * 0.5,
+                ),
+                ..crate::SeekerSnapshot::default()
+            });
+        }
+        let state = &p.seekers[seeker_index];
+        entity.bounds = Rect::new(state.position.x - 6.0, state.position.y - 6.0, 12.0, 12.0);
+    }
+}
+
 fn hit_theo_spring(theo: &mut crate::TheoCrystalSnapshot, map: &Map) {
     if theo.held {
         return;
@@ -2023,6 +2237,7 @@ fn step(
         advance_theo_crystals(p, map);
         advance_gliders(p, map);
         advance_clouds(p, map);
+        advance_seekers(p, map);
         p.on_ground = grounded(p, map);
         return Ok(());
     }
@@ -2052,6 +2267,7 @@ fn step(
             advance_theo_crystals(p, map);
             advance_gliders(p, map);
             advance_clouds(p, map);
+            advance_seekers(p, map);
             p.on_ground = grounded(p, map);
             return Ok(());
         }
@@ -2105,6 +2321,7 @@ fn step(
     advance_theo_crystals(p, map);
     advance_gliders(p, map);
     advance_clouds(p, map);
+    advance_seekers(p, map);
     p.on_ground = grounded(p, map);
     Ok(())
 }
@@ -3536,6 +3753,11 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
     }
     let hitbox = current_player_rect(p, p.pos.x, p.pos.y);
     for (entity_index, entity) in map.entities.iter().enumerate() {
+        // Seeker PlayerColliders run from the dynamic Seeker update after
+        // Player.Update, using its live StateMachine collider selection.
+        if entity.kind == EntityKind::Seeker {
+            continue;
+        }
         let player_box = if matches!(
             entity.kind,
             EntityKind::Spikes
@@ -10202,11 +10424,10 @@ mod tests {
     }
 
     #[test]
-    fn fish_oshiro_seeker_and_snowball_top_callbacks_share_player_bounce_semantics() {
+    fn fish_oshiro_and_snowball_top_callbacks_share_player_bounce_semantics() {
         for kind in [
             EntityKind::Puffer,
             EntityKind::AngryOshiro,
-            EntityKind::Seeker,
             EntityKind::Snowball,
         ] {
             let mut p = PlayerSnapshot {
@@ -10227,6 +10448,157 @@ mod tests {
             assert_eq!(p.dash_attack_timer, 0.0, "kind={kind:?}");
             assert_eq!(p.var_jump_timer, VAR_JUMP_TIME, "kind={kind:?}");
         }
+    }
+
+    #[test]
+    fn seeker_attack_wall_collision_enters_stunned_with_source_speeds_and_timer() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 200.0, 180.0),
+            solids: vec![Rect::new(104.0, 0.0, 16.0, 180.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::Seeker,
+                bounds: Rect::new(94.0, 94.0, 12.0, 12.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "seeker".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(20.0, 160.0),
+            seekers: vec![crate::SeekerSnapshot {
+                position: Vec2::new(100.0, 100.0),
+                speed: Vec2::new(120.0, 50.0),
+                state: 3,
+                ..crate::SeekerSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(p, &[InputState::default(); 2], &map, 2).unwrap();
+
+        assert_eq!(trace.states[1].seekers[0].state, 4);
+        assert_eq!(trace.states[1].seekers[0].speed, Vec2::new(-100.0, 20.0));
+        assert_eq!(trace.states[1].seekers[0].state_timer, 0.8);
+        assert_eq!(
+            trace.states[2].seekers[0].speed,
+            approach_vec(Vec2::new(-100.0, 20.0), Vec2::default(), 150.0 * DT)
+        );
+        assert_eq!(trace.states[2].seekers[0].state_timer, 0.8 - DT);
+    }
+
+    #[test]
+    fn seeker_stunned_coroutine_returns_idle_and_split_simulation_is_composable() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            solids: vec![Rect::new(0.0, 160.0, 320.0, 20.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::Seeker,
+                bounds: Rect::new(194.0, 94.0, 12.0, 12.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "seeker".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let initial = PlayerSnapshot {
+            pos: Vec2::new(20.0, 160.0),
+            on_ground: true,
+            seekers: vec![crate::SeekerSnapshot {
+                position: Vec2::new(200.0, 100.0),
+                speed: Vec2::new(-100.0, 20.0),
+                state: 4,
+                state_timer: 0.8,
+                ..crate::SeekerSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [InputState::default(); 55];
+        let trace = simulate_trace(initial.clone(), &inputs, &map, inputs.len() as u32).unwrap();
+        let returned = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(1)
+            .find(|(_, state)| state.seekers[0].state == 0)
+            .map(|(frame, _)| frame)
+            .expect("StunnedCoroutine should return to Idle after 0.8 seconds");
+        assert_eq!(returned, 49);
+        assert_eq!(trace.states[returned].seekers[0].speed, Vec2::default());
+
+        let whole = trace.states.last().unwrap().clone();
+        let first = simulate(initial, &inputs[..20], &map, 20).unwrap();
+        let split = simulate(first, &inputs[20..], &map, 35).unwrap();
+        assert_eq!(split, whole);
+    }
+
+    #[test]
+    fn stunned_seeker_side_contact_point_bounces_player_and_recoils_at_one_hundred() {
+        let mut map = bounce_actor_map(EntityKind::Seeker);
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(92.0, 105.5),
+            dashes: 0,
+            stamina: 5.0,
+            seekers: vec![crate::SeekerSnapshot {
+                position: Vec2::new(100.0, 100.0),
+                state: 4,
+                state_timer: 0.8,
+                ..crate::SeekerSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        initialize_seekers(&mut p, &mut map);
+        advance_seekers(&mut p, &mut map);
+
+        assert!(!p.dead);
+        assert_eq!(p.dashes, 1);
+        assert_eq!(p.stamina, 110.0);
+        assert!(p.speed.x < -300.0);
+        assert_eq!(p.seekers[0].speed, Vec2::new(100.0, 0.0));
+        assert_eq!(p.seekers[0].state, 4);
+    }
+
+    #[test]
+    fn attacking_seeker_side_contact_kills_but_top_contact_bounces_and_regenerates() {
+        let mut side_map = bounce_actor_map(EntityKind::Seeker);
+        let mut side = PlayerSnapshot {
+            pos: Vec2::new(92.0, 105.5),
+            seekers: vec![crate::SeekerSnapshot {
+                position: Vec2::new(100.0, 100.0),
+                state: 3,
+                ..crate::SeekerSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        initialize_seekers(&mut side, &mut side_map);
+        advance_seekers(&mut side, &mut side_map);
+        assert!(side.dead);
+
+        let mut top_map = bounce_actor_map(EntityKind::Seeker);
+        let mut top = PlayerSnapshot {
+            pos: Vec2::new(100.0, 97.0),
+            speed: Vec2::new(50.0, 20.0),
+            dashes: 0,
+            stamina: 5.0,
+            seekers: vec![crate::SeekerSnapshot {
+                position: Vec2::new(100.0, 102.0),
+                state: 3,
+                ..crate::SeekerSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        initialize_seekers(&mut top, &mut top_map);
+        advance_seekers(&mut top, &mut top_map);
+        assert!(!top.dead);
+        assert_eq!(top.state, PlayerState::Normal);
+        assert_eq!(top.speed, Vec2::new(50.0, BOUNCE_SPEED));
+        assert_eq!(top.dashes, 1);
+        assert_eq!(top.stamina, 110.0);
+        assert_eq!(top.freeze_timer, 0.15);
+        assert_eq!(top.seekers[0].state, 6);
     }
 
     #[test]

@@ -171,6 +171,19 @@ pub struct CloudSnapshot {
     pub start: Vec2,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SeekerSnapshot {
+    /// Actor.Position / physics-hitbox center.
+    pub position: Vec2,
+    pub speed: Vec2,
+    pub remainder: Vec2,
+    /// Vanilla Seeker state index (Attack=3, Stunned=4, Skidding=5).
+    pub state: u8,
+    /// Coroutine time remaining for the supported Stunned lifecycle.
+    pub state_timer: f32,
+}
+
 fn default_stamina() -> f32 {
     110.0
 }
@@ -281,6 +294,8 @@ pub struct PlayerSnapshot {
     pub gliders: Vec<GliderSnapshot>,
     /// Per-entity vanilla non-fragile Cloud movement state.
     pub clouds: Vec<CloudSnapshot>,
+    /// Per-entity Seeker Actor and StateMachine state, in map entity order.
+    pub seekers: Vec<SeekerSnapshot>,
     /// Map-order TheoCrystal index currently held by Player.
     pub holding_theo: Option<u16>,
     /// Map-order Glider index currently held by Player.
@@ -427,6 +442,7 @@ impl Default for PlayerSnapshot {
             theo_crystals: vec![],
             gliders: vec![],
             clouds: vec![],
+            seekers: vec![],
             holding_theo: None,
             holding_glider: None,
             min_hold_timer: 0.0,

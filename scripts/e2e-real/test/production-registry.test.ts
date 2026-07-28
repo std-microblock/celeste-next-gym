@@ -8,12 +8,12 @@ describe('production scenario registry', () => {
   const registry = buildRegistry(scenarios)
 
   it('derives all target and status counts from explicit indexes', () => {
-    assert.equal(registry.scenarios.length, 165)
-    assert.equal(registry.byTarget.get('playground')?.length, 123)
+    assert.equal(registry.scenarios.length, 166)
+    assert.equal(registry.byTarget.get('playground')?.length, 124)
     assert.equal(registry.byTarget.get('area-1')?.length, 36)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 149, candidate: 16 })
+    assert.deepEqual(registry.counts, { active: 149, candidate: 17 })
   })
 
   it('keeps evidence-less scenarios as opt-in candidates', () => {
@@ -24,6 +24,7 @@ describe('production scenario registry', () => {
       'entity-4.10.3.2-holdable-dream-hyper',
       'entity-4.10.4-holdable-grabless-dream-hyper',
       'entity-4.18.3-core-block-entity-displacement',
+      'entity-4.19-seeker-bounce',
       'entity-4.21-holdable-slash',
       'entity-4.22.1-holdable-stall',
       'entity-4.22.2-holdable-climb',
@@ -51,6 +52,14 @@ describe('production scenario registry', () => {
       return scenario.mapParts[0]?.id
     })
     assert.deepEqual(parts, ['tech.entity-4.20-theo-regrab', 'tech.entity-4.21-holdable-slash'])
+  })
+
+  it('keeps the dynamic Seeker proof in its own map part', () => {
+    const seeker = registry.scenarios.find((candidate) => candidate.techniqueIds.includes('4.19'))
+    assert.ok(seeker)
+    assert.equal(seeker.mapParts.length, 1)
+    assert.equal(seeker.mapParts[0]?.id, 'tech.entity-4.19-seeker-bounce')
+    assert.deepEqual(seeker.mapParts[0]?.dependencies, [])
   })
 
   it('keeps every reform proof in an independently named map part', () => {
