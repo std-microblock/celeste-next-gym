@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { DEFAULT_BINDINGS, buttonsToInput, makeEmptyButtons, type FrameButtons, type GymMap, type KeyBindings, type SimState } from '../model'
+import { ACTIONS, DEFAULT_BINDINGS, buttonsToInput, makeEmptyButtons, type FrameButtons, type GymMap, type KeyBindings, type SimState } from '../model'
 import { WasmClient } from '../simulator/wasmClient'
 import { assistedRate, candidateWindow, createTrainingSession, keySemantics, nextTargetFrame, rebuildTrainingSession, verifiedInputs, verifyTrainingInput, type TrainingCandidate, type TrainingDefinition, type TrainingSession } from '../training/session'
 import { trainingCatalog, type TrainingDocument, type TrainingVariant } from '../training/catalog'
@@ -27,18 +27,25 @@ const SUCCESS_SLOWDOWN_MS = 3_000
 const MAX_AUTO_SLOWDOWN_REDUCTION = .7
 
 function buttonsFromKeyboard(keys: ReadonlySet<string>, bindings: KeyBindings): FrameButtons {
-  return {
-    up: keys.has(bindings.up), down: keys.has(bindings.down), left: keys.has(bindings.left), right: keys.has(bindings.right),
-    jump: keys.has(bindings.jump), dash: keys.has(bindings.dash), grab: keys.has(bindings.grab),
-  }
+  const buttons = makeEmptyButtons()
+  for (const action of ACTIONS) buttons[action] = keys.has(bindings[action])
+  return buttons
 }
 
 function pressedVerification(current: FrameButtons, previous: FrameButtons): boolean {
-  return (current.dash && !previous.dash) || (current.jump && !previous.jump) || (current.grab && !previous.grab)
+  return (current.dash && !previous.dash)
+    || (current.crouch_dash && !previous.crouch_dash)
+    || (current.jump && !previous.jump)
+    || (current.grab && !previous.grab)
 }
 
-export function trainingEntryDirectionPassed(buttons: FrameButtons): boolean {
-  return buttons.right && buttons.down
+export function trainingEntryDirectionPassed(buttons: FrameButtons, definition: TrainingDefinition): boolean {
+  const directions = ['up', 'down', 'left', 'right'] as const
+  const expected = new Set(definition.fuzz.inputs
+    .filter((input) => input.verify === false && input.at === 0)
+    .flatMap((input) => input.keys)
+    .filter((key): key is typeof directions[number] => directions.includes(key as typeof directions[number])))
+  return directions.every((direction) => buttons[direction] === expected.has(direction))
 }
 
 export function timingAssessment(actualFrame: number | undefined, targetFrame: number | undefined): string {
@@ -195,7 +202,8 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
     frameRef.current = next
     setFrame(next)
     if (!document) return
-    const start = attempts.current.find((attempt) => attempt.entryCheckPassed === true && attempt.keys.includes('dash'))?.frame ?? null
+    const start = attempts.current.find((attempt) => attempt.entryCheckPassed === true
+      && attempt.keys.some((key) => key === 'dash' || key === 'crouch_dash'))?.frame ?? null
     if (start === null || next < start) {
       fuzzStartRef.current = null
       setFuzzStartFrame(null)
@@ -294,7 +302,9 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
         const input = buttonsToInput(current, previousButtons.current)
         const beforeSession = sessionRef.current
         const triggers = pressedVerification(current, previousButtons.current)
-        const shouldVerify = beforeSession.phase === 'pre_fuzz' ? current.dash && !previousButtons.current.dash : triggers
+        const shouldVerify = beforeSession.phase === 'pre_fuzz'
+          ? (current.dash && !previousButtons.current.dash) || (current.crouch_dash && !previousButtons.current.crouch_dash)
+          : triggers
         const previous = previousButtons.current
         previousButtons.current = current
         simulating.current = true
@@ -312,7 +322,7 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
             const localFrame = beforeSession.phase === 'pre_fuzz' ? 0 : currentFrame - (fuzzStartRef.current ?? currentFrame)
             const semanticKeys = verificationKeys(current, previous, document, beforeSession.nextVerifiedInput)
             const entryPassed = beforeSession.phase === 'pre_fuzz'
-              ? trainingEntryDirectionPassed(current) && await client.entryCheck(after, document.entry.check)
+              ? trainingEntryDirectionPassed(current, document) && await client.entryCheck(after, document.entry.check)
               : true
             const nextSession = verifyTrainingInput(beforeSession, document, localFrame, semanticKeys, entryPassed)
             attempts.current = [...attempts.current, { frame: currentFrame, keys: semanticKeys, entryCheckPassed: entryPassed }]

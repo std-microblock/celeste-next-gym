@@ -1,4 +1,4 @@
-export const ACTIONS = ['up', 'down', 'left', 'right', 'jump', 'dash', 'grab'] as const
+export const ACTIONS = ['up', 'down', 'left', 'right', 'jump', 'dash', 'crouch_dash', 'grab'] as const
 
 export type Action = (typeof ACTIONS)[number]
 
@@ -194,6 +194,7 @@ export const ACTION_LABELS: Record<Action, string> = {
   right: '右',
   jump: '跳跃',
   dash: '冲刺',
+  crouch_dash: '蹲冲',
   grab: '抓取',
 }
 
@@ -204,6 +205,7 @@ export const ACTION_GLYPHS: Record<Action, string> = {
   right: '▶',
   jump: 'J',
   dash: 'D',
+  crouch_dash: 'C',
   grab: 'G',
 }
 
@@ -214,6 +216,7 @@ export const DEFAULT_BINDINGS: KeyBindings = {
   right: 'KeyD',
   jump: 'KeyL',
   dash: 'Semicolon',
+  crouch_dash: 'KeyK',
   grab: 'Quote',
 }
 
@@ -224,6 +227,7 @@ export const EMPTY_BUTTONS: FrameButtons = {
   right: false,
   jump: false,
   dash: false,
+  crouch_dash: false,
   grab: false,
 }
 
@@ -238,7 +242,7 @@ export function buttonsToInput(current: FrameButtons, previous: FrameButtons = E
     jump_pressed: current.jump && !previous.jump,
     jump_held: current.jump,
     dash_pressed: current.dash && !previous.dash,
-    crouch_dash_pressed: false,
+    crouch_dash_pressed: current.crouch_dash && !previous.crouch_dash,
     grab_held: current.grab,
     talk_pressed: false,
   }

@@ -38,7 +38,7 @@ const CANVAS_HEIGHT = HEADER_HEIGHT + ROWS_HEIGHT + SCROLLBAR_HEIGHT
 const PLAYHEAD_HIT_RADIUS = 14
 const LANE_COLORS: Record<Action, string> = {
   up: '#65d9ff', down: '#65d9ff', left: '#65d9ff', right: '#65d9ff',
-  jump: '#72f0b0', dash: '#ff4f81', grab: '#ffd37a',
+  jump: '#72f0b0', dash: '#ff4f81', crouch_dash: '#c96cff', grab: '#ffd37a',
 }
 
 export function heldRuns(inputs: readonly FrameButtons[], action: Action, from: number, to: number): Array<[number, number]> {

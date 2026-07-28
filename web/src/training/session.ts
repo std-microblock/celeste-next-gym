@@ -8,6 +8,9 @@ export interface TrainingInput {
   keys: string[]
   at: number | string
   verify?: boolean
+  held_time?: number | string
+  before_input?: string | string[]
+  after_input?: string | string[]
 }
 
 export interface TrainingCandidateInput {
@@ -41,7 +44,7 @@ export interface TrainingSession {
 
 export interface FrameWindow { from: number; to: number }
 
-const ACTION_KEYS = ['up', 'down', 'left', 'right', 'jump', 'dash', 'grab'] as const
+const ACTION_KEYS = ['up', 'down', 'left', 'right', 'jump', 'dash', 'crouch_dash', 'grab'] as const
 
 export function createTrainingSession(candidates: TrainingCandidate[]): TrainingSession {
   return {

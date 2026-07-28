@@ -265,7 +265,8 @@ function inputToButtons(input: SimInput): FrameButtons {
     left: input.move_x < 0,
     right: input.move_x > 0,
     jump: input.jump_held,
-    dash: input.dash_pressed || input.crouch_dash_pressed,
+    dash: input.dash_pressed,
+    crouch_dash: input.crouch_dash_pressed,
     grab: input.grab_held,
   }
 }
