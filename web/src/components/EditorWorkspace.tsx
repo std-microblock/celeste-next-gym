@@ -35,9 +35,11 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
   const [saveState, setSaveState] = useState<'memory' | 'dirty' | 'saving' | 'saved' | 'error'>('memory')
   const [notice, setNotice] = useState('当前为浏览器内存项目')
   const importRef = useRef<HTMLInputElement>(null)
+  const revision = useRef(0)
   const current = projects[projectIndex] ?? projects[0]
 
   const replaceProjects = (next: TrainingProject[], nextIndex = projectIndex) => {
+    revision.current += 1
     setProjects(next)
     setProjectIndex(Math.min(Math.max(0, nextIndex), Math.max(0, next.length - 1)))
     if (directory) setSaveState('dirty')
@@ -51,11 +53,16 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
 
   useEffect(() => {
     if (!directory || saveState !== 'dirty') return
+    const savingRevision = revision.current
     const timer = window.setTimeout(() => {
       setSaveState('saving')
       void saveTrainingWorkspace(directory, projects).then(() => {
-        setSaveState('saved')
-        setNotice(`已自动保存到 ${directory.name}`)
+        if (revision.current === savingRevision) {
+          setSaveState('saved')
+          setNotice(`已自动保存到 ${directory.name}`)
+        } else {
+          setSaveState('dirty')
+        }
       }).catch((error: Error) => {
         setSaveState('error')
         setNotice(`自动保存失败：${error.message}`)
@@ -73,6 +80,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
       const handle = await window.showDirectoryPicker({ id: 'celeste-gym-training-workspace', mode: 'readwrite' })
       const loaded = await openTrainingWorkspace(handle, props.map)
       setDirectory(handle)
+      revision.current += 1
       setProjects(loaded)
       setProjectIndex(0)
       props.onMapChange(loaded[0].map)
@@ -88,10 +96,15 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
   const saveNow = async () => {
     if (!directory) { setNotice('请先打开一个文件夹以启用自动保存'); return }
     try {
+      const savingRevision = revision.current
       setSaveState('saving')
       await saveTrainingWorkspace(directory, projects)
-      setSaveState('saved')
-      setNotice(`已保存到 ${directory.name}`)
+      if (revision.current === savingRevision) {
+        setSaveState('saved')
+        setNotice(`已保存到 ${directory.name}`)
+      } else {
+        setSaveState('dirty')
+      }
     } catch (error) {
       setSaveState('error')
       setNotice(error instanceof Error ? error.message : '保存失败')
