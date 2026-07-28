@@ -3911,6 +3911,14 @@ fn step(
     update_wall_speed_retention(p, map);
     update_climb_hop_wait(p, map);
     prepare_lookout_player(p);
+    // The Lookout and Booster are room entities which update before Player.
+    // During DummyWalkToExact, its Booster PlayerCollider therefore observes
+    // the preceding player position, unlike ordinary player-side callbacks.
+    let lookout_booster_box = p
+        .lookouts
+        .iter()
+        .any(|lookout| lookout.interacting && !lookout.removed && lookout.phase == 1)
+        .then(|| current_player_rect(p, p.pos.x, p.pos.y));
 
     if p.badeline_boost_active {
         update_badeline_boost(p, map);
@@ -3983,7 +3991,7 @@ fn step(
     // PlayerCollider invokes OnPlayer. Keep it immediately before the
     // portable collider callbacks, after Player has completed its movement.
     advance_bumpers(p, map);
-    interact(p, map, input);
+    interact(p, map, input, lookout_booster_box);
     try_begin_lookout(p, map, input);
     advance_lookouts(p, map, input);
     update_strawberry_train(p);
@@ -5422,7 +5430,12 @@ fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount:
     }
 }
 
-fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
+fn interact(
+    p: &mut PlayerSnapshot,
+    map: &Map,
+    input: InputState,
+    lookout_booster_box: Option<Rect>,
+) {
     if let Some(from_y) = p.pending_bounce_from_y.take() {
         // Backward compatibility for portable snapshots produced before
         // FireBall callbacks were aligned to the source's same-frame order.
@@ -5596,7 +5609,7 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                     entity.bounds.y + entity.bounds.height * 0.5 + 2.0,
                 ),
                 10.0,
-                player_box,
+                lookout_booster_box.unwrap_or(player_box),
             ),
             EntityKind::Bumper => circle_rect_intersects(
                 Vec2::new(
@@ -14352,7 +14365,7 @@ mod tests {
             ..PlayerSnapshot::default()
         };
         let map = ice_ball_map();
-        interact(&mut bounced, &map, InputState::default());
+        interact(&mut bounced, &map, InputState::default(), None);
         assert_eq!(bounced.state, PlayerState::Normal);
         assert_eq!(bounced.pending_bounce_from_y, None);
         assert_eq!(bounced.pos, Vec2::new(96.0, 98.0));
@@ -14427,7 +14440,7 @@ mod tests {
                 ..PlayerSnapshot::default()
             };
             let map = bounce_actor_map(kind.clone());
-            interact(&mut p, &map, InputState::default());
+            interact(&mut p, &map, InputState::default(), None);
             assert_eq!(p.state, PlayerState::Normal, "kind={kind:?}");
             assert_eq!(p.speed, Vec2::new(240.0, BOUNCE_SPEED), "kind={kind:?}");
             assert_eq!(p.dashes, 1, "kind={kind:?}");
@@ -14755,7 +14768,7 @@ mod tests {
             ..PlayerSnapshot::default()
         };
         let map = ice_ball_map();
-        interact(&mut bounced, &map, InputState::default());
+        interact(&mut bounced, &map, InputState::default(), None);
         assert_eq!(bounced.state, PlayerState::Normal);
         assert!(bounced.star_fly_hitbox_preserved);
         assert!(!bounced.ducking);
@@ -15116,6 +15129,17 @@ mod tests {
         assert_eq!(trace.states[2].state, PlayerState::Dummy);
         assert_eq!(trace.states[2].speed.x, 0.0);
         assert!((trace.states[3].speed.x - 16.666_7).abs() < 0.001);
+        // Room entities run before Player: at the first geometric contact
+        // frame Booster still sees the preceding x position. The following
+        // frame is the first StBoostUpdate, after Dummy has reached 64 px/s.
+        let first_boost = trace
+            .states
+            .iter()
+            .position(|state| state.state == PlayerState::Boost)
+            .expect("native Booster should interrupt the Lookout Dummy walk");
+        assert_eq!(first_boost, 8);
+        assert_eq!(trace.states[first_boost - 1].state, PlayerState::Dummy);
+        assert!((trace.states[first_boost - 1].speed.x - 64.0).abs() < 0.001);
         assert!(trace.states.iter().any(|state| state.state == PlayerState::Boost));
         assert!(trace.states.iter().any(|state| {
             state.state == PlayerState::Normal && state.lookouts[0].interacting
