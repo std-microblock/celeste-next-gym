@@ -19,7 +19,7 @@ export const scenario = defineScenario({
     // leftward return early enough to enter the native 12-frame WindingUp
     // just after reform, while still remaining outside the source body at
     // its real BlockedCheck frame.
-    move_x: frame >= 36 && frame < 108 ? 1 : frame >= 105 && frame < 170 ? -1 : 0,
+    move_x: frame >= 36 && frame < 97 ? 1 : frame >= 97 && frame < 170 ? -1 : 0,
     jump_pressed: frame === 80,
     jump_held: frame >= 80 && frame < 90,
   })),
