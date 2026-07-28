@@ -47,13 +47,12 @@ export const TECH_ENTITY_4_18_3_CORE_BLOCK_ENTITY_DISPLACEMENT = reformPart(
   [{
     name: ROOM,
     entities: [
-      { id: 'tech-4.18.3-bounce-block', kind: 'bounce_block', bounds: [704, 440, 64, 16], name: 'bounceBlock' },
-      { id: 'tech-4.18.3-spikes', kind: 'spikes', bounds: [768, 440, 3, 16], direction: [1, 0], name: 'spikesRight' },
-      // These landings are separated from the source body. The player climbs
-      // them using normal jumps, then a pre-buffered up-left dash crosses the
-      // source only after BounceBlock has accepted reform.
-      { id: 'tech-4.18.3-ced-ledge', kind: 'jump_thru', bounds: [773, 480, 64, 8], name: 'jumpThru' },
-      { id: 'tech-4.18.3-ced-step', kind: 'jump_thru', bounds: [773, 464, 64, 8], name: 'jumpThru' },
+      { id: 'tech-4.18.3-bounce-block', kind: 'bounce_block', bounds: [704, 480, 64, 16], name: 'bounceBlock' },
+      { id: 'tech-4.18.3-spikes', kind: 'spikes', bounds: [768, 480, 3, 16], direction: [1, 0], name: 'spikesRight' },
+      // The right platform is one pixel beyond the source body. The player
+      // lands here, remains outside BlockedCheck, then crosses left only after
+      // the real reform frame has made the body collidable.
+      { id: 'tech-4.18.3-ced-ledge', kind: 'jump_thru', bounds: [769, 480, 64, 8], name: 'jumpThru' },
     ],
   }],
 )

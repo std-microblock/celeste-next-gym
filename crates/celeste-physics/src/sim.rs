@@ -8049,7 +8049,7 @@ mod tests {
             entities: vec![
                 crate::Entity {
                     kind: EntityKind::BounceBlock,
-                    bounds: Rect::new(704.0, 440.0, 64.0, 16.0),
+                    bounds: Rect::new(704.0, 480.0, 64.0, 16.0),
                     direction: Vec2::default(),
                     shielded: false,
                     single_use: false,
@@ -8058,7 +8058,7 @@ mod tests {
                 },
                 crate::Entity {
                     kind: EntityKind::Spikes,
-                    bounds: Rect::new(768.0, 440.0, 3.0, 16.0),
+                    bounds: Rect::new(768.0, 480.0, 3.0, 16.0),
                     direction: Vec2::new(1.0, 0.0),
                     shielded: false,
                     single_use: false,
@@ -8067,16 +8067,7 @@ mod tests {
                 },
                 crate::Entity {
                     kind: EntityKind::JumpThru,
-                    bounds: Rect::new(773.0, 480.0, 64.0, 8.0),
-                    direction: Vec2::default(),
-                    shielded: false,
-                    single_use: false,
-                    nodes: vec![],
-                    name: "jumpThru".to_owned(),
-                },
-                crate::Entity {
-                    kind: EntityKind::JumpThru,
-                    bounds: Rect::new(773.0, 464.0, 64.0, 8.0),
+                    bounds: Rect::new(769.0, 480.0, 64.0, 8.0),
                     direction: Vec2::default(),
                     shielded: false,
                     single_use: false,
@@ -8087,22 +8078,20 @@ mod tests {
             ..Map::default()
         };
         let p = PlayerSnapshot {
-            pos: Vec2::new(720.0, 440.0),
+            pos: Vec2::new(720.0, 480.0),
             ..PlayerSnapshot::default()
         };
         let inputs: Vec<_> = (0..220)
             .map(|frame| InputState {
                 move_x: if (36..108).contains(&frame) {
                     1
-                } else if (118..170).contains(&frame) {
+                } else if (135..170).contains(&frame) {
                     -1
                 } else {
                     0
                 },
-                move_y: if (118..130).contains(&frame) { -1 } else { 0 },
-                jump_pressed: frame == 80 || frame == 105,
-                jump_held: (80..90).contains(&frame) || (105..115).contains(&frame),
-                dash_pressed: frame == 118,
+                jump_pressed: frame == 80,
+                jump_held: (80..90).contains(&frame),
                 ..InputState::default()
             })
             .collect();
@@ -8130,7 +8119,7 @@ mod tests {
             .find(|(_, state)| state.bounce_blocks[0].static_movers_enabled)
             .map(|(frame, _)| frame)
             .unwrap();
-        let source = Rect::new(704.0, 440.0, 64.0, 16.0);
+        let source = Rect::new(704.0, 480.0, 64.0, 16.0);
         assert!(
             !source.intersects(current_player_rect(
                 &trace.states[body],
@@ -8147,10 +8136,10 @@ mod tests {
         );
         let reenabled = &trace.states[spike].bounce_blocks[0];
         assert!(
-            !reenabled.static_movers_enabled || reenabled.attached_spike_position != Vec2::new(768.0, 440.0),
+            !reenabled.static_movers_enabled || reenabled.attached_spike_position != Vec2::new(768.0, 480.0),
             "the spike must remain displaced when the reform alarm re-enables it: {reenabled:?}"
         );
-        assert_ne!(reenabled.position, Vec2::new(704.0, 440.0));
+        assert_ne!(reenabled.position, Vec2::new(704.0, 480.0));
     }
 
     #[test]

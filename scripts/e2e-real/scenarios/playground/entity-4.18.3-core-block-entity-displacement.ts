@@ -13,15 +13,14 @@ export const scenario = defineScenario({
   techniqueIds: ['4.18.3'],
   mapParts,
   name: 'entity-4.18.3-core-block-entity-displacement',
-  initial: { pos: [720, 440], speed: [0, 0] },
+  initial: { pos: [720, 480], speed: [0, 0] },
   inputs: inputFrames(220, (frame) => input({
-    // Launch to the right, clear the source volume on the isolated landing,
-    // then return during the body-only (StaticMover-disabled) alarm window.
-    move_x: frame >= 36 && frame < 108 ? 1 : frame >= 118 && frame < 170 ? -1 : 0,
-    move_y: frame >= 118 && frame < 130 ? -1 : 0,
-    jump_pressed: frame === 80 || frame === 105,
-    jump_held: (frame >= 80 && frame < 90) || (frame >= 105 && frame < 115),
-    dash_pressed: frame === 118,
+    // Clear to the one-pixel-separated right platform first. The leftward
+    // crossing begins only after the observed respawn frame, while the spike
+    // is still disabled by BounceBlock's 0.35-second reform alarm.
+    move_x: frame >= 36 && frame < 108 ? 1 : frame >= 135 && frame < 170 ? -1 : 0,
+    jump_pressed: frame === 80,
+    jump_held: frame >= 80 && frame < 90,
   })),
   verify(states) {
     const broken = states.findIndex((state) => field(state, 'reformBlockCollidable') === false
@@ -34,7 +33,7 @@ export const scenario = defineScenario({
     const bodyPlayer = states[body]?.pos
     const playerOverlapsSource = bodyPlayer !== undefined
       && bodyPlayer[0] + 4 > 704 && bodyPlayer[0] - 4 < 768
-      && bodyPlayer[1] > 440 && bodyPlayer[1] - 11 < 456
+      && bodyPlayer[1] > 480 && bodyPlayer[1] - 11 < 496
 
     semanticAssert(field(states[0], 'reformBlockKind') === 'BounceBlock', scenario.name, 'collector did not select the Core/BounceBlock')
     semanticAssert(broken >= 0, scenario.name, 'attached spike was not disabled with the broken block')
