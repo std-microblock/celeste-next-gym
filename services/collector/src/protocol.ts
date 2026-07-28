@@ -61,6 +61,7 @@ export interface PlayerSnapshot {
   ducking: boolean;
   can_dream_dash?: boolean;
   holding_theo?: boolean;
+  holding_glider?: boolean;
   freeze_timer?: number;
   dash_dir?: Vector2;
   dash_attack_timer?: number;

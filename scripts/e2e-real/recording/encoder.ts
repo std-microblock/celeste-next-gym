@@ -55,6 +55,7 @@ export interface EncodePresentationOptions {
   ffprobePath: string;
   stateWindow?: { readonly startStateIndex: number; readonly endStateIndex: number };
   posterPath?: string;
+  posterStateIndex?: number;
 }
 
 export async function encodePresentationRecording(
@@ -63,7 +64,7 @@ export async function encodePresentationRecording(
   const recordingRoot = await canonicalDirectory(options.recordingRoot);
   const loaded = await loadPresentationManifest(recordingRoot, options.manifestPath);
   const selectedFrames = selectFrames(loaded, options.stateWindow);
-  if (selectedFrames.length === 0) throw new Error("cannot encode an empty presentation recording window");
+  if (selectedFrames.paths.length === 0) throw new Error("cannot encode an empty presentation recording window");
   const outputPath = await validateNewOutputPath(recordingRoot, options.outputPath);
   const partialPath = partialMp4Path(outputPath);
   await assertMissing(outputPath, "output");
@@ -102,7 +103,7 @@ export async function encodePresentationRecording(
     partialPath,
   ]);
   try {
-    for (const framePath of selectedFrames) {
+    for (const framePath of selectedFrames.paths) {
       const frame = await readFile(framePath);
       if (frame.byteLength !== RAW_FRAME_BYTES) {
         throw new Error(`raw frame changed size during encoding: ${framePath}`);
@@ -126,7 +127,8 @@ export async function encodePresentationRecording(
   await rename(partialPath, outputPath);
   const bytes = await readFile(outputPath);
   const poster = options.posterPath
-    ? await createPoster(recordingRoot, ffmpeg, outputPath, options.posterPath, processes)
+    ? await createPoster(recordingRoot, ffmpeg, outputPath, options.posterPath, processes,
+      selectPosterFrameIndex(selectedFrames.stateIndices, options.posterStateIndex))
     : undefined;
   return {
     output_path: outputPath,
@@ -141,15 +143,34 @@ export async function encodePresentationRecording(
 function selectFrames(
   loaded: Awaited<ReturnType<typeof loadPresentationManifest>>,
   window: EncodePresentationOptions['stateWindow'],
-): string[] {
-  if (!window) return loaded.framePaths;
+): { paths: string[]; stateIndices: number[] } {
+  if (!window) return {
+    paths: loaded.framePaths,
+    stateIndices: loaded.manifest.frames.map((frame) => frame.state_index),
+  };
   if (!Number.isSafeInteger(window.startStateIndex) || !Number.isSafeInteger(window.endStateIndex)
     || window.startStateIndex < 0 || window.endStateIndex < window.startStateIndex) {
     throw new Error('invalid recording state window');
   }
-  return loaded.manifest.frames.flatMap((frame, index) =>
-    frame.state_index >= window.startStateIndex && frame.state_index <= window.endStateIndex
-      ? [loaded.framePaths[index]!] : []);
+  const paths: string[] = [];
+  const stateIndices: number[] = [];
+  for (const [index, frame] of loaded.manifest.frames.entries()) {
+    if (frame.state_index < window.startStateIndex || frame.state_index > window.endStateIndex) continue;
+    paths.push(loaded.framePaths[index]!);
+    stateIndices.push(frame.state_index);
+  }
+  return { paths, stateIndices };
+}
+
+export function selectPosterFrameIndex(stateIndices: readonly number[], requestedStateIndex?: number): number {
+  if (stateIndices.length === 0) throw new Error('cannot select a poster from an empty recording');
+  if (requestedStateIndex === undefined) return 0;
+  if (!Number.isSafeInteger(requestedStateIndex) || requestedStateIndex < 0) {
+    throw new Error('invalid poster state index');
+  }
+  const index = stateIndices.findIndex((stateIndex) => stateIndex >= requestedStateIndex);
+  if (index < 0) throw new Error(`poster state index ${requestedStateIndex} is outside the encoded recording`);
+  return index;
 }
 
 async function createPoster(
@@ -158,12 +179,17 @@ async function createPoster(
   videoPath: string,
   requestedPath: string,
   processes: ToolProcessIdentity[],
+  frameIndex: number,
 ): Promise<{ output_path: string; sha256: string; bytes: number }> {
   const posterPath = await validateNewArtifactPath(root, requestedPath, '.png', 'poster');
   const partialPath = posterPath.slice(0, -4) + '.partial.png';
   await assertMissing(posterPath, 'poster');
   await assertMissing(partialPath, 'partial poster');
-  const run = startTool(ffmpeg, ['-hide_banner', '-nostdin', '-loglevel', 'error', '-i', videoPath, '-frames:v', '1', '-n', partialPath]);
+  const run = startTool(ffmpeg, [
+    '-hide_banner', '-nostdin', '-loglevel', 'error', '-i', videoPath,
+    ...(frameIndex === 0 ? [] : ['-vf', `select=eq(n\\,${frameIndex})`]),
+    '-frames:v', '1', '-n', partialPath,
+  ]);
   run.child.stdin.end();
   processes.push(await run.completion);
   await rename(partialPath, posterPath);

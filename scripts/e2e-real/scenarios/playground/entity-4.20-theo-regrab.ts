@@ -9,7 +9,7 @@ export const mapParts = [ENTITY_4_20_THEO_REGRAB_PART] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: [],
   techniqueIds: ['4.20'],
   mapParts,

@@ -143,6 +143,7 @@ pub fn simulate_trace(
     initialize_move_blocks(&mut snapshot, &mut runtime_map);
     initialize_theo_crystals(&mut snapshot, &mut runtime_map);
     initialize_heart_gems(&mut snapshot, &mut runtime_map);
+    initialize_gliders(&mut snapshot, &mut runtime_map);
     initialize_clouds(&mut snapshot, &mut runtime_map);
     position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
     let mut states = Vec::with_capacity(frames + 1);
@@ -320,6 +321,22 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         .iter()
         .all(|value| value.is_finite())
     });
+    let gliders_are_finite = s.gliders.iter().all(|glider| {
+        [
+            glider.position.x,
+            glider.position.y,
+            glider.speed.x,
+            glider.speed.y,
+            glider.remainder.x,
+            glider.remainder.y,
+            glider.cannot_hold_timer,
+            glider.gravity_timer,
+            glider.no_gravity_timer,
+            glider.high_friction_timer,
+        ]
+        .iter()
+        .all(|value| value.is_finite())
+    });
     let clouds_are_finite = s.clouds.iter().all(|cloud| {
         [
             cloud.speed,
@@ -337,6 +354,7 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         && bounce_blocks_are_finite
         && move_blocks_are_finite
         && theo_crystals_are_finite
+        && gliders_are_finite
         && clouds_are_finite
     {
         Ok(())
@@ -372,6 +390,36 @@ fn initialize_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
         .is_some_and(|index| index as usize >= p.theo_crystals.len())
     {
         p.holding_theo = None;
+    }
+}
+
+fn initialize_gliders(p: &mut PlayerSnapshot, map: &mut Map) {
+    let glider_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::Glider).then_some(index))
+        .collect();
+    p.gliders.truncate(glider_indices.len());
+    for (glider_index, entity_index) in glider_indices.into_iter().enumerate() {
+        let entity = &mut map.entities[entity_index];
+        if glider_index == p.gliders.len() {
+            p.gliders.push(crate::GliderSnapshot {
+                position: Vec2::new(entity.bounds.x + 4.0, entity.bounds.y + 10.0),
+                ..crate::GliderSnapshot::default()
+            });
+        }
+        let state = &mut p.gliders[glider_index];
+        state.held = p.holding_glider == Some(glider_index as u16);
+        entity.bounds.x = state.position.x - 4.0;
+        entity.bounds.y = state.position.y - 10.0;
+        entity.bounds.width = 8.0;
+        entity.bounds.height = 10.0;
+    }
+    if p.holding_glider
+        .is_some_and(|index| index as usize >= p.gliders.len())
+    {
+        p.holding_glider = None;
     }
 }
 
@@ -1485,6 +1533,14 @@ fn theo_pickup_rect(position: Vec2) -> Rect {
     Rect::new(position.x - 8.0, position.y - 16.0, 16.0, 22.0)
 }
 
+fn holding_holdable(p: &PlayerSnapshot) -> bool {
+    p.holding_theo.is_some() || p.holding_glider.is_some()
+}
+
+fn holding_slow_fall(p: &PlayerSnapshot) -> bool {
+    p.holding_glider.is_some()
+}
+
 fn try_pickup_theo(p: &mut PlayerSnapshot) -> bool {
     let player = current_player_rect(p, p.pos.x, p.pos.y);
     let Some(index) = p.theo_crystals.iter().position(|theo| {
@@ -1529,6 +1585,71 @@ fn release_theo(p: &mut PlayerSnapshot, input: InputState) {
         let facing = if p.facing { 1.0 } else { -1.0 };
         theo.speed = Vec2::new(facing * 200.0, -80.0);
         p.speed.x -= facing * 80.0;
+    }
+}
+
+fn glider_body_rect(position: Vec2) -> Rect {
+    Rect::new(position.x - 4.0, position.y - 10.0, 8.0, 10.0)
+}
+
+fn glider_pickup_rect(position: Vec2) -> Rect {
+    Rect::new(position.x - 10.0, position.y - 16.0, 20.0, 22.0)
+}
+
+fn try_pickup_glider(p: &mut PlayerSnapshot) -> bool {
+    let player = current_player_rect(p, p.pos.x, p.pos.y);
+    let Some(index) = p.gliders.iter().position(|glider| {
+        !glider.held
+            && glider.cannot_hold_timer <= 0.0
+            && glider_pickup_rect(glider.position).intersects(player)
+    }) else {
+        return false;
+    };
+    let glider = &mut p.gliders[index];
+    glider.held = true;
+    glider.speed = Vec2::default();
+    glider.high_friction_timer = 0.5;
+    p.holding_glider = Some(index as u16);
+    p.min_hold_timer = 0.35;
+    p.ducking = false;
+    p.pickup_old_speed = p.speed;
+    p.pickup_old_var_jump_timer = p.var_jump_timer;
+    p.pickup_timer = 0.16 + DT;
+    p.speed = Vec2::default();
+    p.demo_dashed = false;
+    p.dash_end_pending = false;
+    p.state = PlayerState::Pickup;
+    true
+}
+
+fn try_pickup_holdable(p: &mut PlayerSnapshot) -> bool {
+    try_pickup_theo(p) || try_pickup_glider(p)
+}
+
+fn release_glider(p: &mut PlayerSnapshot, input: InputState) {
+    let Some(index) = p.holding_glider.take().map(usize::from) else {
+        return;
+    };
+    let Some(glider) = p.gliders.get_mut(index) else {
+        return;
+    };
+    glider.held = false;
+    glider.gravity_timer = 0.1;
+    glider.cannot_hold_timer = 0.3;
+    if input.move_y > 0 {
+        glider.speed = Vec2::default();
+    } else {
+        let facing = if p.facing { 1.0 } else { -1.0 };
+        glider.speed = Vec2::new(facing * 100.0, -40.0);
+        p.speed.x -= facing * 80.0;
+    }
+}
+
+fn release_holdable(p: &mut PlayerSnapshot, input: InputState) {
+    if p.holding_theo.is_some() {
+        release_theo(p, input);
+    } else {
+        release_glider(p, input);
     }
 }
 
@@ -1651,6 +1772,132 @@ fn advance_heart_gems(p: &mut PlayerSnapshot) {
             }
             _ => {}
         }
+    }
+}
+
+fn glider_collides(map: &Map, position: Vec2) -> bool {
+    map.solid_at(glider_body_rect(position))
+}
+
+fn move_glider_axis(glider: &mut crate::GliderSnapshot, map: &Map, horizontal: bool) {
+    let amount = if horizontal {
+        glider.speed.x * DT
+    } else {
+        glider.speed.y * DT
+    };
+    let remainder = if horizontal {
+        &mut glider.remainder.x
+    } else {
+        &mut glider.remainder.y
+    };
+    *remainder += amount;
+    let pixels = remainder.round_ties_even() as i32;
+    *remainder -= pixels as f32;
+    let sign = pixels.signum();
+    for _ in 0..pixels.unsigned_abs() {
+        let next = Vec2::new(
+            glider.position.x + if horizontal { sign as f32 } else { 0.0 },
+            glider.position.y + if horizontal { 0.0 } else { sign as f32 },
+        );
+        if glider_collides(map, next) {
+            if horizontal {
+                glider.speed.x *= -1.0;
+                glider.remainder.x = 0.0;
+            } else if glider.speed.y < 0.0 {
+                glider.speed.y *= -0.5;
+                glider.remainder.y = 0.0;
+            } else {
+                glider.speed.y = 0.0;
+                glider.remainder.y = 0.0;
+            }
+            break;
+        }
+        glider.position = next;
+    }
+}
+
+fn hit_glider_spring(glider: &mut crate::GliderSnapshot, map: &Map) {
+    if glider.held {
+        return;
+    }
+    let body = glider_body_rect(glider.position);
+    for spring in map
+        .entities
+        .iter()
+        .filter(|entity| entity.kind == EntityKind::Spring)
+    {
+        if !spring.bounds.intersects(body) {
+            continue;
+        }
+        if spring.direction.y < 0.0 && glider.speed.y >= 0.0 {
+            glider.speed.x *= 0.5;
+            glider.speed.y = -160.0;
+            glider.no_gravity_timer = 0.15;
+            return;
+        }
+        if spring.direction.x > 0.0 && glider.speed.x <= 0.0 {
+            glider.speed.x = 160.0;
+            glider.speed.y = -80.0;
+            glider.no_gravity_timer = 0.1;
+            return;
+        }
+        if spring.direction.x < 0.0 && glider.speed.x >= 0.0 {
+            glider.speed.x = -160.0;
+            glider.speed.y = -80.0;
+            glider.no_gravity_timer = 0.1;
+            return;
+        }
+    }
+}
+
+fn advance_gliders(p: &mut PlayerSnapshot, map: &mut Map) {
+    let entity_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::Glider).then_some(index))
+        .collect();
+    for (glider_index, entity_index) in entity_indices.into_iter().enumerate() {
+        let mut glider = p.gliders[glider_index].clone();
+        glider.cannot_hold_timer = (glider.cannot_hold_timer - DT).max(0.0);
+        glider.gravity_timer = (glider.gravity_timer - DT).max(0.0);
+        glider.no_gravity_timer = (glider.no_gravity_timer - DT).max(0.0);
+        glider.high_friction_timer = (glider.high_friction_timer - DT).max(0.0);
+        if p.holding_glider == Some(glider_index as u16) {
+            glider.held = true;
+            glider.position = Vec2::new(p.pos.x, p.pos.y - 12.0);
+            glider.speed = Vec2::default();
+            glider.remainder = Vec2::default();
+        } else {
+            glider.held = false;
+            let on_ground =
+                glider_collides(map, Vec2::new(glider.position.x, glider.position.y + 1.0));
+            if on_ground {
+                glider.speed.x = approach(glider.speed.x, 0.0, 800.0 * DT);
+            } else if glider.gravity_timer <= 0.0 {
+                let gravity = if glider.speed.y >= -30.0 {
+                    100.0
+                } else {
+                    200.0
+                };
+                let friction = if glider.speed.y < 0.0 || glider.high_friction_timer <= 0.0 {
+                    40.0
+                } else {
+                    10.0
+                };
+                glider.speed.x = approach(glider.speed.x, 0.0, friction * DT);
+                if glider.no_gravity_timer <= 0.0 {
+                    glider.speed.y = approach(glider.speed.y, 30.0, gravity * DT);
+                }
+            }
+            move_glider_axis(&mut glider, map, true);
+            move_glider_axis(&mut glider, map, false);
+            hit_glider_spring(&mut glider, map);
+        }
+        let entity = &mut map.entities[entity_index];
+        entity.bounds.x = glider.position.x - 4.0;
+        entity.bounds.y = glider.position.y - 10.0;
+        p.gliders[glider_index] = glider;
     }
 }
 
@@ -1946,6 +2193,7 @@ fn step(
         advance_move_blocks(p, map, input);
         advance_theo_crystals(p, map);
         advance_heart_gems(p);
+        advance_gliders(p, map);
         advance_clouds(p, map);
         p.on_ground = grounded(p, map);
         return Ok(());
@@ -1975,6 +2223,7 @@ fn step(
             advance_move_blocks(p, map, input);
             advance_theo_crystals(p, map);
             advance_heart_gems(p);
+            advance_gliders(p, map);
             advance_clouds(p, map);
             p.on_ground = grounded(p, map);
             return Ok(());
@@ -2028,6 +2277,7 @@ fn step(
     advance_move_blocks(p, map, input);
     advance_theo_crystals(p, map);
     advance_heart_gems(p);
+    advance_gliders(p, map);
     advance_clouds(p, map);
     p.on_ground = grounded(p, map);
     Ok(())
@@ -2129,14 +2379,14 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
     if boost.y < 0.0 && was_on_ground && !p.on_ground && p.speed.y >= 0.0 {
         p.speed.y = boost.y;
     }
-    if p.holding_theo.is_none() {
-        if input.grab_held && p.stamina >= 20.0 && !p.ducking && try_pickup_theo(p) {
+    if !holding_holdable(p) {
+        if input.grab_held && p.stamina >= 20.0 && !p.ducking && try_pickup_holdable(p) {
             return;
         }
     } else if !input.grab_held && p.min_hold_timer <= 0.0 {
-        release_theo(p, input);
+        release_holdable(p, input);
     }
-    if p.holding_theo.is_none()
+    if !holding_holdable(p)
         && (input.dash_pressed || input.crouch_dash_pressed)
         && p.dashes > 0
         && p.dash_cooldown_timer <= 0.0
@@ -2148,7 +2398,7 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
 
     let wall = wall_dir(p, map);
     let facing_dir = if p.facing { 1 } else { -1 };
-    if p.holding_theo.is_none()
+    if !holding_holdable(p)
         && input.grab_held
         && !p.on_ground
         && !p.ducking
@@ -2192,13 +2442,21 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
         p.ducking = true;
     }
 
-    let mult = if p.on_ground { 1.0 } else { AIR_MULT };
+    let mult = if p.on_ground {
+        1.0
+    } else if holding_slow_fall(p) {
+        AIR_MULT * 0.5
+    } else {
+        AIR_MULT
+    };
     let move_x = p.move_x;
     if p.ducking && p.on_ground {
         p.speed.x = approach(p.speed.x, 0.0, DUCK_FRICTION * DT);
     } else {
         let max_run = if p.holding_theo.is_some() {
             70.0
+        } else if holding_slow_fall(p) && !p.on_ground {
+            108.000_008
         } else {
             MAX_RUN
         };
@@ -2221,24 +2479,36 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
         p.facing = move_x > 0;
     }
 
-    let target_max_fall = if input.move_y > 0 && p.speed.y >= MAX_FALL {
+    let target_max_fall = if holding_slow_fall(p) && p.force_move_x_timer <= 0.0 {
+        if input.move_y > 0 {
+            120.0
+        } else if input.move_y < 0 {
+            24.0
+        } else {
+            40.0
+        }
+    } else if input.move_y > 0 && p.speed.y >= MAX_FALL {
         FAST_MAX_FALL
     } else {
         MAX_FALL
     };
     p.max_fall = approach(p.max_fall, target_max_fall, FAST_MAX_ACCEL * DT);
     let mut fall_target = p.max_fall;
-    if wall != 0 && input.move_x == wall && p.speed.y >= 0.0 && !p.on_ground {
+    if !holding_holdable(p) && wall != 0 && input.move_x == wall && p.speed.y >= 0.0 && !p.on_ground
+    {
         p.wall_slide_dir = wall;
         fall_target = WALL_SLIDE_START_MAX
             + (MAX_FALL - WALL_SLIDE_START_MAX) * (1.0 - p.wall_slide_timer / WALL_SLIDE_TIME);
     }
-    let gravity_mult = if (input.jump_held || p.auto_jump) && p.speed.y.abs() < HALF_GRAV_THRESHOLD
-    {
-        0.5
-    } else {
-        1.0
-    };
+    let mut gravity_mult =
+        if (input.jump_held || p.auto_jump) && p.speed.y.abs() < HALF_GRAV_THRESHOLD {
+            0.5
+        } else {
+            1.0
+        };
+    if holding_slow_fall(p) && p.force_move_x_timer <= 0.0 {
+        gravity_mult *= 0.5;
+    }
     if !p.on_ground {
         p.speed.y = approach(p.speed.y, fall_target, GRAVITY * gravity_mult * DT);
     }
@@ -2275,12 +2545,22 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
                 0
             };
             if jump_wall == 0 {
+                if map.water_at(current_player_rect(p, p.pos.x, p.pos.y + 2.0)) {
+                    p.jump_buffer_timer = 0.0;
+                    p.jump_grace_timer = 0.0;
+                    p.speed.y = JUMP_SPEED;
+                    p.speed.x += p.move_x as f32 * JUMP_H_BOOST;
+                    add_lift_boost(p);
+                    p.auto_jump = false;
+                    p.dash_attack_timer = 0.0;
+                    p.wall_slide_timer = WALL_SLIDE_TIME;
+                    p.wall_boost_timer = 0.0;
+                    p.var_jump_speed = p.speed.y;
+                    p.var_jump_timer = VAR_JUMP_TIME;
+                }
                 return;
             }
-            if p.holding_theo.is_none()
-                && input.grab_held
-                && p.stamina > 0.0
-                && facing_dir == jump_wall
+            if !holding_holdable(p) && input.grab_held && p.stamina > 0.0 && facing_dir == jump_wall
             {
                 climb_jump(p, jump_wall);
             } else {
@@ -2337,12 +2617,12 @@ fn begin_dash(
 }
 
 fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
-    if p.holding_theo.is_none()
+    if !holding_holdable(p)
         && p.dash_dir != Vec2::default()
         && input.grab_held
         && p.stamina >= 20.0
         && can_unduck(p, map)
-        && try_pickup_theo(p)
+        && try_pickup_holdable(p)
     {
         return;
     }
@@ -4512,6 +4792,22 @@ mod tests {
             ..Map::default()
         }
     }
+    fn glider_map() -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 240.0),
+            solids: vec![Rect::new(0.0, 160.0, 320.0, 80.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::Glider,
+                bounds: Rect::new(64.0, 150.0, 8.0, 10.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "glider".to_owned(),
+            }],
+            ..Map::default()
+        }
+    }
     fn water_map() -> Map {
         Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
@@ -4577,6 +4873,32 @@ mod tests {
         let mut map = bumper_map();
         map.solids.push(Rect::new(560.0, 176.0, 16.0, 48.0));
         map
+    }
+    fn bumper_theo_map() -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 544.0),
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::Bumper,
+                    bounds: Rect::new(88.0, 88.0, 24.0, 24.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "bigSpinner".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::TheoCrystal,
+                    bounds: Rect::new(96.0, 78.0, 8.0, 10.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "theoCrystal".to_owned(),
+                },
+            ],
+            ..Map::default()
+        }
     }
     fn ice_ball_map() -> Map {
         Map {
@@ -5401,6 +5723,363 @@ mod tests {
     }
 
     #[test]
+    fn glider_pickup_release_and_runtime_are_split_composable() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 160.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = vec![
+            InputState {
+                grab_held: true,
+                ..InputState::default()
+            };
+            25
+        ];
+        inputs.push(InputState {
+            move_x: 1,
+            ..InputState::default()
+        });
+        let direct = simulate(p.clone(), &inputs, &glider_map(), 26).unwrap();
+        let first = simulate(p, &inputs[..8], &glider_map(), 8).unwrap();
+        let split = simulate(first, &inputs[8..], &glider_map(), 18).unwrap();
+
+        assert_eq!(split, direct);
+        assert_eq!(direct.state, PlayerState::Normal);
+        assert_eq!(direct.holding_glider, None);
+        assert!(!direct.gliders[0].held);
+        assert!(direct.gliders[0].cannot_hold_timer > 0.28);
+        assert_eq!(direct.gliders[0].speed, Vec2::new(100.0, -40.0));
+        assert!((direct.speed.x + 63.333_3).abs() < 0.000_1);
+    }
+
+    #[test]
+    fn held_glider_uses_slow_fall_air_control_without_slow_run() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(80.0, 100.0),
+            speed: Vec2::new(200.0, 0.0),
+            holding_glider: Some(0),
+            gliders: vec![crate::GliderSnapshot {
+                position: Vec2::new(80.0, 88.0),
+                held: true,
+                ..crate::GliderSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let next = simulate(
+            p,
+            &[InputState {
+                move_x: 1,
+                grab_held: true,
+                ..InputState::default()
+            }],
+            &glider_map(),
+            1,
+        )
+        .unwrap();
+
+        assert!((next.speed.x - 197.833_33).abs() < 0.000_1);
+        assert!((next.speed.y - 7.5).abs() < 0.000_1);
+        assert!((next.max_fall - 155.0).abs() < 0.000_1);
+        assert_eq!(next.holding_glider, Some(0));
+    }
+
+    #[test]
+    fn held_glider_turns_grabbed_wall_jump_into_a_normal_neutral() {
+        let mut map = glider_map();
+        map.bounds = Rect::new(0.0, 0.0, 160.0, 180.0);
+        map.solids = vec![Rect::new(64.0, 0.0, 16.0, 180.0)];
+        map.entities[0].bounds = Rect::new(56.0, 90.0, 8.0, 10.0);
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 100.0),
+            facing: true,
+            holding_glider: Some(0),
+            gliders: vec![crate::GliderSnapshot {
+                position: Vec2::new(60.0, 88.0),
+                held: true,
+                ..crate::GliderSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let jumped = simulate(
+            p,
+            &[InputState {
+                jump_pressed: true,
+                jump_held: true,
+                grab_held: true,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+
+        assert_eq!(jumped.state, PlayerState::Normal);
+        assert_eq!(jumped.speed, Vec2::new(-WALL_JUMP_H, JUMP_SPEED));
+        assert_eq!(jumped.holding_glider, Some(0));
+        assert_eq!(jumped.wall_boost_timer, 0.0);
+    }
+
+    #[test]
+    fn released_glider_obeys_long_lockout_then_can_be_regrabbed() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 160.0),
+            on_ground: true,
+            holding_glider: Some(0),
+            gliders: vec![crate::GliderSnapshot {
+                position: Vec2::new(60.0, 148.0),
+                held: true,
+                ..crate::GliderSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..30)
+            .map(|frame| InputState {
+                move_y: if frame == 0 { 1 } else { 0 },
+                grab_held: frame > 0,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &glider_map(), inputs.len() as u32).unwrap();
+        let regrab = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(2)
+            .find(|(_, state)| state.holding_glider == Some(0))
+            .map(|(frame, _)| frame)
+            .unwrap();
+
+        assert!(trace.states[1].gliders[0].cannot_hold_timer > 0.28);
+        assert!(regrab >= 19, "regrabbed too early at frame {regrab}");
+        assert_eq!(trace.states[regrab].state, PlayerState::Pickup);
+    }
+
+    #[test]
+    fn glider_pickup_tween_stalls_then_restores_only_upward_speed() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 160.0),
+            speed: Vec2::new(30.0, -20.0),
+            ..PlayerSnapshot::default()
+        };
+        let held = InputState {
+            grab_held: true,
+            ..InputState::default()
+        };
+        let trace = simulate_trace(p, &[held; 13], &glider_map(), 13).unwrap();
+
+        assert_eq!(trace.states[1].state, PlayerState::Pickup);
+        assert_eq!(trace.states[1].speed, Vec2::default());
+        assert_eq!(trace.states[1].pickup_old_speed, Vec2::new(30.0, -20.0));
+        assert_eq!(trace.states[13].state, PlayerState::Normal);
+        assert_eq!(trace.states[13].speed, Vec2::new(30.0, -20.0));
+    }
+
+    #[test]
+    fn jelly_neutral_drop_wall_jump_regrabs_after_long_lockout() {
+        let mut map = glider_map();
+        map.bounds = Rect::new(0.0, 0.0, 320.0, 544.0);
+        map.solids = vec![Rect::new(144.0, 240.0, 16.0, 256.0)];
+        map.entities[0].bounds = Rect::new(136.0, 410.0, 8.0, 10.0);
+        let p = PlayerSnapshot {
+            pos: Vec2::new(140.0, 420.0),
+            facing: true,
+            holding_glider: Some(0),
+            gliders: vec![crate::GliderSnapshot {
+                position: Vec2::new(140.0, 408.0),
+                held: true,
+                ..crate::GliderSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..24)
+            .map(|frame| InputState {
+                move_y: if frame == 0 { 1 } else { 0 },
+                jump_pressed: frame == 2,
+                jump_held: frame == 2,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
+        let neutral = trace
+            .states
+            .iter()
+            .position(|state| state.speed == Vec2::new(-WALL_JUMP_H, JUMP_SPEED))
+            .unwrap_or_else(|| {
+                panic!(
+                    "missing neutral: {:?}",
+                    trace
+                        .states
+                        .iter()
+                        .take(12)
+                        .map(|state| (state.state, state.speed, state.holding_glider))
+                        .collect::<Vec<_>>()
+                )
+            });
+        assert_eq!(neutral, 3);
+        assert!(trace.states[10].gliders[0].cannot_hold_timer > 0.0);
+        let mut after_lockout = trace.states[24].clone();
+        assert_eq!(after_lockout.gliders[0].cannot_hold_timer, 0.0);
+        after_lockout.gliders[0].position = after_lockout.pos;
+        let regrabbed = simulate(
+            after_lockout,
+            &[InputState {
+                grab_held: true,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert_eq!(regrabbed.holding_glider, Some(0));
+        assert_eq!(regrabbed.state, PlayerState::Pickup);
+    }
+
+    #[test]
+    fn two_gliders_keep_independent_laddering_lockouts() {
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(80.0, 100.0),
+            gliders: vec![
+                crate::GliderSnapshot {
+                    position: Vec2::new(80.0, 98.0),
+                    ..crate::GliderSnapshot::default()
+                },
+                crate::GliderSnapshot {
+                    position: Vec2::new(80.0, 98.0),
+                    ..crate::GliderSnapshot::default()
+                },
+            ],
+            ..PlayerSnapshot::default()
+        };
+        assert!(try_pickup_glider(&mut p));
+        assert_eq!(p.holding_glider, Some(0));
+        release_glider(
+            &mut p,
+            InputState {
+                move_y: 1,
+                ..InputState::default()
+            },
+        );
+        assert!(try_pickup_glider(&mut p));
+
+        assert_eq!(p.holding_glider, Some(1));
+        assert_eq!(p.gliders[0].cannot_hold_timer, 0.3);
+        assert_eq!(p.gliders[1].cannot_hold_timer, 0.0);
+    }
+
+    #[test]
+    fn grounded_ultra_glider_pickup_cancel_preserves_multiplied_speed() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 160.0),
+            speed: Vec2::new(300.0, 0.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..24)
+            .map(|frame| InputState {
+                move_x: 1,
+                move_y: 1,
+                dash_pressed: frame == 0,
+                grab_held: frame >= 5,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &glider_map(), 24).unwrap();
+        let pickup = trace
+            .states
+            .iter()
+            .position(|state| state.state == PlayerState::Pickup)
+            .unwrap();
+        let restored = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(pickup + 1)
+            .find(|(_, state)| state.state == PlayerState::Normal)
+            .map(|(frame, _)| frame)
+            .unwrap();
+
+        assert_eq!(trace.states[pickup - 1].speed.x, 360.0);
+        assert_eq!(trace.states[pickup].holding_glider, Some(0));
+        assert_eq!(trace.states[restored].speed.x, 360.0);
+    }
+
+    #[test]
+    fn jellyvator_regrabs_updash_and_restores_vertical_speed() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 160.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..80)
+            .map(|frame| InputState {
+                move_y: if frame == 23 {
+                    1
+                } else if frame >= 42 {
+                    -1
+                } else {
+                    0
+                },
+                dash_pressed: frame == 42,
+                grab_held: frame <= 22 || frame >= 48,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &glider_map(), inputs.len() as u32).unwrap();
+        let pickup = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(42)
+            .find(|(_, state)| {
+                state.state == PlayerState::Pickup && state.holding_glider == Some(0)
+            })
+            .map(|(frame, _)| frame)
+            .unwrap();
+        let restored = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(pickup + 1)
+            .find(|(_, state)| state.state == PlayerState::Normal)
+            .map(|(frame, _)| frame)
+            .unwrap();
+
+        assert_eq!(trace.states[pickup].pickup_old_speed.y, -DASH_SPEED);
+        assert_eq!(trace.states[restored].speed.y, -DASH_SPEED);
+    }
+
+    #[test]
+    fn floor_spring_launches_unheld_glider_after_actor_movement() {
+        let mut map = glider_map();
+        map.solids.clear();
+        map.entities[0].bounds = Rect::new(76.0, 88.0, 8.0, 10.0);
+        map.entities.push(crate::Entity {
+            kind: EntityKind::Spring,
+            bounds: Rect::new(72.0, 94.0, 16.0, 6.0),
+            direction: Vec2::new(0.0, -1.0),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "spring".to_owned(),
+        });
+        let p = PlayerSnapshot {
+            pos: Vec2::new(200.0, 100.0),
+            gliders: vec![crate::GliderSnapshot {
+                position: Vec2::new(80.0, 98.0),
+                speed: Vec2::new(80.0, 20.0),
+                ..crate::GliderSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let next = simulate(p, &[InputState::default()], &map, 1).unwrap();
+
+        assert_eq!(next.gliders[0].speed.y, -160.0);
+        assert!((next.gliders[0].speed.x - 39.666_668).abs() < 0.000_1);
+        assert_eq!(next.gliders[0].no_gravity_timer, 0.15);
+    }
+
+    #[test]
     fn neutral_drop_releases_theo_without_throw_speed_or_player_recoil() {
         let p = PlayerSnapshot {
             pos: Vec2::new(60.0, 160.0),
@@ -5558,6 +6237,54 @@ mod tests {
     }
 
     #[test]
+    fn theovator_regrabs_after_updash_speed_is_live_and_restores_it_after_pickup() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 160.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..60)
+            .map(|frame| InputState {
+                move_y: if frame == 23 {
+                    1
+                } else if frame >= 30 {
+                    -1
+                } else {
+                    0
+                },
+                dash_pressed: frame == 30,
+                grab_held: frame <= 22 || frame >= 36,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &theo_crystal_map(), inputs.len() as u32).unwrap();
+        let pickup = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(30)
+            .find(|(_, state)| state.state == PlayerState::Pickup && state.holding_theo == Some(0))
+            .map(|(frame, _)| frame)
+            .unwrap();
+        let restored = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(pickup + 1)
+            .find(|(_, state)| state.state == PlayerState::Normal)
+            .map(|(frame, _)| frame)
+            .unwrap();
+
+        assert_eq!(
+            trace.states[pickup].pickup_old_speed,
+            Vec2::new(0.0, -DASH_SPEED)
+        );
+        assert_eq!(trace.states[pickup].speed, Vec2::default());
+        assert_eq!(trace.states[restored].speed.y, -DASH_SPEED);
+        assert!(trace.states[restored].pos.y < 160.0);
+    }
+
+    #[test]
     fn neutral_drop_climb_jump_regrabs_theo_after_the_lockout() {
         let map = Map {
             bounds: Rect::new(0.0, 0.0, 160.0, 180.0),
@@ -5697,6 +6424,94 @@ mod tests {
                 .iter()
                 .any(|state| state.state == PlayerState::Normal && state.speed.x <= END_DASH_SPEED)
         );
+    }
+
+    #[test]
+    fn bumper_freeze_smuggle_releases_dashes_and_regrabs_theo() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(100.0, 100.0),
+            holding_theo: Some(0),
+            theo_crystals: vec![crate::TheoCrystalSnapshot {
+                position: Vec2::new(100.0, 88.0),
+                held: true,
+                ..crate::TheoCrystalSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..80)
+            .map(|frame| InputState {
+                move_y: if frame == 0 || frame >= 18 { 1 } else { 0 },
+                dash_pressed: frame == 18,
+                grab_held: frame >= 18,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &bumper_theo_map(), inputs.len() as u32).unwrap();
+        let dash = trace
+            .states
+            .iter()
+            .position(|state| state.state == PlayerState::Dash)
+            .unwrap();
+        let regrab = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(dash + 1)
+            .find(|(_, state)| state.state == PlayerState::Pickup && state.holding_theo == Some(0))
+            .map(|(frame, _)| frame)
+            .unwrap();
+        assert_eq!(trace.states[1].state, PlayerState::Launch);
+        assert_eq!(trace.states[1].freeze_timer, 0.1);
+        assert_eq!(trace.states[1].holding_theo, None);
+        assert!(dash > 12);
+        assert_eq!(trace.states[dash].holding_theo, None);
+        assert_eq!(trace.states[dash].dashes, 0);
+        assert_eq!(trace.states[regrab].holding_theo, Some(0));
+        assert!(trace.states[regrab].pickup_old_speed.y > 0.0);
+    }
+
+    #[test]
+    fn throwable_backboost_adds_eighty_opposite_the_throw_facing() {
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(100.0, 100.0),
+            speed: Vec2::new(120.0, 0.0),
+            facing: false,
+            holding_theo: Some(0),
+            theo_crystals: vec![crate::TheoCrystalSnapshot {
+                position: Vec2::new(100.0, 88.0),
+                held: true,
+                ..crate::TheoCrystalSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        release_theo(&mut p, InputState::default());
+
+        assert_eq!(p.speed.x, 200.0);
+        assert_eq!(p.holding_theo, None);
+        assert_eq!(p.theo_crystals[0].speed, Vec2::new(-200.0, -80.0));
+        assert_eq!(p.theo_crystals[0].cannot_hold_timer, 0.1);
+    }
+
+    #[test]
+    fn water_surface_jumps_can_stack_multiple_forty_speed_boosts() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(504.0, 428.0),
+            state: PlayerState::Swim,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..100)
+            .map(|frame| InputState {
+                move_x: 1,
+                jump_pressed: matches!(frame, 0 | 1 | 2),
+                jump_held: false,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &water_map(), inputs.len() as u32).unwrap();
+        assert!((trace.states[1].speed.x - 50.0).abs() < 0.000_1);
+        assert!((trace.states[2].speed.x - 100.0).abs() < 0.000_1);
+        assert!((trace.states[3].speed.x - 135.666_66).abs() < 0.000_1);
+        assert_eq!(trace.states[3].speed.y, JUMP_SPEED);
     }
 
     #[test]

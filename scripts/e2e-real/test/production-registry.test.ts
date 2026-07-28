@@ -8,12 +8,12 @@ describe('production scenario registry', () => {
   const registry = buildRegistry(scenarios)
 
   it('derives all target and status counts from explicit indexes', () => {
-    assert.equal(registry.scenarios.length, 155)
-    assert.equal(registry.byTarget.get('playground')?.length, 113)
+    assert.equal(registry.scenarios.length, 167)
+    assert.equal(registry.byTarget.get('playground')?.length, 125)
     assert.equal(registry.byTarget.get('area-1')?.length, 36)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 145, candidate: 10 })
+    assert.deepEqual(registry.counts, { active: 149, candidate: 18 })
   })
 
   it('keeps evidence-less scenarios as opt-in candidates', () => {
@@ -27,9 +27,17 @@ describe('production scenario registry', () => {
       'entity-4.14-heart-ultra',
       'entity-4.15-jumpthrough-clip',
       'entity-4.18.3-core-block-entity-displacement',
-      'entity-4.20-theo-regrab',
+      'entity-4.22.1-holdable-stall',
       'entity-4.22.2-holdable-climb',
       'entity-4.22.3-holdable-neutral-jump',
+      'entity-4.22.3-jelly-neutral-jump',
+      'entity-4.22.4-holdable-laddering',
+      'entity-4.23-jelly-ultra',
+      'entity-4.23-theo-ultra',
+      'entity-4.24-bumper-holdable-dash-smuggle',
+      'entity-4.26-jellyvator',
+      'entity-4.26-theovator',
+      'entity-4.29-springboost-cancel',
       'entity-4.6.2-cloud-hyper-bunnyhop',
     ])
     assert.equal(selectScenarios(registry, { target: 'playground' }).some((scenario) => scenario.status === 'candidate'), false)
@@ -56,6 +64,8 @@ describe('production scenario registry', () => {
     assert.equal(registry.scenarios.filter((scenario) => scenario.techniqueIds.includes('2.8.2.1')).length, 2)
     assert.equal(registry.scenarios.filter((scenario) => scenario.target.kind === 'external').every((scenario) => scenario.mapParts.length === 0), true)
     assert.equal(registry.scenarios.filter((scenario) => scenario.target.kind === 'playground').every((scenario) => scenario.mapParts.length > 0), true)
+    assert.equal(registry.byTarget.get('area-2')?.every((scenario) => scenario.room === '1'), true)
+    assert.equal(registry.byTarget.get('area-4')?.every((scenario) => scenario.room === 'a-02'), true)
   })
 
   it('keeps every dashless cornerboost proof in an independently named map part', () => {
@@ -109,6 +119,44 @@ describe('production scenario registry', () => {
       'tech.entity-4.15.1-feather-clip',
       'tech.entity-4.15.2-hitbox-preservation',
     ])
+  })
+
+  it('keeps every entity-tail proof in an independently named map part', () => {
+    const techniqueIds = ['4.23', '4.24', '4.25', '4.26', '4.27']
+    const parts = techniqueIds.map((techniqueId) => {
+      const scenario = registry.scenarios.find((candidate) => candidate.techniqueIds.includes(techniqueId) && !candidate.tags.includes('feature:glider'))
+      assert.ok(scenario, `missing scenario for ${techniqueId}`)
+      assert.equal(scenario.mapParts.length, 1)
+      return scenario.mapParts[0]?.id
+    })
+    assert.equal(new Set(parts).size, techniqueIds.length)
+    assert.deepEqual(parts, [
+      'tech.entity-4.23-theo-ultra',
+      'tech.entity-4.24-bumper-smuggle',
+      'tech.entity-4.25-throwable-backboost',
+      'tech.entity-4.26-theovator',
+      'tech.entity-4.27-waterboost',
+    ])
+  })
+
+  it('keeps every Glider proof variant in an independently named map part', () => {
+    const names = [
+      'entity-4.20-jelly-regrab',
+      'entity-4.22.1-holdable-stall',
+      'entity-4.22.3-jelly-neutral-jump',
+      'entity-4.22.4-holdable-laddering',
+      'entity-4.23-jelly-ultra',
+      'entity-4.26-jellyvator',
+      'entity-4.29-springboost-cancel',
+    ]
+    const parts = names.map((name) => {
+      const scenario = registry.byName.get(name)
+      assert.ok(scenario, `missing scenario ${name}`)
+      assert.equal(scenario.mapParts.length, 1)
+      assert.equal(scenario.mapParts[0]?.dependencies.length, 0)
+      return scenario.mapParts[0]?.id
+    })
+    assert.equal(new Set(parts).size, names.length)
   })
 
   it('keeps grounded ultra cancel in its own Theo-only map part', () => {

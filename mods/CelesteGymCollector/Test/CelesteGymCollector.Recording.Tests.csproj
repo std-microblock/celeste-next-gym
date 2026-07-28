@@ -18,5 +18,6 @@
   <ItemGroup>
     <Compile Include="..\Source\RecordingSecurity.cs" Link="RecordingSecurity.cs" />
     <Compile Include="..\Source\RecordingTimeline.cs" Link="RecordingTimeline.cs" />
+    <Compile Include="..\Source\ScriptedInputBuffer.cs" Link="ScriptedInputBuffer.cs" />
   </ItemGroup>
 </Project>

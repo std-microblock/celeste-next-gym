@@ -153,6 +153,20 @@ pub struct HeartGemSnapshot {
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
+pub struct GliderSnapshot {
+    /// Actor.Position: bottom-center of the 8x10 body collider.
+    pub position: Vec2,
+    pub speed: Vec2,
+    pub remainder: Vec2,
+    pub held: bool,
+    pub cannot_hold_timer: f32,
+    pub gravity_timer: f32,
+    pub no_gravity_timer: f32,
+    pub high_friction_timer: f32,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct CloudSnapshot {
     /// Vanilla Cloud.Update phase: waiting, rebounding, or returning.
     pub phase: u8,
@@ -276,10 +290,14 @@ pub struct PlayerSnapshot {
     pub theo_crystals: Vec<TheoCrystalSnapshot>,
     /// Per-entity vanilla HeartGem collection coroutine state.
     pub heart_gems: Vec<HeartGemSnapshot>,
+    /// Per-entity vanilla Glider actor and Holdable state.
+    pub gliders: Vec<GliderSnapshot>,
     /// Per-entity vanilla non-fragile Cloud movement state.
     pub clouds: Vec<CloudSnapshot>,
     /// Map-order TheoCrystal index currently held by Player.
     pub holding_theo: Option<u16>,
+    /// Map-order Glider index currently held by Player.
+    pub holding_glider: Option<u16>,
     pub min_hold_timer: f32,
     /// PickupCoroutine state needed to resume the 0.16 second lift tween.
     pub pickup_old_speed: Vec2,
@@ -422,8 +440,10 @@ impl Default for PlayerSnapshot {
             move_blocks: vec![],
             theo_crystals: vec![],
             heart_gems: vec![],
+            gliders: vec![],
             clouds: vec![],
             holding_theo: None,
+            holding_glider: None,
             min_hold_timer: 0.0,
             pickup_old_speed: Vec2::default(),
             pickup_old_var_jump_timer: 0.0,

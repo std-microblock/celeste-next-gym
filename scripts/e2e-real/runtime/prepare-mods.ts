@@ -57,14 +57,39 @@ export function prepareMods(
   }
   assertUnlinkedTarget(installedPlaygroundMod, gameModsRoot)
   assertUnlinkedTarget(installedPlaygroundZip, gameModsRoot)
-  rmSync(installedPlaygroundMod, { recursive: true, force: true })
-  rmSync(installedPlaygroundZip, { force: true })
+  removeValidatedTarget(installedPlaygroundMod, gameModsRoot)
+  removeValidatedTarget(installedPlaygroundZip, gameModsRoot)
   runCommand('7z', ['a', '-tzip', '-mx=0', installedPlaygroundZip, 'everest.yaml', 'Maps'], playgroundModRoot)
   runCommand(
     process.execPath,
     [resolve(paths.serviceRoot, 'node_modules', 'typescript', 'bin', 'tsc'), '-p', 'tsconfig.json'],
     paths.serviceRoot,
   )
+}
+
+export function removeValidatedTarget(
+  target: string,
+  expectedParent: string,
+  dependencies: {
+    readonly remove?: typeof rmSync
+    readonly wait?: (milliseconds: number) => void
+  } = {},
+): void {
+  assertUnlinkedTarget(target, expectedParent)
+  const remove = dependencies.remove ?? rmSync
+  const wait = dependencies.wait ?? ((milliseconds: number) => {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds)
+  })
+  for (let attempt = 0; ; attempt++) {
+    try {
+      remove(target, { recursive: true, force: true })
+      return
+    } catch (error) {
+      const code = error instanceof Error && 'code' in error ? String(error.code) : ''
+      if ((code !== 'EPERM' && code !== 'EBUSY') || attempt >= 49) throw error
+      wait(100)
+    }
+  }
 }
 
 function assertUnlinkedTarget(target: string, expectedParent: string): void {

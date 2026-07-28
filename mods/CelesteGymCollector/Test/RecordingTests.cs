@@ -96,6 +96,13 @@ public sealed class RecordingTests : IDisposable {
         );
     }
 
+    [Fact]
+    public void DirectJumpConsumptionClearsTheEntireScriptedBuffer() {
+        Assert.Equal(0, ScriptedInputBuffer.Consume(5));
+        Assert.Equal(0, ScriptedInputBuffer.Consume(0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => ScriptedInputBuffer.Consume(-1));
+    }
+
     public void Dispose() {
         if (Directory.Exists(temporaryRoot)) Directory.Delete(temporaryRoot, recursive: true);
     }

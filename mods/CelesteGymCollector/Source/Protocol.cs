@@ -248,6 +248,9 @@ public sealed class PlayerFrame {
     [JsonPropertyName("holding_theo")]
     public bool HoldingTheo { get; set; }
 
+    [JsonPropertyName("holding_glider")]
+    public bool HoldingGlider { get; set; }
+
     [JsonPropertyName("dead")]
     public bool Dead { get; set; }
 

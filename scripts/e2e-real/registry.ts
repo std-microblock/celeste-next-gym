@@ -56,6 +56,10 @@ function validateScenarioMetadata(
   const recording = scenario.recording
   if (!recording) return
   if (recording.primaryFor.length === 0) throw new Error(`${scenario.name}: recording.primaryFor must not be empty`)
+  if (recording.posterFrame !== undefined && (!Number.isSafeInteger(recording.posterFrame)
+    || recording.posterFrame < 0 || recording.posterFrame > scenario.inputs.length)) {
+    throw new Error(`${scenario.name}: invalid recording poster frame`)
+  }
   for (const techniqueId of recording.primaryFor) {
     if (!scenario.techniqueIds.includes(techniqueId)) {
       throw new Error(`${scenario.name}: recording primary ${techniqueId} is not listed in techniqueIds`)
@@ -73,6 +77,10 @@ function validateScenarioMetadata(
     if (endFrame === undefined || !Number.isSafeInteger(startFrame) || !Number.isSafeInteger(endFrame)
       || startFrame < 0 || endFrame < startFrame) {
       throw new Error(`${scenario.name}: invalid absolute recording frame window`)
+    }
+    if (recording.posterFrame !== undefined
+      && (recording.posterFrame < startFrame || recording.posterFrame > endFrame)) {
+      throw new Error(`${scenario.name}: recording poster frame is outside the recording window`)
     }
   } else if (!Number.isSafeInteger(recording.preRollFrames) || !Number.isSafeInteger(recording.postRollFrames)
     || recording.preRollFrames < 0 || recording.postRollFrames < 0) {

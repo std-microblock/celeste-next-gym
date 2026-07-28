@@ -51,6 +51,17 @@ export interface TheoCrystalState {
   gravity_timer: number
 }
 
+export interface GliderState {
+  position: Vec2
+  speed: Vec2
+  remainder: Vec2
+  held: boolean
+  cannot_hold_timer: number
+  gravity_timer: number
+  no_gravity_timer: number
+  high_friction_timer: number
+}
+
 export interface SimState {
   pos: Vec2
   speed: Vec2
@@ -86,7 +97,9 @@ export interface SimState {
   zip_movers?: ZipMoverState[]
   bounce_blocks?: BounceBlockState[]
   theo_crystals?: TheoCrystalState[]
+  gliders?: GliderState[]
   holding_theo?: number | null
+  holding_glider?: number | null
   badeline_boost_active?: boolean
   badeline_boost_entity_origin?: Vec2
   badeline_boost_current_position?: Vec2
@@ -94,7 +107,7 @@ export interface SimState {
   [key: string]: unknown
 }
 
-export type EntityKind = 'jump_thru' | 'spikes' | 'water' | 'dream_block' | 'booster' | 'red_booster' | 'fly_feather' | 'bumper' | 'ice_ball' | 'badeline_boost' | 'spring' | 'strawberry' | 'wind' | 'bounce_block' | 'theo_crystal' | 'zip_mover' | 'moving_solid' | 'unknown'
+export type EntityKind = 'jump_thru' | 'spikes' | 'water' | 'dream_block' | 'booster' | 'red_booster' | 'fly_feather' | 'bumper' | 'ice_ball' | 'badeline_boost' | 'spring' | 'strawberry' | 'wind' | 'bounce_block' | 'theo_crystal' | 'glider' | 'zip_mover' | 'moving_solid' | 'unknown'
 
 export interface MapEntity {
   kind: EntityKind
