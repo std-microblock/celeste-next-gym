@@ -63,6 +63,8 @@ pub enum EntityKind {
     BounceBlock,
     /// Vanilla TheoCrystal Actor with a Holdable component.
     TheoCrystal,
+    /// Vanilla Crystal Heart / HeartGem PlayerCollider and collection routine.
+    HeartGem,
     /// Vanilla Farewell Glider Actor with a Holdable component.
     Glider,
     /// Vanilla Celeste ZipMover Solid. The first node is its target position.
@@ -71,6 +73,11 @@ pub enum EntityKind {
     MoveBlock,
     /// Vanilla 8px-wide TempleGate using CloseBehindPlayerAlways.
     TempleGate,
+    /// Vanilla beat-indexed CassetteBlock Solid. `direction.x` stores its
+    /// integer index and `direction.y` stores its tempo multiplier.
+    CassetteBlock,
+    /// Vanilla CrystalStaticSpinner hazard.
+    CrystalStaticSpinner,
     /// Simulator-native constant-velocity Solid used to exercise Monocle
     /// carrying, pushing, and Player LiftSpeed inheritance independently of a
     /// specific vanilla entity state machine.
@@ -483,6 +490,19 @@ pub(crate) fn encode_celeste_rooms(
                     ],
                     vec![],
                 )),
+                EntityKind::HeartGem => Some(element(
+                    "blackGem",
+                    [
+                        ("fake", BinaryValue::Bool(false)),
+                        ("id", BinaryValue::Int(id)),
+                        ("originX", BinaryValue::Int(8)),
+                        ("originY", BinaryValue::Int(8)),
+                        ("removeCameraTriggers", BinaryValue::Bool(false)),
+                        ("x", BinaryValue::Int(x + width / 2)),
+                        ("y", BinaryValue::Int(y + height / 2)),
+                    ],
+                    vec![],
+                )),
                 EntityKind::Glider => Some(element(
                     "glider",
                     [
@@ -567,6 +587,38 @@ pub(crate) fn encode_celeste_rooms(
                         ),
                         ("x", BinaryValue::Int(x)),
                         ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![],
+                )),
+                EntityKind::CassetteBlock => Some(element(
+                    "cassetteBlock",
+                    [
+                        ("height", BinaryValue::Int(height)),
+                        ("id", BinaryValue::Int(id)),
+                        ("index", BinaryValue::Int(entity.direction.x.round() as i32)),
+                        ("originX", BinaryValue::Int(0)),
+                        ("originY", BinaryValue::Int(0)),
+                        (
+                            "tempo",
+                            BinaryValue::Float(if entity.direction.y == 0.0 {
+                                1.0
+                            } else {
+                                entity.direction.y
+                            }),
+                        ),
+                        ("width", BinaryValue::Int(width)),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![],
+                )),
+                EntityKind::CrystalStaticSpinner => Some(element(
+                    "spinner",
+                    [
+                        ("attachToSolid", BinaryValue::Bool(false)),
+                        ("id", BinaryValue::Int(id)),
+                        ("x", BinaryValue::Int(x + width / 2)),
+                        ("y", BinaryValue::Int(y + height / 2)),
                     ],
                     vec![],
                 )),
@@ -879,10 +931,13 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 "windTrigger" => EntityKind::Wind,
                 "bounceBlock" => EntityKind::BounceBlock,
                 "theoCrystal" => EntityKind::TheoCrystal,
+                "blackGem" | "heartGem" => EntityKind::HeartGem,
                 "glider" => EntityKind::Glider,
                 "zipMover" => EntityKind::ZipMover,
                 "moveBlock" => EntityKind::MoveBlock,
                 "templeGate" => EntityKind::TempleGate,
+                "cassetteBlock" => EntityKind::CassetteBlock,
+                "spinner" => EntityKind::CrystalStaticSpinner,
                 "celesteGymMovingSolid" => EntityKind::MovingSolid,
                 _ => EntityKind::Unknown,
             };
@@ -899,12 +954,15 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 EntityKind::BadelineBoost => 32.0,
                 EntityKind::Strawberry => 14.0,
                 EntityKind::TheoCrystal | EntityKind::Glider | EntityKind::TempleGate => 8.0,
+                EntityKind::CrystalStaticSpinner => 16.0,
+                EntityKind::HeartGem => 16.0,
                 _ => 8.0,
             };
             let default_h = match kind {
                 EntityKind::TheoCrystal | EntityKind::Glider | EntityKind::Puffer => 10.0,
                 EntityKind::Snowball => 9.0,
                 EntityKind::Cloud => 5.0,
+                EntityKind::CrystalStaticSpinner => 12.0,
                 _ => default_w,
             };
             let raw_width = attr_f32(el, "width", default_w);
@@ -947,6 +1005,19 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 "bounceBlock" | "zipMover" | "templeGate" => {
                     (Rect::new(ex, ey, raw_width, raw_height), Vec2::default())
                 }
+                "cassetteBlock" => (
+                    Rect::new(ex, ey, raw_width, raw_height),
+                    Vec2::new(attr_f32(el, "index", 0.0), attr_f32(el, "tempo", 1.0)),
+                ),
+                "spinner" => (
+                    Rect::new(
+                        ex - raw_width * 0.5,
+                        ey - raw_height * 0.5,
+                        raw_width,
+                        raw_height,
+                    ),
+                    Vec2::default(),
+                ),
                 "moveBlock" => {
                     let direction = match attr_text(el, "direction").unwrap_or("Right") {
                         "Left" => Vec2::new(-1.0, 0.0),
@@ -958,6 +1029,9 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 }
                 "theoCrystal" | "glider" => {
                     (Rect::new(ex - 4.0, ey - 10.0, 8.0, 10.0), Vec2::default())
+                }
+                "blackGem" | "heartGem" => {
+                    (Rect::new(ex - 8.0, ey - 8.0, 16.0, 16.0), Vec2::default())
                 }
                 "celesteGymMovingSolid" => (
                     Rect::new(ex, ey, raw_width, raw_height),
@@ -1093,6 +1167,7 @@ impl Map {
                 matches!(
                     entity.kind,
                     EntityKind::BounceBlock
+                        | EntityKind::CassetteBlock
                         | EntityKind::MoveBlock
                         | EntityKind::MovingSolid
                         | EntityKind::ZipMover
@@ -1354,6 +1429,42 @@ mod tests {
     }
 
     #[test]
+    fn cassette_and_spinner_round_trip_vanilla_entity_attributes() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            entities: vec![
+                Entity {
+                    kind: EntityKind::CassetteBlock,
+                    bounds: Rect::new(64.0, 120.0, 64.0, 16.0),
+                    direction: Vec2::new(2.0, 1.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "cassetteBlock".to_owned(),
+                },
+                Entity {
+                    kind: EntityKind::CrystalStaticSpinner,
+                    bounds: Rect::new(192.0, 94.0, 16.0, 12.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "spinner".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let bytes = encode_celeste_map(&map, "CelesteGymPlayground", "cassette-spinner")
+            .expect("fixture should encode");
+        let decoded = decode_map_room(&bytes, Some("cassette-spinner")).unwrap();
+        assert_eq!(decoded.entities[0].kind, EntityKind::CassetteBlock);
+        assert_eq!(decoded.entities[0].bounds, map.entities[0].bounds);
+        assert_eq!(decoded.entities[0].direction, Vec2::new(2.0, 1.0));
+        assert_eq!(decoded.entities[1].kind, EntityKind::CrystalStaticSpinner);
+        assert_eq!(decoded.entities[1].bounds, map.entities[1].bounds);
+    }
+
+    #[test]
     fn badeline_nodes_are_room_relative_in_the_binary_and_absolute_after_decode() {
         let boost = Entity {
             kind: EntityKind::BadelineBoost,
@@ -1398,6 +1509,30 @@ mod tests {
         assert_eq!(entity.kind, EntityKind::TheoCrystal);
         assert_eq!(entity.bounds, Rect::new(364.0, -130.0, 8.0, 10.0));
         assert_eq!(entity.name, "theoCrystal");
+    }
+
+    #[test]
+    fn vanilla_heart_gem_round_trips_through_celeste_binary() {
+        let map = Map {
+            bounds: Rect::new(320.0, -240.0, 320.0, 184.0),
+            entities: vec![Entity {
+                kind: EntityKind::HeartGem,
+                bounds: Rect::new(360.0, -136.0, 16.0, 16.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "blackGem".to_owned(),
+            }],
+            ..Map::default()
+        };
+
+        let encoded = encode_celeste_map(&map, "CelesteGymTest", "heart").unwrap();
+        let decoded = decode_map_room(&encoded, Some("heart")).unwrap();
+        let entity = decoded.entities.first().unwrap();
+        assert_eq!(entity.kind, EntityKind::HeartGem);
+        assert_eq!(entity.bounds, Rect::new(360.0, -136.0, 16.0, 16.0));
+        assert_eq!(entity.name, "blackGem");
     }
 
     #[test]

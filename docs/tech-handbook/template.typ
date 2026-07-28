@@ -191,7 +191,7 @@
 
     === 实现 #h(5pt) #badge([EVIDENCE])
     #grid(
-      columns: (1fr, 1fr),
+      columns: (1fr),
       gutter: 8pt,
       evidence-cell([源码], [SOURCE], source-evidence),
       evidence-cell([Rust 实现], [RUST], rust-evidence),

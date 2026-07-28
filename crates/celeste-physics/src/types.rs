@@ -146,6 +146,15 @@ pub struct TheoCrystalSnapshot {
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
+pub struct HeartGemSnapshot {
+    /// Idle, one-frame pre-freeze yield, frozen yield, or time-rate cutscene.
+    pub phase: u8,
+    pub wait_frames: u8,
+    pub collected: bool,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct GliderSnapshot {
     /// Actor.Position: bottom-center of the 8x10 body collider.
     pub position: Vec2,
@@ -188,6 +197,36 @@ pub struct SeekerSnapshot {
     pub state_timer: f32,
 }
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct CassetteManagerSnapshot {
+    /// Whether Level.LoadLevel has run CassetteBlockManager.OnLevelStart.
+    pub initialized: bool,
+    /// The non-level-music manager creates its cassette song on its first
+    /// Update and does not call AdvanceMusic until the following frame.
+    pub startup_music_pending: bool,
+    /// Accumulated sixteenth-note time, advanced in single precision.
+    pub beat_timer: f32,
+    pub beat_index: u8,
+    pub current_index: u8,
+    pub max_beat: u8,
+    pub tempo_mult: f32,
+}
+
+impl Default for CassetteManagerSnapshot {
+    fn default() -> Self {
+        Self {
+            initialized: false,
+            startup_music_pending: false,
+            beat_timer: 0.0,
+            beat_index: 0,
+            current_index: 0,
+            max_beat: 0,
+            tempo_mult: 1.0,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct TempleGateSnapshot {
@@ -197,6 +236,30 @@ pub struct TempleGateSnapshot {
     pub closed_height: f32,
     pub open: bool,
     pub triggered: bool,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct CassetteBlockSnapshot {
+    /// Current Solid position, including the two one-pixel ShiftSize phases.
+    pub position: Vec2,
+    pub start: Vec2,
+    pub width: f32,
+    pub height: f32,
+    pub index: u8,
+    pub activated: bool,
+    pub collidable: bool,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SpinnerSnapshot {
+    /// CrystalStaticSpinner world-space center.
+    pub position: Vec2,
+    /// Per-instance Calc.Random.NextFloat offset used by Scene.OnInterval.
+    pub offset: f32,
+    pub visible: bool,
+    pub collidable: bool,
 }
 
 fn default_stamina() -> f32 {
@@ -250,6 +313,8 @@ pub struct PlayerSnapshot {
     /// Global Monocle freeze remaining. While positive, Engine frames advance
     /// but the scene and player state machine do not update.
     pub freeze_timer: f32,
+    /// Engine.TimeRate written by HeartGem. Raw engine-frame time remains DT.
+    pub time_rate: f32,
     pub state_timer: f32,
     pub boost_target: Vec2,
     pub boost_red: bool,
@@ -296,6 +361,14 @@ pub struct PlayerSnapshot {
     /// moving solids. Keeping it in the snapshot makes split simulations
     /// resume from the same platform positions.
     pub moving_solid_time: f32,
+    /// Monocle Scene.TimeActive. This intentionally remains f32 so the
+    /// long-running spinner interval freeze is represented faithfully.
+    pub scene_time_active: f32,
+    pub cassette_manager: CassetteManagerSnapshot,
+    /// Per-entity CassetteBlock state, in map entity order.
+    pub cassette_blocks: Vec<CassetteBlockSnapshot>,
+    /// Per-entity CrystalStaticSpinner state, in map entity order.
+    pub spinners: Vec<SpinnerSnapshot>,
     /// Per-entity vanilla ZipMover coroutine and Platform movement state, in
     /// map entity order. This keeps segmented simulation composable.
     pub zip_movers: Vec<ZipMoverSnapshot>,
@@ -305,6 +378,8 @@ pub struct PlayerSnapshot {
     pub move_blocks: Vec<MoveBlockSnapshot>,
     /// Per-entity vanilla TheoCrystal actor and Holdable state.
     pub theo_crystals: Vec<TheoCrystalSnapshot>,
+    /// Per-entity vanilla HeartGem collection coroutine state.
+    pub heart_gems: Vec<HeartGemSnapshot>,
     /// Per-entity vanilla Glider actor and Holdable state.
     pub gliders: Vec<GliderSnapshot>,
     /// Per-entity vanilla non-fragile Cloud movement state.
@@ -421,6 +496,7 @@ impl Default for PlayerSnapshot {
             dash_cooldown_timer: 0.0,
             dash_refill_cooldown_timer: 0.0,
             freeze_timer: 0.0,
+            time_rate: 1.0,
             state_timer: 0.0,
             boost_target: Vec2::default(),
             boost_red: false,
@@ -453,10 +529,15 @@ impl Default for PlayerSnapshot {
             last_lift_speed: Vec2::default(),
             lift_speed_timer: 0.0,
             moving_solid_time: 0.0,
+            scene_time_active: 0.0,
+            cassette_manager: CassetteManagerSnapshot::default(),
+            cassette_blocks: vec![],
+            spinners: vec![],
             zip_movers: vec![],
             bounce_blocks: vec![],
             move_blocks: vec![],
             theo_crystals: vec![],
+            heart_gems: vec![],
             gliders: vec![],
             clouds: vec![],
             seekers: vec![],

@@ -8,12 +8,12 @@ describe('production scenario registry', () => {
   const registry = buildRegistry(scenarios)
 
   it('derives all target and status counts from explicit indexes', () => {
-    assert.equal(registry.scenarios.length, 167)
-    assert.equal(registry.byTarget.get('playground')?.length, 125)
+    assert.equal(registry.scenarios.length, 176)
+    assert.equal(registry.byTarget.get('playground')?.length, 134)
     assert.equal(registry.byTarget.get('area-1')?.length, 36)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 149, candidate: 18 })
+    assert.deepEqual(registry.counts, { active: 150, candidate: 26 })
   })
 
   it('keeps evidence-less scenarios as opt-in candidates', () => {
@@ -23,6 +23,10 @@ describe('production scenario registry', () => {
     assert.deepEqual(candidates, [
       'entity-4.10.3.2-holdable-dream-hyper',
       'entity-4.10.4-holdable-grabless-dream-hyper',
+      'entity-4.14-heart-ultra',
+      'entity-4.15-jumpthrough-clip',
+      'entity-4.18.2-reform-boost-cassette-boost',
+      'entity-4.18.2.1-cassoosted-fuper',
       'entity-4.18.3-core-block-entity-displacement',
       'entity-4.19-seeker-bounce',
       'entity-4.21-holdable-slash',
@@ -39,6 +43,10 @@ describe('production scenario registry', () => {
       'entity-4.28-koral-clip',
       'entity-4.29-springboost-cancel',
       'entity-4.6.2-cloud-hyper-bunnyhop',
+      'other-5.10-spinner-stunning',
+      'other-5.11-spinner-freeze',
+      'other-5.3-cassette-raise',
+      'other-5.9-screen-transition-cassette-offset',
     ])
     assert.equal(selectScenarios(registry, { target: 'playground' }).some((scenario) => scenario.status === 'candidate'), false)
   })
@@ -69,6 +77,25 @@ describe('production scenario registry', () => {
     assert.equal(koral.mapParts.length, 1)
     assert.equal(koral.mapParts[0]?.id, 'tech.entity-4.28-koral-clip')
     assert.deepEqual(koral.mapParts[0]?.dependencies, [])
+  })
+
+  it('keeps every cassette and spinner audit in an independently named map part', () => {
+    const techniqueIds = ['4.18.2', '4.18.2.1', '5.3', '5.9', '5.10', '5.11']
+    const parts = techniqueIds.map((techniqueId) => {
+      const scenario = registry.scenarios.find((candidate) => candidate.techniqueIds.includes(techniqueId))
+      assert.ok(scenario, `missing scenario for ${techniqueId}`)
+      assert.equal(scenario.mapParts.length, 1)
+      return scenario.mapParts[0]?.id
+    })
+    assert.equal(new Set(parts).size, techniqueIds.length)
+    assert.deepEqual(parts, [
+      'tech.entity-4.18.2-reform-boost-cassette-boost',
+      'tech.entity-4.18.2.1-cassoosted-fuper',
+      'tech.other-5.3-cassette-raise',
+      'tech.other-5.9-screen-transition-cassette-offset',
+      'tech.other-5.10-spinner-stunning',
+      'tech.other-5.11-spinner-freeze',
+    ])
   })
 
   it('keeps every reform proof in an independently named map part', () => {
