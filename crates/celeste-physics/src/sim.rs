@@ -6249,6 +6249,38 @@ fn update_transition(p: &mut PlayerSnapshot, map: &Map) {
                     p.dummy_moving = false;
                 }
             }
+            // Level.TransitionRoutine invokes LoadLevel for the destination
+            // room while the global CassetteBlockManager keeps its beat. Do
+            // not leave source-room solids/entities alive after transfer.
+            if let Some(room) = map
+                .transition_runtime
+                .iter()
+                .find(|room| room.bounds == next)
+                .cloned()
+            {
+                map.solids = room.solids;
+                map.entities = room.entities;
+                map.room_spawns = room.spawns.clone();
+                if let Some(spawn) = room.spawns.iter().copied().min_by(|left, right| {
+                    let left_dx = left.x - p.pos.x;
+                    let left_dy = left.y - p.pos.y;
+                    let right_dx = right.x - p.pos.x;
+                    let right_dy = right.y - p.pos.y;
+                    (left_dx * left_dx + left_dy * left_dy)
+                        .partial_cmp(&(right_dx * right_dx + right_dy * right_dy))
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                }) {
+                    // Level.LoadLevel assigns Session.RespawnPoint from this
+                    // room's closest player spawn after the transfer.
+                    map.spawn = spawn;
+                }
+                p.cassette_blocks.clear();
+                p.spinners.clear();
+                p.lookouts.clear();
+                initialize_cassette_blocks(p, map);
+                initialize_spinners(p, map);
+                initialize_lookouts(p, map);
+            }
         }
         p.current_room_bounds = next_room;
         p.transition_direction = Vec2::default();
@@ -12880,6 +12912,76 @@ mod tests {
         assert_eq!(trace.states[completed].stamina, 110.0);
         assert_eq!(trace.states[completed].wall_slide_timer, WALL_SLIDE_TIME);
         assert_eq!(trace.states[completed].jump_grace_timer, 0.0);
+    }
+
+    #[test]
+    fn bubsdrop_wall_jump_misses_upper_jumpthru_and_restores_old_room_spawn_set() {
+        let lower = Rect::new(0.0, 0.0, 320.0, 184.0);
+        let upper = Rect::new(0.0, -184.0, 320.0, 184.0);
+        let map = Map {
+            bounds: lower,
+            transition_rooms: vec![upper],
+            transition_runtime: vec![
+                crate::RoomRuntime {
+                    bounds: lower,
+                    spawns: vec![Vec2::new(24.0, 32.0), Vec2::new(280.0, 32.0)],
+                    solids: vec![],
+                    entities: vec![],
+                },
+                crate::RoomRuntime {
+                    bounds: upper,
+                    spawns: vec![Vec2::new(160.0, -16.0)],
+                    // The upward transition ends beside this wall. A normal
+                    // auto-jump lands on the JumpThru; the wall jump below
+                    // instead sends the player left and back into `lower`.
+                    solids: vec![Rect::new(168.0, -80.0, 8.0, 80.0)],
+                    entities: vec![crate::Entity {
+                        kind: crate::EntityKind::JumpThru,
+                        bounds: Rect::new(160.0, -24.0, 40.0, 8.0),
+                        direction: Vec2::default(),
+                        shielded: false,
+                        single_use: false,
+                        nodes: vec![],
+                        name: "bubsdropJumpThru".to_owned(),
+                    }],
+                },
+            ],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(164.0, 4.0),
+            speed: Vec2::new(0.0, -160.0),
+            dashes: 0,
+            stamina: 20.0,
+            ..PlayerSnapshot::default()
+        };
+        let baseline =
+            simulate_trace(player.clone(), &[InputState::default(); 120], &map, 120).unwrap();
+        assert!(baseline.states.iter().any(|state| {
+            state.current_room_bounds == Some(upper) && state.on_ground && state.pos.y == -24.0
+        }));
+        let inputs = (0..360)
+            .map(|frame| InputState {
+                // State 41 is the first normal-update frame after the
+                // transition coroutine calls Player.OnTransition.
+                jump_pressed: frame == 41,
+                jump_held: (41..51).contains(&frame),
+                ..InputState::default()
+            })
+            .collect::<Vec<_>>();
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+
+        assert_eq!(trace.states[1].speed, Vec2::new(0.0, JUMP_SPEED));
+        assert!(trace.states.iter().any(|state| {
+            state.current_room_bounds == Some(upper)
+                && state.speed == Vec2::new(-WALL_JUMP_H, JUMP_SPEED)
+        }));
+        assert!(trace.states.iter().any(|state| {
+            state.current_room_bounds == Some(lower) && state.transition_room_bounds.is_none()
+        }));
+        assert!(trace.states.iter().any(|state| {
+            state.state == PlayerState::IntroRespawn && state.pos == Vec2::new(24.0, 32.0)
+        }));
     }
 
     #[test]
