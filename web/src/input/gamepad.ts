@@ -38,6 +38,7 @@ export function buttonsFromGamepad(gamepad: GamepadSnapshot, directionSource: Ga
 
   buttons.jump = buttonPressed(gamepad, 0)
   buttons.dash = buttonPressed(gamepad, 2)
+  buttons.crouch_dash = buttonPressed(gamepad, 3)
   buttons.grab = [4, 5, 6, 7].some((index) => buttonPressed(gamepad, index))
   return buttons
 }
