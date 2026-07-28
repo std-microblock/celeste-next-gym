@@ -140,6 +140,8 @@ pub struct TheoCrystalSnapshot {
     pub held: bool,
     pub cannot_hold_timer: f32,
     pub gravity_timer: f32,
+    /// TheoCrystal.Die disables pushing and kills the player after failed squish escape.
+    pub dead: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -203,6 +205,8 @@ pub struct GliderSnapshot {
     pub gravity_timer: f32,
     pub no_gravity_timer: f32,
     pub high_friction_timer: f32,
+    /// Glider.OnSquish removes the actor when both wiggle searches fail.
+    pub removed: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -218,6 +222,19 @@ pub struct CloudSnapshot {
     pub remainder_y: f32,
     /// Original entity position captured before the runtime map is moved.
     pub start: Vec2,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SeekerSnapshot {
+    /// Actor.Position / physics-hitbox center.
+    pub position: Vec2,
+    pub speed: Vec2,
+    pub remainder: Vec2,
+    /// Vanilla Seeker state index (Attack=3, Stunned=4, Skidding=5).
+    pub state: u8,
+    /// Coroutine time remaining for the supported Stunned lifecycle.
+    pub state_timer: f32,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -248,6 +265,17 @@ impl Default for CassetteManagerSnapshot {
             tempo_mult: 1.0,
         }
     }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct TempleGateSnapshot {
+    /// Original top-left entity position restored after SetHeight.
+    pub position: Vec2,
+    pub current_height: f32,
+    pub closed_height: f32,
+    pub open: bool,
+    pub triggered: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -417,6 +445,10 @@ pub struct PlayerSnapshot {
     pub gliders: Vec<GliderSnapshot>,
     /// Per-entity vanilla non-fragile Cloud movement state.
     pub clouds: Vec<CloudSnapshot>,
+    /// Per-entity Seeker Actor and StateMachine state, in map entity order.
+    pub seekers: Vec<SeekerSnapshot>,
+    /// Per-entity CloseBehindPlayerAlways TempleGate state.
+    pub temple_gates: Vec<TempleGateSnapshot>,
     /// Map-order TheoCrystal index currently held by Player.
     pub holding_theo: Option<u16>,
     /// Map-order Glider index currently held by Player.
@@ -576,6 +608,8 @@ impl Default for PlayerSnapshot {
             sandwich_lavas: vec![],
             gliders: vec![],
             clouds: vec![],
+            seekers: vec![],
+            temple_gates: vec![],
             holding_theo: None,
             holding_glider: None,
             min_hold_timer: 0.0,

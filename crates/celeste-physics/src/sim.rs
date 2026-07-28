@@ -148,6 +148,8 @@ pub fn simulate_trace(
     initialize_gliders(&mut snapshot, &mut runtime_map);
     initialize_clouds(&mut snapshot, &mut runtime_map);
     initialize_camera(&mut snapshot, &runtime_map);
+    initialize_seekers(&mut snapshot, &mut runtime_map);
+    initialize_temple_gates(&mut snapshot, &mut runtime_map);
     initialize_cassette_blocks(&mut snapshot, &mut runtime_map);
     initialize_spinners(&mut snapshot, &mut runtime_map);
     position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
@@ -377,6 +379,19 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         .iter()
         .all(|value| value.is_finite())
     });
+    let seekers_are_finite = s.seekers.iter().all(|seeker| {
+        [
+            seeker.position.x,
+            seeker.position.y,
+            seeker.speed.x,
+            seeker.speed.y,
+            seeker.remainder.x,
+            seeker.remainder.y,
+            seeker.state_timer,
+        ]
+        .iter()
+        .all(|value| value.is_finite())
+    });
     let cassette_blocks_are_finite = s.cassette_blocks.iter().all(|block| {
         [
             block.position.x,
@@ -385,6 +400,16 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
             block.start.y,
             block.width,
             block.height,
+        ]
+        .iter()
+        .all(|value| value.is_finite())
+    });
+    let temple_gates_are_finite = s.temple_gates.iter().all(|gate| {
+        [
+            gate.position.x,
+            gate.position.y,
+            gate.current_height,
+            gate.closed_height,
         ]
         .iter()
         .all(|value| value.is_finite())
@@ -403,6 +428,8 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         && sandwich_lavas_are_finite
         && gliders_are_finite
         && clouds_are_finite
+        && seekers_are_finite
+        && temple_gates_are_finite
         && cassette_blocks_are_finite
         && spinners_are_finite
     {
@@ -430,8 +457,13 @@ fn initialize_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
         }
         let state = &mut p.theo_crystals[theo_index];
         state.held = p.holding_theo == Some(theo_index as u16);
-        entity.bounds.x = state.position.x - 4.0;
-        entity.bounds.y = state.position.y - 10.0;
+        if state.dead {
+            entity.bounds.x = -1_000_000.0;
+            entity.bounds.y = -1_000_000.0;
+        } else {
+            entity.bounds.x = state.position.x - 4.0;
+            entity.bounds.y = state.position.y - 10.0;
+        }
         entity.bounds.width = 8.0;
         entity.bounds.height = 10.0;
     }
@@ -460,8 +492,13 @@ fn initialize_gliders(p: &mut PlayerSnapshot, map: &mut Map) {
         }
         let state = &mut p.gliders[glider_index];
         state.held = p.holding_glider == Some(glider_index as u16);
-        entity.bounds.x = state.position.x - 4.0;
-        entity.bounds.y = state.position.y - 10.0;
+        if state.removed {
+            entity.bounds.x = -1_000_000.0;
+            entity.bounds.y = -1_000_000.0;
+        } else {
+            entity.bounds.x = state.position.x - 4.0;
+            entity.bounds.y = state.position.y - 10.0;
+        }
         entity.bounds.width = 8.0;
         entity.bounds.height = 10.0;
     }
@@ -856,6 +893,435 @@ fn advance_clouds(p: &mut PlayerSnapshot, map: &mut Map) {
             }
         }
         p.clouds[cloud_index] = state;
+    }
+}
+
+fn seeker_physics_rect(position: Vec2) -> Rect {
+    Rect::new(position.x - 3.0, position.y - 3.0, 6.0, 6.0)
+}
+
+fn seeker_attack_rect(position: Vec2) -> Rect {
+    Rect::new(position.x - 6.0, position.y - 2.0, 12.0, 8.0)
+}
+
+fn seeker_bounce_rect(position: Vec2, state: u8, speed: Vec2) -> Rect {
+    if state == 3 && speed.x > 0.0 {
+        Rect::new(position.x - 10.0, position.y - 8.0, 16.0, 6.0)
+    } else if state == 3 && speed.y < 0.0 {
+        Rect::new(position.x - 6.0, position.y - 8.0, 16.0, 6.0)
+    } else {
+        Rect::new(position.x - 6.0, position.y - 8.0, 12.0, 6.0)
+    }
+}
+
+fn seeker_collides(map: &Map, position: Vec2) -> bool {
+    let collider = seeker_physics_rect(position);
+    map.solid_at(collider)
+        || collider.x < map.bounds.x
+        || collider.right() > map.bounds.right()
+        || collider.bottom() > map.bounds.bottom()
+        || collider.y < map.bounds.y - 8.0
+}
+
+fn move_seeker_vertical_exact(seeker: &mut crate::SeekerSnapshot, map: &Map, amount: i32) -> bool {
+    let sign = amount.signum();
+    for _ in 0..amount.unsigned_abs() {
+        let next = Vec2::new(seeker.position.x, seeker.position.y + sign as f32);
+        if seeker_collides(map, next) {
+            return false;
+        }
+        seeker.position = next;
+    }
+    true
+}
+
+fn move_seeker_axis(seeker: &mut crate::SeekerSnapshot, map: &Map, horizontal: bool) {
+    let amount = if horizontal {
+        seeker.speed.x * DT
+    } else {
+        seeker.speed.y * DT
+    };
+    let remainder = if horizontal {
+        &mut seeker.remainder.x
+    } else {
+        &mut seeker.remainder.y
+    };
+    *remainder += amount;
+    let pixels = remainder.round_ties_even() as i32;
+    *remainder -= pixels as f32;
+    let sign = pixels.signum();
+    for _ in 0..pixels.unsigned_abs() {
+        let next = Vec2::new(
+            seeker.position.x + if horizontal { sign as f32 } else { 0.0 },
+            seeker.position.y + if horizontal { 0.0 } else { sign as f32 },
+        );
+        if seeker_collides(map, next) {
+            if horizontal {
+                if seeker.state == 3 {
+                    let original_y = seeker.position.y;
+                    let corrected = [4, -4].into_iter().any(|offset| {
+                        seeker.position.y = original_y;
+                        !seeker_collides(map, Vec2::new(next.x, original_y + offset as f32))
+                            && move_seeker_vertical_exact(seeker, map, offset)
+                    });
+                    if corrected {
+                        seeker.position.x = next.x;
+                        continue;
+                    }
+                    seeker.position.y = original_y;
+                }
+                if matches!(seeker.state, 3 | 5) && seeker.speed.x.abs() >= 100.0 {
+                    seeker.speed.x = seeker.speed.x.signum() * -100.0;
+                    seeker.speed.y *= 0.4;
+                    seeker.state = 4;
+                    seeker.state_timer = 0.8;
+                } else {
+                    seeker.speed.x *= -0.2;
+                }
+                seeker.remainder.x = 0.0;
+            } else {
+                seeker.speed.y *= if seeker.state == 3 { -0.6 } else { -0.2 };
+                seeker.remainder.y = 0.0;
+            }
+            break;
+        }
+        seeker.position = next;
+    }
+}
+
+fn seeker_player_center(p: &PlayerSnapshot) -> Vec2 {
+    let collider = current_player_rect(p, p.pos.x, p.pos.y);
+    Vec2::new(
+        collider.x + collider.width * 0.5,
+        collider.y + collider.height * 0.5,
+    )
+}
+
+fn advance_seekers(p: &mut PlayerSnapshot, map: &mut Map) {
+    let entity_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::Seeker).then_some(index))
+        .collect();
+    for (seeker_index, entity_index) in entity_indices.into_iter().enumerate() {
+        let mut seeker = p.seekers[seeker_index].clone();
+        if seeker.state == 4 {
+            seeker.speed = approach_vec(seeker.speed, Vec2::default(), 150.0 * DT);
+            if seeker.state_timer > 0.0 {
+                seeker.state_timer -= DT;
+            } else {
+                seeker.state = 0;
+                seeker.state_timer = 0.0;
+            }
+        }
+
+        move_seeker_axis(&mut seeker, map, true);
+        move_seeker_axis(&mut seeker, map, false);
+
+        if !p.dead {
+            let player = current_player_rect(p, p.pos.x, p.pos.y);
+            let attack = seeker_attack_rect(seeker.position);
+            if attack.intersects(player) {
+                if seeker.state == 4 {
+                    let player_center = seeker_player_center(p);
+                    point_bounce(p, seeker.position);
+                    seeker.speed = scale(
+                        normalize(Vec2::new(
+                            seeker.position.x - player_center.x,
+                            seeker.position.y - player_center.y,
+                        )),
+                        100.0,
+                    );
+                } else {
+                    p.dead = true;
+                    p.speed = Vec2::default();
+                    p.death_freeze_pending = true;
+                    p.respawn_frames = 95;
+                }
+            } else if seeker_bounce_rect(seeker.position, seeker.state, seeker.speed)
+                .intersects(player)
+            {
+                let player_center = seeker_player_center(p);
+                bounce(p, map, seeker.position.y - 3.0);
+                seeker.speed = scale(
+                    normalize(Vec2::new(
+                        seeker.position.x - player_center.x,
+                        seeker.position.y - player_center.y,
+                    )),
+                    200.0,
+                );
+                seeker.state = 6;
+                seeker.state_timer = 0.0;
+                p.freeze_timer = 0.15;
+            }
+        }
+
+        map.entities[entity_index].bounds =
+            Rect::new(seeker.position.x - 6.0, seeker.position.y - 6.0, 12.0, 12.0);
+        p.seekers[seeker_index] = seeker;
+    }
+}
+
+fn solid_at_with_gate(map: &Map, rect: Rect, pusher_index: usize, pusher_collidable: bool) -> bool {
+    map.static_solid_at(rect)
+        || map.entities.iter().enumerate().any(|(index, entity)| {
+            let solid = matches!(
+                entity.kind,
+                EntityKind::DreamBlock
+                    | EntityKind::BounceBlock
+                    | EntityKind::MoveBlock
+                    | EntityKind::MovingSolid
+                    | EntityKind::ZipMover
+                    | EntityKind::TempleGate
+            );
+            solid && (index != pusher_index || pusher_collidable) && entity.bounds.intersects(rect)
+        })
+}
+
+fn jump_thru_blocks_actor(map: &Map, rect: Rect, previous_bottom: f32) -> bool {
+    map.entities.iter().any(|entity| {
+        matches!(entity.kind, EntityKind::JumpThru | EntityKind::Cloud)
+            && previous_bottom <= entity.bounds.y
+            && entity.bounds.intersects(rect)
+    })
+}
+
+fn squish_wiggle_candidate<F>(current: Vec2, target: Vec2, mut collides: F) -> Option<Vec2>
+where
+    F: FnMut(Vec2) -> bool,
+{
+    for origin in [current, target] {
+        for x in 0..=3 {
+            for y in 0..=3 {
+                if x == 0 && y == 0 {
+                    continue;
+                }
+                for sign_x in [1.0, -1.0] {
+                    for sign_y in [1.0, -1.0] {
+                        let candidate =
+                            Vec2::new(origin.x + x as f32 * sign_x, origin.y + y as f32 * sign_y);
+                        if !collides(candidate) {
+                            return Some(candidate);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+fn squish_player(p: &mut PlayerSnapshot, map: &Map, gate_index: usize, target: Vec2) {
+    let ducked = !p.ducking;
+    if ducked {
+        p.ducking = true;
+        if !solid_at_with_gate(map, duck_player_rect(p.pos.x, p.pos.y), gate_index, true) {
+            return;
+        }
+        let was = p.pos;
+        p.pos = target;
+        if !solid_at_with_gate(map, duck_player_rect(p.pos.x, p.pos.y), gate_index, true) {
+            return;
+        }
+        p.pos = was;
+    }
+
+    let state = p.state;
+    let preserved = p.star_fly_hitbox_preserved;
+    let ducking = p.ducking;
+    let candidate = squish_wiggle_candidate(p.pos, target, |position| {
+        let rect = if state == PlayerState::StarFly {
+            star_fly_rect(position.x, position.y)
+        } else if preserved {
+            star_fly_hurt_rect(position.x, position.y)
+        } else if ducking {
+            duck_player_rect(position.x, position.y)
+        } else {
+            player_rect(position.x, position.y)
+        };
+        solid_at_with_gate(map, rect, gate_index, true)
+    });
+    if let Some(position) = candidate {
+        p.pos = position;
+        if ducked && !solid_at_with_gate(map, player_rect(p.pos.x, p.pos.y), gate_index, false) {
+            p.ducking = false;
+        }
+    } else {
+        p.dead = true;
+        p.speed = Vec2::default();
+        p.death_freeze_pending = true;
+        p.respawn_frames = 95;
+    }
+}
+
+fn move_player_v_from_gate(p: &mut PlayerSnapshot, map: &Map, gate_index: usize, amount: i32) {
+    let target = Vec2::new(p.pos.x, p.pos.y + amount as f32);
+    let sign = amount.signum();
+    for _ in 0..amount.unsigned_abs() {
+        let next = Vec2::new(p.pos.x, p.pos.y + sign as f32);
+        let next_rect = current_player_rect(p, next.x, next.y);
+        let blocked = solid_at_with_gate(map, next_rect, gate_index, false)
+            || (sign > 0
+                && jump_thru_blocks_actor(
+                    map,
+                    next_rect,
+                    current_player_rect(p, p.pos.x, p.pos.y).bottom(),
+                ));
+        if blocked {
+            p.movement_remainder.y = 0.0;
+            squish_player(p, map, gate_index, target);
+            return;
+        }
+        p.pos = next;
+    }
+}
+
+fn move_theo_v_from_gate(
+    p: &mut PlayerSnapshot,
+    theo_index: usize,
+    map: &Map,
+    gate_index: usize,
+    amount: i32,
+) {
+    let mut theo = p.theo_crystals[theo_index].clone();
+    let target = Vec2::new(theo.position.x, theo.position.y + amount as f32);
+    let sign = amount.signum();
+    for _ in 0..amount.unsigned_abs() {
+        let next = Vec2::new(theo.position.x, theo.position.y + sign as f32);
+        let next_rect = theo_body_rect(next);
+        let blocked = solid_at_with_gate(map, next_rect, gate_index, false)
+            || (sign > 0
+                && jump_thru_blocks_actor(map, next_rect, theo_body_rect(theo.position).bottom()));
+        if blocked {
+            theo.remainder.y = 0.0;
+            if let Some(position) = squish_wiggle_candidate(theo.position, target, |position| {
+                solid_at_with_gate(map, theo_body_rect(position), gate_index, true)
+            }) {
+                theo.position = position;
+            } else {
+                theo.dead = true;
+                theo.held = false;
+                p.holding_theo = None;
+                p.dead = true;
+                p.speed = Vec2::default();
+                p.death_freeze_pending = true;
+                p.respawn_frames = 95;
+            }
+            p.theo_crystals[theo_index] = theo;
+            return;
+        }
+        theo.position = next;
+    }
+    p.theo_crystals[theo_index] = theo;
+}
+
+fn move_glider_v_from_gate(
+    p: &mut PlayerSnapshot,
+    glider_index: usize,
+    map: &Map,
+    gate_index: usize,
+    amount: i32,
+) {
+    let mut glider = p.gliders[glider_index].clone();
+    let target = Vec2::new(glider.position.x, glider.position.y + amount as f32);
+    let sign = amount.signum();
+    for _ in 0..amount.unsigned_abs() {
+        let next = Vec2::new(glider.position.x, glider.position.y + sign as f32);
+        let next_rect = glider_body_rect(next);
+        let blocked = solid_at_with_gate(map, next_rect, gate_index, false)
+            || (sign > 0
+                && jump_thru_blocks_actor(
+                    map,
+                    next_rect,
+                    glider_body_rect(glider.position).bottom(),
+                ));
+        if blocked {
+            glider.remainder.y = 0.0;
+            if let Some(position) = squish_wiggle_candidate(glider.position, target, |position| {
+                solid_at_with_gate(map, glider_body_rect(position), gate_index, true)
+            }) {
+                glider.position = position;
+            } else {
+                glider.removed = true;
+                glider.held = false;
+                p.holding_glider = None;
+            }
+            p.gliders[glider_index] = glider;
+            return;
+        }
+        glider.position = next;
+    }
+    p.gliders[glider_index] = glider;
+}
+
+fn close_temple_gate(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    gate_index: usize,
+    gate: &mut crate::TempleGateSnapshot,
+) {
+    let old_height = gate.current_height as i32;
+    let close_height = gate.closed_height as i32;
+    let mut temporary_y = gate.position.y;
+    let mut temporary_height = gate.current_height;
+    if temporary_height < 64.0 {
+        temporary_y -= 64.0 - temporary_height;
+        temporary_height = 64.0;
+    }
+    let old_bottom = temporary_y + temporary_height;
+    let move_y = close_height - old_height;
+    temporary_y += move_y as f32;
+    let moved_gate = Rect::new(gate.position.x, temporary_y, 8.0, temporary_height);
+    map.entities[gate_index].bounds = moved_gate;
+
+    let player_rect = current_player_rect(p, p.pos.x, p.pos.y);
+    if moved_gate.intersects(player_rect) {
+        let push = move_y - (player_rect.y - old_bottom) as i32;
+        move_player_v_from_gate(p, map, gate_index, push);
+    }
+    for theo_index in 0..p.theo_crystals.len() {
+        if p.theo_crystals[theo_index].dead {
+            continue;
+        }
+        let body = theo_body_rect(p.theo_crystals[theo_index].position);
+        if moved_gate.intersects(body) {
+            let push = move_y - (body.y - old_bottom) as i32;
+            move_theo_v_from_gate(p, theo_index, map, gate_index, push);
+        }
+    }
+    for glider_index in 0..p.gliders.len() {
+        if p.gliders[glider_index].removed {
+            continue;
+        }
+        let body = glider_body_rect(p.gliders[glider_index].position);
+        if moved_gate.intersects(body) {
+            let push = move_y - (body.y - old_bottom) as i32;
+            move_glider_v_from_gate(p, glider_index, map, gate_index, push);
+        }
+    }
+
+    gate.current_height = gate.closed_height;
+    gate.open = false;
+    gate.triggered = true;
+    map.entities[gate_index].bounds =
+        Rect::new(gate.position.x, gate.position.y, 8.0, gate.closed_height);
+}
+
+fn advance_temple_gates(p: &mut PlayerSnapshot, map: &mut Map) {
+    let entity_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::TempleGate).then_some(index))
+        .collect();
+    for (snapshot_index, entity_index) in entity_indices.into_iter().enumerate() {
+        let mut gate = p.temple_gates[snapshot_index].clone();
+        let player_left = current_player_rect(p, p.pos.x, p.pos.y).x;
+        if gate.open && !gate.triggered && player_left > gate.position.x + 12.0 {
+            close_temple_gate(p, map, entity_index, &mut gate);
+        }
+        p.temple_gates[snapshot_index] = gate;
     }
 }
 
@@ -1970,6 +2436,90 @@ fn move_theo_axis(
     }
 }
 
+fn initialize_seekers(p: &mut PlayerSnapshot, map: &mut Map) {
+    let seeker_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::Seeker).then_some(index))
+        .collect();
+    p.seekers.truncate(seeker_indices.len());
+    for (seeker_index, entity_index) in seeker_indices.into_iter().enumerate() {
+        let entity = &mut map.entities[entity_index];
+        if seeker_index == p.seekers.len() {
+            p.seekers.push(crate::SeekerSnapshot {
+                position: Vec2::new(
+                    entity.bounds.x + entity.bounds.width * 0.5,
+                    entity.bounds.y + entity.bounds.height * 0.5,
+                ),
+                ..crate::SeekerSnapshot::default()
+            });
+        }
+        let state = &p.seekers[seeker_index];
+        entity.bounds = Rect::new(state.position.x - 6.0, state.position.y - 6.0, 12.0, 12.0);
+    }
+}
+
+fn initialize_temple_gates(p: &mut PlayerSnapshot, map: &mut Map) {
+    let gate_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::TempleGate).then_some(index))
+        .collect();
+    p.temple_gates.truncate(gate_indices.len());
+    for (gate_index, entity_index) in gate_indices.into_iter().enumerate() {
+        let entity = &mut map.entities[entity_index];
+        if gate_index == p.temple_gates.len() {
+            p.temple_gates.push(crate::TempleGateSnapshot {
+                position: Vec2::new(entity.bounds.x, entity.bounds.y),
+                current_height: 0.0,
+                closed_height: entity.bounds.height,
+                open: true,
+                triggered: false,
+            });
+        }
+        let gate = &p.temple_gates[gate_index];
+        entity.bounds = Rect::new(gate.position.x, gate.position.y, 8.0, gate.current_height);
+    }
+}
+
+fn hit_theo_spring(theo: &mut crate::TheoCrystalSnapshot, map: &Map) {
+    if theo.held {
+        return;
+    }
+    let body = theo_body_rect(theo.position);
+    for spring in map
+        .entities
+        .iter()
+        .filter(|entity| entity.kind == EntityKind::Spring)
+    {
+        if !spring.bounds.intersects(body) {
+            continue;
+        }
+        if spring.direction.y < 0.0 && theo.speed.y >= 0.0 {
+            theo.speed.x *= 0.5;
+            theo.speed.y = -160.0;
+            theo.gravity_timer = 0.15;
+            return;
+        }
+        if spring.direction.x > 0.0 && theo.speed.x <= 0.0 {
+            theo.position.y = approach(theo.position.y, spring.bounds.y + 13.0, 4.0);
+            theo.speed.x = 220.0;
+            theo.speed.y = -80.0;
+            theo.gravity_timer = 0.1;
+            return;
+        }
+        if spring.direction.x < 0.0 && theo.speed.x >= 0.0 {
+            theo.position.y = approach(theo.position.y, spring.bounds.y + 13.0, 4.0);
+            theo.speed.x = -220.0;
+            theo.speed.y = -80.0;
+            theo.gravity_timer = 0.1;
+            return;
+        }
+    }
+}
+
 fn advance_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
     let entity_indices: Vec<usize> = map
         .entities
@@ -1979,6 +2529,11 @@ fn advance_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
         .collect();
     for (theo_index, entity_index) in entity_indices.into_iter().enumerate() {
         let mut theo = p.theo_crystals[theo_index].clone();
+        if theo.dead {
+            map.entities[entity_index].bounds.x = -1_000_000.0;
+            map.entities[entity_index].bounds.y = -1_000_000.0;
+            continue;
+        }
         theo.cannot_hold_timer = (theo.cannot_hold_timer - p.frame_delta_time).max(0.0);
         theo.gravity_timer = (theo.gravity_timer - p.frame_delta_time).max(0.0);
         if p.holding_theo == Some(theo_index as u16) {
@@ -2006,6 +2561,7 @@ fn advance_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
             }
             move_theo_axis(&mut theo, map, true, p.frame_delta_time);
             move_theo_axis(&mut theo, map, false, p.frame_delta_time);
+            hit_theo_spring(&mut theo, map);
         }
         let entity = &mut map.entities[entity_index];
         entity.bounds.x = theo.position.x - 4.0;
@@ -2249,6 +2805,11 @@ fn advance_gliders(p: &mut PlayerSnapshot, map: &mut Map) {
         .collect();
     for (glider_index, entity_index) in entity_indices.into_iter().enumerate() {
         let mut glider = p.gliders[glider_index].clone();
+        if glider.removed {
+            map.entities[entity_index].bounds.x = -1_000_000.0;
+            map.entities[entity_index].bounds.y = -1_000_000.0;
+            continue;
+        }
         glider.cannot_hold_timer = (glider.cannot_hold_timer - p.frame_delta_time).max(0.0);
         glider.gravity_timer = (glider.gravity_timer - p.frame_delta_time).max(0.0);
         glider.no_gravity_timer = (glider.no_gravity_timer - p.frame_delta_time).max(0.0);
@@ -2620,6 +3181,8 @@ fn advance_post_player_entities(p: &mut PlayerSnapshot, map: &mut Map, input: In
     advance_sandwich_lavas(p, map);
     advance_gliders(p, map);
     advance_clouds(p, map);
+    advance_seekers(p, map);
+    advance_temple_gates(p, map);
     // Player is loaded before room entities. CassetteBlock.Update runs before
     // the manager inserted after the first block, preserving WillToggle now /
     // activation on the following frame.
@@ -4366,6 +4929,11 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
         } else {
             None
         };
+        // Seeker PlayerColliders run from the dynamic Seeker update after
+        // Player.Update, using its live StateMachine collider selection.
+        if entity.kind == EntityKind::Seeker {
+            continue;
+        }
         let player_box = if matches!(
             entity.kind,
             EntityKind::Spikes
@@ -6337,6 +6905,80 @@ mod tests {
     }
 
     #[test]
+    fn core_block_candidate_clears_source_body_before_reform_blocked_check() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
+            solids: vec![Rect::new(0.0, 496.0, 960.0, 48.0)],
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::BounceBlock,
+                    bounds: Rect::new(704.0, 440.0, 64.0, 16.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "bounceBlock".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::Spikes,
+                    bounds: Rect::new(768.0, 440.0, 3.0, 16.0),
+                    direction: Vec2::new(1.0, 0.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "spikesRight".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::JumpThru,
+                    bounds: Rect::new(704.0, 456.0, 64.0, 8.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "jumpThru".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(736.0, 440.0),
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..280)
+            .map(|frame| InputState {
+                move_x: if frame < 80 { -1 } else { 0 },
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
+        let broken = trace
+            .states
+            .iter()
+            .position(|state| state.bounce_blocks[0].phase == 4)
+            .unwrap();
+        let body = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(broken + 1)
+            .find(|(_, state)| {
+                state.bounce_blocks[0].phase == 0 && !state.bounce_blocks[0].static_movers_enabled
+            })
+            .map(|(frame, _)| frame)
+            .unwrap();
+        let spike = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(body + 1)
+            .find(|(_, state)| state.bounce_blocks[0].static_movers_enabled)
+            .map(|(frame, _)| frame)
+            .unwrap();
+        assert!(trace.states[body].pos.x < 700.0);
+        assert!(spike > body);
+    }
+
+    #[test]
     fn moon_block_steering_writes_diagonal_lift_for_a_jump() {
         let p = PlayerSnapshot {
             pos: Vec2::new(80.0, 160.0),
@@ -6879,6 +7521,183 @@ mod tests {
     }
 
     #[test]
+    fn springboost_cancel_reverses_into_the_rising_glider_for_regrab() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 544.0),
+            solids: vec![Rect::new(0.0, 496.0, 320.0, 48.0)],
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::Glider,
+                    bounds: Rect::new(96.0, 486.0, 8.0, 10.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "glider".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::Spring,
+                    bounds: Rect::new(128.0, 490.0, 16.0, 6.0),
+                    direction: Vec2::new(0.0, -1.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "spring".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(100.0, 496.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..130)
+            .map(|frame| InputState {
+                move_x: if (14..45).contains(&frame) {
+                    1
+                } else if (45..75).contains(&frame) {
+                    -1
+                } else {
+                    0
+                },
+                move_y: if frame == 35 { 1 } else { 0 },
+                jump_pressed: frame == 25,
+                jump_held: (25..34).contains(&frame),
+                grab_held: frame <= 34 || frame >= 100,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
+        let released = trace
+            .states
+            .windows(2)
+            .position(|pair| pair[0].holding_glider == Some(0) && pair[1].holding_glider.is_none())
+            .map(|frame| frame + 1)
+            .unwrap();
+        let spring = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(released + 1)
+            .find(|(_, state)| state.gliders[0].speed.y == -160.0)
+            .map(|(frame, _)| frame)
+            .unwrap_or_else(|| {
+                panic!(
+                    "missing spring release={released}: {:?}",
+                    trace
+                        .states
+                        .iter()
+                        .enumerate()
+                        .skip(released)
+                        .step_by(5)
+                        .map(|(frame, state)| (
+                            frame,
+                            state.pos,
+                            state.gliders[0].position,
+                            state.gliders[0].speed,
+                            state.holding_glider,
+                        ))
+                        .collect::<Vec<_>>()
+                )
+            });
+        let regrab = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(spring + 1)
+            .find(|(_, state)| {
+                state.state == PlayerState::Pickup && state.holding_glider == Some(0)
+            })
+            .map(|(frame, _)| frame)
+            .unwrap_or_else(|| {
+                panic!(
+                    "missing regrab release={released} spring={spring}: {:?}",
+                    trace
+                        .states
+                        .iter()
+                        .enumerate()
+                        .skip(spring)
+                        .step_by(5)
+                        .map(|(frame, state)| (
+                            frame,
+                            state.pos,
+                            state.speed,
+                            state.gliders[0].position,
+                            state.gliders[0].speed,
+                            state.holding_glider,
+                        ))
+                        .collect::<Vec<_>>()
+                )
+            });
+        assert!(regrab > spring);
+    }
+
+    #[test]
+    fn holdable_springs_apply_theo_floor_and_wall_source_speeds() {
+        let mut floor_map = theo_crystal_map();
+        floor_map.solids.clear();
+        floor_map.entities[0].bounds = Rect::new(76.0, 88.0, 8.0, 10.0);
+        floor_map.entities.push(crate::Entity {
+            kind: EntityKind::Spring,
+            bounds: Rect::new(72.0, 94.0, 16.0, 6.0),
+            direction: Vec2::new(0.0, -1.0),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "spring".to_owned(),
+        });
+        let floor = simulate(
+            PlayerSnapshot {
+                pos: Vec2::new(200.0, 100.0),
+                theo_crystals: vec![crate::TheoCrystalSnapshot {
+                    position: Vec2::new(80.0, 98.0),
+                    speed: Vec2::new(80.0, 20.0),
+                    ..crate::TheoCrystalSnapshot::default()
+                }],
+                ..PlayerSnapshot::default()
+            },
+            &[InputState::default()],
+            &floor_map,
+            1,
+        )
+        .unwrap();
+        assert_eq!(floor.theo_crystals[0].speed.y, -160.0);
+        assert!((floor.theo_crystals[0].speed.x - 37.083_332).abs() < 0.000_1);
+        assert_eq!(floor.theo_crystals[0].gravity_timer, 0.15);
+
+        let mut wall_map = theo_crystal_map();
+        wall_map.solids.clear();
+        wall_map.entities[0].bounds = Rect::new(76.0, 88.0, 8.0, 10.0);
+        wall_map.entities.push(crate::Entity {
+            kind: EntityKind::Spring,
+            bounds: Rect::new(72.0, 84.0, 6.0, 16.0),
+            direction: Vec2::new(1.0, 0.0),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "wallSpringLeft".to_owned(),
+        });
+        let wall = simulate(
+            PlayerSnapshot {
+                pos: Vec2::new(200.0, 100.0),
+                theo_crystals: vec![crate::TheoCrystalSnapshot {
+                    position: Vec2::new(80.0, 98.0),
+                    speed: Vec2::new(-20.0, 0.0),
+                    ..crate::TheoCrystalSnapshot::default()
+                }],
+                ..PlayerSnapshot::default()
+            },
+            &[InputState::default()],
+            &wall_map,
+            1,
+        )
+        .unwrap();
+        assert_eq!(wall.theo_crystals[0].speed, Vec2::new(220.0, -80.0));
+        assert_eq!(wall.theo_crystals[0].gravity_timer, 0.1);
+    }
+
+    #[test]
     fn neutral_drop_releases_theo_without_throw_speed_or_player_recoil() {
         let p = PlayerSnapshot {
             pos: Vec2::new(60.0, 160.0),
@@ -7033,6 +7852,74 @@ mod tests {
         );
         assert_eq!(trace.states[regrabbed].pickup_old_speed.x, DASH_SPEED);
         assert_eq!(trace.states[regrabbed].speed, Vec2::default());
+    }
+
+    #[test]
+    fn holdable_slash_regrabs_theo_in_horizontal_dash_with_airborne_vertical_speed() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 160.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..70)
+            .map(|frame| InputState {
+                move_x: if (14..28).contains(&frame) {
+                    -1
+                } else if frame >= 28 {
+                    1
+                } else {
+                    0
+                },
+                move_y: if frame == 23 { 1 } else { 0 },
+                jump_pressed: frame == 14,
+                jump_held: (14..23).contains(&frame),
+                dash_pressed: frame == 28,
+                grab_held: frame <= 22 || frame >= 35,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &theo_crystal_map(), inputs.len() as u32).unwrap();
+        let released = trace
+            .states
+            .iter()
+            .position(|state| {
+                state.holding_theo.is_none() && state.theo_crystals[0].cannot_hold_timer > 0.0
+            })
+            .unwrap();
+        let dash = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(released + 1)
+            .find(|(_, state)| state.state == PlayerState::Dash)
+            .map(|(frame, _)| frame)
+            .unwrap();
+        let regrabbed = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(dash + 1)
+            .find(|(_, state)| state.state == PlayerState::Pickup && state.holding_theo == Some(0))
+            .map(|(frame, _)| frame)
+            .unwrap();
+        let restored = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(regrabbed + 1)
+            .find(|(_, state)| state.state == PlayerState::Normal)
+            .map(|(frame, _)| frame)
+            .unwrap();
+
+        assert!(!trace.states[released].on_ground);
+        assert_ne!(trace.states[released].speed.y, 0.0);
+        assert!(trace.states[dash - 1].theo_crystals[0].cannot_hold_timer > 0.0);
+        assert_eq!(
+            trace.states[regrabbed].pickup_old_speed,
+            Vec2::new(DASH_SPEED, 0.0)
+        );
+        assert_eq!(trace.states[regrabbed].speed, Vec2::default());
+        assert_eq!(trace.states[restored].speed, Vec2::new(DASH_SPEED, 0.0));
     }
 
     #[test]
@@ -7267,6 +8154,104 @@ mod tests {
         assert_eq!(trace.states[dash].dashes, 0);
         assert_eq!(trace.states[regrab].holding_theo, Some(0));
         assert!(trace.states[regrab].pickup_old_speed.y > 0.0);
+    }
+
+    #[test]
+    fn bumper_smuggle_releases_down_after_buffered_diagonal_dash_to_regrab_theo() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 544.0),
+            solids: vec![Rect::new(0.0, 496.0, 320.0, 48.0)],
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::TheoCrystal,
+                    bounds: Rect::new(96.0, 486.0, 8.0, 10.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "theoCrystal".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::Bumper,
+                    bounds: Rect::new(120.0, 480.0, 24.0, 24.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "bigSpinner".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(100.0, 496.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..120)
+            .map(|frame| InputState {
+                move_x: if frame >= 13 { 1 } else { 0 },
+                move_y: if frame == 26 || (45..=47).contains(&frame) {
+                    1
+                } else {
+                    0
+                },
+                dash_pressed: frame == 45,
+                grab_held: frame <= 25 || frame >= 45,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
+        let pickup = trace
+            .states
+            .iter()
+            .position(|state| state.state == PlayerState::Pickup && state.holding_theo == Some(0))
+            .unwrap();
+        let launch = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(pickup + 1)
+            .find(|(_, state)| state.state == PlayerState::Launch && state.holding_theo.is_none())
+            .map(|(frame, _)| frame)
+            .unwrap();
+        let dash = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(launch + 1)
+            .find(|(_, state)| state.state == PlayerState::Dash && state.holding_theo.is_none())
+            .map(|(frame, _)| frame)
+            .unwrap();
+        let regrab = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(dash + 1)
+            .find(|(_, state)| state.state == PlayerState::Pickup && state.holding_theo == Some(0))
+            .map(|(frame, _)| frame)
+            .unwrap_or_else(|| {
+                panic!(
+                    "missing regrab pickup={pickup} launch={launch} dash={dash}: {:?}",
+                    trace
+                        .states
+                        .iter()
+                        .enumerate()
+                        .skip(dash)
+                        .step_by(5)
+                        .map(|(frame, state)| (
+                            frame,
+                            state.pos,
+                            state.speed,
+                            state.theo_crystals[0].position,
+                            state.holding_theo,
+                            state.state,
+                        ))
+                        .collect::<Vec<_>>()
+                )
+            });
+        assert!(regrab > dash);
+        assert!(trace.states[regrab].pickup_old_speed.x > MAX_RUN);
     }
 
     #[test]
@@ -11690,11 +12675,10 @@ mod tests {
     }
 
     #[test]
-    fn fish_oshiro_seeker_and_snowball_top_callbacks_share_player_bounce_semantics() {
+    fn fish_oshiro_and_snowball_top_callbacks_share_player_bounce_semantics() {
         for kind in [
             EntityKind::Puffer,
             EntityKind::AngryOshiro,
-            EntityKind::Seeker,
             EntityKind::Snowball,
         ] {
             let mut p = PlayerSnapshot {
@@ -11715,6 +12699,261 @@ mod tests {
             assert_eq!(p.dash_attack_timer, 0.0, "kind={kind:?}");
             assert_eq!(p.var_jump_timer, VAR_JUMP_TIME, "kind={kind:?}");
         }
+    }
+
+    #[test]
+    fn seeker_attack_wall_collision_enters_stunned_with_source_speeds_and_timer() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 200.0, 180.0),
+            solids: vec![Rect::new(104.0, 0.0, 16.0, 180.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::Seeker,
+                bounds: Rect::new(94.0, 94.0, 12.0, 12.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "seeker".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(20.0, 160.0),
+            seekers: vec![crate::SeekerSnapshot {
+                position: Vec2::new(100.0, 100.0),
+                speed: Vec2::new(120.0, 50.0),
+                state: 3,
+                ..crate::SeekerSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(p, &[InputState::default(); 2], &map, 2).unwrap();
+
+        assert_eq!(trace.states[1].seekers[0].state, 4);
+        assert_eq!(trace.states[1].seekers[0].speed, Vec2::new(-100.0, 20.0));
+        assert_eq!(trace.states[1].seekers[0].state_timer, 0.8);
+        assert_eq!(
+            trace.states[2].seekers[0].speed,
+            approach_vec(Vec2::new(-100.0, 20.0), Vec2::default(), 150.0 * DT)
+        );
+        assert_eq!(trace.states[2].seekers[0].state_timer, 0.8 - DT);
+    }
+
+    #[test]
+    fn seeker_stunned_coroutine_returns_idle_and_split_simulation_is_composable() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            solids: vec![Rect::new(0.0, 160.0, 320.0, 20.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::Seeker,
+                bounds: Rect::new(194.0, 94.0, 12.0, 12.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "seeker".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let initial = PlayerSnapshot {
+            pos: Vec2::new(20.0, 160.0),
+            on_ground: true,
+            seekers: vec![crate::SeekerSnapshot {
+                position: Vec2::new(200.0, 100.0),
+                speed: Vec2::new(-100.0, 20.0),
+                state: 4,
+                state_timer: 0.8,
+                ..crate::SeekerSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [InputState::default(); 55];
+        let trace = simulate_trace(initial.clone(), &inputs, &map, inputs.len() as u32).unwrap();
+        let returned = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(1)
+            .find(|(_, state)| state.seekers[0].state == 0)
+            .map(|(frame, _)| frame)
+            .expect("StunnedCoroutine should return to Idle after 0.8 seconds");
+        assert_eq!(returned, 49);
+        assert_eq!(trace.states[returned].seekers[0].speed, Vec2::default());
+
+        let whole = trace.states.last().unwrap().clone();
+        let first = simulate(initial, &inputs[..20], &map, 20).unwrap();
+        let split = simulate(first, &inputs[20..], &map, 35).unwrap();
+        assert_eq!(split, whole);
+    }
+
+    #[test]
+    fn stunned_seeker_side_contact_point_bounces_player_and_recoils_at_one_hundred() {
+        let mut map = bounce_actor_map(EntityKind::Seeker);
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(92.0, 105.5),
+            dashes: 0,
+            stamina: 5.0,
+            seekers: vec![crate::SeekerSnapshot {
+                position: Vec2::new(100.0, 100.0),
+                state: 4,
+                state_timer: 0.8,
+                ..crate::SeekerSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        initialize_seekers(&mut p, &mut map);
+        advance_seekers(&mut p, &mut map);
+
+        assert!(!p.dead);
+        assert_eq!(p.dashes, 1);
+        assert_eq!(p.stamina, 110.0);
+        assert!(p.speed.x < -300.0);
+        assert_eq!(p.seekers[0].speed, Vec2::new(100.0, 0.0));
+        assert_eq!(p.seekers[0].state, 4);
+    }
+
+    #[test]
+    fn attacking_seeker_side_contact_kills_but_top_contact_bounces_and_regenerates() {
+        let mut side_map = bounce_actor_map(EntityKind::Seeker);
+        let mut side = PlayerSnapshot {
+            pos: Vec2::new(92.0, 105.5),
+            seekers: vec![crate::SeekerSnapshot {
+                position: Vec2::new(100.0, 100.0),
+                state: 3,
+                ..crate::SeekerSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        initialize_seekers(&mut side, &mut side_map);
+        advance_seekers(&mut side, &mut side_map);
+        assert!(side.dead);
+
+        let mut top_map = bounce_actor_map(EntityKind::Seeker);
+        let mut top = PlayerSnapshot {
+            pos: Vec2::new(100.0, 97.0),
+            speed: Vec2::new(50.0, 20.0),
+            dashes: 0,
+            stamina: 5.0,
+            seekers: vec![crate::SeekerSnapshot {
+                position: Vec2::new(100.0, 102.0),
+                state: 3,
+                ..crate::SeekerSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        initialize_seekers(&mut top, &mut top_map);
+        advance_seekers(&mut top, &mut top_map);
+        assert!(!top.dead);
+        assert_eq!(top.state, PlayerState::Normal);
+        assert_eq!(top.speed, Vec2::new(50.0, BOUNCE_SPEED));
+        assert_eq!(top.dashes, 1);
+        assert_eq!(top.stamina, 110.0);
+        assert_eq!(top.freeze_timer, 0.15);
+        assert_eq!(top.seekers[0].state, 6);
+    }
+
+    fn temple_gate_map(obstacle_height: f32) -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            solids: vec![Rect::new(96.0, 148.0, 16.0, obstacle_height)],
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::TempleGate,
+                    bounds: Rect::new(100.0, 100.0, 8.0, 48.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "templeGate".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::TheoCrystal,
+                    bounds: Rect::new(100.0, 135.0, 8.0, 10.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "theoCrystal".to_owned(),
+                },
+            ],
+            ..Map::default()
+        }
+    }
+
+    #[test]
+    fn close_behind_player_gate_uses_target_position_fallback_to_clip_theo() {
+        let map = temple_gate_map(1.0);
+        let p = PlayerSnapshot {
+            pos: Vec2::new(120.0, 160.0),
+            theo_crystals: vec![crate::TheoCrystalSnapshot {
+                position: Vec2::new(104.0, 145.0),
+                ..crate::TheoCrystalSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let closed = simulate(p.clone(), &[InputState::default()], &map, 1).unwrap();
+
+        assert!(closed.temple_gates[0].triggered);
+        assert!(!closed.temple_gates[0].open);
+        assert_eq!(closed.temple_gates[0].current_height, 48.0);
+        assert_eq!(closed.theo_crystals[0].position, Vec2::new(104.0, 159.0));
+        assert!(!closed.theo_crystals[0].dead);
+        assert!(!closed.dead);
+
+        let whole = simulate(p, &[InputState::default(); 3], &map, 3).unwrap();
+        let split = simulate(closed, &[InputState::default(); 2], &map, 2).unwrap();
+        assert_eq!(split, whole);
+    }
+
+    #[test]
+    fn player_squish_tries_ducked_target_position_before_actor_wiggles() {
+        let mut map = temple_gate_map(1.0);
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(104.0, 145.0),
+            ..PlayerSnapshot::default()
+        };
+        initialize_temple_gates(&mut p, &mut map);
+        let mut gate = p.temple_gates[0].clone();
+        close_temple_gate(&mut p, &mut map, 0, &mut gate);
+
+        assert_eq!(p.pos, Vec2::new(104.0, 159.0));
+        assert!(p.ducking);
+        assert!(!p.dead);
+    }
+
+    #[test]
+    fn failed_gate_squish_kills_theo_with_player_and_removes_glider() {
+        let mut map = temple_gate_map(20.0);
+        map.entities.push(crate::Entity {
+            kind: EntityKind::Glider,
+            bounds: Rect::new(100.0, 135.0, 8.0, 10.0),
+            direction: Vec2::default(),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "glider".to_owned(),
+        });
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(120.0, 160.0),
+            theo_crystals: vec![crate::TheoCrystalSnapshot {
+                position: Vec2::new(104.0, 145.0),
+                ..crate::TheoCrystalSnapshot::default()
+            }],
+            gliders: vec![crate::GliderSnapshot {
+                position: Vec2::new(104.0, 145.0),
+                ..crate::GliderSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        initialize_temple_gates(&mut p, &mut map);
+        initialize_theo_crystals(&mut p, &mut map);
+        initialize_gliders(&mut p, &mut map);
+        let mut gate = p.temple_gates[0].clone();
+        close_temple_gate(&mut p, &mut map, 0, &mut gate);
+
+        assert!(p.theo_crystals[0].dead);
+        assert!(p.dead);
+        assert!(p.gliders[0].removed);
     }
 
     #[test]

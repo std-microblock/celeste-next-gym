@@ -14,7 +14,7 @@
     note: [玩家更新先处理松抓，随后 Bumper.OnPlayer 在同帧触发 0.1 秒冻结、补充冲刺并进入 Launch；LaunchUpdate 又把 CanDash 检查放在 Holdable 抓取之前。因而可在碰撞帧放下物品，冻结后用缓冲冲刺离开，再穿过物品重抓。],
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [normal_update / interact / launch_update / try_pickup_theo]),
-  test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [bumper_freeze_smuggle_releases_dashes_and_regrabs_theo]),
+  test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [bumper_freeze_smuggle_releases_dashes_and_regrabs_theo / bumper_smuggle_releases_down_after_buffered_diagonal_dash_to_regrab_theo]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.24-bumper-holdable-dash-smuggle.ts], symbol: [entity-4.24-bumper-holdable-dash-smuggle], note: [真实 Everest 第二轮已观测 pickup、frame 27 无持物 Launch 与 frame 46 无持物 Dash，但 121 个状态内 regrab=-1；按单轮最小修正规则停止调参。缺少完整 Dash 后重抓链与九字段 Rust 对照，因此保持未实现。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.24-bumper-holdable-dash-smuggle.ts], symbol: [entity-4.24-bumper-holdable-dash-smuggle], note: [唯一一次 source-informed 修正只在缓冲 Dash 真正开始前保留 Down，到 frame 48 释放，允许落地后的 NormalUpdate 解除蹲姿并执行 Holdable 抓取。Rust 已形成 pickup→无持物 Launch→Dash→regrab；真实 Everest 尚待最终候选重验，因此保持未实现。]),
 )

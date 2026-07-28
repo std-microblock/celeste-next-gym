@@ -14,7 +14,7 @@ export const scenario = defineScenario({
   mapParts,
   name: 'entity-4.18.3-core-block-entity-displacement',
   initial: { pos: [736, 440], speed: [0, 0] },
-  inputs: inputFrames(280, () => input()),
+  inputs: inputFrames(280, (frame) => input({ move_x: frame < 80 ? -1 : 0 })),
   verify(states) {
     const broken = states.findIndex((state) => field(state, 'reformBlockCollidable') === false
       && field(state, 'reformSpikeCollidable') === false)

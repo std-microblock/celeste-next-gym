@@ -31,6 +31,6 @@ pub use sim::{
 pub use types::{
     BounceBlockSnapshot, CassetteBlockSnapshot, CassetteManagerSnapshot, CloudSnapshot, CoreMode,
     GliderSnapshot, HeartGemSnapshot, InputState, MoveBlockSnapshot, PlayerSnapshot, PlayerState,
-    RisingLavaSnapshot, SandwichLavaSnapshot, SpinnerSnapshot, TheoCrystalSnapshot, Vec2,
-    ZipMoverSnapshot,
+    RisingLavaSnapshot, SandwichLavaSnapshot, SeekerSnapshot, SpinnerSnapshot, TempleGateSnapshot,
+    TheoCrystalSnapshot, Vec2, ZipMoverSnapshot,
 };

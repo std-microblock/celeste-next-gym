@@ -110,7 +110,7 @@ const ENTITY_KINDS = new Set<FixtureEntity['kind']>([
   'puffer', 'angry_oshiro', 'seeker', 'snowball', 'cloud',
   'wind', 'bounce_block', 'theo_crystal', 'glider', 'zip_mover', 'move_block', 'moving_solid',
   'cassette_block', 'crystal_static_spinner',
-  'heart_gem', 'rising_lava', 'sandwich_lava',
+  'heart_gem', 'rising_lava', 'sandwich_lava', 'temple_gate',
 ])
 
 export function validateFixturePackage(fixture: FixturePackage): void {

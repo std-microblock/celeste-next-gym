@@ -8,12 +8,12 @@ describe('production scenario registry', () => {
   const registry = buildRegistry(scenarios)
 
   it('derives all target and status counts from explicit indexes', () => {
-    assert.equal(registry.scenarios.length, 174)
-    assert.equal(registry.byTarget.get('playground')?.length, 132)
+    assert.equal(registry.scenarios.length, 177)
+    assert.equal(registry.byTarget.get('playground')?.length, 135)
     assert.equal(registry.byTarget.get('area-1')?.length, 36)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 150, candidate: 24 })
+    assert.deepEqual(registry.counts, { active: 152, candidate: 25 })
   })
 
   it('keeps evidence-less scenarios as opt-in candidates', () => {
@@ -26,9 +26,9 @@ describe('production scenario registry', () => {
       'entity-4.14-heart-ultra',
       'entity-4.15-jumpthrough-clip',
       'entity-4.16-lava-neutral',
-      'entity-4.18.2-reform-boost-cassette-boost',
       'entity-4.18.2.1-cassoosted-fuper',
       'entity-4.18.3-core-block-entity-displacement',
+      'entity-4.19-seeker-bounce',
       'entity-4.22.1-holdable-stall',
       'entity-4.22.2-holdable-climb',
       'entity-4.22.3-holdable-neutral-jump',
@@ -39,6 +39,7 @@ describe('production scenario registry', () => {
       'entity-4.24-bumper-holdable-dash-smuggle',
       'entity-4.26-jellyvator',
       'entity-4.26-theovator',
+      'entity-4.28-koral-clip',
       'entity-4.29-springboost-cancel',
       'entity-4.6.2-cloud-hyper-bunnyhop',
       'other-5.10-spinner-stunning',
@@ -47,6 +48,34 @@ describe('production scenario registry', () => {
       'other-5.9-screen-transition-cassette-offset',
     ])
     assert.equal(selectScenarios(registry, { target: 'playground' }).some((scenario) => scenario.status === 'candidate'), false)
+  })
+
+  it('keeps Theo regrab and slash proofs in independently named map parts', () => {
+    const techniqueIds = ['4.20', '4.21']
+    const parts = techniqueIds.map((techniqueId) => {
+      const scenario = registry.scenarios.find((candidate) => candidate.techniqueIds.includes(techniqueId) && !candidate.tags.includes('feature:glider'))
+      assert.ok(scenario, `missing scenario for ${techniqueId}`)
+      assert.equal(scenario.mapParts.length, 1)
+      assert.equal(scenario.mapParts[0]?.dependencies.length, 0)
+      return scenario.mapParts[0]?.id
+    })
+    assert.deepEqual(parts, ['tech.entity-4.20-theo-regrab', 'tech.entity-4.21-holdable-slash'])
+  })
+
+  it('keeps the dynamic Seeker proof in its own map part', () => {
+    const seeker = registry.scenarios.find((candidate) => candidate.techniqueIds.includes('4.19'))
+    assert.ok(seeker)
+    assert.equal(seeker.mapParts.length, 1)
+    assert.equal(seeker.mapParts[0]?.id, 'tech.entity-4.19-seeker-bounce')
+    assert.deepEqual(seeker.mapParts[0]?.dependencies, [])
+  })
+
+  it('keeps the TempleGate squish proof in its own map part', () => {
+    const koral = registry.scenarios.find((candidate) => candidate.techniqueIds.includes('4.28'))
+    assert.ok(koral)
+    assert.equal(koral.mapParts.length, 1)
+    assert.equal(koral.mapParts[0]?.id, 'tech.entity-4.28-koral-clip')
+    assert.deepEqual(koral.mapParts[0]?.dependencies, [])
   })
 
   it('keeps every cassette and spinner audit in an independently named map part', () => {
