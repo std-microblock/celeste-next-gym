@@ -16,6 +16,7 @@ import {
   encodePresentationRecording,
   resolveExecutable,
   runLavfiSmokeTest,
+  selectPosterFrameIndex,
 } from "./encoder.js";
 import {
   RAW_FRAME_BYTES,
@@ -37,6 +38,12 @@ afterEach(async () => {
 });
 
 describe("presentation recording artifacts", () => {
+  it("selects an explicit poster state without clipping the encoded video", () => {
+    assert.equal(selectPosterFrameIndex([1, 2, 3, 3, 4], 3), 2);
+    assert.equal(selectPosterFrameIndex([1, 2, 3]), 0);
+    assert.throws(() => selectPosterFrameIndex([1, 2, 3], 4), /outside/);
+  });
+
   it("validates state gaps, duplicate presentations, hashes, and containment", async () => {
     const fixture = await createFixture();
     const loaded = await loadPresentationManifest(fixture.root, fixture.manifestPath);
@@ -70,10 +77,13 @@ describe("presentation recording artifacts", () => {
   }, async () => {
     const fixture = await createFixture();
     const outputPath = path.join(fixture.root, "videos", "scenario.mp4");
+    const posterPath = path.join(fixture.root, "videos", "scenario.poster.png");
     const result = await encodePresentationRecording({
       recordingRoot: fixture.root,
       manifestPath: fixture.manifestPath,
       outputPath,
+      posterPath,
+      posterStateIndex: 3,
       ffmpegPath: ffmpegPath!,
       ffprobePath: ffprobePath!,
     });
@@ -82,9 +92,11 @@ describe("presentation recording artifacts", () => {
     assert.equal(result.probe.pixel_format, "yuv420p");
     assert.equal(result.probe.frame_rate, "60/1");
     assert.equal(result.probe.frame_count, 3);
-    assert.equal(result.processes.length, 2);
+    assert.equal(result.processes.length, 3);
     assert.ok(result.processes.every((identity) => identity.pid > 0));
     assert.ok((await stat(outputPath)).isFile());
+    assert.ok((await stat(posterPath)).isFile());
+    assert.equal(result.poster?.output_path, posterPath);
     await assert.rejects(() => stat(outputPath.replace(/\.mp4$/, ".partial.mp4")));
   });
 
