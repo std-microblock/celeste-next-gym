@@ -14,14 +14,25 @@ export const scenario = defineScenario({
   mapParts,
   name: 'other-5.1.4-bino-extensions',
   initial: { pos: [512, 496], speed: [0, 0], on_ground: true },
-  inputs: Array.from({ length: 560 }, (_, frame) => input({ talk_pressed: frame === 0, move_y: frame >= 55 ? -1 : 0 })),
+  inputs: Array.from({ length: 640 }, (_, frame) => input({
+    talk_pressed: frame === 0,
+    move_y: frame >= 55 && frame < 520 ? -1 : 0,
+    // The summit endpoint remains interactive. Jump is the portable
+    // MenuCancel mapping, which is the authentic LookRoutine exit event.
+    jump_pressed: frame === 520,
+    jump_held: frame === 520,
+  })),
   verify(states) {
     const cameras = states.map((state) => field<readonly number[]>(state, 'levelCamera'))
     semanticAssert(states.some((state) => (field<number>(state, 'lookoutNode') ?? 0) >= 2), scenario.name,
       'Lookout did not traverse the independent node chain')
     semanticAssert(cameras.some((camera) => Math.hypot((camera?.[0] ?? 0) - 352, (camera?.[1] ?? 0) - 364) > 600), scenario.name,
       'node extension never exceeded the 600px FadeWipe threshold')
+    semanticAssert(field<boolean>(states[519], 'lookoutInteracting') === true, scenario.name,
+      'the terminal summit node exited before the MenuCancel input')
     semanticAssert(field<boolean>(states.at(-1), 'lookoutInteracting') === false, scenario.name,
-      'summit node endpoint did not complete the Lookout exit')
+      'MenuCancel did not complete the summit Lookout exit')
+    semanticAssert(states.at(-1)?.state === 0, scenario.name,
+      'the completed summit wipe did not restore Player.StNormal')
   },
 })

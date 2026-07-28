@@ -2962,10 +2962,10 @@ fn advance_node_lookout_camera(
     entity: &crate::Entity,
     p: &mut PlayerSnapshot,
     input: InputState,
-) -> bool {
+) {
     let nodes = &entity.nodes;
     if nodes.is_empty() {
-        return false;
+        return;
     }
     let node = (state.node as usize).min(nodes.len() - 1);
     state.node = node as u16;
@@ -3018,10 +3018,8 @@ fn advance_node_lookout_camera(
             state.node_percent = 0.0;
         } else {
             state.node_percent = 1.0;
-            return entity.direction.y != 0.0;
         }
     }
-    false
 }
 
 fn finish_lookout(p: &mut PlayerSnapshot, state: &mut crate::LookoutSnapshot) {
@@ -3108,13 +3106,15 @@ fn advance_lookouts(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
         }
         4 => {
             let exit_pressed = input.jump_pressed || input.dash_pressed || input.crouch_dash_pressed;
-            let summit_end = if entity.nodes.is_empty() {
+            if entity.nodes.is_empty() {
                 advance_free_lookout_camera(&mut state, entity, p, map, input);
-                false
             } else {
-                advance_node_lookout_camera(&mut state, entity, p, input)
-            };
-            if exit_pressed || summit_end {
+                advance_node_lookout_camera(&mut state, entity, p, input);
+            }
+            // Lookout.LookRoutine keeps its node camera alive at the summit
+            // endpoint. It exits only through MenuCancel or Dash; reaching a
+            // final `summit` node is not a synthetic timeout.
+            if exit_pressed {
                 state.phase = 5;
             }
         }
@@ -15616,13 +15616,22 @@ mod tests {
             }],
             ..PlayerSnapshot::default()
         };
-        let inputs = [InputState {
-            move_y: -1,
-            ..InputState::default()
-        }; 330];
+        let inputs: Vec<_> = (0..330)
+            .map(|frame| InputState {
+                move_y: -1,
+                // Summit arrival alone keeps LookRoutine active. The
+                // collector maps this press to MenuCancel, which begins the
+                // source exit and its one-second summit wipe.
+                jump_pressed: frame == 220,
+                jump_held: frame == 220,
+                ..InputState::default()
+            })
+            .collect();
         let trace = simulate_trace(player, &inputs, &map, 330).unwrap();
 
         assert!(trace.states.iter().any(|state| state.camera.x > 600.0));
+        assert_eq!(trace.states[219].lookouts[0].phase, 4);
+        assert_eq!(trace.states[219].lookouts[0].node_percent, 1.0);
         assert!(trace.states.iter().any(|state| state.lookouts[0].phase == 6));
         let exit = trace
             .states
