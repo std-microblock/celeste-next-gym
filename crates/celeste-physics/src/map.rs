@@ -38,7 +38,7 @@ impl Rect {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EntityKind {
     JumpThru,
@@ -65,6 +65,10 @@ pub enum EntityKind {
     TheoCrystal,
     /// Vanilla Crystal Heart / HeartGem PlayerCollider and collection routine.
     HeartGem,
+    /// Core chapter camera-following bottom lava hazard.
+    RisingLava,
+    /// Core chapter persistent top-and-bottom sandwich lava hazard.
+    SandwichLava,
     /// Vanilla Farewell Glider Actor with a Holdable component.
     Glider,
     /// Vanilla Celeste ZipMover Solid. The first node is its target position.
@@ -503,6 +507,25 @@ pub(crate) fn encode_celeste_rooms(
                     ],
                     vec![],
                 )),
+                EntityKind::RisingLava => Some(element(
+                    "risingLava",
+                    [
+                        ("id", BinaryValue::Int(id)),
+                        ("intro", BinaryValue::Bool(entity.single_use)),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![],
+                )),
+                EntityKind::SandwichLava => Some(element(
+                    "sandwichLava",
+                    [
+                        ("id", BinaryValue::Int(id)),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![],
+                )),
                 EntityKind::Glider => Some(element(
                     "glider",
                     [
@@ -932,6 +955,8 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 "bounceBlock" => EntityKind::BounceBlock,
                 "theoCrystal" => EntityKind::TheoCrystal,
                 "blackGem" | "heartGem" => EntityKind::HeartGem,
+                "risingLava" => EntityKind::RisingLava,
+                "sandwichLava" => EntityKind::SandwichLava,
                 "glider" => EntityKind::Glider,
                 "zipMover" => EntityKind::ZipMover,
                 "moveBlock" => EntityKind::MoveBlock,
@@ -956,12 +981,14 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 EntityKind::TheoCrystal | EntityKind::Glider | EntityKind::TempleGate => 8.0,
                 EntityKind::CrystalStaticSpinner => 16.0,
                 EntityKind::HeartGem => 16.0,
+                EntityKind::RisingLava | EntityKind::SandwichLava => 340.0,
                 _ => 8.0,
             };
             let default_h = match kind {
                 EntityKind::TheoCrystal | EntityKind::Glider | EntityKind::Puffer => 10.0,
                 EntityKind::Snowball => 9.0,
                 EntityKind::Cloud => 5.0,
+                EntityKind::RisingLava | EntityKind::SandwichLava => 120.0,
                 EntityKind::CrystalStaticSpinner => 12.0,
                 _ => default_w,
             };
@@ -1033,6 +1060,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 "blackGem" | "heartGem" => {
                     (Rect::new(ex - 8.0, ey - 8.0, 16.0, 16.0), Vec2::default())
                 }
+                "risingLava" | "sandwichLava" => (Rect::new(ex, ey, 340.0, 120.0), Vec2::default()),
                 "celesteGymMovingSolid" => (
                     Rect::new(ex, ey, raw_width, raw_height),
                     Vec2::new(attr_f32(el, "speedX", 0.0), attr_f32(el, "speedY", 0.0)),
@@ -1044,7 +1072,11 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 bounds,
                 direction,
                 shielded: attr_bool(el, "shielded", false),
-                single_use: attr_bool(el, "singleUse", false),
+                single_use: if kind == EntityKind::RisingLava {
+                    attr_bool(el, "intro", false)
+                } else {
+                    attr_bool(el, "singleUse", false)
+                },
                 nodes: el
                     .children
                     .iter()
@@ -1533,6 +1565,49 @@ mod tests {
         assert_eq!(entity.kind, EntityKind::HeartGem);
         assert_eq!(entity.bounds, Rect::new(360.0, -136.0, 16.0, 16.0));
         assert_eq!(entity.name, "blackGem");
+    }
+
+    #[test]
+    fn vanilla_core_lavas_round_trip_with_source_colliders() {
+        let map = Map {
+            bounds: Rect::new(320.0, -240.0, 320.0, 184.0),
+            entities: vec![
+                Entity {
+                    kind: EntityKind::RisingLava,
+                    bounds: Rect::new(352.0, -120.0, 8.0, 8.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: true,
+                    nodes: vec![],
+                    name: "risingLava".to_owned(),
+                },
+                Entity {
+                    kind: EntityKind::SandwichLava,
+                    bounds: Rect::new(400.0, -120.0, 8.0, 8.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "sandwichLava".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+
+        let encoded = encode_celeste_map(&map, "CelesteGymTest", "lavas").unwrap();
+        let decoded = decode_map_room(&encoded, Some("lavas")).unwrap();
+
+        assert_eq!(decoded.entities[0].kind, EntityKind::RisingLava);
+        assert_eq!(
+            decoded.entities[0].bounds,
+            Rect::new(352.0, -120.0, 340.0, 120.0)
+        );
+        assert!(decoded.entities[0].single_use);
+        assert_eq!(decoded.entities[1].kind, EntityKind::SandwichLava);
+        assert_eq!(
+            decoded.entities[1].bounds,
+            Rect::new(400.0, -120.0, 340.0, 120.0)
+        );
     }
 
     #[test]

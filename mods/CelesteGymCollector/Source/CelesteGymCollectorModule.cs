@@ -358,14 +358,14 @@ public sealed class CelesteGymCollectorModule : EverestModule {
             Player? player = ActivePlayer(job.AreaId);
             if (player is null) return;
             // Recording starts before the fresh LevelEnter so that the capture
-            // token owns the entire request. Do not advance scripted state 0
-            // behind that entry wipe: wait for ScreenWipe to clear itself,
-            // while leaving later room transitions entirely untouched.
-            if (captureSession is not null
-                && !job.Pending.Request.SkipTransitions
-                && Engine.Scene is Level recordingLevel
-                && recordingLevel.Wipe is not null) return;
-            if (job.Pending.Request.SkipTransitions && Engine.Scene is Level level) {
+            // token owns the entire request. Cancel only the fresh entry wipe
+            // before applying the initial snapshot: waiting for it to clear
+            // advances entities and clocks outside the scripted state range,
+            // while later room transitions remain untouched after the job starts.
+            if (RecordingLifecycle.ShouldCancelInitialEntryWipe(
+                    captureSession?.IsCapturing == true,
+                    job.Pending.Request.SkipTransitions)
+                && Engine.Scene is Level level) {
                 level.Wipe?.Cancel();
             }
             InstallScriptedButtons();
@@ -498,8 +498,8 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         if (snapshot.Speed is { Length: >= 2 }) player.Speed = new Vector2(snapshot.Speed[0], snapshot.Speed[1]);
         if (snapshot.Dashes is int dashes) player.Dashes = dashes;
         if (snapshot.Stamina is float stamina) player.Stamina = stamina;
-        if (snapshot.State is int state && state >= 0 && state < 26) player.StateMachine.State = state;
         if (snapshot.Facing is bool facing) player.Facing = facing ? Facings.Right : Facings.Left;
+        if (snapshot.State is int state && state >= 0 && state < 26) player.StateMachine.State = state;
         if (snapshot.Ducking is bool ducking) player.Ducking = ducking;
     }
 
