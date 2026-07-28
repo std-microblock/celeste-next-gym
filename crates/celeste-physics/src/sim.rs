@@ -6048,7 +6048,7 @@ fn point_bounce(p: &mut PlayerSnapshot, from: Vec2) {
     }
 }
 
-fn enforce_level_bounds(p: &mut PlayerSnapshot, map: &Map) {
+fn enforce_level_bounds(p: &mut PlayerSnapshot, map: &mut Map) {
     if p.dead || p.state == PlayerState::DreamDash || !player_in_control(p.state) {
         return;
     }
@@ -6057,7 +6057,7 @@ fn enforce_level_bounds(p: &mut PlayerSnapshot, map: &Map) {
     if collider.x < bounds.x {
         let center = Vec2::new(p.pos.x, collider.y + collider.height * 0.5);
         if let Some(next) = transition_room_at(map, p, Vec2::new(center.x - 8.0, center.y)) {
-            begin_transition(p, next, Vec2::new(-1.0, 0.0));
+            begin_transition(p, map, next, Vec2::new(-1.0, 0.0));
             return;
         }
         p.pos.x += bounds.x - collider.x;
@@ -6068,7 +6068,7 @@ fn enforce_level_bounds(p: &mut PlayerSnapshot, map: &Map) {
     if collider.x + collider.width > right {
         let center = Vec2::new(p.pos.x, collider.y + collider.height * 0.5);
         if let Some(next) = transition_room_at(map, p, Vec2::new(center.x + 8.0, center.y)) {
-            begin_transition(p, next, Vec2::new(1.0, 0.0));
+            begin_transition(p, map, next, Vec2::new(1.0, 0.0));
             return;
         }
         p.pos.x -= collider.x + collider.width - right;
@@ -6081,7 +6081,7 @@ fn enforce_level_bounds(p: &mut PlayerSnapshot, map: &Map) {
     if center_y < top {
         let center = Vec2::new(p.pos.x, center_y);
         if let Some(next) = transition_room_at(map, p, Vec2::new(center.x, center.y - 12.0)) {
-            begin_transition(p, next, Vec2::new(0.0, -1.0));
+            begin_transition(p, map, next, Vec2::new(0.0, -1.0));
             return;
         }
     }
@@ -6095,7 +6095,7 @@ fn enforce_level_bounds(p: &mut PlayerSnapshot, map: &Map) {
     if collider.bottom() > bottom {
         let center = Vec2::new(p.pos.x, collider.y + collider.height * 0.5);
         if let Some(next) = transition_room_at(map, p, Vec2::new(center.x, center.y + 12.0)) {
-            begin_transition(p, next, Vec2::new(0.0, 1.0));
+            begin_transition(p, map, next, Vec2::new(0.0, 1.0));
             return;
         }
     }
@@ -6120,7 +6120,30 @@ fn transition_room_at(map: &Map, p: &PlayerSnapshot, point: Vec2) -> Option<Rect
         })
 }
 
-fn begin_transition(p: &mut PlayerSnapshot, next: Rect, direction: Vec2) {
+fn load_transition_room(p: &mut PlayerSnapshot, map: &mut Map, next: Rect) {
+    let Some(room) = map
+        .transition_runtime
+        .iter()
+        .find(|room| room.bounds == next)
+        .cloned()
+    else {
+        return;
+    };
+
+    // Level.TransitionRoutine changes Session.Level and calls LoadLevel before
+    // yielding the camera transition. CassetteBlockManager is Global, so the
+    // destination blocks must be silently initialized from its existing index
+    // in this same scene frame, before its subsequent Update can WillToggle.
+    map.solids = room.solids;
+    map.entities = room.entities;
+    map.room_spawns = room.spawns;
+    p.cassette_blocks.clear();
+    p.spinners.clear();
+    initialize_cassette_blocks(p, map);
+    initialize_spinners(p, map);
+}
+
+fn begin_transition(p: &mut PlayerSnapshot, map: &mut Map, next: Rect, direction: Vec2) {
     if direction.y > 0.0
         && !matches!(
             p.state,
@@ -6160,6 +6183,7 @@ fn begin_transition(p: &mut PlayerSnapshot, next: Rect, direction: Vec2) {
     p.transition_room_bounds = Some(next);
     p.transition_direction = direction;
     p.transition_target = target;
+    load_transition_room(p, map, next);
     // TransitionRoutine updates cameraAt after yielding, then resumes once
     // more to observe cameraAt == 1 and run OnTransition. Preserve that final
     // coroutine-resume frame in addition to the 0.65-second camera duration.
@@ -6207,18 +6231,15 @@ fn update_transition(p: &mut PlayerSnapshot, map: &mut Map) {
                     p.dummy_moving = false;
                 }
             }
-            // Level.TransitionRoutine invokes LoadLevel for the destination
-            // room while the global CassetteBlockManager keeps its beat. Do
-            // not leave source-room solids/entities alive after transfer.
+            // LoadLevel already installed the destination entities when the
+            // transition started. Completion only selects its respawn point
+            // and clears source-room entity state that was retained for
+            // transition-removal callbacks.
             if let Some(room) = map
                 .transition_runtime
                 .iter()
                 .find(|room| room.bounds == next)
-                .cloned()
             {
-                map.solids = room.solids;
-                map.entities = room.entities;
-                map.room_spawns = room.spawns.clone();
                 if let Some(spawn) = room.spawns.iter().copied().min_by(|left, right| {
                     let left_dx = left.x - p.pos.x;
                     let left_dy = left.y - p.pos.y;
@@ -6232,11 +6253,7 @@ fn update_transition(p: &mut PlayerSnapshot, map: &mut Map) {
                     // room's closest player spawn after the transfer.
                     map.spawn = spawn;
                 }
-                p.cassette_blocks.clear();
-                p.spinners.clear();
                 p.lookouts.clear();
-                initialize_cassette_blocks(p, map);
-                initialize_spinners(p, map);
                 initialize_lookouts(p, map);
             }
         }
@@ -13127,7 +13144,7 @@ mod tests {
     }
 
     #[test]
-    fn transition_loads_destination_cassettes_and_nearest_room_spawn() {
+    fn transition_loads_destination_cassettes_before_same_frame_will_toggle() {
         let mut map = cassette_map();
         let next = Rect::new(0.0, -184.0, 320.0, 184.0);
         map.transition_rooms = vec![next];
@@ -13135,37 +13152,60 @@ mod tests {
             bounds: next,
             spawns: vec![Vec2::new(24.0, -16.0), Vec2::new(280.0, -16.0)],
             solids: vec![Rect::new(0.0, -8.0, 320.0, 8.0)],
-            entities: vec![crate::Entity {
-                kind: crate::EntityKind::CassetteBlock,
-                bounds: Rect::new(128.0, -48.0, 64.0, 16.0),
-                direction: Vec2::new(1.0, 1.0),
-                shielded: false,
-                single_use: false,
-                nodes: vec![],
-                name: "cassetteBlock".to_owned(),
-            }],
+            entities: vec![
+                crate::Entity {
+                    kind: crate::EntityKind::CassetteBlock,
+                    bounds: Rect::new(64.0, -48.0, 64.0, 16.0),
+                    direction: Vec2::new(0.0, 1.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "cassetteBlock".to_owned(),
+                },
+                crate::Entity {
+                    kind: crate::EntityKind::CassetteBlock,
+                    bounds: Rect::new(192.0, -48.0, 64.0, 16.0),
+                    direction: Vec2::new(1.0, 1.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "cassetteBlock".to_owned(),
+                },
+            ],
         }];
-        let p = PlayerSnapshot {
+        let mut p = PlayerSnapshot {
             pos: Vec2::new(250.0, -172.0),
             state: PlayerState::Frozen,
             current_room_bounds: Some(map.bounds),
-            transition_room_bounds: Some(next),
-            transition_target: Vec2::new(250.0, -172.0),
-            transition_timer: DT,
             cassette_manager: crate::CassetteManagerSnapshot {
                 initialized: true,
+                startup_music_pending: false,
+                beat_timer: CASSETTE_BEAT_INTERVAL - DT * 0.5,
+                beat_index: 6,
                 current_index: 1,
                 max_beat: 2,
                 tempo_mult: 1.0,
-                ..crate::CassetteManagerSnapshot::default()
             },
             ..PlayerSnapshot::default()
         };
-        let result = simulate(p, &[InputState::default()], &map, 1).unwrap();
-        assert_eq!(result.current_room_bounds, Some(next));
-        assert_eq!(result.cassette_blocks.len(), 1);
-        assert_eq!(result.cassette_blocks[0].position, Vec2::new(128.0, -48.0));
-        assert!(result.cassette_blocks[0].collidable);
+        begin_transition(&mut p, &mut map, next, Vec2::new(0.0, -1.0));
+
+        // LoadLevel's OnLevelStart is silent: the new index-0 block begins
+        // inactive at +2 px while the destination block matching the retained
+        // current index begins at its source position. The manager has not
+        // advanced yet.
+        assert_eq!(p.cassette_blocks[0].position.y, -46.0);
+        assert!(!p.cassette_blocks[0].collidable);
+        assert_eq!(p.cassette_blocks[1].position.y, -48.0);
+        assert!(p.cassette_blocks[1].collidable);
+
+        step(&mut p, InputState::default(), &mut map).unwrap();
+        assert_eq!(p.cassette_manager.beat_index, 7);
+        // The same scene frame now runs CassetteBlockManager.WillToggle:
+        // inactive index 0 moves up one pixel, while active index 1 moves
+        // down one pixel. Both land in their opposite one-pixel phase.
+        assert_eq!(p.cassette_blocks[0].position.y, -47.0);
+        assert_eq!(p.cassette_blocks[1].position.y, -47.0);
     }
 
     #[test]
