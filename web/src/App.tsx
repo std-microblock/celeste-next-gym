@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { GameView } from './components/GameView'
 import { InputTimeline } from './components/InputTimeline'
 import { KeyBindings } from './components/KeyBindings'
+import { MapEditor } from './components/MapEditor'
 import { StateInspector } from './components/StateInspector'
 import { TrainingGround } from './components/TrainingGround'
 import { trainingCatalog } from './training/catalog'
@@ -56,6 +57,8 @@ const PLAYGROUND_ROOMS = ['playground', 'transition_0'] as const
 const MAX_ANIMATION_DELTA_MS = 250
 const VISUAL_THEME_STORAGE_KEY = 'celeste-gym-visual-theme'
 
+type AppMode = 'play' | 'training' | 'editor' | 'advanced'
+
 function loadBindings(): Bindings {
   try {
     const saved = JSON.parse(localStorage.getItem('celeste-gym-bindings') ?? '') as Partial<Bindings>
@@ -98,7 +101,8 @@ export default function App() {
   const [map, setMap] = useState<GymMap>(() => structuredClone(PLAYGROUND))
   const [startMaps, setStartMaps] = useState<GymMap[]>(() => [structuredClone(PLAYGROUND)])
   const cache = useMemo(() => new FrameCache(client, map, createInitialState(map), 360), [client])
-  const [mode, setMode] = useState<'play' | 'training' | 'advanced'>('play')
+  const [mode, setMode] = useState<AppMode>('play')
+  const [editorExperiencing, setEditorExperiencing] = useState(false)
   const [trainingTechniqueId, setTrainingTechniqueId] = useState(trainingCatalog[0].id)
   const [trainingVariantId, setTrainingVariantId] = useState(trainingCatalog[0].variants[0].id)
   const [liveState, setLiveState] = useState<SimState>(() => createInitialState(map))
@@ -173,7 +177,7 @@ export default function App() {
   }, [cache, client, replaceLiveSession])
 
   useEffect(() => {
-    if (mode !== 'play' || wasmStatus !== 'ready') return
+    if ((mode !== 'play' && !(mode === 'editor' && editorExperiencing)) || wasmStatus !== 'ready') return
     let active = true
     let animation = 0
     let last = performance.now()
@@ -227,7 +231,7 @@ export default function App() {
       cancelAnimationFrame(animation)
       document.removeEventListener('visibilitychange', resetClock)
     }
-  }, [bindings, client, map, mode, wasmStatus])
+  }, [bindings, client, editorExperiencing, map, mode, wasmStatus])
 
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
@@ -501,12 +505,37 @@ export default function App() {
     }
   }
 
-  const selectMode = (nextMode: 'play' | 'training' | 'advanced') => {
-    if (nextMode === 'play') {
+  const resetLiveMap = useCallback((nextMap: GymMap = map) => {
+    replaceLiveSession(createInitialState(nextMap))
+  }, [map, replaceLiveSession])
+
+  const updateEditorMap = useCallback((nextMap: GymMap) => {
+    setMap(nextMap)
+    replaceLiveSession(createInitialState(nextMap))
+  }, [replaceLiveSession])
+
+  const toggleEditorExperience = useCallback((next: boolean) => {
+    resetLiveMap()
+    setEditorExperiencing(next)
+    setNotice(next ? '实时体验已启动 · 输入直接送入 WASM，不记录 state' : '已返回地图编辑')
+  }, [resetLiveMap])
+
+  const selectMode = (nextMode: AppMode) => {
+    if (nextMode === 'play' || nextMode === 'editor') {
       setPlaying(false)
       setRecording(false)
       setBindingsOpen(false)
       setStartSettingsOpen(false)
+    }
+    if (mode === 'editor' && nextMode !== 'editor') {
+      setEditorExperiencing(false)
+      const initial = createInitialState(map)
+      cache.replace(map, initial, cache.getInputs().map((input) => ({ ...input })))
+      replaceLiveSession(initial)
+      frameRef.current = 0
+      setFrame(0)
+    } else if (nextMode === 'editor') {
+      resetLiveMap()
     }
     setMode(nextMode)
   }
@@ -519,14 +548,14 @@ export default function App() {
     localStorage.setItem(VISUAL_THEME_STORAGE_KEY, id)
   }
 
-  return <div className={`app-shell ${mode === 'play' ? 'play-mode' : mode === 'training' ? 'training-mode' : 'advanced-mode'}`} data-visual-theme={visualTheme.id}>
+  return <div className={`app-shell ${mode === 'play' ? 'play-mode' : mode === 'training' ? 'training-mode' : mode === 'editor' ? 'editor-mode' : 'advanced-mode'}`} data-visual-theme={visualTheme.id}>
     {mode === 'advanced' && <div className="mountain-backdrop" />}
     <header className="topbar">
       <div className="brand-mark"><div><strong>CELESTE</strong><em>NEXT GYM</em></div></div>
       <label className="mode-tabs">
         <small>工作区</small>
-        <select aria-label="页面模式" value={mode} onChange={(event) => selectMode(event.target.value as 'play' | 'training' | 'advanced')}>
-          <option value="play">游玩</option><option value="training">训练</option><option value="advanced">高级</option>
+        <select aria-label="页面模式" value={mode} onChange={(event) => selectMode(event.target.value as AppMode)}>
+          <option value="play">游玩</option><option value="training">训练</option><option value="editor">编辑</option><option value="advanced">高级</option>
         </select>
       </label>
       <label className="visual-theme-picker">
@@ -545,6 +574,9 @@ export default function App() {
       </div> : mode === 'training' ? <div className="play-quick-actions training-context">
         <div className="play-room"><small>LESSON MODE</small><strong>{selectedTrainingTechnique.title} · {selectedTrainingVariant.title}</strong><span>{selectedTrainingVariant.summary}</span></div>
         <div className="top-actions"><button onClick={() => setBindingsOpen(true)}>控制</button></div>
+      </div> : mode === 'editor' ? <div className="play-quick-actions editor-context">
+        <div className="play-room"><small>{editorExperiencing ? 'LIVE EXPERIENCE' : 'MAP EDITOR'}</small><strong>{map.name}</strong><span>{map.room ?? DEFAULT_ROOM}</span></div>
+        <div className="top-actions"><button onClick={() => setBindingsOpen(true)}>控制</button></div>
       </div> : <div className="play-quick-actions">
         <div className="play-room">
           <small>LIVE ROOM</small>
@@ -560,7 +592,17 @@ export default function App() {
 
     {mode === 'play' ? <main className="play-workspace">
       <GameView map={map} state={liveState} states={[]} frame={liveFrame} stale={false} theme={visualTheme} />
-    </main> : mode === 'training' ? <TrainingGround techniqueId={selectedTrainingTechnique.id} variantId={selectedTrainingVariant.id} bindings={bindings} theme={visualTheme} onSelectTraining={(techniqueId, variantId) => { setTrainingTechniqueId(techniqueId); setTrainingVariantId(variantId) }} /> : <>
+    </main> : mode === 'training' ? <TrainingGround techniqueId={selectedTrainingTechnique.id} variantId={selectedTrainingVariant.id} bindings={bindings} theme={visualTheme} onSelectTraining={(techniqueId, variantId) => { setTrainingTechniqueId(techniqueId); setTrainingVariantId(variantId) }} /> : mode === 'editor' ? <MapEditor
+      map={map}
+      state={liveState}
+      frame={liveFrame}
+      theme={visualTheme}
+      experiencing={editorExperiencing}
+      ready={wasmStatus === 'ready'}
+      onChange={updateEditorMap}
+      onExperienceChange={toggleEditorExperience}
+      onResetExperience={resetLiveMap}
+    /> : <>
 
       <main className="workspace">
       <section className="stage panel-frame">
