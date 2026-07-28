@@ -67,8 +67,14 @@ for (const facing of [false, true]) {
       pos: { x: 64, y: 300 },
       speed,
       facing,
-    }), encode([{ ...input, move_x: 0, move_y, dash_pressed: true }]), encode(map), 1))
+    }), encode(Array.from({ length: 5 }, (_, frame) => ({
+      ...input,
+      move_x: 0,
+      move_y,
+      dash_pressed: frame === 0,
+    }))), encode(map), 5))
     const verticalEntry = verticalEntryTrace.states?.[1]
+    const verticalLaunch = verticalEntryTrace.states?.[5]
     if (!verticalEntry
       || verticalEntry.speed.x !== 0
       || verticalEntry.speed.y !== 0
@@ -78,6 +84,13 @@ for (const facing of [false, true]) {
       || verticalEntry.pos.y !== 300
       || verticalEntry.facing !== facing) {
       throw new Error(verticalEntryTrace.error ?? `Vertical DashBegin retained velocity while facing ${facing ? 'right' : 'left'}`)
+    }
+    if (!verticalLaunch
+      || verticalLaunch.speed.x !== 0
+      || verticalLaunch.speed.y !== move_y * 240
+      || verticalLaunch.dash_dir.x !== 0
+      || verticalLaunch.dash_dir.y !== move_y) {
+      throw new Error(verticalEntryTrace.error ?? `Vertical dash launch retained rightward velocity while facing ${facing ? 'right' : 'left'}`)
     }
   }
 }

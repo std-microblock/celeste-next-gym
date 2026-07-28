@@ -4253,7 +4253,11 @@ fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     if (p.state_timer - DASH_TIME).abs() <= p.frame_delta_time * 0.5 {
         p.dash_dir = p.last_aim;
         p.speed = Vec2::new(p.dash_dir.x * DASH_SPEED, p.dash_dir.y * DASH_SPEED);
+        // C# Math.Sign(0f) is 0, unlike Rust f32::signum(), which produces
+        // +1 for zero. A vertical dash must therefore not retain pre-dash
+        // rightward speed as though its zero horizontal launch were rightward.
         if p.before_dash_speed.x.signum() == p.speed.x.signum()
+            && p.speed.x != 0.0
             && p.before_dash_speed.x.abs() > p.speed.x.abs()
         {
             p.speed.x = p.before_dash_speed.x;
@@ -11718,7 +11722,12 @@ mod tests {
                 (-1, Vec2::new(123.0, -80.0)),
                 (1, Vec2::new(-123.0, 80.0)),
             ] {
-                let entry = simulate(
+                let inputs = std::array::from_fn::<_, 5, _>(|frame| InputState {
+                    move_y,
+                    dash_pressed: frame == 0,
+                    ..InputState::default()
+                });
+                let trace = simulate_trace(
                     PlayerSnapshot {
                         pos: Vec2::new(64.0, 64.0),
                         speed: before_dash_speed,
@@ -11726,15 +11735,13 @@ mod tests {
                         dashes: 1,
                         ..PlayerSnapshot::default()
                     },
-                    &[InputState {
-                        move_y,
-                        dash_pressed: true,
-                        ..InputState::default()
-                    }],
+                    &inputs,
                     &Map::default(),
-                    1,
+                    inputs.len() as u32,
                 )
                 .unwrap();
+                let entry = &trace.states[1];
+                let launched = &trace.states[5];
 
                 assert_eq!(entry.state, PlayerState::Dash);
                 assert_eq!(entry.before_dash_speed, before_dash_speed);
@@ -11742,6 +11749,9 @@ mod tests {
                 assert_eq!(entry.dash_dir, Vec2::default());
                 assert_eq!(entry.pos, Vec2::new(64.0, 64.0));
                 assert_eq!(entry.facing, facing);
+                assert_eq!(launched.state, PlayerState::Dash);
+                assert_eq!(launched.dash_dir, Vec2::new(0.0, move_y as f32));
+                assert_eq!(launched.speed, Vec2::new(0.0, move_y as f32 * DASH_SPEED));
             }
         }
     }
