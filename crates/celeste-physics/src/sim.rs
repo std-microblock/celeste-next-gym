@@ -48,6 +48,7 @@ const CLIMB_TIRED_THRESHOLD: f32 = 20.0;
 const CLIMB_JUMP_COST: f32 = 27.5;
 const CLIMB_UP_COST: f32 = 45.454_544;
 const CLIMB_STILL_COST: f32 = 10.0;
+const JUMP_THRU_ASSIST_SPEED: f32 = -40.0;
 const SWIM_Y_SPEED_MULT: f32 = 0.5;
 const SWIM_MAX_RISE: f32 = -60.0;
 const SWIM_MAX: f32 = 80.0;
@@ -3878,6 +3879,21 @@ fn step(
         p.star_fly_hitbox_preserved = false;
     }
 
+    // This is deliberately after the state callback (including WallJump) and
+    // before the ordinary Actor movement below. Player.Update performs this
+    // extra -40 px/s MoveV while rising through a JumpThru; its own sub-pixel
+    // remainder is therefore observable before Speed.Y's -105 px/s MoveV.
+    // Bubsdrop first overlaps the upper-room platform on the frame after the
+    // neutral wall jump, so omitting this pass leaves its Y position one pixel
+    // too low from that frame onward.
+    if !p.on_ground
+        && p.speed.y <= 0.0
+        && p.state != PlayerState::Climb
+        && touching_jump_thru(p, map)
+    {
+        move_axis_amount(p, map, false, JUMP_THRU_ASSIST_SPEED * p.frame_delta_time);
+    }
+
     if p.state != PlayerState::DreamDash {
         move_axis(p, map, true);
     }
@@ -5144,6 +5160,22 @@ fn wall_dir(p: &PlayerSnapshot, map: &Map) -> i8 {
 fn move_axis(p: &mut PlayerSnapshot, map: &Map, horizontal: bool) {
     let speed = if horizontal { p.speed.x } else { p.speed.y };
     move_axis_amount(p, map, horizontal, speed * p.frame_delta_time);
+}
+
+fn touching_jump_thru(p: &PlayerSnapshot, map: &Map) -> bool {
+    let player = current_player_rect(p, p.pos.x, p.pos.y);
+    map.entities.iter().any(|entity| {
+        // The map element gives JumpThru its visual height, but its vanilla
+        // collider is always only five pixels tall (JumpThru.cs ctor).
+        let collider = Rect::new(
+            entity.bounds.x,
+            entity.bounds.y,
+            entity.bounds.width,
+            entity.bounds.height.min(5.0),
+        );
+        matches!(entity.kind, EntityKind::JumpThru | EntityKind::Cloud)
+            && collider.intersects(player)
+    })
 }
 
 fn naive_move(p: &mut PlayerSnapshot, amount: Vec2) {
@@ -12986,11 +13018,28 @@ mod tests {
         assert_eq!(trace.states[1].speed, Vec2::new(0.0, JUMP_SPEED));
         // The real Bubsdrop trace wall-jumps on state 42. Its neutral launch
         // remains (-130, -105) on state 43; air friction first applies on
-        // state 44, producing -119.16665 horizontal speed.
+        // state 44, producing -119.16665 horizontal speed. The real f44
+        // Player.Update also runs JumpThruAssistSpeed (-40) before Actor's
+        // -105 vertical move, so preserve both the integer position and the
+        // sub-pixel remainder through f45.
+        assert_eq!(trace.states[42].pos, Vec2::new(162.0, -7.0));
         assert_eq!(trace.states[42].speed, Vec2::new(-WALL_JUMP_H, JUMP_SPEED));
+        assert!((trace.states[42].movement_remainder.x + 0.166_670_8).abs() < 0.000_001);
+        assert!((trace.states[42].movement_remainder.y - 0.249_996_54).abs() < 0.000_001);
+        assert_eq!(trace.states[43].pos, Vec2::new(160.0, -9.0));
         assert_eq!(trace.states[43].speed, Vec2::new(-WALL_JUMP_H, JUMP_SPEED));
+        assert!((trace.states[43].movement_remainder.x + 0.333_341_6).abs() < 0.000_001);
+        assert!((trace.states[43].movement_remainder.y - 0.499_993_1).abs() < 0.000_001);
+        assert_eq!(trace.states[44].pos, Vec2::new(158.0, -11.0));
         assert!((trace.states[44].speed.x + 119.166_65).abs() < 0.000_1);
         assert_eq!(trace.states[44].speed.y, JUMP_SPEED);
+        assert!((trace.states[44].movement_remainder.x + 0.319_456_34).abs() < 0.000_001);
+        assert!((trace.states[44].movement_remainder.y - 0.083_321_69).abs() < 0.000_001);
+        assert_eq!(trace.states[45].pos, Vec2::new(156.0, -13.0));
+        assert!((trace.states[45].speed.x + 108.333_3).abs() < 0.000_1);
+        assert_eq!(trace.states[45].speed.y, JUMP_SPEED);
+        assert!((trace.states[45].movement_remainder.x + 0.125_014_78).abs() < 0.000_001);
+        assert!((trace.states[45].movement_remainder.y + 0.333_349_7).abs() < 0.000_001);
         assert!(trace.states.iter().any(|state| {
             state.current_room_bounds == Some(upper)
                 && state.speed == Vec2::new(-WALL_JUMP_H, JUMP_SPEED)
