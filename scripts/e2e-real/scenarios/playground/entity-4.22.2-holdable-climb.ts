@@ -9,11 +9,12 @@ export const mapParts = [ENTITY_4_22_2_HOLDABLE_CLIMB_PART] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: [],
   techniqueIds: ['4.22.2'],
   mapParts,
   name: 'entity-4.22.2-holdable-climb',
+  recording: { primaryFor: ['4.22.2'], startFrame: 0, endFrame: 50 },
   initial: { pos: [220, 420] },
   inputs: Array.from({ length: 50 }, (_, frame) => input({
     move_y: frame === 23 ? 1 : 0,

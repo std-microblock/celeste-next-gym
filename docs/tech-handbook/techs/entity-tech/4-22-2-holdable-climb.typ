@@ -4,7 +4,7 @@
   id: "4.22.2",
   title-zh: "携物攀墙",
   title-en: "Holdable Climb",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [中性放下物品后立刻攀跳，再快速重抓，可在保留物品的同时完成攀墙动作。],
   description-en: [Neutral-drop the item, climb jump immediately, and regrab it to climb while keeping the holdable.],
   source-evidence: evidence(
@@ -15,6 +15,6 @@
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [release_theo / normal_update / climb_update / try_pickup_theo]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [neutral_drop_climb_jump_regrabs_theo_after_the_lockout]),
-  e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.22.2-holdable-climb.ts], symbol: [entity-4.22.2-holdable-climb], note: [独立墙面 MapPart 记录 pickup→neutral drop→Climb→ClimbJump→regrab；真实 Everest 尚待 FIFO 锁内采集。]),
+  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.22.2-holdable-climb.ts], symbol: [entity-4.22.2-holdable-climb], note: [独立 Theo + 墙面 MapPart 的真实 Everest 轨迹完整通过 pickup→neutral drop→Climb→ClimbJump→regrab。51 个状态的九类核心字段逐帧一致，最大 position／speed 误差均为 0。]),
+  candidate-e2e: none,
 )
