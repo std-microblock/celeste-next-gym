@@ -16,5 +16,5 @@
   rust-evidence: evidence(path: [crates/celeste-physics/src/types.rs; crates/celeste-physics/src/sim.rs], symbol: [LookoutSnapshot.removed; update_transition], note: [切换完成时，旧房 Lookout 标记 removed 并恢复 Player Normal，但故意保留 `interacting=true`；被移除实体不再持有相机。]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [bino_interaction_storage_survives_lookout_room_removal], note: [双房回归验证 transition 完成后 `Normal + removed + interacting` 三者同时成立。]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/other-5.1.3-bino-interaction-storage.ts; scripts/e2e-real/scenarios/lookout-parts.ts], symbol: [other-5.1.3-bino-interaction-storage; TECH_OTHER_5_1_3_BINO_INTERACTION_STORAGE], note: [双房 MapPart 已独立；现有 scripted baseline 只证明 interacting，尚未形成可信跨房 storage 输入序列。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/other-5.1.3-bino-interaction-storage.ts; scripts/e2e-real/scenarios/lookout-parts.ts; mods/CelesteGymCollector/Source/SnapshotCapture.cs], symbol: [other-5.1.3-bino-interaction-storage; TECH_OTHER_5_1_3_BINO_INTERACTION_STORAGE; lookoutRemovedWhileInteracting], note: [2026-07-28 独立 E2E 在启动前被 fixture validator 拒绝：`tech-5.1.3-lookout` 的 `[958,493,4,4]` 超出 960px 房间。保持 candidate，先将边界 transition 设计为有效 MapPart 后再运行真实 Everest。]),
 )

@@ -14,7 +14,7 @@
     note: [相机循环的继续条件检查输入与 Lookout 自身的 `interacting`，不检查 Player 是否仍为 Dummy；因此打断 Player 状态转换而不结束实体交互，会让 Normal 移动与 Aim 相机控制同时存在。],
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/types.rs; crates/celeste-physics/src/sim.rs], symbol: [LookoutSnapshot; update_camera; advance_lookouts], note: [Lookout interaction 不依附 Player state；phase 4 会锁住常规相机但不强制 Normal 回 Dummy，因此 Normal movement 与 Aim camera 可同帧并行。]),
-  test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [bino_control_storage_keeps_normal_player_and_camera_control_parallel], note: [回归从 `Normal + interacting phase 4` 快照推进，验证玩家横移和 Lookout 镜头同时变化且 flag 保留。]),
+  test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [bino_control_storage_keeps_normal_player_and_camera_control_parallel], note: [回归从 Talk 起步，用原生 Booster 进入 Boost 打断 Dummy，随后验证 `Normal + interacting`、玩家横移与 Lookout 镜头同帧变化，并由 jump 清除 flag。]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/other-5.1.2-bino-control-storage.ts; scripts/e2e-real/scenarios/lookout-parts.ts], symbol: [other-5.1.2-bino-control-storage; TECH_OTHER_5_1_2_BINO_CONTROL_STORAGE], note: [独立 MapPart 已覆盖真实 Lookout baseline；runner 尚无可证明的状态打断步骤，不能用 baseline 冒充 storage。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/other-5.1.2-bino-control-storage.ts; scripts/e2e-real/scenarios/lookout-parts.ts; mods/CelesteGymCollector/Source/SnapshotCapture.cs], symbol: [other-5.1.2-bino-control-storage; TECH_OTHER_5_1_2_BINO_CONTROL_STORAGE; boosterBoostingPlayer], note: [2026-07-28 独立真实 Everest run `2026-07-28T10-31-27.413Z-91484-db181161-a7f9-4748-9337-4bbfc2482dfd` 已认证并清理；Booster/interacting 与 Normal+camera 语义已通过到最后一步，但 frame 180 jump 未清除 stored interaction。保持 candidate，待修正退出输入时序后复测。]),
 )

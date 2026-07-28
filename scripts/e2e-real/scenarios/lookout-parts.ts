@@ -23,13 +23,21 @@ export const TECH_OTHER_5_1_1_BINO_CLIP = part('tech.other-5.1.1-bino-clip', [{
 
 export const TECH_OTHER_5_1_2_BINO_CONTROL_STORAGE = part('tech.other-5.1.2-bino-control-storage', [{
   name: 'playground',
-  entities: [{ id: 'tech-5.1.2-lookout', kind: 'lookout', bounds: [510, 493, 4, 4], name: 'lookout' }],
+  entities: [
+    { id: 'tech-5.1.2-lookout', kind: 'lookout', bounds: [510, 493, 4, 4], name: 'lookout' },
+    // The vanilla PlayerCollider interrupts StDummy after Talk starts. This
+    // is deliberately co-located so the input trace cannot substitute an
+    // externally forced state for the real Booster callback.
+    { id: 'tech-5.1.2-interrupting-booster', kind: 'booster', bounds: [510, 489, 20, 20], name: 'booster' },
+  ],
 }])
 
 export const TECH_OTHER_5_1_3_BINO_INTERACTION_STORAGE = part('tech.other-5.1.3-bino-interaction-storage', [
   {
     name: 'playground',
-    entities: [{ id: 'tech-5.1.3-lookout', kind: 'lookout', bounds: [510, 493, 4, 4], name: 'lookout' }],
+    // Player's 8px-wide hitbox crosses the right room edge when
+    // DummyWalkToExact reaches x=958, causing the native side transition.
+    entities: [{ id: 'tech-5.1.3-lookout', kind: 'lookout', bounds: [958, 493, 4, 4], name: 'lookout' }],
   },
   {
     name: 'transition_5_1_3',
