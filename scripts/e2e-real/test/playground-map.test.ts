@@ -18,6 +18,7 @@ const transition = requireScenario('mechanics-screen-transition-up')
 const zipJump = requireScenario('mechanics-liftboost-zip-jump')
 const bubbleSuper = requireScenario('entity-4.2-bubble-super')
 const bubbleDemohyper = requireScenario('entity-4.2-bubble-demohyper')
+const binoClip = requireScenario('other-5.1.1-bino-clip')
 const binoInteractionStorage = requireScenario('other-5.1.3-bino-interaction-storage')
 const binoExtensions = requireScenario('other-5.1.4-bino-extensions')
 
@@ -61,6 +62,19 @@ describe('per-scenario Playground maps', () => {
     assert.equal(playground?.solids.some(([x, y, width, height]) => x === 936 && y === 0 && width === 24 && height === 496), false)
     assert.equal(binoInteractionStorage.inputs.length, 300)
     assert.equal(binoInteractionStorage.inputs[120]?.move_x, 1)
+  })
+
+  it('aims the Bino Clip candidate left past the spinner view boundary', () => {
+    const fixture = scenarioFixture(binoClip).fixture
+    const playground = fixture.rooms.find((room) => room.name === 'playground')
+    const spinner = playground?.entities.find((entity) => entity.id === 'tech-5.1.1-spinner')
+
+    assert.deepEqual(spinner?.bounds, [628, 484, 16, 12])
+    assert.equal(binoClip.inputs.length, 230)
+    assert.equal(binoClip.inputs[54]?.move_x, 0)
+    assert.equal(binoClip.inputs[55]?.move_x, -1)
+    assert.equal(binoClip.inputs[204]?.move_x, -1)
+    assert.equal(binoClip.inputs[205]?.jump_pressed, true)
   })
 
   it('exits the terminal Bino summit node with MenuCancel rather than arrival', () => {

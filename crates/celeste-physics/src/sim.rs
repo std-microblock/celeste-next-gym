@@ -4016,6 +4016,10 @@ fn step(
         && !matches!(
             p.state,
             PlayerState::Climb
+                // StDummy's callback does not turn the player. Lookout reads
+                // the same horizontal input as camera aim while retaining
+                // the facing it set during DummyWalkToExact.
+                | PlayerState::Dummy
                 | PlayerState::Pickup
                 | PlayerState::RedDash
                 | PlayerState::HitSquash
@@ -15337,16 +15341,20 @@ mod tests {
     }
 
     #[test]
-    fn dummy_state_uses_source_gravity_and_friction() {
+    fn dummy_state_uses_source_gravity_friction_and_preserves_facing() {
         let p = PlayerSnapshot {
             pos: Vec2::new(160.0, 120.0),
             speed: Vec2::new(200.0, -100.0),
             state: PlayerState::Dummy,
             ..PlayerSnapshot::default()
         };
-        let p = simulate(p, &[InputState::default()], &Map::default(), 1).unwrap();
+        let p = simulate(p, &[InputState {
+            move_x: -1,
+            ..InputState::default()
+        }], &Map::default(), 1).unwrap();
         assert!((p.speed.x - 141.666_58).abs() < 0.001);
         assert!((p.speed.y - -84.999_97).abs() < 0.001);
+        assert!(p.facing);
     }
 
     #[test]
