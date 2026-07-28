@@ -14,14 +14,14 @@ export const scenario = defineScenario({
   techniqueIds: ['4.18.2.1'],
   mapParts,
   name: 'entity-4.18.2.1-cassoosted-fuper',
-  initial: { pos: [500, 496], speed: [0, 0], on_ground: true },
+  initial: { pos: [350, 496], speed: [0, 0], on_ground: true },
   inputs: Array.from({ length: 100 }, (_, frame) => input({
-    // StarFlyUpdate falls toward its 91 px/s idle speed when no aim is held;
-    // keep the source rightward aim live so the grounded Feather Super starts
-    // from the intended horizontal StarFly speed at frame 80.
+    // Keep right aim live through Feather's coroutine.  Frame 28 is its
+    // first StarFlyUpdate after launch; the map part's tempo=3 makes its
+    // index-0 CassetteBlock reform in this very frame's entity phase.
     move_x: 1,
-    jump_pressed: frame === 80,
-    jump_held: frame >= 80 && frame < 92,
+    jump_pressed: frame === 28,
+    jump_held: frame >= 28 && frame < 40,
   })),
   verify(states) {
     const fuper = states.findIndex((state) => state.state === 0

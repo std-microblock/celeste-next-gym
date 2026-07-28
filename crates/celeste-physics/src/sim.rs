@@ -13283,6 +13283,60 @@ mod tests {
     }
 
     #[test]
+    fn disappearing_cassette_cornerboost_fixture_times_hit_clear_and_refund() {
+        // This is the generated candidate's timing in a compact map: input
+        // 28 hits the initially-active index 1 wall, manager activation then
+        // disables it, input 29's entity phase clears it, and the following
+        // Player.Update restores the retained 90-speed run.
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
+            solids: vec![Rect::new(0.0, 496.0, 960.0, 48.0)],
+            entities: vec![
+                crate::Entity {
+                    kind: crate::EntityKind::CassetteBlock,
+                    bounds: Rect::new(320.0, 400.0, 64.0, 16.0),
+                    direction: Vec2::new(0.0, 3.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "cassetteBlock".to_owned(),
+                },
+                crate::Entity {
+                    kind: crate::EntityKind::CassetteBlock,
+                    bounds: Rect::new(128.0, 448.0, 32.0, 48.0),
+                    direction: Vec2::new(1.0, 3.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "cassetteBlock".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let mut inputs = [InputState::default(); 36];
+        for input in &mut inputs[23..] {
+            input.move_x = 1;
+        }
+        let trace = simulate_trace(
+            PlayerSnapshot {
+                pos: Vec2::new(120.0, 496.0),
+                on_ground: true,
+                ..PlayerSnapshot::default()
+            },
+            &inputs,
+            &map,
+            inputs.len() as u32,
+        )
+        .unwrap();
+        assert_eq!(trace.states[29].pos, Vec2::new(124.0, 496.0));
+        assert_eq!(trace.states[29].speed.x, 0.0);
+        assert!(!trace.states[29].cassette_blocks[1].collidable);
+        assert_eq!(trace.states[30].pos, Vec2::new(126.0, 496.0));
+        assert_eq!(trace.states[30].speed.x, 90.0);
+        assert_eq!(trace.states[30].wall_speed_retention_timer, 0.0);
+    }
+
+    #[test]
     fn fresh_custom_cassette_manager_skips_music_advance_on_its_first_update() {
         let p = PlayerSnapshot {
             pos: Vec2::new(96.0, 106.0),
@@ -13397,6 +13451,84 @@ mod tests {
         assert!(result.cassette_blocks[0].collidable);
         assert_eq!(result.cassette_blocks[0].position.y, 101.0);
         assert_eq!(result.pos.y, 101.0);
+    }
+
+    #[test]
+    fn cassoosted_fuper_fixture_aligns_first_starfly_jump_with_tempo_three_reform() {
+        // Mirror the candidate MapPart rather than pre-seeding StarFly.  The
+        // fresh custom manager skips its first AdvanceMusic call; with tempo
+        // three, beat 8 writes Activated on input 27 and CassetteBlock.Update
+        // reforms during input 28, after this frame's Player.Jump.
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
+            solids: vec![Rect::new(0.0, 496.0, 960.0, 48.0)],
+            entities: vec![
+                crate::Entity {
+                    kind: crate::EntityKind::FlyFeather,
+                    bounds: Rect::new(340.0, 474.0, 20.0, 20.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "infiniteStar".to_owned(),
+                },
+                crate::Entity {
+                    kind: crate::EntityKind::CassetteBlock,
+                    bounds: Rect::new(304.0, 493.0, 384.0, 16.0),
+                    direction: Vec2::new(0.0, 3.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "cassetteBlock".to_owned(),
+                },
+                crate::Entity {
+                    kind: crate::EntityKind::CassetteBlock,
+                    bounds: Rect::new(720.0, 400.0, 64.0, 16.0),
+                    direction: Vec2::new(1.0, 3.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "cassetteBlock".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let mut inputs = [InputState::default(); 40];
+        for (frame, input) in inputs.iter_mut().enumerate() {
+            input.move_x = 1;
+            input.jump_pressed = frame == 28;
+            input.jump_held = (28..40).contains(&frame);
+        }
+        let trace = simulate_trace(
+            PlayerSnapshot {
+                pos: Vec2::new(350.0, 496.0),
+                on_ground: true,
+                ..PlayerSnapshot::default()
+            },
+            &inputs,
+            &map,
+            inputs.len() as u32,
+        )
+        .unwrap();
+        let fuper = trace
+            .states
+            .iter()
+            .position(|state| {
+                state.state == PlayerState::Normal
+                    && (state.speed.x - 273.333_34).abs() < 0.001
+                    && state.speed.y == JUMP_SPEED
+            })
+            .expect("first controllable StarFly frame should produce a Feather Super");
+        let reform = trace
+            .states
+            .iter()
+            .position(|state| {
+                state.cassette_blocks[0].collidable && state.cassette_blocks[0].position.y == 493.0
+            })
+            .expect("tempo-three cassette should reform");
+        assert_eq!(fuper, 29);
+        assert_eq!(reform, fuper);
+        assert!(trace.states[fuper].pos.y < 496.0);
     }
 
     #[test]
