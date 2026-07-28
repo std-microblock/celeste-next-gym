@@ -4198,6 +4198,14 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
             if !holding_holdable(p) && input.grab_held && p.stamina > 0.0 && facing_dir == jump_wall
             {
                 climb_jump(p, jump_wall);
+            } else if p.dash_attack_timer > 0.0
+                && p.dash_dir.x == 0.0
+                && p.dash_dir.y == -1.0
+            {
+                // Player.NormalUpdate still allows SuperWallJump after the
+                // Dash coroutine has returned to Normal. DashAttacking lasts
+                // 0.3 s, twice the ordinary Dash state's 0.15 s duration.
+                super_wall_jump(p, -jump_wall);
             } else {
                 p.jump_buffer_timer = 0.0;
                 p.speed.x = -(jump_wall as f32) * WALL_JUMP_H;

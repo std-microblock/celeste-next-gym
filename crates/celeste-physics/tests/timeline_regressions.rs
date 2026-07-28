@@ -66,8 +66,8 @@ fn load_timeline(name: &str) -> Timeline {
 }
 
 #[test]
-fn delayed_wallboost_timeline_replays() {
-    let timeline = load_timeline("delayed-wallboost.json");
+fn delayed_wallbounce_timeline_uses_lingering_dash_attack() {
+    let timeline = load_timeline("delayed-wallbounce.json");
     assert_eq!(timeline.version, 2);
 
     let mut previous = FrameButtons::default();
@@ -89,29 +89,20 @@ fn delayed_wallboost_timeline_replays() {
     )
     .expect("timeline should replay");
 
-    for (frame, states) in trace.states.windows(2).enumerate() {
-        let before = &states[0];
-        let after = &states[1];
-        if before.wall_boost_timer > 0.0 || after.wall_boost_timer > 0.0 {
-            eprintln!(
-                "frame={} input=({}, {}, jump={}, grab={}) pos=({:.3},{:.3}) speed=({:.3},{:.3}) state={:?} stamina={:.3} wall_boost=({:.6},{}) move_x={}",
-                frame + 1,
-                inputs[frame].move_x,
-                inputs[frame].move_y,
-                inputs[frame].jump_pressed,
-                inputs[frame].grab_held,
-                after.pos.x,
-                after.pos.y,
-                after.speed.x,
-                after.speed.y,
-                after.state,
-                after.stamina,
-                after.wall_boost_timer,
-                after.wall_boost_dir,
-                after.move_x,
-            );
-        }
-    }
-
     assert_eq!(trace.states.len(), timeline.inputs.len() + 1);
+
+    // The recording presses jump three Normal frames after the up-dash state
+    // ends. Player.cs NormalUpdate checks DashAttacking and the retained
+    // straight-up DashDir before falling back to an ordinary WallJump.
+    let before_jump = &trace.states[1565];
+    let after_jump = &trace.states[1566];
+    assert_eq!(before_jump.state, celeste_physics::PlayerState::Normal);
+    assert_eq!(before_jump.dash_dir, celeste_physics::Vec2::new(0.0, -1.0));
+    assert!(before_jump.dash_attack_timer > 0.08);
+    assert!(inputs[1565].jump_pressed);
+    assert_eq!(after_jump.state, celeste_physics::PlayerState::Normal);
+    assert_eq!(after_jump.speed, celeste_physics::Vec2::new(170.0, -160.0));
+    assert_eq!(after_jump.dash_attack_timer, 0.0);
+    assert_eq!(after_jump.force_move_x_timer, 0.0);
+    assert!(!after_jump.dead);
 }

@@ -9,12 +9,12 @@
   description-en: [Jumping beside a wall during an upward dash attack launches a wallbounce at about 170 horizontal and 160 upward speed.],
   source-evidence: evidence(
     path: [Source/Player/Player.cs],
-    symbol: [Player.DashUpdate; Player.SuperWallJump],
-    snippet: raw(block: true, lang: "cs", "if (DashDir.X == 0 && DashDir.Y == -1 && Input.Jump.Pressed && CanUnDuck)\n    SuperWallJump(...);\n...\nSpeed.X = SuperWallJumpH * dir;\nSpeed.Y = SuperWallJumpSpeed;\nvarJumpTimer = SuperWallJumpVarTime;"),
-    note: [上冲期间墙探测命中后设置 170 水平、-160 垂直与 0.25 s 可变跳窗口。],
+    symbol: [Player.NormalUpdate; Player.DashUpdate; Player.SuperWallJump],
+    snippet: raw(block: true, lang: "cs", "if (canUnduck && WallJumpCheck(-1)) {\n    ...\n    else if (DashAttacking && DashDir.X == 0 && DashDir.Y == -1)\n        SuperWallJump(1);\n    else\n        WallJump(1);\n}\n...\nSpeed.X = SuperWallJumpH * dir;\nSpeed.Y = SuperWallJumpSpeed;"),
+    note: [DashBegin 打开的 DashAttacking 窗口为 0.3 秒，而普通 Dash 状态只持续 0.15 秒；因此上冲协程已经回到 Normal 后，NormalUpdate 仍会优先把近墙跳跃分派给 SuperWallJump，得到 170 水平、-160 垂直，而不是普通墙跳的 130/-105。],
   ),
-  rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [dash_update; super_wall_jump]),
-  test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [wallbounce_sets_super_wall_jump_speed_and_var_window]),
+  rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [normal_update; dash_update; super_wall_jump]),
+  test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs; crates/celeste-physics/tests/timeline_regressions.rs; tests/timelines/delayed-wallbounce.json], symbol: [wallbounce_sets_super_wall_jump_speed_and_var_window; delayed_wallbounce_timeline_uses_lingering_dash_attack]),
   e2e-evidence: evidence(path: [scripts/e2e-real-collector.mjs], symbol: [wallbounce], note: [真实关键帧 -170/-160，九类字段 max speed error 0.000038。]),
   candidate-e2e: none,
 )
