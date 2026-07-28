@@ -2388,6 +2388,12 @@ fn pickup_update(p: &mut PlayerSnapshot) {
     p.speed.y = p.speed.y.min(0.0);
     p.var_jump_timer = p.pickup_old_var_jump_timer;
     p.state = PlayerState::Normal;
+    // Player.PickupCoroutine applies the slow-fall holdable branch after
+    // restoring oldSpeed. A rising Glider pickup is clamped to at least the
+    // normal jump speed even when the cached vertical speed was smaller.
+    if p.holding_glider.is_some() && p.speed.y < 0.0 {
+        p.speed.y = p.speed.y.min(JUMP_SPEED);
+    }
 }
 
 fn theo_collides(map: &Map, position: Vec2) -> bool {
@@ -7300,7 +7306,7 @@ mod tests {
     }
 
     #[test]
-    fn glider_pickup_tween_stalls_then_restores_only_upward_speed() {
+    fn glider_pickup_tween_stalls_then_clamps_upward_speed() {
         let p = PlayerSnapshot {
             pos: Vec2::new(60.0, 160.0),
             speed: Vec2::new(30.0, -20.0),
@@ -7316,7 +7322,7 @@ mod tests {
         assert_eq!(trace.states[1].speed, Vec2::default());
         assert_eq!(trace.states[1].pickup_old_speed, Vec2::new(30.0, -20.0));
         assert_eq!(trace.states[13].state, PlayerState::Normal);
-        assert_eq!(trace.states[13].speed, Vec2::new(30.0, -20.0));
+        assert_eq!(trace.states[13].speed, Vec2::new(30.0, JUMP_SPEED));
     }
 
     #[test]
@@ -7339,8 +7345,8 @@ mod tests {
         let inputs: Vec<_> = (0..24)
             .map(|frame| InputState {
                 move_y: if frame == 0 { 1 } else { 0 },
-                jump_pressed: frame == 2,
-                jump_held: frame == 2,
+                jump_pressed: frame == 0,
+                jump_held: frame == 0,
                 ..InputState::default()
             })
             .collect();
@@ -7360,7 +7366,7 @@ mod tests {
                         .collect::<Vec<_>>()
                 )
             });
-        assert_eq!(neutral, 3);
+        assert_eq!(neutral, 1);
         assert!(trace.states[10].gliders[0].cannot_hold_timer > 0.0);
         let mut after_lockout = trace.states[24].clone();
         assert_eq!(after_lockout.gliders[0].cannot_hold_timer, 0.0);
@@ -7422,7 +7428,7 @@ mod tests {
         let inputs: Vec<_> = (0..24)
             .map(|frame| InputState {
                 move_x: 1,
-                move_y: 1,
+                move_y: if frame == 0 { 1 } else { 0 },
                 dash_pressed: frame == 0,
                 grab_held: frame >= 5,
                 ..InputState::default()
@@ -7445,7 +7451,12 @@ mod tests {
 
         assert_eq!(trace.states[pickup - 1].speed.x, 360.0);
         assert_eq!(trace.states[pickup].holding_glider, Some(0));
+        assert_eq!(trace.states[pickup].pickup_old_speed.x, 360.0);
+        assert!(!trace.states[pickup].ducking);
         assert_eq!(trace.states[restored].speed.x, 360.0);
+        assert!(!trace.states[restored].ducking);
+        assert!((trace.states[restored + 1].speed.x - (360.0 - RUN_REDUCE * DT)).abs() < 0.0001);
+        assert!(!trace.states[restored + 1].ducking);
     }
 
     #[test]
@@ -8069,7 +8080,7 @@ mod tests {
         let inputs: Vec<_> = (0..24)
             .map(|frame| InputState {
                 move_x: 1,
-                move_y: 1,
+                move_y: if frame == 0 { 1 } else { 0 },
                 dash_pressed: frame == 0,
                 grab_held: (5..=20).contains(&frame),
                 ..InputState::default()
@@ -8098,6 +8109,8 @@ mod tests {
         assert!(!trace.states[pickup].ducking);
         assert!(!trace.states[pickup].dash_end_pending);
         assert_eq!(trace.states[restored].speed, Vec2::new(360.0, 0.0));
+        assert!((trace.states[restored + 1].speed.x - (360.0 - RUN_REDUCE * DT)).abs() < 0.0001);
+        assert!(!trace.states[restored + 1].ducking);
 
         let without_cancel: Vec<_> = inputs
             .iter()
@@ -11861,6 +11874,11 @@ mod tests {
             jump_held: true,
             ..InputState::default()
         });
+        inputs.extend((0..60).map(|frame| InputState {
+            move_x: if frame < 25 { 1 } else { -1 },
+            grab_held: true,
+            ..InputState::default()
+        }));
         let trace = simulate_trace(initial, &inputs, &map, inputs.len() as u32).unwrap();
         assert_eq!(trace.states[1].state, PlayerState::Normal);
         assert_eq!(trace.states[1].jump_grace_timer, JUMP_GRACE);
@@ -11878,6 +11896,11 @@ mod tests {
         assert!(released > 1);
         assert_eq!(trace.states[released].before_dash_speed.x, 160.0);
         assert!(trace.states[released].theo_crystals[0].cannot_hold_timer > 0.0);
+        assert!(
+            trace.states[released + 1..released + 6]
+                .iter()
+                .all(|state| state.holding_theo.is_none())
+        );
         assert!(
             trace.states.iter().any(|state| {
                 state.state == PlayerState::Normal && (state.speed.x - 325.0).abs() < 0.001
@@ -11898,6 +11921,13 @@ mod tests {
                     state.ducking
                 ))
                 .collect::<Vec<_>>()
+        );
+        assert!(
+            trace
+                .states
+                .iter()
+                .skip(released + 6)
+                .any(|state| state.state == PlayerState::Pickup && state.holding_theo == Some(0))
         );
     }
     #[test]
