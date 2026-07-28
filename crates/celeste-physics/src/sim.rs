@@ -110,6 +110,7 @@ pub enum SimulationError {
 /// map clone and entity-state initialization; subsequent calls only advance the
 /// already initialized runtime map. This is the hot path used by native and
 /// WASM callers that evaluate many action sequences against one map.
+#[derive(Clone)]
 pub struct Simulator {
     snapshot: PlayerSnapshot,
     runtime_map: Map,
@@ -147,6 +148,15 @@ impl Simulator {
 
     pub fn snapshot(&self) -> &PlayerSnapshot {
         &self.snapshot
+    }
+
+    /// Branch this already-initialized simulation context.
+    ///
+    /// Searchers use this at divergent input prefixes so entity runtime state
+    /// (not only the portable player snapshot) remains identical to a
+    /// continuously simulated path.
+    pub fn fork(&self) -> Self {
+        self.clone()
     }
 
     pub fn step(&mut self, input: InputState) -> Result<&PlayerSnapshot, SimulationError> {
