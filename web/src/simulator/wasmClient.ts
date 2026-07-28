@@ -14,6 +14,7 @@ export interface SimulationRunner {
 export class WasmClient implements SimulationRunner {
   private readonly worker = new Worker(new URL('./wasm.worker.ts', import.meta.url), { type: 'module' })
   private readonly pending = new Map<number, { resolve(value: unknown): void; reject(error: Error): void }>()
+  private readonly mapDownloads = new Map<string, Promise<ArrayBuffer>>()
   private nextId = 1
   private cachedMap: GymMap | undefined
   private mapVersion = 0
@@ -47,9 +48,15 @@ export class WasmClient implements SimulationRunner {
   }
 
   async loadMap(url: string, room: string, name: string): Promise<GymMap> {
-    const response = await fetch(url)
-    if (!response.ok) throw new Error(`地图文件加载失败：HTTP ${response.status}`)
-    return this.request({ type: 'loadMap', bytes: await response.arrayBuffer(), room, name })
+    let download = this.mapDownloads.get(url)
+    if (!download) {
+      download = fetch(url).then((response) => {
+        if (!response.ok) throw new Error(`地图文件加载失败：HTTP ${response.status}`)
+        return response.arrayBuffer()
+      })
+      this.mapDownloads.set(url, download)
+    }
+    return this.request({ type: 'loadMap', bytes: await download, room, name })
   }
 
   simulate(state: SimState, inputs: SimInput[], map: GymMap): Promise<SimState[]> {
