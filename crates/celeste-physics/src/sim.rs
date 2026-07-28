@@ -7269,6 +7269,65 @@ mod tests {
     }
 
     #[test]
+    fn rising_lava_safe_lip_accepts_a_buffered_neutral_climb_jump() {
+        let mut map = lava_map(EntityKind::RisingLava, 760.0);
+        map.solids = vec![
+            Rect::new(0.0, 496.0, 960.0, 48.0),
+            Rect::new(688.0, 360.0, 24.0, 136.0),
+        ];
+        map.bounds = Rect::new(0.0, 0.0, 960.0, 544.0);
+        let initial = PlayerSnapshot {
+            pos: Vec2::new(716.0, 494.0),
+            state: PlayerState::Climb,
+            facing: false,
+            stamina: 110.0,
+            ..PlayerSnapshot::default()
+        };
+
+        let idle_inputs = vec![
+            InputState {
+                grab_held: true,
+                ..InputState::default()
+            };
+            220
+        ];
+        let idle = simulate_trace(initial.clone(), &idle_inputs, &map, 220).unwrap();
+        let safe_state = idle
+            .states
+            .iter()
+            .enumerate()
+            .filter(|(_, state)| {
+                let lava = &state.rising_lavas[0];
+                let hazard = Rect::new(lava.position.x, lava.position.y, 340.0, 120.0);
+                !state.dead
+                    && current_player_rect(state, state.pos.x, state.pos.y).intersects(hazard)
+                    && !current_player_hurt_rect(state).intersects(hazard)
+            })
+            .map(|(frame, _)| frame)
+            .last()
+            .unwrap();
+        let death_state = idle.states.iter().position(|state| state.dead).unwrap();
+        assert_eq!(safe_state, 169);
+        assert!(death_state > safe_state);
+
+        let inputs: Vec<InputState> = (0..220)
+            .map(|frame| InputState {
+                jump_pressed: frame == safe_state,
+                jump_held: frame >= safe_state && frame < safe_state + 8,
+                grab_held: frame <= safe_state,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(initial, &inputs, &map, inputs.len() as u32).unwrap();
+        let neutral = &trace.states[safe_state + 1];
+
+        assert_eq!(neutral.state, PlayerState::Normal);
+        assert!(neutral.wall_boost_timer > 0.0);
+        assert!((neutral.speed.y - JUMP_SPEED).abs() < 0.001);
+        assert!(!neutral.dead);
+    }
+
+    #[test]
     fn cloud_super_and_hyper_stack_the_cloud_lift_with_source_dash_jump_speeds() {
         for (hyper, expected_x, maximum_y) in [(false, 260.0, -105.0), (true, 325.0, -52.5)] {
             let p = PlayerSnapshot {
