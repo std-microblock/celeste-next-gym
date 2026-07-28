@@ -14,7 +14,10 @@ export const ENTITY_4_20_JELLY_REGRAB_PART = gliderPart('tech.entity-4.20-jelly-
 
 export const ENTITY_4_22_1_HOLDABLE_STALL_PART = gliderPart('tech.entity-4.22.1-holdable-stall', {
   name: 'playground', bounds: [0, 0, 320, 544], spawn: [80, 320], solids: [[0, 496, 320, 48]],
-  entities: [{ id: 'tech-4.22.1-jelly', kind: 'glider', bounds: [76, 310, 8, 10], name: 'glider' }],
+  entities: [
+    { id: 'tech-4.22.1-jelly-a', kind: 'glider', bounds: [76, 310, 8, 10], name: 'glider' },
+    { id: 'tech-4.22.1-jelly-b', kind: 'glider', bounds: [76, 390, 8, 10], name: 'glider' },
+  ],
 })
 
 export const ENTITY_4_22_3_JELLY_NEUTRAL_PART = gliderPart('tech.entity-4.22.3-jelly-neutral', {
