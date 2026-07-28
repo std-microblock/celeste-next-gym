@@ -170,10 +170,10 @@ internal static class SnapshotCapture {
                     values["reformBlockColliderPresent"] = bounceBlock.Collider is not null;
                     if (bounceBlock.Collider is Collider reformBlockCollider) {
                         values["reformBlockCollider"] = ColliderGeometry(reformBlockCollider);
-                        values["reformBlockWorldBounds"] = ColliderWorldGeometry(reformBlockCollider);
-                        values["reformPlayerColliderWorldBounds"] = ColliderWorldGeometry(player.Collider);
+                        values["reformBlockWorldBounds"] = ColliderWorldGeometry(reformBlockCollider, bounceBlock);
+                        values["reformPlayerColliderWorldBounds"] = ColliderWorldGeometry(player.Collider, player);
                         if (hurtbox is not null) {
-                            values["reformPlayerHurtboxWorldBounds"] = ColliderWorldGeometry(hurtbox);
+                            values["reformPlayerHurtboxWorldBounds"] = ColliderWorldGeometry(hurtbox, player);
                         }
                         // This is an observable BlockedCheck proxy, not an
                         // attempt to reproduce BounceBlock's private check: it
@@ -182,13 +182,16 @@ internal static class SnapshotCapture {
                         // grounded on its top face this frame.
                         values["reformBlockPlayerColliderOverlaps"] = WorldCollidersOverlap(
                             player.Collider,
-                            reformBlockCollider
+                            player,
+                            reformBlockCollider,
+                            bounceBlock
                         );
                         values["reformBlockPlayerHurtboxOverlaps"] = hurtbox is not null
-                            && WorldCollidersOverlap(hurtbox, reformBlockCollider);
+                            && WorldCollidersOverlap(hurtbox, player, reformBlockCollider, bounceBlock);
                         values["reformBlockPlayerGroundedOnSource"] = PlayerGroundedOnCollider(
                             player,
-                            reformBlockCollider
+                            reformBlockCollider,
+                            bounceBlock
                         );
                     }
                     object? state = bounceBlockState?.GetValue(bounceBlock);
@@ -281,30 +284,38 @@ internal static class SnapshotCapture {
         collider.Height
     ];
 
-    private static float[] ColliderWorldGeometry(Collider collider) => [
-        WorldLeft(collider),
-        WorldTop(collider),
+    // Player.hurtbox is a standalone Hitbox, so it has no Collider.Entity.
+    // Capture owns both sides of this CED comparison and supplies the source
+    // entity explicitly instead of inferring it from the collider.
+    private static float[] ColliderWorldGeometry(Collider collider, Entity owner) => [
+        WorldLeft(collider, owner),
+        WorldTop(collider, owner),
         collider.Width,
         collider.Height
     ];
 
-    private static float WorldLeft(Collider collider) => collider.Entity.Position.X + collider.Left;
+    private static float WorldLeft(Collider collider, Entity owner) => owner.Position.X + collider.Left;
 
-    private static float WorldTop(Collider collider) => collider.Entity.Position.Y + collider.Top;
+    private static float WorldTop(Collider collider, Entity owner) => owner.Position.Y + collider.Top;
 
-    private static float WorldRight(Collider collider) => WorldLeft(collider) + collider.Width;
+    private static float WorldRight(Collider collider, Entity owner) => WorldLeft(collider, owner) + collider.Width;
 
-    private static float WorldBottom(Collider collider) => WorldTop(collider) + collider.Height;
+    private static float WorldBottom(Collider collider, Entity owner) => WorldTop(collider, owner) + collider.Height;
 
-    private static bool WorldCollidersOverlap(Collider first, Collider second) =>
-        WorldLeft(first) < WorldRight(second)
-        && WorldRight(first) > WorldLeft(second)
-        && WorldTop(first) < WorldBottom(second)
-        && WorldBottom(first) > WorldTop(second);
+    private static bool WorldCollidersOverlap(
+        Collider first,
+        Entity firstOwner,
+        Collider second,
+        Entity secondOwner
+    ) =>
+        WorldLeft(first, firstOwner) < WorldRight(second, secondOwner)
+        && WorldRight(first, firstOwner) > WorldLeft(second, secondOwner)
+        && WorldTop(first, firstOwner) < WorldBottom(second, secondOwner)
+        && WorldBottom(first, firstOwner) > WorldTop(second, secondOwner);
 
-    private static bool PlayerGroundedOnCollider(Player player, Collider source) =>
+    private static bool PlayerGroundedOnCollider(Player player, Collider source, Entity sourceOwner) =>
         player.OnGround()
-        && WorldLeft(player.Collider) < WorldRight(source)
-        && WorldRight(player.Collider) > WorldLeft(source)
-        && MathF.Abs(WorldBottom(player.Collider) - WorldTop(source)) <= 1f;
+        && WorldLeft(player.Collider, player) < WorldRight(source, sourceOwner)
+        && WorldRight(player.Collider, player) > WorldLeft(source, sourceOwner)
+        && MathF.Abs(WorldBottom(player.Collider, player) - WorldTop(source, sourceOwner)) <= 1f;
 }
