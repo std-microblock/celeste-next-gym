@@ -1,12 +1,45 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_VISUAL_THEME_ID, VISUAL_THEMES, isVisualThemeId, visualThemeById, type VisualThemeId } from './visualThemes'
+import strawberryJamAtlas from '../public/assets/strawberry-jam/gameplay/theme-selected.json'
+import { DEFAULT_VISUAL_THEME_ID, VISUAL_THEME_COLLECTIONS, VISUAL_THEMES, isVisualThemeId, visualThemeById, type VisualThemeId } from './visualThemes'
 
 describe('visual themes', () => {
-  it('exposes five distinct chapter themes backed by original tilesets', () => {
-    expect(VISUAL_THEMES).toHaveLength(5)
+  it('exposes the five original themes and ten Strawberry Jam themes', () => {
+    expect(VISUAL_THEMES).toHaveLength(15)
     expect(new Set(VISUAL_THEMES.map((theme) => theme.id)).size).toBe(VISUAL_THEMES.length)
     expect(new Set(VISUAL_THEMES.map((theme) => theme.tileset)).size).toBe(VISUAL_THEMES.length)
-    for (const theme of VISUAL_THEMES) expect(theme.tileset).toMatch(/^tilesets\//)
+    expect(VISUAL_THEMES.filter((theme) => theme.collection === 'celeste')).toHaveLength(5)
+    expect(VISUAL_THEMES.filter((theme) => theme.collection === 'strawberry-jam')).toHaveLength(10)
+    expect(VISUAL_THEME_COLLECTIONS.map((collection) => collection.id)).toEqual(['celeste', 'strawberry-jam'])
+    for (const theme of VISUAL_THEMES) expect(theme.tileset).toMatch(/^(tilesets|sj\/tilesets)\//)
+  })
+
+  it('includes every Strawberry Jam gym tier with its native autotiler layout', () => {
+    const gyms = VISUAL_THEMES.filter((theme) => theme.id.endsWith('-gym'))
+    expect(gyms.map((theme) => theme.id)).toEqual([
+      'sj-beginner-gym',
+      'sj-intermediate-gym',
+      'sj-advanced-gym',
+      'sj-expert-gym',
+      'sj-grandmaster-gym',
+    ])
+    for (const gym of gyms) {
+      expect(gym.tileLayout).toBe('sj-gym')
+      expect(gym.layers).toEqual([expect.objectContaining({ repeat: true })])
+    }
+  })
+
+  it('backs every Strawberry Jam theme reference with a packed source texture', () => {
+    for (const theme of VISUAL_THEMES.filter((candidate) => candidate.collection === 'strawberry-jam')) {
+      expect(strawberryJamAtlas.entries[theme.tileset as keyof typeof strawberryJamAtlas.entries]).toBeDefined()
+      for (const layer of theme.layers) {
+        expect(strawberryJamAtlas.entries[layer.key as keyof typeof strawberryJamAtlas.entries]).toBeDefined()
+      }
+    }
+
+    for (const theme of VISUAL_THEMES.filter((candidate) => candidate.tileLayout === 'sj-gym')) {
+      const entry = strawberryJamAtlas.entries[theme.tileset as keyof typeof strawberryJamAtlas.entries]
+      expect(entry).toEqual(expect.objectContaining({ width: 24, height: 136 }))
+    }
   })
 
   it('validates persisted ids and safely resolves the default', () => {

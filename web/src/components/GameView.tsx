@@ -16,7 +16,7 @@ interface AtlasEntry {
 }
 
 interface GameAssets {
-  image: HTMLImageElement
+  image: HTMLCanvasElement
   entries: Record<string, AtlasEntry>
   keys: string[]
   frameLists: Map<string, string[]>
@@ -31,23 +31,44 @@ interface AnimationChoice {
 
 let assetsPromise: Promise<GameAssets> | null = null
 
+function loadAssetImage(source: string, errorMessage: string): Promise<HTMLImageElement> {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image()
+    image.src = source
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error(errorMessage))
+  })
+}
+
 function loadAssets(): Promise<GameAssets> {
   if (!assetsPromise) {
     assetsPromise = Promise.all([
       fetch('/assets/original/gameplay/gameplay-selected.json').then((response) => response.json()) as Promise<{ entries: Record<string, AtlasEntry> }>,
-      new Promise<HTMLImageElement>((resolve, reject) => {
-        const image = new Image()
-        image.src = '/assets/original/gameplay/gameplay-selected.png'
-        image.onload = () => resolve(image)
-        image.onerror = () => reject(new Error('原版 Gameplay 图集加载失败'))
-      }),
-    ]).then(([manifest, image]) => ({
-      image,
-      entries: manifest.entries,
-      keys: Object.keys(manifest.entries),
-      frameLists: new Map(),
-      tinted: new Map(),
-    }))
+      loadAssetImage('/assets/original/gameplay/gameplay-selected.png', '原版 Gameplay 图集加载失败'),
+      fetch('/assets/strawberry-jam/gameplay/theme-selected.json').then((response) => response.json()) as Promise<{ entries: Record<string, AtlasEntry> }>,
+      loadAssetImage('/assets/strawberry-jam/gameplay/theme-selected.png', 'Strawberry Jam 主题图集加载失败'),
+    ]).then(([originalManifest, originalImage, jamManifest, jamImage]) => {
+      const image = document.createElement('canvas')
+      image.width = Math.max(originalImage.naturalWidth, jamImage.naturalWidth)
+      image.height = originalImage.naturalHeight + jamImage.naturalHeight
+      const context = image.getContext('2d')
+      if (!context) throw new Error('主题图集 Canvas 创建失败')
+      context.imageSmoothingEnabled = false
+      context.drawImage(originalImage, 0, 0)
+      context.drawImage(jamImage, 0, originalImage.naturalHeight)
+      const jamEntries = Object.fromEntries(Object.entries(jamManifest.entries).map(([key, entry]) => [key, {
+        ...entry,
+        y: entry.y + originalImage.naturalHeight,
+      }]))
+      const entries = { ...originalManifest.entries, ...jamEntries }
+      return {
+        image,
+        entries,
+        keys: Object.keys(entries),
+        frameLists: new Map(),
+        tinted: new Map(),
+      }
+    })
   }
   return assetsPromise
 }
@@ -305,9 +326,44 @@ function tileCoordinate(grid: string[][], x: number, y: number): [number, number
   return [5, 12]
 }
 
+function strawberryJamGymTileCoordinate(grid: string[][], x: number, y: number): [number, number] {
+  const filled = (dx: number, dy: number) => grid[y + dy]?.[x + dx] !== undefined && grid[y + dy][x + dx] !== '0'
+  const top = filled(0, -1); const bottom = filled(0, 1); const left = filled(-1, 0); const right = filled(1, 0)
+  if (!top && bottom && left && right) return [1, 2]
+  if (top && !bottom && left && right) return [1, 4]
+  if (top && bottom && !left && right) return [0, 3]
+  if (top && bottom && left && !right) return [2, 3]
+  if (!top && bottom && !left && right) return [0, 2]
+  if (!top && bottom && left && !right) return [2, 2]
+  if (top && !bottom && !left && right) return [0, 4]
+  if (top && !bottom && left && !right) return [2, 4]
+  if (!top && !bottom && left && right) return [1, 14]
+  if (top && bottom && !left && !right) return [2, 12]
+  if (!top && !bottom && !left && right) return [0, 14]
+  if (!top && !bottom && left && !right) return [2, 14]
+  if (!top && bottom && !left && !right) return [2, 11]
+  if (top && !bottom && !left && !right) return [2, 13]
+  if (!top && !bottom && !left && !right) return [1, 13]
+  return [2, 15]
+}
+
 function drawBackdropLayer(context: CanvasRenderingContext2D, assets: GameAssets, map: GymMap, layer: VisualThemeLayer): void {
   const entry = assets.entries[layer.key]
   if (!entry) return
+  if (layer.repeat) {
+    context.save()
+    context.globalAlpha = layer.opacity ?? 1
+    context.beginPath()
+    context.rect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height)
+    context.clip()
+    for (let y = map.bounds.y; y < map.bounds.y + map.bounds.height; y += entry.height) {
+      for (let x = map.bounds.x; x < map.bounds.x + map.bounds.width; x += entry.width) {
+        context.drawImage(assets.image, entry.x, entry.y, entry.width, entry.height, x, y, entry.width, entry.height)
+      }
+    }
+    context.restore()
+    return
+  }
   const scale = Math.max(map.bounds.width / 320, map.bounds.height / 180)
   const frameX = map.bounds.x + (map.bounds.width - entry.frameWidth * scale) / 2
   const frameY = layer.y === undefined
@@ -363,7 +419,8 @@ function drawThemeBackground(context: CanvasRenderingContext2D, assets: GameAsse
   context.fillRect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height)
 }
 
-function buildTileLayer(assets: GameAssets, map: GymMap, grid: string[][], tilesetKey: string): HTMLCanvasElement | undefined {
+function buildTileLayer(assets: GameAssets, map: GymMap, grid: string[][], theme: VisualTheme): HTMLCanvasElement | undefined {
+  const tilesetKey = theme.tileset
   const tileset = assets.entries[tilesetKey]
   if (!tileset) return undefined
   const layer = document.createElement('canvas')
@@ -375,7 +432,9 @@ function buildTileLayer(assets: GameAssets, map: GymMap, grid: string[][], tiles
   for (let y = 0; y < grid.length; y += 1) {
     for (let x = 0; x < grid[y].length; x += 1) {
       if (grid[y][x] === '0') continue
-      const [tileX, tileY] = tileCoordinate(grid, x, y)
+      const [tileX, tileY] = theme.tileLayout === 'sj-gym'
+        ? strawberryJamGymTileCoordinate(grid, x, y)
+        : tileCoordinate(grid, x, y)
       context.drawImage(assets.image, tileset.x + tileX * 8, tileset.y + tileY * 8, 8, 8, x * 8, y * 8, 8, 8)
     }
   }
@@ -1016,8 +1075,8 @@ export function GameView({ map, state, states, frame, stale, theme, children }: 
   const [viewportRevision, setViewportRevision] = useState(0)
   const solidGrid = useMemo(() => buildSolidGrid(map), [map])
   const tileLayer = useMemo(
-    () => assets ? buildTileLayer(assets, map, solidGrid, theme.tileset) : undefined,
-    [assets, map, solidGrid, theme.tileset],
+    () => assets ? buildTileLayer(assets, map, solidGrid, theme) : undefined,
+    [assets, map, solidGrid, theme],
   )
 
   useEffect(() => { void loadAssets().then(setAssets) }, [])
