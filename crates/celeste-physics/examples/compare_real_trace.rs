@@ -214,6 +214,11 @@ fn to_snapshot(value: &PortableSnapshot) -> PlayerSnapshot {
         ..PlayerSnapshot::default()
     };
     snapshot.dash_dir = vector_field(&value.fields, "DashDir");
+    snapshot.time_rate = value
+        .fields
+        .get("engineTimeRate")
+        .and_then(Value::as_f64)
+        .map_or(1.0, |value| value as f32);
     snapshot.before_dash_speed = vector_field(&value.fields, "beforeDashSpeed");
     snapshot.demo_dashed = bool_field(&value.fields, "demoDashed");
     snapshot.movement_remainder = vector_field(&value.fields, "movementCounter");

@@ -22,7 +22,7 @@ describe('map-part exporter', () => {
     const fixture = assembleFixturePackage([...COMMON_MAP_PARTS.values()], COMMON_MAP_PARTS)
     assert.equal(fixture.rooms.length, 3)
     assert.equal(fixture.rooms.reduce((total, room) => total + room.solids.length, 0), 27)
-    assert.equal(fixture.rooms.reduce((total, room) => total + room.entities.length, 0), 69)
+    assert.equal(fixture.rooms.reduce((total, room) => total + room.entities.length, 0), 74)
   })
 
   it('computes dependency closure and emits canonical stable sorting', () => {

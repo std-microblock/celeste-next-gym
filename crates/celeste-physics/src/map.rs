@@ -63,6 +63,8 @@ pub enum EntityKind {
     BounceBlock,
     /// Vanilla TheoCrystal Actor with a Holdable component.
     TheoCrystal,
+    /// Vanilla Crystal Heart / HeartGem PlayerCollider and collection routine.
+    HeartGem,
     /// Vanilla Farewell Glider Actor with a Holdable component.
     Glider,
     /// Vanilla Celeste ZipMover Solid. The first node is its target position.
@@ -486,6 +488,19 @@ pub(crate) fn encode_celeste_rooms(
                     ],
                     vec![],
                 )),
+                EntityKind::HeartGem => Some(element(
+                    "blackGem",
+                    [
+                        ("fake", BinaryValue::Bool(false)),
+                        ("id", BinaryValue::Int(id)),
+                        ("originX", BinaryValue::Int(8)),
+                        ("originY", BinaryValue::Int(8)),
+                        ("removeCameraTriggers", BinaryValue::Bool(false)),
+                        ("x", BinaryValue::Int(x + width / 2)),
+                        ("y", BinaryValue::Int(y + height / 2)),
+                    ],
+                    vec![],
+                )),
                 EntityKind::Glider => Some(element(
                     "glider",
                     [
@@ -899,6 +914,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 "windTrigger" => EntityKind::Wind,
                 "bounceBlock" => EntityKind::BounceBlock,
                 "theoCrystal" => EntityKind::TheoCrystal,
+                "blackGem" | "heartGem" => EntityKind::HeartGem,
                 "glider" => EntityKind::Glider,
                 "zipMover" => EntityKind::ZipMover,
                 "moveBlock" => EntityKind::MoveBlock,
@@ -921,6 +937,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 EntityKind::Strawberry => 14.0,
                 EntityKind::TheoCrystal | EntityKind::Glider => 8.0,
                 EntityKind::CrystalStaticSpinner => 16.0,
+                EntityKind::HeartGem => 16.0,
                 _ => 8.0,
             };
             let default_h = match kind {
@@ -994,6 +1011,9 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 }
                 "theoCrystal" | "glider" => {
                     (Rect::new(ex - 4.0, ey - 10.0, 8.0, 10.0), Vec2::default())
+                }
+                "blackGem" | "heartGem" => {
+                    (Rect::new(ex - 8.0, ey - 8.0, 16.0, 16.0), Vec2::default())
                 }
                 "celesteGymMovingSolid" => (
                     Rect::new(ex, ey, raw_width, raw_height),
@@ -1446,6 +1466,30 @@ mod tests {
         assert_eq!(entity.kind, EntityKind::TheoCrystal);
         assert_eq!(entity.bounds, Rect::new(364.0, -130.0, 8.0, 10.0));
         assert_eq!(entity.name, "theoCrystal");
+    }
+
+    #[test]
+    fn vanilla_heart_gem_round_trips_through_celeste_binary() {
+        let map = Map {
+            bounds: Rect::new(320.0, -240.0, 320.0, 184.0),
+            entities: vec![Entity {
+                kind: EntityKind::HeartGem,
+                bounds: Rect::new(360.0, -136.0, 16.0, 16.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "blackGem".to_owned(),
+            }],
+            ..Map::default()
+        };
+
+        let encoded = encode_celeste_map(&map, "CelesteGymTest", "heart").unwrap();
+        let decoded = decode_map_room(&encoded, Some("heart")).unwrap();
+        let entity = decoded.entities.first().unwrap();
+        assert_eq!(entity.kind, EntityKind::HeartGem);
+        assert_eq!(entity.bounds, Rect::new(360.0, -136.0, 16.0, 16.0));
+        assert_eq!(entity.name, "blackGem");
     }
 
     #[test]
