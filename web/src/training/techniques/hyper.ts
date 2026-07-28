@@ -83,6 +83,11 @@ export const hyper: TrainingTechnique = {
       routeValidation: { observeUntil: 'jump_frame+25', success: ['!final.dead', 'final.pos.x >= 208'] },
     }),
     hyperVariant({
+      id: 'charged-hyper', title: '充能Hyper', summary: '充能Hyper', map: openGapMap, initial: snapshot(openGapMap.spawn),
+      success: ['!final.dead', 'final.dashes >= 1', 'final.speed.x >= 320'],
+      routeValidation: { observeUntil: 'jump_frame+25', success: ['!final.dead', 'final.pos.x >= 208'] },
+    }),
+    hyperVariant({
       id: 'spike-gap', title: '越过尖刺', summary: '控制起跳窗口，越过地面的尖刺带。', map: spikeMap, initial: snapshot(spikeMap.spawn),
       routeValidation: { observeUntil: 'jump_frame+20', success: ['!final.dead', 'final.pos.x > 174'] },
     }),
