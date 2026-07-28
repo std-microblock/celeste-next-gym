@@ -17,6 +17,20 @@ export const ENTITY_4_20_THEO_REGRAB_PART = defineMapPart({
   }],
 })
 
+export const ENTITY_4_21_HOLDABLE_SLASH_PART = defineMapPart({
+  id: 'tech.entity-4.21-holdable-slash',
+  dependencies: [],
+  package: PACKAGE,
+  sid: SID,
+  rooms: [{
+    name: 'playground',
+    bounds: [0, 0, 960, 544],
+    spawn: [300, 496],
+    solids: [[0, 496, 960, 48]],
+    entities: [{ id: 'tech-4.21-theo', kind: 'theo_crystal', bounds: [296, 486, 8, 10], name: 'theoCrystal' }],
+  }],
+})
+
 export const ENTITY_4_22_NEUTRAL_DROP_PART = defineMapPart({
   id: 'tech.entity-4.22-neutral-drop',
   dependencies: [],

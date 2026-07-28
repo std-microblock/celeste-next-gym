@@ -6032,6 +6032,71 @@ mod tests {
     }
 
     #[test]
+    fn holdable_slash_regrabs_theo_in_horizontal_dash_with_airborne_vertical_speed() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 160.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..70)
+            .map(|frame| InputState {
+                move_x: if (14..28).contains(&frame) {
+                    -1
+                } else if frame >= 28 {
+                    1
+                } else {
+                    0
+                },
+                move_y: if frame == 23 { 1 } else { 0 },
+                jump_pressed: frame == 14,
+                jump_held: (14..23).contains(&frame),
+                dash_pressed: frame == 28,
+                grab_held: frame <= 22 || frame >= 35,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &theo_crystal_map(), inputs.len() as u32).unwrap();
+        let released = trace
+            .states
+            .iter()
+            .position(|state| {
+                state.holding_theo.is_none() && state.theo_crystals[0].cannot_hold_timer > 0.0
+            })
+            .unwrap();
+        let dash = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(released + 1)
+            .find(|(_, state)| state.state == PlayerState::Dash)
+            .map(|(frame, _)| frame)
+            .unwrap();
+        let regrabbed = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(dash + 1)
+            .find(|(_, state)| state.state == PlayerState::Pickup && state.holding_theo == Some(0))
+            .map(|(frame, _)| frame)
+            .unwrap();
+        let restored = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(regrabbed + 1)
+            .find(|(_, state)| state.state == PlayerState::Normal)
+            .map(|(frame, _)| frame)
+            .unwrap();
+
+        assert!(!trace.states[released].on_ground);
+        assert_ne!(trace.states[released].speed.y, 0.0);
+        assert!(trace.states[dash - 1].theo_crystals[0].cannot_hold_timer > 0.0);
+        assert_eq!(trace.states[regrabbed].pickup_old_speed, Vec2::new(DASH_SPEED, 0.0));
+        assert_eq!(trace.states[regrabbed].speed, Vec2::default());
+        assert_eq!(trace.states[restored].speed, Vec2::new(DASH_SPEED, 0.0));
+    }
+
+    #[test]
     fn theovator_regrabs_after_updash_speed_is_live_and_restores_it_after_pickup() {
         let p = PlayerSnapshot {
             pos: Vec2::new(60.0, 160.0),
