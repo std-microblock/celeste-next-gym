@@ -3261,6 +3261,9 @@ fn advance_gliders(p: &mut PlayerSnapshot, map: &mut Map) {
             map.entities[entity_index].bounds.y = -1_000_000.0;
             continue;
         }
+        // Glider.Update checks this timer before its DeltaTime subtraction,
+        // so the final positive frame still suppresses gravity.
+        let spring_no_gravity_active = glider.no_gravity_timer > 0.0;
         glider.cannot_hold_timer = (glider.cannot_hold_timer - p.frame_delta_time).max(0.0);
         glider.gravity_timer = (glider.gravity_timer - p.frame_delta_time).max(0.0);
         glider.no_gravity_timer = (glider.no_gravity_timer - p.frame_delta_time).max(0.0);
@@ -3288,7 +3291,7 @@ fn advance_gliders(p: &mut PlayerSnapshot, map: &mut Map) {
                     10.0
                 };
                 glider.speed.x = approach(glider.speed.x, 0.0, friction * p.frame_delta_time);
-                if glider.no_gravity_timer <= 0.0 {
+                if !spring_no_gravity_active {
                     glider.speed.y = approach(glider.speed.y, 30.0, gravity * p.frame_delta_time);
                 }
             }
@@ -4232,7 +4235,6 @@ fn begin_dash(
 
 fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     if !holding_holdable(p)
-        && p.dash_dir != Vec2::default()
         && input.grab_held
         && p.stamina >= 20.0
         && can_unduck(p, map)
@@ -7623,12 +7625,14 @@ mod tests {
     }
 
     #[test]
-    fn dash_pickup_cancels_into_source_pickup_tween_and_restores_speed() {
+    fn dash_pickup_runs_before_the_dash_coroutine_samples_direction() {
         let p = PlayerSnapshot {
             pos: Vec2::new(60.0, 160.0),
             speed: Vec2::new(360.0, 0.0),
             state: PlayerState::Dash,
-            dash_dir: Vec2::new(1.0, 0.0),
+            // DashCoroutine sets DashDir only after its initial yield, but
+            // DashUpdate's Holdable loop executes before that coroutine.
+            dash_dir: Vec2::default(),
             state_timer: 0.1,
             on_ground: true,
             ..PlayerSnapshot::default()
@@ -7650,6 +7654,46 @@ mod tests {
         assert_eq!(trace.states[12].state, PlayerState::Pickup);
         assert_eq!(trace.states[13].state, PlayerState::Normal);
         assert_eq!(trace.states[13].speed, Vec2::new(360.0, 0.0));
+    }
+
+    #[test]
+    fn dash_pickup_after_the_initial_yield_caches_live_updash_speed() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 160.0),
+            state: PlayerState::Dash,
+            // This is the state at the first DashUpdate following the
+            // coroutine's initial `yield return null`: it must publish the
+            // up-dash speed before a later holdable check can cache it.
+            state_timer: DASH_TIME + DT,
+            last_aim: Vec2::new(0.0, -1.0),
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(
+            p,
+            &[
+                InputState {
+                    move_y: -1,
+                    ..InputState::default()
+                },
+                InputState {
+                    move_y: -1,
+                    grab_held: true,
+                    ..InputState::default()
+                },
+            ],
+            &theo_crystal_map(),
+            2,
+        )
+        .unwrap();
+
+        assert_eq!(trace.states[1].state, PlayerState::Dash);
+        assert_eq!(trace.states[1].dash_dir, Vec2::new(0.0, -1.0));
+        assert_eq!(trace.states[1].speed, Vec2::new(0.0, -DASH_SPEED));
+        assert_eq!(trace.states[2].state, PlayerState::Pickup);
+        assert_eq!(
+            trace.states[2].pickup_old_speed,
+            Vec2::new(0.0, -DASH_SPEED)
+        );
     }
 
     #[test]
@@ -8043,6 +8087,26 @@ mod tests {
         assert_eq!(next.gliders[0].speed.y, -160.0);
         assert!((next.gliders[0].speed.x - 39.666_668).abs() < 0.000_1);
         assert_eq!(next.gliders[0].no_gravity_timer, 0.15);
+    }
+
+    #[test]
+    fn glider_spring_no_gravity_keeps_its_final_source_frame() {
+        let map = glider_map();
+        let p = PlayerSnapshot {
+            pos: Vec2::new(200.0, 100.0),
+            gliders: vec![crate::GliderSnapshot {
+                position: Vec2::new(80.0, 100.0),
+                speed: Vec2::new(0.0, -160.0),
+                no_gravity_timer: DT,
+                ..crate::GliderSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+
+        let next = simulate(p, &[InputState::default()], &map, 1).unwrap();
+
+        assert_eq!(next.gliders[0].speed.y, -160.0);
+        assert_eq!(next.gliders[0].no_gravity_timer, 0.0);
     }
 
     #[test]
