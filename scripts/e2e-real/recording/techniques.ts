@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-export type TechniqueStatus = 'implemented' | 'unimplemented'
+export type TechniqueStatus = 'implemented' | 'unimplemented' | 'product-excluded'
 
 export interface TechniqueRecord {
   readonly id: string
@@ -39,7 +39,9 @@ function parseTechnique(file: string): TechniqueRecord {
   const id = text.match(/\bid:\s*"([^"]+)"/)?.[1]
   const status = text.match(/\bstatus:\s*"([^"]+)"/)?.[1]
   if (!id) throw new Error(`${file}: missing technique id`)
-  if (status !== 'implemented' && status !== 'unimplemented') throw new Error(`${file}: invalid technique status ${status ?? '(missing)'}`)
+  if (status !== 'implemented' && status !== 'unimplemented' && status !== 'product-excluded') {
+    throw new Error(`${file}: invalid technique status ${status ?? '(missing)'}`)
+  }
   return { id, status }
 }
 

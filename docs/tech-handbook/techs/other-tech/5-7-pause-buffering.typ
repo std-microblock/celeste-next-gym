@@ -4,7 +4,7 @@
   id: "5.7",
   title-zh: "暂停缓冲",
   title-en: "Pause Buffering",
-  status: "unimplemented",
+  status: "product-excluded",
   description-zh: [暂停菜单属于游戏外时间控制：暂停时 Level/Player 更新停止，但 Monocle 输入节点继续在引擎层采样；在解除暂停前约六帧按下动作，可让 VirtualButton 的缓冲在恢复后的第一帧被 Player 消费。按当前产品决定只记录机制，不在 Rust 模拟器内实现。],
   description-en: [Pausing is out-of-game time control: Level and Player updates stop while Monocle input continues sampling at the engine layer. Presses made roughly six frames before unpausing can remain in a VirtualButton buffer for the first resumed Player frame. This is documented but intentionally not implemented in the Rust simulator.],
   source-evidence: evidence(

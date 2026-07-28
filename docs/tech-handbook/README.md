@@ -8,13 +8,13 @@
 typst compile docs/tech-handbook/main.typ .tmp/tech-handbook.pdf
 ```
 
-该基线来自 Celeste Wiki Tech 页面最后修订于 2026-05-28 的本地快照。不要自行刷新在线 Wiki；只有用户明确要求时才能更新基线。`FinalBoss` 与玩家 `Attract` 状态是产品排除项，不进入 120 项分母。
+该基线来自 Celeste Wiki Tech 页面最后修订于 2026-05-28 的本地快照。不要自行刷新在线 Wiki；只有用户明确要求时才能更新基线。120 个条目中，`5.4`、`5.7`、`5.10`、`5.11` 是明确的 `product-excluded`：它们依赖过场／暂停／超长真实时间等游戏外控制，不纳入产品覆盖分母。因此当前分母为 `120 - 4 = 116`；它们不是 `implemented`，也不会进入录制计划。`FinalBoss` 与玩家 `Attract` 状态同样是产品排除，但它们本来就不在这 120 项权威清单中。保存（存档、读档或保存状态）也不在这 120 项清单中，因此不是第五个排除项，也不会改变分母。
 
 冲刺方向延迟采样的机制解析、Rust 回归、真实 E2E 场景和证据文件作为 supplemental mechanism 保留，但不进入 120 项权威分母，也不进入完整 `--record-all` 计划。
 
 ## 标记完成的规则
 
-默认状态是 `unimplemented`。只有上游源码、Rust 实现、回归测试、真实 Everest E2E 四类证据齐全后，才可以把对应文件改为 `implemented`。证据应使用 `template.typ` 中的 `evidence` 结构记录文件、符号、说明和关键代码片段。
+默认状态是 `unimplemented`。只有上游源码、Rust 实现、回归测试、真实 Everest E2E 四类证据齐全后，才可以把对应文件改为 `implemented`。`product-excluded` 只用于明确排除的游戏外产品范围，不是实现结论，也不计入 116 项产品分母。证据应使用 `template.typ` 中的 `evidence` 结构记录文件、符号、说明和关键代码片段。
 
 每项 `source-evidence` 必须放入能决定该技巧行为的短代码片段，并用几句话简要解释状态回调顺序、常量、计时或碰撞行为。不要写成长篇源码审计。Rust、单测和 E2E 证据保持具体到符号或场景名；E2E 必须是正常输入和标准实体触发，不能以候选场景代替。
 
@@ -55,7 +55,7 @@ typst compile docs/tech-handbook/main.typ .tmp/tech-handbook.pdf
 
 真实 E2E 必须比较 position、speed、state、facing、dashes、stamina、grounded、ducking、death，数值误差不得超过 `0.01`。
 
-每次修改条目状态时，首页会直接查询各条目的 `status` 并自动统计覆盖数；编译时也会断言 `techs.typ` 仍恰好 include 120 个条目，不再手工维护计数。
+每次修改条目状态时，首页会直接查询各条目的 `status` 并自动统计覆盖数；编译时会断言 `techs.typ` 仍恰好 include 120 个条目、其中恰有 4 个产品排除项，并显示 `120 - 4 = 116` 的产品分母。
 
 ## 图片、GIF 与视频
 

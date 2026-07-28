@@ -14,6 +14,8 @@
 
 #let status-style(status) = if status == "implemented" {
   (zh: "已实现", en: "IMPLEMENTED", color: rgb("#166534"), background: rgb("#dcfce7"))
+} else if status == "product-excluded" {
+  (zh: "产品排除", en: "PRODUCT EXCLUDED", color: rgb("#7c2d12"), background: rgb("#ffedd5"))
 } else {
   (zh: "未实现", en: "NOT IMPLEMENTED", color: rgb("#991b1b"), background: rgb("#fee2e2"))
 }
@@ -24,20 +26,26 @@
   #badge([NOT PROVIDED], fill: rgb("#f1f5f9"), color: rgb("#64748b"))
 ]
 
-#let coverage-summary(expected: 120) = context {
+#let coverage-summary(expected: 120, expected_excluded: 4) = context {
   let entries = query(<tech-entry>)
   let implemented = entries.filter(entry => entry.value.status == "implemented").len()
+  let excluded = entries.filter(entry => entry.value.status == "product-excluded").len()
   let total = entries.len()
+  let product-total = total - excluded
 
   assert(
     total == expected,
     message: "expected " + str(expected) + " techniques, found " + str(total),
   )
+  assert(
+    excluded == expected_excluded,
+    message: "expected " + str(expected_excluded) + " product exclusions, found " + str(excluded),
+  )
 
   [
-    #implemented #h(4pt) #badge([已实现], fill: rgb("#fee2e2"), color: rgb("#991b1b"), size: 7pt)
+    #implemented / #product-total #h(4pt) #badge([产品覆盖], fill: rgb("#e2e8f0"), color: rgb("#475569"), size: 7pt)
     #h(9pt)
-    #total #h(4pt) #badge([总计], fill: rgb("#e2e8f0"), color: rgb("#475569"), size: 7pt)
+    #total - #excluded = #product-total #h(4pt) #badge([固定基线／排除／分母], fill: rgb("#e2e8f0"), color: rgb("#475569"), size: 7pt)
   ]
 }
 
@@ -199,7 +207,7 @@
       evidence-cell([真实 E2E], [EVEREST E2E], e2e-evidence),
     )
 
-    #if status != "implemented" [
+    #if status == "unimplemented" [
       #v(6pt)
       #text(size: 8.5pt, fill: rgb("#64748b"))[
         完成条件：上游源码审计、Rust 真实机制、回归测试、真实 Everest E2E 四类证据必须全部存在；E2E 需比较 position、speed、state、facing、dashes、stamina、grounded、ducking、death，数值容差不超过 0.01。
