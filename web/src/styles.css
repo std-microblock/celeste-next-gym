@@ -270,3 +270,56 @@ footer { padding: 0 14px 20px; color: #7d6889; text-align: center; font: 8px Con
   .play-mode .mode-tabs { min-width: 112px; }
   .play-mode .visual-theme-picker { min-width: 104px; }
 }
+
+/* Map-driven training outcomes */
+.training-success-toasts { position: absolute; z-index: 7; top: 66px; left: 12px; display: grid; width: min(292px, 42%); gap: 8px; pointer-events: none; }
+.training-success-toasts.settling { animation: training-toasts-transfer .42s ease-in both; }
+.training-success-toast { --toast-index: 0; overflow: hidden; color: #fff; border: 1px solid #72f0b0a6; background: #090d18e8; box-shadow: 0 8px 24px #0009, inset 3px 0 var(--green); backdrop-filter: blur(8px); animation: training-toast-enter .52s cubic-bezier(.16, 1.22, .32, 1) both; animation-delay: calc(var(--toast-index) * 70ms); }
+.training-success-toast header { display: grid; grid-template-columns: 25px minmax(0, 1fr) auto; align-items: center; gap: 7px; padding: 8px 10px 6px; }
+.training-success-toast header > span { display: grid; width: 22px; height: 22px; place-items: center; color: #07170f; border-radius: 50%; background: var(--green); font-weight: 900; }
+.training-success-toast header small { display: block; color: var(--green); font: 7px Consolas, monospace; letter-spacing: .16em; }
+.training-success-toast header strong { display: block; margin-top: 2px; font-size: 11px; }
+.training-success-toast header b { color: var(--gold); font: 16px Consolas, monospace; }
+.training-success-toast footer { padding: 5px 10px 7px; color: #ad9db6; border-top: 1px solid #ffffff14; font: 8px Consolas, monospace; }
+.training-success-toast .training-result-timeline { height: 54px; margin: 0 9px 4px; overflow: hidden; border-color: #426854; background: #070b11; }
+.training-success-toast .training-result-timeline::before { top: 26px; height: 2px; }
+.training-success-toast .training-result-target, .training-success-toast .training-result-input { top: 10px; height: 32px; width: 2px; }
+.training-success-toast .training-window { top: 20px; height: 13px; }
+.training-success-toast .training-result-target span, .training-success-toast .training-result-input span, .training-success-toast .training-objective-hover-layer { display: none; }
+
+.training-settlement { position: absolute; z-index: 12; inset: 0 0 57px; display: grid; grid-template-columns: minmax(190px, 250px) minmax(340px, 470px) minmax(190px, 250px); align-items: center; justify-content: center; gap: 18px; padding: 24px; color: #fff; background: radial-gradient(circle at 50% 38%, #273b4ed9, #10091bea 56%, #05040afa); backdrop-filter: blur(7px); animation: training-settlement-fade .45s ease-out both; }
+.training-settlement-history { display: grid; gap: 8px; align-self: center; }
+.training-settlement-history article { --settlement-index: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 10px; padding: 12px 13px; border: 1px solid #72f0b077; background: #09131ae8; box-shadow: inset 3px 0 var(--green), 0 9px 28px #0008; animation: training-history-fly .62s cubic-bezier(.16, 1.15, .32, 1) both; animation-delay: calc(.18s + var(--settlement-index) * 100ms); }
+.training-settlement-history small { grid-column: 1 / -1; color: var(--green); font: 7px Consolas, monospace; letter-spacing: .12em; }
+.training-settlement-history strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.training-settlement-history span { color: var(--gold); font: 10px Consolas, monospace; }
+.training-settlement-card { padding: 23px 25px 20px; text-align: center; border: 1px solid #ffd37aaa; background: linear-gradient(160deg, #171027f5, #080713f7); box-shadow: 0 26px 80px #000c, 0 0 45px #ffd37a1f, inset 0 0 35px #ffffff08; animation: training-settlement-card-enter .7s .12s cubic-bezier(.16, 1.2, .32, 1) both; }
+.training-strawberry { min-height: 72px; font-size: 60px; line-height: 1; filter: drop-shadow(0 9px 7px #0008) drop-shadow(0 0 14px #ff4f8177); animation: training-strawberry-bob 1.8s ease-in-out infinite; }
+.training-settlement-card > small { display: block; margin-top: 8px; color: var(--gold); font: 8px Consolas, monospace; letter-spacing: .24em; }
+.training-settlement-card h2 { margin: 5px 0 13px; font-size: 30px; text-shadow: 2px 3px #6e255d; }
+.training-settlement-card .training-accuracy { display: block; color: var(--green); font: 34px Consolas, monospace; text-shadow: 0 0 18px #72f0b055; }
+.training-settlement-card .training-accuracy + span { color: #a997b3; font-size: 9px; }
+.training-summary-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; margin: 18px 0; background: #4c3a5b; text-align: left; }
+.training-summary-stats div { display: grid; gap: 4px; padding: 10px 11px; background: #100b1e; }
+.training-summary-stats span { color: #9b88a7; font-size: 8px; }
+.training-summary-stats b { color: #fff; font: 13px Consolas, monospace; }
+.training-settlement .training-recommendations { animation-delay: .3s; }
+
+@keyframes training-toast-enter { from { opacity: 0; transform: translateX(-36px) scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes training-toasts-transfer { to { opacity: 0; transform: translate(-28px, 60px) scale(.86); } }
+@keyframes training-settlement-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes training-history-fly { from { opacity: 0; transform: translate(-90px, -140px) scale(.72); } to { opacity: 1; transform: none; } }
+@keyframes training-settlement-card-enter { from { opacity: 0; transform: translateY(35px) scale(.86) rotateX(8deg); } to { opacity: 1; transform: none; } }
+@keyframes training-strawberry-bob { 50% { transform: translateY(-5px) rotate(-2deg); } }
+
+@media (max-width: 1050px) {
+  .training-settlement { grid-template-columns: minmax(150px, 210px) minmax(310px, 430px); overflow: auto; }
+  .training-settlement .training-recommendations { display: none; }
+}
+@media (max-width: 680px) {
+  .training-success-toasts { top: 54px; left: 7px; width: min(250px, 66%); }
+  .training-settlement { display: flex; flex-direction: column; justify-content: flex-start; overflow: auto; padding: 14px 10px; }
+  .training-settlement-history, .training-settlement-card { width: min(430px, 100%); }
+  .training-settlement-history { order: 2; }
+  .training-settlement-card { order: 1; }
+}

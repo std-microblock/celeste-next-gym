@@ -1,0 +1,86 @@
+{
+  "version": 2,
+  "id": "hyper-route",
+  "title": "山路训练",
+  "summary": "一张地图中连续完成普通 Hyper 和充能 Hyper，再抵达终点。",
+  "modules": [
+    {
+      "id": "gap-hyper",
+      "trigger": { "id": "gap-start", "bounds": { "x": 64, "y": 190, "width": 96, "height": 50 } },
+      "tutorial": {
+        "version": 2,
+        "id": "gap-hyper-tutorial",
+        "title": "跨越断层",
+        "summary": "用普通 Hyper 越过第一处断层。",
+        "entry": {
+          "input_id": "diagonal_dash",
+          "hint": "触发区已激活：下一个动作请按住右下并冲刺。",
+          "check": ["!current.dead", "current.state == state::dash"],
+          "failure": { "title": "需要右下冲", "body": "进入触发区后，按住右和下，再按 Dash。" }
+        },
+        "teaching": {
+          "steps": [
+            { "prompt": "按住右下并冲刺。", "order_error": { "title": "先右下冲", "body": "第一个动作需要是右下冲刺。" }, "window_error": { "title": "冲刺时机不对", "body": "从触发后的第一个动作开始计时。" } },
+            { "prompt": "接近最佳点时按 Jump。", "order_error": { "title": "这里需要 Jump", "body": "右下冲后的下一关键输入是跳跃。" }, "window_error": { "title": "跳跃错过窗口", "body": "查看时间线中的绿色可行区间。" } }
+          ]
+        },
+        "assist": { "result_sample_after_input_frames": 0, "auto_slowdown": { "enabled_by_default": true, "radius_frames": 12, "minimum_multiplier": 0.85 } },
+        "fuzz": {
+          "version": 1,
+          "inputs": [
+            { "id": "hold_diagonal", "keys": ["right", "down"], "at": 0, "held_time": "hold::inf", "verify": false },
+            { "id": "diagonal_dash", "keys": ["dash"], "at": 0, "verify": true },
+            { "id": "jump", "keys": ["jump"], "at": "jump_frame", "verify": true }
+          ],
+          "variables": [{ "name": "jump_frame", "range": { "from": 0, "to": 60 } }],
+          "observe_until": "max(jump_frame+1, 5)",
+          "success": ["!final.dead", "final.speed.x >= 320"],
+          "objectives": [{ "type": "maximize", "expression": "final.speed.x" }],
+          "search": { "bindings": {}, "output": ["best", "windows", "coverage"] }
+        }
+      },
+      "validation": { "initial_state": { "pos": { "x": 100, "y": 240 }, "speed": { "x": 0, "y": 0 }, "state": "Normal", "facing": true, "dashes": 1, "stamina": 110, "on_ground": true, "ducking": false, "can_dream_dash": true, "dead": false, "death_freeze_pending": false, "respawn_frames": 0, "dash_dir": { "x": 0, "y": 0 } } }
+    },
+    {
+      "id": "charged-hyper",
+      "trigger": { "id": "charged-start", "bounds": { "x": 360, "y": 190, "width": 120, "height": 50 } },
+      "tutorial": {
+        "version": 2,
+        "id": "charged-hyper-tutorial",
+        "title": "充能 Hyper",
+        "summary": "延后起跳，在保留冲刺的同时获得 Hyper 速度。",
+        "entry": {
+          "input_id": "diagonal_dash",
+          "hint": "第二个触发区：下一个动作以右下冲开始。",
+          "check": ["!current.dead", "current.state == state::dash"],
+          "failure": { "title": "需要右下冲", "body": "进入第二个触发区后，以右下冲刺开始。" }
+        },
+        "teaching": {
+          "steps": [
+            { "prompt": "按住右下并冲刺。", "order_error": { "title": "先右下冲", "body": "第一个动作需要是右下冲刺。" }, "window_error": { "title": "冲刺时机不对", "body": "从触发后的第一个动作开始计时。" } },
+            { "prompt": "稍晚一些按 Jump，保住冲刺。", "order_error": { "title": "这里需要 Jump", "body": "右下冲后的下一关键输入是跳跃。" }, "window_error": { "title": "没有充能成功", "body": "在绿色可行区间内稍晚起跳。" } }
+          ]
+        },
+        "assist": { "result_sample_after_input_frames": 0, "auto_slowdown": { "enabled_by_default": true, "radius_frames": 12, "minimum_multiplier": 0.85 } },
+        "fuzz": {
+          "version": 1,
+          "inputs": [
+            { "id": "hold_diagonal", "keys": ["right", "down"], "at": 0, "held_time": "hold::inf", "verify": false },
+            { "id": "diagonal_dash", "keys": ["dash"], "at": 0, "verify": true },
+            { "id": "jump", "keys": ["jump"], "at": "jump_frame", "verify": true }
+          ],
+          "variables": [{ "name": "jump_frame", "range": { "from": 0, "to": 60 } }],
+          "observe_until": "max(jump_frame+1, 5)",
+          "success": ["!final.dead", "final.dashes >= 1", "final.speed.x >= 320"],
+          "objectives": [{ "type": "maximize", "expression": "final.speed.x" }],
+          "search": { "bindings": {}, "output": ["best", "windows", "coverage"] }
+        }
+      },
+      "validation": { "initial_state": { "pos": { "x": 420, "y": 240 }, "speed": { "x": 0, "y": 0 }, "state": "Normal", "facing": true, "dashes": 1, "stamina": 110, "on_ground": true, "ducking": false, "can_dream_dash": true, "dead": false, "death_freeze_pending": false, "respawn_frames": 0, "dash_dir": { "x": 0, "y": 0 } } }
+    }
+  ],
+  "finish": {
+    "trigger": { "id": "route-finish", "bounds": { "x": 820, "y": 180, "width": 100, "height": 60 } },
+    "require_all_modules": true
+  }
+}
