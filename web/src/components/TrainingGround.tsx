@@ -7,6 +7,7 @@ import { GameView } from './GameView'
 import { TrainingCatalogSidebar, TrainingVariantThumbnail } from './TrainingCatalogSidebar'
 import { TrainingPrompt } from './TrainingPrompt'
 import { TrainingResultTimeline, TrainingTimeline, type TrainingObjectiveSeries } from './TrainingTimeline'
+import type { VisualTheme } from '../visualThemes'
 
 interface Attempt { frame: number; inputId: string; keys: string[]; entryCheckPassed?: boolean; entryAccepted?: boolean }
 interface PredictionPreview {
@@ -45,7 +46,7 @@ export function trainingInputLocked(outcome: OutcomeAnimation | null): boolean {
 }
 
 /** The lesson runner owns simulation and review state, while its timeline is read-only. */
-export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { techniqueId: string; variantId: string; onSelectTraining(techniqueId: string, variantId: string): void }) {
+export function TrainingGround({ techniqueId, variantId, theme, onSelectTraining }: { techniqueId: string; variantId: string; theme: VisualTheme; onSelectTraining(techniqueId: string, variantId: string): void }) {
   const client = useMemo(() => new WasmClient(), [])
   const technique = trainingCatalog.find((item) => item.id === techniqueId) ?? trainingCatalog[0]
   const variantIndex = Math.max(0, technique.variants.findIndex((variant) => variant.id === variantId))
@@ -384,7 +385,7 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
     <TrainingCatalogSidebar techniqueId={technique.id} variantId={selectedVariant.id} onSelectTraining={onSelectTraining} />
     <section className="training-stage panel-frame">
       <div className="stage-header"><div><small>TRAINING / {document.technique_id} / {document.variant_id}</small><h1>{document.title} · {document.variant_title} <em>第 {Math.min(session.nextVerifiedInput + 1, document.teaching.steps.length)}/{document.teaching.steps.length} 步</em></h1></div><div className="cache-meter"><span>{bestObjectiveValues?.[0] === undefined ? '有效倍率' : `当前最佳 · ${document.fuzz.objectives[0]?.expression ?? 'objective'}`}</span><strong>{bestObjectiveValues?.[0] === undefined ? `${effective.toFixed(2)}×` : bestObjectiveValues[0].toFixed(2)}</strong></div></div>
-      <GameView map={map} state={state} states={snapshots} frame={frame} stale={false}>
+      <GameView map={map} state={state} states={snapshots} frame={frame} stale={false} theme={theme}>
         {(viewport) => <TrainingPrompt map={map} state={state} viewport={viewport} text={prompt} hidden={outcome !== null} />}
       </GameView>
       {outcome && <div className={outcome.phase === 'success' ? 'training-success' : 'training-failure'} style={{ '--outcome-progress': outcomeProgress } as CSSProperties}>

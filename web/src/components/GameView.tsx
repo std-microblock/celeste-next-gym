@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { EntityKind, GymMap, MapEntity, SimState, Vec2 } from '../model'
+import type { VisualTheme, VisualThemeLayer } from '../visualThemes'
 
 interface AtlasEntry {
   x: number
@@ -329,8 +330,66 @@ function tileCoordinate(grid: string[][], x: number, y: number): [number, number
   return [5, 12]
 }
 
-function drawTiles(context: CanvasRenderingContext2D, assets: GameAssets, map: GymMap, grid: string[][]): void {
-  const tileset = assets.entries['tilesets/dirt']
+function drawBackdropLayer(context: CanvasRenderingContext2D, assets: GameAssets, map: GymMap, layer: VisualThemeLayer): void {
+  const entry = assets.entries[layer.key]
+  if (!entry) return
+  const scale = Math.max(map.bounds.width / 320, map.bounds.height / 180)
+  const frameX = map.bounds.x + (map.bounds.width - entry.frameWidth * scale) / 2
+  const frameY = layer.y === undefined
+    ? map.bounds.y + map.bounds.height - entry.frameHeight * scale
+    : map.bounds.y + layer.y * scale
+  context.save()
+  context.globalAlpha = layer.opacity ?? 1
+  context.drawImage(
+    assets.image,
+    entry.x, entry.y, entry.width, entry.height,
+    frameX + entry.drawOffsetX * scale,
+    frameY + entry.drawOffsetY * scale,
+    entry.width * scale,
+    entry.height * scale,
+  )
+  context.restore()
+}
+
+function drawOldSiteStars(context: CanvasRenderingContext2D, assets: GameAssets, map: GymMap, frame: number): void {
+  const starKeys = [
+    'bgs/02/stars/a00', 'bgs/02/stars/a01', 'bgs/02/stars/a02', 'bgs/02/stars/a03',
+    'bgs/02/stars/b00', 'bgs/02/stars/b01', 'bgs/02/stars/b02', 'bgs/02/stars/b03',
+    'bgs/02/stars/c00', 'bgs/02/stars/c01', 'bgs/02/stars/c02', 'bgs/02/stars/c03',
+  ].filter((key) => assets.entries[key])
+  if (starKeys.length === 0) return
+  const count = Math.max(90, Math.round(map.bounds.width * map.bounds.height / 2_800))
+  for (let index = 0; index < count; index += 1) {
+    const key = starKeys[Math.floor(pseudo(index * 11.9) * starKeys.length)]
+    const x = map.bounds.x + pseudo(index * 5.71 + 2) * map.bounds.width
+    const y = map.bounds.y + pseudo(index * 8.37 + 7) * map.bounds.height
+    const size = .45 + pseudo(index * 3.11 + 5) * .75
+    context.save()
+    context.globalAlpha = .35 + (.5 + Math.sin(frame / 24 + index * 1.7) * .5) * .55
+    drawCenteredEntry(context, assets, key, x, y, false, size, size)
+    context.restore()
+  }
+}
+
+function drawThemeBackground(context: CanvasRenderingContext2D, assets: GameAssets, map: GymMap, theme: VisualTheme, frame: number): void {
+  context.fillStyle = theme.background
+  context.fillRect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height)
+  if (theme.stars) {
+    const gradient = context.createLinearGradient(map.bounds.x, map.bounds.y, map.bounds.x, map.bounds.y + map.bounds.height)
+    gradient.addColorStop(0, '#080725')
+    gradient.addColorStop(.62, '#1a1244')
+    gradient.addColorStop(1, '#3a1e51')
+    context.fillStyle = gradient
+    context.fillRect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height)
+    drawOldSiteStars(context, assets, map, frame)
+  }
+  for (const layer of theme.layers) drawBackdropLayer(context, assets, map, layer)
+  context.fillStyle = 'rgba(5, 7, 20, .13)'
+  context.fillRect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height)
+}
+
+function drawTiles(context: CanvasRenderingContext2D, assets: GameAssets, map: GymMap, grid: string[][], tilesetKey: string): void {
+  const tileset = assets.entries[tilesetKey]
   if (!tileset) return
   for (let y = 0; y < grid.length; y += 1) {
     for (let x = 0; x < grid[y].length; x += 1) {
@@ -969,7 +1028,7 @@ function drawEntity(context: CanvasRenderingContext2D, assets: GameAssets, entit
   }
 }
 
-export function GameView({ map, state, states, frame, stale, children }: { map: GymMap; state: SimState; states: readonly (SimState | undefined)[]; frame: number; stale: boolean; children?: ReactNode | ((viewport: { width: number; height: number }) => ReactNode) }) {
+export function GameView({ map, state, states, frame, stale, theme, children }: { map: GymMap; state: SimState; states: readonly (SimState | undefined)[]; frame: number; stale: boolean; theme: VisualTheme; children?: ReactNode | ((viewport: { width: number; height: number }) => ReactNode) }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [assets, setAssets] = useState<GameAssets | null>(null)
   const [viewportRevision, setViewportRevision] = useState(0)
@@ -1005,7 +1064,8 @@ export function GameView({ map, state, states, frame, stale, children }: { map: 
     context.save()
     context.translate(offsetX - map.bounds.x * scale, offsetY - map.bounds.y * scale)
     context.scale(scale, scale)
-    drawTiles(context, assets, map, solidGrid)
+    drawThemeBackground(context, assets, map, theme, frame)
+    drawTiles(context, assets, map, solidGrid, theme.tileset)
     const kindCounts = new Map<EntityKind, number>()
     for (const [entityIndex, entity] of map.entities.entries()) {
       const kindIndex = kindCounts.get(entity.kind) ?? 0
@@ -1016,10 +1076,10 @@ export function GameView({ map, state, states, frame, stale, children }: { map: 
     drawPlayer(context, assets, states, state, frame)
     drawWind(context, assets, map, state, frame)
     context.restore()
-  }, [assets, frame, map, solidGrid, stale, state, states, viewportRevision])
+  }, [assets, frame, map, solidGrid, stale, state, states, theme, viewportRevision])
 
   return <div className="game-screen">
-    <canvas ref={canvasRef} aria-label="CelesteGymPlayground 原版资源渲染画面" />
+    <canvas ref={canvasRef} aria-label={`CelesteGymPlayground 原版资源渲染画面 · ${theme.label}`} />
     {typeof children === 'function' ? children({ width: canvasRef.current?.clientWidth ?? 0, height: canvasRef.current?.clientHeight ?? 0 }) : children}
     <div className="screen-vignette" />
     <div className="screen-noise" />

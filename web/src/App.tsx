@@ -34,6 +34,13 @@ import {
   mergeButtons,
   type GamepadDirectionSource,
 } from './input/gamepad'
+import {
+  DEFAULT_VISUAL_THEME_ID,
+  VISUAL_THEMES,
+  isVisualThemeId,
+  visualThemeById,
+  type VisualThemeId,
+} from './visualThemes'
 
 interface RunDocument {
   version: 2
@@ -47,6 +54,7 @@ const PLAYGROUND_MAP_URL = '/assets/original/maps/CelesteGymPlayground-Playgroun
 const DEFAULT_ROOM = 'playground'
 const PLAYGROUND_ROOMS = ['playground', 'transition_0'] as const
 const MAX_ANIMATION_DELTA_MS = 250
+const VISUAL_THEME_STORAGE_KEY = 'celeste-gym-visual-theme'
 
 function loadBindings(): Bindings {
   try {
@@ -60,6 +68,11 @@ function loadBindings(): Bindings {
 function loadGamepadDirectionSource(): GamepadDirectionSource {
   const saved = localStorage.getItem('celeste-gym-gamepad-direction')
   return isGamepadDirectionSource(saved) ? saved : DEFAULT_GAMEPAD_DIRECTION_SOURCE
+}
+
+function loadVisualThemeId(): VisualThemeId {
+  const saved = localStorage.getItem(VISUAL_THEME_STORAGE_KEY)
+  return isVisualThemeId(saved) ? saved : DEFAULT_VISUAL_THEME_ID
 }
 
 function download(name: string, contents: string): void {
@@ -104,6 +117,7 @@ export default function App() {
   const [bindings, setBindings] = useState<Bindings>(loadBindings)
   const [gamepadDirectionSource, setGamepadDirectionSource] = useState<GamepadDirectionSource>(loadGamepadDirectionSource)
   const [gamepadName, setGamepadName] = useState<string | null>(null)
+  const [visualThemeId, setVisualThemeId] = useState<VisualThemeId>(loadVisualThemeId)
   const [liveButtons, setLiveButtons] = useState<FrameButtons>(makeEmptyButtons)
   const [bindingsOpen, setBindingsOpen] = useState(false)
   const [startSettingsOpen, setStartSettingsOpen] = useState(false)
@@ -498,8 +512,14 @@ export default function App() {
   }
   const selectedTrainingTechnique = trainingCatalog.find((item) => item.id === trainingTechniqueId) ?? trainingCatalog[0]
   const selectedTrainingVariant = selectedTrainingTechnique.variants.find((item) => item.id === trainingVariantId) ?? selectedTrainingTechnique.variants[0]
+  const visualTheme = visualThemeById(visualThemeId)
 
-  return <div className={`app-shell ${mode === 'play' ? 'play-mode' : mode === 'training' ? 'training-mode' : 'advanced-mode'}`}>
+  const selectVisualTheme = (id: VisualThemeId) => {
+    setVisualThemeId(id)
+    localStorage.setItem(VISUAL_THEME_STORAGE_KEY, id)
+  }
+
+  return <div className={`app-shell ${mode === 'play' ? 'play-mode' : mode === 'training' ? 'training-mode' : 'advanced-mode'}`} data-visual-theme={visualTheme.id}>
     {mode === 'advanced' && <div className="mountain-backdrop" />}
     <header className="topbar">
       <div className="brand-mark"><div><strong>CELESTE</strong><em>NEXT GYM</em></div></div>
@@ -507,6 +527,12 @@ export default function App() {
         <small>工作区</small>
         <select aria-label="页面模式" value={mode} onChange={(event) => selectMode(event.target.value as 'play' | 'training' | 'advanced')}>
           <option value="play">游玩</option><option value="training">训练</option><option value="advanced">高级</option>
+        </select>
+      </label>
+      <label className="visual-theme-picker">
+        <small>场景主题</small>
+        <select aria-label="场景主题" value={visualThemeId} onChange={(event) => selectVisualTheme(event.target.value as VisualThemeId)}>
+          {VISUAL_THEMES.map((theme) => <option value={theme.id} key={theme.id}>{theme.label} · {theme.chapter}</option>)}
         </select>
       </label>
       {mode === 'advanced' ? <div className="top-actions">
@@ -532,8 +558,8 @@ export default function App() {
     </header>
 
     {mode === 'play' ? <main className="play-workspace">
-      <GameView map={map} state={liveState} states={[]} frame={liveFrame} stale={false} />
-    </main> : mode === 'training' ? <TrainingGround techniqueId={selectedTrainingTechnique.id} variantId={selectedTrainingVariant.id} onSelectTraining={(techniqueId, variantId) => { setTrainingTechniqueId(techniqueId); setTrainingVariantId(variantId) }} /> : <>
+      <GameView map={map} state={liveState} states={[]} frame={liveFrame} stale={false} theme={visualTheme} />
+    </main> : mode === 'training' ? <TrainingGround techniqueId={selectedTrainingTechnique.id} variantId={selectedTrainingVariant.id} theme={visualTheme} onSelectTraining={(techniqueId, variantId) => { setTrainingTechniqueId(techniqueId); setTrainingVariantId(variantId) }} /> : <>
 
       <main className="workspace">
       <section className="stage panel-frame">
@@ -541,7 +567,7 @@ export default function App() {
           <div><small>CELESTE 1.4.0.0-FNA · ROOM {map.room ?? DEFAULT_ROOM} · START {map.spawn.x}, {map.spawn.y}</small><h1>{map.name}</h1></div>
           <div className="cache-meter"><span>VALID THROUGH</span><strong>F{String(cache.computedThrough).padStart(4, '0')}</strong></div>
         </div>
-        <GameView map={map} state={visible.state} states={states} frame={visible.frame} stale={!exactState || visible.frame !== frame} />
+        <GameView map={map} state={visible.state} states={states} frame={visible.frame} stale={!exactState || visible.frame !== frame} theme={visualTheme} />
         <div className="transport">
           <button aria-label="回到第一帧" onClick={() => seek(0)}>│◀</button>
           <button aria-label="上一帧" onClick={() => seek(frame - 1)}>◀</button>
