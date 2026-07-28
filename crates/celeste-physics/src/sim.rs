@@ -148,6 +148,8 @@ pub fn simulate_trace(
     initialize_gliders(&mut snapshot, &mut runtime_map);
     initialize_clouds(&mut snapshot, &mut runtime_map);
     initialize_camera(&mut snapshot, &runtime_map);
+    initialize_cassette_blocks(&mut snapshot, &mut runtime_map);
+    initialize_spinners(&mut snapshot, &mut runtime_map);
     position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
     let mut states = Vec::with_capacity(frames + 1);
     states.push(snapshot.clone());
@@ -242,6 +244,9 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         s.last_lift_speed.y,
         s.lift_speed_timer,
         s.moving_solid_time,
+        s.scene_time_active,
+        s.cassette_manager.beat_timer,
+        s.cassette_manager.tempo_mult,
         s.dash_buffer_timer,
         s.crouch_dash_buffer_timer,
         s.movement_remainder.x,
@@ -372,6 +377,23 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         .iter()
         .all(|value| value.is_finite())
     });
+    let cassette_blocks_are_finite = s.cassette_blocks.iter().all(|block| {
+        [
+            block.position.x,
+            block.position.y,
+            block.start.x,
+            block.start.y,
+            block.width,
+            block.height,
+        ]
+        .iter()
+        .all(|value| value.is_finite())
+    });
+    let spinners_are_finite = s.spinners.iter().all(|spinner| {
+        [spinner.position.x, spinner.position.y, spinner.offset]
+            .iter()
+            .all(|value| value.is_finite())
+    });
     if values.iter().all(|x| x.is_finite())
         && zip_movers_are_finite
         && bounce_blocks_are_finite
@@ -381,6 +403,8 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         && sandwich_lavas_are_finite
         && gliders_are_finite
         && clouds_are_finite
+        && cassette_blocks_are_finite
+        && spinners_are_finite
     {
         Ok(())
     } else {
@@ -469,6 +493,122 @@ fn initialize_clouds(p: &mut PlayerSnapshot, map: &mut Map) {
         let state = &p.clouds[cloud_index];
         entity.bounds.x = state.position.x;
         entity.bounds.y = state.position.y;
+    }
+}
+
+const PARKED_ENTITY_POSITION: f32 = -1_000_000.0;
+const CASSETTE_BEAT_INTERVAL: f32 = 355.0 / (678.0 * std::f32::consts::PI);
+
+fn park_entity(entity: &mut crate::Entity) {
+    entity.bounds.x = PARKED_ENTITY_POSITION;
+    entity.bounds.y = PARKED_ENTITY_POSITION;
+}
+
+fn initialize_cassette_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
+    let block_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::CassetteBlock).then_some(index))
+        .collect();
+    p.cassette_blocks.truncate(block_indices.len());
+    if block_indices.is_empty() {
+        p.cassette_manager = crate::CassetteManagerSnapshot::default();
+        return;
+    }
+
+    if !p.cassette_manager.initialized {
+        p.cassette_manager.max_beat = block_indices
+            .iter()
+            .map(|&index| map.entities[index].direction.x.round().clamp(0.0, 255.0) as u8 + 1)
+            .max()
+            .unwrap_or(1);
+        p.cassette_manager.tempo_mult = block_indices
+            .iter()
+            .map(|&index| map.entities[index].direction.y)
+            .find(|tempo| *tempo > 0.0)
+            .unwrap_or(1.0);
+        p.cassette_manager.current_index = if p.cassette_manager.beat_index % 8 >= 5 {
+            p.cassette_manager.max_beat.saturating_sub(2)
+        } else {
+            p.cassette_manager.max_beat.saturating_sub(1)
+        };
+        // The repository-owned Playground is a custom area with cassette
+        // music. CassetteBlockManager.Update creates its sfx on the first
+        // frame and takes the branch which skips AdvanceMusic once.
+        p.cassette_manager.startup_music_pending = true;
+        p.cassette_manager.initialized = true;
+    }
+
+    for (block_index, entity_index) in block_indices.into_iter().enumerate() {
+        if block_index == p.cassette_blocks.len() {
+            let bounds = map.entities[entity_index].bounds;
+            let index = map.entities[entity_index]
+                .direction
+                .x
+                .round()
+                .clamp(0.0, 255.0) as u8;
+            let active = index == p.cassette_manager.current_index;
+            let position = Vec2::new(bounds.x, bounds.y + if active { 0.0 } else { 2.0 });
+            p.cassette_blocks.push(crate::CassetteBlockSnapshot {
+                position,
+                start: Vec2::new(bounds.x, bounds.y),
+                width: bounds.width,
+                height: bounds.height,
+                index,
+                activated: active,
+                collidable: active,
+            });
+        }
+        let state = &p.cassette_blocks[block_index];
+        let entity = &mut map.entities[entity_index];
+        if state.collidable {
+            entity.bounds = Rect::new(
+                state.position.x,
+                state.position.y,
+                state.width,
+                state.height,
+            );
+        } else {
+            park_entity(entity);
+        }
+    }
+}
+
+fn spinner_in_view(position: Vec2, map: &Map) -> bool {
+    position.x > map.bounds.x - 16.0
+        && position.y > map.bounds.y - 16.0
+        && position.x < map.bounds.x + 320.0 + 16.0
+        && position.y < map.bounds.y + 180.0 + 16.0
+}
+
+fn initialize_spinners(p: &mut PlayerSnapshot, map: &mut Map) {
+    let spinner_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| {
+            (entity.kind == EntityKind::CrystalStaticSpinner).then_some(index)
+        })
+        .collect();
+    p.spinners.truncate(spinner_indices.len());
+    for (spinner_index, entity_index) in spinner_indices.into_iter().enumerate() {
+        if spinner_index == p.spinners.len() {
+            let bounds = map.entities[entity_index].bounds;
+            p.spinners.push(crate::SpinnerSnapshot {
+                position: Vec2::new(
+                    bounds.x + bounds.width * 0.5,
+                    bounds.y + bounds.height * 0.5,
+                ),
+                // The real value is a random float in [0, 1). Persisting it in
+                // the snapshot makes split simulation deterministic; this
+                // map-order seed is used only for a fresh portable snapshot.
+                offset: ((spinner_index as f32 + 1.0) * 0.618_034).fract(),
+                visible: false,
+                collidable: true,
+            });
+        }
+        park_entity(&mut map.entities[entity_index]);
     }
 }
 
@@ -1336,6 +1476,7 @@ fn runtime_solid_collision(map: &Map, skip_index: usize, rect: Rect) -> bool {
                 && matches!(
                     entity.kind,
                     EntityKind::BounceBlock
+                        | EntityKind::CassetteBlock
                         | EntityKind::DreamBlock
                         | EntityKind::MoveBlock
                         | EntityKind::MovingSolid
@@ -2288,6 +2429,205 @@ fn advance_moving_solids(p: &mut PlayerSnapshot, map: &mut Map) {
     p.moving_solid_time = new_time;
 }
 
+fn cassette_entity_indices(map: &Map) -> Vec<usize> {
+    map.entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::CassetteBlock).then_some(index))
+        .collect()
+}
+
+fn cassette_bounds(state: &crate::CassetteBlockSnapshot) -> Rect {
+    Rect::new(
+        state.position.x,
+        state.position.y,
+        state.width,
+        state.height,
+    )
+}
+
+fn sync_cassette_entity(entity: &mut crate::Entity, state: &crate::CassetteBlockSnapshot) {
+    if state.collidable {
+        entity.bounds = cassette_bounds(state);
+    } else {
+        park_entity(entity);
+    }
+}
+
+fn shift_cassette_block(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    entity_index: usize,
+    state: &mut crate::CassetteBlockSnapshot,
+    amount: f32,
+) {
+    if state.collidable {
+        let env = solid_collision_env(map, entity_index);
+        let entity = &mut map.entities[entity_index];
+        move_runtime_solid_exact(
+            p,
+            &mut entity.bounds,
+            &env,
+            false,
+            amount,
+            Vec2::new(0.0, amount / DT),
+        );
+    }
+    state.position.y += amount;
+}
+
+fn try_cassette_player_wiggle_up(
+    p: &mut PlayerSnapshot,
+    map: &Map,
+    block_index: usize,
+    intended: Rect,
+) -> bool {
+    let player = current_player_rect(p, p.pos.x, p.pos.y);
+    if !intended.intersects(player) {
+        return true;
+    }
+    let index = p.cassette_blocks[block_index].index;
+    if p.cassette_blocks
+        .iter()
+        .enumerate()
+        .any(|(other_index, other)| {
+            other_index != block_index
+                && other.index == index
+                && Rect::new(
+                    other.position.x,
+                    other.position.y + 4.0,
+                    other.width,
+                    other.height,
+                )
+                .intersects(player)
+        })
+    {
+        return false;
+    }
+    for amount in 1..=4 {
+        let candidate = current_player_rect(p, p.pos.x, p.pos.y - amount as f32);
+        if !intended.intersects(candidate) && !map.solid_at(candidate) {
+            p.pos.y -= amount as f32;
+            return true;
+        }
+    }
+    false
+}
+
+fn advance_cassette_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
+    let entity_indices = cassette_entity_indices(map);
+    for (block_index, entity_index) in entity_indices.iter().copied().enumerate() {
+        let mut state = p.cassette_blocks[block_index].clone();
+        if state.activated && !state.collidable {
+            let intended = cassette_bounds(&state);
+            if try_cassette_player_wiggle_up(p, map, block_index, intended) {
+                state.collidable = true;
+                map.entities[entity_index].bounds = intended;
+                shift_cassette_block(p, map, entity_index, &mut state, -1.0);
+            }
+        } else if !state.activated && state.collidable {
+            shift_cassette_block(p, map, entity_index, &mut state, 1.0);
+            state.collidable = false;
+        }
+        sync_cassette_entity(&mut map.entities[entity_index], &state);
+        p.cassette_blocks[block_index] = state;
+    }
+}
+
+fn advance_cassette_manager(p: &mut PlayerSnapshot, map: &mut Map) {
+    if !p.cassette_manager.initialized || p.cassette_manager.max_beat == 0 {
+        return;
+    }
+    if p.cassette_manager.startup_music_pending {
+        p.cassette_manager.startup_music_pending = false;
+        return;
+    }
+    p.cassette_manager.beat_timer += DT * p.cassette_manager.tempo_mult;
+    if p.cassette_manager.beat_timer < CASSETTE_BEAT_INTERVAL {
+        return;
+    }
+    p.cassette_manager.beat_timer -= CASSETTE_BEAT_INTERVAL;
+    p.cassette_manager.beat_index = p.cassette_manager.beat_index.wrapping_add(1);
+    let beat_index = p.cassette_manager.beat_index;
+    let entity_indices = cassette_entity_indices(map);
+    if beat_index % 8 == 0 {
+        p.cassette_manager.current_index =
+            (p.cassette_manager.current_index + 1) % p.cassette_manager.max_beat;
+        for state in &mut p.cassette_blocks {
+            state.activated = state.index == p.cassette_manager.current_index;
+        }
+    } else if beat_index.wrapping_add(1) % 8 == 0 {
+        let next_index = (p.cassette_manager.current_index + 1) % p.cassette_manager.max_beat;
+        for (block_index, entity_index) in entity_indices.into_iter().enumerate() {
+            let mut state = p.cassette_blocks[block_index].clone();
+            if state.index == next_index || state.activated {
+                let amount = if state.collidable { 1.0 } else { -1.0 };
+                shift_cassette_block(p, map, entity_index, &mut state, amount);
+                sync_cassette_entity(&mut map.entities[entity_index], &state);
+                p.cassette_blocks[block_index] = state;
+            }
+        }
+    }
+}
+
+fn scene_on_interval(time_active: f32, interval: f32, offset: f32) -> bool {
+    ((time_active - offset - DT) / interval).floor() < ((time_active - offset) / interval).floor()
+}
+
+fn advance_spinners(p: &mut PlayerSnapshot, map: &mut Map) {
+    let spinner_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| {
+            (entity.kind == EntityKind::CrystalStaticSpinner).then_some(index)
+        })
+        .collect();
+    for (spinner_index, entity_index) in spinner_indices.into_iter().enumerate() {
+        let mut state = p.spinners[spinner_index].clone();
+        let in_view = spinner_in_view(state.position, map);
+        if !state.visible {
+            state.collidable = false;
+            if in_view {
+                state.visible = true;
+            }
+        } else {
+            if scene_on_interval(p.scene_time_active, 0.25, state.offset) && !in_view {
+                state.visible = false;
+            }
+            if scene_on_interval(p.scene_time_active, 0.05, state.offset) {
+                state.collidable = (p.pos.x - state.position.x).abs() < 128.0
+                    && (p.pos.y - state.position.y).abs() < 128.0;
+            }
+        }
+        let entity = &mut map.entities[entity_index];
+        if state.visible && state.collidable {
+            entity.bounds = Rect::new(state.position.x - 8.0, state.position.y - 6.0, 16.0, 12.0);
+        } else {
+            park_entity(entity);
+        }
+        p.spinners[spinner_index] = state;
+    }
+}
+
+fn advance_post_player_entities(p: &mut PlayerSnapshot, map: &mut Map, input: InputState) {
+    advance_zip_movers(p, map);
+    advance_bounce_blocks(p, map);
+    advance_move_blocks(p, map, input);
+    advance_theo_crystals(p, map);
+    advance_heart_gems(p);
+    advance_rising_lavas(p, map);
+    advance_sandwich_lavas(p, map);
+    advance_gliders(p, map);
+    advance_clouds(p, map);
+    // Player is loaded before room entities. CassetteBlock.Update runs before
+    // the manager inserted after the first block, preserving WillToggle now /
+    // activation on the following frame.
+    advance_cassette_blocks(p, map);
+    advance_cassette_manager(p, map);
+    advance_spinners(p, map);
+}
+
 fn step(
     p: &mut PlayerSnapshot,
     mut input: InputState,
@@ -2360,10 +2700,14 @@ fn step(
     if p.just_respawned && p.speed != Vec2::default() {
         p.just_respawned = false;
     }
+    p.scene_time_active += DT;
     advance_moving_solids(p, map);
     if p.transition_timer > 0.0 {
         update_transition(p);
         advance_sandwich_lavas(p, map);
+        advance_cassette_blocks(p, map);
+        advance_cassette_manager(p, map);
+        advance_spinners(p, map);
         return Ok(());
     }
     advance_badeline_boost_relocation(p);
@@ -2447,15 +2791,7 @@ fn step(
 
     if p.badeline_boost_active {
         update_badeline_boost(p, map);
-        advance_zip_movers(p, map);
-        advance_bounce_blocks(p, map);
-        advance_move_blocks(p, map, input);
-        advance_theo_crystals(p, map);
-        advance_heart_gems(p);
-        advance_rising_lavas(p, map);
-        advance_sandwich_lavas(p, map);
-        advance_gliders(p, map);
-        advance_clouds(p, map);
+        advance_post_player_entities(p, map, input);
         p.on_ground = grounded(p, map);
         return Ok(());
     }
@@ -2479,15 +2815,7 @@ fn step(
         PlayerState::TempleFall => temple_fall_update(p, map),
         PlayerState::ReflectionFall => reflection_fall_update(p, map),
         PlayerState::IntroRespawn => {
-            advance_zip_movers(p, map);
-            advance_bounce_blocks(p, map);
-            advance_move_blocks(p, map, input);
-            advance_theo_crystals(p, map);
-            advance_heart_gems(p);
-            advance_rising_lavas(p, map);
-            advance_sandwich_lavas(p, map);
-            advance_gliders(p, map);
-            advance_clouds(p, map);
+            advance_post_player_entities(p, map, input);
             p.on_ground = grounded(p, map);
             return Ok(());
         }
@@ -2536,15 +2864,7 @@ fn step(
     // coroutine and Solid carry/push run after Player.Update. A lift speed
     // written by the previous ZipMover update is therefore visible to the
     // player's next action before the platform advances again.
-    advance_zip_movers(p, map);
-    advance_bounce_blocks(p, map);
-    advance_move_blocks(p, map, input);
-    advance_theo_crystals(p, map);
-    advance_heart_gems(p);
-    advance_rising_lavas(p, map);
-    advance_sandwich_lavas(p, map);
-    advance_gliders(p, map);
-    advance_clouds(p, map);
+    advance_post_player_entities(p, map, input);
     p.on_ground = grounded(p, map);
     Ok(())
 }
@@ -4055,6 +4375,7 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                 | EntityKind::IceBall
                 | EntityKind::RisingLava
                 | EntityKind::SandwichLava
+                | EntityKind::CrystalStaticSpinner
         ) {
             current_player_hurt_rect(p)
         } else {
@@ -4083,6 +4404,14 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                     entity.bounds.y + entity.bounds.height * 0.5,
                 );
                 Rect::new(center.x - 8.0, center.y - 3.0, 16.0, 6.0).intersects(player_box)
+            }
+            EntityKind::CrystalStaticSpinner => {
+                let center = Vec2::new(
+                    entity.bounds.x + entity.bounds.width * 0.5,
+                    entity.bounds.y + entity.bounds.height * 0.5,
+                );
+                circle_rect_intersects(center, 6.0, player_box)
+                    || Rect::new(center.x - 8.0, center.y - 3.0, 16.0, 4.0).intersects(player_box)
             }
             EntityKind::Puffer
             | EntityKind::AngryOshiro
@@ -4134,7 +4463,9 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                 p.respawn_frames = 95;
                 return;
             }
-            EntityKind::RisingLava | EntityKind::SandwichLava => {
+            EntityKind::RisingLava
+            | EntityKind::SandwichLava
+            | EntityKind::CrystalStaticSpinner => {
                 p.dead = true;
                 p.speed = Vec2::default();
                 p.death_freeze_pending = true;
@@ -5122,6 +5453,49 @@ mod tests {
                 single_use: false,
                 nodes: vec![],
                 name: "bounceBlock".to_owned(),
+            }],
+            ..Map::default()
+        }
+    }
+
+    fn cassette_map() -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::CassetteBlock,
+                    bounds: Rect::new(64.0, 101.0, 64.0, 16.0),
+                    direction: Vec2::new(0.0, 1.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "cassetteBlock".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::CassetteBlock,
+                    bounds: Rect::new(192.0, 101.0, 64.0, 16.0),
+                    direction: Vec2::new(1.0, 1.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "cassetteBlock".to_owned(),
+                },
+            ],
+            ..Map::default()
+        }
+    }
+
+    fn spinner_map() -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            entities: vec![crate::Entity {
+                kind: EntityKind::CrystalStaticSpinner,
+                bounds: Rect::new(92.0, 94.0, 16.0, 12.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "spinner".to_owned(),
             }],
             ..Map::default()
         }
@@ -10796,6 +11170,215 @@ mod tests {
         assert!((jumped.speed.x - 273.333_34).abs() < 0.001);
         assert_eq!(jumped.speed.y, JUMP_SPEED);
         assert_eq!(jumped.var_jump_timer, VAR_JUMP_TIME);
+    }
+
+    #[test]
+    fn cassette_raise_uses_separate_will_toggle_and_activation_pixels() {
+        let p = PlayerSnapshot {
+            state: PlayerState::Frozen,
+            cassette_manager: crate::CassetteManagerSnapshot {
+                initialized: true,
+                startup_music_pending: false,
+                beat_timer: CASSETTE_BEAT_INTERVAL - DT * 0.5,
+                beat_index: 6,
+                current_index: 1,
+                max_beat: 2,
+                tempo_mult: 1.0,
+            },
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(p, &[InputState::default(); 12], &cassette_map(), 12).unwrap();
+        let warned = &trace.states[1];
+        assert_eq!(warned.cassette_manager.beat_index, 7);
+        assert_eq!(warned.cassette_blocks[0].position.y, 102.0);
+        assert_eq!(warned.cassette_blocks[1].position.y, 102.0);
+        assert!(!warned.cassette_blocks[0].collidable);
+        assert!(warned.cassette_blocks[1].collidable);
+
+        let activated = &trace.states[12];
+        assert_eq!(activated.cassette_manager.beat_index, 8);
+        assert_eq!(activated.cassette_blocks[0].position.y, 101.0);
+        assert_eq!(activated.cassette_blocks[1].position.y, 103.0);
+        assert!(activated.cassette_blocks[0].collidable);
+        assert!(!activated.cassette_blocks[1].collidable);
+    }
+
+    #[test]
+    fn fresh_custom_cassette_manager_skips_music_advance_on_its_first_update() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(96.0, 106.0),
+            state: PlayerState::Frozen,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(p, &[InputState::default(); 82], &cassette_map(), 82).unwrap();
+
+        assert!(trace.states[0].cassette_manager.startup_music_pending);
+        assert!(!trace.states[1].cassette_manager.startup_music_pending);
+        assert_eq!(trace.states[1].cassette_manager.beat_timer, 0.0);
+        assert_eq!(trace.states[81].pos.y, 106.0);
+        assert_eq!(trace.states[82].pos.y, 101.0);
+    }
+
+    #[test]
+    fn cassette_reform_wiggles_player_four_pixels_then_carries_one() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(96.0, 106.0),
+            state: PlayerState::Frozen,
+            cassette_manager: crate::CassetteManagerSnapshot {
+                initialized: true,
+                current_index: 0,
+                max_beat: 2,
+                tempo_mult: 1.0,
+                ..crate::CassetteManagerSnapshot::default()
+            },
+            cassette_blocks: vec![
+                crate::CassetteBlockSnapshot {
+                    position: Vec2::new(64.0, 102.0),
+                    start: Vec2::new(64.0, 101.0),
+                    width: 64.0,
+                    height: 16.0,
+                    index: 0,
+                    activated: true,
+                    collidable: false,
+                },
+                crate::CassetteBlockSnapshot {
+                    position: Vec2::new(192.0, 103.0),
+                    start: Vec2::new(192.0, 101.0),
+                    width: 64.0,
+                    height: 16.0,
+                    index: 1,
+                    activated: false,
+                    collidable: false,
+                },
+            ],
+            ..PlayerSnapshot::default()
+        };
+        let result = simulate(p, &[InputState::default()], &cassette_map(), 1).unwrap();
+        assert_eq!(result.pos.y, 101.0);
+        assert_eq!(result.cassette_blocks[0].position.y, 101.0);
+        assert!(result.cassette_blocks[0].collidable);
+        assert!((result.current_lift_speed.y + 60.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn cassoosted_fuper_combines_grounded_starfly_jump_and_same_frame_reform() {
+        let mut map = cassette_map();
+        map.solids.push(Rect::new(0.0, 106.0, 320.0, 8.0));
+        let p = PlayerSnapshot {
+            pos: Vec2::new(96.0, 106.0),
+            speed: Vec2::new(250.0, 0.0),
+            state: PlayerState::StarFly,
+            star_fly_timer: 1.0,
+            star_fly_speed_lerp: 1.0,
+            star_fly_last_dir: Vec2::new(1.0, 0.0),
+            cassette_manager: crate::CassetteManagerSnapshot {
+                initialized: true,
+                current_index: 0,
+                max_beat: 2,
+                tempo_mult: 1.0,
+                ..crate::CassetteManagerSnapshot::default()
+            },
+            cassette_blocks: vec![
+                crate::CassetteBlockSnapshot {
+                    position: Vec2::new(64.0, 102.0),
+                    start: Vec2::new(64.0, 101.0),
+                    width: 64.0,
+                    height: 16.0,
+                    index: 0,
+                    activated: true,
+                    collidable: false,
+                },
+                crate::CassetteBlockSnapshot {
+                    position: Vec2::new(192.0, 103.0),
+                    start: Vec2::new(192.0, 101.0),
+                    width: 64.0,
+                    height: 16.0,
+                    index: 1,
+                    activated: false,
+                    collidable: false,
+                },
+            ],
+            ..PlayerSnapshot::default()
+        };
+        let result = simulate(
+            p,
+            &[InputState {
+                move_x: 1,
+                jump_pressed: true,
+                jump_held: true,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert_eq!(result.state, PlayerState::Normal);
+        assert!((result.speed.x - 273.333_34).abs() < 0.001);
+        assert_eq!(result.speed.y, JUMP_SPEED);
+        assert!(result.cassette_blocks[0].collidable);
+        assert_eq!(result.cassette_blocks[0].position.y, 101.0);
+        assert_eq!(result.pos.y, 101.0);
+    }
+
+    #[test]
+    fn cassette_manager_keeps_advancing_during_room_transition() {
+        let p = PlayerSnapshot {
+            state: PlayerState::Frozen,
+            transition_timer: 0.5,
+            transition_direction: Vec2::new(1.0, 0.0),
+            transition_target: Vec2::new(300.0, 100.0),
+            cassette_manager: crate::CassetteManagerSnapshot {
+                initialized: true,
+                startup_music_pending: false,
+                beat_timer: CASSETTE_BEAT_INTERVAL - DT * 0.5,
+                beat_index: 6,
+                current_index: 1,
+                max_beat: 2,
+                tempo_mult: 1.0,
+            },
+            ..PlayerSnapshot::default()
+        };
+        let result = simulate(p, &[InputState::default()], &cassette_map(), 1).unwrap();
+        assert_eq!(result.cassette_manager.beat_index, 7);
+        assert_eq!(result.cassette_blocks[0].position.y, 102.0);
+        assert_eq!(result.cassette_blocks[1].position.y, 102.0);
+    }
+
+    #[test]
+    fn spinner_proximity_check_enables_collision_after_player_callback_phase() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(100.0, 100.0),
+            state: PlayerState::Frozen,
+            scene_time_active: 0.04,
+            spinners: vec![crate::SpinnerSnapshot {
+                position: Vec2::new(100.0, 100.0),
+                offset: 0.0,
+                visible: true,
+                collidable: false,
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(p, &[InputState::default(); 2], &spinner_map(), 2).unwrap();
+        assert!(!trace.states[1].dead);
+        assert!(trace.states[1].spinners[0].collidable);
+        assert!(trace.states[2].dead);
+    }
+
+    #[test]
+    fn float32_scene_clock_freezes_spinner_interval_groups() {
+        // At 2^19 seconds the f32 ULP is 1/16 second, so adding 1/60 no
+        // longer changes TimeActive. Subtracting each spinner's offset before
+        // the interval bucket comparison still leaves distinct stable groups.
+        let frozen = 524_288.0_f32;
+        assert_eq!(frozen + DT, frozen);
+        let hits = (0..=1000)
+            .filter(|index| scene_on_interval(frozen, 0.05, *index as f32 / 1000.0))
+            .count();
+        assert!(hits > 0, "at least one offset group should keep firing");
+        assert!(
+            hits < 1001,
+            "at least one offset group should remain frozen"
+        );
     }
 
     #[test]

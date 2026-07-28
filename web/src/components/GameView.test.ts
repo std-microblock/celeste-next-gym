@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import atlas from '../../public/assets/original/gameplay/gameplay-selected.json'
 import { createInitialState, PLAYGROUND } from '../model'
 import type { MapEntity } from '../model'
-import { activeBoosterCenter, runtimeEntityBounds } from './GameView'
+import { activeBoosterCenter, runtimeEntityBounds, strawberryIsPicked } from './GameView'
 
 describe('booster rendering', () => {
   it('moves the active booster bubble with the player', () => {
@@ -33,6 +33,22 @@ describe('runtime entity rendering', () => {
       'objects/zipmover/light01',
       'objects/BumpBlockNew/fire00',
       'objects/BumpBlockNew/fire_center00',
+      'objects/puffer/idle00',
+      'objects/puffer/explode00',
+      'characters/oshiro/boss34',
+      'characters/monsters/predator00',
+      'danger/snowball00',
+      'objects/clouds/cloud00',
+      'objects/glider/idle0',
+      'objects/glider/held0',
+      'objects/moveBlock/base',
+      'objects/moveBlock/arrow00',
+      'objects/moveBlock/x',
+      'collectables/heartGem/orb',
+      'objects/cassetteblock/solid',
+      'objects/cassetteblock/pressed00',
+      'danger/crystal/bg_blue00',
+      'danger/crystal/fg_blue00',
     ]))
   })
 
@@ -89,5 +105,55 @@ describe('runtime entity rendering', () => {
     }
 
     expect(runtimeEntityBounds(solid, state, 0)).toEqual({ x: 12, y: 18, width: 32, height: 8 })
+  })
+
+  it('uses Cloud and MoveBlock runtime positions from WASM snapshots', () => {
+    const state = createInitialState(PLAYGROUND)
+    const cloud: MapEntity = {
+      kind: 'cloud',
+      bounds: { x: 504, y: 440, width: 32, height: 5 },
+      direction: { x: 0, y: 0 },
+      name: 'cloud',
+    }
+    const moveBlock: MapEntity = {
+      kind: 'move_block',
+      bounds: { x: 600, y: 320, width: 32, height: 16 },
+      direction: { x: 1, y: 0 },
+      name: 'moveBlock',
+    }
+    state.clouds = [{
+      phase: 1,
+      speed: -120,
+      position: { x: 504, y: 414 },
+      remainder_y: .25,
+      start: { x: 504, y: 440 },
+    }]
+    state.move_blocks = [{
+      phase: 2,
+      wait_timer: 0,
+      speed: 60,
+      angle: 0,
+      crash_timer: .15,
+      crash_reset_timer: .1,
+      no_steer_timer: 0,
+      position: { x: 628, y: 312 },
+      remainder: { x: 0, y: 0 },
+      lift_speed: { x: 60, y: 0 },
+      start: { x: 600, y: 320 },
+      visible: true,
+      static_movers_enabled: true,
+    }]
+
+    expect(runtimeEntityBounds(cloud, state, 0)).toEqual({ x: 504, y: 414, width: 32, height: 5 })
+    expect(runtimeEntityBounds(moveBlock, state, 0)).toEqual({ x: 628, y: 312, width: 32, height: 16 })
+  })
+
+  it('hides collected strawberries by their map entity bit', () => {
+    const state = createInitialState(PLAYGROUND)
+    state.strawberry_picked_mask = (1n << 3n) | (1n << 63n)
+
+    expect(strawberryIsPicked(state, 2)).toBe(false)
+    expect(strawberryIsPicked(state, 3)).toBe(true)
+    expect(strawberryIsPicked(state, 63)).toBe(true)
   })
 })
