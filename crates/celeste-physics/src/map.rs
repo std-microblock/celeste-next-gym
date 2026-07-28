@@ -65,6 +65,8 @@ pub enum EntityKind {
     TheoCrystal,
     /// Vanilla Celeste ZipMover Solid. The first node is its target position.
     ZipMover,
+    /// Vanilla steerable MoveBlock ("moon block") Solid.
+    MoveBlock,
     /// Simulator-native constant-velocity Solid used to exercise Monocle
     /// carrying, pushing, and Player LiftSpeed inheritance independently of a
     /// specific vanilla entity state machine.
@@ -511,6 +513,33 @@ pub(crate) fn encode_celeste_rooms(
                         )],
                     ))
                 }
+                EntityKind::MoveBlock => {
+                    let direction = if entity.direction.x < 0.0 {
+                        "Left"
+                    } else if entity.direction.y < 0.0 {
+                        "Up"
+                    } else if entity.direction.y > 0.0 {
+                        "Down"
+                    } else {
+                        "Right"
+                    };
+                    Some(element(
+                        "moveBlock",
+                        [
+                            ("canSteer", BinaryValue::Bool(true)),
+                            ("direction", BinaryValue::String(direction.to_owned())),
+                            ("fast", BinaryValue::Bool(false)),
+                            ("height", BinaryValue::Int(height)),
+                            ("id", BinaryValue::Int(id)),
+                            ("originX", BinaryValue::Int(0)),
+                            ("originY", BinaryValue::Int(0)),
+                            ("width", BinaryValue::Int(width)),
+                            ("x", BinaryValue::Int(x)),
+                            ("y", BinaryValue::Int(y)),
+                        ],
+                        vec![],
+                    ))
+                }
                 EntityKind::MovingSolid => Some(element(
                     "celesteGymMovingSolid",
                     [
@@ -821,6 +850,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 "bounceBlock" => EntityKind::BounceBlock,
                 "theoCrystal" => EntityKind::TheoCrystal,
                 "zipMover" => EntityKind::ZipMover,
+                "moveBlock" => EntityKind::MoveBlock,
                 "celesteGymMovingSolid" => EntityKind::MovingSolid,
                 _ => EntityKind::Unknown,
             };
@@ -884,6 +914,15 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 ),
                 "bounceBlock" | "zipMover" => {
                     (Rect::new(ex, ey, raw_width, raw_height), Vec2::default())
+                }
+                "moveBlock" => {
+                    let direction = match attr_text(el, "direction").unwrap_or("Right") {
+                        "Left" => Vec2::new(-1.0, 0.0),
+                        "Up" => Vec2::new(0.0, -1.0),
+                        "Down" => Vec2::new(0.0, 1.0),
+                        _ => Vec2::new(1.0, 0.0),
+                    };
+                    (Rect::new(ex, ey, raw_width, raw_height), direction)
                 }
                 "theoCrystal" => (Rect::new(ex - 4.0, ey - 10.0, 8.0, 10.0), Vec2::default()),
                 "celesteGymMovingSolid" => (
@@ -1019,7 +1058,10 @@ impl Map {
             || self.entities.iter().any(|entity| {
                 matches!(
                     entity.kind,
-                    EntityKind::BounceBlock | EntityKind::MovingSolid | EntityKind::ZipMover
+                    EntityKind::BounceBlock
+                        | EntityKind::MoveBlock
+                        | EntityKind::MovingSolid
+                        | EntityKind::ZipMover
                 ) && entity.bounds.intersects(rect)
             })
     }
@@ -1225,6 +1267,31 @@ mod tests {
         assert_eq!(entity.kind, EntityKind::BounceBlock);
         assert_eq!(entity.bounds, Rect::new(352.0, -120.0, 64.0, 16.0));
         assert_eq!(entity.name, "bounceBlock");
+    }
+
+    #[test]
+    fn vanilla_move_block_round_trips_through_celeste_binary() {
+        let map = Map {
+            bounds: Rect::new(320.0, -240.0, 320.0, 184.0),
+            entities: vec![Entity {
+                kind: EntityKind::MoveBlock,
+                bounds: Rect::new(352.0, -120.0, 32.0, 16.0),
+                direction: Vec2::new(1.0, 0.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "moveBlock".to_owned(),
+            }],
+            ..Map::default()
+        };
+
+        let encoded = encode_celeste_map(&map, "CelesteGymTest", "move").unwrap();
+        let decoded = decode_map_room(&encoded, Some("move")).unwrap();
+        let entity = decoded.entities.first().unwrap();
+        assert_eq!(entity.kind, EntityKind::MoveBlock);
+        assert_eq!(entity.bounds, Rect::new(352.0, -120.0, 32.0, 16.0));
+        assert_eq!(entity.direction, Vec2::new(1.0, 0.0));
+        assert_eq!(entity.name, "moveBlock");
     }
 
     #[test]
