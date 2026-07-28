@@ -29,6 +29,6 @@ pub use sim::{
     simulate, simulate_trace,
 };
 pub use types::{
-    BounceBlockSnapshot, CloudSnapshot, InputState, PlayerSnapshot, PlayerState,
+    BounceBlockSnapshot, CloudSnapshot, InputState, MoveBlockSnapshot, PlayerSnapshot, PlayerState,
     TheoCrystalSnapshot, Vec2, ZipMoverSnapshot,
 };

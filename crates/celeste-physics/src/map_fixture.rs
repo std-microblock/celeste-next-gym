@@ -39,6 +39,7 @@ pub enum FixtureEntityKind {
     BounceBlock,
     TheoCrystal,
     ZipMover,
+    MoveBlock,
     MovingSolid,
 }
 
@@ -371,7 +372,7 @@ fn validate_room(
 fn validate_entity_fields(entity: &FixtureEntity, room: &str) -> Result<(), MapFixtureError> {
     let direction = integer_vec2(entity.direction);
     match entity.kind {
-        FixtureEntityKind::Spikes | FixtureEntityKind::Spring => {
+        FixtureEntityKind::Spikes | FixtureEntityKind::Spring | FixtureEntityKind::MoveBlock => {
             if !matches!(direction, [-1 | 1, 0] | [0, -1 | 1]) {
                 return validation(format!(
                     "room {room:?} entity {:?} requires a unit cardinal direction",
@@ -407,6 +408,7 @@ fn validate_entity_fields(entity: &FixtureEntity, room: &str) -> Result<(), MapF
             FixtureEntityKind::Spikes
                 | FixtureEntityKind::Spring
                 | FixtureEntityKind::Wind
+                | FixtureEntityKind::MoveBlock
                 | FixtureEntityKind::MovingSolid
         )
     {
@@ -571,6 +573,7 @@ fn entity(value: &FixtureEntity) -> Entity {
             FixtureEntityKind::BounceBlock => EntityKind::BounceBlock,
             FixtureEntityKind::TheoCrystal => EntityKind::TheoCrystal,
             FixtureEntityKind::ZipMover => EntityKind::ZipMover,
+            FixtureEntityKind::MoveBlock => EntityKind::MoveBlock,
             FixtureEntityKind::MovingSolid => EntityKind::MovingSolid,
         },
         bounds: rect(value.bounds),
