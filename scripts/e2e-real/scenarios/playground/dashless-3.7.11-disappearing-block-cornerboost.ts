@@ -9,9 +9,10 @@ export const mapParts = [TECH_DASHLESS_3_7_11_DISAPPEARING_BLOCK_CORNERBOOST] as
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: ['feature:cassette-block'],
   techniqueIds: ['3.7.11'],
+  recording: { primaryFor: ['3.7.11'], startFrame: 0, endFrame: 60 },
   mapParts,
   name: 'dashless-3.7.11-disappearing-block-cornerboost',
   initial: { pos: [120, 496], speed: [0, 0], on_ground: true },
