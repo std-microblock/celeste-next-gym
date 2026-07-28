@@ -16,5 +16,5 @@
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [normal_update]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [held_theo_turns_grabbed_wall_jump_into_a_normal_neutral / jelly_neutral_drop_wall_jump_regrabs_after_long_lockout]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.22.3-holdable-neutral-jump.ts / scripts/e2e-real/scenarios/playground/entity-4.22.3-jelly-neutral-jump.ts], symbol: [entity-4.22.3-holdable-neutral-jump / entity-4.22.3-jelly-neutral-jump], note: [Theo 与 Jelly 各有独立墙面 MapPart；后者显式要求放下、普通 Neutral 墙跳和重抓。真实 Everest 尚待 FIFO 锁内采集。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.22.3-holdable-neutral-jump.ts / scripts/e2e-real/scenarios/playground/entity-4.22.3-jelly-neutral-jump.ts], symbol: [entity-4.22.3-holdable-neutral-jump / entity-4.22.3-jelly-neutral-jump], note: [Theo 与 Jelly 各有独立墙面 MapPart；真实 Jelly 首轮在第 24 帧完成放下，但没有形成普通 Neutral 墙跳（neutral = -1），因此双变体证据尚未闭环并保留 candidate。]),
 )

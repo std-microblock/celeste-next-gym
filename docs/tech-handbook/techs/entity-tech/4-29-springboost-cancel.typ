@@ -16,5 +16,5 @@
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [advance_gliders / hit_glider_spring / release_glider / pickup_update]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [floor_spring_launches_unheld_glider_after_actor_movement]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.29-springboost-cancel.ts], symbol: [entity-4.29-springboost-cancel], note: [独立 Glider＋地板弹簧 MapPart 尝试丢出、实体弹簧回调和重抓；真实取消窗口与视频尚待 FIFO 锁内验收。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.29-springboost-cancel.ts], symbol: [entity-4.29-springboost-cancel], note: [独立 Glider＋地板弹簧 MapPart 已在真实 Everest 中执行丢出与实体弹簧回调，但没有完成后续重抓（regrab = -1），真实取消窗口尚未闭环，故保留 candidate。]),
 )

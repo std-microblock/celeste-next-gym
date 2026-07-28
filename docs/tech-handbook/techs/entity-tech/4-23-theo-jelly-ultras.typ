@@ -16,5 +16,5 @@
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [dash_update / try_pickup_holdable / pickup_update]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [grounded_ultra_pickup_cancel_skips_dash_end_speed_normalization / grounded_ultra_glider_pickup_cancel_preserves_multiplied_speed]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.23-theo-ultra.ts / scripts/e2e-real/scenarios/playground/entity-4.23-jelly-ultra.ts], symbol: [entity-4.23-theo-ultra / entity-4.23-jelly-ultra], note: [Theo 与 Jelly 各有独立贴地 Ultra MapPart，并要求 Pickup 后恢复 360 水平速度；真实 Everest 尚待锁内采集。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.23-theo-ultra.ts / scripts/e2e-real/scenarios/playground/entity-4.23-jelly-ultra.ts], symbol: [entity-4.23-theo-ultra / entity-4.23-jelly-ultra], note: [Jelly 真实场景已完成 Pickup Ultra 语义，但第 22 帧首先偏离：游戏速度 353.333 且未蹲，Rust 速度 351.667 且仍蹲；全程最大速度误差 4.999969，超过 0.01，故双变体仍保留 candidate。]),
 )

@@ -16,5 +16,5 @@
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [release_glider / try_pickup_glider / pickup_update]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [glider_pickup_tween_stalls_then_restores_only_upward_speed / released_glider_obeys_long_lockout_then_can_be_regrabbed]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.22.1-holdable-stall.ts], symbol: [entity-4.22.1-holdable-stall], note: [独立空中 Jelly MapPart 尝试两轮中性放下与 Pickup tween；真实 Everest 尚待 FIFO 锁内调时并录制。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.22.1-holdable-stall.ts], symbol: [entity-4.22.1-holdable-stall], note: [独立空中 MapPart 的两只 Jelly 已在真实 Everest 中形成两轮 Pickup，但 Rust 在第 13 帧首先偏离：游戏位置 (80, 318)、速度 (0, -105)，Rust 位置 (80, 320)、速度 (0, -20)。空中 Jelly Pickup 恢复速度机制尚未闭环，因此保留 candidate。]),
 )

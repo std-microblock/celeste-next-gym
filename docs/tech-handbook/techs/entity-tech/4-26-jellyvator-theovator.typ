@@ -16,5 +16,5 @@
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [release_theo / release_glider / dash_update / pickup_update]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [theovator_regrabs_after_updash_speed_is_live_and_restores_it_after_pickup / jellyvator_regrabs_updash_and_restores_vertical_speed]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.26-theovator.ts / scripts/e2e-real/scenarios/playground/entity-4.26-jellyvator.ts], symbol: [entity-4.26-theovator / entity-4.26-jellyvator], note: [Theo 与 Jelly 各有独立 MapPart，按各自 CannotHold 延迟执行上冲刺重抓并恢复 -240 Y；真实 Everest 尚待锁内采集。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.26-theovator.ts / scripts/e2e-real/scenarios/playground/entity-4.26-jellyvator.ts], symbol: [entity-4.26-theovator / entity-4.26-jellyvator], note: [Jelly 真实场景已完成重抓上冲语义，但第 47 帧游戏位于 (60, 492)、速度 (0, -240)、状态 Dash，Rust 仍位于 (60, 496)、速度为零、状态 Pickup；最大位置／速度误差为 46／240，故双变体保留 candidate。]),
 )

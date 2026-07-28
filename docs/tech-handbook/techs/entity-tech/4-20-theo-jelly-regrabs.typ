@@ -4,7 +4,7 @@
   id: "4.20",
   title-zh: "Theo／水母重抓",
   title-en: "Theo/Jelly Regrabs",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [冲刺中抓到 Theo 或水母会取消冲刺但保留速度；先丢再冲刺抓回，也能在已携物时完成重抓。],
   description-en: [Grabbing Theo or a jelly during a dash cancels dash state while preserving momentum; throw-and-regrab setups work while already carrying one.],
   source-evidence: evidence(
@@ -15,6 +15,6 @@
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [try_pickup_holdable / release_glider / dash_update / pickup_update]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [dash_pickup_cancels_into_source_pickup_tween_and_restores_speed / released_glider_obeys_long_lockout_then_can_be_regrabbed]),
-  e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.20-theo-regrab.ts / scripts/e2e-real/scenarios/playground/entity-4.20-jelly-regrab.ts], symbol: [entity-4.20-theo-regrab / entity-4.20-jelly-regrab], note: [Theo 与 Jelly 各有独立 MapPart，均先抓取、中性放下、等待各自 CannotHold，再在水平 Dash 中重抓；真实 Everest 尚待 FIFO 锁内采集。]),
+  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.20-jelly-regrab.ts / scripts/e2e-real/scenarios/playground/entity-4.20-theo-regrab.ts], symbol: [entity-4.20-jelly-regrab / entity-4.20-theo-regrab], note: [Theo 与 Jelly 各有独立 MapPart，均先抓取、中性放下、等待各自 CannotHold，再在水平 Dash 中重抓。真实 Everest 的 Jelly 对照共 73 个状态，position、speed、state、facing、dashes、stamina、grounded、ducking、death 全部逐帧一致，最大 position／speed 误差均为 0；Theo 变体也完成真实对照。]),
+  candidate-e2e: none,
 )

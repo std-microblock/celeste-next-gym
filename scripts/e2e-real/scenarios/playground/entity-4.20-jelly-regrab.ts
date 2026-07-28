@@ -7,8 +7,9 @@ import { ENTITY_4_20_JELLY_REGRAB_PART } from '../glider-parts.js'
 
 export const mapParts = [ENTITY_4_20_JELLY_REGRAB_PART] as const
 export const scenario = defineScenario({
-  target: PLAYGROUND_TARGET, status: 'candidate', tags: ['feature:glider'], techniqueIds: ['4.20'], mapParts,
+  target: PLAYGROUND_TARGET, status: 'active', tags: ['feature:glider'], techniqueIds: ['4.20'], mapParts,
   name: 'entity-4.20-jelly-regrab', initial: { pos: [60, 496], on_ground: true },
+  recording: { primaryFor: ['4.20'], startFrame: 0, endFrame: 72, posterFrame: 47 },
   inputs: Array.from({ length: 72 }, (_, frame) => input({
     move_x: frame >= 24 && frame < 40 ? -1 : frame >= 40 ? 1 : 0,
     move_y: frame === 23 ? 1 : 0, dash_pressed: frame === 40,
