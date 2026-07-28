@@ -19,7 +19,7 @@ interface PredictionPreview {
   windows: Array<{ from: number; to: number }>
   bestFinalSpeed?: number
 }
-interface OutcomeAnimation {
+export interface OutcomeAnimation {
   phase: 'failed' | 'success'
   startedAt: number
   durationMs: number
@@ -54,6 +54,10 @@ export function timingAssessment(actualFrame: number | undefined, targetFrame: n
 
 export function outcomeSpeedX(after: SimState): number {
   return after.speed.x
+}
+
+export function trainingInputLocked(outcome: OutcomeAnimation | null): boolean {
+  return outcome !== null
 }
 
 function verificationKeys(buttons: FrameButtons, document: TrainingDefinition, step: number): string[] {
@@ -108,6 +112,8 @@ export function TrainingGround() {
       resultSpeedX: outcomeSpeedX(after),
     }
     outcomeRef.current = next
+    keys.current.clear()
+    previousButtons.current = makeEmptyButtons()
     setOutcome(next)
     setOutcomeProgress(0)
   }
@@ -209,9 +215,10 @@ export function TrainingGround() {
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLElement && event.target.matches('input, select, button')) return
-      keys.current.add(event.code)
       const gameInput = Object.values(DEFAULT_BINDINGS).includes(event.code)
       if (gameInput || event.code === 'KeyR') event.preventDefault()
+      if (trainingInputLocked(outcomeRef.current)) return
+      keys.current.add(event.code)
       if (gameInput) {
         setFollowReference(true)
         if (predictionDirty.current) {
@@ -260,7 +267,9 @@ export function TrainingGround() {
       if (carry >= 1 && !simulating.current) {
         carry -= 1
         const currentFrame = frameRef.current
-        const current = buttonsFromKeyboard(keys.current, DEFAULT_BINDINGS)
+        const current = activeOutcome === null
+          ? buttonsFromKeyboard(keys.current, DEFAULT_BINDINGS)
+          : makeEmptyButtons()
         const input = buttonsToInput(current, previousButtons.current)
         const beforeSession = sessionRef.current
         const triggers = pressedVerification(current, previousButtons.current)

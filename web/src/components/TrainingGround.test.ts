@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { makeEmptyButtons } from '../model'
-import { outcomeSpeedX, timingAssessment, trainingEntryDirectionPassed } from './TrainingGround'
+import { outcomeSpeedX, timingAssessment, trainingEntryDirectionPassed, trainingInputLocked } from './TrainingGround'
 import type { SimState } from '../model'
 
 describe('training entry direction', () => {
@@ -20,5 +20,10 @@ describe('training result timing', () => {
 
   it('samples the same post-input X speed used by the outcome state', () => {
     expect(outcomeSpeedX({ speed: { x: 325, y: -80 } } as SimState)).toBe(325)
+  })
+
+  it('locks game input whenever a result overlay is active', () => {
+    expect(trainingInputLocked(null)).toBe(false)
+    expect(trainingInputLocked({ phase: 'success', startedAt: 0, durationMs: 3_000, resultSpeedX: 325 })).toBe(true)
   })
 })
