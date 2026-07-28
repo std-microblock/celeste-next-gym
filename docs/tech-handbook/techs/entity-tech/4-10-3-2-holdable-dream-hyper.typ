@@ -4,7 +4,7 @@
   id: "4.10.3.2",
   title-zh: "携物 Dream Hyper",
   title-en: "Holdable Dream Hyper",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [完成 Dream Smuggle 并在出口抓墙后，快速丢出投掷物、向反方向 Hyper，再重新抓回投掷物。],
   description-en: [After smuggling and grabbing at the exit, throw the holdable, hyper away, and regrab it to leave with both the item and hyper speed.],
   source-evidence: evidence(
@@ -15,10 +15,10 @@
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [release_theo / super_jump / try_pickup_theo]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [holdable_dream_hyper_throw_cannot_hold_hyper_and_regrab_are_split_composable / holdable_dream_hyper_regrabs_on_frame_169_after_theo_release_curve]),
-  e2e-evidence: none,
-  candidate-e2e: evidence(
-    path: [scripts/e2e-real-collector.mjs],
+  e2e-evidence: evidence(
+    path: [scripts/e2e-real/scenarios/playground/entity-4.10.3.2-holdable-dream-hyper.ts; .tmp/e2e-runs/2026-07-28T16-11-22.799Z-109360-323b6fd0-77c5-4fd5-8cf0-ba9e5e156a3b/manifest.json],
     symbol: [entity-4.10.3.2-holdable-dream-hyper],
-    note: [延长后的最终候选已完整形成出口抓持、松物、CannotHold、325 Hyper 与重新抓回 Theo。新增本地 240 帧回归锁定离手 Theo 的空中水平阻尼：frame 168 仍是 Normal，Theo=(360,496)、Player=(371,496)，未扩大源定义的 16×22 抓取框；下一帧按原碰撞框进入 Pickup。真实 Everest 对照尚未复跑，故保持未实现。],
+    note: [2026-07-28 在受锁主工作区的物理 `vendor/celeste-game` 上运行；runner nonce 与 spawned Celeste PID 精确匹配，隔离存档／临时目录、动态 loopback ports 与受控清理均完成。240 个输入帧连同初始快照共 241 个状态，position、speed、state、facing、dashes、stamina、grounded、ducking、death 九字段逐帧一致，position 与 speed 最大误差均为 0。语义上完整观测 exit-grab、release、CannotHold 阻止立即重抓、325 Hyper，随后在原定义的 16×22 PickupCollider 上进入 Pickup 并重新抓回 Theo。],
   ),
+  candidate-e2e: none,
 )
