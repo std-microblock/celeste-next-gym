@@ -4,7 +4,7 @@
   id: "4.14",
   title-zh: "Heart Ultra",
   title-en: "Heart Ultras",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [在收集水晶心的同一帧向下斜冲刺，可利用心脏补冲和状态中断形成 Ultra；可先耗尽冲刺把输入变成缓冲。],
   description-en: [Down-diagonal dashing on the heart-collection frame combines the refill and interruption into an ultra, with dash exhaustion enabling a buffered setup.],
   source-evidence: evidence(
@@ -20,12 +20,13 @@
   ),
   test-evidence: evidence(
     path: [crates/celeste-physics/src/map.rs / crates/celeste-physics/src/sim.rs],
-    symbol: [vanilla_heart_gem_round_trips_through_celeste_binary / heart_gem_collect_yields_then_freezes_before_setting_half_time_rate / heart_gem_point_bounces_a_non_dash_attacking_player],
+    symbol: [vanilla_heart_gem_round_trips_through_celeste_binary / heart_gem_collect_yields_then_freezes_before_setting_half_time_rate / heart_gem_point_bounces_a_non_dash_attacking_player / engine_time_rate_scales_the_entire_next_player_update],
+    note: [除 HeartGem 的 collect、raw-time Freeze 与 PointBounce 外，TimeRate 回归还锁定下一 raw frame 开头只捕获一次 `RawDeltaTime * TimeRate`，同帧玩家、实体、timer 与子像素移动共用该值。],
   ),
-  e2e-evidence: none,
-  candidate-e2e: evidence(
+  e2e-evidence: evidence(
     path: [scripts/e2e-real/scenarios/core-heart-squish-parts.ts / scripts/e2e-real/scenarios/playground/entity-4.14-heart-ultra.ts],
     symbol: [tech.entity-4.14-heart-ultra / entity-4.14-heart-ultra],
-    note: [独立 MapPart 以 vanilla `blackGem` 编码水晶心，Collector 直接扫描未注册 Tracker 的 HeartGem。真实 trace 在 frame 5 收集、frame 7 进入 0.2 秒 Freeze、frame 20 得到首个 0.495833 TimeRate，语义链完整；但 frame 21 起原版用 `Engine.DeltaTime = RawDeltaTime * TimeRate` 每帧移动约 3px，Rust 固定 DT 每帧移动 6px，九字段首差因此保留未实现。],
+    note: [独立 MapPart 以 vanilla `blackGem` 编码水晶心。真实 trace 在 frame 5 收集、frame 7 进入 0.2 秒 raw-time Freeze，随后进入半速；29 个状态的 position 与 speed 最大误差均为 0，state、facing、dashes、stamina、grounded、ducking、death 也逐帧一致。],
   ),
+  candidate-e2e: none,
 )

@@ -8,11 +8,12 @@ export const mapParts = [TECH_ENTITY_4_14_HEART_ULTRA] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: ['feature:heart-gem'],
   techniqueIds: ['4.14'],
   mapParts,
   name: 'entity-4.14-heart-ultra',
+  recording: { primaryFor: ['4.14'], startFrame: 0, endFrame: 28 },
   initial: { pos: [484, 496], speed: [300, 0], on_ground: true },
   inputs: inputFrames(28, (frame) => input({
     move_x: 1,

@@ -498,8 +498,8 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         if (snapshot.Speed is { Length: >= 2 }) player.Speed = new Vector2(snapshot.Speed[0], snapshot.Speed[1]);
         if (snapshot.Dashes is int dashes) player.Dashes = dashes;
         if (snapshot.Stamina is float stamina) player.Stamina = stamina;
-        if (snapshot.State is int state && state >= 0 && state < 26) player.StateMachine.State = state;
         if (snapshot.Facing is bool facing) player.Facing = facing ? Facings.Right : Facings.Left;
+        if (snapshot.State is int state && state >= 0 && state < 26) player.StateMachine.State = state;
         if (snapshot.Ducking is bool ducking) player.Ducking = ducking;
     }
 
