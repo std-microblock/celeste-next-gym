@@ -1193,14 +1193,13 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
         }
     }
 
-    for room_level in &levels.children {
-        let room_x = attr_f32(room_level, "x", 0.0);
-        let room_y = attr_f32(room_level, "y", 0.0);
-        if let Some(solids) = room_level.children.iter().find(|e| e.name == "solids")
-            && let Some(text) = attr_text(solids, "innerText")
-        {
-            map.solids.extend(tile_rects(text, room_x, room_y));
-        }
+    // Level.LoadLevel keeps the source LevelData live until the transition
+    // coroutine completes. Decoding destination tiles here would make them
+    // collide during Player.TransitionTo, before that LoadLevel boundary.
+    if let Some(solids) = level.children.iter().find(|e| e.name == "solids")
+        && let Some(text) = attr_text(solids, "innerText")
+    {
+        map.solids.extend(tile_rects(text, x, y));
     }
     if include_transition_runtime {
         map.transition_runtime = levels
@@ -1430,14 +1429,15 @@ mod tests {
                 .any(|room| room.bounds == map.bounds && room.spawns == vec![lower.spawn])
         );
         assert_eq!(upper.spawn, Vec2::new(24.0, -16.0));
-        let decoded_solids = vec![
-            Rect::new(0.0, 176.0, 320.0, 8.0),
-            Rect::new(160.0, -16.0, 8.0, 8.0),
-            Rect::new(160.0, -8.0, 8.0, 8.0),
-        ];
-        assert_eq!(lower.solids, decoded_solids);
-        assert_eq!(upper.solids, decoded_solids);
-        assert!(lower.solid_at(Rect::new(160.0, -12.0, 1.0, 1.0)));
+        assert_eq!(lower.solids, vec![Rect::new(0.0, 176.0, 320.0, 8.0)]);
+        assert_eq!(
+            upper.solids,
+            vec![
+                Rect::new(160.0, -16.0, 8.0, 8.0),
+                Rect::new(160.0, -8.0, 8.0, 8.0),
+            ]
+        );
+        assert!(!lower.solid_at(Rect::new(160.0, -12.0, 1.0, 1.0)));
         assert!(upper.solid_at(Rect::new(160.0, -12.0, 1.0, 1.0)));
     }
 
