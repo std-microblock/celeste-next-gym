@@ -44,5 +44,6 @@ describe('training session', () => {
     expect(assistedRate(1, 0, 12, 12, .35)).toBe(1)
     expect(assistedRate(1, 6, 12, 12, .35)).toBeCloseTo(.675)
     expect(assistedRate(1, 12, 12, 12, .35)).toBeCloseTo(.35)
+    expect(assistedRate(1, 12, 12, 12, .7)).toBeCloseTo(.7)
   })
 })
