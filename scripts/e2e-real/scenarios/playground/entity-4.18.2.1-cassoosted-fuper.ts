@@ -16,9 +16,9 @@ export const scenario = defineScenario({
   name: 'entity-4.18.2.1-cassoosted-fuper',
   initial: { pos: [350, 496], speed: [0, 0], on_ground: true },
   inputs: Array.from({ length: 100 }, (_, frame) => input({
-    // Keep right aim live through Feather's coroutine.  Frame 28 is its
-    // first StarFlyUpdate after launch; the map part's tempo=3 makes its
-    // index-0 CassetteBlock reform in this very frame's entity phase.
+    // Keep right aim live through Feather's coroutine. The tempo-three
+    // CassetteBlock writes its upward lift in the entity phase; the grounded
+    // Feather jump consumes that retained LiftBoost on its next update.
     move_x: 1,
     jump_pressed: frame === 28,
     jump_held: frame >= 28 && frame < 40,
@@ -26,7 +26,7 @@ export const scenario = defineScenario({
   verify(states) {
     const fuper = states.findIndex((state) => state.state === 0
       && near(state.speed[0], 273.333_34, 0.01)
-      && near(state.speed[1], -105, 0.01))
+      && near(state.speed[1], -165, 0.01))
     const reform = states.findIndex((state) => {
       const block = cassetteBlock(state, 0)
       return block?.position[1] === 493 && block.collidable

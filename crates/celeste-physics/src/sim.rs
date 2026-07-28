@@ -5006,6 +5006,11 @@ fn star_fly_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
             p.jump_grace_timer = 0.0;
             p.speed.y = JUMP_SPEED;
             p.speed.x += input.move_x as f32 * JUMP_H_BOOST;
+            // StarFlyUpdate calls Player.Jump here.  Jump assigns JumpSpeed
+            // and then consumes the current or retained LiftBoost; preserve
+            // that order for a grounded Feather exit on a moving/reforming
+            // CassetteBlock.
+            add_lift_boost(p);
             p.auto_jump = false;
             p.dash_attack_timer = 0.0;
             p.wall_slide_timer = WALL_SLIDE_TIME;
@@ -13935,11 +13940,12 @@ mod tests {
     }
 
     #[test]
-    fn cassoosted_fuper_fixture_aligns_first_starfly_jump_with_tempo_three_reform() {
-        // Mirror the candidate MapPart rather than pre-seeding StarFly.  The
+    fn cassoosted_fuper_fixture_consumes_reform_lift_on_next_player_update() {
+        // Mirror the candidate MapPart rather than pre-seeding StarFly. The
         // fresh custom manager skips its first AdvanceMusic call; with tempo
         // three, beat 8 writes Activated on input 27 and CassetteBlock.Update
-        // reforms during input 28, after this frame's Player.Jump.
+        // reforms during input 28, after Player.Update. That movement writes
+        // LiftSpeed, which the grounded StarFly Jump consumes next frame.
         let map = Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
             solids: vec![Rect::new(0.0, 496.0, 960.0, 48.0)],
@@ -13997,7 +14003,7 @@ mod tests {
             .position(|state| {
                 state.state == PlayerState::Normal
                     && (state.speed.x - 273.333_34).abs() < 0.001
-                    && state.speed.y == JUMP_SPEED
+                    && (state.speed.y - (JUMP_SPEED - 60.0)).abs() < 0.001
             })
             .expect("first controllable StarFly frame should produce a Feather Super");
         let reform = trace
@@ -14007,8 +14013,10 @@ mod tests {
                 state.cassette_blocks[0].collidable && state.cassette_blocks[0].position.y == 493.0
             })
             .expect("tempo-three cassette should reform");
-        assert_eq!(fuper, 29);
-        assert_eq!(reform, fuper);
+        assert_eq!(reform, 28);
+        assert_eq!(fuper, reform + 1);
+        assert!((trace.states[reform].last_lift_speed.y + 60.0).abs() < 0.001);
+        assert!((trace.states[fuper].speed.y - (JUMP_SPEED - 60.0)).abs() < 0.001);
         assert!(trace.states[fuper].pos.y < 496.0);
     }
 
