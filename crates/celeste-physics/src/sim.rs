@@ -3025,7 +3025,9 @@ fn advance_lookouts(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
             // 16.667 speed after its two initial coroutine resumes. Advancing it in
             // prepare_lookout_player would move the Rust trace one frame
             // ahead of Everest.
-            if (p.pos.x - state.position.x).abs() <= 1.1 {
+            // DummyWalkToExact yields while `X != x`; being one pixel short
+            // must still let its next resume write Speed.X after BoostUpdate.
+            if p.pos.x == state.position.x {
                 p.pos.x = state.position.x;
                 p.movement_remainder.x = 0.0;
                 p.speed.x = 0.0;
@@ -4675,7 +4677,9 @@ fn dream_dash_update(p: &mut PlayerSnapshot) {
 }
 
 fn boost_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
-    p.speed = Vec2::default();
+    // StBoostUpdate moves ExactPosition toward boostTarget but does not reset
+    // Speed. A concurrently yielded DummyWalkToExact therefore retains its
+    // prior Approach result and can publish the next one after this callback.
     let aim = input_vector(input);
     let target = Vec2::new(
         p.boost_target.x + aim.x * 3.0,
@@ -15160,6 +15164,44 @@ mod tests {
                 && (after.camera.x - before.camera.x).abs() > 0.01
         }));
         assert!(!trace.states[240].lookouts[0].interacting);
+    }
+
+    #[test]
+    fn bino_dummy_walk_preserves_speed_through_boost_update() {
+        let mut map = lookout_map(vec![], false, false);
+        map.bounds = Rect::new(0.0, 0.0, 960.0, 544.0);
+        map.solids = vec![Rect::new(0.0, 496.0, 960.0, 48.0)];
+        map.entities[0].bounds = Rect::new(510.0, 493.0, 4.0, 4.0);
+        map.entities.push(crate::Entity {
+            kind: EntityKind::Booster,
+            bounds: Rect::new(510.0, 489.0, 20.0, 20.0),
+            direction: Vec2::default(),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "booster".to_owned(),
+        });
+        let player = PlayerSnapshot {
+            pos: Vec2::new(496.0, 496.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = vec![InputState::default(); 30];
+        inputs[0].talk_pressed = true;
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+
+        // In the source order, Booster sets StBoost after the player update;
+        // the yielded DummyWalkToExact resumes afterwards. BoostUpdate moves
+        // on f18 but preserves f17's 16.667, so that coroutine write reaches
+        // 33.333 before f19 reaches the exact lookout x and finishes.
+        assert_eq!(trace.states[17].state, PlayerState::Boost);
+        assert!((trace.states[17].speed.x - 16.666_7).abs() < 0.001);
+        assert_eq!(trace.states[18].state, PlayerState::Boost);
+        assert_eq!(trace.states[18].pos, Vec2::new(511.0, 496.0));
+        assert!((trace.states[18].speed.x - 33.333_4).abs() < 0.001);
+        assert_eq!(trace.states[19].state, PlayerState::Boost);
+        assert_eq!(trace.states[19].pos, Vec2::new(512.0, 496.0));
+        assert_eq!(trace.states[19].speed.x, 0.0);
     }
 
     #[test]
