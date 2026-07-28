@@ -3054,9 +3054,16 @@ fn advance_lookouts(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
             // 16.667 speed after its two initial coroutine resumes. Advancing it in
             // prepare_lookout_player would move the Rust trace one frame
             // ahead of Everest.
+            // The initial `LookRoutine` yield happens even when the player is
+            // already exactly at the lookout.  Keep phase 1 through that
+            // frame, so the next Player.Update receives DummyWalkToExact's
+            // unconditional StDummy assignment before the exact-arrival path
+            // advances to the HUD wait.
+            if state.timer < 0.0 {
+                state.timer += 1.0;
             // DummyWalkToExact yields while `X != x`; being one pixel short
             // must still let its next resume write Speed.X after BoostUpdate.
-            if p.pos.x == state.position.x {
+            } else if p.pos.x == state.position.x {
                 p.pos.x = state.position.x;
                 // DummyWalkToExact only assigns `X = x` after an overstep.
                 // On an ordinary exact arrival it leaves Actor's subpixel
@@ -15390,6 +15397,34 @@ mod tests {
         assert!(trace.states[110].camera.x > 0.0);
         assert!(!trace.states[150].lookouts[0].interacting);
         assert_eq!(trace.states[150].state, PlayerState::Normal);
+    }
+
+    #[test]
+    fn lookout_talk_exact_alignment_enters_dummy_on_the_native_second_frame() {
+        let player = PlayerSnapshot {
+            // `lookout_map` centers its Lookout at (160, 160).  This covers
+            // the source's exact-alignment path in DummyWalkToExact rather
+            // than the ordinary walking path above.
+            pos: Vec2::new(160.0, 160.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = vec![InputState::default(); 3];
+        inputs[0].talk_pressed = true;
+        let trace = simulate_trace(player, &inputs, &lookout_map(vec![], false, false), 3)
+            .unwrap();
+
+        // Collector captures state 0 before input.  Talk starts LookRoutine
+        // on f1, and its first entity update sets StDummy on f2 even though
+        // DummyWalkToExact has no distance to walk.  The physical 5.1.4
+        // trace has this exact f0-f3 sequence.
+        assert_eq!(trace.states[0].state, PlayerState::Normal);
+        assert_eq!(trace.states[1].state, PlayerState::Normal);
+        assert_eq!(trace.states[2].state, PlayerState::Dummy);
+        assert_eq!(trace.states[3].state, PlayerState::Dummy);
+        assert!(trace.states[1].lookouts[0].interacting);
+        assert!(trace.states[2].lookouts[0].interacting);
+        assert_eq!(trace.states[3].lookouts[0].phase, 2);
     }
 
     #[test]
