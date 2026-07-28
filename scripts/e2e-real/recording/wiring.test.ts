@@ -174,7 +174,7 @@ describe('recording outputs', () => {
     const base = scenarios.find((scenario) => scenario.inputs.length >= 4)!
     const scenario = { ...base, name: 'multi-output', techniqueIds: ['a', 'b'],
       recording: { primaryFor: ['a', 'b'], startFrame: 2, endFrame: 4 } } as typeof base
-    const calls: Array<{ outputPath: string; posterPath?: string; stateWindow?: unknown }> = []
+    const calls: Array<{ outputPath: string; posterPath?: string; posterStateIndex?: number; stateWindow?: unknown }> = []
     const fakeResult: EncodingResult = {
       output_path: path.join(root, 'fake.mp4'), sha256: 'a'.repeat(64), bytes: 1,
       probe: { codec: 'h264', pixel_format: 'yuv420p', width: 320, height: 180, frame_rate: '60/1', frame_count: 3 },
@@ -195,9 +195,37 @@ describe('recording outputs', () => {
     for (const [index, technique] of ['a', 'b'].entries()) {
       const call = calls[index + 1]!
       assert.deepEqual(call.stateWindow, { startStateIndex: 2, endStateIndex: 4 })
+      assert.equal(call.posterStateIndex, undefined)
       assert.ok(call.outputPath.endsWith(path.join('techniques', technique, 'multi-output.mp4')))
       assert.ok(call.posterPath!.endsWith(path.join('techniques', technique, 'multi-output.poster.png')))
     }
+  })
+
+  it('passes an explicit poster state without changing the full recording window', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'recording-poster-state-'))
+    roots.push(root)
+    const base = scenarios.find((scenario) => scenario.inputs.length >= 6)!
+    const scenario = { ...base, name: 'poster-state-test', techniqueIds: ['a'],
+      recording: { primaryFor: ['a'], startFrame: 0, endFrame: base.inputs.length, posterFrame: 6 } } as typeof base
+    const calls: Array<{ posterStateIndex?: number; stateWindow?: unknown }> = []
+    const fakeResult: EncodingResult = {
+      output_path: path.join(root, 'fake.mp4'), sha256: 'a'.repeat(64), bytes: 1,
+      probe: { codec: 'h264', pixel_format: 'yuv420p', width: 320, height: 180, frame_rate: '60/1' },
+      processes: [],
+    }
+    await encodeScenarioArtifacts({
+      item: { scenario, techniqueIds: ['a'] }, manifestPath: path.join(root, 'raw', 'manifest.json'),
+      tracePath: path.join(root, 'raw', 'trace.json'), recordingRoot: root,
+      ffmpegPath: path.join(root, 'ffmpeg'), ffprobePath: path.join(root, 'ffprobe'),
+    }, {
+      encode: async (options) => { calls.push(options); return fakeResult },
+      createEntry: async (entry) => ({ ...entry, raw_manifest: {} as never, trace: {} as never,
+        video: {} as never, media_processes: [] }) as unknown as RecordingArtifactEntry,
+    })
+    assert.equal(calls.length, 2)
+    assert.equal(calls[0]!.posterStateIndex, undefined)
+    assert.equal(calls[1]!.posterStateIndex, 6)
+    assert.deepEqual(calls[1]!.stateWindow, { startStateIndex: 0, endStateIndex: base.inputs.length })
   })
 
   it('rejects artifact paths outside the recording root and atomically writes the manifest', async () => {

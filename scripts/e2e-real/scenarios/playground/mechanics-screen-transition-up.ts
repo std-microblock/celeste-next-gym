@@ -12,7 +12,7 @@ export const scenario = defineScenario({
   status: 'active',
   tags: [],
   techniqueIds: ['1.11'],
-  recording: { primaryFor: ['1.11'], startFrame: 0, endFrame: 42 },
+  recording: { primaryFor: ['1.11'], startFrame: 0, endFrame: 42, posterFrame: 6 },
   mapParts,
   name: 'mechanics-screen-transition-up',
     initial: { pos: [640, 4], speed: [80, -160], dashes: 0, stamina: 20 },

@@ -82,14 +82,14 @@ describe('E2E isolation', () => {
     await new Promise<void>((resolveClose) => server.close(() => resolveClose()))
   })
 
-  it('refuses cleanup if any recorded process identity field changes', () => {
+  it('refuses cleanup if any recorded process identity field changes', async () => {
     const expected = { processId: 91, executablePath: 'D:\\test\\Celeste.exe', creationTimeUtc: 'created' }
     assert.equal(validateProcessIdentity(expected, { ...expected }).owned, true)
     assert.equal(validateProcessIdentity(expected, { ...expected, executablePath: 'C:\\Steam\\Celeste.exe' }).owned, false)
     let terminated = false
     const warnings: string[] = []
     const child = { pid: 91, exitCode: null, kill: () => true }
-    assert.equal(terminateOwnedProcess({
+    assert.equal(await terminateOwnedProcess({
       child,
       expectedIdentity: expected,
       queryIdentity: () => ({ ...expected, creationTimeUtc: 'reused' }),
@@ -98,6 +98,22 @@ describe('E2E isolation', () => {
     }), false)
     assert.equal(terminated, false)
     assert.match(warnings[0] ?? '', /refusing to terminate/)
+  })
+
+  it('waits for the exact owned process to disappear after termination', async () => {
+    const expected = { processId: 92, executablePath: 'D:\\test\\Celeste.exe', creationTimeUtc: 'created' }
+    let queries = 0
+    let terminated = false
+    assert.equal(await terminateOwnedProcess({
+      child: { pid: 92, exitCode: null, kill: () => true },
+      expectedIdentity: expected,
+      queryIdentity: () => ++queries < 3 ? expected : null,
+      terminate: () => { terminated = true },
+      exitTimeoutMs: 100,
+      exitPollMs: 0,
+    }), true)
+    assert.equal(terminated, true)
+    assert.equal(queries, 3)
   })
 })
 

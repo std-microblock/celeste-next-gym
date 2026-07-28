@@ -168,11 +168,13 @@ export type RecordingWindow =
 
 export type ScenarioRecording = RecordingWindow & {
   readonly primaryFor: readonly string[]
+  readonly posterFrame?: number
 }
 
 export interface ScenarioDefinition {
   readonly name: string
   readonly target: ScenarioTarget
+  readonly room?: string
   readonly status: ScenarioStatus
   readonly tags: readonly string[]
   readonly techniqueIds: readonly string[]
