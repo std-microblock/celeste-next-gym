@@ -4,7 +4,7 @@
   id: "4.22.3",
   title-zh: "携物 Neutral",
   title-en: "Holdable Neutral Jump",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [Theo 可直接配合 Neutral；水母通常需要先中性放下、执行 Neutral 墙跳，再重新抓取。],
   description-en: [Theo can accompany normal neutral jumps, while jellies usually require a neutral drop, neutral wall jump, and regrab.],
   source-evidence: evidence(
@@ -15,6 +15,6 @@
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [normal_update]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [held_theo_turns_grabbed_wall_jump_into_a_normal_neutral / jelly_neutral_drop_wall_jump_regrabs_after_long_lockout]),
-  e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.22.3-holdable-neutral-jump.ts / scripts/e2e-real/scenarios/playground/entity-4.22.3-jelly-neutral-jump.ts], symbol: [entity-4.22.3-holdable-neutral-jump / entity-4.22.3-jelly-neutral-jump], note: [Theo 独立墙面场景 41 个状态已以 position 最大误差 0、speed 最大误差 0.000047 闭环；Jelly 变体已完成中性放下与 -130／-105 Neutral，但 0.3 秒 CannotHold 后没有重抓，故双变体仍保持未实现。]),
+  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.22.3-holdable-neutral-jump.ts / scripts/e2e-real/scenarios/playground/entity-4.22.3-jelly-neutral-jump.ts], symbol: [entity-4.22.3-holdable-neutral-jump / entity-4.22.3-jelly-neutral-jump], note: [Theo 与 Jelly 使用独立墙面 MapPart。Theo 41 个状态观测持物普通 Neutral，position 最大误差 0、speed 最大误差 0.000047；Jelly 101 个状态观测中性放下、-130／-105 Neutral、0.3 秒锁定后回抓，position 最大误差 0、speed 最大误差 0.000061，其余字段逐帧一致。]),
+  candidate-e2e: none,
 )

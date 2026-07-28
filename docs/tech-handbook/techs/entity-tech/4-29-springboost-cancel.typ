@@ -16,5 +16,5 @@
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [advance_gliders / hit_glider_spring / release_glider / pickup_update]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [floor_spring_launches_unheld_glider_after_actor_movement / springboost_cancel_reverses_into_the_rising_glider_for_regrab]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.29-springboost-cancel.ts], symbol: [entity-4.29-springboost-cancel], note: [唯一一次 source-informed 修正把 Spring 对齐到中性放下的 X=133，并在玩家越过后反向，延迟到 frame 100 重抓上升 Glider。Rust 已形成 release→Spring -160→regrab 完整链；真实 Everest 尚待最终候选重验，因此保持未实现。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.29-springboost-cancel.ts], symbol: [entity-4.29-springboost-cancel], note: [最终真实候选形成 release→Spring→regrab 语义，但第 103 帧 Rust 已在 (126,460) 进入 Pickup，Everest 仍在 (126,462) 以 160 下落；最大位置／速度误差 8／160，保持未实现。]),
 )

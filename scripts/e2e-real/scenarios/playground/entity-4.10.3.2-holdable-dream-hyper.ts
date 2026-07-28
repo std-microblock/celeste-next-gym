@@ -13,7 +13,7 @@ export const scenario = defineScenario({
   mapParts,
   name: 'entity-4.10.3.2-holdable-dream-hyper',
   initial: { pos: [208, 496], speed: [0, 0], can_dream_dash: true },
-  inputs: inputFrames(150, (frame) => ({
+  inputs: inputFrames(240, (frame) => ({
     move_x: frame >= 43 && frame < 54 ? -1 : frame >= 85 ? -1 : 1,
     move_y: 0,
     jump_pressed: frame === 62,

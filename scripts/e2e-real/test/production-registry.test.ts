@@ -13,7 +13,7 @@ describe('production scenario registry', () => {
     assert.equal(registry.byTarget.get('area-1')?.length, 36)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 160, candidate: 21 })
+    assert.deepEqual(registry.counts, { active: 163, candidate: 18 })
   })
 
   it('keeps evidence-less scenarios as opt-in candidates', () => {
@@ -28,13 +28,10 @@ describe('production scenario registry', () => {
       'entity-4.18.2.1-cassoosted-fuper',
       'entity-4.18.3-core-block-entity-displacement',
       'entity-4.19-seeker-bounce',
-      'entity-4.22.3-holdable-neutral-jump',
-      'entity-4.22.3-jelly-neutral-jump',
       'entity-4.22.4-holdable-laddering',
       'entity-4.24-bumper-holdable-dash-smuggle',
       'entity-4.26-jellyvator',
       'entity-4.26-theovator',
-      'entity-4.28-koral-clip',
       'entity-4.29-springboost-cancel',
       'entity-4.6.2-cloud-hyper-bunnyhop',
       'other-5.10-spinner-stunning',
@@ -207,6 +204,9 @@ describe('production scenario registry', () => {
       return scenario.mapParts[0]?.id
     })
     assert.equal(new Set(parts).size, names.length)
+    const ladder = registry.byName.get('entity-4.22.4-holdable-laddering')
+    const ladderGliders = ladder?.mapParts[0]?.rooms[0]?.entities?.filter((entity) => entity.kind === 'glider') ?? []
+    assert.deepEqual(ladderGliders.map((entity) => entity.bounds?.[1]), [390, 380])
   })
 
   it('keeps grounded ultra cancel in its own Theo-only map part', () => {

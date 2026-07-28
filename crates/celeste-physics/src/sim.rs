@@ -7477,7 +7477,7 @@ mod tests {
         let inputs: Vec<_> = (0..24)
             .map(|frame| InputState {
                 move_x: 1,
-                move_y: if frame <= 5 { 1 } else { 0 },
+                move_y: if frame < 10 { 1 } else { 0 },
                 dash_pressed: frame == 0,
                 grab_held: frame >= 5,
                 ..InputState::default()
@@ -8129,7 +8129,7 @@ mod tests {
         let inputs: Vec<_> = (0..24)
             .map(|frame| InputState {
                 move_x: 1,
-                move_y: if frame <= 5 { 1 } else { 0 },
+                move_y: if frame < 10 { 1 } else { 0 },
                 dash_pressed: frame == 0,
                 grab_held: (5..=20).contains(&frame),
                 ..InputState::default()
