@@ -2,7 +2,6 @@
   "name": "celeste-next-gym-web",
   "private": true,
   "version": "0.1.0",
-  "packageManager": "yarn@4.17.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
