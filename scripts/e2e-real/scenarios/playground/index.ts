@@ -143,6 +143,7 @@ import { scenario as scenario140 } from './other-5.1.1-bino-clip.js'
 import { scenario as scenario141 } from './other-5.1.2-bino-control-storage.js'
 import { scenario as scenario142 } from './other-5.1.3-bino-interaction-storage.js'
 import { scenario as scenario143 } from './other-5.1.4-bino-extensions.js'
+import { scenario as scenario144 } from './other-5.2-bubsdrop.js'
 
 export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario0,
@@ -289,4 +290,5 @@ export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario141,
   scenario142,
   scenario143,
+  scenario144,
 ])
