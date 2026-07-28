@@ -2852,21 +2852,23 @@ fn prepare_lookout_player(p: &mut PlayerSnapshot) {
         return;
     };
     match lookout.phase {
-        1 => {
+        // DummyWalkToExact sets StDummy once as its coroutine starts.  It does
+        // not reassign that state on every yielded frame: a native Booster can
+        // therefore interrupt the walk and leave its StBoost/StNormal recovery
+        // running alongside the still-interacting Lookout.
+        1 if lookout.timer < 1.0 => {
             p.state = PlayerState::Dummy;
             p.dummy_moving = true;
             let direction = (lookout.position.x - p.pos.x).signum();
             if direction != 0.0 {
                 p.facing = direction > 0.0;
-                p.speed.x = approach(
-                    p.speed.x,
-                    direction * 64.0,
-                    RUN_ACCEL * p.frame_delta_time,
-                );
             }
         }
-        2 | 3 => {
-            p.state = PlayerState::Dummy;
+        2 | 3 if p.state == PlayerState::Dummy => {
+            // Lookout only assigns StDummy once, when DummyWalkToExact starts.
+            // If a Booster has replaced it with StBoost, the walk's final
+            // speed reset still completes, but the following HUD waits must
+            // not overwrite that live state before BoostUpdate can MoveToX.
             p.dummy_moving = false;
             p.speed.x = 0.0;
         }
@@ -3021,9 +3023,19 @@ fn advance_lookouts(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
 
     match state.phase {
         1 => {
-            if (p.pos.x - state.position.x).abs() <= 1.1 {
+            // Lookout updates after Player. Its coroutine first assigns
+            // StDummy, then its nested DummyWalkToExact only writes the first
+            // 16.667 speed after its two initial coroutine resumes. Advancing it in
+            // prepare_lookout_player would move the Rust trace one frame
+            // ahead of Everest.
+            // DummyWalkToExact yields while `X != x`; being one pixel short
+            // must still let its next resume write Speed.X after BoostUpdate.
+            if p.pos.x == state.position.x {
                 p.pos.x = state.position.x;
-                p.movement_remainder.x = 0.0;
+                // DummyWalkToExact only assigns `X = x` after an overstep.
+                // On an ordinary exact arrival it leaves Actor's subpixel
+                // counter intact, so the live BoostUpdate continues from the
+                // remainder accumulated on the preceding movement frame.
                 p.speed.x = 0.0;
                 p.dummy_moving = false;
                 if p.dead || !grounded_at_offset(p, map, 1.0) {
@@ -3036,6 +3048,15 @@ fn advance_lookouts(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                     state.phase = 2;
                     state.timer = 0.2;
                 }
+            } else if state.timer < 1.0 {
+                state.timer += 1.0;
+            } else {
+                let direction = (state.position.x - p.pos.x).signum();
+                p.speed.x = approach(
+                    p.speed.x,
+                    direction * 64.0,
+                    RUN_ACCEL * p.frame_delta_time,
+                );
             }
         }
         2 => {
@@ -3133,7 +3154,11 @@ fn try_begin_lookout(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
             let state = &mut p.lookouts[lookout_index];
             state.interacting = true;
             state.phase = 1;
-            state.timer = 0.0;
+            // `Interact` schedules LookRoutine, then its yielded
+            // DummyWalkToExact reaches its first movement write after two
+            // entity updates. Keep that coroutine latency apart from the
+            // phase-2 HUD timer.
+            state.timer = -1.0;
             state.position = position;
             state.cam_start = p.camera;
             state.cam = p.camera;
@@ -3898,6 +3923,14 @@ fn step(
     update_wall_speed_retention(p, map);
     update_climb_hop_wait(p, map);
     prepare_lookout_player(p);
+    // The Lookout and Booster are room entities which update before Player.
+    // During DummyWalkToExact, its Booster PlayerCollider therefore observes
+    // the preceding player position, unlike ordinary player-side callbacks.
+    let lookout_booster_box = p
+        .lookouts
+        .iter()
+        .any(|lookout| lookout.interacting && !lookout.removed && lookout.phase == 1)
+        .then(|| current_player_rect(p, p.pos.x, p.pos.y));
 
     if p.badeline_boost_active {
         update_badeline_boost(p, map);
@@ -3970,7 +4003,7 @@ fn step(
     // PlayerCollider invokes OnPlayer. Keep it immediately before the
     // portable collider callbacks, after Player has completed its movement.
     advance_bumpers(p, map);
-    interact(p, map, input);
+    interact(p, map, input, lookout_booster_box);
     try_begin_lookout(p, map, input);
     advance_lookouts(p, map, input);
     update_strawberry_train(p);
@@ -4650,7 +4683,9 @@ fn dream_dash_update(p: &mut PlayerSnapshot) {
 }
 
 fn boost_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
-    p.speed = Vec2::default();
+    // StBoostUpdate moves ExactPosition toward boostTarget but does not reset
+    // Speed. A concurrently yielded DummyWalkToExact therefore retains its
+    // prior Approach result and can publish the next one after this callback.
     let aim = input_vector(input);
     let target = Vec2::new(
         p.boost_target.x + aim.x * 3.0,
@@ -5409,7 +5444,12 @@ fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount:
     }
 }
 
-fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
+fn interact(
+    p: &mut PlayerSnapshot,
+    map: &Map,
+    input: InputState,
+    lookout_booster_box: Option<Rect>,
+) {
     if let Some(from_y) = p.pending_bounce_from_y.take() {
         // Backward compatibility for portable snapshots produced before
         // FireBall callbacks were aligned to the source's same-frame order.
@@ -5583,7 +5623,7 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                     entity.bounds.y + entity.bounds.height * 0.5 + 2.0,
                 ),
                 10.0,
-                player_box,
+                lookout_booster_box.unwrap_or(player_box),
             ),
             EntityKind::Bumper => circle_rect_intersects(
                 Vec2::new(
@@ -14358,7 +14398,7 @@ mod tests {
             ..PlayerSnapshot::default()
         };
         let map = ice_ball_map();
-        interact(&mut bounced, &map, InputState::default());
+        interact(&mut bounced, &map, InputState::default(), None);
         assert_eq!(bounced.state, PlayerState::Normal);
         assert_eq!(bounced.pending_bounce_from_y, None);
         assert_eq!(bounced.pos, Vec2::new(96.0, 98.0));
@@ -14433,7 +14473,7 @@ mod tests {
                 ..PlayerSnapshot::default()
             };
             let map = bounce_actor_map(kind.clone());
-            interact(&mut p, &map, InputState::default());
+            interact(&mut p, &map, InputState::default(), None);
             assert_eq!(p.state, PlayerState::Normal, "kind={kind:?}");
             assert_eq!(p.speed, Vec2::new(240.0, BOUNCE_SPEED), "kind={kind:?}");
             assert_eq!(p.dashes, 1, "kind={kind:?}");
@@ -14761,7 +14801,7 @@ mod tests {
             ..PlayerSnapshot::default()
         };
         let map = ice_ball_map();
-        interact(&mut bounced, &map, InputState::default());
+        interact(&mut bounced, &map, InputState::default(), None);
         assert_eq!(bounced.state, PlayerState::Normal);
         assert!(bounced.star_fly_hitbox_preserved);
         assert!(!bounced.ducking);
@@ -15119,6 +15159,24 @@ mod tests {
         inputs[180].jump_held = true;
         let trace = simulate_trace(player, &inputs, &map, 240).unwrap();
 
+        assert_eq!(trace.states[2].state, PlayerState::Dummy);
+        assert_eq!(trace.states[2].speed.x, 0.0);
+        assert!((trace.states[3].speed.x - 16.666_7).abs() < 0.001);
+        // Room entities run before Player: at the first geometric contact
+        // frame Booster still sees the preceding x position. The following
+        // frame is the first StBoostUpdate, after Dummy has reached 64 px/s.
+        let first_boost = trace
+            .states
+            .iter()
+            .position(|state| state.state == PlayerState::Boost)
+            .expect("native Booster should interrupt the Lookout Dummy walk");
+        assert_eq!(first_boost, 8);
+        assert_eq!(trace.states[first_boost - 1].state, PlayerState::Dummy);
+        assert!((trace.states[first_boost - 1].speed.x - 64.0).abs() < 0.001);
+        // DummyWalkToExact only assigns StDummy before its first yield.  The
+        // next frame must therefore remain in Boost instead of being forced
+        // back to Dummy by the still-running Lookout coroutine.
+        assert_eq!(trace.states[first_boost + 1].state, PlayerState::Boost);
         assert!(trace.states.iter().any(|state| state.state == PlayerState::Boost));
         assert!(trace.states.iter().any(|state| {
             state.state == PlayerState::Normal && state.lookouts[0].interacting
@@ -15131,6 +15189,51 @@ mod tests {
                 && (after.camera.x - before.camera.x).abs() > 0.01
         }));
         assert!(!trace.states[240].lookouts[0].interacting);
+    }
+
+    #[test]
+    fn bino_dummy_walk_preserves_speed_through_boost_update() {
+        let mut map = lookout_map(vec![], false, false);
+        map.bounds = Rect::new(0.0, 0.0, 960.0, 544.0);
+        map.solids = vec![Rect::new(0.0, 496.0, 960.0, 48.0)];
+        map.entities[0].bounds = Rect::new(510.0, 493.0, 4.0, 4.0);
+        map.entities.push(crate::Entity {
+            kind: EntityKind::Booster,
+            bounds: Rect::new(510.0, 489.0, 20.0, 20.0),
+            direction: Vec2::default(),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "booster".to_owned(),
+        });
+        let player = PlayerSnapshot {
+            pos: Vec2::new(496.0, 496.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = vec![InputState::default(); 30];
+        inputs[0].talk_pressed = true;
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+
+        // In the source order, Booster sets StBoost after the player update;
+        // the yielded DummyWalkToExact resumes afterwards. BoostUpdate moves
+        // on f18 but preserves f17's 16.667, so that coroutine write reaches
+        // 33.333 before f19 reaches the exact lookout x and finishes.
+        assert_eq!(trace.states[17].state, PlayerState::Boost);
+        assert!((trace.states[17].speed.x - 16.666_7).abs() < 0.001);
+        assert_eq!(trace.states[18].state, PlayerState::Boost);
+        assert_eq!(trace.states[18].pos, Vec2::new(511.0, 496.0));
+        assert!((trace.states[18].speed.x - 33.333_4).abs() < 0.001);
+        assert_eq!(trace.states[19].state, PlayerState::Boost);
+        assert_eq!(trace.states[19].pos, Vec2::new(512.0, 496.0));
+        assert_eq!(trace.states[19].speed.x, 0.0);
+        // Completing DummyWalkToExact advances Lookout into its HUD wait,
+        // but that coroutine does not assign StDummy again. The next Player
+        // update remains Boost and moves one pixel toward Booster.Center.
+        assert_eq!(trace.states[20].state, PlayerState::Boost);
+        assert_eq!(trace.states[20].pos, Vec2::new(513.0, 496.0));
+        assert_eq!(trace.states[21].pos, Vec2::new(514.0, 496.0));
+        assert_eq!(trace.states[24].pos, Vec2::new(516.0, 496.0));
     }
 
     #[test]
