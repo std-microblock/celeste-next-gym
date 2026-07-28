@@ -472,12 +472,14 @@ public sealed class CelesteGymCollectorModule : EverestModule {
             () => job?.PreviousInput?.JumpHeld == true && job?.CurrentInput?.JumpHeld != true);
         // Lookout.LookRoutine exits through MenuCancel.  In the portable
         // protocol a jump press represents that shared confirm/cancel action,
-        // so it must drive both virtual buttons. Unlike Jump, MenuCancel must
-        // use the raw frame press: Player.Jump can consume the shared jump
-        // buffer before LookRoutine reaches its own MenuCancel check.
+        // so it must drive both virtual buttons. Engine.Update installs
+        // CurrentInput after Monocle has updated VirtualButton state for that
+        // frame, so a raw press is already invisible to LookRoutine. Reuse
+        // the collector-owned buffer: StDummy cannot consume Player.Jump, and
+        // a real Player.Jump clears that buffer through PlayerJump above.
         ReplaceNodes(Input.MenuCancel,
             () => job?.CurrentInput?.JumpHeld ?? false,
-            () => job?.CurrentInput?.JumpPressed ?? false,
+            () => job?.JumpBufferFrames > 0,
             () => job?.PreviousInput?.JumpHeld == true && job?.CurrentInput?.JumpHeld != true);
         ReplaceNodes(Input.Dash,
             () => job?.CurrentInput?.DashPressed ?? false,
