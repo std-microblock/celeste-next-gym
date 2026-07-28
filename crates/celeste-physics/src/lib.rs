@@ -11,6 +11,14 @@ mod playground;
 mod sim;
 mod types;
 
+pub use ffi::{
+    CelesteInputPod, CelesteMapHandle, CelestePlayerPod, CelesteSimulatorHandle,
+    celeste_input_pod_size, celeste_map_create, celeste_map_destroy,
+    celeste_player_pod_from_msgpack, celeste_player_pod_size, celeste_player_pod_to_msgpack,
+    celeste_simulator_create_msgpack, celeste_simulator_create_pod, celeste_simulator_destroy,
+    celeste_simulator_run_pod, celeste_simulator_snapshot_msgpack,
+};
+
 pub use binary_packer::{
     BinaryElement, BinaryPackerWriteError, BinaryValue, encode_celeste_bin, parse_celeste_bin,
 };
@@ -25,8 +33,8 @@ pub use map_fixture::{
 };
 pub use playground::{PLAYGROUND_PACKAGE, PLAYGROUND_ROOM, PLAYGROUND_SID, mechanics_playground};
 pub use sim::{
-    DT, Fidelity, INTENTIONALLY_UNSUPPORTED_STATES, SimulationError, SimulationResult, fidelity,
-    simulate, simulate_trace,
+    DT, Fidelity, INTENTIONALLY_UNSUPPORTED_STATES, SimulationError, SimulationResult, Simulator,
+    fidelity, simulate, simulate_trace,
 };
 pub use types::{
     BounceBlockSnapshot, CassetteBlockSnapshot, CassetteManagerSnapshot, CloudSnapshot, CoreMode,
