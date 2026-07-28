@@ -542,8 +542,9 @@ export default function App() {
         <button onClick={exportRun}>导出时间线</button>
         <button onClick={() => void exportTrace()}>导出逐帧</button>
         <label className="file-button">对比逐帧<input type="file" accept="application/json,.json" onChange={(event) => event.target.files?.[0] && void compareTrace(event.target.files[0])} /></label>
-      </div> : mode === 'training' ? <div className="training-context">
+      </div> : mode === 'training' ? <div className="play-quick-actions training-context">
         <div className="play-room"><small>LESSON MODE</small><strong>{selectedTrainingTechnique.title} · {selectedTrainingVariant.title}</strong><span>{selectedTrainingVariant.summary}</span></div>
+        <div className="top-actions"><button onClick={() => setBindingsOpen(true)}>控制</button></div>
       </div> : <div className="play-quick-actions">
         <div className="play-room">
           <small>LIVE ROOM</small>
@@ -559,7 +560,7 @@ export default function App() {
 
     {mode === 'play' ? <main className="play-workspace">
       <GameView map={map} state={liveState} states={[]} frame={liveFrame} stale={false} theme={visualTheme} />
-    </main> : mode === 'training' ? <TrainingGround techniqueId={selectedTrainingTechnique.id} variantId={selectedTrainingVariant.id} theme={visualTheme} onSelectTraining={(techniqueId, variantId) => { setTrainingTechniqueId(techniqueId); setTrainingVariantId(variantId) }} /> : <>
+    </main> : mode === 'training' ? <TrainingGround techniqueId={selectedTrainingTechnique.id} variantId={selectedTrainingVariant.id} bindings={bindings} theme={visualTheme} onSelectTraining={(techniqueId, variantId) => { setTrainingTechniqueId(techniqueId); setTrainingVariantId(variantId) }} /> : <>
 
       <main className="workspace">
       <section className="stage panel-frame">

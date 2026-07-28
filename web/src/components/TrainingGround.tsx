@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { ACTIONS, DEFAULT_BINDINGS, buttonsToInput, makeEmptyButtons, type FrameButtons, type GymMap, type KeyBindings, type SimState } from '../model'
+import { ACTIONS, buttonsToInput, makeEmptyButtons, type FrameButtons, type GymMap, type KeyBindings, type SimState } from '../model'
 import { WasmClient } from '../simulator/wasmClient'
 import { assistedRate, candidateObjectivePoints, candidateWindow, createTrainingSession, currentTrainingInput, matchingTrainingCandidate, nextTargetFrame, rebuildTrainingSession, trainingEntryContextPassed, trainingEntryInput, trainingVerificationTriggered, verificationKeys, verifyTrainingInput, type TrainingCandidate, type TrainingSession } from '../training/session'
 import { trainingCatalog, type TrainingDocument, type TrainingVariant } from '../training/catalog'
@@ -46,7 +46,7 @@ export function trainingInputLocked(outcome: OutcomeAnimation | null): boolean {
 }
 
 /** The lesson runner owns simulation and review state, while its timeline is read-only. */
-export function TrainingGround({ techniqueId, variantId, theme, onSelectTraining }: { techniqueId: string; variantId: string; theme: VisualTheme; onSelectTraining(techniqueId: string, variantId: string): void }) {
+export function TrainingGround({ techniqueId, variantId, bindings, theme, onSelectTraining }: { techniqueId: string; variantId: string; bindings: KeyBindings; theme: VisualTheme; onSelectTraining(techniqueId: string, variantId: string): void }) {
   const client = useMemo(() => new WasmClient(), [])
   const technique = trainingCatalog.find((item) => item.id === techniqueId) ?? trainingCatalog[0]
   const variantIndex = Math.max(0, technique.variants.findIndex((variant) => variant.id === variantId))
@@ -222,9 +222,10 @@ export function TrainingGround({ techniqueId, variantId, theme, onSelectTraining
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLElement && event.target.matches('input, select, button')) return
-      const gameInput = Object.values(DEFAULT_BINDINGS).includes(event.code)
-      if (gameInput || event.code === 'KeyR') event.preventDefault()
-      if (event.code === 'KeyR' && !event.repeat) {
+      const gameInput = Object.values(bindings).includes(event.code)
+      const resetInput = event.code === 'KeyR' && !gameInput
+      if (gameInput || resetInput) event.preventDefault()
+      if (resetInput && !event.repeat) {
         resetTo()
         return
       }
@@ -248,7 +249,7 @@ export function TrainingGround({ techniqueId, variantId, theme, onSelectTraining
     return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up) }
     // resetTo intentionally reads current state through React's render closure.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resetFrame, initial, document, candidates])
+  }, [resetFrame, initial, document, candidates, bindings])
 
   useEffect(() => {
     if (!playing || !document || !map || !initial) return
@@ -281,7 +282,7 @@ export function TrainingGround({ techniqueId, variantId, theme, onSelectTraining
         carry -= 1
         const currentFrame = frameRef.current
         const current = activeOutcome === null
-          ? buttonsFromKeyboard(keys.current, DEFAULT_BINDINGS)
+          ? buttonsFromKeyboard(keys.current, bindings)
           : outcomeButtons.current
         const input = buttonsToInput(current, previousButtons.current)
         const beforeSession = sessionRef.current
@@ -344,7 +345,7 @@ export function TrainingGround({ techniqueId, variantId, theme, onSelectTraining
     }
     animation = requestAnimationFrame(tick)
     return () => { active = false; cancelAnimationFrame(animation) }
-  }, [autoSlowdown, baseRate, client, document, evaluations, initial, map, playing, session.phase])
+  }, [autoSlowdown, baseRate, bindings, client, document, evaluations, initial, map, playing, session.phase])
 
   if (!document || !map || !initial || snapshots.length === 0) return <main className="training-workspace">
     <TrainingCatalogSidebar techniqueId={technique.id} variantId={selectedVariant.id} onSelectTraining={onSelectTraining} />
