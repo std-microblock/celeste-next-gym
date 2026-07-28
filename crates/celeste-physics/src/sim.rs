@@ -1349,13 +1349,14 @@ fn step(
     // restores the normal collider while falling in open air only after
     // jumpGraceTimer expires and CanUnDuck succeeds. DashBegin's downward
     // crouch therefore survives while the source coyote window is active.
-    if p.ducking
+    if (p.ducking || p.star_fly_hitbox_preserved)
         && p.speed.y > 0.0
         && !p.on_ground
         && p.jump_grace_timer <= 0.0
         && can_unduck(p, map)
     {
         p.ducking = false;
+        p.star_fly_hitbox_preserved = false;
     }
 
     if p.state != PlayerState::DreamDash {
@@ -2332,9 +2333,18 @@ fn star_fly_rect(x: f32, y: f32) -> Rect {
     Rect::new(x - 4.0, y - 10.0, 8.0, 8.0)
 }
 
+fn star_fly_hurt_rect(x: f32, y: f32) -> Rect {
+    Rect::new(x - 3.0, y - 9.0, 6.0, 6.0)
+}
+
 fn current_player_rect(p: &PlayerSnapshot, x: f32, y: f32) -> Rect {
-    if p.state == PlayerState::StarFly || p.star_fly_hitbox_preserved {
+    if p.state == PlayerState::StarFly {
         star_fly_rect(x, y)
+    } else if p.star_fly_hitbox_preserved {
+        // Player.Update temporarily assigns the StarFly hurtbox while running
+        // PlayerCollider callbacks. Player.Bounce caches that active collider,
+        // so an IceBall cancellation restores the 6x6 hurtbox as Collider.
+        star_fly_hurt_rect(x, y)
     } else if p.ducking {
         duck_player_rect(x, y)
     } else {
@@ -2649,9 +2659,8 @@ fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount:
 
 fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
     if let Some(from_y) = p.pending_bounce_from_y.take() {
-        // FireBall's PlayerCollider runs after the player has entered its top
-        // collider. Collector snapshots expose that callback on the next
-        // player frame, after one final movement using the previous state.
+        // Backward compatibility for portable snapshots produced before
+        // FireBall callbacks were aligned to the source's same-frame order.
         bounce(p, map, from_y);
         return;
     }
@@ -2767,7 +2776,11 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
     for (entity_index, entity) in map.entities.iter().enumerate() {
         let player_box = if matches!(
             entity.kind,
-            EntityKind::Spikes | EntityKind::FlyFeather | EntityKind::Bumper | EntityKind::Spring
+            EntityKind::Spikes
+                | EntityKind::FlyFeather
+                | EntityKind::Bumper
+                | EntityKind::Spring
+                | EntityKind::IceBall
         ) {
             current_player_hurt_rect(p)
         } else {
@@ -2922,12 +2935,15 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                 );
                 if (p.bounce_reuse_timer <= 0.0 || p.last_bounce_target != target)
                     && p.speed.y >= 0.0
-                    && current_player_rect(p, p.pos.x, p.pos.y).bottom() <= target.y + 4.0
+                    && current_player_hurt_rect(p).bottom() <= target.y + 4.0
                 {
                     p.last_bounce_target = target;
                     // A cold FireBall becomes non-collidable after the bounce.
                     p.bounce_reuse_timer = f32::MAX;
-                    p.pending_bounce_from_y = Some(target.y - 2.0);
+                    // Player.Update runs PlayerCollider checks after its
+                    // movement pass. FireBall.OnBounce therefore corrects the
+                    // just-moved position and changes state on this same frame.
+                    bounce(p, map, target.y - 2.0);
                 }
             }
             EntityKind::Puffer
@@ -8287,10 +8303,8 @@ mod tests {
         };
         let map = ice_ball_map();
         interact(&mut bounced, &map, InputState::default());
-        assert_eq!(bounced.state, PlayerState::Dash);
-        assert_eq!(bounced.pending_bounce_from_y, Some(98.0));
-        interact(&mut bounced, &map, InputState::default());
         assert_eq!(bounced.state, PlayerState::Normal);
+        assert_eq!(bounced.pending_bounce_from_y, None);
         assert_eq!(bounced.pos, Vec2::new(96.0, 98.0));
         assert_eq!(bounced.speed, Vec2::new(240.0, -140.0));
         assert_eq!(bounced.dashes, 1);
@@ -8317,7 +8331,7 @@ mod tests {
     }
 
     #[test]
-    fn ice_ball_pending_callback_keeps_split_simulation_composable() {
+    fn ice_ball_same_frame_callback_keeps_split_simulation_composable() {
         let initial = PlayerSnapshot {
             pos: Vec2::new(317.0, 155.0),
             ..PlayerSnapshot::default()
@@ -8332,11 +8346,17 @@ mod tests {
             })
             .collect();
         let map = crate::mechanics_playground();
+        let trace = simulate_trace(initial.clone(), &inputs[..6], &map, 6).unwrap();
+        assert_eq!(trace.states[5].state, PlayerState::Dash);
+        assert_eq!(trace.states[5].speed, Vec2::new(169.705_63, 169.705_63));
+        assert_eq!(trace.states[6].state, PlayerState::Normal);
+        assert_eq!(trace.states[6].speed.y, -140.0);
+        assert_eq!(trace.states[6].pending_bounce_from_y, None);
         let whole = simulate(initial.clone(), &inputs, &map, inputs.len() as u32).unwrap();
-        let pending = simulate(initial, &inputs[..5], &map, 5).unwrap();
-        assert_eq!(pending.pending_bounce_from_y, Some(158.0));
-        assert_eq!(pending.state, PlayerState::Dash);
-        let split = simulate(pending, &inputs[5..], &map, (inputs.len() - 5) as u32).unwrap();
+        let first = simulate(initial, &inputs[..5], &map, 5).unwrap();
+        assert_eq!(first.pending_bounce_from_y, None);
+        assert_eq!(first.state, PlayerState::Dash);
+        let split = simulate(first, &inputs[5..], &map, (inputs.len() - 5) as u32).unwrap();
         assert_eq!(split, whole);
     }
 
@@ -8418,24 +8438,43 @@ mod tests {
     #[test]
     fn ice_ball_feather_cancel_restores_star_fly_collider_after_normal_hurtbox() {
         let mut bounced = PlayerSnapshot {
-            pos: Vec2::new(100.0, 100.0),
+            pos: Vec2::new(100.0, 101.0),
             state: PlayerState::StarFly,
             star_fly_timer: 1.0,
             ..PlayerSnapshot::default()
         };
         let map = ice_ball_map();
         interact(&mut bounced, &map, InputState::default());
-        interact(&mut bounced, &map, InputState::default());
         assert_eq!(bounced.state, PlayerState::Normal);
         assert!(bounced.star_fly_hitbox_preserved);
         assert!(!bounced.ducking);
         assert_eq!(
             current_player_rect(&bounced, bounced.pos.x, bounced.pos.y),
-            star_fly_rect(bounced.pos.x, bounced.pos.y)
+            star_fly_hurt_rect(bounced.pos.x, bounced.pos.y)
         );
         assert_eq!(
             current_player_hurt_rect(&bounced),
             player_hurt_rect(bounced.pos.x, bounced.pos.y)
+        );
+    }
+
+    #[test]
+    fn preserved_star_fly_hurtbox_returns_to_normal_when_falling() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(100.0, 80.0),
+            speed: Vec2::new(0.0, 1.0),
+            star_fly_hitbox_preserved: true,
+            ..PlayerSnapshot::default()
+        };
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            ..Map::default()
+        };
+        let p = simulate(p, &[InputState::default()], &map, 1).unwrap();
+        assert!(!p.star_fly_hitbox_preserved);
+        assert_eq!(
+            current_player_rect(&p, p.pos.x, p.pos.y),
+            player_rect(p.pos.x, p.pos.y)
         );
     }
 

@@ -271,13 +271,13 @@ pub struct PlayerSnapshot {
     pub strawberry_collect_timer: f32,
     pub strawberry_collect_index: u16,
     pub strawberry_collect_reset_timer: f32,
-    /// `Player.Bounce` can restore the cached StarFly collider after
+    /// `Player.Bounce` can restore the cached StarFly hurtbox as Collider after
     /// `StarFlyEnd` has already restored the normal hurtbox.
     pub star_fly_hitbox_preserved: bool,
     pub last_bounce_target: Vec2,
     pub bounce_reuse_timer: f32,
-    /// A PlayerCollider top-bounce observed after Player.Update. The portable
-    /// trace exposes it on the following player frame, so retain the source Y.
+    /// Legacy portable snapshots may carry a deferred top-bounce. New
+    /// FireBall callbacks resolve in the source's same Player.Update frame.
     pub pending_bounce_from_y: Option<f32>,
     pub explode_launch_boost_timer: f32,
     pub explode_launch_boost_speed: f32,
