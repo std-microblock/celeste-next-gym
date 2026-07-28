@@ -8,7 +8,7 @@ export const mapParts = [TECH_OTHER_5_1_2_BINO_CONTROL_STORAGE] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: ['feature:lookout', 'feature:booster', 'storage:control-interrupt'],
   techniqueIds: ['5.1.2'],
   mapParts,
