@@ -36,6 +36,8 @@ export async function encodeScenarioArtifacts(options: {
       outputPath: path.resolve(techniqueDirectory, `${options.item.scenario.name}.mp4`),
       posterPath: path.resolve(techniqueDirectory, `${options.item.scenario.name}.poster.png`),
       stateWindow: { startStateIndex: stateWindow.start_state_index, endStateIndex: stateWindow.end_state_index },
+      ...(options.item.scenario.recording?.posterFrame === undefined
+        ? {} : { posterStateIndex: options.item.scenario.recording.posterFrame }),
       ...media,
     })
     result.push(await makeEntry({

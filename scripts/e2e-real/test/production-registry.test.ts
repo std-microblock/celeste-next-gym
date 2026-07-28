@@ -8,12 +8,12 @@ describe('production scenario registry', () => {
   const registry = buildRegistry(scenarios)
 
   it('derives all target and status counts from explicit indexes', () => {
-    assert.equal(registry.scenarios.length, 153)
-    assert.equal(registry.byTarget.get('playground')?.length, 111)
+    assert.equal(registry.scenarios.length, 157)
+    assert.equal(registry.byTarget.get('playground')?.length, 115)
     assert.equal(registry.byTarget.get('area-1')?.length, 36)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 141, candidate: 12 })
+    assert.deepEqual(registry.counts, { active: 145, candidate: 12 })
   })
 
   it('keeps evidence-less scenarios as opt-in candidates', () => {
@@ -23,8 +23,8 @@ describe('production scenario registry', () => {
     assert.deepEqual(candidates, [
       'entity-4.10.3.2-holdable-dream-hyper',
       'entity-4.10.4-holdable-grabless-dream-hyper',
+      'entity-4.18.3-core-block-entity-displacement',
       'entity-4.20-theo-regrab',
-      'entity-4.22-neutral-drop',
       'entity-4.22.2-holdable-climb',
       'entity-4.22.3-holdable-neutral-jump',
       'entity-4.23-theo-ultra',
@@ -37,10 +37,29 @@ describe('production scenario registry', () => {
     assert.equal(selectScenarios(registry, { target: 'playground' }).some((scenario) => scenario.status === 'candidate'), false)
   })
 
+  it('keeps every reform proof in an independently named map part', () => {
+    const techniqueIds = ['4.17', '4.18', '4.18.1', '4.18.3']
+    const parts = techniqueIds.map((techniqueId) => {
+      const scenario = registry.scenarios.find((candidate) => candidate.techniqueIds.includes(techniqueId))
+      assert.ok(scenario, `missing scenario for ${techniqueId}`)
+      assert.equal(scenario.mapParts.length, 1)
+      return scenario.mapParts[0]?.id
+    })
+    assert.deepEqual(parts, [
+      'tech.entity-4.17-moon-boost',
+      'tech.entity-4.18-reform-tech',
+      'tech.entity-4.18.1-reform-kick',
+      'tech.entity-4.18.3-core-block-entity-displacement',
+    ])
+    assert.equal(new Set(parts).size, techniqueIds.length)
+  })
+
   it('links the 2.8.2.1 proof and control scenarios and wires map parts by target', () => {
     assert.equal(registry.scenarios.filter((scenario) => scenario.techniqueIds.includes('2.8.2.1')).length, 2)
     assert.equal(registry.scenarios.filter((scenario) => scenario.target.kind === 'external').every((scenario) => scenario.mapParts.length === 0), true)
     assert.equal(registry.scenarios.filter((scenario) => scenario.target.kind === 'playground').every((scenario) => scenario.mapParts.length > 0), true)
+    assert.equal(registry.byTarget.get('area-2')?.every((scenario) => scenario.room === '1'), true)
+    assert.equal(registry.byTarget.get('area-4')?.every((scenario) => scenario.room === 'a-02'), true)
   })
 
   it('keeps every dashless cornerboost proof in an independently named map part', () => {

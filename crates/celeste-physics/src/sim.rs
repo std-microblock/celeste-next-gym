@@ -140,6 +140,7 @@ pub fn simulate_trace(
     let mut runtime_map = map.clone();
     initialize_zip_movers(&mut snapshot, &mut runtime_map);
     initialize_bounce_blocks(&mut snapshot, &mut runtime_map);
+    initialize_move_blocks(&mut snapshot, &mut runtime_map);
     initialize_theo_crystals(&mut snapshot, &mut runtime_map);
     initialize_clouds(&mut snapshot, &mut runtime_map);
     position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
@@ -276,6 +277,29 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
             block.lift_speed.y,
             block.start.x,
             block.start.y,
+            block.reform_timer,
+            block.attached_spike_position.x,
+            block.attached_spike_position.y,
+        ]
+        .iter()
+        .all(|value| value.is_finite())
+    });
+    let move_blocks_are_finite = s.move_blocks.iter().all(|block| {
+        [
+            block.wait_timer,
+            block.speed,
+            block.angle,
+            block.crash_timer,
+            block.crash_reset_timer,
+            block.no_steer_timer,
+            block.position.x,
+            block.position.y,
+            block.remainder.x,
+            block.remainder.y,
+            block.lift_speed.x,
+            block.lift_speed.y,
+            block.start.x,
+            block.start.y,
         ]
         .iter()
         .all(|value| value.is_finite())
@@ -309,6 +333,7 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
     if values.iter().all(|x| x.is_finite())
         && zip_movers_are_finite
         && bounce_blocks_are_finite
+        && move_blocks_are_finite
         && theo_crystals_are_finite
         && clouds_are_finite
     {
@@ -381,20 +406,102 @@ fn initialize_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
         .collect();
     p.bounce_blocks.truncate(block_indices.len());
     for (block_index, entity_index) in block_indices.into_iter().enumerate() {
-        let entity = &mut map.entities[entity_index];
         if block_index == p.bounce_blocks.len() {
-            let start = Vec2::new(entity.bounds.x, entity.bounds.y);
+            let block_bounds = map.entities[entity_index].bounds;
+            let start = Vec2::new(block_bounds.x, block_bounds.y);
+            let attached_spike_index =
+                map.entities.iter().enumerate().find_map(|(index, spike)| {
+                    if spike.kind != EntityKind::Spikes {
+                        return None;
+                    }
+                    let attached = if spike.direction.y < 0.0 {
+                        spike.bounds.bottom() == block_bounds.y
+                            && spike.bounds.x < block_bounds.right()
+                            && spike.bounds.right() > block_bounds.x
+                    } else if spike.direction.y > 0.0 {
+                        spike.bounds.y == block_bounds.bottom()
+                            && spike.bounds.x < block_bounds.right()
+                            && spike.bounds.right() > block_bounds.x
+                    } else if spike.direction.x < 0.0 {
+                        spike.bounds.right() == block_bounds.x
+                            && spike.bounds.y < block_bounds.bottom()
+                            && spike.bounds.bottom() > block_bounds.y
+                    } else {
+                        spike.bounds.x == block_bounds.right()
+                            && spike.bounds.y < block_bounds.bottom()
+                            && spike.bounds.bottom() > block_bounds.y
+                    };
+                    attached.then_some(index as u16)
+                });
+            let attached_spike_position = attached_spike_index
+                .map(|index| {
+                    let bounds = map.entities[index as usize].bounds;
+                    Vec2::new(bounds.x, bounds.y)
+                })
+                .unwrap_or_default();
             p.bounce_blocks.push(crate::BounceBlockSnapshot {
                 position: start,
                 start,
+                static_movers_enabled: true,
+                attached_spike_index,
+                attached_spike_position,
                 ..crate::BounceBlockSnapshot::default()
             });
         }
         let state = &p.bounce_blocks[block_index];
+        {
+            let entity = &mut map.entities[entity_index];
+            if state.phase == 4 {
+                // Broken BounceBlocks remain in the scene but are non-collidable.
+                // Runtime maps do not carry a separate Collidable bit, so park the
+                // collision rectangle outside the room until the reform succeeds.
+                entity.bounds.x = -1_000_000.0;
+                entity.bounds.y = -1_000_000.0;
+            } else {
+                entity.bounds.x = state.position.x;
+                entity.bounds.y = state.position.y;
+            }
+        }
+        if let Some(spike_index) = state.attached_spike_index.map(usize::from) {
+            let spike = &mut map.entities[spike_index];
+            if state.static_movers_enabled {
+                spike.bounds.x = state.attached_spike_position.x;
+                spike.bounds.y = state.attached_spike_position.y;
+            } else {
+                spike.bounds.x = -1_000_000.0;
+                spike.bounds.y = -1_000_000.0;
+            }
+        }
+    }
+}
+
+fn initialize_move_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
+    let block_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::MoveBlock).then_some(index))
+        .collect();
+    p.move_blocks.truncate(block_indices.len());
+    for (block_index, entity_index) in block_indices.into_iter().enumerate() {
+        let entity = &mut map.entities[entity_index];
+        if block_index == p.move_blocks.len() {
+            let start = Vec2::new(entity.bounds.x, entity.bounds.y);
+            let angle = entity.direction.y.atan2(entity.direction.x);
+            p.move_blocks.push(crate::MoveBlockSnapshot {
+                position: start,
+                start,
+                angle,
+                crash_timer: 0.15,
+                crash_reset_timer: 0.1,
+                no_steer_timer: 0.2,
+                visible: true,
+                static_movers_enabled: true,
+                ..crate::MoveBlockSnapshot::default()
+            });
+        }
+        let state = &p.move_blocks[block_index];
         if state.phase == 4 {
-            // Broken BounceBlocks remain in the scene but are non-collidable.
-            // Runtime maps do not carry a separate Collidable bit, so park the
-            // collision rectangle outside the room until the reform succeeds.
             entity.bounds.x = -1_000_000.0;
             entity.bounds.y = -1_000_000.0;
         } else {
@@ -703,6 +810,8 @@ fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
         .collect();
     for (block_index, entity_index) in block_indices.into_iter().enumerate() {
         let mut state = p.bounce_blocks[block_index].clone();
+        let old_position = state.position;
+        let mut started_reform_alarm = false;
         let reform_blocked = if state.phase == 4 && state.respawn_timer <= 0.0 {
             let source_bounds = map.entities[entity_index].bounds;
             let restored = Rect::new(
@@ -720,6 +829,7 @@ fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
                                 other.kind,
                                 EntityKind::BounceBlock
                                     | EntityKind::DreamBlock
+                                    | EntityKind::MoveBlock
                                     | EntityKind::MovingSolid
                                     | EntityKind::ZipMover
                             )
@@ -830,6 +940,8 @@ fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
                 if state.bounce_end_timer <= 0.0 {
                     state.phase = 4;
                     state.respawn_timer = 1.6;
+                    state.reform_timer = 0.0;
+                    state.static_movers_enabled = false;
                     entity.bounds.x = -1_000_000.0;
                     entity.bounds.y = -1_000_000.0;
                 }
@@ -844,6 +956,9 @@ fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
                     state.remainder = Vec2::default();
                     state.lift_speed = Vec2::default();
                     state.phase = 0;
+                    state.reform_timer = 0.35;
+                    state.static_movers_enabled = false;
+                    started_reform_alarm = true;
                 }
             }
             _ => {
@@ -851,11 +966,334 @@ fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
                 state.move_speed = 0.0;
                 state.position = state.start;
                 state.remainder = Vec2::default();
+                state.reform_timer = 0.0;
+                state.static_movers_enabled = true;
                 entity.bounds.x = state.start.x;
                 entity.bounds.y = state.start.y;
             }
         }
+        let block_delta = Vec2::new(
+            state.position.x - old_position.x,
+            state.position.y - old_position.y,
+        );
+        if state.attached_spike_index.is_some() {
+            state.attached_spike_position.x += block_delta.x;
+            state.attached_spike_position.y += block_delta.y;
+        }
+        if state.reform_timer > 0.0 && !started_reform_alarm {
+            state.reform_timer -= DT;
+            if state.reform_timer <= 0.0 {
+                state.static_movers_enabled = true;
+            }
+        }
+        if let Some(spike_index) = state.attached_spike_index.map(usize::from) {
+            let spike = &mut map.entities[spike_index];
+            if state.static_movers_enabled {
+                spike.bounds.x = state.attached_spike_position.x;
+                spike.bounds.y = state.attached_spike_position.y;
+            } else {
+                spike.bounds.x = -1_000_000.0;
+                spike.bounds.y = -1_000_000.0;
+            }
+        }
         p.bounce_blocks[block_index] = state;
+    }
+}
+
+fn runtime_solid_collision(map: &Map, skip_index: usize, rect: Rect) -> bool {
+    map.static_solid_at(rect)
+        || map.entities.iter().enumerate().any(|(index, entity)| {
+            index != skip_index
+                && matches!(
+                    entity.kind,
+                    EntityKind::BounceBlock
+                        | EntityKind::DreamBlock
+                        | EntityKind::MoveBlock
+                        | EntityKind::MovingSolid
+                        | EntityKind::ZipMover
+                )
+                && entity.bounds.intersects(rect)
+        })
+}
+
+fn move_move_block_axis(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    entity_index: usize,
+    state: &mut crate::MoveBlockSnapshot,
+    horizontal: bool,
+    amount: f32,
+    primary: bool,
+    lift_speed: Vec2,
+) -> bool {
+    if amount == 0.0 {
+        return false;
+    }
+    let original = map.entities[entity_index].bounds;
+    let shifted = if horizontal {
+        Rect::new(
+            original.x + amount,
+            original.y,
+            original.width,
+            original.height,
+        )
+    } else {
+        Rect::new(
+            original.x,
+            original.y + amount,
+            original.width,
+            original.height,
+        )
+    };
+    if runtime_solid_collision(map, entity_index, shifted) {
+        if !primary {
+            return true;
+        }
+        for correction in 1..=3 {
+            for sign in [1.0, -1.0] {
+                let offset = correction as f32 * sign;
+                let corrected = if horizontal {
+                    Rect::new(
+                        original.x + amount,
+                        original.y + offset,
+                        original.width,
+                        original.height,
+                    )
+                } else {
+                    Rect::new(
+                        original.x + offset,
+                        original.y + amount,
+                        original.width,
+                        original.height,
+                    )
+                };
+                if runtime_solid_collision(map, entity_index, corrected) {
+                    continue;
+                }
+                let entity = &mut map.entities[entity_index];
+                move_runtime_solid_exact(p, &mut entity.bounds, !horizontal, offset, lift_speed);
+                if horizontal {
+                    state.position.y += offset;
+                } else {
+                    state.position.x += offset;
+                }
+                move_runtime_solid_exact(p, &mut entity.bounds, horizontal, amount, lift_speed);
+                if horizontal {
+                    state.position.x += amount;
+                } else {
+                    state.position.y += amount;
+                }
+                return false;
+            }
+        }
+        return true;
+    }
+    let entity = &mut map.entities[entity_index];
+    move_runtime_solid_exact(p, &mut entity.bounds, horizontal, amount, lift_speed);
+    if horizontal {
+        state.position.x += amount;
+    } else {
+        state.position.y += amount;
+    }
+    false
+}
+
+fn advance_move_blocks(p: &mut PlayerSnapshot, map: &mut Map, input: InputState) {
+    let block_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::MoveBlock).then_some(index))
+        .collect();
+    for (block_index, entity_index) in block_indices.into_iter().enumerate() {
+        let mut state = p.move_blocks[block_index].clone();
+        let source_direction = map.entities[entity_index].direction;
+        let horizontal_source = source_direction.x != 0.0;
+        let home_angle = source_direction.y.atan2(source_direction.x);
+        match state.phase {
+            0 => {
+                state.visible = true;
+                state.static_movers_enabled = true;
+                if player_riding_solid(p, map.entities[entity_index].bounds) {
+                    state.phase = 1;
+                    state.wait_timer = 0.2;
+                }
+            }
+            1 => {
+                if state.wait_timer > DT {
+                    state.wait_timer -= DT;
+                } else {
+                    state.wait_timer = 0.0;
+                    state.phase = 2;
+                    state.crash_timer = 0.15;
+                    state.crash_reset_timer = 0.1;
+                    state.no_steer_timer = 0.2;
+                }
+            }
+            2 => {
+                let riding = player_riding_solid(p, map.entities[entity_index].bounds);
+                let mut target_angle = home_angle;
+                if riding {
+                    if state.no_steer_timer > 0.0 {
+                        state.no_steer_timer -= DT;
+                    }
+                    if state.no_steer_timer <= 0.0 {
+                        let steer = if horizontal_source {
+                            input.move_y
+                        } else {
+                            input.move_x
+                        };
+                        let sign = if source_direction.x < 0.0 || source_direction.y > 0.0 {
+                            -1.0
+                        } else {
+                            1.0
+                        };
+                        target_angle =
+                            home_angle + std::f32::consts::FRAC_PI_4 * sign * steer as f32;
+                    }
+                } else {
+                    state.no_steer_timer = 0.2;
+                }
+                state.speed = approach(state.speed, 60.0, 300.0 * DT);
+                state.angle = approach(state.angle, target_angle, std::f32::consts::PI * 16.0 * DT);
+                let velocity = Vec2::new(
+                    state.angle.cos() * state.speed,
+                    state.angle.sin() * state.speed,
+                );
+                state.lift_speed = velocity;
+                state.remainder.x += velocity.x * DT;
+                state.remainder.y += velocity.y * DT;
+                let move_x = state.remainder.x.round_ties_even();
+                let move_y = state.remainder.y.round_ties_even();
+                state.remainder.x -= move_x;
+                state.remainder.y -= move_y;
+                let primary_blocked = if horizontal_source {
+                    let blocked = move_move_block_axis(
+                        p,
+                        map,
+                        entity_index,
+                        &mut state,
+                        true,
+                        move_x,
+                        true,
+                        velocity,
+                    );
+                    let _ = move_move_block_axis(
+                        p,
+                        map,
+                        entity_index,
+                        &mut state,
+                        false,
+                        move_y,
+                        false,
+                        velocity,
+                    );
+                    blocked
+                } else {
+                    let blocked = move_move_block_axis(
+                        p,
+                        map,
+                        entity_index,
+                        &mut state,
+                        false,
+                        move_y,
+                        true,
+                        velocity,
+                    );
+                    let _ = move_move_block_axis(
+                        p,
+                        map,
+                        entity_index,
+                        &mut state,
+                        true,
+                        move_x,
+                        false,
+                        velocity,
+                    );
+                    blocked
+                };
+                let bounds = map.entities[entity_index].bounds;
+                let outside = bounds.x < map.bounds.x
+                    || bounds.y < map.bounds.y
+                    || bounds.right() > map.bounds.right()
+                    || (source_direction.y > 0.0 && bounds.y > map.bounds.bottom() + 32.0);
+                if primary_blocked {
+                    state.crash_reset_timer = 0.1;
+                    if state.crash_timer > 0.0 {
+                        state.crash_timer -= DT;
+                    } else {
+                        state.phase = 3;
+                        state.wait_timer = 0.2;
+                        state.speed = 0.0;
+                        state.angle = home_angle;
+                    }
+                } else if state.crash_reset_timer > 0.0 {
+                    state.crash_reset_timer -= DT;
+                } else {
+                    state.crash_timer = 0.15;
+                }
+                if outside {
+                    state.phase = 3;
+                    state.wait_timer = 0.2;
+                    state.speed = 0.0;
+                    state.angle = home_angle;
+                }
+            }
+            3 => {
+                if state.wait_timer > 0.0 {
+                    state.wait_timer -= DT;
+                } else {
+                    state.position = state.start;
+                    state.remainder = Vec2::default();
+                    state.lift_speed = Vec2::default();
+                    state.visible = false;
+                    state.static_movers_enabled = false;
+                    state.phase = 4;
+                    state.wait_timer = 2.2;
+                    map.entities[entity_index].bounds.x = -1_000_000.0;
+                    map.entities[entity_index].bounds.y = -1_000_000.0;
+                }
+            }
+            4 => {
+                if state.wait_timer > 0.0 {
+                    state.wait_timer -= DT;
+                } else {
+                    let source = map.entities[entity_index].bounds;
+                    let restored =
+                        Rect::new(state.start.x, state.start.y, source.width, source.height);
+                    if !restored.intersects(current_player_rect(p, p.pos.x, p.pos.y))
+                        && !runtime_solid_collision(map, entity_index, restored)
+                    {
+                        map.entities[entity_index].bounds = restored;
+                        state.position = state.start;
+                        state.phase = 5;
+                        state.wait_timer = 0.8;
+                    }
+                }
+            }
+            5 => {
+                if state.wait_timer > 0.0 {
+                    state.wait_timer -= DT;
+                } else {
+                    state.visible = true;
+                    state.static_movers_enabled = true;
+                    state.phase = 0;
+                }
+            }
+            _ => {
+                state.phase = 0;
+                state.wait_timer = 0.0;
+                state.speed = 0.0;
+                state.angle = home_angle;
+                state.position = state.start;
+                state.remainder = Vec2::default();
+                state.visible = true;
+                state.static_movers_enabled = true;
+                map.entities[entity_index].bounds.x = state.start.x;
+                map.entities[entity_index].bounds.y = state.start.y;
+            }
+        }
+        p.move_blocks[block_index] = state;
     }
 }
 
@@ -1297,6 +1735,7 @@ fn step(
         update_badeline_boost(p, map);
         advance_zip_movers(p, map);
         advance_bounce_blocks(p, map);
+        advance_move_blocks(p, map, input);
         advance_theo_crystals(p, map);
         advance_clouds(p, map);
         p.on_ground = grounded(p, map);
@@ -1324,6 +1763,7 @@ fn step(
         PlayerState::IntroRespawn => {
             advance_zip_movers(p, map);
             advance_bounce_blocks(p, map);
+            advance_move_blocks(p, map, input);
             advance_theo_crystals(p, map);
             advance_clouds(p, map);
             p.on_ground = grounded(p, map);
@@ -1375,6 +1815,7 @@ fn step(
     // player's next action before the platform advances again.
     advance_zip_movers(p, map);
     advance_bounce_blocks(p, map);
+    advance_move_blocks(p, map, input);
     advance_theo_crystals(p, map);
     advance_clouds(p, map);
     p.on_ground = grounded(p, map);
@@ -3800,6 +4241,34 @@ mod tests {
             ..Map::default()
         }
     }
+    fn bounce_block_spikes_map() -> Map {
+        let mut map = bounce_block_map();
+        map.entities.push(crate::Entity {
+            kind: EntityKind::Spikes,
+            bounds: Rect::new(32.0, 157.0, 64.0, 3.0),
+            direction: Vec2::new(0.0, -1.0),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "spikesUp".to_owned(),
+        });
+        map
+    }
+    fn move_block_map() -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 240.0),
+            entities: vec![crate::Entity {
+                kind: EntityKind::MoveBlock,
+                bounds: Rect::new(64.0, 160.0, 32.0, 16.0),
+                direction: Vec2::new(1.0, 0.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "moveBlock".to_owned(),
+            }],
+            ..Map::default()
+        }
+    }
     fn theo_crystal_map() -> Map {
         Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 240.0),
@@ -4428,6 +4897,179 @@ mod tests {
             trace.states[reform_index].bounce_blocks[0].position,
             Vec2::new(32.0, 160.0)
         );
+    }
+
+    #[test]
+    fn core_block_moves_disabled_spikes_before_the_reform_alarm_reenables_them() {
+        let map = bounce_block_spikes_map();
+        let mut initial = simulate(
+            PlayerSnapshot {
+                pos: Vec2::new(240.0, 120.0),
+                state: PlayerState::Frozen,
+                ..PlayerSnapshot::default()
+            },
+            &[InputState::default()],
+            &map,
+            1,
+        )
+        .unwrap();
+        initial.state = PlayerState::Normal;
+        initial.pos = Vec2::new(64.0, 160.0);
+        initial.on_ground = true;
+        initial.player_on_ground = true;
+        initial.bounce_blocks[0].phase = 4;
+        initial.bounce_blocks[0].respawn_timer = 0.0;
+        initial.bounce_blocks[0].position = Vec2::new(32.0, 136.0);
+        initial.bounce_blocks[0].attached_spike_position = Vec2::new(32.0, 133.0);
+        initial.bounce_blocks[0].static_movers_enabled = false;
+        let inputs = vec![InputState::default(); 44];
+        let trace = simulate_trace(initial, &inputs, &map, inputs.len() as u32).unwrap();
+        let body_reform = trace
+            .states
+            .iter()
+            .position(|state| {
+                state.bounce_blocks[0].phase == 0 && state.bounce_blocks[0].reform_timer > 0.0
+            })
+            .unwrap();
+        let spikes_reenabled = trace
+            .states
+            .iter()
+            .position(|state| state.bounce_blocks[0].static_movers_enabled)
+            .unwrap();
+        assert!(spikes_reenabled > body_reform);
+        assert_eq!(spikes_reenabled - body_reform, 21);
+        assert_ne!(
+            trace.states[spikes_reenabled].bounce_blocks[0].attached_spike_position,
+            Vec2::new(32.0, 157.0)
+        );
+        assert_ne!(
+            trace.states[spikes_reenabled].bounce_blocks[0].position,
+            Vec2::new(32.0, 160.0)
+        );
+    }
+
+    #[test]
+    fn moon_block_steering_writes_diagonal_lift_for_a_jump() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(80.0, 160.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<InputState> = (0..52)
+            .map(|frame| InputState {
+                move_x: 0,
+                move_y: -1,
+                jump_pressed: frame == 40,
+                jump_held: frame == 40,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &move_block_map(), inputs.len() as u32).unwrap();
+        assert_eq!(trace.states[16].pos.x, 81.0);
+        assert!(
+            trace.states.iter().any(|state| {
+                state.move_blocks[0].lift_speed.y < -20.0 && state.last_lift_speed.y < -20.0
+            }),
+            "trace={:?}",
+            trace
+                .states
+                .iter()
+                .enumerate()
+                .map(|(frame, state)| (frame, state.pos, state.speed, state.move_blocks[0].clone()))
+                .collect::<Vec<_>>()
+        );
+        assert!(trace.states.iter().any(|state| state.speed.y < JUMP_SPEED));
+    }
+
+    #[test]
+    fn move_block_runtime_keeps_split_simulation_composable() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(80.0, 160.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = vec![
+            InputState {
+                move_y: -1,
+                ..InputState::default()
+            };
+            52
+        ];
+        let direct = simulate(p.clone(), &inputs, &move_block_map(), 52).unwrap();
+        let first = simulate(p, &inputs[..27], &move_block_map(), 27).unwrap();
+        let split = simulate(first, &inputs[27..], &move_block_map(), 25).unwrap();
+        assert_eq!(split, direct);
+    }
+
+    #[test]
+    fn move_block_reform_body_precedes_visibility_and_static_movers_by_point_eight() {
+        let mut initial = PlayerSnapshot {
+            pos: Vec2::new(240.0, 120.0),
+            state: PlayerState::Frozen,
+            ..PlayerSnapshot::default()
+        };
+        initial.move_blocks = vec![crate::MoveBlockSnapshot {
+            phase: 3,
+            position: Vec2::new(120.0, 160.0),
+            start: Vec2::new(64.0, 160.0),
+            visible: true,
+            static_movers_enabled: true,
+            ..crate::MoveBlockSnapshot::default()
+        }];
+        let inputs = vec![InputState::default(); 220];
+        let trace =
+            simulate_trace(initial, &inputs, &move_block_map(), inputs.len() as u32).unwrap();
+        let collidable = trace
+            .states
+            .iter()
+            .position(|state| state.move_blocks[0].phase == 5)
+            .unwrap();
+        let visible = trace
+            .states
+            .iter()
+            .position(|state| {
+                state.move_blocks[0].phase == 0
+                    && state.move_blocks[0].visible
+                    && state.move_blocks[0].static_movers_enabled
+            })
+            .unwrap();
+        assert!(!trace.states[collidable].move_blocks[0].visible);
+        assert!(!trace.states[collidable].move_blocks[0].static_movers_enabled);
+        assert_eq!(visible - collidable, 49);
+    }
+
+    #[test]
+    fn reform_kick_wall_jumps_from_the_newly_collidable_invisible_body() {
+        let mut initial = PlayerSnapshot {
+            pos: Vec2::new(60.0, 174.0),
+            ..PlayerSnapshot::default()
+        };
+        initial.move_blocks = vec![crate::MoveBlockSnapshot {
+            phase: 4,
+            position: Vec2::new(64.0, 160.0),
+            start: Vec2::new(64.0, 160.0),
+            visible: false,
+            static_movers_enabled: false,
+            ..crate::MoveBlockSnapshot::default()
+        }];
+        let reformed = simulate(initial, &[InputState::default()], &move_block_map(), 1).unwrap();
+        assert_eq!(reformed.move_blocks[0].phase, 5);
+        assert!(!reformed.move_blocks[0].visible);
+        let kicked = simulate(
+            reformed,
+            &[InputState {
+                move_x: -1,
+                jump_pressed: true,
+                jump_held: true,
+                ..InputState::default()
+            }],
+            &move_block_map(),
+            1,
+        )
+        .unwrap();
+        assert_eq!(kicked.speed.x, -WALL_JUMP_H);
+        assert_eq!(kicked.speed.y, JUMP_SPEED);
+        assert_eq!(kicked.move_blocks[0].phase, 5);
     }
 
     #[test]

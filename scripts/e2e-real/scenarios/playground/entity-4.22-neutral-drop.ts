@@ -9,11 +9,12 @@ export const mapParts = [ENTITY_4_22_NEUTRAL_DROP_PART] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: [],
   techniqueIds: ['4.22'],
   mapParts,
   name: 'entity-4.22-neutral-drop',
+  recording: { primaryFor: ['4.22'], startFrame: 0, endFrame: 48 },
   initial: { pos: [140, 496], on_ground: true },
   inputs: Array.from({ length: 48 }, (_, frame) => input({
     move_y: frame === 23 ? 1 : 0,

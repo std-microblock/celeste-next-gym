@@ -56,7 +56,7 @@ export type FixtureEntity =
   | (FixtureEntityBase & { readonly kind: 'fly_feather'; readonly shielded?: boolean; readonly singleUse?: boolean })
   | (FixtureEntityBase & { readonly kind: 'badeline_boost'; readonly nodes?: readonly Vector2[] })
   | (FixtureEntityBase & { readonly kind: 'ice_ball'; readonly nodes?: readonly Vector2[]; readonly singleUse?: boolean })
-  | (FixtureEntityBase & { readonly kind: 'spikes' | 'spring' | 'wind' | 'moving_solid'; readonly direction: Vector2 })
+  | (FixtureEntityBase & { readonly kind: 'spikes' | 'spring' | 'wind' | 'move_block' | 'moving_solid'; readonly direction: Vector2 })
   | (FixtureEntityBase & { readonly kind: 'zip_mover'; readonly nodes: readonly [Vector2] })
 
 export type FixtureEntityKind = FixtureEntity['kind']
@@ -168,11 +168,13 @@ export type RecordingWindow =
 
 export type ScenarioRecording = RecordingWindow & {
   readonly primaryFor: readonly string[]
+  readonly posterFrame?: number
 }
 
 export interface ScenarioDefinition {
   readonly name: string
   readonly target: ScenarioTarget
+  readonly room?: string
   readonly status: ScenarioStatus
   readonly tags: readonly string[]
   readonly techniqueIds: readonly string[]

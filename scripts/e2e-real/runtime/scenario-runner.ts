@@ -33,10 +33,11 @@ export async function executeScenario(options: {
   readonly tracePath?: string
   readonly dependencies: ScenarioExecutionDependencies
 }): Promise<ScenarioSummary> {
+  const room = options.room ?? options.scenario.room
   const request = createRequest({
     scenario: options.scenario,
     map: options.map,
-    ...(options.room ? { room: options.room } : {}),
+    ...(room ? { room } : {}),
     skipTransitions: options.skipTransitions,
     ...(options.captureToken ? { captureToken: options.captureToken } : {}),
   })
@@ -51,7 +52,7 @@ export async function executeScenario(options: {
     scenario: options.scenario,
     inputs: request.inputs,
     initialSnapshot: request.initial_snapshot,
-    room: options.room,
+    room,
     mapPath: options.mapPath,
     tracePath,
   }))
@@ -59,7 +60,7 @@ export async function executeScenario(options: {
     await options.dependencies.compare({
       tracePath,
       mapPath: options.mapPath,
-      ...(options.room ? { room: options.room } : {}),
+      ...(room ? { room } : {}),
     })
   }
   const first = states[0]

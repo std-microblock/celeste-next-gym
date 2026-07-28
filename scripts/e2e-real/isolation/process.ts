@@ -79,13 +79,15 @@ export async function waitForProcessIdentity(
   throw new Error(`spawned PID ${processId} identity was unavailable within ${timeoutMs} ms`)
 }
 
-export function terminateOwnedProcess(options: {
+export async function terminateOwnedProcess(options: {
   readonly child: Pick<ChildProcess, 'pid' | 'exitCode' | 'kill'> | undefined
   readonly expectedIdentity: ProcessIdentity
   readonly logger?: CleanupLogger
   readonly queryIdentity?: (processId: number) => ProcessIdentity | null
   readonly terminate?: (child: Pick<ChildProcess, 'pid' | 'exitCode' | 'kill'>) => void
-}): boolean {
+  readonly exitTimeoutMs?: number
+  readonly exitPollMs?: number
+}): Promise<boolean> {
   const { child } = options
   if (!child?.pid || child.exitCode !== null) return false
   let actualIdentity: ProcessIdentity | null
@@ -101,7 +103,28 @@ export function terminateOwnedProcess(options: {
     return false
   }
   ;(options.terminate ?? defaultTerminate)(child)
+  await waitForOwnedProcessExit(
+    options.expectedIdentity,
+    options.queryIdentity ?? queryProcessIdentity,
+    options.exitTimeoutMs ?? 5_000,
+    options.exitPollMs ?? 50,
+  )
   return true
+}
+
+async function waitForOwnedProcessExit(
+  expected: ProcessIdentity,
+  queryIdentity: (processId: number) => ProcessIdentity | null,
+  timeoutMs: number,
+  pollMs: number,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs
+  do {
+    const actual = queryIdentity(expected.processId)
+    if (!actual || !validateProcessIdentity(expected, actual).owned) return
+    await new Promise<void>((resolveWait) => setTimeout(resolveWait, pollMs))
+  } while (Date.now() < deadline)
+  throw new Error(`owned PID ${expected.processId} did not exit within ${timeoutMs} ms`)
 }
 
 function defaultTerminate(child: Pick<ChildProcess, 'pid' | 'kill'>): void {
