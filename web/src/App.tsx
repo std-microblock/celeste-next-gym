@@ -37,6 +37,7 @@ import {
 } from './input/gamepad'
 import {
   DEFAULT_VISUAL_THEME_ID,
+  VISUAL_THEME_COLLECTIONS,
   VISUAL_THEMES,
   isVisualThemeId,
   visualThemeById,
@@ -561,7 +562,9 @@ export default function App() {
       <label className="visual-theme-picker">
         <small>场景主题</small>
         <select aria-label="场景主题" value={visualThemeId} onChange={(event) => selectVisualTheme(event.target.value as VisualThemeId)}>
-          {VISUAL_THEMES.map((theme) => <option value={theme.id} key={theme.id}>{theme.label} · {theme.chapter}</option>)}
+          {VISUAL_THEME_COLLECTIONS.map((collection) => <optgroup label={collection.label} key={collection.id}>
+            {VISUAL_THEMES.filter((theme) => theme.collection === collection.id).map((theme) => <option value={theme.id} key={theme.id}>{theme.label} · {theme.chapter}</option>)}
+          </optgroup>)}
         </select>
       </label>
       {mode === 'advanced' ? <div className="top-actions">
