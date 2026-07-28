@@ -2969,12 +2969,11 @@ fn advance_lookouts(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
             // 16.667 speed after its two initial coroutine resumes. Advancing it in
             // prepare_lookout_player would move the Rust trace one frame
             // ahead of Everest.
-            // Lookout positions its telescope center at `X`, but its
-            // `LookRoutine` aligns Madeline's center eight pixels to its left
-            // before it yields into the camera routine. Keep `position` as
-            // the entity position for `Removed`, while DummyWalk targets the
-            // source alignment point.
-            let dummy_target_x = state.position.x - 8.0;
+            // LookRoutine passes the telescope's exact X to
+            // DummyWalkToExact.  Its 4px collider and TalkComponent offsets
+            // do not alter that coroutine target; only an intervening solid
+            // or PlayerCollider may interrupt the walk before arrival.
+            let dummy_target_x = state.position.x;
             if (p.pos.x - dummy_target_x).abs() <= 1.1 {
                 p.pos.x = dummy_target_x;
                 p.movement_remainder.x = 0.0;
@@ -14535,6 +14534,10 @@ mod tests {
         assert_eq!(next.state, PlayerState::Boost);
         assert!((next.pos.x - 922.0).abs() <= 0.01);
         assert!((next.speed.x - 33.333_3).abs() <= 0.01);
+        let after_walk_resume = &trace.states[boost_frame + 7];
+        assert_eq!(after_walk_resume.state, PlayerState::Boost);
+        assert!((after_walk_resume.pos.x - 931.0).abs() <= 0.01);
+        assert!((after_walk_resume.speed.x - 64.0).abs() <= 0.01);
         assert!(trace.states.iter().any(|state| {
             state.state == PlayerState::Normal
                 && state.lookouts[0].interacting

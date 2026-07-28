@@ -36,9 +36,9 @@ export const TECH_OTHER_5_1_3_BINO_INTERACTION_STORAGE = part('tech.other-5.1.3-
   {
     name: 'playground',
     // Dummy is outside Player.InControl, so DummyWalkToExact cannot itself
-    // initiate a room transition. LookRoutine's DummyWalk stops at x=932
-    // (telescope X minus its eight-pixel alignment offset); the native
-    // Booster is centered on that point. Player.Update checks its native
+    // initiate a room transition. LookRoutine walks to the telescope X=940,
+    // but the native Booster is centered at x=932 and interrupts it first.
+    // Player.Update checks its native
     // Circle collider against the Player hurtbox, which interrupts DummyWalk
     // at x=921 on the first overlap, leaving the Lookout's
     // entity coroutine alive while Normal movement crosses the boundary.
