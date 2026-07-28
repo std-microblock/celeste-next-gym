@@ -4230,6 +4230,15 @@ fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     {
         return;
     }
+    // DashUpdate runs while DashCoroutine is still parked at its initial
+    // `yield return null`. At this point Player.cs still has DashDir == Zero,
+    // so a jump buffered on the frame immediately after DashBegin is a
+    // SuperJump before lastAim is sampled. Ducking was already selected by
+    // DashBegin from MoveY, which makes the same window an instant Hyper.
+    if p.dash_dir == Vec2::default() && input.jump_pressed && p.jump_grace_timer > 0.0 {
+        super_jump(p);
+        return;
+    }
     p.state_timer = (p.state_timer - p.frame_delta_time).max(0.0);
     if (p.state_timer - DASH_TIME).abs() <= p.frame_delta_time * 0.5 {
         p.dash_dir = p.last_aim;
@@ -9578,6 +9587,26 @@ mod tests {
         .unwrap();
         assert_eq!(p.speed, Vec2::new(325.0, -52.5));
         assert!(!p.ducking);
+    }
+    #[test]
+    fn initial_dash_frame_jump_uses_zero_dash_dir_for_instant_super_or_hyper() {
+        for (hold_down, expected_speed) in [(false, Vec2::new(260.0, -105.0)), (true, Vec2::new(325.0, -52.5))] {
+            let mut inputs = [InputState::default(); 8];
+            inputs[0] = InputState {
+                move_y: i8::from(hold_down),
+                dash_pressed: true,
+                ..InputState::default()
+            };
+            for (frame, input) in inputs.iter_mut().enumerate().skip(1) {
+                input.move_y = i8::from(hold_down);
+                input.jump_pressed = frame == 1;
+                input.jump_held = true;
+            }
+            let trace = simulate_trace(grounded_player(), &inputs, &floor_map(), inputs.len() as u32).unwrap();
+            let launched = trace.states.iter().find(|state| state.speed == expected_speed);
+            assert!(launched.is_some(), "hold_down={hold_down}: {:#?}", trace.states);
+            assert_eq!(launched.unwrap().state, PlayerState::Normal);
+        }
     }
     #[test]
     fn wavedash_landing_converts_down_diagonal_dash_to_hyper() {
