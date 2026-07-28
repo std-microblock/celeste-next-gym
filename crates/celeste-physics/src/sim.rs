@@ -3032,7 +3032,10 @@ fn advance_lookouts(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
             // must still let its next resume write Speed.X after BoostUpdate.
             if p.pos.x == state.position.x {
                 p.pos.x = state.position.x;
-                p.movement_remainder.x = 0.0;
+                // DummyWalkToExact only assigns `X = x` after an overstep.
+                // On an ordinary exact arrival it leaves Actor's subpixel
+                // counter intact, so the live BoostUpdate continues from the
+                // remainder accumulated on the preceding movement frame.
                 p.speed.x = 0.0;
                 p.dummy_moving = false;
                 if p.dead || !grounded_at_offset(p, map, 1.0) {
@@ -15210,6 +15213,8 @@ mod tests {
         // update remains Boost and moves one pixel toward Booster.Center.
         assert_eq!(trace.states[20].state, PlayerState::Boost);
         assert_eq!(trace.states[20].pos, Vec2::new(513.0, 496.0));
+        assert_eq!(trace.states[21].pos, Vec2::new(514.0, 496.0));
+        assert_eq!(trace.states[24].pos, Vec2::new(516.0, 496.0));
     }
 
     #[test]
