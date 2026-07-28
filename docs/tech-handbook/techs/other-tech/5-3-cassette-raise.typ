@@ -16,5 +16,5 @@
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs; crates/celeste-physics/src/types.rs], symbol: [advance_cassette_manager; advance_cassette_blocks; CassetteManagerSnapshot], note: [manager 以源码常量 `355/(678π)` 推进六teenth beat；beat 7 先 WillToggle 1px，beat 8 只改 Activated，下一实体帧再 BlockedCheck 并 MoveV 1px。]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [cassette_raise_uses_separate_will_toggle_and_activation_pixels], note: [回归逐帧断言两颜色在预切换时同处中间高度，下一拍后的实体帧才分别到 active source Y 与 inactive source Y+2。]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/other-5.3-cassette-raise.ts; scripts/e2e-real/scenarios/cassette-spinner-parts.ts], symbol: [other-5.3-cassette-raise; TECH_OTHER_5_3_CASSETTE_RAISE], note: [独立双颜色 CassetteBlock MapPart 以玩家核心 Y 轨迹寻找两阶段抬升；尚待真实九字段与视频。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/other-5.3-cassette-raise.ts; scripts/e2e-real/scenarios/cassette-spinner-parts.ts], symbol: [other-5.3-cassette-raise; TECH_OTHER_5_3_CASSETTE_RAISE], note: [独立双颜色 CassetteBlock MapPart 已在真实 Everest 运行；player-only 九字段从 Y=496 直接到 Y=493（state 82），没有可观测的中间 1px 玩家状态，因此不能用玩家轨迹证明非碰撞 WillToggle 阶段，保持明确 E2E 可观测性缺口。]),
 )

@@ -16,5 +16,5 @@
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [star_fly_update; advance_post_player_entities; advance_cassette_blocks], note: [Player/StarFly 按实体顺序先更新，CassetteBlock 后更新；快照同时保留 StarFly 与 cassette runtime，分段模拟仍可组合。]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [cassoosted_fuper_combines_grounded_starfly_jump_and_same_frame_reform], note: [单帧回归同时断言 StarFly→Normal 的 `(273.33334,-105)` 与 Cassette 恢复碰撞、上移到 source position、玩家额外纵向位移。]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.18.2.1-cassoosted-fuper.ts; scripts/e2e-real/scenarios/cassette-spinner-parts.ts], symbol: [entity-4.18.2.1-cassoosted-fuper; TECH_ENTITY_4_18_2_1_CASSOOSTED_FUPER], note: [独立 Feather + 双颜色 CassetteBlock MapPart 已编译；真实同帧窗口、九字段差分与视频等待 FIFO 锁内采集。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.18.2.1-cassoosted-fuper.ts; scripts/e2e-real/scenarios/cassette-spinner-parts.ts], symbol: [entity-4.18.2.1-cassoosted-fuper; TECH_ENTITY_4_18_2_1_CASSOOSTED_FUPER], note: [独立 Feather + 双颜色 CassetteBlock MapPart 已在真实 Everest 运行；首个输入会把 StarFly 降到 91px/s，按源码持续 right aim 的唯一修正后真实退出仍为 `(224.16676,-105)`，未达到候选要求的 `(273.33334,-105)`，故不转正且不伪造视频证据。]),
 )
