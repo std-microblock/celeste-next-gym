@@ -2864,8 +2864,11 @@ fn prepare_lookout_player(p: &mut PlayerSnapshot) {
                 p.facing = direction > 0.0;
             }
         }
-        2 | 3 => {
-            p.state = PlayerState::Dummy;
+        2 | 3 if p.state == PlayerState::Dummy => {
+            // Lookout only assigns StDummy once, when DummyWalkToExact starts.
+            // If a Booster has replaced it with StBoost, the walk's final
+            // speed reset still completes, but the following HUD waits must
+            // not overwrite that live state before BoostUpdate can MoveToX.
             p.dummy_moving = false;
             p.speed.x = 0.0;
         }
@@ -15202,6 +15205,11 @@ mod tests {
         assert_eq!(trace.states[19].state, PlayerState::Boost);
         assert_eq!(trace.states[19].pos, Vec2::new(512.0, 496.0));
         assert_eq!(trace.states[19].speed.x, 0.0);
+        // Completing DummyWalkToExact advances Lookout into its HUD wait,
+        // but that coroutine does not assign StDummy again. The next Player
+        // update remains Boost and moves one pixel toward Booster.Center.
+        assert_eq!(trace.states[20].state, PlayerState::Boost);
+        assert_eq!(trace.states[20].pos, Vec2::new(513.0, 496.0));
     }
 
     #[test]
