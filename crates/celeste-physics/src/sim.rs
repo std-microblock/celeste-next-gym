@@ -6080,17 +6080,16 @@ fn point_bounce(p: &mut PlayerSnapshot, from: Vec2) {
         collider.x + collider.width * 0.5,
         collider.y + collider.height * 0.5,
     );
-    let mut direction = normalize(Vec2::new(center.x - from.x, center.y - from.y));
-    if direction.y > -0.2 && direction.y <= 0.4 {
-        direction.y = -0.2;
-    }
-    p.speed = scale(direction, 220.0);
-    p.speed.x *= 1.5;
-    if p.speed.x.abs() < 100.0 {
+    // Player.PointBounce uses the regular actor center without an artificial
+    // vertical-angle clamp. The horizontal multiplier and minimum are applied
+    // after SafeNormalize, which matters for the nearly level Seeker contact.
+    p.speed = scale(normalize(Vec2::new(center.x - from.x, center.y - from.y)), 200.0);
+    p.speed.x *= 1.2;
+    if p.speed.x.abs() < 120.0 {
         p.speed.x = if p.speed.x == 0.0 {
-            if p.facing { -100.0 } else { 100.0 }
+            if p.facing { -120.0 } else { 120.0 }
         } else {
-            p.speed.x.signum() * 100.0
+            p.speed.x.signum() * 120.0
         };
     }
 }
@@ -7510,14 +7509,20 @@ mod tests {
             .unwrap();
         assert!(spikes_reenabled > body_reform);
         assert_eq!(spikes_reenabled - body_reform, 21);
+        let reenabled = &trace.states[spikes_reenabled].bounce_blocks[0];
+        // The player is still standing on the newly collidable body, so the
+        // block begins another bounce during Alarm's 0.35-second window.
+        // MoveStaticMovers must retain the original top-spike offset while it
+        // is disabled; enabling it at the source coordinate would erase CED.
+        assert_eq!(
+            reenabled.attached_spike_position,
+            Vec2::new(reenabled.position.x, reenabled.position.y - 3.0)
+        );
         assert_ne!(
-            trace.states[spikes_reenabled].bounce_blocks[0].attached_spike_position,
+            reenabled.attached_spike_position,
             Vec2::new(32.0, 157.0)
         );
-        assert_ne!(
-            trace.states[spikes_reenabled].bounce_blocks[0].position,
-            Vec2::new(32.0, 160.0)
-        );
+        assert_ne!(reenabled.position, Vec2::new(32.0, 160.0));
     }
 
     #[test]
@@ -13386,14 +13391,14 @@ mod tests {
     }
 
     #[test]
-    fn shielded_feather_uses_v14_point_bounce() {
+    fn shielded_feather_uses_source_point_bounce() {
         let p = PlayerSnapshot {
             pos: Vec2::new(120.0, 200.0),
             ..PlayerSnapshot::default()
         };
         let p = simulate(p, &[InputState::default()], &feather_map(true), 1).unwrap();
         assert_eq!(p.state, PlayerState::Normal);
-        assert_eq!(p.speed, Vec2::new(-100.0, -220.0));
+        assert_eq!(p.speed, Vec2::new(-120.0, -200.0));
     }
 
     #[test]
@@ -13766,7 +13771,14 @@ mod tests {
         assert!(!p.dead);
         assert_eq!(p.dashes, 1);
         assert_eq!(p.stamina, 110.0);
-        assert!(p.speed.x < -300.0);
+        // Player.PointBounce uses 200 speed, a 1.2 horizontal multiplier,
+        // and only then applies its 120-pixel horizontal minimum.
+        assert!(
+            (p.speed.x + 238.146_68).abs() < 0.000_01,
+            "unexpected point-bounce speed: {:?}",
+            p.speed
+        );
+        assert!((p.speed.y + 24.806_946).abs() < 0.000_01);
         assert_eq!(p.seekers[0].speed, Vec2::new(100.0, 0.0));
         assert_eq!(p.seekers[0].state, 4);
     }
