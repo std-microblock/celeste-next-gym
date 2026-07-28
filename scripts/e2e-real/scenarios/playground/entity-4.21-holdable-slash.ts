@@ -8,11 +8,12 @@ export const mapParts = [ENTITY_4_21_HOLDABLE_SLASH_PART] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: [],
   techniqueIds: ['4.21'],
   mapParts,
   name: 'entity-4.21-holdable-slash',
+  recording: { primaryFor: ['4.21'], startFrame: 0, endFrame: 70, posterFrame: 38 },
   initial: { pos: [300, 496], on_ground: true },
   inputs: Array.from({ length: 70 }, (_, frame) => input({
     move_x: frame >= 14 && frame < 28 ? -1 : frame >= 28 ? 1 : 0,

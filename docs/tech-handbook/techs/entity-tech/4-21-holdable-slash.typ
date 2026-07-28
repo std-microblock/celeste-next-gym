@@ -4,7 +4,7 @@
   id: "4.21",
   title-zh: "携物 Slash",
   title-en: "Holdable Slash",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [中性放下投掷物后，以足够纵向速度水平冲刺并重新抓取，可取消冲刺并保留直线动量。],
   description-en: [After a neutral drop at suitable vertical speed, dash horizontally into the holdable and regrab it to preserve the straight dash momentum.],
   source-evidence: evidence(
@@ -15,6 +15,6 @@
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [release_theo / normal_update / dash_update / pickup_update]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [holdable_slash_regrabs_theo_in_horizontal_dash_with_airborne_vertical_speed]),
-  e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.21-holdable-slash.ts], symbol: [entity-4.21-holdable-slash], note: [独立候选要求空中中性放下、水平 Dash 穿回 Theo、Pickup 重抓与直线 240 速度；真实 Everest 尚待九字段对照，因此保持未实现。]),
+  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.21-holdable-slash.ts], symbol: [entity-4.21-holdable-slash], note: [独立 Theo MapPart 的真实 Everest 轨迹依次完成 Pickup、带非零纵速的空中中性放下、直线 240 水平 Dash 与 Dash 内重抓。71 个状态的 position 最大误差为 0、speed 最大误差为 0.000008，state、facing、dashes、stamina、grounded、ducking、death 全部逐帧一致。]),
+  candidate-e2e: none,
 )
