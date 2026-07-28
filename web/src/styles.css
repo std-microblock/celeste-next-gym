@@ -186,6 +186,16 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 
 footer { padding: 0 14px 20px; color: #7d6889; text-align: center; font: 8px Consolas, monospace; letter-spacing: .06em; }
 
+/* Lesson mode is a dedicated, non-scrolling play surface. */
+.app-shell.training-mode { height: 100vh; min-height: 0; overflow: hidden; background: #080519; }
+.mode-tabs { display: flex; flex-direction: column; justify-content: center; }
+.mode-tabs select { min-width: 104px; height: 29px; padding: 0 25px 0 8px; color: #fff; border: 1px solid #765888; border-radius: 2px; background: #150c27; font: 11px Consolas, monospace; cursor: pointer; }
+.training-workspace { width: 100%; height: calc(100vh - 68px); grid-template-rows: minmax(0, 1fr) auto auto; gap: 8px; margin: 0; padding: 9px clamp(9px, 2vw, 24px); overflow: hidden; }
+.training-stage { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; }.training-stage .game-screen { min-height: 0; max-height: none; height: 100%; aspect-ratio: auto; }.training-prompt { bottom: 59px; }.training-timeline { min-height: 0; }.training-track { height: 67px; margin: 10px 14px 7px; }.training-timeline-actions { min-height: 31px; }.training-timeline-actions > span { min-width: 0; }
+.training-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 11px; color: #a997b3; }.training-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #fff; }.training-legend i.fuzz { background: var(--cyan); }.training-legend i.target { background: var(--gold); transform: rotate(45deg); }.training-legend i.window { width: 13px; border-radius: 0; background: #72f0b080; outline: 1px solid var(--green); }.training-legend i.input { background: var(--green); }.training-legend i.failure { background: var(--pink); }.training-legend i.reset { border: 1px solid var(--gold); background: transparent; }
+.training-marker { pointer-events: auto; cursor: help; }.training-marker.offscreen { font-size: 19px; font-weight: 700; }.training-marker.offscreen::before { display: none; }.training-tooltip { position: absolute; z-index: 12; bottom: calc(100% + 10px); left: 50%; width: max-content; max-width: 250px; padding: 6px 8px; color: #fff; border: 1px solid #8f72a0; background: #120a23f5; box-shadow: 0 5px 15px #0008; font: 9px/1.4 Consolas, monospace; opacity: 0; pointer-events: none; transform: translate(-50%, 4px); transition: opacity .12s, transform .12s; }.training-marker.before .training-tooltip { left: 0; transform: translate(0, 4px); }.training-marker.after .training-tooltip { right: 0; left: auto; transform: translate(0, 4px); }.training-marker:hover .training-tooltip, .training-marker:focus-within .training-tooltip { opacity: 1; transform: translate(-50%, 0); }.training-marker.before:hover .training-tooltip, .training-marker.before:focus-within .training-tooltip, .training-marker.after:hover .training-tooltip, .training-marker.after:focus-within .training-tooltip { transform: translate(0, 0); }
+.training-log { min-height: 0; overflow: hidden; }.training-log-head { display: flex; align-items: center; justify-content: space-between; min-height: 26px; padding: 5px 10px; color: #aa87bb; border-bottom: 1px solid #49345e; background: #100921; font: 8px Consolas, monospace; letter-spacing: .12em; }.training-log-head span { color: #8e7b99; letter-spacing: 0; }.training-log p { margin: 0; padding: 7px 10px; color: #9b8aa6; font: 9px Consolas, monospace; }.training-log ol { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; max-height: 48px; margin: 0; padding: 0; overflow: hidden; list-style: none; background: #392948; }.training-log li { display: flex; gap: 5px; min-width: 0; padding: 5px 7px; color: #bbaac4; background: #100921; font: 8px Consolas, monospace; }.training-log li b { color: var(--cyan); }.training-log li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.training-log li em { margin-left: auto; color: var(--green); font-style: normal; }.training-log li.rejected em { color: var(--pink); }
+
 @media (max-width: 1280px) {
   .topbar { gap: 12px; padding-right: 12px; padding-left: 12px; }
   .brand-mark { min-width: 185px; }
@@ -220,6 +230,7 @@ footer { padding: 0 14px 20px; color: #7d6889; text-align: center; font: 8px Con
   .room-picker { flex-direction: row; overflow-x: auto; }
   .room-picker button { min-width: 142px; }
   .start-preview-heading { align-items: flex-start; }
+  .training-workspace { height: calc(100vh - 64px); padding: 6px; }.training-stage .stage-header { min-height: 48px; }.training-stage .game-screen { min-height: 180px; }.training-log ol { grid-template-columns: 1fr; }.training-log li:nth-child(n+3) { display: none; }.training-legend { gap: 4px 7px; font-size: 7px; }.training-timeline-head h2 { font-size: 11px; }
 }
 
 @media (max-width: 380px) {

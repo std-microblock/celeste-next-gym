@@ -494,18 +494,16 @@ export default function App() {
     setMode(nextMode)
   }
 
-  return <div className={`app-shell ${mode === 'play' ? 'play-mode' : 'advanced-mode'}`}>
+  return <div className={`app-shell ${mode === 'play' ? 'play-mode' : mode === 'training' ? 'training-mode' : 'advanced-mode'}`}>
     {mode === 'advanced' && <div className="mountain-backdrop" />}
     <header className="topbar">
       <div className="brand-mark"><span className="wing">◇</span><div><strong>CELESTE</strong><em>NEXT GYM</em></div></div>
-      <nav className="mode-tabs" role="tablist" aria-label="页面模式">
+      <label className="mode-tabs">
         <small>工作区</small>
-        <div>
-          <button role="tab" aria-selected={mode === 'play'} onClick={() => selectMode('play')}>游玩</button>
-          <button role="tab" aria-selected={mode === 'training'} onClick={() => selectMode('training')}>训练</button>
-          <button role="tab" aria-selected={mode === 'advanced'} onClick={() => selectMode('advanced')}>高级</button>
-        </div>
-      </nav>
+        <select aria-label="页面模式" value={mode} onChange={(event) => selectMode(event.target.value as 'play' | 'training' | 'advanced')}>
+          <option value="play">游玩</option><option value="training">训练</option><option value="advanced">高级</option>
+        </select>
+      </label>
       <div className={`wasm-status ${wasmStatus}`} title="celeste-wasm 0.2.0 · rebuilt from current Rust source"><i />WASM 0.2.0 <span>{wasmStatus === 'ready' ? 'ONLINE' : wasmStatus === 'error' ? 'FAILED' : 'BOOTING'}</span></div>
       {mode === 'advanced' ? <div className="top-actions">
         <button disabled={wasmStatus !== 'ready'} onClick={() => setStartSettingsOpen(true)}>起点</button>

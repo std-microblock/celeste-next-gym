@@ -19,6 +19,7 @@ export interface TrainingCandidateInput {
 export interface TrainingCandidate {
   bindings: Record<string, number>
   verified_inputs: TrainingCandidateInput[]
+  final_state?: { speed?: { x: number; y: number } }
 }
 
 export interface TrainingDefinition {
@@ -64,8 +65,8 @@ export function sameKeySemantics(actual: readonly string[], expected: readonly s
     && normalizedActual.every((key, index) => key === normalizedExpected[index])
 }
 
-export function verifiedInputs(definition: TrainingDefinition): TrainingInput[] {
-  return definition.fuzz.inputs.filter((input) => input.verify !== false)
+export function verifiedInputs(definition: TrainingDefinition): Array<TrainingInput & { fuzzInputIndex: number }> {
+  return definition.fuzz.inputs.flatMap((input, fuzzInputIndex) => input.verify === false ? [] : [{ ...input, fuzzInputIndex }])
 }
 
 function candidateInput(candidate: TrainingCandidate, inputIndex: number): TrainingCandidateInput | undefined {
@@ -92,11 +93,11 @@ export function nextTargetFrame(candidates: readonly TrainingCandidate[], inputI
     .sort((left, right) => left - right)[0]
 }
 
-function failed(session: TrainingSession, kind: TrainingFailure, frame: number): TrainingSession {
+function failed(session: TrainingSession, kind: TrainingFailure, frame: number, fuzzInputIndex: number): TrainingSession {
   return {
     ...session,
     phase: 'failed',
-    failure: { kind, frame, expectedWindow: candidateWindow(session.candidates, session.nextVerifiedInput) },
+    failure: { kind, frame, expectedWindow: candidateWindow(session.candidates, fuzzInputIndex) },
   }
 }
 
@@ -117,16 +118,16 @@ export function verifyTrainingInput(
   if (!input) return { ...session, phase: 'success' }
   if (!sameKeySemantics(keys, input.keys)) {
     return session.phase === 'pre_fuzz'
-      ? failed(session, 'entry_check_failed', frame)
-      : failed(session, 'input_order_mismatch', frame)
+      ? failed(session, 'entry_check_failed', frame, input.fuzzInputIndex)
+      : failed(session, 'input_order_mismatch', frame, input.fuzzInputIndex)
   }
-  if (session.phase === 'pre_fuzz' && !entryCheckPassed) return failed(session, 'entry_check_failed', frame)
+  if (session.phase === 'pre_fuzz' && !entryCheckPassed) return failed(session, 'entry_check_failed', frame, input.fuzzInputIndex)
 
   const matching = session.candidates.filter((candidate) => {
-    const expected = candidateInput(candidate, session.nextVerifiedInput)
+    const expected = candidateInput(candidate, input.fuzzInputIndex)
     return expected !== undefined && expected.frame === frame && sameKeySemantics(keys, expected.keys)
   })
-  if (matching.length === 0) return failed(session, session.phase === 'pre_fuzz' ? 'entry_check_failed' : 'timing_window_miss', frame)
+  if (matching.length === 0) return failed(session, session.phase === 'pre_fuzz' ? 'entry_check_failed' : 'timing_window_miss', frame, input.fuzzInputIndex)
 
   const next = {
     ...session,

@@ -13,7 +13,8 @@
     "version": 1,
     "variables": [{ "name": "jump_frame", "range": { "from": 5, "to": 16 } }],
     "inputs": [
-      { "id": "diagonal_dash", "keys": ["right", "down", "dash"], "at": 0, "held_time": "hold::inf", "verify": true },
+      { "id": "hold_diagonal", "keys": ["right", "down"], "at": 0, "held_time": "hold::inf", "verify": false },
+      { "id": "diagonal_dash", "keys": ["dash"], "at": 0, "verify": true },
       { "id": "jump", "keys": ["jump"], "at": "jump_frame", "verify": true }
     ],
     "observe_until": "jump_frame + 8", "success": ["!final.dead", "final.speed.x > 220"],

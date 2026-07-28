@@ -15,4 +15,13 @@ describe('TrainingTimeline', () => {
     expect(onSetReset).toHaveBeenCalledWith(4)
     expect(view.queryByText(/复制|粘贴|删除|编辑/)).not.toBeInTheDocument()
   })
+
+  it('centers the review window and retains an offscreen next-key hint', () => {
+    const view = render(<TrainingTimeline frame={50} frameCount={100} fuzzStart={0} targetFrame={90} windows={[{ from: 88, to: 92 }]} actualInputs={[]} resetFrame={0} onSeek={vi.fn()} onSetReset={vi.fn()} />)
+
+    expect(view.getByText('TRAINING REVIEW · F26–F74')).toBeInTheDocument()
+    expect(view.getByText('›')).toHaveClass('offscreen', 'after')
+    expect(view.getByText(/下一最佳关键点：F90/)).toBeInTheDocument()
+    expect(view.queryByTitle('成功窗口 F88–F92')).not.toBeInTheDocument()
+  })
 })
