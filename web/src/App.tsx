@@ -10,6 +10,7 @@ import {
   DEFAULT_BINDINGS,
   PLAYGROUND,
   bindingLabel,
+  buttonsToInput,
   createInitialState,
   makeEmptyButtons,
   type Action,
@@ -61,6 +62,12 @@ export default function App() {
   const client = useMemo(() => new WasmClient(), [])
   const [map, setMap] = useState<GymMap>(() => structuredClone(PLAYGROUND))
   const cache = useMemo(() => new FrameCache(client, map, createInitialState(map), 360), [client])
+  const [mode, setMode] = useState<'play' | 'advanced'>('play')
+  const [liveState, setLiveState] = useState<SimState>(() => createInitialState(map))
+  const liveStateRef = useRef(liveState)
+  const [liveFrame, setLiveFrame] = useState(0)
+  const liveFrameRef = useRef(0)
+  const livePreviousButtons = useRef<FrameButtons>(makeEmptyButtons())
   const [, redraw] = useState(0)
   const [frame, setFrame] = useState(0)
   const frameRef = useRef(frame)
@@ -77,6 +84,14 @@ export default function App() {
   const advancing = useRef(false)
   const calculationRevision = useRef(0)
 
+  const replaceLiveSession = useCallback((initial: SimState) => {
+    liveStateRef.current = initial
+    setLiveState(initial)
+    liveFrameRef.current = 0
+    setLiveFrame(0)
+    livePreviousButtons.current = makeEmptyButtons()
+  }, [])
+
   useEffect(() => cache.subscribe(() => redraw((value) => value + 1)), [cache])
   useEffect(() => { frameRef.current = frame }, [frame])
   useEffect(() => () => client.dispose(), [client])
@@ -92,23 +107,69 @@ export default function App() {
       )
       if (!active) return
       setMap(decodedMap)
-      cache.replace(decodedMap, createInitialState(decodedMap), cache.getInputs().map((input) => ({ ...input })))
+      const initial = createInitialState(decodedMap)
+      cache.replace(decodedMap, initial, cache.getInputs().map((input) => ({ ...input })))
+      replaceLiveSession(initial)
       frameRef.current = 0
       setFrame(0)
       setWasmStatus('ready')
       setNotice('WASM 已从 CelesteGymPlayground/Playground.bin 解码测试房间')
-      void cache.ensureFrame(1)
     }).catch((error: Error) => {
       if (!active) return
       setWasmStatus('error')
       setNotice(`WASM 加载失败：${error.message}`)
     })
     return () => { active = false }
-  }, [cache, client])
+  }, [cache, client, replaceLiveSession])
+
+  useEffect(() => {
+    if (mode !== 'play' || wasmStatus !== 'ready') return
+    let active = true
+    let animation = 0
+    let last = performance.now()
+    let carry = 0
+    let simulating = false
+
+    const tick = (now: number) => {
+      carry += (now - last) * 60 / 1000
+      last = now
+      const steps = Math.min(6, Math.floor(carry))
+      if (steps > 0 && !simulating) {
+        carry -= steps
+        let previous = livePreviousButtons.current
+        const inputs = Array.from({ length: steps }, (_, offset) => {
+          const current = buttonsFromKeys(keys.current, bindings, offset === 0 ? latched.current : undefined)
+          const input = buttonsToInput(current, previous)
+          previous = current
+          return input
+        })
+        latched.current.clear()
+        livePreviousButtons.current = previous
+        simulating = true
+        void client.simulate(liveStateRef.current, inputs, map).then((trace) => {
+          if (!active) return
+          const current = trace.at(-1)
+          if (!current) throw new Error('WASM 未返回游玩状态')
+          liveStateRef.current = current
+          setLiveState(current)
+          liveFrameRef.current += steps
+          setLiveFrame(liveFrameRef.current)
+        }).catch((error: Error) => {
+          if (active) setNotice(error.message)
+        }).finally(() => { simulating = false })
+      }
+      if (active) animation = requestAnimationFrame(tick)
+    }
+    animation = requestAnimationFrame(tick)
+    return () => {
+      active = false
+      cancelAnimationFrame(animation)
+    }
+  }, [bindings, client, map, mode, wasmStatus])
 
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
-      if ((event.target as HTMLElement | null)?.matches('input, textarea, select, button')) return
+      if (event.target instanceof HTMLElement && event.target.matches('input, textarea, select, button')) return
       if (!keys.current.has(event.code)) {
         latched.current.add(event.code)
         keys.current.add(event.code)
@@ -258,7 +319,9 @@ export default function App() {
       setPlaying(false)
       setRecording(false)
       setMap(comparisonMap)
-      cache.replaceSimulationInputs(comparisonMap, initialStateFromTrace(expected.states[0], comparisonMap), expected.inputs)
+      const initial = initialStateFromTrace(expected.states[0], comparisonMap)
+      cache.replaceSimulationInputs(comparisonMap, initial, expected.inputs)
+      replaceLiveSession(initial)
       await cache.ensureFrame(endFrame)
       frameRef.current = endFrame
       setFrame(endFrame)
@@ -280,6 +343,7 @@ export default function App() {
       setRecording(false)
       setMap(document.map)
       cache.replace(document.map, document.initial_state, document.inputs)
+      replaceLiveSession(document.initial_state)
       if (document.bindings) setBindings({ ...DEFAULT_BINDINGS, ...document.bindings })
       seek(0)
       setNotice(`已导入 ${file.name} · 后续 state 将按需重算`)
@@ -288,9 +352,26 @@ export default function App() {
     }
   }
 
-  return <div className="app-shell">
-    <div className="mountain-backdrop" />
-    <header className="topbar">
+  const selectMode = (nextMode: 'play' | 'advanced') => {
+    if (nextMode === 'play') {
+      setPlaying(false)
+      setRecording(false)
+      setBindingsOpen(false)
+    }
+    setMode(nextMode)
+  }
+
+  return <div className={`app-shell ${mode === 'play' ? 'play-mode' : 'advanced-mode'}`}>
+    <nav className="mode-tabs" role="tablist" aria-label="页面模式">
+      <button role="tab" aria-selected={mode === 'play'} onClick={() => selectMode('play')}>游玩</button>
+      <button role="tab" aria-selected={mode === 'advanced'} onClick={() => selectMode('advanced')}>高级</button>
+    </nav>
+
+    {mode === 'play' ? <main className="play-workspace">
+      <GameView map={map} state={liveState} states={[]} frame={liveFrame} stale={false} />
+    </main> : <>
+      <div className="mountain-backdrop" />
+      <header className="topbar">
       <div className="brand-mark"><span className="wing">◇</span><div><strong>CELESTE</strong><em>NEXT GYM</em></div></div>
       <div className={`wasm-status ${wasmStatus}`} title="celeste-wasm 0.2.0 · rebuilt from current Rust source"><i />WASM 0.2.0 <span>{wasmStatus === 'ready' ? 'ONLINE' : wasmStatus === 'error' ? 'FAILED' : 'BOOTING'}</span></div>
       <div className="top-actions">
@@ -300,9 +381,9 @@ export default function App() {
         <button onClick={() => void exportTrace()}>导出逐帧</button>
         <label className="file-button">对比逐帧<input type="file" accept="application/json,.json" onChange={(event) => event.target.files?.[0] && void compareTrace(event.target.files[0])} /></label>
       </div>
-    </header>
+      </header>
 
-    <main className="workspace">
+      <main className="workspace">
       <section className="stage panel-frame">
         <div className="stage-header">
           <div><small>CELESTE 1.4.0.0-FNA · BINARYPACKER TEST ROOM</small><h1>{map.name}</h1></div>
@@ -356,8 +437,9 @@ export default function App() {
           if (frameRef.current > cache.frameCount) seek(cache.frameCount)
         }}
       />
-    </main>
-    <footer>celeste-wasm 0.2.0 rebuilt · Celeste 1.4.0.0-fna Gameplay atlas · CelesteGymPlayground/Playground.bin · 60 FPS</footer>
-    {bindingsOpen && <KeyBindings bindings={bindings} onChange={changeBinding} onClose={() => setBindingsOpen(false)} />}
+      </main>
+      <footer>celeste-wasm 0.2.0 rebuilt · Celeste 1.4.0.0-fna Gameplay atlas · CelesteGymPlayground/Playground.bin · 60 FPS</footer>
+      {bindingsOpen && <KeyBindings bindings={bindings} onChange={changeBinding} onClose={() => setBindingsOpen(false)} />}
+    </>}
   </div>
 }
