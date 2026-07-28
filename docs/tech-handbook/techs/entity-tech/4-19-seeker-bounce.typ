@@ -10,11 +10,11 @@
   source-evidence: evidence(
     path: [Source/Seeker.cs / Source/Player/Player.cs],
     symbol: [Seeker.SlammedIntoWall / Seeker.OnAttackPlayer / Player.PointBounce],
-    snippet: raw(block: true, lang: "cs", "Speed.X = Math.Sign(Speed.X) * -100f;\nSpeed.Y *= 0.4f;\nState.State = StStunned;\n...\nplayer.PointBounce(Center);"),
-    note: [Seeker 以至少 100 水平速度撞墙后先反向为 100、纵速乘 0.4 并进入 Stunned；Stunned 每帧以 150 接近零并在 0.8 秒后回 Idle。此时侧面接触才调用 PointBounce、恢复冲刺／体力，并令 Seeker 以 100 远离玩家。],
+    snippet: raw(block: true, lang: "cs", "Speed.X = Math.Sign(Speed.X) * -100f;\nSpeed.Y *= 0.4f;\nState.State = StStunned;\n...\nplayer.PointBounce(Center);\n// Player.PointBounce\nconst float BounceSpeed = 200f;\nconst float MinX = 120f;\nSpeed = (Center - from).SafeNormalize(BounceSpeed);\nSpeed.X *= 1.2f;"),
+    note: [Seeker 以至少 100 水平速度撞墙后先反向为 100、纵速乘 0.4 并进入 Stunned；Stunned 每帧以 150 接近零并在 0.8 秒后回 Idle。此时侧面接触才调用 PointBounce、恢复冲刺／体力，并令 Seeker 以 100 远离玩家。PointBounce 不钳制接触角：先以 200 归一化，再将水平分量乘 1.2，最后才施加 120 的最小水平速度。],
   ),
-  rust-evidence: evidence(path: [crates/celeste-physics/src/types.rs / crates/celeste-physics/src/sim.rs], symbol: [SeekerSnapshot / advance_seekers / move_seeker_axis]),
-  test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [seeker_attack_wall_collision_enters_stunned_with_source_speeds_and_timer / stunned_seeker_side_contact_point_bounces_player_and_recoils_at_one_hundred / seeker_stunned_coroutine_returns_idle_and_split_simulation_is_composable]),
+  rust-evidence: evidence(path: [crates/celeste-physics/src/types.rs / crates/celeste-physics/src/sim.rs], symbol: [SeekerSnapshot / advance_seekers / move_seeker_axis / point_bounce]),
+  test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [seeker_attack_wall_collision_enters_stunned_with_source_speeds_and_timer / stunned_seeker_side_contact_point_bounces_player_and_recoils_at_one_hundred / seeker_stunned_coroutine_returns_idle_and_split_simulation_is_composable / shielded_feather_uses_source_point_bounce]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.19-seeker-bounce.ts], symbol: [entity-4.19-seeker-bounce], note: [最终真实候选形成 PointBounce 语义，但第 36 帧先差：Rust 位置 (214,481)、速度 (90,135)，Everest 位置 (214,483)、速度 (90,-140)；最大位置／速度误差 74／300，保持未实现。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.19-seeker-bounce.ts], symbol: [entity-4.19-seeker-bounce], note: [2026-07-28 隔离真实 Everest run `2026-07-28T13-13-33.419Z-71608-4a736796-081e-4303-a6c3-b0ab27f9aa42` 完成 nonce/PID 认证与受控清理。候选形成 PointBounce 语义，但第 36 帧先差：Rust 位置 (214,481)、速度 (90,135)，Everest 位置 (214,483)、速度 (90,-140)；最大位置／速度误差 74／300，保持未实现。]),
 )

@@ -16,5 +16,5 @@
   rust-evidence: evidence(path: [crates/celeste-physics/src/types.rs; crates/celeste-physics/src/sim.rs], symbol: [BounceBlockSnapshot.static_movers_enabled / advance_bounce_blocks]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [core_block_moves_disabled_spikes_before_the_reform_alarm_reenables_them / core_block_candidate_clears_source_body_before_reform_blocked_check]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.18.3-core-block-entity-displacement.ts], symbol: [entity-4.18.3-core-block-entity-displacement], note: [最终真实候选能观测破碎 body 与 disabled StaticMover，但 280 帧内没有出现 body 已恢复而 spike 仍 disabled 的中间态，语义门报 `block body did not reform`；保持未实现。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.18.3-core-block-entity-displacement.ts], symbol: [entity-4.18.3-core-block-entity-displacement], note: [2026-07-28 隔离真实 Everest run `2026-07-28T13-13-05.263Z-76148-e9e67e4f-ca5c-4ce1-b3a9-bd6653adc9a7` 完成 nonce/PID 认证与受控清理。能观测破碎 body 与 disabled StaticMover，但 280 帧内没有出现 body 已恢复而 spike 仍 disabled 的中间态，语义门报 `block body did not reform`；保持未实现。]),
 )
