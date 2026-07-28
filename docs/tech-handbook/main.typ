@@ -47,9 +47,9 @@
       #v(9pt)
       #text(size: 19pt, weight: "bold", fill: rgb("#991b1b"))[#coverage-summary()]
 
-      产品范围内的技巧在四类证据齐全前均明确标记为“未实现”；4 个游戏外条目明确标记为“产品排除”。
+      产品范围内的技巧在四类证据齐全前均明确标记为“未实现”；5 个条目明确标记为“产品排除”。
 
-      Every in-scope technique remains “Not implemented” until all four evidence classes are complete; four out-of-game entries are explicitly product-excluded.
+      Every in-scope technique remains “Not implemented” until all four evidence classes are complete; five entries are explicitly product-excluded.
     ],
   )
 ]
@@ -68,7 +68,7 @@ This handbook is both a bilingual player-facing guide and an implementation audi
 + 有覆盖关键帧、速度与状态不变量的回归测试；
 + 有标准实体和正常输入触发的真实 Celeste/Everest E2E，完整比较九类字段且误差不超过 0.01。
 
-候选场景只是一条待核证线索，不计入完成数。`5.4`、`5.7`、`5.10`、`5.11` 是游戏外产品排除项，固定基线 120 项减去这 4 项后，产品覆盖分母为 116；`FinalBoss` 与玩家 `Attract` 状态不在这 120 项中。保存不是权威 120 项清单中的技巧，因而不影响该分母。
+候选场景只是一条待核证线索，不计入完成数。`5.4`、`5.7`、`5.10`、`5.11` 与 `4.19` 是产品排除项，固定基线 120 项减去这 5 项后，产品覆盖分母为 115；`FinalBoss` 与玩家 `Attract` 状态不在这 120 项中。保存不是权威 120 项清单中的技巧，因而不影响该分母。
 
 #outline(title: [目录 #h(5pt) #badge([CONTENTS])], depth: 2, indent: auto)
 

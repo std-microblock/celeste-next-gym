@@ -26,7 +26,7 @@
   #badge([NOT PROVIDED], fill: rgb("#f1f5f9"), color: rgb("#64748b"))
 ]
 
-#let coverage-summary(expected: 120, expected_excluded: 4) = context {
+#let coverage-summary(expected: 120, expected_excluded: 5) = context {
   let entries = query(<tech-entry>)
   let implemented = entries.filter(entry => entry.value.status == "implemented").len()
   let excluded = entries.filter(entry => entry.value.status == "product-excluded").len()

@@ -4,9 +4,9 @@
   id: "4.19",
   title-zh: "Seeker Bounce",
   title-en: "Seeker Bounce",
-  status: "unimplemented",
-  description-zh: [Seeker 撞墙后的短暂状态允许玩家从侧面反弹，恢复冲刺并获得接近 Hyper 的水平速度，纵向速度取决于接触角度。],
-  description-en: [A seeker briefly becomes side-bounceable after hitting a wall, refilling dash and granting near-hyper horizontal speed with angle-dependent vertical motion.],
+  status: "product-excluded",
+  description-zh: [用户已明确将 Seeker Bounce 排除在当前产品范围外；该机制未实现，且不计入技术覆盖分母。],
+  description-en: [At the user's direction, Seeker Bounce is excluded from the current product scope; it remains unimplemented and is not counted in the coverage denominator.],
   source-evidence: evidence(
     path: [Source/Seeker.cs / Source/Player/Player.cs],
     symbol: [Seeker.SlammedIntoWall / Seeker.OnAttackPlayer / Player.PointBounce],
