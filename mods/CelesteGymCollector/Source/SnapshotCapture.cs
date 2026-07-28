@@ -10,6 +10,10 @@ internal static class SnapshotCapture {
         "movementCounter",
         BindingFlags.Instance | BindingFlags.NonPublic
     );
+    private static readonly FieldInfo? playerHurtbox = typeof(Player).GetField(
+        "hurtbox",
+        BindingFlags.Instance | BindingFlags.NonPublic
+    );
 
     public static PlayerFrame Capture(Player player, int frame) {
         Dictionary<string, object?> values = [];
@@ -19,6 +23,10 @@ internal static class SnapshotCapture {
                 object? serialized = Simplify(value);
                 if (serialized is not null) values[field.Name] = serialized;
             } catch { }
+        }
+        values["playerCollider"] = ColliderGeometry(player.Collider);
+        if (playerHurtbox?.GetValue(player) is Collider hurtbox) {
+            values["playerHurtbox"] = ColliderGeometry(hurtbox);
         }
         if (player.Scene is Level level) {
             values["levelWind"] = new[] { level.Wind.X, level.Wind.Y };
@@ -77,4 +85,11 @@ internal static class SnapshotCapture {
         Vector2 vector => new[] { vector.X, vector.Y },
         _ => null
     };
+
+    private static float[] ColliderGeometry(Collider collider) => [
+        collider.Left,
+        collider.Top,
+        collider.Width,
+        collider.Height
+    ];
 }
