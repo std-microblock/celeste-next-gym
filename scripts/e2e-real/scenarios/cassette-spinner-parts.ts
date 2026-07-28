@@ -37,8 +37,8 @@ export const TECH_OTHER_5_3_CASSETTE_RAISE = part('tech.other-5.3-cassette-raise
 export const TECH_DASHLESS_3_7_11_DISAPPEARING_BLOCK_CORNERBOOST = part('tech.dashless-3.7.11-disappearing-block-cornerboost', [{
   name: ROOM,
   entities: [
-    { id: 'tech-3.7.11-cassette-0', kind: 'cassette_block', bounds: [128, 448, 32, 48], direction: [0, 1], name: 'cassetteBlock' },
-    { id: 'tech-3.7.11-cassette-1', kind: 'cassette_block', bounds: [320, 400, 64, 16], direction: [1, 1], name: 'cassetteBlock' },
+    { id: 'tech-3.7.11-cassette-0', kind: 'cassette_block', bounds: [320, 400, 64, 16], direction: [0, 1], name: 'cassetteBlock' },
+    { id: 'tech-3.7.11-cassette-1', kind: 'cassette_block', bounds: [128, 448, 32, 48], direction: [1, 1], name: 'cassetteBlock' },
   ],
 }])
 

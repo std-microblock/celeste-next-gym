@@ -2,6 +2,7 @@ import { input } from '../../inputs.js'
 import { defineScenario } from '../../scenario.js'
 import { PLAYGROUND_TARGET } from '../../targets.js'
 import { near, semanticAssert } from '../../verify.js'
+import { cassetteBlock } from '../cassette-observation.js'
 import { TECH_ENTITY_4_18_2_1_CASSOOSTED_FUPER } from '../cassette-spinner-parts.js'
 
 export const mapParts = [TECH_ENTITY_4_18_2_1_CASSOOSTED_FUPER] as const
@@ -26,7 +27,13 @@ export const scenario = defineScenario({
     const fuper = states.findIndex((state) => state.state === 0
       && near(state.speed[0], 273.333_34, 0.01)
       && near(state.speed[1], -105, 0.01))
+    const reform = states.findIndex((state) => {
+      const block = cassetteBlock(state, 0)
+      return block?.position[1] === 493 && block.collidable
+    })
     semanticAssert(fuper > 0, scenario.name, `grounded feather exit was not observed: ${fuper}`)
+    semanticAssert(reform > 0 && Math.abs(reform - fuper) <= 1, scenario.name,
+      `feather exit did not coincide with observed cassette reform: fuper=${fuper}, reform=${reform}`)
     semanticAssert(!states.some((state) => state.dead), scenario.name, 'cassoosted fuper killed the player')
   },
 })
