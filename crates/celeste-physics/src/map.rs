@@ -648,7 +648,10 @@ pub(crate) fn encode_celeste_rooms(
                     vec![],
                 )),
                 EntityKind::Lookout => Some(element(
-                    "lookout",
+                    // `Level.LoadLevel` instantiates the vanilla Lookout under the
+                    // map entity name `towerviewer`; `lookout` is only the Rust
+                    // fixture-facing alias and Everest rejects it.
+                    "towerviewer",
                     [
                         ("x", BinaryValue::Int(x + 2)),
                         ("y", BinaryValue::Int(y + 4)),
@@ -978,7 +981,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 "templeGate" => EntityKind::TempleGate,
                 "cassetteBlock" => EntityKind::CassetteBlock,
                 "spinner" => EntityKind::CrystalStaticSpinner,
-                "lookout" => EntityKind::Lookout,
+                "towerviewer" | "lookout" => EntityKind::Lookout,
                 "celesteGymMovingSolid" => EntityKind::MovingSolid,
                 _ => EntityKind::Unknown,
             };
@@ -1540,6 +1543,8 @@ mod tests {
         };
 
         let encoded = encode_celeste_map(&map, "CelesteGymTest", "lookout").unwrap();
+        assert!(encoded.windows(b"towerviewer".len()).any(|window| window == b"towerviewer"),
+            "Everest Level.LoadLevel dispatches Lookout as `towerviewer`, not fixture alias `lookout`");
         let decoded = decode_map_room(&encoded, Some("lookout")).unwrap();
         assert_eq!(decoded.entities, vec![lookout]);
     }
