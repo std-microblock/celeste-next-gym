@@ -1066,7 +1066,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                     ),
                     Vec2::default(),
                 ),
-                "lookout" => (
+                "towerviewer" | "lookout" => (
                     Rect::new(ex - 2.0, ey - 4.0, 4.0, 4.0),
                     Vec2::new(
                         if attr_bool(el, "onlyY", false) { 1.0 } else { 0.0 },

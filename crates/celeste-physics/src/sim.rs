@@ -3046,8 +3046,9 @@ fn try_begin_lookout(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
             state.node = 0;
             state.node_percent = 0.0;
             state.hud_easer = 0.0;
-            p.state = PlayerState::Dummy;
-            p.dummy_moving = true;
+            // `Lookout.Interact` only starts its coroutine. Its first
+            // `LookRoutine` step runs with the following entity update, where
+            // it assigns `StDummy`; the Talk-pressed frame remains Normal.
             break;
         }
     }
