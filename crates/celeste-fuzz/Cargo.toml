@@ -11,7 +11,9 @@ parallel = ["dep:rayon", "rhai/sync"]
 
 [dependencies]
 celeste-physics = { path = "../celeste-physics" }
-rhai = "1.20"
+# Runtime-rng is unnecessary for the deterministic expression engine and
+# prevents a wasm32 build unless browser entropy is explicitly enabled.
+rhai = { version = "1.20", default-features = false, features = ["std"] }
 rayon = { version = "1.10", optional = true }
 serde.workspace = true
 serde_json.workspace = true

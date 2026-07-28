@@ -3,6 +3,7 @@ import { GameView } from './components/GameView'
 import { InputTimeline } from './components/InputTimeline'
 import { KeyBindings } from './components/KeyBindings'
 import { StateInspector } from './components/StateInspector'
+import { TrainingGround } from './components/TrainingGround'
 import { StartSettings, type StartConfiguration } from './components/StartSettings'
 import {
   ACTIONS,
@@ -83,7 +84,7 @@ export default function App() {
   const [map, setMap] = useState<GymMap>(() => structuredClone(PLAYGROUND))
   const [startMaps, setStartMaps] = useState<GymMap[]>(() => [structuredClone(PLAYGROUND)])
   const cache = useMemo(() => new FrameCache(client, map, createInitialState(map), 360), [client])
-  const [mode, setMode] = useState<'play' | 'advanced'>('play')
+  const [mode, setMode] = useState<'play' | 'training' | 'advanced'>('play')
   const [liveState, setLiveState] = useState<SimState>(() => createInitialState(map))
   const liveStateRef = useRef(liveState)
   const [liveFrame, setLiveFrame] = useState(0)
@@ -483,7 +484,7 @@ export default function App() {
     }
   }
 
-  const selectMode = (nextMode: 'play' | 'advanced') => {
+  const selectMode = (nextMode: 'play' | 'training' | 'advanced') => {
     if (nextMode === 'play') {
       setPlaying(false)
       setRecording(false)
@@ -501,6 +502,7 @@ export default function App() {
         <small>工作区</small>
         <div>
           <button role="tab" aria-selected={mode === 'play'} onClick={() => selectMode('play')}>游玩</button>
+          <button role="tab" aria-selected={mode === 'training'} onClick={() => selectMode('training')}>训练</button>
           <button role="tab" aria-selected={mode === 'advanced'} onClick={() => selectMode('advanced')}>高级</button>
         </div>
       </nav>
@@ -512,7 +514,7 @@ export default function App() {
         <button onClick={exportRun}>导出时间线</button>
         <button onClick={() => void exportTrace()}>导出逐帧</button>
         <label className="file-button">对比逐帧<input type="file" accept="application/json,.json" onChange={(event) => event.target.files?.[0] && void compareTrace(event.target.files[0])} /></label>
-      </div> : <div className="play-quick-actions">
+      </div> : mode === 'training' ? <div className="play-quick-actions"><div className="play-room"><small>LESSON MODE</small><strong>训练场</strong><span>Fuzz 驱动的实战练习</span></div></div> : <div className="play-quick-actions">
         <div className="play-room">
           <small>LIVE ROOM</small>
           <strong>{map.name}</strong>
@@ -527,7 +529,7 @@ export default function App() {
 
     {mode === 'play' ? <main className="play-workspace">
       <GameView map={map} state={liveState} states={[]} frame={liveFrame} stale={false} />
-    </main> : <>
+    </main> : mode === 'training' ? <TrainingGround /> : <>
 
       <main className="workspace">
       <section className="stage panel-frame">

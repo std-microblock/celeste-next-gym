@@ -1,4 +1,5 @@
 import type { GymMap, SimInput, SimState } from '../model'
+import type { TrainingCandidate } from '../training/session'
 
 interface ResponseMessage {
   id: number
@@ -10,6 +11,8 @@ interface ResponseMessage {
 export interface SimulationRunner {
   simulate(state: SimState, inputs: SimInput[], map: GymMap): Promise<SimState[]>
 }
+
+export interface FuzzSearchResult { candidates: TrainingCandidate[] }
 
 export class WasmClient implements SimulationRunner {
   private readonly worker = new Worker(new URL('./wasm.worker.ts', import.meta.url), { type: 'module' })
@@ -67,6 +70,20 @@ export class WasmClient implements SimulationRunner {
       mapPayload = map
     }
     return this.request({ type: 'simulate', state, inputs, map: mapPayload, mapVersion: this.mapVersion })
+  }
+
+  fuzzSearch(state: SimState, fuzz: string, map: GymMap): Promise<FuzzSearchResult> {
+    let mapPayload: GymMap | undefined
+    if (map !== this.cachedMap) {
+      this.cachedMap = map
+      this.mapVersion += 1
+      mapPayload = map
+    }
+    return this.request({ type: 'fuzzSearch', state, fuzz, map: mapPayload, mapVersion: this.mapVersion })
+  }
+
+  entryCheck(state: SimState, checks: string[]): Promise<boolean> {
+    return this.request({ type: 'entryCheck', state, checks })
   }
 
   dispose(): void {

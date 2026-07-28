@@ -335,6 +335,9 @@ impl CompiledFuzz {
         let wants_coverage = output
             .iter()
             .any(|mode| matches!(mode, OutputMode::Coverage));
+        let wants_candidates = output
+            .iter()
+            .any(|mode| matches!(mode, OutputMode::Candidates));
         let top_count = output
             .iter()
             .filter_map(|mode| match mode {
@@ -355,9 +358,11 @@ impl CompiledFuzz {
         };
         let coverage_report =
             wants_coverage.then(|| self.coverage_report(&all_tuples, &successful));
+        let candidates = wants_candidates.then(|| successful.clone()).unwrap_or_default();
         FuzzResult {
             best: wants_best.then(|| successful.first().cloned()).flatten(),
             top: successful.into_iter().take(top_count).collect(),
+            candidates,
             exact_windows,
             connected_regions,
             coverage_report,
@@ -861,6 +866,7 @@ impl CompiledFuzz {
                 ExpressionContext {
                     variables: &candidate.variables,
                     initial: Some(initial),
+                    current: Some(simulator.snapshot()),
                     before: None,
                     after: None,
                     final_state: Some(simulator.snapshot()),
@@ -885,6 +891,7 @@ impl CompiledFuzz {
                 ExpressionContext {
                     variables: &candidate.variables,
                     initial: Some(initial),
+                    current: Some(simulator.snapshot()),
                     before: None,
                     after: None,
                     final_state: Some(simulator.snapshot()),
@@ -963,6 +970,7 @@ impl CompiledFuzz {
                 ExpressionContext {
                     variables,
                     initial: Some(initial),
+                    current: after.or(Some(before)),
                     before: Some(before),
                     after,
                     final_state: None,
@@ -1034,6 +1042,7 @@ impl CompiledFuzz {
                     ExpressionContext {
                         variables,
                         initial: None,
+                        current: None,
                         before: None,
                         after: None,
                         final_state: None,

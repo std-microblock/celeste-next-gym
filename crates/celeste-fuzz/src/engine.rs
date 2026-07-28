@@ -14,6 +14,10 @@ pub(crate) struct CompiledExpression {
 pub(crate) struct ExpressionContext<'a> {
     pub(crate) variables: &'a BTreeMap<String, i64>,
     pub(crate) initial: Option<&'a PlayerSnapshot>,
+    /// Alias for the snapshot at the expression's evaluation point.  Training
+    /// entry checks use `current`; for after-input checks it is the post-step
+    /// snapshot and for before-input checks it is the pre-step snapshot.
+    pub(crate) current: Option<&'a PlayerSnapshot>,
     pub(crate) before: Option<&'a PlayerSnapshot>,
     pub(crate) after: Option<&'a PlayerSnapshot>,
     pub(crate) final_state: Option<&'a PlayerSnapshot>,
@@ -99,6 +103,8 @@ pub(crate) fn build_engine(max_operations: u64) -> Engine {
     engine.register_get("on_ground", |value: &mut PlayerSnapshot| value.on_ground);
     engine.register_get("ducking", |value: &mut PlayerSnapshot| value.ducking);
     engine.register_get("dead", |value: &mut PlayerSnapshot| value.dead);
+    engine.register_get("dash_dir", |value: &mut PlayerSnapshot| value.dash_dir);
+    engine.register_get("last_aim", |value: &mut PlayerSnapshot| value.last_aim);
     engine.register_get("core_mode", |value: &mut PlayerSnapshot| value.core_mode);
     engine
 }
@@ -129,6 +135,9 @@ pub(crate) fn evaluate(
     if let Some(value) = context.initial {
         scope.push("initial", value.clone());
     }
+    if let Some(value) = context.current {
+        scope.push("current", value.clone());
+    }
     if let Some(value) = context.before {
         scope.push("before", value.clone());
     }
@@ -156,6 +165,30 @@ pub(crate) fn evaluate(
     engine
         .eval_ast_with_scope::<Dynamic>(&mut scope, &expression.ast)
         .map_err(|error| format!("{} ({})", error, expression.source))
+}
+
+pub fn evaluate_current_checks(current: &PlayerSnapshot, expressions: &[String]) -> Result<bool, FuzzError> {
+    let engine = build_engine(10_000);
+    let variables = BTreeMap::new();
+    for source in expressions {
+        let expression = compile_expression(&engine, source)?;
+        let result = evaluate(&engine, &expression, ExpressionContext {
+            variables: &variables,
+            initial: None,
+            current: Some(current),
+            before: None,
+            after: None,
+            final_state: None,
+            at: None,
+            held_time: None,
+            input_index: None,
+            verify: None,
+        }).map_err(FuzzError::Spec)?;
+        if result.try_cast::<bool>() != Some(true) {
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }
 
 fn validate_expression_surface(source: &str) -> Result<(), FuzzError> {

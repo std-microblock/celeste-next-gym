@@ -1,0 +1,6 @@
+{
+  "pos": { "x": 64, "y": 238 }, "speed": { "x": 0, "y": 0 }, "state": "Normal",
+  "facing": true, "dashes": 1, "stamina": 110, "on_ground": true, "ducking": false,
+  "can_dream_dash": true, "dead": false, "death_freeze_pending": false, "respawn_frames": 0,
+  "dash_dir": { "x": 0, "y": 0 }
+}

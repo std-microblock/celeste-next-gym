@@ -15,3 +15,4 @@ pub use model::{
     Variable, VerifiedInput,
 };
 pub use search::{CompiledFuzz, compile, parse_spec};
+pub use engine::evaluate_current_checks;

@@ -36,6 +36,37 @@ fn schema_rejects_dependency_order_reserved_names_and_invalid_holds() {
 }
 
 #[test]
+fn directional_dash_can_hold_its_direction() {
+    let result = search(
+        r#"{
+          "version":1,
+          "inputs":[{"keys":["right","down","dash"],"at":0,"held_time":"hold::inf"}],
+          "observe_until":4,
+          "success":"!final.dead"
+        }"#,
+        vec![OutputMode::Candidates],
+    );
+    assert_eq!(result.candidates.len(), 1);
+    assert_eq!(result.candidates[0].verified_inputs[0].keys, ["right", "down", "dash"]);
+}
+
+#[test]
+fn current_entry_checks_can_read_aim_and_dash_direction() {
+    use celeste_fuzz::evaluate_current_checks;
+    let snapshot = PlayerSnapshot {
+        state: PlayerState::Dash,
+        dash_dir: celeste_physics::Vec2 { x: 1.0, y: 1.0 },
+        last_aim: celeste_physics::Vec2 { x: 1.0, y: 1.0 },
+        ..PlayerSnapshot::default()
+    };
+    assert!(evaluate_current_checks(&snapshot, &[
+        "current.state == state::dash".into(),
+        "current.dash_dir.x > 0".into(),
+        "current.last_aim.y > 0".into(),
+    ]).unwrap());
+}
+
+#[test]
 fn dependent_ranges_estimate_and_bindings_are_exact() {
     let spec = compile(
         parse_spec(
