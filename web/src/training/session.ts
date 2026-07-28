@@ -1,4 +1,4 @@
-import { ACTIONS, type Action, type FrameButtons, type SimState } from '../model'
+import { ACTIONS, type Action, type FrameButtons, type SimState } from '../model.ts'
 
 export type TrainingPhase = 'pre_fuzz' | 'fuzz' | 'failed' | 'success'
 export type TrainingFailure = 'entry_check_failed' | 'input_order_mismatch' | 'timing_window_miss'
