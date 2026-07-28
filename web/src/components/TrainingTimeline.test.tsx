@@ -14,6 +14,8 @@ describe('TrainingTimeline', () => {
     fireEvent.click(view.getByRole('button', { name: /设为 R 点 F4/ }))
     expect(onSetReset).toHaveBeenCalledWith(4)
     expect(view.queryByText(/复制|粘贴|删除|编辑/)).not.toBeInTheDocument()
+    expect(view.getByText((_, element) => element?.classList.contains('training-legend') === true && element.textContent?.startsWith('操作起点') === true)).toBeInTheDocument()
+    expect(view.getByText(/操作起点：入口 Dash/)).toBeInTheDocument()
   })
 
   it('centers the review window and retains an offscreen next-key hint', () => {
