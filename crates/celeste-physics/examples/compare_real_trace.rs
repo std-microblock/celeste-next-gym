@@ -33,8 +33,6 @@ struct PortableSnapshot {
     freeze_timer: f32,
     #[serde(default, rename = "_everest_fields")]
     fields: serde_json::Map<String, Value>,
-    #[serde(default, rename = "engineDeltaTime")]
-    engine_delta_time: Option<f32>,
 }
 
 #[derive(Deserialize)]
@@ -82,7 +80,11 @@ fn main() -> ExitCode {
     // State 0 precedes the first scripted Player.Update. Each later capture
     // contains the Engine.DeltaTime consumed by its matching input frame.
     for (input, state) in inputs.iter_mut().zip(trace.states.iter().skip(1)) {
-        input.frame_delta_time_bits = state.engine_delta_time.map(f32::to_bits);
+        input.frame_delta_time_bits = state
+            .fields
+            .get("engineDeltaTime")
+            .and_then(Value::as_f64)
+            .map(|delta| (delta as f32).to_bits());
     }
     let simulated = match simulate_trace(initial, &inputs, &map, inputs.len() as u32) {
         Ok(result) => result.states,
