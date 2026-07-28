@@ -7008,7 +7008,7 @@ mod tests {
         let inputs: Vec<_> = (0..24)
             .map(|frame| InputState {
                 move_x: 1,
-                move_y: 1,
+                move_y: if frame == 0 { 1 } else { 0 },
                 dash_pressed: frame == 0,
                 grab_held: frame >= 5,
                 ..InputState::default()
@@ -7031,7 +7031,12 @@ mod tests {
 
         assert_eq!(trace.states[pickup - 1].speed.x, 360.0);
         assert_eq!(trace.states[pickup].holding_glider, Some(0));
+        assert_eq!(trace.states[pickup].pickup_old_speed.x, 360.0);
+        assert!(!trace.states[pickup].ducking);
         assert_eq!(trace.states[restored].speed.x, 360.0);
+        assert!(!trace.states[restored].ducking);
+        assert!((trace.states[restored + 1].speed.x - (360.0 - RUN_REDUCE * DT)).abs() < 0.0001);
+        assert!(!trace.states[restored + 1].ducking);
     }
 
     #[test]
@@ -7655,7 +7660,7 @@ mod tests {
         let inputs: Vec<_> = (0..24)
             .map(|frame| InputState {
                 move_x: 1,
-                move_y: 1,
+                move_y: if frame == 0 { 1 } else { 0 },
                 dash_pressed: frame == 0,
                 grab_held: (5..=20).contains(&frame),
                 ..InputState::default()
@@ -7684,6 +7689,8 @@ mod tests {
         assert!(!trace.states[pickup].ducking);
         assert!(!trace.states[pickup].dash_end_pending);
         assert_eq!(trace.states[restored].speed, Vec2::new(360.0, 0.0));
+        assert!((trace.states[restored + 1].speed.x - (360.0 - RUN_REDUCE * DT)).abs() < 0.0001);
+        assert!(!trace.states[restored + 1].ducking);
 
         let without_cancel: Vec<_> = inputs
             .iter()
