@@ -106,6 +106,7 @@ internal static class SnapshotCapture {
             Booster? booster = level.Entities.FindFirst<Booster>();
             if (booster is not null) {
                 values["boosterBoostingPlayer"] = booster.BoostingPlayer;
+                values["boosterCollider"] = ColliderGeometry(booster.Collider);
             }
             TheoCrystal? theoCrystal = level.Entities.FindFirst<TheoCrystal>();
             if (theoCrystal is not null) {
