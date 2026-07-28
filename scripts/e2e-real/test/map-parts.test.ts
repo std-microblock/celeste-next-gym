@@ -21,8 +21,8 @@ describe('map-part exporter', () => {
   it('assembles the full canonical Playground partition', () => {
     const fixture = assembleFixturePackage([...COMMON_MAP_PARTS.values()], COMMON_MAP_PARTS)
     assert.equal(fixture.rooms.length, 2)
-    assert.equal(fixture.rooms.reduce((total, room) => total + room.solids.length, 0), 24)
-    assert.equal(fixture.rooms.reduce((total, room) => total + room.entities.length, 0), 43)
+    assert.equal(fixture.rooms.reduce((total, room) => total + room.solids.length, 0), 27)
+    assert.equal(fixture.rooms.reduce((total, room) => total + room.entities.length, 0), 50)
   })
 
   it('computes dependency closure and emits canonical stable sorting', () => {

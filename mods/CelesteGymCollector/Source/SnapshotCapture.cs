@@ -27,6 +27,21 @@ internal static class SnapshotCapture {
                 values["zipMoverLiftSpeed"] = Simplify(zipMover.LiftSpeed);
                 values["zipMoverMovementCounter"] = Simplify(platformMovementCounter?.GetValue(zipMover));
             }
+            Entity? reformBlock = level.Entities.FindFirst<MoveBlock>();
+            reformBlock ??= level.Entities.FindFirst<BounceBlock>();
+            if (reformBlock is not null) {
+                values["reformBlockKind"] = reformBlock.GetType().Name;
+                values["reformBlockPosition"] = Simplify(reformBlock.Position);
+                values["reformBlockCollidable"] = reformBlock.Collidable;
+                values["reformBlockVisible"] = reformBlock.Visible;
+
+                Spikes? attachedSpike = level.Entities.FindAll<Spikes>()
+                    .Find(spike => spike.Get<StaticMover>()?.Platform == reformBlock);
+                if (attachedSpike is not null) {
+                    values["reformSpikePosition"] = Simplify(attachedSpike.Position);
+                    values["reformSpikeCollidable"] = attachedSpike.Collidable;
+                }
+            }
         }
 
         return new PlayerFrame {
