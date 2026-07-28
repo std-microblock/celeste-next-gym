@@ -7734,7 +7734,7 @@ mod tests {
                 },
                 crate::Entity {
                     kind: EntityKind::JumpThru,
-                    bounds: Rect::new(704.0, 456.0, 64.0, 8.0),
+                    bounds: Rect::new(640.0, 440.0, 64.0, 8.0),
                     direction: Vec2::default(),
                     shielded: false,
                     single_use: false,
@@ -7748,9 +7748,15 @@ mod tests {
             pos: Vec2::new(736.0, 440.0),
             ..PlayerSnapshot::default()
         };
-        let inputs: Vec<_> = (0..280)
+        let inputs: Vec<_> = (0..220)
             .map(|frame| InputState {
-                move_x: if frame < 80 { -1 } else { 0 },
+                move_x: if (40..72).contains(&frame) {
+                    -1
+                } else if (142..180).contains(&frame) {
+                    1
+                } else {
+                    0
+                },
                 ..InputState::default()
             })
             .collect();
@@ -7780,6 +7786,12 @@ mod tests {
             .unwrap();
         assert!(trace.states[body].pos.x < 700.0);
         assert!(spike > body);
+        let reenabled = &trace.states[spike].bounce_blocks[0];
+        assert!(
+            !reenabled.static_movers_enabled || reenabled.attached_spike_position != Vec2::new(768.0, 440.0),
+            "the spike must remain displaced when the reform alarm re-enables it: {reenabled:?}"
+        );
+        assert_ne!(reenabled.position, Vec2::new(704.0, 440.0));
     }
 
     #[test]

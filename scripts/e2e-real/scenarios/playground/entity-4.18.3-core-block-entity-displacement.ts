@@ -14,7 +14,12 @@ export const scenario = defineScenario({
   mapParts,
   name: 'entity-4.18.3-core-block-entity-displacement',
   initial: { pos: [736, 440], speed: [0, 0] },
-  inputs: inputFrames(280, (frame) => input({ move_x: frame < 80 ? -1 : 0 })),
+  inputs: inputFrames(220, (frame) => input({
+    // First leave the broken block's source footprint, then enter the
+    // reformed body from the adjacent ledge while its 0.35s StaticMover
+    // alarm is still pending.  The exact source body is empty at reform.
+    move_x: frame >= 40 && frame < 72 ? -1 : frame >= 142 && frame < 180 ? 1 : 0,
+  })),
   verify(states) {
     const broken = states.findIndex((state) => field(state, 'reformBlockCollidable') === false
       && field(state, 'reformSpikeCollidable') === false)
