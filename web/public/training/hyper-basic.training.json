@@ -24,6 +24,6 @@
     { "input_id": "diagonal_dash", "prompt": "按住右下并冲刺。", "order_error": { "title": "先右下冲", "body": "第一步需要右下冲刺。" }, "window_error": { "title": "冲刺时机不对", "body": "从训练开始时输入右下冲。" } },
     { "input_id": "jump", "prompt": "接近最佳点时按 Jump。", "order_error": { "title": "这里需要 Jump", "body": "右下冲后的下一关键输入是跳跃。" }, "window_error": { "title": "跳跃错过窗口", "body": "查看时间线中的绿色可行区间。" } }
   ] },
-  "assist": { "preview_interval_frames": 10, "auto_slowdown": { "enabled_by_default": true, "radius_frames": 12, "minimum_multiplier": 0.35 } },
+  "assist": { "preview_interval_frames": 10, "result_sample_after_input_frames": 8, "auto_slowdown": { "enabled_by_default": true, "radius_frames": 12, "minimum_multiplier": 0.35 } },
   "reset": { "default_frame": 0, "allow_temporary_scrub_reset": true, "safe_checkpoints": [0] }
 }

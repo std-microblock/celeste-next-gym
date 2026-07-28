@@ -11,17 +11,19 @@ export interface TrainingTimelineProps {
   failureFrame?: number
   resetFrame: number
   bestFinalSpeed?: number
-  onSeek(frame: number): void
+  followTarget?: boolean
+  onSeek(frame: number, manual?: boolean): void
   onSetReset(frame: number): void
 }
 
 /** A review-only timeline for lessons.  It intentionally has no TAS editing affordances. */
-export function TrainingTimeline({ frame, frameCount, fuzzStart, targetFrame, windows, actualInputs, failureFrame, resetFrame, bestFinalSpeed, onSeek, onSetReset }: TrainingTimelineProps) {
+export function TrainingTimeline({ frame, frameCount, fuzzStart, targetFrame, windows, actualInputs, failureFrame, resetFrame, bestFinalSpeed, followTarget = false, onSeek, onSetReset }: TrainingTimelineProps) {
   const track = useRef<HTMLDivElement>(null)
   const pointerStart = useRef<number | null>(null)
   const maximum = Math.max(1, frameCount)
   const viewportFrames = Math.min(maximum, 48)
-  const viewportStart = Math.max(0, Math.min(maximum - viewportFrames, frame - Math.floor(viewportFrames / 2)))
+  const viewportFocus = followTarget && targetFrame !== undefined ? targetFrame : frame
+  const viewportStart = Math.max(0, Math.min(maximum - viewportFrames, viewportFocus - Math.floor(viewportFrames / 2)))
   const viewportEnd = viewportStart + viewportFrames
   const inViewport = (value: number) => value >= viewportStart && value <= viewportEnd
   const percent = (value: number) => `${(value - viewportStart) / Math.max(1, viewportFrames) * 100}%`
@@ -36,7 +38,7 @@ export function TrainingTimeline({ frame, frameCount, fuzzStart, targetFrame, wi
     const rect = track.current?.getBoundingClientRect()
     if (!rect) return undefined
     const next = Math.round(viewportStart + Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * viewportFrames)
-    onSeek(next)
+    onSeek(next, true)
     return next
   }
   return <section className="training-timeline panel-frame" aria-label="训练时间线">
@@ -59,7 +61,7 @@ export function TrainingTimeline({ frame, frameCount, fuzzStart, targetFrame, wi
         if (event.currentTarget.hasPointerCapture?.(event.pointerId)) event.currentTarget.releasePointerCapture?.(event.pointerId)
       }}
       onKeyDown={(event) => {
-        if (event.code === 'ArrowLeft' || event.code === 'ArrowRight') { event.preventDefault(); onSeek(frame + (event.code === 'ArrowLeft' ? -1 : 1)) }
+        if (event.code === 'ArrowLeft' || event.code === 'ArrowRight') { event.preventDefault(); onSeek(frame + (event.code === 'ArrowLeft' ? -1 : 1), true) }
       }}
     >
       {visibleWindows.map((window, index) => <i key={`${window.from}-${window.to}-${index}`} className="training-window" style={{ left: percent(window.from), width: `${Math.max(.8, (window.to - window.from + 1) / viewportFrames * 100)}%` }} title={`成功窗口 F${window.from}–F${window.to}`} />)}
@@ -72,4 +74,28 @@ export function TrainingTimeline({ frame, frameCount, fuzzStart, targetFrame, wi
     </div>
     <div className="training-timeline-actions"><span className="training-legend"><i className="fuzz" />操作起点<i className="target" />下一关键点<i className="window" />成功窗口<i className="input" />你的输入<i className="failure" />失败<i className="reset" />R 点</span><button onClick={() => onSetReset(frame)}>设为 R 点 F{frame}</button></div>
   </section>
+}
+
+export interface TrainingResultTimelineProps {
+  targetFrame?: number
+  windows: FrameWindow[]
+  actualInputs: readonly { frame: number; keys: readonly string[] }[]
+  failureFrame?: number
+}
+
+export function TrainingResultTimeline({ targetFrame, windows, actualInputs, failureFrame }: TrainingResultTimelineProps) {
+  const inputFrames = actualInputs.map((input) => input.frame)
+  const points = [...inputFrames, ...windows.flatMap((window) => [window.from, window.to]), ...(targetFrame === undefined ? [] : [targetFrame]), ...(failureFrame === undefined ? [] : [failureFrame])]
+  const minimum = Math.min(...points, 0)
+  const maximum = Math.max(...points, minimum + 16)
+  const padding = 3
+  const from = minimum - padding
+  const span = Math.max(16, maximum - minimum + padding * 2)
+  const percent = (value: number) => `${(value - from) / span * 100}%`
+  return <div className="training-result-timeline" aria-label="本次操作时间线">
+    {windows.map((window, index) => <i key={`${window.from}-${window.to}-${index}`} className="training-window" style={{ left: percent(window.from), width: `${Math.max(1.5, (window.to - window.from + 1) / span * 100)}%` }} />)}
+    {targetFrame !== undefined && <b className="training-result-target" style={{ left: percent(targetFrame) }}>◆<span>最佳 F{targetFrame}</span></b>}
+    {actualInputs.map((input, index) => <b key={`${input.frame}-${index}`} className="training-result-input" style={{ left: percent(input.frame) }}>●<span>F{input.frame} {input.keys.join('+').toUpperCase()}</span></b>)}
+    {failureFrame !== undefined && <b className="training-result-failure" style={{ left: percent(failureFrame) }}>×</b>}
+  </div>
 }

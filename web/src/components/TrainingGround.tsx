@@ -3,13 +3,14 @@ import { DEFAULT_BINDINGS, buttonsToInput, makeEmptyButtons, type FrameButtons, 
 import { WasmClient } from '../simulator/wasmClient'
 import { assistedRate, candidateWindow, createTrainingSession, keySemantics, nextTargetFrame, rebuildTrainingSession, verifiedInputs, verifyTrainingInput, type TrainingCandidate, type TrainingDefinition, type TrainingSession } from '../training/session'
 import { GameView } from './GameView'
-import { TrainingTimeline } from './TrainingTimeline'
+import { TrainingResultTimeline, TrainingTimeline } from './TrainingTimeline'
 
 interface TrainingDocument extends TrainingDefinition {
   scene: { map_fixture: string; initial_snapshot: string }
   entry: TrainingDefinition['entry'] & { check: string[]; failure: { title: string; body: string } }
   teaching: { steps: Array<{ prompt: string; order_error: { title: string; body: string }; window_error: { title: string; body: string } }> }
-  assist: { auto_slowdown: { enabled_by_default: boolean; radius_frames: number; minimum_multiplier: number } }
+  assist: { result_sample_after_input_frames: number; auto_slowdown: { enabled_by_default: boolean; radius_frames: number; minimum_multiplier: number } }
+  fuzz: TrainingDefinition['fuzz'] & { observe_until: number | string }
 }
 
 interface Attempt { frame: number; keys: string[]; entryCheckPassed?: boolean }
@@ -22,6 +23,7 @@ interface OutcomeAnimation {
   phase: 'failed' | 'success'
   startedAt: number
   durationMs: number
+  resultFrame: number
 }
 
 const FAILURE_SLOWDOWN_MS = 1_000
@@ -41,6 +43,13 @@ function pressedVerification(current: FrameButtons, previous: FrameButtons): boo
 
 export function trainingEntryDirectionPassed(buttons: FrameButtons): boolean {
   return buttons.right && buttons.down
+}
+
+export function timingAssessment(actualFrame: number | undefined, targetFrame: number | undefined): string {
+  if (actualFrame === undefined || targetFrame === undefined) return '无可比较的最佳点'
+  const difference = actualFrame - targetFrame
+  if (difference === 0) return '正中最佳点'
+  return difference < 0 ? `早了 ${Math.abs(difference)} 帧` : `晚了 ${difference} 帧`
 }
 
 function verificationKeys(buttons: FrameButtons, document: TrainingDefinition, step: number): string[] {
@@ -75,6 +84,7 @@ export function TrainingGround() {
   const fuzzStartRef = useRef<number | null>(null)
   const [prediction, setPrediction] = useState<PredictionPreview>({ windows: [] })
   const predictionDirty = useRef(false)
+  const [followReference, setFollowReference] = useState(true)
   const [outcome, setOutcome] = useState<OutcomeAnimation | null>(null)
   const outcomeRef = useRef<OutcomeAnimation | null>(null)
   const [outcomeProgress, setOutcomeProgress] = useState(0)
@@ -86,11 +96,12 @@ export function TrainingGround() {
 
   const applySession = (next: TrainingSession) => { sessionRef.current = next; setSession(next) }
   const applyPrediction = (next: PredictionPreview) => setPrediction(next)
-  const beginOutcome = (phase: OutcomeAnimation['phase']) => {
+  const beginOutcome = (phase: OutcomeAnimation['phase'], resultFrame: number) => {
     const next = {
       phase,
       startedAt: performance.now(),
       durationMs: phase === 'success' ? SUCCESS_SLOWDOWN_MS : FAILURE_SLOWDOWN_MS,
+      resultFrame,
     }
     outcomeRef.current = next
     setOutcome(next)
@@ -198,6 +209,7 @@ export function TrainingGround() {
       const gameInput = Object.values(DEFAULT_BINDINGS).includes(event.code)
       if (gameInput || event.code === 'KeyR') event.preventDefault()
       if (gameInput) {
+        setFollowReference(true)
         if (predictionDirty.current) {
           predictionDirty.current = false
           applyPrediction({ windows: [] })
@@ -287,10 +299,10 @@ export function TrainingGround() {
             applySession(nextSession)
             if (nextSession.phase === 'failed') {
               setNotice(nextSession.failure?.kind === 'input_order_mismatch' ? document.teaching.steps[nextSession.nextVerifiedInput]?.order_error.body ?? '输入顺序不正确。' : nextSession.failure?.kind === 'timing_window_miss' ? document.teaching.steps[nextSession.nextVerifiedInput]?.window_error.body ?? '错过输入窗口。' : document.entry.failure.body)
-              beginOutcome('failed')
+              beginOutcome('failed', nextFrame)
             } else if (nextSession.phase === 'success') {
               setNotice('成功：已命中可行候选。')
-              beginOutcome('success')
+              beginOutcome('success', currentFrame + document.assist.result_sample_after_input_frames)
             }
           }
         }).catch((error: Error) => { if (active) { setPlaying(false); setNotice(error.message) } }).finally(() => { simulating.current = false })
@@ -308,15 +320,34 @@ export function TrainingGround() {
   const prompt = session.phase === 'pre_fuzz' ? document.entry.hint : document.teaching.steps[session.nextVerifiedInput]?.prompt ?? '继续保持。'
   const effective = (autoSlowdown ? assistedRate(baseRate, fuzzStartFrame === null ? 0 : frame - fuzzStartFrame, target, document.assist.auto_slowdown.radius_frames, Math.max(MAX_AUTO_SLOWDOWN_REDUCTION, document.assist.auto_slowdown.minimum_multiplier)) : baseRate) * (1 - outcomeProgress)
   const bestFinalSpeed = prediction.bestFinalSpeed
+  const actualInputs = session.actualInputs.map((input) => ({ ...input, frame: (fuzzStartFrame ?? 0) + input.frame }))
+  const actualActionFrame = actualInputs.at(-1)?.frame
+  const timing = timingAssessment(actualActionFrame, prediction.targetFrame)
+  const resultState = outcome === null ? state : snapshots[outcome.resultFrame]
+  const finalSpeed = resultState?.speed.x
+  const failureFrame = session.failure ? (fuzzStartFrame ?? 0) + session.failure.frame : undefined
+  const resultPanel = outcome && <div className={`training-result-card ${outcome.phase}`}>
+    <div className="training-result-heading">
+      <div><small>ATTEMPT RESULT</small><strong>{outcome.phase === 'success' ? '成功' : session.failure?.kind === 'entry_check_failed' ? document.entry.failure.title : session.failure?.kind === 'input_order_mismatch' ? document.teaching.steps[session.nextVerifiedInput]?.order_error.title : document.teaching.steps[session.nextVerifiedInput]?.window_error.title}</strong></div>
+      <em>{timing}</em>
+    </div>
+    <TrainingResultTimeline targetFrame={prediction.targetFrame} windows={prediction.windows} actualInputs={actualInputs} failureFrame={failureFrame} />
+    <div className="training-result-stats">
+      <div><span>本次最终 X 速度</span><b>{finalSpeed === undefined ? '采样中…' : finalSpeed.toFixed(2)}</b></div>
+      <div><span>最佳点结算速度</span><b>{bestFinalSpeed === undefined ? '—' : bestFinalSpeed.toFixed(2)}</b></div>
+      <div><span>输入时机</span><b>{timing}</b></div>
+    </div>
+    <p>{outcome.phase === 'success' ? '' : notice}</p>
+    <button onClick={() => outcome.phase === 'success' ? resetTo(0) : resetTo()}>{outcome.phase === 'success' ? '再试一次' : 'R 重试'}</button>
+  </div>
   return <main className="training-workspace">
     <section className="training-stage panel-frame">
       <div className="stage-header"><div><small>TRAINING / {document.id}</small><h1>{document.title} <em>第 {Math.min(session.nextVerifiedInput + 1, document.teaching.steps.length)}/{document.teaching.steps.length} 步</em></h1></div><div className="cache-meter"><span>{bestFinalSpeed === undefined ? '有效倍率' : '当前最佳候选最终 X 速度'}</span><strong>{bestFinalSpeed === undefined ? `${effective.toFixed(2)}×` : bestFinalSpeed.toFixed(2)}</strong></div></div>
       <GameView map={map} state={state} states={snapshots} frame={frame} stale={false} />
       <div className="training-prompt">{prompt}</div>
-      {outcome?.phase === 'failed' && <div className="training-failure" style={{ '--outcome-progress': outcomeProgress } as CSSProperties}><strong>{session.failure?.kind === 'entry_check_failed' ? document.entry.failure.title : session.failure?.kind === 'input_order_mismatch' ? document.teaching.steps[session.nextVerifiedInput]?.order_error.title : document.teaching.steps[session.nextVerifiedInput]?.window_error.title}</strong><span>{notice}</span><button onClick={() => resetTo()}>R 重试</button></div>}
-      {outcome?.phase === 'success' && <div className="training-success" style={{ '--outcome-progress': outcomeProgress } as CSSProperties}><div className="training-fireworks" aria-hidden="true">{Array.from({ length: 18 }, (_, index) => <i key={index} style={{ '--firework-index': index } as CSSProperties} />)}</div><strong>成功</strong><span>实际输入已保留在训练时间线。</span><button onClick={() => resetTo(0)}>再试一次</button></div>}
+      {outcome && <div className={outcome.phase === 'success' ? 'training-success' : 'training-failure'} style={{ '--outcome-progress': outcomeProgress } as CSSProperties}>{resultPanel}</div>}
       <div className="transport"><button aria-label="回到 R 点" onClick={() => resetTo()}>R</button><button aria-label="上一帧" onClick={() => seek(frame - 1)}>◀</button><button className="play-button" onClick={() => { if (!playing && predictionDirty.current) { predictionDirty.current = false; applyPrediction({ windows: [] }) } setPlaying((value) => !value) }}>{playing ? 'Ⅱ' : '▶'}</button><button aria-label="下一帧" onClick={() => { if (predictionDirty.current) { predictionDirty.current = false; applyPrediction({ windows: [] }) } setPlaying(true) }}>▶</button><select aria-label="训练基础速度" value={baseRate} onChange={(event) => setBaseRate(Number(event.target.value))}><option value={.25}>0.25×</option><option value={.5}>0.5×</option><option value={1}>1×</option><option value={2}>2×</option></select><label className="training-assist"><input type="checkbox" checked={autoSlowdown} onChange={(event) => setAutoSlowdown(event.target.checked)} />自动慢放</label></div>
     </section>
-    <TrainingTimeline frame={frame} frameCount={Math.max(40, snapshots.length - 1)} fuzzStart={fuzzStartFrame} targetFrame={prediction.targetFrame} windows={prediction.windows} actualInputs={session.actualInputs.map((input) => ({ ...input, frame: (fuzzStartFrame ?? 0) + input.frame }))} failureFrame={session.failure ? (fuzzStartFrame ?? 0) + session.failure.frame : undefined} resetFrame={resetFrame} bestFinalSpeed={bestFinalSpeed} onSeek={seek} onSetReset={(value) => { setResetFrame(value); setNotice(`临时 R 点已设为 F${value}`) }} />
+    <TrainingTimeline frame={frame} frameCount={Math.max(40, snapshots.length - 1, (prediction.targetFrame ?? 0) + 24)} fuzzStart={fuzzStartFrame} targetFrame={prediction.targetFrame} windows={prediction.windows} actualInputs={actualInputs} failureFrame={failureFrame} resetFrame={resetFrame} bestFinalSpeed={bestFinalSpeed} followTarget={followReference && !outcome} onSeek={(value, manual) => { if (manual && value < frame) setFollowReference(false); seek(value) }} onSetReset={(value) => { setResetFrame(value); setNotice(`临时 R 点已设为 F${value}`) }} />
   </main>
 }

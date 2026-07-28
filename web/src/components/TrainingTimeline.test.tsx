@@ -10,7 +10,7 @@ describe('TrainingTimeline', () => {
     const timeline = view.getByRole('slider', { name: '训练回看时间线' })
     vi.spyOn(timeline, 'getBoundingClientRect').mockReturnValue({ x: 0, y: 0, left: 0, top: 0, right: 200, bottom: 50, width: 200, height: 50, toJSON: () => ({}) })
     fireEvent.pointerDown(timeline, { pointerId: 1, clientX: 100 })
-    expect(onSeek).toHaveBeenCalledWith(10)
+    expect(onSeek).toHaveBeenCalledWith(10, true)
     fireEvent.click(view.getByRole('button', { name: /设为 R 点 F4/ }))
     expect(onSetReset).toHaveBeenCalledWith(4)
     expect(view.queryByText(/复制|粘贴|删除|编辑/)).not.toBeInTheDocument()
@@ -25,5 +25,12 @@ describe('TrainingTimeline', () => {
     expect(view.getByText('›')).toHaveClass('offscreen', 'after')
     expect(view.getByText(/下一最佳关键点：F90/)).toBeInTheDocument()
     expect(view.queryByTitle('成功窗口 F88–F92')).not.toBeInTheDocument()
+  })
+
+  it('keeps the reference input centered while follow mode is active', () => {
+    const view = render(<TrainingTimeline frame={8} frameCount={120} fuzzStart={0} targetFrame={70} windows={[{ from: 68, to: 72 }]} actualInputs={[]} resetFrame={0} followTarget onSeek={vi.fn()} onSetReset={vi.fn()} />)
+
+    expect(view.getByText('TRAINING REVIEW · F46–F94')).toBeInTheDocument()
+    expect(view.getByTitle('成功窗口 F68–F72')).toBeInTheDocument()
   })
 })
