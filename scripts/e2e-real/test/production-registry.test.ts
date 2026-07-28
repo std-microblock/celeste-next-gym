@@ -8,12 +8,12 @@ describe('production scenario registry', () => {
   const registry = buildRegistry(scenarios)
 
   it('derives all target and status counts from explicit indexes', () => {
-    assert.equal(registry.scenarios.length, 179)
-    assert.equal(registry.byTarget.get('playground')?.length, 137)
+    assert.equal(registry.scenarios.length, 180)
+    assert.equal(registry.byTarget.get('playground')?.length, 138)
     assert.equal(registry.byTarget.get('area-1')?.length, 36)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 153, candidate: 26 })
+    assert.deepEqual(registry.counts, { active: 153, candidate: 27 })
   })
 
   it('keeps evidence-less scenarios as opt-in candidates', () => {
@@ -46,6 +46,7 @@ describe('production scenario registry', () => {
       'other-5.11-spinner-freeze',
       'other-5.13-undemo-omed-dashing',
       'other-5.3-cassette-raise',
+      'other-5.8-roboboost',
       'other-5.9-screen-transition-cassette-offset',
     ])
     assert.equal(selectScenarios(registry, { target: 'playground' }).some((scenario) => scenario.status === 'candidate'), false)

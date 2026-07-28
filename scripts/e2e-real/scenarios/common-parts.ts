@@ -199,6 +199,10 @@ export const PLAYGROUND_OTHER_KERMIT = defineMapPart({
 })
 export const PLAYGROUND_OTHER_SUBPIXEL = fixturePart('playground.other-subpixel')
 export const TECH_OTHER_5_13_UNDEMO_DASHING = fixturePart('tech.other-5.13-undemo-dashing')
+export const TECH_OTHER_5_8_ROBOBOOST = fixturePart('tech.other-5.8-roboboost', {
+  solids: [[480, 400, 8, 64]],
+  entities: [{ id: 'tech-5.8-move-block', kind: 'move_block', bounds: [400, 464, 64, 16], direction: [1, 0], name: 'moveBlock' }],
+})
 
 export const COMMON_MAP_PARTS = new Map<string, MapPart>([
   PLAYGROUND_BASE, PLAYGROUND_JUMP_THRU, PLAYGROUND_ZIP_MOVER, PLAYGROUND_BOOSTER, PLAYGROUND_SPIKES,
@@ -217,6 +221,7 @@ export const COMMON_MAP_PARTS = new Map<string, MapPart>([
   PLAYGROUND_OTHER_KERMIT,
   PLAYGROUND_OTHER_SUBPIXEL,
   TECH_OTHER_5_13_UNDEMO_DASHING,
+  TECH_OTHER_5_8_ROBOBOOST,
   ...REFORM_MAP_PARTS,
   ...CASSETTE_SPINNER_MAP_PARTS,
   ...CORE_HEART_SQUISH_MAP_PARTS,
