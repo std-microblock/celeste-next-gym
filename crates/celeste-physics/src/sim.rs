@@ -106,21 +106,89 @@ pub enum SimulationError {
     NonFinite,
 }
 
+/// A reusable simulation context. Constructing a context performs the one-time
+/// map clone and entity-state initialization; subsequent calls only advance the
+/// already initialized runtime map. This is the hot path used by native and
+/// WASM callers that evaluate many action sequences against one map.
+pub struct Simulator {
+    snapshot: PlayerSnapshot,
+    runtime_map: Map,
+}
+
+impl Simulator {
+    pub fn new(mut snapshot: PlayerSnapshot, map: &Map) -> Result<Self, SimulationError> {
+        validate_snapshot(&snapshot)?;
+        if !snapshot.player_on_ground_initialized {
+            snapshot.player_on_ground = snapshot.on_ground;
+            snapshot.player_on_ground_initialized = true;
+        }
+        let mut runtime_map = map.clone();
+        initialize_zip_movers(&mut snapshot, &mut runtime_map);
+        initialize_bounce_blocks(&mut snapshot, &mut runtime_map);
+        initialize_move_blocks(&mut snapshot, &mut runtime_map);
+        initialize_theo_crystals(&mut snapshot, &mut runtime_map);
+        initialize_heart_gems(&mut snapshot, &mut runtime_map);
+        initialize_rising_lavas(&mut snapshot, &mut runtime_map);
+        initialize_sandwich_lavas(&mut snapshot, &mut runtime_map);
+        initialize_gliders(&mut snapshot, &mut runtime_map);
+        initialize_clouds(&mut snapshot, &mut runtime_map);
+        initialize_camera(&mut snapshot, &runtime_map);
+        initialize_seekers(&mut snapshot, &mut runtime_map);
+        initialize_temple_gates(&mut snapshot, &mut runtime_map);
+        initialize_cassette_blocks(&mut snapshot, &mut runtime_map);
+        initialize_spinners(&mut snapshot, &mut runtime_map);
+        position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
+        Ok(Self {
+            snapshot,
+            runtime_map,
+        })
+    }
+
+    pub fn snapshot(&self) -> &PlayerSnapshot {
+        &self.snapshot
+    }
+
+    pub fn step(&mut self, input: InputState) -> Result<&PlayerSnapshot, SimulationError> {
+        step(
+            &mut self.snapshot,
+            input.normalized(),
+            &mut self.runtime_map,
+        )?;
+        Ok(&self.snapshot)
+    }
+
+    pub fn run(&mut self, inputs: &[InputState], frames: u32) -> Result<(), SimulationError> {
+        let frames = frames as usize;
+        if inputs.len() < frames {
+            return Err(SimulationError::InsufficientInputs {
+                frames,
+                inputs: inputs.len(),
+            });
+        }
+        for input in &inputs[..frames] {
+            self.step(*input)?;
+        }
+        Ok(())
+    }
+
+    pub fn into_snapshot(self) -> PlayerSnapshot {
+        self.snapshot
+    }
+}
+
 pub fn simulate(
     snapshot: PlayerSnapshot,
     inputs: &[InputState],
     map: &Map,
     frames: u32,
 ) -> Result<PlayerSnapshot, SimulationError> {
-    let mut trace = simulate_trace(snapshot, inputs, map, frames)?;
-    Ok(trace
-        .states
-        .pop()
-        .expect("trace always contains initial state"))
+    let mut simulator = Simulator::new(snapshot, map)?;
+    simulator.run(inputs, frames)?;
+    Ok(simulator.into_snapshot())
 }
 
 pub fn simulate_trace(
-    mut snapshot: PlayerSnapshot,
+    snapshot: PlayerSnapshot,
     inputs: &[InputState],
     map: &Map,
     frames: u32,
@@ -132,32 +200,12 @@ pub fn simulate_trace(
             inputs: inputs.len(),
         });
     }
-    validate_snapshot(&snapshot)?;
-    if !snapshot.player_on_ground_initialized {
-        snapshot.player_on_ground = snapshot.on_ground;
-        snapshot.player_on_ground_initialized = true;
-    }
-    let mut runtime_map = map.clone();
-    initialize_zip_movers(&mut snapshot, &mut runtime_map);
-    initialize_bounce_blocks(&mut snapshot, &mut runtime_map);
-    initialize_move_blocks(&mut snapshot, &mut runtime_map);
-    initialize_theo_crystals(&mut snapshot, &mut runtime_map);
-    initialize_heart_gems(&mut snapshot, &mut runtime_map);
-    initialize_rising_lavas(&mut snapshot, &mut runtime_map);
-    initialize_sandwich_lavas(&mut snapshot, &mut runtime_map);
-    initialize_gliders(&mut snapshot, &mut runtime_map);
-    initialize_clouds(&mut snapshot, &mut runtime_map);
-    initialize_camera(&mut snapshot, &runtime_map);
-    initialize_seekers(&mut snapshot, &mut runtime_map);
-    initialize_temple_gates(&mut snapshot, &mut runtime_map);
-    initialize_cassette_blocks(&mut snapshot, &mut runtime_map);
-    initialize_spinners(&mut snapshot, &mut runtime_map);
-    position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
+    let mut simulator = Simulator::new(snapshot, map)?;
     let mut states = Vec::with_capacity(frames + 1);
-    states.push(snapshot.clone());
+    states.push(simulator.snapshot().clone());
     for input in &inputs[..frames] {
-        step(&mut snapshot, input.normalized(), &mut runtime_map)?;
-        states.push(snapshot.clone());
+        simulator.step(*input)?;
+        states.push(simulator.snapshot().clone());
     }
     Ok(SimulationResult {
         fidelity: fidelity(),
