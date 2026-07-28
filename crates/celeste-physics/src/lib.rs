@@ -11,7 +11,13 @@ mod playground;
 mod sim;
 mod types;
 
-pub use ffi::{CelesteInputPod, CelesteMapHandle, CelestePlayerPod, CelesteSimulatorHandle};
+pub use ffi::{
+    CelesteInputPod, CelesteMapHandle, CelestePlayerPod, CelesteSimulatorHandle,
+    celeste_input_pod_size, celeste_map_create, celeste_map_destroy,
+    celeste_player_pod_from_msgpack, celeste_player_pod_size, celeste_simulator_create_msgpack,
+    celeste_simulator_create_pod, celeste_simulator_destroy, celeste_simulator_run_pod,
+    celeste_simulator_snapshot_msgpack,
+};
 
 pub use binary_packer::{
     BinaryElement, BinaryPackerWriteError, BinaryValue, encode_celeste_bin, parse_celeste_bin,

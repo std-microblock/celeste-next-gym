@@ -1,5 +1,7 @@
 use celeste_physics::{
-    InputState, PlayerSnapshot, Simulator, encode_map, mechanics_playground, simulate,
+    CelesteInputPod, CelestePlayerPod, InputState, PlayerSnapshot, Simulator, celeste_map_create,
+    celeste_map_destroy, celeste_simulator_create_msgpack, celeste_simulator_destroy,
+    celeste_simulator_run_pod, encode_map, mechanics_playground, simulate,
 };
 use std::hint::black_box;
 use std::sync::Arc;
@@ -150,4 +152,44 @@ fn main() {
         one_frame_persistent,
         SINGLE_FRAME_JOBS,
     );
+
+    let map_handle = unsafe { celeste_map_create(map_bytes.as_ptr(), map_bytes.len() as u32) };
+    let simulator_handle = unsafe {
+        celeste_simulator_create_msgpack(
+            snapshot_bytes.as_ptr(),
+            snapshot_bytes.len() as u32,
+            map_handle,
+        )
+    };
+    assert!(!map_handle.is_null() && !simulator_handle.is_null());
+    let pod_input = CelesteInputPod {
+        move_x: one_input[0].move_x,
+        move_y: one_input[0].move_y,
+        flags: u8::from(one_input[0].jump_pressed)
+            | (u8::from(one_input[0].jump_held) << 1)
+            | (u8::from(one_input[0].dash_pressed) << 2)
+            | (u8::from(one_input[0].crouch_dash_pressed) << 3)
+            | (u8::from(one_input[0].grab_held) << 4),
+    };
+    let pod_step = timed(|| {
+        let mut states = [CelestePlayerPod::default(); 2];
+        for _ in 0..SINGLE_FRAME_JOBS {
+            let written = unsafe {
+                celeste_simulator_run_pod(
+                    simulator_handle,
+                    &pod_input,
+                    1,
+                    states.as_mut_ptr(),
+                    states.len() as u32,
+                )
+            };
+            assert_eq!(written, 2);
+        }
+        black_box(states);
+    });
+    throughput_jobs("single_frame_pod_ffi", pod_step, SINGLE_FRAME_JOBS);
+    unsafe {
+        celeste_simulator_destroy(simulator_handle);
+        celeste_map_destroy(map_handle);
+    }
 }
