@@ -41,8 +41,108 @@
       "frameWidth": 24,
       "frameHeight": 24
     },
-    "objects/booster/boosterRed26": {
+    "objects/glider/death06": {
       "x": 21,
+      "y": 2,
+      "width": 1,
+      "height": 9,
+      "drawOffsetX": 23,
+      "drawOffsetY": 18,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "characters/oshiro/boss00": {
+      "x": 24,
+      "y": 2,
+      "width": 4,
+      "height": 4,
+      "drawOffsetX": 41,
+      "drawOffsetY": 67,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "objects/puffer/recover03": {
+      "x": 30,
+      "y": 2,
+      "width": 5,
+      "height": 5,
+      "drawOffsetX": 30,
+      "drawOffsetY": 30,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/puffer/recover02": {
+      "x": 37,
+      "y": 2,
+      "width": 5,
+      "height": 5,
+      "drawOffsetX": 30,
+      "drawOffsetY": 30,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/puffer/recover01": {
+      "x": 44,
+      "y": 2,
+      "width": 5,
+      "height": 5,
+      "drawOffsetX": 30,
+      "drawOffsetY": 30,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/puffer/recover00": {
+      "x": 51,
+      "y": 2,
+      "width": 5,
+      "height": 5,
+      "drawOffsetX": 30,
+      "drawOffsetY": 30,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/puffer/hidden03": {
+      "x": 58,
+      "y": 2,
+      "width": 5,
+      "height": 5,
+      "drawOffsetX": 30,
+      "drawOffsetY": 30,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/puffer/hidden01": {
+      "x": 65,
+      "y": 2,
+      "width": 5,
+      "height": 5,
+      "drawOffsetX": 30,
+      "drawOffsetY": 30,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/puffer/hidden00": {
+      "x": 72,
+      "y": 2,
+      "width": 5,
+      "height": 5,
+      "drawOffsetX": 30,
+      "drawOffsetY": 30,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/puffer/hidden02": {
+      "x": 79,
+      "y": 2,
+      "width": 5,
+      "height": 5,
+      "drawOffsetX": 30,
+      "drawOffsetY": 30,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/booster/boosterRed26": {
+      "x": 86,
       "y": 2,
       "width": 3,
       "height": 10,
@@ -52,7 +152,7 @@
       "frameHeight": 32
     },
     "objects/spring/white": {
-      "x": 26,
+      "x": 91,
       "y": 2,
       "width": 12,
       "height": 3,
@@ -62,7 +162,7 @@
       "frameHeight": 16
     },
     "objects/spring/00": {
-      "x": 40,
+      "x": 105,
       "y": 2,
       "width": 12,
       "height": 3,
@@ -72,7 +172,7 @@
       "frameHeight": 16
     },
     "danger/spikes/default_right00": {
-      "x": 54,
+      "x": 119,
       "y": 2,
       "width": 6,
       "height": 7,
@@ -82,7 +182,7 @@
       "frameHeight": 8
     },
     "danger/spikes/default_left00": {
-      "x": 62,
+      "x": 127,
       "y": 2,
       "width": 6,
       "height": 7,
@@ -92,7 +192,7 @@
       "frameHeight": 8
     },
     "danger/spikes/default_down00": {
-      "x": 70,
+      "x": 135,
       "y": 2,
       "width": 7,
       "height": 6,
@@ -102,7 +202,7 @@
       "frameHeight": 9
     },
     "danger/spikes/default_up00": {
-      "x": 79,
+      "x": 144,
       "y": 2,
       "width": 7,
       "height": 6,
@@ -112,7 +212,7 @@
       "frameHeight": 9
     },
     "collectables/strawberry/normal44": {
-      "x": 88,
+      "x": 153,
       "y": 2,
       "width": 15,
       "height": 3,
@@ -122,7 +222,7 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal28": {
-      "x": 105,
+      "x": 170,
       "y": 2,
       "width": 15,
       "height": 3,
@@ -132,7 +232,7 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal36": {
-      "x": 122,
+      "x": 187,
       "y": 2,
       "width": 15,
       "height": 3,
@@ -142,7 +242,7 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal12": {
-      "x": 139,
+      "x": 204,
       "y": 2,
       "width": 15,
       "height": 3,
@@ -152,7 +252,7 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal20": {
-      "x": 156,
+      "x": 221,
       "y": 2,
       "width": 15,
       "height": 3,
@@ -162,7 +262,7 @@
       "frameHeight": 16
     },
     "objects/spring/05": {
-      "x": 173,
+      "x": 238,
       "y": 2,
       "width": 12,
       "height": 4,
@@ -172,7 +272,7 @@
       "frameHeight": 16
     },
     "characters/player/death_h12": {
-      "x": 187,
+      "x": 252,
       "y": 2,
       "width": 7,
       "height": 7,
@@ -182,7 +282,7 @@
       "frameHeight": 32
     },
     "characters/player/bangs01": {
-      "x": 196,
+      "x": 261,
       "y": 2,
       "width": 8,
       "height": 7,
@@ -192,7 +292,7 @@
       "frameHeight": 10
     },
     "characters/player/bangs00": {
-      "x": 206,
+      "x": 271,
       "y": 2,
       "width": 8,
       "height": 7,
@@ -202,7 +302,7 @@
       "frameHeight": 10
     },
     "objects/zipmover/moon/light00": {
-      "x": 216,
+      "x": 281,
       "y": 2,
       "width": 10,
       "height": 6,
@@ -212,7 +312,7 @@
       "frameHeight": 16
     },
     "characters/player/hair00": {
-      "x": 228,
+      "x": 293,
       "y": 2,
       "width": 8,
       "height": 8,
@@ -222,7 +322,7 @@
       "frameHeight": 10
     },
     "objects/zipmover/moon/innercog01": {
-      "x": 238,
+      "x": 303,
       "y": 2,
       "width": 8,
       "height": 8,
@@ -232,7 +332,7 @@
       "frameHeight": 12
     },
     "objects/zipmover/moon/innercog02": {
-      "x": 248,
+      "x": 313,
       "y": 2,
       "width": 8,
       "height": 8,
@@ -242,7 +342,7 @@
       "frameHeight": 12
     },
     "characters/player/bangs02": {
-      "x": 258,
+      "x": 323,
       "y": 2,
       "width": 8,
       "height": 8,
@@ -252,7 +352,7 @@
       "frameHeight": 10
     },
     "collectables/strawberry/normal11": {
-      "x": 268,
+      "x": 333,
       "y": 2,
       "width": 16,
       "height": 4,
@@ -262,7 +362,7 @@
       "frameHeight": 16
     },
     "objects/zipmover/innercog00": {
-      "x": 286,
+      "x": 351,
       "y": 2,
       "width": 8,
       "height": 8,
@@ -271,8 +371,48 @@
       "frameWidth": 12,
       "frameHeight": 12
     },
+    "objects/moveBlock/glow": {
+      "x": 361,
+      "y": 2,
+      "width": 8,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 8
+    },
+    "objects/moveBlock/debris02": {
+      "x": 371,
+      "y": 2,
+      "width": 8,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 8
+    },
+    "objects/moveBlock/debris01": {
+      "x": 381,
+      "y": 2,
+      "width": 8,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 8
+    },
+    "objects/moveBlock/debris00": {
+      "x": 391,
+      "y": 2,
+      "width": 8,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 8
+    },
     "objects/badelineboost/flash04": {
-      "x": 296,
+      "x": 401,
       "y": 2,
       "width": 9,
       "height": 8,
@@ -281,8 +421,18 @@
       "frameWidth": 24,
       "frameHeight": 24
     },
+    "objects/glider/death05": {
+      "x": 412,
+      "y": 2,
+      "width": 3,
+      "height": 24,
+      "drawOffsetX": 22,
+      "drawOffsetY": 10,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
     "collectables/strawberry/normal51": {
-      "x": 307,
+      "x": 417,
       "y": 2,
       "width": 15,
       "height": 5,
@@ -292,7 +442,7 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal35": {
-      "x": 324,
+      "x": 434,
       "y": 2,
       "width": 15,
       "height": 5,
@@ -302,7 +452,7 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal19": {
-      "x": 341,
+      "x": 451,
       "y": 2,
       "width": 15,
       "height": 5,
@@ -312,7 +462,7 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal27": {
-      "x": 358,
+      "x": 468,
       "y": 2,
       "width": 15,
       "height": 5,
@@ -322,7 +472,7 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal43": {
-      "x": 375,
+      "x": 485,
       "y": 2,
       "width": 15,
       "height": 5,
@@ -332,7 +482,7 @@
       "frameHeight": 16
     },
     "objects/zipmover/moon/innercog03": {
-      "x": 392,
+      "x": 502,
       "y": 2,
       "width": 8,
       "height": 10,
@@ -342,7 +492,7 @@
       "frameHeight": 12
     },
     "characters/player/dreamDash08": {
-      "x": 402,
+      "x": 512,
       "y": 2,
       "width": 16,
       "height": 5,
@@ -352,7 +502,7 @@
       "frameHeight": 32
     },
     "objects/spring/04": {
-      "x": 420,
+      "x": 530,
       "y": 2,
       "width": 12,
       "height": 7,
@@ -362,7 +512,7 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal10": {
-      "x": 434,
+      "x": 544,
       "y": 2,
       "width": 14,
       "height": 6,
@@ -372,7 +522,7 @@
       "frameHeight": 16
     },
     "objects/dreamblock/particles": {
-      "x": 450,
+      "x": 560,
       "y": 2,
       "width": 17,
       "height": 5,
@@ -382,7 +532,7 @@
       "frameHeight": 7
     },
     "characters/player/climb11": {
-      "x": 469,
+      "x": 579,
       "y": 2,
       "width": 8,
       "height": 11,
@@ -392,7 +542,7 @@
       "frameHeight": 32
     },
     "characters/player/startStarFlyWhite03": {
-      "x": 479,
+      "x": 589,
       "y": 2,
       "width": 10,
       "height": 9,
@@ -402,7 +552,7 @@
       "frameHeight": 32
     },
     "characters/player/startStarFly03": {
-      "x": 491,
+      "x": 601,
       "y": 2,
       "width": 10,
       "height": 9,
@@ -411,8 +561,18 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "objects/puffer/recover04": {
+      "x": 613,
+      "y": 2,
+      "width": 13,
+      "height": 7,
+      "drawOffsetX": 26,
+      "drawOffsetY": 29,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
     "collectables/strawberry/normal34": {
-      "x": 503,
+      "x": 628,
       "y": 2,
       "width": 16,
       "height": 6,
@@ -422,7 +582,7 @@
       "frameHeight": 16
     },
     "objects/badelineboost/flash00": {
-      "x": 521,
+      "x": 646,
       "y": 2,
       "width": 8,
       "height": 12,
@@ -432,7 +592,7 @@
       "frameHeight": 24
     },
     "objects/zipmover/light00": {
-      "x": 531,
+      "x": 656,
       "y": 2,
       "width": 8,
       "height": 12,
@@ -442,7 +602,7 @@
       "frameHeight": 12
     },
     "objects/zipmover/light01": {
-      "x": 541,
+      "x": 666,
       "y": 2,
       "width": 8,
       "height": 12,
@@ -452,7 +612,7 @@
       "frameHeight": 12
     },
     "collectables/strawberry/normal26": {
-      "x": 551,
+      "x": 676,
       "y": 2,
       "width": 16,
       "height": 6,
@@ -462,7 +622,7 @@
       "frameHeight": 16
     },
     "objects/booster/boosterRed27": {
-      "x": 569,
+      "x": 694,
       "y": 2,
       "width": 6,
       "height": 16,
@@ -472,7 +632,7 @@
       "frameHeight": 32
     },
     "objects/zipmover/moon/light01": {
-      "x": 577,
+      "x": 702,
       "y": 2,
       "width": 12,
       "height": 8,
@@ -482,7 +642,7 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal18": {
-      "x": 591,
+      "x": 716,
       "y": 2,
       "width": 16,
       "height": 6,
@@ -492,7 +652,7 @@
       "frameHeight": 16
     },
     "objects/zipmover/light03": {
-      "x": 609,
+      "x": 734,
       "y": 2,
       "width": 8,
       "height": 12,
@@ -502,7 +662,7 @@
       "frameHeight": 12
     },
     "objects/zipmover/light02": {
-      "x": 619,
+      "x": 744,
       "y": 2,
       "width": 8,
       "height": 12,
@@ -512,7 +672,7 @@
       "frameHeight": 12
     },
     "characters/player/climb10": {
-      "x": 629,
+      "x": 754,
       "y": 2,
       "width": 9,
       "height": 11,
@@ -522,7 +682,7 @@
       "frameHeight": 32
     },
     "objects/zipmover/innercog10": {
-      "x": 640,
+      "x": 765,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -532,7 +692,7 @@
       "frameHeight": 12
     },
     "objects/zipmover/cog": {
-      "x": 652,
+      "x": 777,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -542,7 +702,7 @@
       "frameHeight": 12
     },
     "objects/zipmover/innercog11": {
-      "x": 664,
+      "x": 789,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -550,9 +710,29 @@
       "drawOffsetY": 1,
       "frameWidth": 12,
       "frameHeight": 12
+    },
+    "objects/moveBlock/arrow00": {
+      "x": 801,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "objects/moveBlock/arrow01": {
+      "x": 813,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
     },
     "objects/zipmover/innercog09": {
-      "x": 676,
+      "x": 825,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -561,8 +741,18 @@
       "frameWidth": 12,
       "frameHeight": 12
     },
+    "objects/moveBlock/arrow02": {
+      "x": 837,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
     "objects/zipmover/innercog07": {
-      "x": 688,
+      "x": 849,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -572,7 +762,7 @@
       "frameHeight": 12
     },
     "objects/zipmover/innercog06": {
-      "x": 700,
+      "x": 861,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -581,8 +771,18 @@
       "frameWidth": 12,
       "frameHeight": 12
     },
+    "objects/moveBlock/x": {
+      "x": 873,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
     "objects/zipmover/innercog05": {
-      "x": 712,
+      "x": 885,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -592,7 +792,7 @@
       "frameHeight": 12
     },
     "objects/zipmover/innercog04": {
-      "x": 724,
+      "x": 897,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -602,7 +802,7 @@
       "frameHeight": 12
     },
     "objects/zipmover/innercog03": {
-      "x": 736,
+      "x": 909,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -611,8 +811,38 @@
       "frameWidth": 12,
       "frameHeight": 12
     },
+    "objects/moveBlock/arrow07": {
+      "x": 921,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "objects/moveBlock/arrow06": {
+      "x": 933,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "objects/moveBlock/arrow05": {
+      "x": 945,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
     "objects/zipmover/innercog02": {
-      "x": 748,
+      "x": 957,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -622,7 +852,7 @@
       "frameHeight": 12
     },
     "objects/zipmover/innercog01": {
-      "x": 760,
+      "x": 969,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -631,8 +861,28 @@
       "frameWidth": 12,
       "frameHeight": 12
     },
+    "objects/moveBlock/arrow04": {
+      "x": 981,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "objects/moveBlock/arrow03": {
+      "x": 993,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
     "objects/zipmover/innercog08": {
-      "x": 772,
+      "x": 1005,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -642,8 +892,8 @@
       "frameHeight": 12
     },
     "objects/zipmover/moon/cog": {
-      "x": 784,
-      "y": 2,
+      "x": 2,
+      "y": 28,
       "width": 10,
       "height": 10,
       "drawOffsetX": 1,
@@ -652,8 +902,8 @@
       "frameHeight": 12
     },
     "characters/player/startStarFlyWhite02": {
-      "x": 796,
-      "y": 2,
+      "x": 14,
+      "y": 28,
       "width": 10,
       "height": 10,
       "drawOffsetX": 11,
@@ -662,8 +912,8 @@
       "frameHeight": 32
     },
     "characters/player/startStarFly02": {
-      "x": 808,
-      "y": 2,
+      "x": 26,
+      "y": 28,
       "width": 10,
       "height": 10,
       "drawOffsetX": 11,
@@ -672,8 +922,8 @@
       "frameHeight": 32
     },
     "characters/player/starFly00": {
-      "x": 820,
-      "y": 2,
+      "x": 38,
+      "y": 28,
       "width": 10,
       "height": 10,
       "drawOffsetX": 11,
@@ -682,8 +932,8 @@
       "frameHeight": 32
     },
     "objects/zipmover/moon/innercog04": {
-      "x": 832,
-      "y": 2,
+      "x": 50,
+      "y": 28,
       "width": 10,
       "height": 10,
       "drawOffsetX": 1,
@@ -692,8 +942,8 @@
       "frameHeight": 12
     },
     "objects/zipmover/moon/innercog06": {
-      "x": 844,
-      "y": 2,
+      "x": 62,
+      "y": 28,
       "width": 10,
       "height": 10,
       "drawOffsetX": 1,
@@ -702,8 +952,8 @@
       "frameHeight": 12
     },
     "characters/player/climb02": {
-      "x": 856,
-      "y": 2,
+      "x": 74,
+      "y": 28,
       "width": 10,
       "height": 10,
       "drawOffsetX": 11,
@@ -712,8 +962,8 @@
       "frameHeight": 32
     },
     "objects/zipmover/moon/innercog05": {
-      "x": 868,
-      "y": 2,
+      "x": 86,
+      "y": 28,
       "width": 10,
       "height": 10,
       "drawOffsetX": 1,
@@ -722,8 +972,8 @@
       "frameHeight": 12
     },
     "objects/zipmover/moon/innercog00": {
-      "x": 880,
-      "y": 2,
+      "x": 98,
+      "y": 28,
       "width": 10,
       "height": 10,
       "drawOffsetX": 1,
@@ -732,8 +982,8 @@
       "frameHeight": 12
     },
     "characters/player/climb01": {
-      "x": 892,
-      "y": 2,
+      "x": 110,
+      "y": 28,
       "width": 10,
       "height": 10,
       "drawOffsetX": 11,
@@ -742,8 +992,8 @@
       "frameHeight": 32
     },
     "characters/player/duck": {
-      "x": 904,
-      "y": 2,
+      "x": 122,
+      "y": 28,
       "width": 13,
       "height": 8,
       "drawOffsetX": 8,
@@ -752,8 +1002,8 @@
       "frameHeight": 32
     },
     "objects/spring/01": {
-      "x": 919,
-      "y": 2,
+      "x": 137,
+      "y": 28,
       "width": 12,
       "height": 9,
       "drawOffsetX": 2,
@@ -762,8 +1012,8 @@
       "frameHeight": 16
     },
     "objects/spring/03": {
-      "x": 933,
-      "y": 2,
+      "x": 151,
+      "y": 28,
       "width": 12,
       "height": 9,
       "drawOffsetX": 2,
@@ -772,8 +1022,8 @@
       "frameHeight": 16
     },
     "characters/player/dreamDash11": {
-      "x": 947,
-      "y": 2,
+      "x": 165,
+      "y": 28,
       "width": 10,
       "height": 11,
       "drawOffsetX": 11,
@@ -782,8 +1032,8 @@
       "frameHeight": 32
     },
     "objects/badelineboost/flash01": {
-      "x": 959,
-      "y": 2,
+      "x": 177,
+      "y": 28,
       "width": 11,
       "height": 10,
       "drawOffsetX": 5,
@@ -792,8 +1042,8 @@
       "frameHeight": 24
     },
     "characters/player/climb12": {
-      "x": 972,
-      "y": 2,
+      "x": 190,
+      "y": 28,
       "width": 10,
       "height": 11,
       "drawOffsetX": 11,
@@ -802,8 +1052,8 @@
       "frameHeight": 32
     },
     "characters/player/climb08": {
-      "x": 984,
-      "y": 2,
+      "x": 202,
+      "y": 28,
       "width": 10,
       "height": 11,
       "drawOffsetX": 11,
@@ -812,8 +1062,8 @@
       "frameHeight": 32
     },
     "objects/zipmover/moon/light02": {
-      "x": 996,
-      "y": 2,
+      "x": 214,
+      "y": 28,
       "width": 10,
       "height": 11,
       "drawOffsetX": 1,
@@ -822,8 +1072,8 @@
       "frameHeight": 16
     },
     "characters/player/climb06": {
-      "x": 1008,
-      "y": 2,
+      "x": 226,
+      "y": 28,
       "width": 10,
       "height": 11,
       "drawOffsetX": 11,
@@ -832,8 +1082,8 @@
       "frameHeight": 32
     },
     "characters/player/climb00": {
-      "x": 2,
-      "y": 20,
+      "x": 238,
+      "y": 28,
       "width": 10,
       "height": 11,
       "drawOffsetX": 11,
@@ -842,8 +1092,8 @@
       "frameHeight": 32
     },
     "characters/player/climb03": {
-      "x": 14,
-      "y": 20,
+      "x": 250,
+      "y": 28,
       "width": 10,
       "height": 11,
       "drawOffsetX": 11,
@@ -852,8 +1102,8 @@
       "frameHeight": 32
     },
     "characters/player/climb09": {
-      "x": 26,
-      "y": 20,
+      "x": 262,
+      "y": 28,
       "width": 10,
       "height": 11,
       "drawOffsetX": 11,
@@ -862,8 +1112,8 @@
       "frameHeight": 32
     },
     "collectables/strawberry/normal50": {
-      "x": 38,
-      "y": 20,
+      "x": 274,
+      "y": 28,
       "width": 16,
       "height": 7,
       "drawOffsetX": 1,
@@ -872,8 +1122,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal09": {
-      "x": 56,
-      "y": 20,
+      "x": 292,
+      "y": 28,
       "width": 12,
       "height": 10,
       "drawOffsetX": 3,
@@ -882,8 +1132,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal55": {
-      "x": 70,
-      "y": 20,
+      "x": 306,
+      "y": 28,
       "width": 15,
       "height": 8,
       "drawOffsetX": 2,
@@ -892,8 +1142,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal54": {
-      "x": 87,
-      "y": 20,
+      "x": 323,
+      "y": 28,
       "width": 15,
       "height": 8,
       "drawOffsetX": 2,
@@ -902,8 +1152,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal56": {
-      "x": 104,
-      "y": 20,
+      "x": 340,
+      "y": 28,
       "width": 15,
       "height": 8,
       "drawOffsetX": 2,
@@ -912,8 +1162,8 @@
       "frameHeight": 16
     },
     "characters/player/death_h09": {
-      "x": 121,
-      "y": 20,
+      "x": 357,
+      "y": 28,
       "width": 10,
       "height": 12,
       "drawOffsetX": 11,
@@ -922,8 +1172,8 @@
       "frameHeight": 32
     },
     "characters/player/death_h10": {
-      "x": 133,
-      "y": 20,
+      "x": 369,
+      "y": 28,
       "width": 10,
       "height": 12,
       "drawOffsetX": 11,
@@ -932,8 +1182,8 @@
       "frameHeight": 32
     },
     "collectables/strawberry/normal53": {
-      "x": 145,
-      "y": 20,
+      "x": 381,
+      "y": 28,
       "width": 15,
       "height": 8,
       "drawOffsetX": 2,
@@ -942,8 +1192,8 @@
       "frameHeight": 16
     },
     "characters/player/climb14": {
-      "x": 162,
-      "y": 20,
+      "x": 398,
+      "y": 28,
       "width": 11,
       "height": 11,
       "drawOffsetX": 10,
@@ -952,8 +1202,8 @@
       "frameHeight": 32
     },
     "characters/player/climb13": {
-      "x": 175,
-      "y": 20,
+      "x": 411,
+      "y": 28,
       "width": 11,
       "height": 11,
       "drawOffsetX": 10,
@@ -962,8 +1212,8 @@
       "frameHeight": 32
     },
     "characters/player/climb04": {
-      "x": 188,
-      "y": 20,
+      "x": 424,
+      "y": 28,
       "width": 11,
       "height": 11,
       "drawOffsetX": 10,
@@ -972,8 +1222,8 @@
       "frameHeight": 32
     },
     "characters/player/dreamDash13": {
-      "x": 201,
-      "y": 20,
+      "x": 437,
+      "y": 28,
       "width": 11,
       "height": 11,
       "drawOffsetX": 7,
@@ -982,8 +1232,8 @@
       "frameHeight": 32
     },
     "characters/player/climb07": {
-      "x": 214,
-      "y": 20,
+      "x": 450,
+      "y": 28,
       "width": 11,
       "height": 11,
       "drawOffsetX": 10,
@@ -992,8 +1242,8 @@
       "frameHeight": 32
     },
     "characters/player/climb05": {
-      "x": 227,
-      "y": 20,
+      "x": 463,
+      "y": 28,
       "width": 11,
       "height": 11,
       "drawOffsetX": 10,
@@ -1002,8 +1252,8 @@
       "frameHeight": 32
     },
     "characters/player/dreamDash12": {
-      "x": 240,
-      "y": 20,
+      "x": 476,
+      "y": 28,
       "width": 11,
       "height": 11,
       "drawOffsetX": 12,
@@ -1012,8 +1262,8 @@
       "frameHeight": 32
     },
     "characters/player/death_h11": {
-      "x": 253,
-      "y": 20,
+      "x": 489,
+      "y": 28,
       "width": 11,
       "height": 11,
       "drawOffsetX": 10,
@@ -1022,8 +1272,8 @@
       "frameHeight": 32
     },
     "collectables/strawberry/normal23": {
-      "x": 266,
-      "y": 20,
+      "x": 502,
+      "y": 28,
       "width": 16,
       "height": 8,
       "drawOffsetX": 1,
@@ -1032,8 +1282,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal14": {
-      "x": 284,
-      "y": 20,
+      "x": 520,
+      "y": 28,
       "width": 16,
       "height": 8,
       "drawOffsetX": 1,
@@ -1042,8 +1292,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal22": {
-      "x": 302,
-      "y": 20,
+      "x": 538,
+      "y": 28,
       "width": 16,
       "height": 8,
       "drawOffsetX": 1,
@@ -1052,8 +1302,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal16": {
-      "x": 320,
-      "y": 20,
+      "x": 556,
+      "y": 28,
       "width": 16,
       "height": 8,
       "drawOffsetX": 1,
@@ -1062,8 +1312,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal15": {
-      "x": 338,
-      "y": 20,
+      "x": 574,
+      "y": 28,
       "width": 16,
       "height": 8,
       "drawOffsetX": 1,
@@ -1072,8 +1322,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal24": {
-      "x": 356,
-      "y": 20,
+      "x": 592,
+      "y": 28,
       "width": 16,
       "height": 8,
       "drawOffsetX": 1,
@@ -1082,8 +1332,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal32": {
-      "x": 374,
-      "y": 20,
+      "x": 610,
+      "y": 28,
       "width": 16,
       "height": 8,
       "drawOffsetX": 1,
@@ -1092,8 +1342,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal31": {
-      "x": 392,
-      "y": 20,
+      "x": 628,
+      "y": 28,
       "width": 16,
       "height": 8,
       "drawOffsetX": 1,
@@ -1102,8 +1352,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal30": {
-      "x": 410,
-      "y": 20,
+      "x": 646,
+      "y": 28,
       "width": 16,
       "height": 8,
       "drawOffsetX": 1,
@@ -1112,8 +1362,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal01": {
-      "x": 428,
-      "y": 20,
+      "x": 664,
+      "y": 28,
       "width": 10,
       "height": 13,
       "drawOffsetX": 4,
@@ -1122,8 +1372,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal00": {
-      "x": 440,
-      "y": 20,
+      "x": 676,
+      "y": 28,
       "width": 10,
       "height": 13,
       "drawOffsetX": 4,
@@ -1132,8 +1382,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal02": {
-      "x": 452,
-      "y": 20,
+      "x": 688,
+      "y": 28,
       "width": 10,
       "height": 13,
       "drawOffsetX": 4,
@@ -1142,8 +1392,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal03": {
-      "x": 464,
-      "y": 20,
+      "x": 700,
+      "y": 28,
       "width": 10,
       "height": 13,
       "drawOffsetX": 4,
@@ -1152,8 +1402,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal04": {
-      "x": 476,
-      "y": 20,
+      "x": 712,
+      "y": 28,
       "width": 10,
       "height": 13,
       "drawOffsetX": 4,
@@ -1162,8 +1412,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal05": {
-      "x": 488,
-      "y": 20,
+      "x": 724,
+      "y": 28,
       "width": 10,
       "height": 13,
       "drawOffsetX": 4,
@@ -1172,8 +1422,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal06": {
-      "x": 500,
-      "y": 20,
+      "x": 736,
+      "y": 28,
       "width": 10,
       "height": 13,
       "drawOffsetX": 4,
@@ -1182,8 +1432,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal07": {
-      "x": 512,
-      "y": 20,
+      "x": 748,
+      "y": 28,
       "width": 10,
       "height": 13,
       "drawOffsetX": 4,
@@ -1192,8 +1442,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal57": {
-      "x": 524,
-      "y": 20,
+      "x": 760,
+      "y": 28,
       "width": 13,
       "height": 10,
       "drawOffsetX": 3,
@@ -1202,8 +1452,8 @@
       "frameHeight": 16
     },
     "objects/zipmover/moon/light03": {
-      "x": 539,
-      "y": 20,
+      "x": 775,
+      "y": 28,
       "width": 12,
       "height": 11,
       "drawOffsetX": 0,
@@ -1212,8 +1462,8 @@
       "frameHeight": 16
     },
     "characters/player/dreamDash15": {
-      "x": 553,
-      "y": 20,
+      "x": 789,
+      "y": 28,
       "width": 12,
       "height": 11,
       "drawOffsetX": 10,
@@ -1222,8 +1472,8 @@
       "frameHeight": 32
     },
     "objects/spring/02": {
-      "x": 567,
-      "y": 20,
+      "x": 803,
+      "y": 28,
       "width": 12,
       "height": 11,
       "drawOffsetX": 2,
@@ -1231,9 +1481,29 @@
       "frameWidth": 16,
       "frameHeight": 16
     },
+    "objects/moveBlock/button": {
+      "x": 817,
+      "y": 28,
+      "width": 22,
+      "height": 6,
+      "drawOffsetX": 1,
+      "drawOffsetY": 1,
+      "frameWidth": 24,
+      "frameHeight": 8
+    },
+    "objects/puffer/recover05": {
+      "x": 841,
+      "y": 28,
+      "width": 15,
+      "height": 9,
+      "drawOffsetX": 24,
+      "drawOffsetY": 28,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
     "collectables/strawberry/normal39": {
-      "x": 581,
-      "y": 20,
+      "x": 858,
+      "y": 28,
       "width": 17,
       "height": 8,
       "drawOffsetX": 0,
@@ -1242,8 +1512,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal38": {
-      "x": 600,
-      "y": 20,
+      "x": 877,
+      "y": 28,
       "width": 17,
       "height": 8,
       "drawOffsetX": 0,
@@ -1252,8 +1522,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal40": {
-      "x": 619,
-      "y": 20,
+      "x": 896,
+      "y": 28,
       "width": 17,
       "height": 8,
       "drawOffsetX": 0,
@@ -1262,8 +1532,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal47": {
-      "x": 638,
-      "y": 20,
+      "x": 915,
+      "y": 28,
       "width": 17,
       "height": 8,
       "drawOffsetX": 0,
@@ -1272,8 +1542,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal48": {
-      "x": 657,
-      "y": 20,
+      "x": 934,
+      "y": 28,
       "width": 17,
       "height": 8,
       "drawOffsetX": 0,
@@ -1282,8 +1552,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal46": {
-      "x": 676,
-      "y": 20,
+      "x": 953,
+      "y": 28,
       "width": 17,
       "height": 8,
       "drawOffsetX": 0,
@@ -1292,8 +1562,8 @@
       "frameHeight": 16
     },
     "objects/badelineboost/idle12": {
-      "x": 695,
-      "y": 20,
+      "x": 972,
+      "y": 28,
       "width": 20,
       "height": 7,
       "drawOffsetX": 2,
@@ -1302,8 +1572,8 @@
       "frameHeight": 24
     },
     "characters/player/dash03": {
-      "x": 717,
-      "y": 20,
+      "x": 994,
+      "y": 28,
       "width": 14,
       "height": 10,
       "drawOffsetX": 8,
@@ -1312,8 +1582,8 @@
       "frameHeight": 32
     },
     "characters/player/swim09": {
-      "x": 733,
-      "y": 20,
+      "x": 2,
+      "y": 43,
       "width": 13,
       "height": 11,
       "drawOffsetX": 8,
@@ -1322,8 +1592,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB23": {
-      "x": 748,
-      "y": 20,
+      "x": 17,
+      "y": 43,
       "width": 13,
       "height": 11,
       "drawOffsetX": 8,
@@ -1332,8 +1602,8 @@
       "frameHeight": 32
     },
     "characters/player/idleA10": {
-      "x": 763,
-      "y": 20,
+      "x": 32,
+      "y": 43,
       "width": 13,
       "height": 11,
       "drawOffsetX": 8,
@@ -1342,8 +1612,8 @@
       "frameHeight": 32
     },
     "characters/player/idleA09": {
-      "x": 778,
-      "y": 20,
+      "x": 47,
+      "y": 43,
       "width": 13,
       "height": 11,
       "drawOffsetX": 8,
@@ -1352,8 +1622,8 @@
       "frameHeight": 32
     },
     "characters/player/idleA11": {
-      "x": 793,
-      "y": 20,
+      "x": 62,
+      "y": 43,
       "width": 13,
       "height": 11,
       "drawOffsetX": 8,
@@ -1362,8 +1632,8 @@
       "frameHeight": 32
     },
     "characters/player/idleA08": {
-      "x": 808,
-      "y": 20,
+      "x": 77,
+      "y": 43,
       "width": 13,
       "height": 11,
       "drawOffsetX": 8,
@@ -1372,8 +1642,8 @@
       "frameHeight": 32
     },
     "characters/player/idle05": {
-      "x": 823,
-      "y": 20,
+      "x": 92,
+      "y": 43,
       "width": 13,
       "height": 11,
       "drawOffsetX": 8,
@@ -1382,8 +1652,8 @@
       "frameHeight": 32
     },
     "characters/player/idle06": {
-      "x": 838,
-      "y": 20,
+      "x": 107,
+      "y": 43,
       "width": 13,
       "height": 11,
       "drawOffsetX": 8,
@@ -1392,8 +1662,8 @@
       "frameHeight": 32
     },
     "characters/player/idleA07": {
-      "x": 853,
-      "y": 20,
+      "x": 122,
+      "y": 43,
       "width": 13,
       "height": 11,
       "drawOffsetX": 8,
@@ -1402,8 +1672,8 @@
       "frameHeight": 32
     },
     "characters/player/idleA06": {
-      "x": 868,
-      "y": 20,
+      "x": 137,
+      "y": 43,
       "width": 13,
       "height": 11,
       "drawOffsetX": 8,
@@ -1412,8 +1682,8 @@
       "frameHeight": 32
     },
     "characters/player/idleA05": {
-      "x": 883,
-      "y": 20,
+      "x": 152,
+      "y": 43,
       "width": 13,
       "height": 11,
       "drawOffsetX": 8,
@@ -1422,8 +1692,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB19": {
-      "x": 898,
-      "y": 20,
+      "x": 167,
+      "y": 43,
       "width": 13,
       "height": 11,
       "drawOffsetX": 8,
@@ -1432,8 +1702,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB20": {
-      "x": 913,
-      "y": 20,
+      "x": 182,
+      "y": 43,
       "width": 13,
       "height": 11,
       "drawOffsetX": 8,
@@ -1442,8 +1712,8 @@
       "frameHeight": 32
     },
     "characters/player/idle08": {
-      "x": 928,
-      "y": 20,
+      "x": 197,
+      "y": 43,
       "width": 13,
       "height": 11,
       "drawOffsetX": 8,
@@ -1452,8 +1722,8 @@
       "frameHeight": 32
     },
     "characters/player/idle07": {
-      "x": 943,
-      "y": 20,
+      "x": 212,
+      "y": 43,
       "width": 13,
       "height": 11,
       "drawOffsetX": 8,
@@ -1462,8 +1732,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB21": {
-      "x": 958,
-      "y": 20,
+      "x": 227,
+      "y": 43,
       "width": 13,
       "height": 11,
       "drawOffsetX": 8,
@@ -1472,8 +1742,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB22": {
-      "x": 973,
-      "y": 20,
+      "x": 242,
+      "y": 43,
       "width": 13,
       "height": 11,
       "drawOffsetX": 8,
@@ -1482,8 +1752,8 @@
       "frameHeight": 32
     },
     "characters/player/death_h08": {
-      "x": 988,
-      "y": 20,
+      "x": 257,
+      "y": 43,
       "width": 11,
       "height": 13,
       "drawOffsetX": 10,
@@ -1492,8 +1762,8 @@
       "frameHeight": 32
     },
     "characters/player/idle04": {
-      "x": 1001,
-      "y": 20,
+      "x": 270,
+      "y": 43,
       "width": 13,
       "height": 11,
       "drawOffsetX": 8,
@@ -1502,8 +1772,8 @@
       "frameHeight": 32
     },
     "characters/player/startStarFlyWhite01": {
-      "x": 2,
-      "y": 35,
+      "x": 285,
+      "y": 43,
       "width": 12,
       "height": 12,
       "drawOffsetX": 10,
@@ -1512,8 +1782,8 @@
       "frameHeight": 32
     },
     "collectables/strawberry/normal58": {
-      "x": 16,
-      "y": 35,
+      "x": 299,
+      "y": 43,
       "width": 18,
       "height": 8,
       "drawOffsetX": 0,
@@ -1522,8 +1792,8 @@
       "frameHeight": 16
     },
     "characters/player/startStarFly01": {
-      "x": 36,
-      "y": 35,
+      "x": 319,
+      "y": 43,
       "width": 12,
       "height": 12,
       "drawOffsetX": 10,
@@ -1532,8 +1802,8 @@
       "frameHeight": 32
     },
     "objects/BumpBlockNew/fire_center04": {
-      "x": 50,
-      "y": 35,
+      "x": 333,
+      "y": 43,
       "width": 12,
       "height": 12,
       "drawOffsetX": 0,
@@ -1542,8 +1812,8 @@
       "frameHeight": 12
     },
     "objects/BumpBlockNew/fire_center03": {
-      "x": 64,
-      "y": 35,
+      "x": 347,
+      "y": 43,
       "width": 12,
       "height": 12,
       "drawOffsetX": 0,
@@ -1552,8 +1822,8 @@
       "frameHeight": 12
     },
     "objects/BumpBlockNew/fire_center02": {
-      "x": 78,
-      "y": 35,
+      "x": 361,
+      "y": 43,
       "width": 12,
       "height": 12,
       "drawOffsetX": 0,
@@ -1562,8 +1832,8 @@
       "frameHeight": 12
     },
     "objects/BumpBlockNew/fire_center01": {
-      "x": 92,
-      "y": 35,
+      "x": 375,
+      "y": 43,
       "width": 12,
       "height": 12,
       "drawOffsetX": 0,
@@ -1572,8 +1842,8 @@
       "frameHeight": 12
     },
     "objects/BumpBlockNew/fire_center00": {
-      "x": 106,
-      "y": 35,
+      "x": 389,
+      "y": 43,
       "width": 12,
       "height": 12,
       "drawOffsetX": 0,
@@ -1582,8 +1852,8 @@
       "frameHeight": 12
     },
     "objects/badelineboost/stretch": {
-      "x": 120,
-      "y": 35,
+      "x": 403,
+      "y": 43,
       "width": 12,
       "height": 12,
       "drawOffsetX": 6,
@@ -1592,8 +1862,8 @@
       "frameHeight": 24
     },
     "collectables/strawberry/normal33": {
-      "x": 134,
-      "y": 35,
+      "x": 417,
+      "y": 43,
       "width": 16,
       "height": 9,
       "drawOffsetX": 1,
@@ -1602,8 +1872,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal17": {
-      "x": 152,
-      "y": 35,
+      "x": 435,
+      "y": 43,
       "width": 16,
       "height": 9,
       "drawOffsetX": 1,
@@ -1612,8 +1882,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal25": {
-      "x": 170,
-      "y": 35,
+      "x": 453,
+      "y": 43,
       "width": 16,
       "height": 9,
       "drawOffsetX": 1,
@@ -1622,8 +1892,8 @@
       "frameHeight": 16
     },
     "objects/BumpBlockNew/fire_center05": {
-      "x": 188,
-      "y": 35,
+      "x": 471,
+      "y": 43,
       "width": 12,
       "height": 12,
       "drawOffsetX": 0,
@@ -1632,8 +1902,8 @@
       "frameHeight": 12
     },
     "objects/BumpBlockNew/fire_center06": {
-      "x": 202,
-      "y": 35,
+      "x": 485,
+      "y": 43,
       "width": 12,
       "height": 12,
       "drawOffsetX": 0,
@@ -1642,8 +1912,8 @@
       "frameHeight": 12
     },
     "collectables/strawberry/normal08": {
-      "x": 216,
-      "y": 35,
+      "x": 499,
+      "y": 43,
       "width": 10,
       "height": 15,
       "drawOffsetX": 4,
@@ -1652,8 +1922,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal59": {
-      "x": 228,
-      "y": 35,
+      "x": 511,
+      "y": 43,
       "width": 17,
       "height": 9,
       "drawOffsetX": 0,
@@ -1662,8 +1932,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal49": {
-      "x": 247,
-      "y": 35,
+      "x": 530,
+      "y": 43,
       "width": 17,
       "height": 9,
       "drawOffsetX": 0,
@@ -1672,8 +1942,8 @@
       "frameHeight": 16
     },
     "characters/player/dreamDash01": {
-      "x": 266,
-      "y": 35,
+      "x": 549,
+      "y": 43,
       "width": 14,
       "height": 11,
       "drawOffsetX": 8,
@@ -1681,9 +1951,19 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "objects/puffer/idle03": {
+      "x": 565,
+      "y": 43,
+      "width": 14,
+      "height": 11,
+      "drawOffsetX": 25,
+      "drawOffsetY": 27,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
     "characters/player/swim08": {
-      "x": 282,
-      "y": 35,
+      "x": 581,
+      "y": 43,
       "width": 14,
       "height": 11,
       "drawOffsetX": 8,
@@ -1691,9 +1971,19 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "objects/puffer/idle04": {
+      "x": 597,
+      "y": 43,
+      "width": 14,
+      "height": 11,
+      "drawOffsetX": 25,
+      "drawOffsetY": 27,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
     "characters/player/runFast08": {
-      "x": 298,
-      "y": 35,
+      "x": 613,
+      "y": 43,
       "width": 14,
       "height": 11,
       "drawOffsetX": 7,
@@ -1702,8 +1992,8 @@
       "frameHeight": 32
     },
     "characters/player/runFast07": {
-      "x": 314,
-      "y": 35,
+      "x": 629,
+      "y": 43,
       "width": 14,
       "height": 11,
       "drawOffsetX": 7,
@@ -1712,8 +2002,8 @@
       "frameHeight": 32
     },
     "characters/player/runFast06": {
-      "x": 330,
-      "y": 35,
+      "x": 645,
+      "y": 43,
       "width": 14,
       "height": 11,
       "drawOffsetX": 7,
@@ -1722,8 +2012,8 @@
       "frameHeight": 32
     },
     "characters/player/runFast02": {
-      "x": 346,
-      "y": 35,
+      "x": 661,
+      "y": 43,
       "width": 14,
       "height": 11,
       "drawOffsetX": 7,
@@ -1732,8 +2022,8 @@
       "frameHeight": 32
     },
     "characters/player/runFast01": {
-      "x": 362,
-      "y": 35,
+      "x": 677,
+      "y": 43,
       "width": 14,
       "height": 11,
       "drawOffsetX": 7,
@@ -1742,8 +2032,8 @@
       "frameHeight": 32
     },
     "characters/player/dash01": {
-      "x": 378,
-      "y": 35,
+      "x": 693,
+      "y": 43,
       "width": 14,
       "height": 11,
       "drawOffsetX": 8,
@@ -1752,8 +2042,8 @@
       "frameHeight": 32
     },
     "characters/player/dash02": {
-      "x": 394,
-      "y": 35,
+      "x": 709,
+      "y": 43,
       "width": 14,
       "height": 11,
       "drawOffsetX": 8,
@@ -1762,8 +2052,8 @@
       "frameHeight": 32
     },
     "characters/player/runFast03": {
-      "x": 410,
-      "y": 35,
+      "x": 725,
+      "y": 43,
       "width": 14,
       "height": 11,
       "drawOffsetX": 7,
@@ -1772,8 +2062,8 @@
       "frameHeight": 32
     },
     "characters/player/runSlow01": {
-      "x": 426,
-      "y": 35,
+      "x": 741,
+      "y": 43,
       "width": 14,
       "height": 11,
       "drawOffsetX": 7,
@@ -1782,8 +2072,8 @@
       "frameHeight": 32
     },
     "characters/player/runFast09": {
-      "x": 442,
-      "y": 35,
+      "x": 757,
+      "y": 43,
       "width": 14,
       "height": 11,
       "drawOffsetX": 7,
@@ -1792,8 +2082,8 @@
       "frameHeight": 32
     },
     "characters/player/runSlow09": {
-      "x": 458,
-      "y": 35,
+      "x": 773,
+      "y": 43,
       "width": 14,
       "height": 11,
       "drawOffsetX": 7,
@@ -1802,8 +2092,8 @@
       "frameHeight": 32
     },
     "characters/player/runSlow08": {
-      "x": 474,
-      "y": 35,
+      "x": 789,
+      "y": 43,
       "width": 14,
       "height": 11,
       "drawOffsetX": 7,
@@ -1812,8 +2102,8 @@
       "frameHeight": 32
     },
     "characters/player/runSlow07": {
-      "x": 490,
-      "y": 35,
+      "x": 805,
+      "y": 43,
       "width": 14,
       "height": 11,
       "drawOffsetX": 7,
@@ -1822,8 +2112,8 @@
       "frameHeight": 32
     },
     "characters/player/runSlow06": {
-      "x": 506,
-      "y": 35,
+      "x": 821,
+      "y": 43,
       "width": 14,
       "height": 11,
       "drawOffsetX": 7,
@@ -1832,8 +2122,8 @@
       "frameHeight": 32
     },
     "characters/player/runSlow03": {
-      "x": 522,
-      "y": 35,
+      "x": 837,
+      "y": 43,
       "width": 14,
       "height": 11,
       "drawOffsetX": 7,
@@ -1842,8 +2132,8 @@
       "frameHeight": 32
     },
     "characters/player/runSlow02": {
-      "x": 538,
-      "y": 35,
+      "x": 853,
+      "y": 43,
       "width": 14,
       "height": 11,
       "drawOffsetX": 7,
@@ -1852,8 +2142,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB02": {
-      "x": 554,
-      "y": 35,
+      "x": 869,
+      "y": 43,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -1862,8 +2152,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB01": {
-      "x": 569,
-      "y": 35,
+      "x": 884,
+      "y": 43,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -1872,8 +2162,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB00": {
-      "x": 584,
-      "y": 35,
+      "x": 899,
+      "y": 43,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -1882,8 +2172,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB03": {
-      "x": 599,
-      "y": 35,
+      "x": 914,
+      "y": 43,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -1892,8 +2182,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB04": {
-      "x": 614,
-      "y": 35,
+      "x": 929,
+      "y": 43,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -1902,8 +2192,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB15": {
-      "x": 629,
-      "y": 35,
+      "x": 944,
+      "y": 43,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -1912,8 +2202,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB14": {
-      "x": 644,
-      "y": 35,
+      "x": 959,
+      "y": 43,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -1922,8 +2212,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB13": {
-      "x": 659,
-      "y": 35,
+      "x": 974,
+      "y": 43,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -1932,8 +2222,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB12": {
-      "x": 674,
-      "y": 35,
+      "x": 989,
+      "y": 43,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -1942,8 +2232,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB11": {
-      "x": 689,
-      "y": 35,
+      "x": 1004,
+      "y": 43,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -1952,8 +2242,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB10": {
-      "x": 704,
-      "y": 35,
+      "x": 2,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -1962,8 +2252,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB09": {
-      "x": 719,
-      "y": 35,
+      "x": 17,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -1972,8 +2262,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB08": {
-      "x": 734,
-      "y": 35,
+      "x": 32,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -1982,8 +2272,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB05": {
-      "x": 749,
-      "y": 35,
+      "x": 47,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -1992,8 +2282,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB07": {
-      "x": 764,
-      "y": 35,
+      "x": 62,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2002,8 +2292,8 @@
       "frameHeight": 32
     },
     "characters/player/idle00": {
-      "x": 779,
-      "y": 35,
+      "x": 77,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2012,8 +2302,8 @@
       "frameHeight": 32
     },
     "characters/player/idle03": {
-      "x": 794,
-      "y": 35,
+      "x": 92,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2022,8 +2312,8 @@
       "frameHeight": 32
     },
     "characters/player/idle02": {
-      "x": 809,
-      "y": 35,
+      "x": 107,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2032,8 +2322,8 @@
       "frameHeight": 32
     },
     "characters/player/idleA04": {
-      "x": 824,
-      "y": 35,
+      "x": 122,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2042,8 +2332,8 @@
       "frameHeight": 32
     },
     "characters/player/idleA03": {
-      "x": 839,
-      "y": 35,
+      "x": 137,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2052,8 +2342,8 @@
       "frameHeight": 32
     },
     "characters/player/idleA02": {
-      "x": 854,
-      "y": 35,
+      "x": 152,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2062,8 +2352,8 @@
       "frameHeight": 32
     },
     "characters/player/idleA01": {
-      "x": 869,
-      "y": 35,
+      "x": 167,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2072,8 +2362,8 @@
       "frameHeight": 32
     },
     "characters/player/idleA00": {
-      "x": 884,
-      "y": 35,
+      "x": 182,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2082,8 +2372,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB06": {
-      "x": 899,
-      "y": 35,
+      "x": 197,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2092,8 +2382,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB16": {
-      "x": 914,
-      "y": 35,
+      "x": 212,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2102,8 +2392,8 @@
       "frameHeight": 32
     },
     "characters/player/idle_carry07": {
-      "x": 929,
-      "y": 35,
+      "x": 227,
+      "y": 60,
       "width": 12,
       "height": 13,
       "drawOffsetX": 8,
@@ -2112,8 +2402,8 @@
       "frameHeight": 32
     },
     "characters/player/idle_carry06": {
-      "x": 943,
-      "y": 35,
+      "x": 241,
+      "y": 60,
       "width": 12,
       "height": 13,
       "drawOffsetX": 8,
@@ -2122,8 +2412,8 @@
       "frameHeight": 32
     },
     "characters/player/idle_carry05": {
-      "x": 957,
-      "y": 35,
+      "x": 255,
+      "y": 60,
       "width": 12,
       "height": 13,
       "drawOffsetX": 8,
@@ -2132,8 +2422,8 @@
       "frameHeight": 32
     },
     "characters/player/idle_carry04": {
-      "x": 971,
-      "y": 35,
+      "x": 269,
+      "y": 60,
       "width": 12,
       "height": 13,
       "drawOffsetX": 8,
@@ -2142,8 +2432,8 @@
       "frameHeight": 32
     },
     "characters/player/idle_carry03": {
-      "x": 985,
-      "y": 35,
+      "x": 283,
+      "y": 60,
       "width": 12,
       "height": 13,
       "drawOffsetX": 8,
@@ -2152,8 +2442,8 @@
       "frameHeight": 32
     },
     "characters/player/swim11": {
-      "x": 999,
-      "y": 35,
+      "x": 297,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2162,8 +2452,8 @@
       "frameHeight": 32
     },
     "characters/player/swim10": {
-      "x": 2,
-      "y": 52,
+      "x": 312,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2172,8 +2462,8 @@
       "frameHeight": 32
     },
     "characters/player/jumpFast02": {
-      "x": 17,
-      "y": 52,
+      "x": 327,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 9,
@@ -2182,8 +2472,8 @@
       "frameHeight": 32
     },
     "characters/player/jumpSlow03": {
-      "x": 32,
-      "y": 52,
+      "x": 342,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2192,8 +2482,8 @@
       "frameHeight": 32
     },
     "characters/player/jumpSlow02": {
-      "x": 47,
-      "y": 52,
+      "x": 357,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 9,
@@ -2202,8 +2492,8 @@
       "frameHeight": 32
     },
     "characters/player/dreamDash16": {
-      "x": 62,
-      "y": 52,
+      "x": 372,
+      "y": 60,
       "width": 12,
       "height": 13,
       "drawOffsetX": 10,
@@ -2212,8 +2502,8 @@
       "frameHeight": 32
     },
     "characters/player/swim02": {
-      "x": 76,
-      "y": 52,
+      "x": 386,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2222,8 +2512,8 @@
       "frameHeight": 32
     },
     "characters/player/swim01": {
-      "x": 91,
-      "y": 52,
+      "x": 401,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2232,8 +2522,8 @@
       "frameHeight": 32
     },
     "characters/player/idle01": {
-      "x": 106,
-      "y": 52,
+      "x": 416,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2242,8 +2532,8 @@
       "frameHeight": 32
     },
     "characters/player/idleC01": {
-      "x": 121,
-      "y": 52,
+      "x": 431,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2252,8 +2542,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB18": {
-      "x": 136,
-      "y": 52,
+      "x": 446,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2262,8 +2552,8 @@
       "frameHeight": 32
     },
     "characters/player/idleC00": {
-      "x": 151,
-      "y": 52,
+      "x": 461,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2272,8 +2562,8 @@
       "frameHeight": 32
     },
     "characters/player/idleC02": {
-      "x": 166,
-      "y": 52,
+      "x": 476,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2282,8 +2572,8 @@
       "frameHeight": 32
     },
     "characters/player/idleB17": {
-      "x": 181,
-      "y": 52,
+      "x": 491,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2292,8 +2582,8 @@
       "frameHeight": 32
     },
     "characters/player/idleC05": {
-      "x": 196,
-      "y": 52,
+      "x": 506,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2302,8 +2592,8 @@
       "frameHeight": 32
     },
     "characters/player/idleC03": {
-      "x": 211,
-      "y": 52,
+      "x": 521,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2312,8 +2602,8 @@
       "frameHeight": 32
     },
     "characters/player/idleC04": {
-      "x": 226,
-      "y": 52,
+      "x": 536,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2322,8 +2612,8 @@
       "frameHeight": 32
     },
     "characters/player/startStarFlyWhite00": {
-      "x": 241,
-      "y": 52,
+      "x": 551,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 9,
@@ -2332,8 +2622,8 @@
       "frameHeight": 32
     },
     "characters/player/swim00": {
-      "x": 256,
-      "y": 52,
+      "x": 566,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 8,
@@ -2342,8 +2632,8 @@
       "frameHeight": 32
     },
     "characters/player/startStarFly00": {
-      "x": 271,
-      "y": 52,
+      "x": 581,
+      "y": 60,
       "width": 13,
       "height": 12,
       "drawOffsetX": 9,
@@ -2352,8 +2642,8 @@
       "frameHeight": 32
     },
     "collectables/strawberry/normal29": {
-      "x": 286,
-      "y": 52,
+      "x": 596,
+      "y": 60,
       "width": 16,
       "height": 10,
       "drawOffsetX": 1,
@@ -2362,8 +2652,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal13": {
-      "x": 304,
-      "y": 52,
+      "x": 614,
+      "y": 60,
       "width": 16,
       "height": 10,
       "drawOffsetX": 1,
@@ -2372,8 +2662,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal21": {
-      "x": 322,
-      "y": 52,
+      "x": 632,
+      "y": 60,
       "width": 16,
       "height": 10,
       "drawOffsetX": 1,
@@ -2382,8 +2672,8 @@
       "frameHeight": 16
     },
     "characters/player/death_h03": {
-      "x": 340,
-      "y": 52,
+      "x": 650,
+      "y": 60,
       "width": 11,
       "height": 15,
       "drawOffsetX": 11,
@@ -2392,8 +2682,8 @@
       "frameHeight": 32
     },
     "characters/player/death_h04": {
-      "x": 353,
-      "y": 52,
+      "x": 663,
+      "y": 60,
       "width": 11,
       "height": 15,
       "drawOffsetX": 11,
@@ -2402,8 +2692,8 @@
       "frameHeight": 32
     },
     "characters/player/death_h05": {
-      "x": 366,
-      "y": 52,
+      "x": 676,
+      "y": 60,
       "width": 11,
       "height": 15,
       "drawOffsetX": 11,
@@ -2412,8 +2702,8 @@
       "frameHeight": 32
     },
     "characters/player/dash00": {
-      "x": 379,
-      "y": 52,
+      "x": 689,
+      "y": 60,
       "width": 15,
       "height": 11,
       "drawOffsetX": 8,
@@ -2422,8 +2712,8 @@
       "frameHeight": 32
     },
     "characters/player/dreamDash00": {
-      "x": 396,
-      "y": 52,
+      "x": 706,
+      "y": 60,
       "width": 15,
       "height": 11,
       "drawOffsetX": 8,
@@ -2431,9 +2721,29 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "objects/puffer/idle02": {
+      "x": 723,
+      "y": 60,
+      "width": 15,
+      "height": 11,
+      "drawOffsetX": 24,
+      "drawOffsetY": 27,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/puffer/idle05": {
+      "x": 740,
+      "y": 60,
+      "width": 15,
+      "height": 11,
+      "drawOffsetX": 24,
+      "drawOffsetY": 27,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
     "collectables/strawberry/normal52": {
-      "x": 413,
-      "y": 52,
+      "x": 757,
+      "y": 60,
       "width": 15,
       "height": 11,
       "drawOffsetX": 2,
@@ -2441,9 +2751,39 @@
       "frameWidth": 18,
       "frameHeight": 16
     },
+    "objects/puffer/idle01": {
+      "x": 774,
+      "y": 60,
+      "width": 15,
+      "height": 11,
+      "drawOffsetX": 24,
+      "drawOffsetY": 27,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/puffer/idle06": {
+      "x": 791,
+      "y": 60,
+      "width": 15,
+      "height": 11,
+      "drawOffsetX": 24,
+      "drawOffsetY": 27,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/puffer/alert00": {
+      "x": 808,
+      "y": 60,
+      "width": 15,
+      "height": 11,
+      "drawOffsetX": 24,
+      "drawOffsetY": 27,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
     "characters/player/swim03": {
-      "x": 430,
-      "y": 52,
+      "x": 825,
+      "y": 60,
       "width": 14,
       "height": 12,
       "drawOffsetX": 8,
@@ -2452,8 +2792,8 @@
       "frameHeight": 32
     },
     "characters/player/swim05": {
-      "x": 446,
-      "y": 52,
+      "x": 841,
+      "y": 60,
       "width": 14,
       "height": 12,
       "drawOffsetX": 8,
@@ -2462,8 +2802,8 @@
       "frameHeight": 32
     },
     "characters/player/idle_carry00": {
-      "x": 462,
-      "y": 52,
+      "x": 857,
+      "y": 60,
       "width": 12,
       "height": 14,
       "drawOffsetX": 8,
@@ -2472,8 +2812,8 @@
       "frameHeight": 32
     },
     "characters/player/idle_carry01": {
-      "x": 476,
-      "y": 52,
+      "x": 871,
+      "y": 60,
       "width": 12,
       "height": 14,
       "drawOffsetX": 8,
@@ -2482,8 +2822,8 @@
       "frameHeight": 32
     },
     "characters/player/idle_carry02": {
-      "x": 490,
-      "y": 52,
+      "x": 885,
+      "y": 60,
       "width": 12,
       "height": 14,
       "drawOffsetX": 8,
@@ -2492,8 +2832,8 @@
       "frameHeight": 32
     },
     "characters/player/jumpFast03": {
-      "x": 504,
-      "y": 52,
+      "x": 899,
+      "y": 60,
       "width": 14,
       "height": 12,
       "drawOffsetX": 8,
@@ -2502,8 +2842,8 @@
       "frameHeight": 32
     },
     "characters/player/idle_carry08": {
-      "x": 520,
-      "y": 52,
+      "x": 915,
+      "y": 60,
       "width": 12,
       "height": 14,
       "drawOffsetX": 8,
@@ -2512,8 +2852,8 @@
       "frameHeight": 32
     },
     "characters/player/runSlow11": {
-      "x": 534,
-      "y": 52,
+      "x": 929,
+      "y": 60,
       "width": 14,
       "height": 12,
       "drawOffsetX": 7,
@@ -2522,8 +2862,8 @@
       "frameHeight": 32
     },
     "characters/player/runSlow05": {
-      "x": 550,
-      "y": 52,
+      "x": 945,
+      "y": 60,
       "width": 14,
       "height": 12,
       "drawOffsetX": 7,
@@ -2532,8 +2872,8 @@
       "frameHeight": 32
     },
     "characters/player/runFast05": {
-      "x": 566,
-      "y": 52,
+      "x": 961,
+      "y": 60,
       "width": 14,
       "height": 12,
       "drawOffsetX": 7,
@@ -2542,8 +2882,8 @@
       "frameHeight": 32
     },
     "characters/player/runSlow00": {
-      "x": 582,
-      "y": 52,
+      "x": 977,
+      "y": 60,
       "width": 14,
       "height": 12,
       "drawOffsetX": 7,
@@ -2552,8 +2892,8 @@
       "frameHeight": 32
     },
     "characters/player/runFast00": {
-      "x": 598,
-      "y": 52,
+      "x": 993,
+      "y": 60,
       "width": 14,
       "height": 12,
       "drawOffsetX": 7,
@@ -2562,8 +2902,8 @@
       "frameHeight": 32
     },
     "characters/player/swim07": {
-      "x": 614,
-      "y": 52,
+      "x": 1009,
+      "y": 60,
       "width": 13,
       "height": 13,
       "drawOffsetX": 8,
@@ -2572,8 +2912,8 @@
       "frameHeight": 32
     },
     "objects/badelineboost/flash02": {
-      "x": 629,
-      "y": 52,
+      "x": 2,
+      "y": 77,
       "width": 13,
       "height": 13,
       "drawOffsetX": 5,
@@ -2582,8 +2922,8 @@
       "frameHeight": 24
     },
     "collectables/strawberry/normal45": {
-      "x": 644,
-      "y": 52,
+      "x": 17,
+      "y": 77,
       "width": 17,
       "height": 10,
       "drawOffsetX": 0,
@@ -2592,8 +2932,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal41": {
-      "x": 663,
-      "y": 52,
+      "x": 36,
+      "y": 77,
       "width": 17,
       "height": 10,
       "drawOffsetX": 0,
@@ -2602,8 +2942,8 @@
       "frameHeight": 16
     },
     "collectables/strawberry/normal37": {
-      "x": 682,
-      "y": 52,
+      "x": 55,
+      "y": 77,
       "width": 17,
       "height": 10,
       "drawOffsetX": 0,
@@ -2612,8 +2952,8 @@
       "frameHeight": 16
     },
     "objects/flyFeather/flash05": {
-      "x": 701,
-      "y": 52,
+      "x": 74,
+      "y": 77,
       "width": 10,
       "height": 17,
       "drawOffsetX": 11,
@@ -2622,8 +2962,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/idle04": {
-      "x": 713,
-      "y": 52,
+      "x": 86,
+      "y": 77,
       "width": 10,
       "height": 17,
       "drawOffsetX": 11,
@@ -2632,8 +2972,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/idle05": {
-      "x": 725,
-      "y": 52,
+      "x": 98,
+      "y": 77,
       "width": 10,
       "height": 17,
       "drawOffsetX": 11,
@@ -2642,8 +2982,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/idle06": {
-      "x": 737,
-      "y": 52,
+      "x": 110,
+      "y": 77,
       "width": 10,
       "height": 17,
       "drawOffsetX": 11,
@@ -2652,8 +2992,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/flash06": {
-      "x": 749,
-      "y": 52,
+      "x": 122,
+      "y": 77,
       "width": 10,
       "height": 17,
       "drawOffsetX": 11,
@@ -2662,8 +3002,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/flash04": {
-      "x": 761,
-      "y": 52,
+      "x": 134,
+      "y": 77,
       "width": 10,
       "height": 17,
       "drawOffsetX": 11,
@@ -2671,9 +3011,39 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "objects/puffer/idle09": {
+      "x": 146,
+      "y": 77,
+      "width": 16,
+      "height": 11,
+      "drawOffsetX": 23,
+      "drawOffsetY": 27,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/puffer/idle08": {
+      "x": 164,
+      "y": 77,
+      "width": 16,
+      "height": 11,
+      "drawOffsetX": 23,
+      "drawOffsetY": 27,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/puffer/idle07": {
+      "x": 182,
+      "y": 77,
+      "width": 16,
+      "height": 11,
+      "drawOffsetX": 23,
+      "drawOffsetY": 27,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
     "collectables/strawberry/normal42": {
-      "x": 773,
-      "y": 52,
+      "x": 200,
+      "y": 77,
       "width": 16,
       "height": 11,
       "drawOffsetX": 1,
@@ -2681,9 +3051,39 @@
       "frameWidth": 18,
       "frameHeight": 16
     },
+    "objects/puffer/idle00": {
+      "x": 218,
+      "y": 77,
+      "width": 16,
+      "height": 11,
+      "drawOffsetX": 23,
+      "drawOffsetY": 27,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/puffer/idle11": {
+      "x": 236,
+      "y": 77,
+      "width": 16,
+      "height": 11,
+      "drawOffsetX": 23,
+      "drawOffsetY": 27,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/puffer/idle10": {
+      "x": 254,
+      "y": 77,
+      "width": 16,
+      "height": 11,
+      "drawOffsetX": 23,
+      "drawOffsetY": 27,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
     "characters/player/swim04": {
-      "x": 791,
-      "y": 52,
+      "x": 272,
+      "y": 77,
       "width": 15,
       "height": 12,
       "drawOffsetX": 8,
@@ -2692,8 +3092,8 @@
       "frameHeight": 32
     },
     "characters/player/death_h01": {
-      "x": 808,
-      "y": 52,
+      "x": 289,
+      "y": 77,
       "width": 12,
       "height": 15,
       "drawOffsetX": 10,
@@ -2702,8 +3102,8 @@
       "frameHeight": 32
     },
     "characters/player/death_h02": {
-      "x": 822,
-      "y": 52,
+      "x": 303,
+      "y": 77,
       "width": 12,
       "height": 15,
       "drawOffsetX": 10,
@@ -2712,8 +3112,8 @@
       "frameHeight": 32
     },
     "characters/player/jumpFast01": {
-      "x": 836,
-      "y": 52,
+      "x": 317,
+      "y": 77,
       "width": 14,
       "height": 13,
       "drawOffsetX": 8,
@@ -2722,8 +3122,8 @@
       "frameHeight": 32
     },
     "characters/player/death_h07": {
-      "x": 852,
-      "y": 52,
+      "x": 333,
+      "y": 77,
       "width": 13,
       "height": 14,
       "drawOffsetX": 9,
@@ -2732,8 +3132,8 @@
       "frameHeight": 32
     },
     "characters/player/runFast04": {
-      "x": 867,
-      "y": 52,
+      "x": 348,
+      "y": 77,
       "width": 14,
       "height": 13,
       "drawOffsetX": 7,
@@ -2742,8 +3142,8 @@
       "frameHeight": 32
     },
     "characters/player/runSlow04": {
-      "x": 883,
-      "y": 52,
+      "x": 364,
+      "y": 77,
       "width": 14,
       "height": 13,
       "drawOffsetX": 7,
@@ -2752,8 +3152,8 @@
       "frameHeight": 32
     },
     "characters/player/swim06": {
-      "x": 899,
-      "y": 52,
+      "x": 380,
+      "y": 77,
       "width": 14,
       "height": 13,
       "drawOffsetX": 8,
@@ -2762,8 +3162,8 @@
       "frameHeight": 32
     },
     "characters/player/jumpSlow01": {
-      "x": 915,
-      "y": 52,
+      "x": 396,
+      "y": 77,
       "width": 14,
       "height": 13,
       "drawOffsetX": 8,
@@ -2772,8 +3172,8 @@
       "frameHeight": 32
     },
     "characters/player/jumpFast00": {
-      "x": 931,
-      "y": 52,
+      "x": 412,
+      "y": 77,
       "width": 14,
       "height": 13,
       "drawOffsetX": 8,
@@ -2782,8 +3182,8 @@
       "frameHeight": 32
     },
     "characters/player/jumpSlow00": {
-      "x": 947,
-      "y": 52,
+      "x": 428,
+      "y": 77,
       "width": 14,
       "height": 13,
       "drawOffsetX": 8,
@@ -2792,8 +3192,8 @@
       "frameHeight": 32
     },
     "characters/player/runSlow10": {
-      "x": 963,
-      "y": 52,
+      "x": 444,
+      "y": 77,
       "width": 14,
       "height": 13,
       "drawOffsetX": 7,
@@ -2802,8 +3202,8 @@
       "frameHeight": 32
     },
     "objects/badelineboost/flash03": {
-      "x": 979,
-      "y": 52,
+      "x": 460,
+      "y": 77,
       "width": 14,
       "height": 13,
       "drawOffsetX": 5,
@@ -2812,8 +3212,8 @@
       "frameHeight": 24
     },
     "characters/player/runFast11": {
-      "x": 995,
-      "y": 52,
+      "x": 476,
+      "y": 77,
       "width": 16,
       "height": 12,
       "drawOffsetX": 7,
@@ -2822,8 +3222,8 @@
       "frameHeight": 32
     },
     "characters/player/death_h06": {
-      "x": 2,
-      "y": 71,
+      "x": 494,
+      "y": 77,
       "width": 13,
       "height": 15,
       "drawOffsetX": 9,
@@ -2832,8 +3232,8 @@
       "frameHeight": 32
     },
     "characters/player/dreamDash07": {
-      "x": 17,
-      "y": 71,
+      "x": 509,
+      "y": 77,
       "width": 14,
       "height": 14,
       "drawOffsetX": 9,
@@ -2841,9 +3241,79 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "characters/monsters/predator120": {
+      "x": 525,
+      "y": 77,
+      "width": 18,
+      "height": 11,
+      "drawOffsetX": 39,
+      "drawOffsetY": 41,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator151": {
+      "x": 545,
+      "y": 77,
+      "width": 18,
+      "height": 11,
+      "drawOffsetX": 39,
+      "drawOffsetY": 41,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator150": {
+      "x": 565,
+      "y": 77,
+      "width": 18,
+      "height": 11,
+      "drawOffsetX": 39,
+      "drawOffsetY": 41,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator149": {
+      "x": 585,
+      "y": 77,
+      "width": 18,
+      "height": 11,
+      "drawOffsetX": 39,
+      "drawOffsetY": 41,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator122": {
+      "x": 605,
+      "y": 77,
+      "width": 18,
+      "height": 11,
+      "drawOffsetX": 39,
+      "drawOffsetY": 41,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator121": {
+      "x": 625,
+      "y": 77,
+      "width": 18,
+      "height": 11,
+      "drawOffsetX": 39,
+      "drawOffsetY": 41,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator123": {
+      "x": 645,
+      "y": 77,
+      "width": 18,
+      "height": 11,
+      "drawOffsetX": 39,
+      "drawOffsetY": 41,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/badelineboost/idle13": {
-      "x": 33,
-      "y": 71,
+      "x": 665,
+      "y": 77,
       "width": 18,
       "height": 11,
       "drawOffsetX": 3,
@@ -2852,8 +3322,8 @@
       "frameHeight": 24
     },
     "collectables/strawberry/normal60": {
-      "x": 53,
-      "y": 71,
+      "x": 685,
+      "y": 77,
       "width": 18,
       "height": 11,
       "drawOffsetX": 0,
@@ -2862,8 +3332,8 @@
       "frameHeight": 16
     },
     "characters/player/dreamDash09": {
-      "x": 73,
-      "y": 71,
+      "x": 705,
+      "y": 77,
       "width": 20,
       "height": 10,
       "drawOffsetX": 6,
@@ -2872,8 +3342,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/flash15": {
-      "x": 95,
-      "y": 71,
+      "x": 727,
+      "y": 77,
       "width": 12,
       "height": 17,
       "drawOffsetX": 9,
@@ -2882,8 +3352,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/flash16": {
-      "x": 109,
-      "y": 71,
+      "x": 741,
+      "y": 77,
       "width": 12,
       "height": 17,
       "drawOffsetX": 11,
@@ -2892,8 +3362,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/idle16": {
-      "x": 123,
-      "y": 71,
+      "x": 755,
+      "y": 77,
       "width": 12,
       "height": 17,
       "drawOffsetX": 11,
@@ -2902,8 +3372,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/idle15": {
-      "x": 137,
-      "y": 71,
+      "x": 769,
+      "y": 77,
       "width": 12,
       "height": 17,
       "drawOffsetX": 9,
@@ -2912,8 +3382,8 @@
       "frameHeight": 32
     },
     "characters/player/runFast10": {
-      "x": 151,
-      "y": 71,
+      "x": 783,
+      "y": 77,
       "width": 16,
       "height": 13,
       "drawOffsetX": 7,
@@ -2922,8 +3392,8 @@
       "frameHeight": 32
     },
     "characters/player/death_h00": {
-      "x": 169,
-      "y": 71,
+      "x": 801,
+      "y": 77,
       "width": 14,
       "height": 15,
       "drawOffsetX": 8,
@@ -2932,8 +3402,8 @@
       "frameHeight": 32
     },
     "characters/player/idleC07": {
-      "x": 185,
-      "y": 71,
+      "x": 817,
+      "y": 77,
       "width": 21,
       "height": 10,
       "drawOffsetX": 9,
@@ -2941,9 +3411,129 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "danger/snowball11": {
+      "x": 840,
+      "y": 77,
+      "width": 14,
+      "height": 15,
+      "drawOffsetX": 17,
+      "drawOffsetY": 16,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/snowball10": {
+      "x": 856,
+      "y": 77,
+      "width": 14,
+      "height": 15,
+      "drawOffsetX": 17,
+      "drawOffsetY": 16,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/snowball08": {
+      "x": 872,
+      "y": 77,
+      "width": 14,
+      "height": 15,
+      "drawOffsetX": 17,
+      "drawOffsetY": 16,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/snowball07": {
+      "x": 888,
+      "y": 77,
+      "width": 14,
+      "height": 15,
+      "drawOffsetX": 17,
+      "drawOffsetY": 16,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/snowball06": {
+      "x": 904,
+      "y": 77,
+      "width": 14,
+      "height": 15,
+      "drawOffsetX": 17,
+      "drawOffsetY": 16,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/snowball05": {
+      "x": 920,
+      "y": 77,
+      "width": 14,
+      "height": 15,
+      "drawOffsetX": 17,
+      "drawOffsetY": 16,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/snowball04": {
+      "x": 936,
+      "y": 77,
+      "width": 14,
+      "height": 15,
+      "drawOffsetX": 17,
+      "drawOffsetY": 16,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/snowball03": {
+      "x": 952,
+      "y": 77,
+      "width": 14,
+      "height": 15,
+      "drawOffsetX": 17,
+      "drawOffsetY": 16,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/snowball02": {
+      "x": 968,
+      "y": 77,
+      "width": 14,
+      "height": 15,
+      "drawOffsetX": 17,
+      "drawOffsetY": 16,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/snowball01": {
+      "x": 984,
+      "y": 77,
+      "width": 14,
+      "height": 15,
+      "drawOffsetX": 17,
+      "drawOffsetY": 16,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/snowball00": {
+      "x": 1000,
+      "y": 77,
+      "width": 14,
+      "height": 15,
+      "drawOffsetX": 17,
+      "drawOffsetY": 16,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/snowball09": {
+      "x": 2,
+      "y": 96,
+      "width": 14,
+      "height": 15,
+      "drawOffsetX": 17,
+      "drawOffsetY": 16,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
     "characters/player/idleC08": {
-      "x": 208,
-      "y": 71,
+      "x": 18,
+      "y": 96,
       "width": 22,
       "height": 10,
       "drawOffsetX": 8,
@@ -2951,9 +3541,19 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "characters/oshiro/boss49": {
+      "x": 42,
+      "y": 96,
+      "width": 11,
+      "height": 20,
+      "drawOffsetX": 43,
+      "drawOffsetY": 39,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "characters/player/idleC06": {
-      "x": 232,
-      "y": 71,
+      "x": 55,
+      "y": 96,
       "width": 20,
       "height": 11,
       "drawOffsetX": 8,
@@ -2962,8 +3562,8 @@
       "frameHeight": 32
     },
     "characters/player/launchRecover09": {
-      "x": 254,
-      "y": 71,
+      "x": 77,
+      "y": 96,
       "width": 13,
       "height": 17,
       "drawOffsetX": 8,
@@ -2972,8 +3572,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/flash07": {
-      "x": 269,
-      "y": 71,
+      "x": 92,
+      "y": 96,
       "width": 13,
       "height": 17,
       "drawOffsetX": 9,
@@ -2982,8 +3582,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/idle07": {
-      "x": 284,
-      "y": 71,
+      "x": 107,
+      "y": 96,
       "width": 13,
       "height": 17,
       "drawOffsetX": 9,
@@ -2992,8 +3592,8 @@
       "frameHeight": 32
     },
     "characters/player/launchRecover10": {
-      "x": 299,
-      "y": 71,
+      "x": 122,
+      "y": 96,
       "width": 13,
       "height": 17,
       "drawOffsetX": 8,
@@ -3001,9 +3601,69 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "characters/oshiro/boss02": {
+      "x": 137,
+      "y": 96,
+      "width": 16,
+      "height": 14,
+      "drawOffsetX": 39,
+      "drawOffsetY": 52,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "objects/puffer/explode09": {
+      "x": 155,
+      "y": 96,
+      "width": 15,
+      "height": 15,
+      "drawOffsetX": 25,
+      "drawOffsetY": 20,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "characters/oshiro/boss51": {
+      "x": 172,
+      "y": 96,
+      "width": 12,
+      "height": 19,
+      "drawOffsetX": 43,
+      "drawOffsetY": 40,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss53": {
+      "x": 186,
+      "y": 96,
+      "width": 12,
+      "height": 19,
+      "drawOffsetX": 43,
+      "drawOffsetY": 40,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss52": {
+      "x": 200,
+      "y": 96,
+      "width": 12,
+      "height": 19,
+      "drawOffsetX": 43,
+      "drawOffsetY": 40,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss54": {
+      "x": 214,
+      "y": 96,
+      "width": 12,
+      "height": 19,
+      "drawOffsetX": 43,
+      "drawOffsetY": 40,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "characters/player/dreamDash05": {
-      "x": 314,
-      "y": 71,
+      "x": 228,
+      "y": 96,
       "width": 18,
       "height": 13,
       "drawOffsetX": 7,
@@ -3012,8 +3672,8 @@
       "frameHeight": 32
     },
     "characters/player/launch00": {
-      "x": 334,
-      "y": 71,
+      "x": 248,
+      "y": 96,
       "width": 13,
       "height": 18,
       "drawOffsetX": 9,
@@ -3022,8 +3682,8 @@
       "frameHeight": 32
     },
     "characters/player/dreamDash14": {
-      "x": 349,
-      "y": 71,
+      "x": 263,
+      "y": 96,
       "width": 18,
       "height": 13,
       "drawOffsetX": 7,
@@ -3032,8 +3692,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/flash11": {
-      "x": 369,
-      "y": 71,
+      "x": 283,
+      "y": 96,
       "width": 14,
       "height": 17,
       "drawOffsetX": 8,
@@ -3042,8 +3702,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/flash10": {
-      "x": 385,
-      "y": 71,
+      "x": 299,
+      "y": 96,
       "width": 14,
       "height": 17,
       "drawOffsetX": 8,
@@ -3052,8 +3712,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/flash13": {
-      "x": 401,
-      "y": 71,
+      "x": 315,
+      "y": 96,
       "width": 14,
       "height": 17,
       "drawOffsetX": 8,
@@ -3062,8 +3722,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/idle14": {
-      "x": 417,
-      "y": 71,
+      "x": 331,
+      "y": 96,
       "width": 14,
       "height": 17,
       "drawOffsetX": 8,
@@ -3072,8 +3732,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/idle10": {
-      "x": 433,
-      "y": 71,
+      "x": 347,
+      "y": 96,
       "width": 14,
       "height": 17,
       "drawOffsetX": 8,
@@ -3082,8 +3742,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/idle17": {
-      "x": 449,
-      "y": 71,
+      "x": 363,
+      "y": 96,
       "width": 14,
       "height": 17,
       "drawOffsetX": 10,
@@ -3092,8 +3752,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/idle11": {
-      "x": 465,
-      "y": 71,
+      "x": 379,
+      "y": 96,
       "width": 14,
       "height": 17,
       "drawOffsetX": 8,
@@ -3102,8 +3762,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/idle12": {
-      "x": 481,
-      "y": 71,
+      "x": 395,
+      "y": 96,
       "width": 14,
       "height": 17,
       "drawOffsetX": 8,
@@ -3112,8 +3772,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/flash20": {
-      "x": 497,
-      "y": 71,
+      "x": 411,
+      "y": 96,
       "width": 14,
       "height": 17,
       "drawOffsetX": 10,
@@ -3122,8 +3782,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/flash18": {
-      "x": 513,
-      "y": 71,
+      "x": 427,
+      "y": 96,
       "width": 14,
       "height": 17,
       "drawOffsetX": 10,
@@ -3132,8 +3792,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/flash12": {
-      "x": 529,
-      "y": 71,
+      "x": 443,
+      "y": 96,
       "width": 14,
       "height": 17,
       "drawOffsetX": 8,
@@ -3142,8 +3802,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/flash14": {
-      "x": 545,
-      "y": 71,
+      "x": 459,
+      "y": 96,
       "width": 14,
       "height": 17,
       "drawOffsetX": 8,
@@ -3152,8 +3812,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/idle20": {
-      "x": 561,
-      "y": 71,
+      "x": 475,
+      "y": 96,
       "width": 14,
       "height": 17,
       "drawOffsetX": 10,
@@ -3162,8 +3822,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/flash19": {
-      "x": 577,
-      "y": 71,
+      "x": 491,
+      "y": 96,
       "width": 14,
       "height": 17,
       "drawOffsetX": 10,
@@ -3172,8 +3832,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/idle18": {
-      "x": 593,
-      "y": 71,
+      "x": 507,
+      "y": 96,
       "width": 14,
       "height": 17,
       "drawOffsetX": 10,
@@ -3182,8 +3842,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/idle19": {
-      "x": 609,
-      "y": 71,
+      "x": 523,
+      "y": 96,
       "width": 14,
       "height": 17,
       "drawOffsetX": 10,
@@ -3192,8 +3852,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/idle13": {
-      "x": 625,
-      "y": 71,
+      "x": 539,
+      "y": 96,
       "width": 14,
       "height": 17,
       "drawOffsetX": 8,
@@ -3202,8 +3862,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/flash17": {
-      "x": 641,
-      "y": 71,
+      "x": 555,
+      "y": 96,
       "width": 14,
       "height": 17,
       "drawOffsetX": 10,
@@ -3211,9 +3871,19 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "objects/puffer/explode08": {
+      "x": 571,
+      "y": 96,
+      "width": 16,
+      "height": 15,
+      "drawOffsetX": 25,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
     "objects/badelineboost/idle00": {
-      "x": 657,
-      "y": 71,
+      "x": 589,
+      "y": 96,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3222,8 +3892,8 @@
       "frameHeight": 24
     },
     "objects/badelineboost/idle01": {
-      "x": 675,
-      "y": 71,
+      "x": 607,
+      "y": 96,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3232,8 +3902,8 @@
       "frameHeight": 24
     },
     "objects/badelineboost/idle02": {
-      "x": 693,
-      "y": 71,
+      "x": 625,
+      "y": 96,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3242,8 +3912,8 @@
       "frameHeight": 24
     },
     "objects/badelineboost/idle03": {
-      "x": 711,
-      "y": 71,
+      "x": 643,
+      "y": 96,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3252,8 +3922,8 @@
       "frameHeight": 24
     },
     "objects/badelineboost/idle04": {
-      "x": 729,
-      "y": 71,
+      "x": 661,
+      "y": 96,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3262,8 +3932,8 @@
       "frameHeight": 24
     },
     "objects/badelineboost/idle05": {
-      "x": 747,
-      "y": 71,
+      "x": 679,
+      "y": 96,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3272,8 +3942,8 @@
       "frameHeight": 24
     },
     "objects/badelineboost/idle06": {
-      "x": 765,
-      "y": 71,
+      "x": 697,
+      "y": 96,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3282,8 +3952,8 @@
       "frameHeight": 24
     },
     "objects/badelineboost/idle07": {
-      "x": 783,
-      "y": 71,
+      "x": 715,
+      "y": 96,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3292,8 +3962,8 @@
       "frameHeight": 24
     },
     "objects/badelineboost/idle21": {
-      "x": 801,
-      "y": 71,
+      "x": 733,
+      "y": 96,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3302,8 +3972,8 @@
       "frameHeight": 24
     },
     "objects/badelineboost/idle25": {
-      "x": 819,
-      "y": 71,
+      "x": 751,
+      "y": 96,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3312,8 +3982,8 @@
       "frameHeight": 24
     },
     "objects/badelineboost/idle14": {
-      "x": 837,
-      "y": 71,
+      "x": 769,
+      "y": 96,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3322,8 +3992,8 @@
       "frameHeight": 24
     },
     "objects/badelineboost/idle18": {
-      "x": 855,
-      "y": 71,
+      "x": 787,
+      "y": 96,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3332,8 +4002,8 @@
       "frameHeight": 24
     },
     "objects/badelineboost/idle22": {
-      "x": 873,
-      "y": 71,
+      "x": 805,
+      "y": 96,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3342,8 +4012,8 @@
       "frameHeight": 24
     },
     "objects/badelineboost/idle11": {
-      "x": 891,
-      "y": 71,
+      "x": 823,
+      "y": 96,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3352,8 +4022,8 @@
       "frameHeight": 24
     },
     "objects/badelineboost/idle24": {
-      "x": 909,
-      "y": 71,
+      "x": 841,
+      "y": 96,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3361,9 +4031,19 @@
       "frameWidth": 24,
       "frameHeight": 24
     },
+    "characters/oshiro/boss50": {
+      "x": 859,
+      "y": 96,
+      "width": 12,
+      "height": 20,
+      "drawOffsetX": 43,
+      "drawOffsetY": 39,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/badelineboost/idle20": {
-      "x": 927,
-      "y": 71,
+      "x": 873,
+      "y": 96,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3372,8 +4052,8 @@
       "frameHeight": 24
     },
     "objects/badelineboost/idle23": {
-      "x": 945,
-      "y": 71,
+      "x": 891,
+      "y": 96,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3382,8 +4062,8 @@
       "frameHeight": 24
     },
     "objects/badelineboost/idle19": {
-      "x": 963,
-      "y": 71,
+      "x": 909,
+      "y": 96,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3392,8 +4072,8 @@
       "frameHeight": 24
     },
     "objects/badelineboost/idle10": {
-      "x": 981,
-      "y": 71,
+      "x": 927,
+      "y": 96,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3402,8 +4082,8 @@
       "frameHeight": 24
     },
     "objects/badelineboost/idle15": {
-      "x": 999,
-      "y": 71,
+      "x": 945,
+      "y": 96,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3412,8 +4092,8 @@
       "frameHeight": 24
     },
     "objects/badelineboost/idle16": {
-      "x": 2,
-      "y": 91,
+      "x": 963,
+      "y": 96,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3422,8 +4102,8 @@
       "frameHeight": 24
     },
     "objects/badelineboost/idle09": {
-      "x": 20,
-      "y": 91,
+      "x": 981,
+      "y": 96,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3432,8 +4112,8 @@
       "frameHeight": 24
     },
     "objects/badelineboost/idle08": {
-      "x": 38,
-      "y": 91,
+      "x": 999,
+      "y": 96,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3442,8 +4122,8 @@
       "frameHeight": 24
     },
     "objects/badelineboost/idle17": {
-      "x": 56,
-      "y": 91,
+      "x": 2,
+      "y": 118,
       "width": 16,
       "height": 15,
       "drawOffsetX": 4,
@@ -3452,8 +4132,8 @@
       "frameHeight": 24
     },
     "characters/player/idleC10": {
-      "x": 74,
-      "y": 91,
+      "x": 20,
+      "y": 118,
       "width": 22,
       "height": 11,
       "drawOffsetX": 8,
@@ -3462,8 +4142,8 @@
       "frameHeight": 32
     },
     "characters/player/idleC09": {
-      "x": 98,
-      "y": 91,
+      "x": 44,
+      "y": 118,
       "width": 22,
       "height": 11,
       "drawOffsetX": 8,
@@ -3471,9 +4151,29 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "characters/oshiro/boss67": {
+      "x": 68,
+      "y": 118,
+      "width": 13,
+      "height": 19,
+      "drawOffsetX": 42,
+      "drawOffsetY": 40,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss55": {
+      "x": 83,
+      "y": 118,
+      "width": 13,
+      "height": 19,
+      "drawOffsetX": 42,
+      "drawOffsetY": 40,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "characters/player/dreamDash20": {
-      "x": 122,
-      "y": 91,
+      "x": 98,
+      "y": 118,
       "width": 21,
       "height": 12,
       "drawOffsetX": 5,
@@ -3482,8 +4182,8 @@
       "frameHeight": 32
     },
     "characters/player/dreamDash04": {
-      "x": 145,
-      "y": 91,
+      "x": 121,
+      "y": 118,
       "width": 18,
       "height": 14,
       "drawOffsetX": 7,
@@ -3492,8 +4192,8 @@
       "frameHeight": 32
     },
     "objects/booster/boosterRed28": {
-      "x": 165,
-      "y": 91,
+      "x": 141,
+      "y": 118,
       "width": 14,
       "height": 18,
       "drawOffsetX": 8,
@@ -3502,8 +4202,8 @@
       "frameHeight": 32
     },
     "characters/player/idleC11": {
-      "x": 181,
-      "y": 91,
+      "x": 157,
+      "y": 118,
       "width": 21,
       "height": 12,
       "drawOffsetX": 8,
@@ -3512,8 +4212,8 @@
       "frameHeight": 32
     },
     "characters/player/launch02": {
-      "x": 204,
-      "y": 91,
+      "x": 180,
+      "y": 118,
       "width": 14,
       "height": 18,
       "drawOffsetX": 8,
@@ -3522,8 +4222,8 @@
       "frameHeight": 32
     },
     "characters/player/launch01": {
-      "x": 220,
-      "y": 91,
+      "x": 196,
+      "y": 118,
       "width": 14,
       "height": 18,
       "drawOffsetX": 8,
@@ -3531,9 +4231,19 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "characters/oshiro/boss03": {
+      "x": 212,
+      "y": 118,
+      "width": 17,
+      "height": 15,
+      "drawOffsetX": 38,
+      "drawOffsetY": 52,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "characters/player/dreamDash10": {
-      "x": 236,
-      "y": 91,
+      "x": 231,
+      "y": 118,
       "width": 17,
       "height": 15,
       "drawOffsetX": 8,
@@ -3542,8 +4252,8 @@
       "frameHeight": 32
     },
     "objects/woodPlatform/default": {
-      "x": 255,
-      "y": 91,
+      "x": 250,
+      "y": 118,
       "width": 32,
       "height": 8,
       "drawOffsetX": 0,
@@ -3551,9 +4261,39 @@
       "frameWidth": 32,
       "frameHeight": 8
     },
+    "characters/oshiro/boss64": {
+      "x": 284,
+      "y": 118,
+      "width": 14,
+      "height": 19,
+      "drawOffsetX": 41,
+      "drawOffsetY": 40,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss65": {
+      "x": 300,
+      "y": 118,
+      "width": 14,
+      "height": 19,
+      "drawOffsetX": 41,
+      "drawOffsetY": 40,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss66": {
+      "x": 316,
+      "y": 118,
+      "width": 14,
+      "height": 19,
+      "drawOffsetX": 41,
+      "drawOffsetY": 40,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "characters/player/dreamDash17": {
-      "x": 289,
-      "y": 91,
+      "x": 332,
+      "y": 118,
       "width": 19,
       "height": 14,
       "drawOffsetX": 6,
@@ -3562,8 +4302,8 @@
       "frameHeight": 32
     },
     "characters/player/launch04": {
-      "x": 310,
-      "y": 91,
+      "x": 353,
+      "y": 118,
       "width": 15,
       "height": 18,
       "drawOffsetX": 7,
@@ -3572,8 +4312,8 @@
       "frameHeight": 32
     },
     "characters/player/launch07": {
-      "x": 327,
-      "y": 91,
+      "x": 370,
+      "y": 118,
       "width": 15,
       "height": 18,
       "drawOffsetX": 9,
@@ -3582,8 +4322,8 @@
       "frameHeight": 32
     },
     "characters/player/launchRecover00": {
-      "x": 344,
-      "y": 91,
+      "x": 387,
+      "y": 118,
       "width": 15,
       "height": 18,
       "drawOffsetX": 9,
@@ -3592,8 +4332,8 @@
       "frameHeight": 32
     },
     "characters/player/dreamDash06": {
-      "x": 361,
-      "y": 91,
+      "x": 404,
+      "y": 118,
       "width": 18,
       "height": 15,
       "drawOffsetX": 7,
@@ -3602,8 +4342,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/idle00": {
-      "x": 381,
-      "y": 91,
+      "x": 424,
+      "y": 118,
       "width": 16,
       "height": 17,
       "drawOffsetX": 9,
@@ -3612,8 +4352,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/idle01": {
-      "x": 399,
-      "y": 91,
+      "x": 442,
+      "y": 118,
       "width": 16,
       "height": 17,
       "drawOffsetX": 9,
@@ -3622,8 +4362,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/flash08": {
-      "x": 417,
-      "y": 91,
+      "x": 460,
+      "y": 118,
       "width": 16,
       "height": 17,
       "drawOffsetX": 7,
@@ -3632,8 +4372,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/flash09": {
-      "x": 435,
-      "y": 91,
+      "x": 478,
+      "y": 118,
       "width": 16,
       "height": 17,
       "drawOffsetX": 7,
@@ -3642,8 +4382,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/flash03": {
-      "x": 453,
-      "y": 91,
+      "x": 496,
+      "y": 118,
       "width": 16,
       "height": 17,
       "drawOffsetX": 9,
@@ -3652,8 +4392,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/flash02": {
-      "x": 471,
-      "y": 91,
+      "x": 514,
+      "y": 118,
       "width": 16,
       "height": 17,
       "drawOffsetX": 9,
@@ -3662,8 +4402,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/flash01": {
-      "x": 489,
-      "y": 91,
+      "x": 532,
+      "y": 118,
       "width": 16,
       "height": 17,
       "drawOffsetX": 9,
@@ -3671,9 +4411,19 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "objects/puffer/explode07": {
+      "x": 550,
+      "y": 118,
+      "width": 17,
+      "height": 16,
+      "drawOffsetX": 24,
+      "drawOffsetY": 22,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
     "objects/flyFeather/flash00": {
-      "x": 507,
-      "y": 91,
+      "x": 569,
+      "y": 118,
       "width": 16,
       "height": 17,
       "drawOffsetX": 9,
@@ -3682,8 +4432,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/outline": {
-      "x": 525,
-      "y": 91,
+      "x": 587,
+      "y": 118,
       "width": 16,
       "height": 17,
       "drawOffsetX": 9,
@@ -3692,8 +4442,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/idle09": {
-      "x": 543,
-      "y": 91,
+      "x": 605,
+      "y": 118,
       "width": 16,
       "height": 17,
       "drawOffsetX": 7,
@@ -3702,8 +4452,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/idle08": {
-      "x": 561,
-      "y": 91,
+      "x": 623,
+      "y": 118,
       "width": 16,
       "height": 17,
       "drawOffsetX": 7,
@@ -3712,8 +4462,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/idle03": {
-      "x": 579,
-      "y": 91,
+      "x": 641,
+      "y": 118,
       "width": 16,
       "height": 17,
       "drawOffsetX": 9,
@@ -3722,8 +4472,8 @@
       "frameHeight": 32
     },
     "objects/flyFeather/idle02": {
-      "x": 597,
-      "y": 91,
+      "x": 659,
+      "y": 118,
       "width": 16,
       "height": 17,
       "drawOffsetX": 9,
@@ -3732,8 +4482,8 @@
       "frameHeight": 32
     },
     "characters/player/dreamDash19": {
-      "x": 615,
-      "y": 91,
+      "x": 677,
+      "y": 118,
       "width": 21,
       "height": 13,
       "drawOffsetX": 5,
@@ -3742,8 +4492,8 @@
       "frameHeight": 32
     },
     "characters/player/dreamDash18": {
-      "x": 638,
-      "y": 91,
+      "x": 700,
+      "y": 118,
       "width": 20,
       "height": 14,
       "drawOffsetX": 6,
@@ -3752,8 +4502,8 @@
       "frameHeight": 32
     },
     "characters/player/launch05": {
-      "x": 660,
-      "y": 91,
+      "x": 722,
+      "y": 118,
       "width": 16,
       "height": 18,
       "drawOffsetX": 7,
@@ -3762,8 +4512,8 @@
       "frameHeight": 32
     },
     "characters/player/launch06": {
-      "x": 678,
-      "y": 91,
+      "x": 740,
+      "y": 118,
       "width": 16,
       "height": 18,
       "drawOffsetX": 7,
@@ -3771,9 +4521,19 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "characters/oshiro/boss01": {
+      "x": 758,
+      "y": 118,
+      "width": 16,
+      "height": 18,
+      "drawOffsetX": 38,
+      "drawOffsetY": 53,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "collectables/strawberry/normal61": {
-      "x": 696,
-      "y": 91,
+      "x": 776,
+      "y": 118,
       "width": 18,
       "height": 16,
       "drawOffsetX": 0,
@@ -3782,8 +4542,8 @@
       "frameHeight": 16
     },
     "objects/fireball/fireball10": {
-      "x": 716,
-      "y": 91,
+      "x": 796,
+      "y": 118,
       "width": 18,
       "height": 16,
       "drawOffsetX": 23,
@@ -3792,8 +4552,8 @@
       "frameHeight": 64
     },
     "objects/fireball/fireball11": {
-      "x": 736,
-      "y": 91,
+      "x": 816,
+      "y": 118,
       "width": 18,
       "height": 16,
       "drawOffsetX": 23,
@@ -3802,8 +4562,8 @@
       "frameHeight": 64
     },
     "objects/fireball/fireball12": {
-      "x": 756,
-      "y": 91,
+      "x": 836,
+      "y": 118,
       "width": 18,
       "height": 16,
       "drawOffsetX": 23,
@@ -3812,8 +4572,8 @@
       "frameHeight": 64
     },
     "objects/fireball/fireball13": {
-      "x": 776,
-      "y": 91,
+      "x": 856,
+      "y": 118,
       "width": 18,
       "height": 16,
       "drawOffsetX": 23,
@@ -3822,8 +4582,8 @@
       "frameHeight": 64
     },
     "objects/fireball/fireball14": {
-      "x": 796,
-      "y": 91,
+      "x": 876,
+      "y": 118,
       "width": 18,
       "height": 16,
       "drawOffsetX": 23,
@@ -3832,8 +4592,8 @@
       "frameHeight": 64
     },
     "objects/fireball/fireball15": {
-      "x": 816,
-      "y": 91,
+      "x": 896,
+      "y": 118,
       "width": 18,
       "height": 16,
       "drawOffsetX": 23,
@@ -3842,8 +4602,8 @@
       "frameHeight": 64
     },
     "objects/fireball/fireball16": {
-      "x": 836,
-      "y": 91,
+      "x": 916,
+      "y": 118,
       "width": 18,
       "height": 16,
       "drawOffsetX": 23,
@@ -3852,8 +4612,8 @@
       "frameHeight": 64
     },
     "objects/fireball/fireball17": {
-      "x": 856,
-      "y": 91,
+      "x": 936,
+      "y": 118,
       "width": 18,
       "height": 16,
       "drawOffsetX": 23,
@@ -3862,8 +4622,8 @@
       "frameHeight": 64
     },
     "objects/fireball/fireball09": {
-      "x": 876,
-      "y": 91,
+      "x": 956,
+      "y": 118,
       "width": 18,
       "height": 16,
       "drawOffsetX": 23,
@@ -3872,8 +4632,8 @@
       "frameHeight": 64
     },
     "objects/jumpthru/wood": {
-      "x": 896,
-      "y": 91,
+      "x": 976,
+      "y": 118,
       "width": 24,
       "height": 12,
       "drawOffsetX": 0,
@@ -3882,8 +4642,8 @@
       "frameHeight": 16
     },
     "objects/fireball/fireball08": {
-      "x": 922,
-      "y": 91,
+      "x": 1002,
+      "y": 118,
       "width": 18,
       "height": 16,
       "drawOffsetX": 23,
@@ -3891,9 +4651,99 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "characters/oshiro/boss58": {
+      "x": 2,
+      "y": 139,
+      "width": 16,
+      "height": 19,
+      "drawOffsetX": 40,
+      "drawOffsetY": 40,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "objects/puffer/alerted03": {
+      "x": 20,
+      "y": 139,
+      "width": 19,
+      "height": 16,
+      "drawOffsetX": 22,
+      "drawOffsetY": 24,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "characters/oshiro/boss59": {
+      "x": 41,
+      "y": 139,
+      "width": 16,
+      "height": 19,
+      "drawOffsetX": 40,
+      "drawOffsetY": 40,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss63": {
+      "x": 59,
+      "y": 139,
+      "width": 16,
+      "height": 19,
+      "drawOffsetX": 40,
+      "drawOffsetY": 40,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss62": {
+      "x": 77,
+      "y": 139,
+      "width": 16,
+      "height": 19,
+      "drawOffsetX": 40,
+      "drawOffsetY": 40,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss56": {
+      "x": 95,
+      "y": 139,
+      "width": 16,
+      "height": 19,
+      "drawOffsetX": 40,
+      "drawOffsetY": 40,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss61": {
+      "x": 113,
+      "y": 139,
+      "width": 16,
+      "height": 19,
+      "drawOffsetX": 40,
+      "drawOffsetY": 40,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss60": {
+      "x": 131,
+      "y": 139,
+      "width": 16,
+      "height": 19,
+      "drawOffsetX": 40,
+      "drawOffsetY": 40,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss57": {
+      "x": 149,
+      "y": 139,
+      "width": 16,
+      "height": 19,
+      "drawOffsetX": 40,
+      "drawOffsetY": 40,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "characters/player/launch03": {
-      "x": 942,
-      "y": 91,
+      "x": 167,
+      "y": 139,
       "width": 17,
       "height": 18,
       "drawOffsetX": 7,
@@ -3901,9 +4751,29 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "objects/puffer/alerted02": {
+      "x": 186,
+      "y": 139,
+      "width": 20,
+      "height": 16,
+      "drawOffsetX": 21,
+      "drawOffsetY": 24,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/puffer/alerted04": {
+      "x": 208,
+      "y": 139,
+      "width": 20,
+      "height": 16,
+      "drawOffsetX": 21,
+      "drawOffsetY": 24,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
     "objects/booster/booster02": {
-      "x": 961,
-      "y": 91,
+      "x": 230,
+      "y": 139,
       "width": 20,
       "height": 16,
       "drawOffsetX": 6,
@@ -3912,8 +4782,8 @@
       "frameHeight": 32
     },
     "objects/booster/booster03": {
-      "x": 983,
-      "y": 91,
+      "x": 252,
+      "y": 139,
       "width": 20,
       "height": 16,
       "drawOffsetX": 6,
@@ -3922,8 +4792,8 @@
       "frameHeight": 32
     },
     "objects/booster/boosterRed02": {
-      "x": 2,
-      "y": 111,
+      "x": 274,
+      "y": 139,
       "width": 20,
       "height": 16,
       "drawOffsetX": 6,
@@ -3932,8 +4802,8 @@
       "frameHeight": 32
     },
     "objects/booster/boosterRed03": {
-      "x": 24,
-      "y": 111,
+      "x": 296,
+      "y": 139,
       "width": 20,
       "height": 16,
       "drawOffsetX": 6,
@@ -3942,8 +4812,8 @@
       "frameHeight": 32
     },
     "characters/player/launchRecover02": {
-      "x": 46,
-      "y": 111,
+      "x": 318,
+      "y": 139,
       "width": 19,
       "height": 17,
       "drawOffsetX": 8,
@@ -3952,8 +4822,8 @@
       "frameHeight": 32
     },
     "characters/player/launchRecover08": {
-      "x": 67,
-      "y": 111,
+      "x": 339,
+      "y": 139,
       "width": 19,
       "height": 17,
       "drawOffsetX": 2,
@@ -3962,8 +4832,8 @@
       "frameHeight": 32
     },
     "objects/booster/boosterRed34": {
-      "x": 88,
-      "y": 111,
+      "x": 360,
+      "y": 139,
       "width": 18,
       "height": 18,
       "drawOffsetX": 7,
@@ -3972,8 +4842,8 @@
       "frameHeight": 32
     },
     "objects/booster/outline": {
-      "x": 108,
-      "y": 111,
+      "x": 380,
+      "y": 139,
       "width": 18,
       "height": 18,
       "drawOffsetX": 7,
@@ -3981,9 +4851,29 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "objects/puffer/explode05": {
+      "x": 400,
+      "y": 139,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 24,
+      "drawOffsetY": 22,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/puffer/explode06": {
+      "x": 420,
+      "y": 139,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 24,
+      "drawOffsetY": 21,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
     "objects/booster/boosterRed33": {
-      "x": 128,
-      "y": 111,
+      "x": 440,
+      "y": 139,
       "width": 18,
       "height": 18,
       "drawOffsetX": 7,
@@ -3992,8 +4882,8 @@
       "frameHeight": 32
     },
     "objects/booster/boosterRed32": {
-      "x": 148,
-      "y": 111,
+      "x": 460,
+      "y": 139,
       "width": 18,
       "height": 18,
       "drawOffsetX": 7,
@@ -4002,8 +4892,8 @@
       "frameHeight": 32
     },
     "objects/booster/boosterRed31": {
-      "x": 168,
-      "y": 111,
+      "x": 480,
+      "y": 139,
       "width": 18,
       "height": 18,
       "drawOffsetX": 7,
@@ -4012,8 +4902,8 @@
       "frameHeight": 32
     },
     "objects/Bumper/Idle42": {
-      "x": 188,
-      "y": 111,
+      "x": 500,
+      "y": 139,
       "width": 18,
       "height": 18,
       "drawOffsetX": 23,
@@ -4022,8 +4912,8 @@
       "frameHeight": 64
     },
     "objects/booster/boosterRed30": {
-      "x": 208,
-      "y": 111,
+      "x": 520,
+      "y": 139,
       "width": 18,
       "height": 18,
       "drawOffsetX": 7,
@@ -4032,8 +4922,8 @@
       "frameHeight": 32
     },
     "objects/booster/boosterRed04": {
-      "x": 228,
-      "y": 111,
+      "x": 540,
+      "y": 139,
       "width": 18,
       "height": 18,
       "drawOffsetX": 7,
@@ -4042,8 +4932,8 @@
       "frameHeight": 32
     },
     "objects/booster/boosterRed01": {
-      "x": 248,
-      "y": 111,
+      "x": 560,
+      "y": 139,
       "width": 18,
       "height": 18,
       "drawOffsetX": 7,
@@ -4052,8 +4942,8 @@
       "frameHeight": 32
     },
     "objects/booster/boosterRed00": {
-      "x": 268,
-      "y": 111,
+      "x": 580,
+      "y": 139,
       "width": 18,
       "height": 18,
       "drawOffsetX": 7,
@@ -4062,8 +4952,8 @@
       "frameHeight": 32
     },
     "objects/booster/booster04": {
-      "x": 288,
-      "y": 111,
+      "x": 600,
+      "y": 139,
       "width": 18,
       "height": 18,
       "drawOffsetX": 7,
@@ -4072,8 +4962,8 @@
       "frameHeight": 32
     },
     "objects/booster/booster01": {
-      "x": 308,
-      "y": 111,
+      "x": 620,
+      "y": 139,
       "width": 18,
       "height": 18,
       "drawOffsetX": 7,
@@ -4082,8 +4972,8 @@
       "frameHeight": 32
     },
     "objects/booster/booster00": {
-      "x": 328,
-      "y": 111,
+      "x": 640,
+      "y": 139,
       "width": 18,
       "height": 18,
       "drawOffsetX": 7,
@@ -4092,8 +4982,8 @@
       "frameHeight": 32
     },
     "characters/player/dreamDash02": {
-      "x": 348,
-      "y": 111,
+      "x": 660,
+      "y": 139,
       "width": 25,
       "height": 13,
       "drawOffsetX": 4,
@@ -4101,9 +4991,29 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "objects/puffer/alerted01": {
+      "x": 687,
+      "y": 139,
+      "width": 21,
+      "height": 16,
+      "drawOffsetX": 20,
+      "drawOffsetY": 24,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/puffer/alerted00": {
+      "x": 710,
+      "y": 139,
+      "width": 21,
+      "height": 16,
+      "drawOffsetX": 20,
+      "drawOffsetY": 24,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
     "objects/fireball/fireball02": {
-      "x": 375,
-      "y": 111,
+      "x": 733,
+      "y": 139,
       "width": 16,
       "height": 21,
       "drawOffsetX": 25,
@@ -4111,9 +5021,29 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "objects/puffer/alerted05": {
+      "x": 751,
+      "y": 139,
+      "width": 21,
+      "height": 16,
+      "drawOffsetX": 20,
+      "drawOffsetY": 24,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/puffer/alert01": {
+      "x": 774,
+      "y": 139,
+      "width": 21,
+      "height": 16,
+      "drawOffsetX": 20,
+      "drawOffsetY": 24,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
     "characters/player/launchRecover07": {
-      "x": 393,
-      "y": 111,
+      "x": 797,
+      "y": 139,
       "width": 20,
       "height": 17,
       "drawOffsetX": 2,
@@ -4122,8 +5052,8 @@
       "frameHeight": 32
     },
     "characters/player/launchRecover06": {
-      "x": 415,
-      "y": 111,
+      "x": 819,
+      "y": 139,
       "width": 20,
       "height": 17,
       "drawOffsetX": 2,
@@ -4132,8 +5062,8 @@
       "frameHeight": 32
     },
     "characters/player/launchRecover01": {
-      "x": 437,
-      "y": 111,
+      "x": 841,
+      "y": 139,
       "width": 20,
       "height": 17,
       "drawOffsetX": 7,
@@ -4141,9 +5071,29 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "objects/puffer/explode04": {
+      "x": 863,
+      "y": 139,
+      "width": 20,
+      "height": 18,
+      "drawOffsetX": 23,
+      "drawOffsetY": 23,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/puffer/explode01": {
+      "x": 885,
+      "y": 139,
+      "width": 20,
+      "height": 18,
+      "drawOffsetX": 21,
+      "drawOffsetY": 23,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
     "objects/Bumper/Idle41": {
-      "x": 459,
-      "y": 111,
+      "x": 907,
+      "y": 139,
       "width": 18,
       "height": 20,
       "drawOffsetX": 23,
@@ -4152,8 +5102,8 @@
       "frameHeight": 64
     },
     "objects/booster/boosterRed29": {
-      "x": 479,
-      "y": 111,
+      "x": 927,
+      "y": 139,
       "width": 18,
       "height": 20,
       "drawOffsetX": 7,
@@ -4161,9 +5111,39 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "characters/monsters/predator118": {
+      "x": 947,
+      "y": 139,
+      "width": 18,
+      "height": 20,
+      "drawOffsetX": 39,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "objects/puffer/explode00": {
+      "x": 967,
+      "y": 139,
+      "width": 20,
+      "height": 18,
+      "drawOffsetX": 21,
+      "drawOffsetY": 23,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/clouds/cloudRemix00": {
+      "x": 989,
+      "y": 139,
+      "width": 24,
+      "height": 15,
+      "drawOffsetX": 11,
+      "drawOffsetY": 4,
+      "frameWidth": 48,
+      "frameHeight": 20
+    },
     "objects/fireball/fireball18": {
-      "x": 499,
-      "y": 111,
+      "x": 2,
+      "y": 162,
       "width": 20,
       "height": 18,
       "drawOffsetX": 22,
@@ -4171,9 +5151,19 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "objects/glider/death04": {
+      "x": 24,
+      "y": 162,
+      "width": 11,
+      "height": 33,
+      "drawOffsetX": 20,
+      "drawOffsetY": 6,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
     "objects/fireball/fireball05": {
-      "x": 521,
-      "y": 111,
+      "x": 37,
+      "y": 162,
       "width": 16,
       "height": 23,
       "drawOffsetX": 25,
@@ -4182,8 +5172,8 @@
       "frameHeight": 64
     },
     "characters/player/launchRecover03": {
-      "x": 539,
-      "y": 111,
+      "x": 55,
+      "y": 162,
       "width": 25,
       "height": 15,
       "drawOffsetX": 3,
@@ -4191,9 +5181,29 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "characters/monsters/predator119": {
+      "x": 82,
+      "y": 162,
+      "width": 18,
+      "height": 21,
+      "drawOffsetX": 39,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator116": {
+      "x": 102,
+      "y": 162,
+      "width": 20,
+      "height": 19,
+      "drawOffsetX": 37,
+      "drawOffsetY": 39,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "characters/player/dreamDash03": {
-      "x": 566,
-      "y": 111,
+      "x": 124,
+      "y": 162,
       "width": 19,
       "height": 20,
       "drawOffsetX": 7,
@@ -4202,8 +5212,8 @@
       "frameHeight": 32
     },
     "objects/fireball/fireball06": {
-      "x": 587,
-      "y": 111,
+      "x": 145,
+      "y": 162,
       "width": 16,
       "height": 24,
       "drawOffsetX": 25,
@@ -4212,8 +5222,8 @@
       "frameHeight": 64
     },
     "objects/fireball/fireball03": {
-      "x": 605,
-      "y": 111,
+      "x": 163,
+      "y": 162,
       "width": 17,
       "height": 23,
       "drawOffsetX": 24,
@@ -4222,8 +5232,8 @@
       "frameHeight": 64
     },
     "objects/fireball/fireball04": {
-      "x": 624,
-      "y": 111,
+      "x": 182,
+      "y": 162,
       "width": 17,
       "height": 23,
       "drawOffsetX": 25,
@@ -4232,8 +5242,8 @@
       "frameHeight": 64
     },
     "characters/player/death_h13": {
-      "x": 643,
-      "y": 111,
+      "x": 201,
+      "y": 162,
       "width": 21,
       "height": 19,
       "drawOffsetX": 4,
@@ -4241,9 +5251,19 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "danger/snowball12": {
+      "x": 224,
+      "y": 162,
+      "width": 20,
+      "height": 20,
+      "drawOffsetX": 14,
+      "drawOffsetY": 12,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
     "objects/fireball/fireball07": {
-      "x": 666,
-      "y": 111,
+      "x": 246,
+      "y": 162,
       "width": 16,
       "height": 25,
       "drawOffsetX": 25,
@@ -4252,8 +5272,8 @@
       "frameHeight": 64
     },
     "objects/fireball/fireball01": {
-      "x": 684,
-      "y": 111,
+      "x": 264,
+      "y": 162,
       "width": 15,
       "height": 28,
       "drawOffsetX": 25,
@@ -4262,8 +5282,8 @@
       "frameHeight": 64
     },
     "characters/player/launchRecover04": {
-      "x": 701,
-      "y": 111,
+      "x": 281,
+      "y": 162,
       "width": 27,
       "height": 16,
       "drawOffsetX": 2,
@@ -4272,8 +5292,8 @@
       "frameHeight": 32
     },
     "characters/player/launchRecover05": {
-      "x": 730,
-      "y": 111,
+      "x": 310,
+      "y": 162,
       "width": 27,
       "height": 16,
       "drawOffsetX": 2,
@@ -4282,8 +5302,8 @@
       "frameHeight": 32
     },
     "objects/Bumper/Evil40": {
-      "x": 759,
-      "y": 111,
+      "x": 339,
+      "y": 162,
       "width": 22,
       "height": 20,
       "drawOffsetX": 21,
@@ -4292,8 +5312,8 @@
       "frameHeight": 64
     },
     "objects/booster/boosterRed05": {
-      "x": 783,
-      "y": 111,
+      "x": 363,
+      "y": 162,
       "width": 20,
       "height": 22,
       "drawOffsetX": 6,
@@ -4302,8 +5322,8 @@
       "frameHeight": 32
     },
     "objects/booster/boosterRed22": {
-      "x": 805,
-      "y": 111,
+      "x": 385,
+      "y": 162,
       "width": 20,
       "height": 22,
       "drawOffsetX": 6,
@@ -4312,8 +5332,8 @@
       "frameHeight": 32
     },
     "objects/booster/booster22": {
-      "x": 827,
-      "y": 111,
+      "x": 407,
+      "y": 162,
       "width": 20,
       "height": 22,
       "drawOffsetX": 6,
@@ -4322,8 +5342,8 @@
       "frameHeight": 32
     },
     "objects/booster/booster18": {
-      "x": 849,
-      "y": 111,
+      "x": 429,
+      "y": 162,
       "width": 20,
       "height": 22,
       "drawOffsetX": 6,
@@ -4332,8 +5352,8 @@
       "frameHeight": 32
     },
     "objects/booster/booster05": {
-      "x": 871,
-      "y": 111,
+      "x": 451,
+      "y": 162,
       "width": 20,
       "height": 22,
       "drawOffsetX": 6,
@@ -4342,8 +5362,8 @@
       "frameHeight": 32
     },
     "objects/booster/boosterRed18": {
-      "x": 893,
-      "y": 111,
+      "x": 473,
+      "y": 162,
       "width": 20,
       "height": 22,
       "drawOffsetX": 6,
@@ -4351,9 +5371,29 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "objects/glider/idle3": {
+      "x": 495,
+      "y": 162,
+      "width": 28,
+      "height": 16,
+      "drawOffsetX": 11,
+      "drawOffsetY": 10,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "objects/glider/idle8": {
+      "x": 525,
+      "y": 162,
+      "width": 28,
+      "height": 16,
+      "drawOffsetX": 11,
+      "drawOffsetY": 10,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
     "objects/fireball/fireball00": {
-      "x": 915,
-      "y": 111,
+      "x": 555,
+      "y": 162,
       "width": 16,
       "height": 28,
       "drawOffsetX": 25,
@@ -4361,9 +5401,29 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "objects/glider/fall0": {
+      "x": 573,
+      "y": 162,
+      "width": 18,
+      "height": 25,
+      "drawOffsetX": 15,
+      "drawOffsetY": 3,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/snowball13": {
+      "x": 593,
+      "y": 162,
+      "width": 22,
+      "height": 21,
+      "drawOffsetX": 13,
+      "drawOffsetY": 12,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
     "objects/booster/boosterRed19": {
-      "x": 933,
-      "y": 111,
+      "x": 617,
+      "y": 162,
       "width": 22,
       "height": 21,
       "drawOffsetX": 5,
@@ -4372,8 +5432,8 @@
       "frameHeight": 32
     },
     "objects/booster/booster19": {
-      "x": 957,
-      "y": 111,
+      "x": 641,
+      "y": 162,
       "width": 22,
       "height": 21,
       "drawOffsetX": 5,
@@ -4381,9 +5441,19 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "characters/monsters/predator117": {
+      "x": 665,
+      "y": 162,
+      "width": 22,
+      "height": 21,
+      "drawOffsetX": 37,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/booster/booster23": {
-      "x": 981,
-      "y": 111,
+      "x": 689,
+      "y": 162,
       "width": 22,
       "height": 21,
       "drawOffsetX": 5,
@@ -4392,8 +5462,8 @@
       "frameHeight": 32
     },
     "characters/theoCrystal/idle00": {
-      "x": 2,
-      "y": 141,
+      "x": 713,
+      "y": 162,
       "width": 21,
       "height": 22,
       "drawOffsetX": 21,
@@ -4402,8 +5472,8 @@
       "frameHeight": 64
     },
     "objects/booster/boosterRed23": {
-      "x": 25,
-      "y": 141,
+      "x": 736,
+      "y": 162,
       "width": 22,
       "height": 21,
       "drawOffsetX": 5,
@@ -4412,8 +5482,8 @@
       "frameHeight": 32
     },
     "objects/booster/boosterRed06": {
-      "x": 49,
-      "y": 141,
+      "x": 760,
+      "y": 162,
       "width": 22,
       "height": 21,
       "drawOffsetX": 5,
@@ -4422,8 +5492,8 @@
       "frameHeight": 32
     },
     "objects/booster/booster06": {
-      "x": 73,
-      "y": 141,
+      "x": 784,
+      "y": 162,
       "width": 22,
       "height": 21,
       "drawOffsetX": 5,
@@ -4432,8 +5502,8 @@
       "frameHeight": 32
     },
     "objects/booster/booster09": {
-      "x": 97,
-      "y": 141,
+      "x": 808,
+      "y": 162,
       "width": 18,
       "height": 26,
       "drawOffsetX": 7,
@@ -4442,8 +5512,8 @@
       "frameHeight": 32
     },
     "objects/booster/boosterRed09": {
-      "x": 117,
-      "y": 141,
+      "x": 828,
+      "y": 162,
       "width": 18,
       "height": 26,
       "drawOffsetX": 7,
@@ -4451,9 +5521,79 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "objects/glider/idle5": {
+      "x": 848,
+      "y": 162,
+      "width": 28,
+      "height": 17,
+      "drawOffsetX": 11,
+      "drawOffsetY": 10,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "objects/glider/idle9": {
+      "x": 878,
+      "y": 162,
+      "width": 28,
+      "height": 17,
+      "drawOffsetX": 11,
+      "drawOffsetY": 10,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "objects/glider/idle7": {
+      "x": 908,
+      "y": 162,
+      "width": 28,
+      "height": 17,
+      "drawOffsetX": 11,
+      "drawOffsetY": 9,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "objects/glider/held0": {
+      "x": 938,
+      "y": 162,
+      "width": 28,
+      "height": 17,
+      "drawOffsetX": 11,
+      "drawOffsetY": 10,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "objects/glider/idle4": {
+      "x": 968,
+      "y": 162,
+      "width": 28,
+      "height": 17,
+      "drawOffsetX": 11,
+      "drawOffsetY": 10,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "objects/glider/idle0": {
+      "x": 2,
+      "y": 197,
+      "width": 28,
+      "height": 17,
+      "drawOffsetX": 11,
+      "drawOffsetY": 10,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "objects/glider/idle2": {
+      "x": 32,
+      "y": 197,
+      "width": 28,
+      "height": 17,
+      "drawOffsetX": 11,
+      "drawOffsetY": 9,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
     "objects/Bumper/Evil39": {
-      "x": 137,
-      "y": 141,
+      "x": 62,
+      "y": 197,
       "width": 20,
       "height": 24,
       "drawOffsetX": 22,
@@ -4461,9 +5601,19 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "objects/glider/fall1": {
+      "x": 84,
+      "y": 197,
+      "width": 24,
+      "height": 20,
+      "drawOffsetX": 12,
+      "drawOffsetY": 7,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
     "objects/Bumper/Idle17": {
-      "x": 159,
-      "y": 141,
+      "x": 110,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4472,8 +5622,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle04": {
-      "x": 183,
-      "y": 141,
+      "x": 134,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4482,8 +5632,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle18": {
-      "x": 207,
-      "y": 141,
+      "x": 158,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4492,8 +5642,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle05": {
-      "x": 231,
-      "y": 141,
+      "x": 182,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4502,8 +5652,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle26": {
-      "x": 255,
-      "y": 141,
+      "x": 206,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4512,8 +5662,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle25": {
-      "x": 279,
-      "y": 141,
+      "x": 230,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4522,8 +5672,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle23": {
-      "x": 303,
-      "y": 141,
+      "x": 254,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4532,8 +5682,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle22": {
-      "x": 327,
-      "y": 141,
+      "x": 278,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4542,8 +5692,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle12": {
-      "x": 351,
-      "y": 141,
+      "x": 302,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4552,8 +5702,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle02": {
-      "x": 375,
-      "y": 141,
+      "x": 326,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4562,8 +5712,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle06": {
-      "x": 399,
-      "y": 141,
+      "x": 350,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4572,8 +5722,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle11": {
-      "x": 423,
-      "y": 141,
+      "x": 374,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4582,8 +5732,8 @@
       "frameHeight": 64
     },
     "objects/booster/boosterRed21": {
-      "x": 447,
-      "y": 141,
+      "x": 398,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 5,
@@ -4592,8 +5742,8 @@
       "frameHeight": 32
     },
     "objects/Bumper/Idle13": {
-      "x": 471,
-      "y": 141,
+      "x": 422,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4602,8 +5752,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle14": {
-      "x": 495,
-      "y": 141,
+      "x": 446,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4612,8 +5762,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle15": {
-      "x": 519,
-      "y": 141,
+      "x": 470,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4622,8 +5772,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle20": {
-      "x": 543,
-      "y": 141,
+      "x": 494,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4632,8 +5782,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle19": {
-      "x": 567,
-      "y": 141,
+      "x": 518,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4642,8 +5792,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle16": {
-      "x": 591,
-      "y": 141,
+      "x": 542,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4652,8 +5802,8 @@
       "frameHeight": 64
     },
     "objects/booster/boosterRed08": {
-      "x": 615,
-      "y": 141,
+      "x": 566,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 5,
@@ -4662,8 +5812,8 @@
       "frameHeight": 32
     },
     "objects/Bumper/Idle21": {
-      "x": 639,
-      "y": 141,
+      "x": 590,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4671,9 +5821,29 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "objects/glider/fallLoop0": {
+      "x": 614,
+      "y": 197,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 13,
+      "drawOffsetY": 6,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "objects/glider/fallLoop1": {
+      "x": 638,
+      "y": 197,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 13,
+      "drawOffsetY": 6,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
     "objects/Bumper/Idle08": {
-      "x": 663,
-      "y": 141,
+      "x": 662,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4682,8 +5852,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle10": {
-      "x": 687,
-      "y": 141,
+      "x": 686,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4692,8 +5862,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle03": {
-      "x": 711,
-      "y": 141,
+      "x": 710,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4702,8 +5872,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle29": {
-      "x": 735,
-      "y": 141,
+      "x": 734,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4712,8 +5882,8 @@
       "frameHeight": 64
     },
     "objects/booster/booster08": {
-      "x": 759,
-      "y": 141,
+      "x": 758,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 5,
@@ -4721,9 +5891,19 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "characters/monsters/predator144": {
+      "x": 782,
+      "y": 197,
+      "width": 22,
+      "height": 22,
+      "drawOffsetX": 37,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/Bumper/Idle01": {
-      "x": 783,
-      "y": 141,
+      "x": 806,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4732,8 +5912,8 @@
       "frameHeight": 64
     },
     "objects/booster/boosterRed25": {
-      "x": 807,
-      "y": 141,
+      "x": 830,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 5,
@@ -4742,8 +5922,8 @@
       "frameHeight": 32
     },
     "objects/booster/booster21": {
-      "x": 831,
-      "y": 141,
+      "x": 854,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 5,
@@ -4752,8 +5932,8 @@
       "frameHeight": 32
     },
     "objects/Bumper/Idle44": {
-      "x": 855,
-      "y": 141,
+      "x": 878,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4762,8 +5942,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle33": {
-      "x": 879,
-      "y": 141,
+      "x": 902,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4772,8 +5952,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle32": {
-      "x": 903,
-      "y": 141,
+      "x": 926,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4782,8 +5962,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle31": {
-      "x": 927,
-      "y": 141,
+      "x": 950,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4792,8 +5972,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle00": {
-      "x": 951,
-      "y": 141,
+      "x": 974,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4802,8 +5982,8 @@
       "frameHeight": 64
     },
     "objects/booster/booster25": {
-      "x": 975,
-      "y": 141,
+      "x": 998,
+      "y": 197,
       "width": 22,
       "height": 22,
       "drawOffsetX": 5,
@@ -4812,8 +5992,8 @@
       "frameHeight": 32
     },
     "objects/Bumper/Idle30": {
-      "x": 999,
-      "y": 141,
+      "x": 2,
+      "y": 223,
       "width": 22,
       "height": 22,
       "drawOffsetX": 21,
@@ -4822,8 +6002,8 @@
       "frameHeight": 64
     },
     "objects/fireball/fireball22": {
-      "x": 2,
-      "y": 169,
+      "x": 26,
+      "y": 223,
       "width": 35,
       "height": 14,
       "drawOffsetX": 14,
@@ -4832,8 +6012,8 @@
       "frameHeight": 64
     },
     "objects/booster/booster20": {
-      "x": 39,
-      "y": 169,
+      "x": 63,
+      "y": 223,
       "width": 24,
       "height": 21,
       "drawOffsetX": 4,
@@ -4842,8 +6022,8 @@
       "frameHeight": 32
     },
     "objects/booster/boosterRed20": {
-      "x": 65,
-      "y": 169,
+      "x": 89,
+      "y": 223,
       "width": 24,
       "height": 21,
       "drawOffsetX": 4,
@@ -4852,18 +6032,28 @@
       "frameHeight": 32
     },
     "objects/booster/boosterRed24": {
-      "x": 91,
-      "y": 169,
+      "x": 115,
+      "y": 223,
       "width": 24,
       "height": 21,
       "drawOffsetX": 4,
       "drawOffsetY": 5,
       "frameWidth": 32,
       "frameHeight": 32
+    },
+    "objects/glider/idle6": {
+      "x": 141,
+      "y": 223,
+      "width": 28,
+      "height": 18,
+      "drawOffsetX": 11,
+      "drawOffsetY": 9,
+      "frameWidth": 48,
+      "frameHeight": 48
     },
     "objects/booster/booster24": {
-      "x": 117,
-      "y": 169,
+      "x": 171,
+      "y": 223,
       "width": 24,
       "height": 21,
       "drawOffsetX": 4,
@@ -4871,9 +6061,19 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "objects/glider/idle1": {
+      "x": 197,
+      "y": 223,
+      "width": 28,
+      "height": 18,
+      "drawOffsetX": 11,
+      "drawOffsetY": 9,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
     "objects/booster/booster07": {
-      "x": 143,
-      "y": 169,
+      "x": 227,
+      "y": 223,
       "width": 24,
       "height": 21,
       "drawOffsetX": 4,
@@ -4882,8 +6082,8 @@
       "frameHeight": 32
     },
     "objects/booster/boosterRed07": {
-      "x": 169,
-      "y": 169,
+      "x": 253,
+      "y": 223,
       "width": 24,
       "height": 21,
       "drawOffsetX": 4,
@@ -4891,9 +6091,49 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "danger/snowball15": {
+      "x": 279,
+      "y": 223,
+      "width": 23,
+      "height": 22,
+      "drawOffsetX": 13,
+      "drawOffsetY": 12,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/snowball14": {
+      "x": 304,
+      "y": 223,
+      "width": 23,
+      "height": 22,
+      "drawOffsetX": 13,
+      "drawOffsetY": 12,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "objects/clouds/cloud00": {
+      "x": 329,
+      "y": 223,
+      "width": 35,
+      "height": 15,
+      "drawOffsetX": 6,
+      "drawOffsetY": 4,
+      "frameWidth": 48,
+      "frameHeight": 20
+    },
+    "characters/monsters/predator112": {
+      "x": 366,
+      "y": 223,
+      "width": 24,
+      "height": 22,
+      "drawOffsetX": 33,
+      "drawOffsetY": 38,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/booster/booster11": {
-      "x": 195,
-      "y": 169,
+      "x": 392,
+      "y": 223,
       "width": 22,
       "height": 24,
       "drawOffsetX": 5,
@@ -4901,9 +6141,19 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "objects/glider/fall2": {
+      "x": 416,
+      "y": 223,
+      "width": 24,
+      "height": 22,
+      "drawOffsetX": 12,
+      "drawOffsetY": 6,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
     "objects/Bumper/Idle40": {
-      "x": 219,
-      "y": 169,
+      "x": 442,
+      "y": 223,
       "width": 22,
       "height": 24,
       "drawOffsetX": 21,
@@ -4912,8 +6162,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle43": {
-      "x": 243,
-      "y": 169,
+      "x": 466,
+      "y": 223,
       "width": 22,
       "height": 24,
       "drawOffsetX": 21,
@@ -4922,8 +6172,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle24": {
-      "x": 267,
-      "y": 169,
+      "x": 490,
+      "y": 223,
       "width": 22,
       "height": 24,
       "drawOffsetX": 21,
@@ -4932,8 +6182,8 @@
       "frameHeight": 64
     },
     "objects/booster/boosterRed11": {
-      "x": 291,
-      "y": 169,
+      "x": 514,
+      "y": 223,
       "width": 22,
       "height": 24,
       "drawOffsetX": 5,
@@ -4942,8 +6192,8 @@
       "frameHeight": 32
     },
     "objects/booster/boosterRed12": {
-      "x": 315,
-      "y": 169,
+      "x": 538,
+      "y": 223,
       "width": 23,
       "height": 23,
       "drawOffsetX": 4,
@@ -4952,8 +6202,8 @@
       "frameHeight": 32
     },
     "objects/booster/booster12": {
-      "x": 340,
-      "y": 169,
+      "x": 563,
+      "y": 223,
       "width": 23,
       "height": 23,
       "drawOffsetX": 4,
@@ -4961,9 +6211,29 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "characters/monsters/predator124": {
+      "x": 588,
+      "y": 223,
+      "width": 27,
+      "height": 20,
+      "drawOffsetX": 35,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator72": {
+      "x": 617,
+      "y": 223,
+      "width": 22,
+      "height": 25,
+      "drawOffsetX": 37,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/fireball/fireball20": {
-      "x": 365,
-      "y": 169,
+      "x": 641,
+      "y": 223,
       "width": 29,
       "height": 19,
       "drawOffsetX": 19,
@@ -4972,8 +6242,8 @@
       "frameHeight": 64
     },
     "objects/booster/boosterRed16": {
-      "x": 396,
-      "y": 169,
+      "x": 672,
+      "y": 223,
       "width": 24,
       "height": 23,
       "drawOffsetX": 3,
@@ -4982,8 +6252,8 @@
       "frameHeight": 32
     },
     "objects/booster/booster16": {
-      "x": 422,
-      "y": 169,
+      "x": 698,
+      "y": 223,
       "width": 24,
       "height": 23,
       "drawOffsetX": 3,
@@ -4992,8 +6262,8 @@
       "frameHeight": 32
     },
     "objects/Bumper/Idle09": {
-      "x": 448,
-      "y": 169,
+      "x": 724,
+      "y": 223,
       "width": 24,
       "height": 23,
       "drawOffsetX": 20,
@@ -5002,8 +6272,8 @@
       "frameHeight": 64
     },
     "objects/fireball/fireball23": {
-      "x": 474,
-      "y": 169,
+      "x": 750,
+      "y": 223,
       "width": 37,
       "height": 15,
       "drawOffsetX": 13,
@@ -5012,8 +6282,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle28": {
-      "x": 513,
-      "y": 169,
+      "x": 789,
+      "y": 223,
       "width": 26,
       "height": 22,
       "drawOffsetX": 17,
@@ -5021,9 +6291,19 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "characters/monsters/predator65": {
+      "x": 817,
+      "y": 223,
+      "width": 23,
+      "height": 25,
+      "drawOffsetX": 37,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/booster/booster13": {
-      "x": 541,
-      "y": 169,
+      "x": 842,
+      "y": 223,
       "width": 24,
       "height": 24,
       "drawOffsetX": 4,
@@ -5032,8 +6312,8 @@
       "frameHeight": 32
     },
     "objects/Bumper/Idle07": {
-      "x": 567,
-      "y": 169,
+      "x": 868,
+      "y": 223,
       "width": 24,
       "height": 24,
       "drawOffsetX": 20,
@@ -5042,8 +6322,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/outline": {
-      "x": 593,
-      "y": 169,
+      "x": 894,
+      "y": 223,
       "width": 24,
       "height": 24,
       "drawOffsetX": 20,
@@ -5052,8 +6332,8 @@
       "frameHeight": 64
     },
     "objects/booster/boosterRed13": {
-      "x": 619,
-      "y": 169,
+      "x": 920,
+      "y": 223,
       "width": 24,
       "height": 24,
       "drawOffsetX": 4,
@@ -5062,8 +6342,8 @@
       "frameHeight": 32
     },
     "objects/dreamblock/active": {
-      "x": 645,
-      "y": 169,
+      "x": 946,
+      "y": 223,
       "width": 24,
       "height": 24,
       "drawOffsetX": 0,
@@ -5071,9 +6351,19 @@
       "frameWidth": 24,
       "frameHeight": 24
     },
+    "characters/monsters/predator41": {
+      "x": 972,
+      "y": 223,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 33,
+      "drawOffsetY": 38,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/zipmover/moon/block": {
-      "x": 671,
-      "y": 169,
+      "x": 998,
+      "y": 223,
       "width": 24,
       "height": 24,
       "drawOffsetX": 0,
@@ -5082,8 +6372,8 @@
       "frameHeight": 24
     },
     "objects/zipmover/block2": {
-      "x": 697,
-      "y": 169,
+      "x": 2,
+      "y": 250,
       "width": 24,
       "height": 24,
       "drawOffsetX": 0,
@@ -5092,8 +6382,38 @@
       "frameHeight": 24
     },
     "objects/zipmover/block": {
-      "x": 723,
-      "y": 169,
+      "x": 28,
+      "y": 250,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/moveBlock/base_v": {
+      "x": 54,
+      "y": 250,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/moveBlock/base_h": {
+      "x": 80,
+      "y": 250,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "objects/moveBlock/base": {
+      "x": 106,
+      "y": 250,
       "width": 24,
       "height": 24,
       "drawOffsetX": 0,
@@ -5102,8 +6422,8 @@
       "frameHeight": 24
     },
     "objects/fireball/fireball19": {
-      "x": 749,
-      "y": 169,
+      "x": 132,
+      "y": 250,
       "width": 24,
       "height": 24,
       "drawOffsetX": 20,
@@ -5112,8 +6432,8 @@
       "frameHeight": 64
     },
     "objects/booster/boosterRed10": {
-      "x": 775,
-      "y": 169,
+      "x": 158,
+      "y": 250,
       "width": 21,
       "height": 28,
       "drawOffsetX": 5,
@@ -5122,8 +6442,8 @@
       "frameHeight": 32
     },
     "objects/booster/booster10": {
-      "x": 798,
-      "y": 169,
+      "x": 181,
+      "y": 250,
       "width": 21,
       "height": 28,
       "drawOffsetX": 5,
@@ -5131,9 +6451,19 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "characters/oshiro/boss48": {
+      "x": 204,
+      "y": 250,
+      "width": 19,
+      "height": 31,
+      "drawOffsetX": 43,
+      "drawOffsetY": 38,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/Bumper/Idle27": {
-      "x": 821,
-      "y": 169,
+      "x": 225,
+      "y": 250,
       "width": 27,
       "height": 22,
       "drawOffsetX": 16,
@@ -5141,9 +6471,19 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "characters/oshiro/boss43": {
+      "x": 254,
+      "y": 250,
+      "width": 23,
+      "height": 26,
+      "drawOffsetX": 35,
+      "drawOffsetY": 39,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/booster/booster15": {
-      "x": 850,
-      "y": 169,
+      "x": 279,
+      "y": 250,
       "width": 25,
       "height": 24,
       "drawOffsetX": 3,
@@ -5152,8 +6492,8 @@
       "frameHeight": 32
     },
     "objects/booster/booster14": {
-      "x": 877,
-      "y": 169,
+      "x": 306,
+      "y": 250,
       "width": 25,
       "height": 24,
       "drawOffsetX": 4,
@@ -5162,8 +6502,8 @@
       "frameHeight": 32
     },
     "objects/booster/boosterRed14": {
-      "x": 904,
-      "y": 169,
+      "x": 333,
+      "y": 250,
       "width": 25,
       "height": 24,
       "drawOffsetX": 4,
@@ -5172,8 +6512,8 @@
       "frameHeight": 32
     },
     "objects/booster/boosterRed15": {
-      "x": 931,
-      "y": 169,
+      "x": 360,
+      "y": 250,
       "width": 25,
       "height": 24,
       "drawOffsetX": 3,
@@ -5181,9 +6521,109 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
+    "characters/monsters/predator71": {
+      "x": 387,
+      "y": 250,
+      "width": 24,
+      "height": 25,
+      "drawOffsetX": 34,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator64": {
+      "x": 413,
+      "y": 250,
+      "width": 24,
+      "height": 25,
+      "drawOffsetX": 34,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator66": {
+      "x": 439,
+      "y": 250,
+      "width": 24,
+      "height": 25,
+      "drawOffsetX": 38,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator63": {
+      "x": 465,
+      "y": 250,
+      "width": 24,
+      "height": 26,
+      "drawOffsetX": 33,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator70": {
+      "x": 491,
+      "y": 250,
+      "width": 24,
+      "height": 26,
+      "drawOffsetX": 33,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator73": {
+      "x": 517,
+      "y": 250,
+      "width": 24,
+      "height": 26,
+      "drawOffsetX": 38,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator69": {
+      "x": 543,
+      "y": 250,
+      "width": 25,
+      "height": 25,
+      "drawOffsetX": 32,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator62": {
+      "x": 570,
+      "y": 250,
+      "width": 25,
+      "height": 25,
+      "drawOffsetX": 32,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss42": {
+      "x": 597,
+      "y": 250,
+      "width": 19,
+      "height": 34,
+      "drawOffsetX": 40,
+      "drawOffsetY": 32,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator58": {
+      "x": 618,
+      "y": 250,
+      "width": 19,
+      "height": 34,
+      "drawOffsetX": 38,
+      "drawOffsetY": 28,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/Bumper/Evil23": {
-      "x": 958,
-      "y": 169,
+      "x": 639,
+      "y": 250,
       "width": 26,
       "height": 25,
       "drawOffsetX": 19,
@@ -5192,8 +6632,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil31": {
-      "x": 986,
-      "y": 169,
+      "x": 667,
+      "y": 250,
       "width": 26,
       "height": 25,
       "drawOffsetX": 19,
@@ -5202,8 +6642,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil02": {
-      "x": 2,
-      "y": 199,
+      "x": 695,
+      "y": 250,
       "width": 26,
       "height": 25,
       "drawOffsetX": 19,
@@ -5212,8 +6652,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil03": {
-      "x": 30,
-      "y": 199,
+      "x": 723,
+      "y": 250,
       "width": 26,
       "height": 25,
       "drawOffsetX": 19,
@@ -5222,8 +6662,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil30": {
-      "x": 58,
-      "y": 199,
+      "x": 751,
+      "y": 250,
       "width": 26,
       "height": 25,
       "drawOffsetX": 19,
@@ -5232,8 +6672,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil28": {
-      "x": 86,
-      "y": 199,
+      "x": 779,
+      "y": 250,
       "width": 26,
       "height": 25,
       "drawOffsetX": 19,
@@ -5242,8 +6682,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil27": {
-      "x": 114,
-      "y": 199,
+      "x": 807,
+      "y": 250,
       "width": 26,
       "height": 25,
       "drawOffsetX": 19,
@@ -5252,8 +6692,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil26": {
-      "x": 142,
-      "y": 199,
+      "x": 835,
+      "y": 250,
       "width": 26,
       "height": 25,
       "drawOffsetX": 19,
@@ -5262,8 +6702,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil25": {
-      "x": 170,
-      "y": 199,
+      "x": 863,
+      "y": 250,
       "width": 26,
       "height": 25,
       "drawOffsetX": 19,
@@ -5272,8 +6712,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil24": {
-      "x": 198,
-      "y": 199,
+      "x": 891,
+      "y": 250,
       "width": 26,
       "height": 25,
       "drawOffsetX": 19,
@@ -5282,8 +6722,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil04": {
-      "x": 226,
-      "y": 199,
+      "x": 919,
+      "y": 250,
       "width": 26,
       "height": 25,
       "drawOffsetX": 19,
@@ -5292,8 +6732,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil29": {
-      "x": 254,
-      "y": 199,
+      "x": 947,
+      "y": 250,
       "width": 26,
       "height": 25,
       "drawOffsetX": 19,
@@ -5302,18 +6742,118 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil00": {
-      "x": 282,
-      "y": 199,
+      "x": 975,
+      "y": 250,
       "width": 26,
       "height": 25,
       "drawOffsetX": 19,
       "drawOffsetY": 20,
       "frameWidth": 64,
       "frameHeight": 64
+    },
+    "characters/monsters/predator139": {
+      "x": 2,
+      "y": 286,
+      "width": 25,
+      "height": 26,
+      "drawOffsetX": 32,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator44": {
+      "x": 29,
+      "y": 286,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 31,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator05": {
+      "x": 57,
+      "y": 286,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 31,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator43": {
+      "x": 85,
+      "y": 286,
+      "width": 25,
+      "height": 26,
+      "drawOffsetX": 32,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator06": {
+      "x": 112,
+      "y": 286,
+      "width": 25,
+      "height": 26,
+      "drawOffsetX": 32,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator26": {
+      "x": 139,
+      "y": 286,
+      "width": 25,
+      "height": 26,
+      "drawOffsetX": 32,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator74": {
+      "x": 166,
+      "y": 286,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 38,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator35": {
+      "x": 194,
+      "y": 286,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 31,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator25": {
+      "x": 222,
+      "y": 286,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 31,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator98": {
+      "x": 250,
+      "y": 286,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 31,
+      "drawOffsetY": 34,
+      "frameWidth": 96,
+      "frameHeight": 96
     },
     "objects/Bumper/Evil01": {
-      "x": 310,
-      "y": 199,
+      "x": 278,
+      "y": 286,
       "width": 26,
       "height": 25,
       "drawOffsetX": 19,
@@ -5321,9 +6861,159 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "characters/monsters/predator00": {
+      "x": 306,
+      "y": 286,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 31,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator15": {
+      "x": 334,
+      "y": 286,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 31,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator111": {
+      "x": 362,
+      "y": 286,
+      "width": 25,
+      "height": 26,
+      "drawOffsetX": 32,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator42": {
+      "x": 389,
+      "y": 286,
+      "width": 25,
+      "height": 26,
+      "drawOffsetX": 32,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator61": {
+      "x": 416,
+      "y": 286,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 31,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator67": {
+      "x": 444,
+      "y": 286,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 38,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator68": {
+      "x": 472,
+      "y": 286,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 31,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator20": {
+      "x": 500,
+      "y": 286,
+      "width": 26,
+      "height": 25,
+      "drawOffsetX": 31,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator40": {
+      "x": 528,
+      "y": 286,
+      "width": 25,
+      "height": 26,
+      "drawOffsetX": 32,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator55": {
+      "x": 555,
+      "y": 286,
+      "width": 19,
+      "height": 35,
+      "drawOffsetX": 38,
+      "drawOffsetY": 27,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator56": {
+      "x": 576,
+      "y": 286,
+      "width": 19,
+      "height": 35,
+      "drawOffsetX": 38,
+      "drawOffsetY": 27,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator57": {
+      "x": 597,
+      "y": 286,
+      "width": 19,
+      "height": 35,
+      "drawOffsetX": 38,
+      "drawOffsetY": 27,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator59": {
+      "x": 618,
+      "y": 286,
+      "width": 19,
+      "height": 35,
+      "drawOffsetX": 38,
+      "drawOffsetY": 27,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator60": {
+      "x": 639,
+      "y": 286,
+      "width": 19,
+      "height": 35,
+      "drawOffsetX": 38,
+      "drawOffsetY": 27,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator54": {
+      "x": 660,
+      "y": 286,
+      "width": 19,
+      "height": 35,
+      "drawOffsetX": 38,
+      "drawOffsetY": 27,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/fireball/fireball21": {
-      "x": 338,
-      "y": 199,
+      "x": 681,
+      "y": 286,
       "width": 32,
       "height": 21,
       "drawOffsetX": 16,
@@ -5331,19 +7021,159 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "characters/monsters/predator36": {
+      "x": 715,
+      "y": 286,
+      "width": 25,
+      "height": 27,
+      "drawOffsetX": 32,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator100": {
+      "x": 742,
+      "y": 286,
+      "width": 25,
+      "height": 27,
+      "drawOffsetX": 32,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator33": {
+      "x": 769,
+      "y": 286,
+      "width": 25,
+      "height": 27,
+      "drawOffsetX": 32,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator37": {
+      "x": 796,
+      "y": 286,
+      "width": 25,
+      "height": 27,
+      "drawOffsetX": 32,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator07": {
+      "x": 823,
+      "y": 286,
+      "width": 25,
+      "height": 27,
+      "drawOffsetX": 32,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator03": {
+      "x": 850,
+      "y": 286,
+      "width": 25,
+      "height": 27,
+      "drawOffsetX": 32,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator13": {
+      "x": 877,
+      "y": 286,
+      "width": 25,
+      "height": 27,
+      "drawOffsetX": 32,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator23": {
+      "x": 904,
+      "y": 286,
+      "width": 25,
+      "height": 27,
+      "drawOffsetX": 32,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator99": {
+      "x": 931,
+      "y": 286,
+      "width": 25,
+      "height": 27,
+      "drawOffsetX": 32,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator27": {
+      "x": 958,
+      "y": 286,
+      "width": 25,
+      "height": 27,
+      "drawOffsetX": 32,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator16": {
+      "x": 985,
+      "y": 286,
+      "width": 25,
+      "height": 27,
+      "drawOffsetX": 32,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator17": {
+      "x": 2,
+      "y": 323,
+      "width": 25,
+      "height": 27,
+      "drawOffsetX": 32,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator34": {
+      "x": 29,
+      "y": 323,
+      "width": 26,
+      "height": 26,
+      "drawOffsetX": 31,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/Bumper/Evil18": {
-      "x": 372,
-      "y": 199,
+      "x": 57,
+      "y": 323,
       "width": 26,
       "height": 26,
       "drawOffsetX": 19,
       "drawOffsetY": 19,
       "frameWidth": 64,
       "frameHeight": 64
+    },
+    "characters/monsters/predator38": {
+      "x": 85,
+      "y": 323,
+      "width": 26,
+      "height": 26,
+      "drawOffsetX": 31,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
     },
     "objects/Bumper/Evil42": {
-      "x": 400,
-      "y": 199,
+      "x": 113,
+      "y": 323,
       "width": 26,
       "height": 26,
       "drawOffsetX": 19,
@@ -5351,9 +7181,279 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "characters/monsters/predator39": {
+      "x": 141,
+      "y": 323,
+      "width": 26,
+      "height": 26,
+      "drawOffsetX": 31,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator128": {
+      "x": 169,
+      "y": 323,
+      "width": 26,
+      "height": 26,
+      "drawOffsetX": 31,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator102": {
+      "x": 197,
+      "y": 323,
+      "width": 26,
+      "height": 26,
+      "drawOffsetX": 31,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator143": {
+      "x": 225,
+      "y": 323,
+      "width": 26,
+      "height": 26,
+      "drawOffsetX": 31,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator101": {
+      "x": 253,
+      "y": 323,
+      "width": 26,
+      "height": 26,
+      "drawOffsetX": 31,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator142": {
+      "x": 281,
+      "y": 323,
+      "width": 26,
+      "height": 26,
+      "drawOffsetX": 31,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator141": {
+      "x": 309,
+      "y": 323,
+      "width": 26,
+      "height": 26,
+      "drawOffsetX": 31,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator14": {
+      "x": 337,
+      "y": 323,
+      "width": 26,
+      "height": 26,
+      "drawOffsetX": 31,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator04": {
+      "x": 365,
+      "y": 323,
+      "width": 26,
+      "height": 26,
+      "drawOffsetX": 31,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator18": {
+      "x": 393,
+      "y": 323,
+      "width": 26,
+      "height": 26,
+      "drawOffsetX": 31,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator19": {
+      "x": 421,
+      "y": 323,
+      "width": 26,
+      "height": 26,
+      "drawOffsetX": 31,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator24": {
+      "x": 449,
+      "y": 323,
+      "width": 26,
+      "height": 26,
+      "drawOffsetX": 31,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator138": {
+      "x": 477,
+      "y": 323,
+      "width": 24,
+      "height": 29,
+      "drawOffsetX": 33,
+      "drawOffsetY": 34,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator46": {
+      "x": 503,
+      "y": 323,
+      "width": 25,
+      "height": 28,
+      "drawOffsetX": 32,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator12": {
+      "x": 530,
+      "y": 323,
+      "width": 25,
+      "height": 28,
+      "drawOffsetX": 32,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator22": {
+      "x": 557,
+      "y": 323,
+      "width": 25,
+      "height": 28,
+      "drawOffsetX": 32,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator02": {
+      "x": 584,
+      "y": 323,
+      "width": 25,
+      "height": 28,
+      "drawOffsetX": 32,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator31": {
+      "x": 611,
+      "y": 323,
+      "width": 25,
+      "height": 28,
+      "drawOffsetX": 32,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator32": {
+      "x": 638,
+      "y": 323,
+      "width": 25,
+      "height": 28,
+      "drawOffsetX": 32,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator52": {
+      "x": 665,
+      "y": 323,
+      "width": 25,
+      "height": 28,
+      "drawOffsetX": 32,
+      "drawOffsetY": 34,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator45": {
+      "x": 692,
+      "y": 323,
+      "width": 25,
+      "height": 28,
+      "drawOffsetX": 32,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator103": {
+      "x": 719,
+      "y": 323,
+      "width": 25,
+      "height": 28,
+      "drawOffsetX": 32,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator47": {
+      "x": 746,
+      "y": 323,
+      "width": 25,
+      "height": 28,
+      "drawOffsetX": 32,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator11": {
+      "x": 773,
+      "y": 323,
+      "width": 25,
+      "height": 28,
+      "drawOffsetX": 32,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator01": {
+      "x": 800,
+      "y": 323,
+      "width": 25,
+      "height": 28,
+      "drawOffsetX": 32,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator21": {
+      "x": 827,
+      "y": 323,
+      "width": 25,
+      "height": 28,
+      "drawOffsetX": 32,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator48": {
+      "x": 854,
+      "y": 323,
+      "width": 26,
+      "height": 27,
+      "drawOffsetX": 31,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/Bumper/Evil05": {
-      "x": 428,
-      "y": 199,
+      "x": 882,
+      "y": 323,
       "width": 26,
       "height": 27,
       "drawOffsetX": 19,
@@ -5361,9 +7461,79 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "characters/monsters/predator29": {
+      "x": 910,
+      "y": 323,
+      "width": 26,
+      "height": 27,
+      "drawOffsetX": 31,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator140": {
+      "x": 938,
+      "y": 323,
+      "width": 27,
+      "height": 26,
+      "drawOffsetX": 30,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator10": {
+      "x": 967,
+      "y": 323,
+      "width": 26,
+      "height": 27,
+      "drawOffsetX": 31,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator09": {
+      "x": 995,
+      "y": 323,
+      "width": 26,
+      "height": 27,
+      "drawOffsetX": 31,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator30": {
+      "x": 2,
+      "y": 354,
+      "width": 26,
+      "height": 27,
+      "drawOffsetX": 31,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator104": {
+      "x": 30,
+      "y": 354,
+      "width": 25,
+      "height": 29,
+      "drawOffsetX": 31,
+      "drawOffsetY": 34,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator28": {
+      "x": 57,
+      "y": 354,
+      "width": 26,
+      "height": 28,
+      "drawOffsetX": 31,
+      "drawOffsetY": 34,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/Bumper/Evil06": {
-      "x": 456,
-      "y": 199,
+      "x": 85,
+      "y": 354,
       "width": 26,
       "height": 28,
       "drawOffsetX": 19,
@@ -5372,8 +7542,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil14": {
-      "x": 484,
-      "y": 199,
+      "x": 113,
+      "y": 354,
       "width": 26,
       "height": 28,
       "drawOffsetX": 19,
@@ -5381,9 +7551,19 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "characters/monsters/predator08": {
+      "x": 141,
+      "y": 354,
+      "width": 26,
+      "height": 28,
+      "drawOffsetX": 31,
+      "drawOffsetY": 34,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/Bumper/Evil38": {
-      "x": 512,
-      "y": 199,
+      "x": 169,
+      "y": 354,
       "width": 26,
       "height": 28,
       "drawOffsetX": 19,
@@ -5391,9 +7571,19 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "objects/puffer/explode02": {
+      "x": 197,
+      "y": 354,
+      "width": 28,
+      "height": 26,
+      "drawOffsetX": 18,
+      "drawOffsetY": 19,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
     "objects/Bumper/Evil19": {
-      "x": 540,
-      "y": 199,
+      "x": 227,
+      "y": 354,
       "width": 26,
       "height": 28,
       "drawOffsetX": 19,
@@ -5401,9 +7591,19 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "characters/monsters/predator106": {
+      "x": 255,
+      "y": 354,
+      "width": 26,
+      "height": 28,
+      "drawOffsetX": 29,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/Bumper/Evil15": {
-      "x": 568,
-      "y": 199,
+      "x": 283,
+      "y": 354,
       "width": 26,
       "height": 29,
       "drawOffsetX": 19,
@@ -5411,9 +7611,39 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "characters/monsters/predator107": {
+      "x": 311,
+      "y": 354,
+      "width": 26,
+      "height": 29,
+      "drawOffsetX": 29,
+      "drawOffsetY": 34,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator105": {
+      "x": 339,
+      "y": 354,
+      "width": 26,
+      "height": 29,
+      "drawOffsetX": 29,
+      "drawOffsetY": 34,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss04": {
+      "x": 367,
+      "y": 354,
+      "width": 26,
+      "height": 29,
+      "drawOffsetX": 29,
+      "drawOffsetY": 42,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/Bumper/Evil20": {
-      "x": 596,
-      "y": 199,
+      "x": 395,
+      "y": 354,
       "width": 26,
       "height": 29,
       "drawOffsetX": 19,
@@ -5422,8 +7652,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil07": {
-      "x": 624,
-      "y": 199,
+      "x": 423,
+      "y": 354,
       "width": 26,
       "height": 29,
       "drawOffsetX": 19,
@@ -5431,9 +7661,79 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "characters/monsters/predator53": {
+      "x": 451,
+      "y": 354,
+      "width": 28,
+      "height": 27,
+      "drawOffsetX": 29,
+      "drawOffsetY": 34,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator51": {
+      "x": 481,
+      "y": 354,
+      "width": 28,
+      "height": 27,
+      "drawOffsetX": 28,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator50": {
+      "x": 511,
+      "y": 354,
+      "width": 28,
+      "height": 27,
+      "drawOffsetX": 28,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator115": {
+      "x": 541,
+      "y": 354,
+      "width": 20,
+      "height": 38,
+      "drawOffsetX": 37,
+      "drawOffsetY": 29,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator134": {
+      "x": 563,
+      "y": 354,
+      "width": 24,
+      "height": 32,
+      "drawOffsetX": 34,
+      "drawOffsetY": 33,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator133": {
+      "x": 589,
+      "y": 354,
+      "width": 31,
+      "height": 25,
+      "drawOffsetX": 38,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator136": {
+      "x": 622,
+      "y": 354,
+      "width": 26,
+      "height": 30,
+      "drawOffsetX": 31,
+      "drawOffsetY": 32,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/Bumper/Evil41": {
-      "x": 652,
-      "y": 199,
+      "x": 650,
+      "y": 354,
       "width": 26,
       "height": 30,
       "drawOffsetX": 19,
@@ -5442,8 +7742,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil21": {
-      "x": 680,
-      "y": 199,
+      "x": 678,
+      "y": 354,
       "width": 26,
       "height": 30,
       "drawOffsetX": 19,
@@ -5452,8 +7752,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil08": {
-      "x": 708,
-      "y": 199,
+      "x": 706,
+      "y": 354,
       "width": 26,
       "height": 30,
       "drawOffsetX": 19,
@@ -5462,8 +7762,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil16": {
-      "x": 736,
-      "y": 199,
+      "x": 734,
+      "y": 354,
       "width": 26,
       "height": 30,
       "drawOffsetX": 19,
@@ -5472,8 +7772,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil17": {
-      "x": 764,
-      "y": 199,
+      "x": 762,
+      "y": 354,
       "width": 26,
       "height": 30,
       "drawOffsetX": 19,
@@ -5481,9 +7781,19 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "characters/monsters/predator137": {
+      "x": 790,
+      "y": 354,
+      "width": 26,
+      "height": 30,
+      "drawOffsetX": 31,
+      "drawOffsetY": 33,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/Bumper/Evil11": {
-      "x": 792,
-      "y": 199,
+      "x": 818,
+      "y": 354,
       "width": 26,
       "height": 30,
       "drawOffsetX": 19,
@@ -5492,8 +7802,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil22": {
-      "x": 820,
-      "y": 199,
+      "x": 846,
+      "y": 354,
       "width": 26,
       "height": 30,
       "drawOffsetX": 19,
@@ -5501,9 +7811,29 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "characters/monsters/predator49": {
+      "x": 874,
+      "y": 354,
+      "width": 28,
+      "height": 28,
+      "drawOffsetX": 28,
+      "drawOffsetY": 34,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator132": {
+      "x": 904,
+      "y": 354,
+      "width": 32,
+      "height": 25,
+      "drawOffsetX": 38,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/Bumper/Evil12": {
-      "x": 848,
-      "y": 199,
+      "x": 938,
+      "y": 354,
       "width": 26,
       "height": 31,
       "drawOffsetX": 19,
@@ -5512,8 +7842,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil10": {
-      "x": 876,
-      "y": 199,
+      "x": 966,
+      "y": 354,
       "width": 26,
       "height": 31,
       "drawOffsetX": 19,
@@ -5522,8 +7852,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil13": {
-      "x": 904,
-      "y": 199,
+      "x": 994,
+      "y": 354,
       "width": 26,
       "height": 31,
       "drawOffsetX": 19,
@@ -5532,8 +7862,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil09": {
-      "x": 932,
-      "y": 199,
+      "x": 2,
+      "y": 394,
       "width": 26,
       "height": 31,
       "drawOffsetX": 19,
@@ -5541,9 +7871,229 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "characters/monsters/predator113": {
+      "x": 30,
+      "y": 394,
+      "width": 24,
+      "height": 34,
+      "drawOffsetX": 33,
+      "drawOffsetY": 31,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator135": {
+      "x": 56,
+      "y": 394,
+      "width": 28,
+      "height": 30,
+      "drawOffsetX": 30,
+      "drawOffsetY": 32,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss44": {
+      "x": 86,
+      "y": 394,
+      "width": 29,
+      "height": 29,
+      "drawOffsetX": 32,
+      "drawOffsetY": 39,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "objects/puffer/explode03": {
+      "x": 117,
+      "y": 394,
+      "width": 30,
+      "height": 29,
+      "drawOffsetX": 17,
+      "drawOffsetY": 17,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "objects/glider/death03": {
+      "x": 149,
+      "y": 394,
+      "width": 28,
+      "height": 32,
+      "drawOffsetX": 6,
+      "drawOffsetY": 2,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "characters/oshiro/boss47": {
+      "x": 179,
+      "y": 394,
+      "width": 29,
+      "height": 31,
+      "drawOffsetX": 33,
+      "drawOffsetY": 38,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss45": {
+      "x": 210,
+      "y": 394,
+      "width": 30,
+      "height": 30,
+      "drawOffsetX": 32,
+      "drawOffsetY": 38,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss30": {
+      "x": 242,
+      "y": 394,
+      "width": 30,
+      "height": 31,
+      "drawOffsetX": 34,
+      "drawOffsetY": 39,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "objects/glider/death00": {
+      "x": 274,
+      "y": 394,
+      "width": 31,
+      "height": 30,
+      "drawOffsetX": 9,
+      "drawOffsetY": 3,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "characters/oshiro/boss24": {
+      "x": 307,
+      "y": 394,
+      "width": 30,
+      "height": 31,
+      "drawOffsetX": 34,
+      "drawOffsetY": 39,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss25": {
+      "x": 339,
+      "y": 394,
+      "width": 30,
+      "height": 31,
+      "drawOffsetX": 34,
+      "drawOffsetY": 39,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss26": {
+      "x": 371,
+      "y": 394,
+      "width": 30,
+      "height": 31,
+      "drawOffsetX": 34,
+      "drawOffsetY": 39,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss46": {
+      "x": 403,
+      "y": 394,
+      "width": 30,
+      "height": 31,
+      "drawOffsetX": 32,
+      "drawOffsetY": 38,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss23": {
+      "x": 435,
+      "y": 394,
+      "width": 30,
+      "height": 31,
+      "drawOffsetX": 34,
+      "drawOffsetY": 39,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss32": {
+      "x": 467,
+      "y": 394,
+      "width": 30,
+      "height": 31,
+      "drawOffsetX": 34,
+      "drawOffsetY": 39,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss31": {
+      "x": 499,
+      "y": 394,
+      "width": 30,
+      "height": 31,
+      "drawOffsetX": 34,
+      "drawOffsetY": 39,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss33": {
+      "x": 531,
+      "y": 394,
+      "width": 30,
+      "height": 31,
+      "drawOffsetX": 34,
+      "drawOffsetY": 39,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss06": {
+      "x": 563,
+      "y": 394,
+      "width": 30,
+      "height": 31,
+      "drawOffsetX": 30,
+      "drawOffsetY": 40,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator129": {
+      "x": 595,
+      "y": 394,
+      "width": 38,
+      "height": 25,
+      "drawOffsetX": 34,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator125": {
+      "x": 635,
+      "y": 394,
+      "width": 37,
+      "height": 26,
+      "drawOffsetX": 31,
+      "drawOffsetY": 33,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss41": {
+      "x": 674,
+      "y": 394,
+      "width": 25,
+      "height": 40,
+      "drawOffsetX": 36,
+      "drawOffsetY": 30,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss72": {
+      "x": 701,
+      "y": 394,
+      "width": 31,
+      "height": 33,
+      "drawOffsetX": 34,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/booster/boosterRed17": {
-      "x": 960,
-      "y": 199,
+      "x": 734,
+      "y": 394,
       "width": 32,
       "height": 32,
       "drawOffsetX": 0,
@@ -5552,8 +8102,8 @@
       "frameHeight": 32
     },
     "objects/booster/booster17": {
-      "x": 2,
-      "y": 233,
+      "x": 768,
+      "y": 394,
       "width": 32,
       "height": 32,
       "drawOffsetX": 0,
@@ -5561,9 +8111,469 @@
       "frameWidth": 32,
       "frameHeight": 32
     },
-    "objects/Bumper/Idle34": {
+    "characters/monsters/predator131": {
+      "x": 802,
+      "y": 394,
+      "width": 38,
+      "height": 27,
+      "drawOffsetX": 34,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator130": {
+      "x": 842,
+      "y": 394,
+      "width": 39,
+      "height": 27,
+      "drawOffsetX": 34,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss22": {
+      "x": 883,
+      "y": 394,
+      "width": 32,
+      "height": 33,
+      "drawOffsetX": 34,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss36": {
+      "x": 917,
+      "y": 394,
+      "width": 31,
+      "height": 35,
+      "drawOffsetX": 34,
+      "drawOffsetY": 34,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "objects/glider/death01": {
+      "x": 950,
+      "y": 394,
+      "width": 35,
+      "height": 31,
+      "drawOffsetX": 6,
+      "drawOffsetY": 2,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "characters/oshiro/boss21": {
+      "x": 987,
+      "y": 394,
+      "width": 32,
+      "height": 34,
+      "drawOffsetX": 34,
+      "drawOffsetY": 37,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "objects/glider/death02": {
+      "x": 2,
+      "y": 436,
+      "width": 33,
+      "height": 33,
+      "drawOffsetX": 6,
+      "drawOffsetY": 1,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "characters/monsters/predator127": {
+      "x": 37,
+      "y": 436,
+      "width": 38,
+      "height": 29,
+      "drawOffsetX": 30,
+      "drawOffsetY": 32,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss34": {
+      "x": 77,
+      "y": 436,
+      "width": 31,
+      "height": 36,
+      "drawOffsetX": 34,
+      "drawOffsetY": 34,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss35": {
+      "x": 110,
+      "y": 436,
+      "width": 31,
+      "height": 36,
+      "drawOffsetX": 34,
+      "drawOffsetY": 34,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss37": {
+      "x": 143,
+      "y": 436,
+      "width": 31,
+      "height": 36,
+      "drawOffsetX": 34,
+      "drawOffsetY": 34,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator108": {
+      "x": 176,
+      "y": 436,
+      "width": 36,
+      "height": 31,
+      "drawOffsetX": 30,
+      "drawOffsetY": 31,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss18": {
+      "x": 214,
+      "y": 436,
+      "width": 32,
+      "height": 37,
+      "drawOffsetX": 34,
+      "drawOffsetY": 34,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss20": {
+      "x": 248,
+      "y": 436,
+      "width": 32,
+      "height": 37,
+      "drawOffsetX": 34,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator109": {
+      "x": 282,
+      "y": 436,
+      "width": 36,
+      "height": 33,
+      "drawOffsetX": 32,
+      "drawOffsetY": 29,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator114": {
+      "x": 320,
+      "y": 436,
+      "width": 33,
+      "height": 36,
+      "drawOffsetX": 31,
+      "drawOffsetY": 30,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator126": {
+      "x": 355,
+      "y": 436,
+      "width": 39,
+      "height": 31,
+      "drawOffsetX": 29,
+      "drawOffsetY": 32,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss19": {
+      "x": 396,
+      "y": 436,
+      "width": 32,
+      "height": 38,
+      "drawOffsetX": 34,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator110": {
+      "x": 430,
+      "y": 436,
+      "width": 36,
+      "height": 34,
+      "drawOffsetX": 32,
+      "drawOffsetY": 28,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss12": {
+      "x": 468,
+      "y": 436,
+      "width": 31,
+      "height": 40,
+      "drawOffsetX": 33,
+      "drawOffsetY": 32,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss13": {
+      "x": 501,
+      "y": 436,
+      "width": 31,
+      "height": 40,
+      "drawOffsetX": 33,
+      "drawOffsetY": 32,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss14": {
+      "x": 534,
+      "y": 436,
+      "width": 31,
+      "height": 40,
+      "drawOffsetX": 33,
+      "drawOffsetY": 32,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss38": {
+      "x": 567,
+      "y": 436,
+      "width": 31,
+      "height": 40,
+      "drawOffsetX": 33,
+      "drawOffsetY": 32,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss68": {
+      "x": 600,
+      "y": 436,
+      "width": 37,
+      "height": 34,
+      "drawOffsetX": 31,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss40": {
+      "x": 639,
+      "y": 436,
+      "width": 34,
+      "height": 37,
+      "drawOffsetX": 28,
+      "drawOffsetY": 34,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss16": {
+      "x": 675,
+      "y": 436,
+      "width": 30,
+      "height": 43,
+      "drawOffsetX": 33,
+      "drawOffsetY": 28,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss17": {
+      "x": 707,
+      "y": 436,
+      "width": 30,
+      "height": 43,
+      "drawOffsetX": 33,
+      "drawOffsetY": 28,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator77": {
+      "x": 739,
+      "y": 436,
+      "width": 31,
+      "height": 42,
+      "drawOffsetX": 31,
+      "drawOffsetY": 30,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator75": {
+      "x": 772,
+      "y": 436,
+      "width": 31,
+      "height": 42,
+      "drawOffsetX": 31,
+      "drawOffsetY": 30,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss15": {
+      "x": 805,
+      "y": 436,
+      "width": 30,
+      "height": 44,
+      "drawOffsetX": 33,
+      "drawOffsetY": 28,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss05": {
+      "x": 837,
+      "y": 436,
+      "width": 38,
+      "height": 35,
+      "drawOffsetX": 38,
+      "drawOffsetY": 36,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator76": {
+      "x": 877,
+      "y": 436,
+      "width": 32,
+      "height": 42,
+      "drawOffsetX": 30,
+      "drawOffsetY": 30,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator78": {
+      "x": 911,
+      "y": 436,
+      "width": 32,
+      "height": 42,
+      "drawOffsetX": 31,
+      "drawOffsetY": 30,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator79": {
+      "x": 945,
+      "y": 436,
+      "width": 32,
+      "height": 42,
+      "drawOffsetX": 31,
+      "drawOffsetY": 30,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator80": {
+      "x": 979,
+      "y": 436,
+      "width": 32,
+      "height": 42,
+      "drawOffsetX": 31,
+      "drawOffsetY": 30,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator81": {
+      "x": 2,
+      "y": 482,
+      "width": 32,
+      "height": 42,
+      "drawOffsetX": 30,
+      "drawOffsetY": 30,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss07": {
       "x": 36,
-      "y": 233,
+      "y": 482,
+      "width": 39,
+      "height": 35,
+      "drawOffsetX": 37,
+      "drawOffsetY": 35,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator148": {
+      "x": 77,
+      "y": 482,
+      "width": 40,
+      "height": 35,
+      "drawOffsetX": 28,
+      "drawOffsetY": 30,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss69": {
+      "x": 119,
+      "y": 482,
+      "width": 41,
+      "height": 35,
+      "drawOffsetX": 29,
+      "drawOffsetY": 34,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator82": {
+      "x": 162,
+      "y": 482,
+      "width": 35,
+      "height": 42,
+      "drawOffsetX": 28,
+      "drawOffsetY": 30,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss39": {
+      "x": 199,
+      "y": 482,
+      "width": 38,
+      "height": 40,
+      "drawOffsetX": 26,
+      "drawOffsetY": 32,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator145": {
+      "x": 239,
+      "y": 482,
+      "width": 38,
+      "height": 40,
+      "drawOffsetX": 29,
+      "drawOffsetY": 27,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss70": {
+      "x": 279,
+      "y": 482,
+      "width": 42,
+      "height": 38,
+      "drawOffsetX": 29,
+      "drawOffsetY": 32,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator147": {
+      "x": 323,
+      "y": 482,
+      "width": 40,
+      "height": 40,
+      "drawOffsetX": 28,
+      "drawOffsetY": 26,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss11": {
+      "x": 365,
+      "y": 482,
+      "width": 35,
+      "height": 46,
+      "drawOffsetX": 29,
+      "drawOffsetY": 28,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss71": {
+      "x": 402,
+      "y": 482,
+      "width": 43,
+      "height": 39,
+      "drawOffsetX": 28,
+      "drawOffsetY": 30,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "objects/Bumper/Idle34": {
+      "x": 447,
+      "y": 482,
       "width": 41,
       "height": 41,
       "drawOffsetX": 12,
@@ -5571,9 +8581,99 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "characters/monsters/predator146": {
+      "x": 490,
+      "y": 482,
+      "width": 42,
+      "height": 41,
+      "drawOffsetX": 27,
+      "drawOffsetY": 26,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss10": {
+      "x": 534,
+      "y": 482,
+      "width": 38,
+      "height": 46,
+      "drawOffsetX": 28,
+      "drawOffsetY": 28,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss08": {
+      "x": 574,
+      "y": 482,
+      "width": 42,
+      "height": 42,
+      "drawOffsetX": 29,
+      "drawOffsetY": 30,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator87": {
+      "x": 618,
+      "y": 482,
+      "width": 37,
+      "height": 48,
+      "drawOffsetX": 25,
+      "drawOffsetY": 24,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator90": {
+      "x": 657,
+      "y": 482,
+      "width": 37,
+      "height": 50,
+      "drawOffsetX": 26,
+      "drawOffsetY": 25,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator97": {
+      "x": 696,
+      "y": 482,
+      "width": 58,
+      "height": 33,
+      "drawOffsetX": 19,
+      "drawOffsetY": 32,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator96": {
+      "x": 756,
+      "y": 482,
+      "width": 58,
+      "height": 33,
+      "drawOffsetX": 19,
+      "drawOffsetY": 32,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator88": {
+      "x": 816,
+      "y": 482,
+      "width": 38,
+      "height": 52,
+      "drawOffsetX": 24,
+      "drawOffsetY": 24,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss09": {
+      "x": 856,
+      "y": 482,
+      "width": 43,
+      "height": 46,
+      "drawOffsetX": 27,
+      "drawOffsetY": 27,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/Bumper/Evil32": {
-      "x": 79,
-      "y": 233,
+      "x": 901,
+      "y": 482,
       "width": 47,
       "height": 43,
       "drawOffsetX": 8,
@@ -5581,9 +8681,79 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "characters/oshiro/boss27": {
+      "x": 950,
+      "y": 482,
+      "width": 45,
+      "height": 45,
+      "drawOffsetX": 27,
+      "drawOffsetY": 32,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss29": {
+      "x": 2,
+      "y": 536,
+      "width": 68,
+      "height": 30,
+      "drawOffsetX": 19,
+      "drawOffsetY": 40,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/oshiro/boss28": {
+      "x": 72,
+      "y": 536,
+      "width": 68,
+      "height": 30,
+      "drawOffsetX": 19,
+      "drawOffsetY": 40,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator83": {
+      "x": 142,
+      "y": 536,
+      "width": 50,
+      "height": 42,
+      "drawOffsetX": 26,
+      "drawOffsetY": 30,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator91": {
+      "x": 194,
+      "y": 536,
+      "width": 43,
+      "height": 52,
+      "drawOffsetX": 25,
+      "drawOffsetY": 25,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator89": {
+      "x": 239,
+      "y": 536,
+      "width": 39,
+      "height": 58,
+      "drawOffsetX": 24,
+      "drawOffsetY": 25,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator95": {
+      "x": 280,
+      "y": 536,
+      "width": 56,
+      "height": 41,
+      "drawOffsetX": 20,
+      "drawOffsetY": 30,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/Bumper/Evil33": {
-      "x": 128,
-      "y": 233,
+      "x": 338,
+      "y": 536,
       "width": 46,
       "height": 50,
       "drawOffsetX": 8,
@@ -5592,8 +8762,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle35": {
-      "x": 176,
-      "y": 233,
+      "x": 386,
+      "y": 536,
       "width": 46,
       "height": 50,
       "drawOffsetX": 8,
@@ -5601,9 +8771,59 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "danger/snowball16": {
+      "x": 434,
+      "y": 536,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "objects/glider/death07": {
+      "x": 484,
+      "y": 536,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "characters/monsters/predator92": {
+      "x": 534,
+      "y": 536,
+      "width": 48,
+      "height": 50,
+      "drawOffsetX": 23,
+      "drawOffsetY": 30,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator84": {
+      "x": 584,
+      "y": 536,
+      "width": 53,
+      "height": 46,
+      "drawOffsetX": 25,
+      "drawOffsetY": 26,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "characters/monsters/predator86": {
+      "x": 639,
+      "y": 536,
+      "width": 52,
+      "height": 48,
+      "drawOffsetX": 27,
+      "drawOffsetY": 24,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/Bumper/Evil34": {
-      "x": 224,
-      "y": 233,
+      "x": 693,
+      "y": 536,
       "width": 51,
       "height": 50,
       "drawOffsetX": 6,
@@ -5612,8 +8832,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle36": {
-      "x": 277,
-      "y": 233,
+      "x": 746,
+      "y": 536,
       "width": 51,
       "height": 50,
       "drawOffsetX": 6,
@@ -5621,9 +8841,19 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "characters/monsters/predator85": {
+      "x": 799,
+      "y": 536,
+      "width": 54,
+      "height": 48,
+      "drawOffsetX": 25,
+      "drawOffsetY": 24,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/Bumper/Idle37": {
-      "x": 330,
-      "y": 233,
+      "x": 855,
+      "y": 536,
       "width": 53,
       "height": 50,
       "drawOffsetX": 5,
@@ -5632,8 +8862,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil35": {
-      "x": 385,
-      "y": 233,
+      "x": 910,
+      "y": 536,
       "width": 53,
       "height": 50,
       "drawOffsetX": 5,
@@ -5641,9 +8871,19 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "characters/monsters/predator94": {
+      "x": 965,
+      "y": 536,
+      "width": 55,
+      "height": 49,
+      "drawOffsetX": 20,
+      "drawOffsetY": 29,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/Bumper/Evil37": {
-      "x": 440,
-      "y": 233,
+      "x": 2,
+      "y": 596,
       "width": 54,
       "height": 50,
       "drawOffsetX": 5,
@@ -5652,8 +8892,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle39": {
-      "x": 496,
-      "y": 233,
+      "x": 58,
+      "y": 596,
       "width": 54,
       "height": 50,
       "drawOffsetX": 5,
@@ -5662,8 +8902,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Evil36": {
-      "x": 552,
-      "y": 233,
+      "x": 114,
+      "y": 596,
       "width": 54,
       "height": 51,
       "drawOffsetX": 5,
@@ -5672,8 +8912,8 @@
       "frameHeight": 64
     },
     "objects/Bumper/Idle38": {
-      "x": 608,
-      "y": 233,
+      "x": 170,
+      "y": 596,
       "width": 54,
       "height": 51,
       "drawOffsetX": 5,
@@ -5681,9 +8921,19 @@
       "frameWidth": 64,
       "frameHeight": 64
     },
+    "characters/monsters/predator93": {
+      "x": 226,
+      "y": 596,
+      "width": 53,
+      "height": 53,
+      "drawOffsetX": 21,
+      "drawOffsetY": 29,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
     "objects/BumpBlockNew/fire00": {
-      "x": 664,
-      "y": 233,
+      "x": 281,
+      "y": 596,
       "width": 64,
       "height": 64,
       "drawOffsetX": 0,
@@ -5692,8 +8942,8 @@
       "frameHeight": 64
     },
     "objects/fireball/fireball24": {
-      "x": 730,
-      "y": 233,
+      "x": 347,
+      "y": 596,
       "width": 64,
       "height": 64,
       "drawOffsetX": 0,
@@ -5702,8 +8952,8 @@
       "frameHeight": 64
     },
     "tilesets/snow": {
-      "x": 796,
-      "y": 233,
+      "x": 413,
+      "y": 596,
       "width": 48,
       "height": 120,
       "drawOffsetX": 0,
@@ -5712,8 +8962,8 @@
       "frameHeight": 120
     },
     "tilesets/dirt": {
-      "x": 846,
-      "y": 233,
+      "x": 463,
+      "y": 596,
       "width": 48,
       "height": 120,
       "drawOffsetX": 0,
@@ -5722,8 +8972,8 @@
       "frameHeight": 120
     },
     "tilesets/bgDirt": {
-      "x": 896,
-      "y": 233,
+      "x": 513,
+      "y": 596,
       "width": 48,
       "height": 120,
       "drawOffsetX": 0,
@@ -5732,8 +8982,8 @@
       "frameHeight": 120
     },
     "tilesets/bgSnow": {
-      "x": 946,
-      "y": 233,
+      "x": 563,
+      "y": 596,
       "width": 48,
       "height": 120,
       "drawOffsetX": 0,

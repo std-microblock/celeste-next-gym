@@ -108,6 +108,8 @@ const GAMEPLAY_PATHS = [
   'objects/dreamblock/active', 'objects/dreamblock/particles',
   'objects/flyFeather/', 'objects/Bumper/', 'objects/badelineboost/',
   'objects/spring/', 'objects/fireball/', 'characters/theoCrystal/idle',
+  'objects/glider/', 'objects/puffer/', 'objects/clouds/cloud', 'objects/moveBlock/',
+  'characters/oshiro/boss', 'characters/monsters/predator', 'danger/snowball',
   'collectables/strawberry/normal',
   'objects/zipmover/',
   'objects/BumpBlockNew/fire00', 'objects/BumpBlockNew/fire_center',

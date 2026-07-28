@@ -540,6 +540,12 @@ export function runtimeEntityBounds(entity: MapEntity, state: SimState, kindInde
   } else if (entity.kind === 'glider') {
     const position = state.gliders?.[kindIndex]?.position
     if (position) return { ...box, x: position.x - 4, y: position.y - 10, width: 8, height: 10 }
+  } else if (entity.kind === 'cloud') {
+    const position = state.clouds?.[kindIndex]?.position
+    if (position) return { ...box, x: position.x, y: position.y }
+  } else if (entity.kind === 'move_block') {
+    const position = state.move_blocks?.[kindIndex]?.position
+    if (position) return { ...box, x: position.x, y: position.y }
   } else if (entity.kind === 'moving_solid') {
     const time = state.moving_solid_time ?? 0
     return {
@@ -549,6 +555,18 @@ export function runtimeEntityBounds(entity: MapEntity, state: SimState, kindInde
     }
   }
   return { ...box }
+}
+
+export function strawberryIsPicked(state: SimState, entityIndex: number): boolean {
+  const picked = state.strawberry_picked_mask ?? 0
+  const mask = 1n << BigInt(entityIndex)
+  return ((typeof picked === 'bigint' ? picked : BigInt(picked)) & mask) !== 0n
+}
+
+function bounceTargetActive(entity: MapEntity, state: SimState): boolean {
+  const centerX = entity.bounds.x + entity.bounds.width / 2
+  const centerY = entity.bounds.y + entity.bounds.height / 2
+  return (state.bounce_reuse_timer ?? 0) > 0 && targetMatches(state.last_bounce_target, centerX, centerY)
 }
 
 export function activeBoosterCenter(entity: MapEntity, state: SimState): Vec2 | undefined {
@@ -648,27 +666,64 @@ function drawIceBall(context: CanvasRenderingContext2D, assets: GameAssets, enti
   drawCenteredEntry(context, assets, `objects/fireball/fireball${String(index).padStart(2, '0')}`, center.x, center.y, true)
 }
 
+function drawPuffer(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState): void {
+  const center = { x: entity.bounds.x + entity.bounds.width / 2, y: entity.bounds.y + entity.bounds.height / 2 }
+  const active = bounceTargetActive(entity, state)
+  const timer = state.bounce_reuse_timer ?? 0
+  let prefix = 'objects/puffer/idle'
+  let index = Math.floor(frame / 5) % 12
+  if (active && timer > 1.7) {
+    prefix = 'objects/puffer/explode'
+    index = Math.min(9, Math.max(0, Math.floor((2.5 - timer) / .08)))
+  } else if (active) {
+    prefix = 'objects/puffer/hidden'
+    index = Math.floor(frame / 5) % 4
+  }
+  drawCenteredEntry(context, assets, `${prefix}${String(index).padStart(2, '0')}`, center.x, center.y, true)
+}
+
+function drawAngryOshiro(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState): void {
+  const center = { x: entity.bounds.x + entity.bounds.width / 2, y: entity.bounds.y + entity.bounds.height / 2 }
+  const hit = bounceTargetActive(entity, state)
+  const sequence = hit ? [68, 69, 70, 71, 72] : [34, 35, 36, 37]
+  const index = sequence[Math.floor(frame / (hit ? 2 : 4)) % sequence.length]
+  drawCenteredEntry(context, assets, `characters/oshiro/boss${String(index).padStart(2, '0')}`, center.x, center.y, true, -1)
+}
+
+function drawSeeker(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState): void {
+  const center = { x: entity.bounds.x + entity.bounds.width / 2, y: entity.bounds.y + entity.bounds.height / 2 }
+  const hit = bounceTargetActive(entity, state)
+  const sequence = hit ? [134, 135, 136, 137, 138, 139, 140, 141, 142, 143] : Array.from({ length: 20 }, (_, index) => index)
+  const index = sequence[Math.floor(frame / (hit ? 4 : 5)) % sequence.length]
+  drawCenteredEntry(context, assets, `characters/monsters/predator${String(index).padStart(2, '0')}`, center.x, center.y, true)
+}
+
+function drawSnowball(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState): void {
+  const center = { x: entity.bounds.x + entity.bounds.width / 2, y: entity.bounds.y + entity.bounds.height / 2 }
+  const hit = bounceTargetActive(entity, state)
+  const index = hit ? 12 + Math.min(4, Math.floor(frame / 2) % 5) : Math.floor(frame / 5) % 12
+  drawCenteredEntry(context, assets, `danger/snowball${String(index).padStart(2, '0')}`, center.x, center.y, true)
+}
+
+function drawCloud(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, state: SimState, kindIndex: number): void {
+  const box = runtimeEntityBounds(entity, state, kindIndex)
+  drawCenteredEntry(context, assets, 'objects/clouds/cloud00', box.x + box.width / 2, box.y + 2, true)
+}
+
 function drawTheoCrystal(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, state: SimState, kindIndex: number): void {
   const runtime = state.theo_crystals?.[kindIndex]
   const position = runtime?.position ?? { x: entity.bounds.x + 4, y: entity.bounds.y + 10 }
   drawOutlinedEntry(context, assets, 'characters/theoCrystal/idle00', position.x, position.y, 32, 42, -1)
 }
 
-function drawGlider(context: CanvasRenderingContext2D, entity: MapEntity, state: SimState, kindIndex: number): void {
+function drawGlider(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState, kindIndex: number): void {
   const runtime = state.gliders?.[kindIndex]
   const position = runtime?.position ?? { x: entity.bounds.x + 4, y: entity.bounds.y + 10 }
-  context.save()
-  context.translate(position.x, position.y - 5)
-  context.fillStyle = '#d9f3ff'
-  context.strokeStyle = '#29495a'
-  context.lineWidth = 1
-  context.beginPath()
-  context.moveTo(-12, 0)
-  context.quadraticCurveTo(0, -10, 12, 0)
-  context.quadraticCurveTo(0, 7, -12, 0)
-  context.fill()
-  context.stroke()
-  context.restore()
+  const prefix = runtime?.held ? 'objects/glider/held' : Math.abs(runtime?.speed.y ?? 0) > 20 ? 'objects/glider/fallLoop' : 'objects/glider/idle'
+  const available = frames(assets, prefix)
+  const key = available[Math.floor(frame / 5) % Math.max(1, available.length)]
+  const scaleX = (runtime?.speed.x ?? 0) < 0 ? -1 : 1
+  drawCenteredEntry(context, assets, key, position.x, position.y - 5, true, scaleX)
 }
 
 function drawAtlasTile(
@@ -761,6 +816,31 @@ function drawBounceBlock(context: CanvasRenderingContext2D, assets: GameAssets, 
   drawCenteredEntry(context, assets, key, box.x + box.width / 2, box.y + box.height / 2, true)
 }
 
+function drawMoveBlock(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, state: SimState, kindIndex: number): void {
+  const runtime = state.move_blocks?.[kindIndex]
+  if (runtime && !runtime.visible) return
+  const box = runtimeEntityBounds(entity, state, kindIndex)
+  const baseKey = entity.direction.x !== 0 ? 'objects/moveBlock/base_h' : entity.direction.y !== 0 ? 'objects/moveBlock/base_v' : 'objects/moveBlock/base'
+  const source = assets.entries[baseKey]
+  if (source) {
+    for (let y = 0; y < box.height; y += 8) {
+      for (let x = 0; x < box.width; x += 8) {
+        const width = Math.min(8, box.width - x)
+        const height = Math.min(8, box.height - y)
+        const sourceX = x === 0 ? 0 : x + 8 >= box.width ? 16 : 8
+        const sourceY = y === 0 ? 0 : y + 8 >= box.height ? 16 : 8
+        drawAtlasTile(context, assets, baseKey, sourceX, sourceY, width, height, box.x + x, box.y + y)
+      }
+    }
+  }
+  const breaking = runtime?.phase === 3
+  const angle = runtime?.angle ?? Math.atan2(entity.direction.y, entity.direction.x)
+  const normalized = ((-angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)
+  const arrowIndex = Math.min(7, Math.floor(normalized / (Math.PI * 2) * 8 + .5))
+  const key = breaking ? 'objects/moveBlock/x' : `objects/moveBlock/arrow${String(arrowIndex).padStart(2, '0')}`
+  drawCenteredEntry(context, assets, key, box.x + box.width / 2, box.y + box.height / 2, true)
+}
+
 function drawMovingSolid(context: CanvasRenderingContext2D, entity: MapEntity, state: SimState, kindIndex: number): void {
   const box = runtimeEntityBounds(entity, state, kindIndex)
   context.fillStyle = '#183b57'
@@ -790,7 +870,7 @@ function drawUnknownEntity(context: CanvasRenderingContext2D, entity: MapEntity)
   context.fillText(entity.name || entity.kind, box.x + 1, box.y - 1)
 }
 
-function drawEntity(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState, kindIndex: number): void {
+function drawEntity(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState, kindIndex: number, entityIndex: number): void {
   const box = entity.bounds
   if (entity.kind === 'spikes') {
     const direction = entity.direction.x < 0 ? 'left' : entity.direction.x > 0 ? 'right' : entity.direction.y > 0 ? 'down' : 'up'
@@ -811,20 +891,32 @@ function drawEntity(context: CanvasRenderingContext2D, assets: GameAssets, entit
     drawBumper(context, assets, entity, frame, state)
   } else if (entity.kind === 'ice_ball') {
     drawIceBall(context, assets, entity, frame, state)
+  } else if (entity.kind === 'puffer') {
+    drawPuffer(context, assets, entity, frame, state)
+  } else if (entity.kind === 'angry_oshiro') {
+    drawAngryOshiro(context, assets, entity, frame, state)
+  } else if (entity.kind === 'seeker') {
+    drawSeeker(context, assets, entity, frame, state)
+  } else if (entity.kind === 'snowball') {
+    drawSnowball(context, assets, entity, frame, state)
+  } else if (entity.kind === 'cloud') {
+    drawCloud(context, assets, entity, state, kindIndex)
   } else if (entity.kind === 'badeline_boost') {
     drawBadelineBoost(context, assets, entity, frame, state)
   } else if (entity.kind === 'spring') {
     drawSpring(context, assets, entity)
   } else if (entity.kind === 'strawberry') {
-    drawStrawberry(context, assets, entity, frame)
+    if (!strawberryIsPicked(state, entityIndex)) drawStrawberry(context, assets, entity, frame)
   } else if (entity.kind === 'bounce_block') {
     drawBounceBlock(context, assets, entity, frame, state, kindIndex)
   } else if (entity.kind === 'theo_crystal') {
     drawTheoCrystal(context, assets, entity, state, kindIndex)
   } else if (entity.kind === 'glider') {
-    drawGlider(context, entity, state, kindIndex)
+    drawGlider(context, assets, entity, frame, state, kindIndex)
   } else if (entity.kind === 'zip_mover') {
     drawZipMover(context, assets, entity, frame, state, kindIndex)
+  } else if (entity.kind === 'move_block') {
+    drawMoveBlock(context, assets, entity, state, kindIndex)
   } else if (entity.kind === 'moving_solid') {
     drawMovingSolid(context, entity, state, kindIndex)
   } else if (entity.kind !== 'wind') {
@@ -870,9 +962,9 @@ export function GameView({ map, state, states, frame, stale }: { map: GymMap; st
     context.scale(scale, scale)
     drawTiles(context, assets, map, solidGrid)
     const kindCounts = new Map<EntityKind, number>()
-    for (const entity of map.entities) {
+    for (const [entityIndex, entity] of map.entities.entries()) {
       const kindIndex = kindCounts.get(entity.kind) ?? 0
-      drawEntity(context, assets, entity, frame, state, kindIndex)
+      drawEntity(context, assets, entity, frame, state, kindIndex, entityIndex)
       kindCounts.set(entity.kind, kindIndex + 1)
     }
     context.globalAlpha = stale ? .45 : 1
