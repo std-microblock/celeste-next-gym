@@ -2776,7 +2776,11 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
     for (entity_index, entity) in map.entities.iter().enumerate() {
         let player_box = if matches!(
             entity.kind,
-            EntityKind::Spikes | EntityKind::FlyFeather | EntityKind::Bumper | EntityKind::Spring
+            EntityKind::Spikes
+                | EntityKind::FlyFeather
+                | EntityKind::Bumper
+                | EntityKind::Spring
+                | EntityKind::IceBall
         ) {
             current_player_hurt_rect(p)
         } else {
@@ -2931,7 +2935,7 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                 );
                 if (p.bounce_reuse_timer <= 0.0 || p.last_bounce_target != target)
                     && p.speed.y >= 0.0
-                    && current_player_rect(p, p.pos.x, p.pos.y).bottom() <= target.y + 4.0
+                    && current_player_hurt_rect(p).bottom() <= target.y + 4.0
                 {
                     p.last_bounce_target = target;
                     // A cold FireBall becomes non-collidable after the bounce.
@@ -8342,10 +8346,16 @@ mod tests {
             })
             .collect();
         let map = crate::mechanics_playground();
+        let trace = simulate_trace(initial.clone(), &inputs[..6], &map, 6).unwrap();
+        assert_eq!(trace.states[5].state, PlayerState::Dash);
+        assert_eq!(trace.states[5].speed, Vec2::new(169.705_63, 169.705_63));
+        assert_eq!(trace.states[6].state, PlayerState::Normal);
+        assert_eq!(trace.states[6].speed.y, -140.0);
+        assert_eq!(trace.states[6].pending_bounce_from_y, None);
         let whole = simulate(initial.clone(), &inputs, &map, inputs.len() as u32).unwrap();
         let first = simulate(initial, &inputs[..5], &map, 5).unwrap();
         assert_eq!(first.pending_bounce_from_y, None);
-        assert_eq!(first.state, PlayerState::Normal);
+        assert_eq!(first.state, PlayerState::Dash);
         let split = simulate(first, &inputs[5..], &map, (inputs.len() - 5) as u32).unwrap();
         assert_eq!(split, whole);
     }
@@ -8428,7 +8438,7 @@ mod tests {
     #[test]
     fn ice_ball_feather_cancel_restores_star_fly_collider_after_normal_hurtbox() {
         let mut bounced = PlayerSnapshot {
-            pos: Vec2::new(100.0, 100.0),
+            pos: Vec2::new(100.0, 101.0),
             state: PlayerState::StarFly,
             star_fly_timer: 1.0,
             ..PlayerSnapshot::default()
