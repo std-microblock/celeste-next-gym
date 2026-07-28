@@ -16,5 +16,5 @@
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [bounce / end_star_fly / current_player_rect / star_fly_hitbox_preserved]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [ice_ball_feather_cancel_restores_star_fly_collider_after_normal_hurtbox / playground_feather_cancel_scenario_preserves_the_star_fly_collider]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.15.2-feather-hitbox-preservation.ts; mods/CelesteGymCollector/Source/SnapshotCapture.cs], symbol: [entity-4.15.2-feather-hitbox-preservation / ColliderGeometry], note: [独立 Feather + Ice Ball MapPart 已断言 Bounce 后真实几何为 StarFly collider (-4,-10,8,8) 与 normal hurtbox (-4,-11,8,9)；等待真实 Everest 九字段差分。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.15.2-feather-hitbox-preservation.ts; mods/CelesteGymCollector/Source/SnapshotCapture.cs], symbol: [entity-4.15.2-feather-hitbox-preservation / ColliderGeometry], note: [独立 Feather + Ice Ball MapPart 已断言 Bounce 后真实几何为更新期缓存的 StarFly hurtbox collider (-3,-9,6,6) 与 normal hurtbox (-4,-11,8,9)；等待真实 Everest 九字段差分。]),
 )

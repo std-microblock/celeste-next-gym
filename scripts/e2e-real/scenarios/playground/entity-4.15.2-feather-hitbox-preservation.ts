@@ -18,10 +18,10 @@ export const scenario = defineScenario({
   verify(states) {
     const preserved = states.find((state) => state.state === 0
       && near(state.speed[1], -140)
-      && JSON.stringify(field<readonly number[]>(state, 'playerCollider')) === JSON.stringify([-4, -10, 8, 8])
+      && JSON.stringify(field<readonly number[]>(state, 'playerCollider')) === JSON.stringify([-3, -9, 6, 6])
       && JSON.stringify(field<readonly number[]>(state, 'playerHurtbox')) === JSON.stringify([-4, -11, 8, 9]))
     if (!preserved || preserved.dead) {
-      throw new Error(`entity-4.15.2-feather-hitbox-preservation: missing StarFly collider + normal hurtbox after IceBall Bounce: ${JSON.stringify(
+      throw new Error(`entity-4.15.2-feather-hitbox-preservation: missing preserved StarFly hurtbox collider + normal hurtbox after IceBall Bounce: ${JSON.stringify(
         states.filter((state) => state.state === 0 || near(state.speed[1], -140)).map((state) => ({
           core: pickCore(state),
           collider: field(state, 'playerCollider'),
