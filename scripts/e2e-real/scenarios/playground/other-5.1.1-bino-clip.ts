@@ -8,10 +8,11 @@ export const mapParts = [TECH_OTHER_5_1_1_BINO_CLIP] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: ['feature:lookout', 'feature:spinner'],
   techniqueIds: ['5.1.1'],
   mapParts,
+  recording: { primaryFor: ['5.1.1'], startFrame: 0, endFrame: 230, posterFrame: 90 },
   name: 'other-5.1.1-bino-clip',
   initial: { pos: [512, 496], speed: [0, 0], on_ground: true },
   inputs: Array.from({ length: 230 }, (_, frame) => input({
