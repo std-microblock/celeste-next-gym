@@ -8,12 +8,12 @@ describe('production scenario registry', () => {
   const registry = buildRegistry(scenarios)
 
   it('derives all target and status counts from explicit indexes', () => {
-    assert.equal(registry.scenarios.length, 177)
-    assert.equal(registry.byTarget.get('playground')?.length, 135)
+    assert.equal(registry.scenarios.length, 178)
+    assert.equal(registry.byTarget.get('playground')?.length, 136)
     assert.equal(registry.byTarget.get('area-1')?.length, 36)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 158, candidate: 19 })
+    assert.deepEqual(registry.counts, { active: 159, candidate: 19 })
   })
 
   it('keeps evidence-less scenarios as opt-in candidates', () => {

@@ -52,8 +52,8 @@ describe('authoritative technique recording metadata', () => {
   const byName = new Map(scenarios.map((scenario) => [scenario.name, scenario]))
 
   it('assigns exactly one primary to every implemented technique and none to unimplemented techniques', () => {
-    assert.equal(techniques.length, 120)
-    assert.equal(techniques.filter((technique) => technique.status === 'implemented').length, 92)
+    assert.equal(techniques.length, 121)
+    assert.equal(techniques.filter((technique) => technique.status === 'implemented').length, 93)
     assert.equal(techniques.filter((technique) => technique.status === 'unimplemented').length, 28)
 
     const primaryCounts = new Map<string, number>()
