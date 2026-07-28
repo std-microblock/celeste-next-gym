@@ -143,8 +143,11 @@ pub fn simulate_trace(
     initialize_move_blocks(&mut snapshot, &mut runtime_map);
     initialize_theo_crystals(&mut snapshot, &mut runtime_map);
     initialize_heart_gems(&mut snapshot, &mut runtime_map);
+    initialize_rising_lavas(&mut snapshot, &mut runtime_map);
+    initialize_sandwich_lavas(&mut snapshot, &mut runtime_map);
     initialize_gliders(&mut snapshot, &mut runtime_map);
     initialize_clouds(&mut snapshot, &mut runtime_map);
+    initialize_camera(&mut snapshot, &runtime_map);
     position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
     let mut states = Vec::with_capacity(frames + 1);
     states.push(snapshot.clone());
@@ -182,6 +185,8 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         s.transition_target.x,
         s.transition_target.y,
         s.transition_timer,
+        s.camera.x,
+        s.camera.y,
         s.state_timer,
         s.boost_target.x,
         s.boost_target.y,
@@ -337,6 +342,24 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         .iter()
         .all(|value| value.is_finite())
     });
+    let rising_lavas_are_finite = s.rising_lavas.iter().all(|lava| {
+        [lava.position.x, lava.position.y, lava.delay]
+            .iter()
+            .all(|value| value.is_finite())
+    });
+    let sandwich_lavas_are_finite = s.sandwich_lavas.iter().all(|lava| {
+        [
+            lava.position.x,
+            lava.position.y,
+            lava.start_x,
+            lava.delay,
+            lava.leave_timer,
+            lava.top_rect_y,
+            lava.bottom_rect_y,
+        ]
+        .iter()
+        .all(|value| value.is_finite())
+    });
     let clouds_are_finite = s.clouds.iter().all(|cloud| {
         [
             cloud.speed,
@@ -354,6 +377,8 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         && bounce_blocks_are_finite
         && move_blocks_are_finite
         && theo_crystals_are_finite
+        && rising_lavas_are_finite
+        && sandwich_lavas_are_finite
         && gliders_are_finite
         && clouds_are_finite
     {
@@ -722,6 +747,96 @@ fn initialize_heart_gems(p: &mut PlayerSnapshot, map: &mut Map) {
     }
     if !p.time_rate.is_finite() || p.time_rate <= 0.0 {
         p.time_rate = 1.0;
+    }
+}
+
+fn initialize_camera(p: &mut PlayerSnapshot, map: &Map) {
+    if p.camera_initialized {
+        return;
+    }
+    p.camera = camera_target(p, map);
+    p.camera_initialized = true;
+}
+
+fn camera_target(p: &PlayerSnapshot, map: &Map) -> Vec2 {
+    let bounds = p.current_room_bounds.unwrap_or(map.bounds);
+    Vec2::new(
+        (p.pos.x - 160.0).clamp(bounds.x, (bounds.right() - 320.0).max(bounds.x)),
+        (p.pos.y - 90.0).clamp(bounds.y, (bounds.bottom() - 180.0).max(bounds.y)),
+    )
+}
+
+fn initialize_rising_lavas(p: &mut PlayerSnapshot, map: &mut Map) {
+    let indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::RisingLava).then_some(index))
+        .collect();
+    p.rising_lavas.truncate(indices.len());
+    for (lava_index, entity_index) in indices.into_iter().enumerate() {
+        if lava_index == p.rising_lavas.len() {
+            let intro = map.entities[entity_index].single_use;
+            p.rising_lavas.push(crate::RisingLavaSnapshot {
+                position: Vec2::new(map.bounds.x - 10.0, map.bounds.bottom() + 16.0),
+                waiting: intro || p.just_respawned,
+                ice_mode: p.core_mode == crate::CoreMode::Cold,
+                intro,
+                initialized: true,
+                ..crate::RisingLavaSnapshot::default()
+            });
+        }
+        let state = &p.rising_lavas[lava_index];
+        let entity = &mut map.entities[entity_index];
+        entity.bounds = Rect::new(state.position.x, state.position.y, 340.0, 120.0);
+    }
+}
+
+fn initialize_sandwich_lavas(p: &mut PlayerSnapshot, map: &mut Map) {
+    let indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::SandwichLava).then_some(index))
+        .collect();
+    p.sandwich_lavas.truncate(indices.len());
+    for (lava_index, entity_index) in indices.iter().copied().enumerate() {
+        if lava_index == p.sandwich_lavas.len() {
+            let start_x = map.entities[entity_index].bounds.x;
+            let respawn_intro = p.just_respawned;
+            p.sandwich_lavas.push(crate::SandwichLavaSnapshot {
+                position: Vec2::new(map.bounds.x - 10.0, map.bounds.bottom() - 10.0),
+                start_x,
+                waiting: respawn_intro || p.pos.x < start_x,
+                ice_mode: p.core_mode == crate::CoreMode::Cold,
+                persistent: lava_index == 0,
+                top_rect_y: if respawn_intro { -360.0 } else { -420.0 },
+                bottom_rect_y: if respawn_intro { 0.0 } else { 60.0 },
+                initialized: true,
+                ..crate::SandwichLavaSnapshot::default()
+            });
+        }
+    }
+    // Awake reuses the first persistent instance when the destination room
+    // contains another SandwichLava, updating its activation X and parking
+    // the duplicate rather than creating a second hazard.
+    if p.sandwich_lavas.len() > 1 {
+        for index in 1..p.sandwich_lavas.len() {
+            if !p.sandwich_lavas[index].removed && !p.sandwich_lavas[0].leaving {
+                p.sandwich_lavas[0].start_x = p.sandwich_lavas[index].start_x;
+                p.sandwich_lavas[0].waiting = true;
+                p.sandwich_lavas[index].removed = true;
+            }
+        }
+    }
+    for (lava_index, entity_index) in indices.into_iter().enumerate() {
+        let state = &p.sandwich_lavas[lava_index];
+        let entity = &mut map.entities[entity_index];
+        entity.bounds = if state.removed {
+            Rect::new(-1_000_000.0, -1_000_000.0, 340.0, 120.0)
+        } else {
+            Rect::new(state.position.x, state.position.y, 340.0, 120.0)
+        };
     }
 }
 
@@ -1786,6 +1901,124 @@ fn advance_heart_gems(p: &mut PlayerSnapshot) {
     }
 }
 
+fn update_camera(p: &mut PlayerSnapshot, map: &Map) {
+    if p.transition_timer > 0.0 || p.dead {
+        return;
+    }
+    let target = camera_target(p, map);
+    let multiplier = if p.state == PlayerState::TempleFall {
+        8.0
+    } else {
+        1.0
+    };
+    let amount = 1.0 - (0.01_f32 / multiplier).powf(p.frame_delta_time);
+    p.camera.x += (target.x - p.camera.x) * amount;
+    p.camera.y += (target.y - p.camera.y) * amount;
+}
+
+fn clamped_map(value: f32, min: f32, max: f32, out_min: f32, out_max: f32) -> f32 {
+    if max == min {
+        return out_min;
+    }
+    let t = ((value - min) / (max - min)).clamp(0.0, 1.0);
+    out_min + (out_max - out_min) * t
+}
+
+fn advance_rising_lavas(p: &mut PlayerSnapshot, map: &mut Map) {
+    let indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::RisingLava).then_some(index))
+        .collect();
+    for (lava_index, entity_index) in indices.into_iter().enumerate() {
+        let state = &mut p.rising_lavas[lava_index];
+        state.ice_mode = p.core_mode == crate::CoreMode::Cold;
+        state.delay -= p.frame_delta_time;
+        state.position.x = p.camera.x;
+        if state.waiting {
+            if !state.intro && p.just_respawned {
+                state.position.y =
+                    approach(state.position.y, p.pos.y + 32.0, 32.0 * p.frame_delta_time);
+            }
+            if (!state.ice_mode || !state.intro) && !p.just_respawned {
+                state.waiting = false;
+            }
+        } else {
+            let camera_line = p.camera.y + 168.0;
+            if state.position.y > camera_line + 96.0 {
+                state.position.y = camera_line + 96.0;
+            }
+            let speed_multiplier = if state.position.y > camera_line {
+                clamped_map(state.position.y - camera_line, 0.0, 96.0, 1.0, 2.0)
+            } else {
+                clamped_map(camera_line - state.position.y, 0.0, 32.0, 1.0, 0.5)
+            };
+            if state.delay <= 0.0 {
+                state.position.y -= 30.0 * speed_multiplier * p.frame_delta_time;
+            }
+        }
+        map.entities[entity_index].bounds =
+            Rect::new(state.position.x, state.position.y, 340.0, 120.0);
+    }
+}
+
+fn advance_sandwich_lavas(p: &mut PlayerSnapshot, map: &mut Map) {
+    let indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::SandwichLava).then_some(index))
+        .collect();
+    let live_count = p.sandwich_lavas.iter().filter(|lava| !lava.removed).count();
+    for (lava_index, entity_index) in indices.into_iter().enumerate() {
+        let state = &mut p.sandwich_lavas[lava_index];
+        if state.removed {
+            map.entities[entity_index].bounds = Rect::new(-1_000_000.0, -1_000_000.0, 340.0, 120.0);
+            continue;
+        }
+        if p.transition_timer > 0.0 && state.persistent && live_count <= 1 && !state.leaving {
+            state.leaving = true;
+            state.leave_timer = 2.0;
+        }
+        state.ice_mode = p.core_mode == crate::CoreMode::Cold;
+        state.position.x = p.camera.x;
+        state.delay -= p.frame_delta_time;
+        if state.leaving {
+            state.leave_timer = (state.leave_timer - p.frame_delta_time).max(0.0);
+            if state.leave_timer <= 0.0 {
+                state.removed = true;
+            }
+        } else if state.waiting {
+            state.position.y = approach(
+                state.position.y,
+                map.bounds.bottom() - 10.0,
+                128.0 * p.frame_delta_time,
+            );
+            if p.pos.x >= state.start_x && !p.just_respawned && p.state != PlayerState::Frozen {
+                state.waiting = false;
+            }
+        } else if state.delay <= 0.0 {
+            state.position.y += if state.ice_mode { 20.0 } else { -20.0 } * p.frame_delta_time;
+        }
+        state.top_rect_y = approach(
+            state.top_rect_y,
+            -360.0 + if state.leaving { -512.0 } else { 0.0 },
+            if state.leaving { 256.0 } else { 64.0 } * p.frame_delta_time,
+        );
+        state.bottom_rect_y = approach(
+            state.bottom_rect_y,
+            if state.leaving { 512.0 } else { 0.0 },
+            if state.leaving { 256.0 } else { 64.0 } * p.frame_delta_time,
+        );
+        map.entities[entity_index].bounds = if state.leaving || state.removed {
+            Rect::new(-1_000_000.0, -1_000_000.0, 340.0, 120.0)
+        } else {
+            Rect::new(state.position.x, state.position.y, 340.0, 120.0)
+        };
+    }
+}
+
 fn glider_collides(map: &Map, position: Vec2) -> bool {
     map.solid_at(glider_body_rect(position))
 }
@@ -2101,6 +2334,7 @@ fn step(
             p.dashes = p.dashes.max(1);
             p.stamina = 110.0;
             p.movement_remainder = Vec2::default();
+            p.just_respawned = true;
             return Ok(());
         }
         p.respawn_frames -= 1;
@@ -2123,9 +2357,13 @@ fn step(
         p.freeze_timer = (p.freeze_timer - DT).max(0.0);
         return Ok(());
     }
+    if p.just_respawned && p.speed != Vec2::default() {
+        p.just_respawned = false;
+    }
     advance_moving_solids(p, map);
     if p.transition_timer > 0.0 {
         update_transition(p);
+        advance_sandwich_lavas(p, map);
         return Ok(());
     }
     advance_badeline_boost_relocation(p);
@@ -2214,6 +2452,8 @@ fn step(
         advance_move_blocks(p, map, input);
         advance_theo_crystals(p, map);
         advance_heart_gems(p);
+        advance_rising_lavas(p, map);
+        advance_sandwich_lavas(p, map);
         advance_gliders(p, map);
         advance_clouds(p, map);
         p.on_ground = grounded(p, map);
@@ -2244,6 +2484,8 @@ fn step(
             advance_move_blocks(p, map, input);
             advance_theo_crystals(p, map);
             advance_heart_gems(p);
+            advance_rising_lavas(p, map);
+            advance_sandwich_lavas(p, map);
             advance_gliders(p, map);
             advance_clouds(p, map);
             p.on_ground = grounded(p, map);
@@ -2285,6 +2527,7 @@ fn step(
     if p.state != PlayerState::DreamDash {
         move_axis(p, map, false);
     }
+    update_camera(p, map);
     interact(p, map, input);
     update_strawberry_train(p);
     try_begin_badeline_boost(p, map);
@@ -2298,6 +2541,8 @@ fn step(
     advance_move_blocks(p, map, input);
     advance_theo_crystals(p, map);
     advance_heart_gems(p);
+    advance_rising_lavas(p, map);
+    advance_sandwich_lavas(p, map);
     advance_gliders(p, map);
     advance_clouds(p, map);
     p.on_ground = grounded(p, map);
@@ -3777,10 +4022,26 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
     }
     let hitbox = current_player_rect(p, p.pos.x, p.pos.y);
     let mut heart_index = 0usize;
+    let mut rising_lava_index = 0usize;
+    let mut sandwich_lava_index = 0usize;
     for (entity_index, entity) in map.entities.iter().enumerate() {
         let current_heart = if entity.kind == EntityKind::HeartGem {
             let index = heart_index;
             heart_index += 1;
+            Some(index)
+        } else {
+            None
+        };
+        let current_rising_lava = if entity.kind == EntityKind::RisingLava {
+            let index = rising_lava_index;
+            rising_lava_index += 1;
+            Some(index)
+        } else {
+            None
+        };
+        let current_sandwich_lava = if entity.kind == EntityKind::SandwichLava {
+            let index = sandwich_lava_index;
+            sandwich_lava_index += 1;
             Some(index)
         } else {
             None
@@ -3792,6 +4053,8 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                 | EntityKind::Bumper
                 | EntityKind::Spring
                 | EntityKind::IceBall
+                | EntityKind::RisingLava
+                | EntityKind::SandwichLava
         ) {
             current_player_hurt_rect(p)
         } else {
@@ -3842,6 +4105,22 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                 );
                 bounce.intersects(player_box) || entity.bounds.intersects(player_box)
             }
+            EntityKind::RisingLava => current_rising_lava
+                .and_then(|index| p.rising_lavas.get(index))
+                .is_some_and(|lava| {
+                    Rect::new(lava.position.x, lava.position.y, 340.0, 120.0).intersects(player_box)
+                }),
+            EntityKind::SandwichLava => current_sandwich_lava
+                .and_then(|index| p.sandwich_lavas.get(index))
+                .is_some_and(|lava| {
+                    !lava.waiting
+                        && !lava.leaving
+                        && !lava.removed
+                        && (Rect::new(lava.position.x, lava.position.y, 340.0, 120.0)
+                            .intersects(player_box)
+                            || Rect::new(lava.position.x, lava.position.y - 280.0, 340.0, 120.0)
+                                .intersects(player_box))
+                }),
             _ => entity.bounds.intersects(player_box),
         };
         if !intersects {
@@ -3849,6 +4128,13 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
         }
         match entity.kind {
             EntityKind::Spikes if spike_is_lethal(p, entity.direction, entity.bounds) => {
+                p.dead = true;
+                p.speed = Vec2::default();
+                p.death_freeze_pending = true;
+                p.respawn_frames = 95;
+                return;
+            }
+            EntityKind::RisingLava | EntityKind::SandwichLava => {
                 p.dead = true;
                 p.speed = Vec2::default();
                 p.death_freeze_pending = true;
@@ -4786,6 +5072,26 @@ mod tests {
                 single_use: false,
                 nodes: vec![],
                 name: "celesteGymMovingSolid".to_owned(),
+            }],
+            ..Map::default()
+        }
+    }
+    fn lava_map(kind: EntityKind, start_x: f32) -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 640.0, 360.0),
+            entities: vec![crate::Entity {
+                kind,
+                bounds: Rect::new(start_x, 0.0, 8.0, 8.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: match kind {
+                    EntityKind::RisingLava => "risingLava",
+                    EntityKind::SandwichLava => "sandwichLava",
+                    _ => unreachable!(),
+                }
+                .to_owned(),
             }],
             ..Map::default()
         }
@@ -6860,6 +7166,106 @@ mod tests {
         assert_eq!(state.state, PlayerState::Normal);
         assert!(state.speed.y < 0.0);
         assert!(!state.heart_gems[0].collected);
+    }
+
+    #[test]
+    fn rising_lava_uses_camera_x_and_source_adaptive_rise_speed() {
+        let initial = PlayerSnapshot {
+            pos: Vec2::new(320.0, 180.0),
+            state: PlayerState::Frozen,
+            ..PlayerSnapshot::default()
+        };
+
+        let state = simulate(
+            initial,
+            &[InputState::default()],
+            &lava_map(EntityKind::RisingLava, 0.0),
+            1,
+        )
+        .unwrap();
+        let lava = &state.rising_lavas[0];
+
+        assert_eq!(state.camera, Vec2::new(160.0, 90.0));
+        assert_eq!(lava.position.x, state.camera.x);
+        assert!((lava.position.y - 353.0).abs() < 0.000_1);
+        assert!(!lava.waiting);
+        assert!(!lava.ice_mode);
+    }
+
+    #[test]
+    fn sandwich_lava_waiting_core_mode_and_transition_lifecycle_match_source() {
+        let map = lava_map(EntityKind::SandwichLava, 100.0);
+        let cold = PlayerSnapshot {
+            pos: Vec2::new(200.0, 250.0),
+            state: PlayerState::Frozen,
+            core_mode: crate::CoreMode::Cold,
+            ..PlayerSnapshot::default()
+        };
+        let cold = simulate(cold, &[InputState::default()], &map, 1).unwrap();
+        let lava = &cold.sandwich_lavas[0];
+        assert!(lava.ice_mode);
+        assert!(!lava.waiting);
+        assert!((lava.position.y - (350.0 + 20.0 * DT)).abs() < 0.000_1);
+        assert_eq!(lava.position.x, cold.camera.x);
+        assert!(lava.persistent);
+
+        let waiting = PlayerSnapshot {
+            pos: Vec2::new(80.0, 350.0),
+            state: PlayerState::Frozen,
+            just_respawned: true,
+            ..PlayerSnapshot::default()
+        };
+        let waiting = simulate(waiting, &[InputState::default()], &map, 1).unwrap();
+        assert!(waiting.sandwich_lavas[0].waiting);
+        assert!(!waiting.dead);
+
+        let leaving = PlayerSnapshot {
+            pos: Vec2::new(200.0, 250.0),
+            state: PlayerState::Frozen,
+            transition_timer: 0.3,
+            transition_direction: Vec2::new(1.0, 0.0),
+            transition_target: Vec2::new(320.0, 250.0),
+            ..PlayerSnapshot::default()
+        };
+        let leaving = simulate(leaving, &[InputState::default()], &map, 1).unwrap();
+        assert!(leaving.sandwich_lavas[0].leaving);
+        assert!(leaving.sandwich_lavas[0].leave_timer < 2.0);
+    }
+
+    #[test]
+    fn lava_player_collider_preserves_the_one_pixel_safe_lip() {
+        let map = lava_map(EntityKind::RisingLava, 0.0);
+        let lava = crate::RisingLavaSnapshot {
+            position: Vec2::new(0.0, 100.0),
+            initialized: true,
+            ..crate::RisingLavaSnapshot::default()
+        };
+        let safe = PlayerSnapshot {
+            pos: Vec2::new(32.0, 102.0),
+            state: PlayerState::Frozen,
+            camera: Vec2::new(0.0, 0.0),
+            camera_initialized: true,
+            rising_lavas: vec![lava.clone()],
+            ..PlayerSnapshot::default()
+        };
+        assert!(
+            current_player_rect(&safe, safe.pos.x, safe.pos.y)
+                .intersects(Rect::new(0.0, 100.0, 340.0, 120.0))
+        );
+        assert!(!current_player_hurt_rect(&safe).intersects(Rect::new(0.0, 100.0, 340.0, 120.0)));
+        let safe = simulate(safe, &[InputState::default()], &map, 1).unwrap();
+        assert!(!safe.dead);
+
+        let lethal = PlayerSnapshot {
+            pos: Vec2::new(32.0, 103.0),
+            state: PlayerState::Frozen,
+            camera: Vec2::new(0.0, 0.0),
+            camera_initialized: true,
+            rising_lavas: vec![lava],
+            ..PlayerSnapshot::default()
+        };
+        let lethal = simulate(lethal, &[InputState::default()], &map, 1).unwrap();
+        assert!(lethal.dead);
     }
 
     #[test]
