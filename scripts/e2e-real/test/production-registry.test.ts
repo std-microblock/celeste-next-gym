@@ -21,8 +21,6 @@ describe('production scenario registry', () => {
       .filter((scenario) => scenario.status === 'candidate')
       .map((scenario) => scenario.name)
     assert.deepEqual(candidates, [
-      'entity-4.10.3-dream-smuggle',
-      'entity-4.10.3.1-dream-grab-hyper',
       'entity-4.10.3.2-holdable-dream-hyper',
       'entity-4.10.4-holdable-grabless-dream-hyper',
       'entity-4.15.2-feather-hitbox-preservation',
