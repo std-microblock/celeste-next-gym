@@ -4,7 +4,7 @@
   id: "4.16",
   title-zh: "岩浆 Neutral",
   title-en: "Lava Neutrals",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [岩浆受伤区前有 1 像素实体边缘，可在该像素上缓冲 Neutral、攀跳、墙跳、墙反等墙面动作。],
   description-en: [RisingLava and SandwichLava are camera/core-driven PlayerCollider hazards whose 8×11 player body and 8×9 hurtbox leave a one-pixel wall-action lip before death.],
   source-evidence: evidence(
@@ -23,10 +23,10 @@
     symbol: [vanilla_core_lavas_round_trip_with_source_colliders / rising_lava_uses_camera_x_and_source_adaptive_rise_speed / sandwich_lava_waiting_core_mode_and_transition_lifecycle_match_source / lava_player_collider_preserves_the_one_pixel_safe_lip / rising_lava_safe_lip_accepts_a_buffered_neutral_climb_jump],
     note: [回归覆盖地图 roundtrip、RisingLava camera/自适应速度、SandwichLava hot/cold 与 transition 生命周期、body/hurtbox 边界，以及第 169 帧安全唇 Neutral 的 -105 Y 速度和 wallboost 窗口。],
   ),
-  e2e-evidence: none,
-  candidate-e2e: evidence(
+  e2e-evidence: evidence(
     path: [scripts/e2e-real/scenarios/core-heart-squish-parts.ts / scripts/e2e-real/scenarios/playground/entity-4.16-lava-neutral.ts],
     symbol: [tech.entity-4.16-lava-neutral / entity-4.16-lava-neutral],
-    note: [独立 MapPart 在训练场右墙加入 vanilla RisingLava；候选在第 169 帧安全唇缓冲 Neutral，真实 Everest 与 Rust 均得到 -105 垂直速度、wallBoostTimer 且未死亡，221 个状态的 position/speed 最大误差为 0。首差复盘显示 Everest state 0 已反射 `climbNoMoveTimer=0.1`（StateMachine 进入 Climb 的 `ClimbBegin`），而 Rust real-trace 转换曾遗漏它，遂在 frame 1 错扣静止攀爬的 0.1667 体力；转换器现恢复该字段并有 110 stamina 回归，待独立真实复跑后才可转正。],
+    note: [2026-07-28 在仓库物理 `vendor/celeste-game` 的隔离 Everest run 上执行。221 个状态中 state 0 反射 `climbNoMoveTimer=0.1` 且 stamina=110；state 170 在一像素安全唇完成 Neutral，得到 Normal、speed=(0,-105)、wallBoostTimer=0.2、stamina=55.167084 且未死亡。Rust 与 Everest 的 position/speed 最大误差均为 0，其余状态、facing、dashes、stamina、grounded、ducking、death 均逐帧符合 <=0.01 门槛。],
   ),
+  candidate-e2e: none,
 )

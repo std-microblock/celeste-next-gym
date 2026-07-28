@@ -1,11 +1,13 @@
 use std::{env, fs, process::ExitCode};
 
 use celeste_physics::{
-    decode_map_room, simulate, simulate_trace, InputState, Map, PlayerSnapshot, PlayerState, Rect,
-    Vec2,
+    decode_map_room, simulate_trace, InputState, PlayerSnapshot, PlayerState, Vec2,
 };
 use serde::Deserialize;
 use serde_json::Value;
+
+#[cfg(test)]
+use celeste_physics::{simulate, Map, Rect};
 
 #[derive(Deserialize)]
 struct TraceFile {
