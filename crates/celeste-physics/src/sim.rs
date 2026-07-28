@@ -2777,7 +2777,15 @@ fn prepare_lookout_player(p: &mut PlayerSnapshot) {
     };
     match lookout.phase {
         1 => {
-            p.state = PlayerState::Dummy;
+            // LookRoutine and DummyWalkToExact assign StDummy when their
+            // coroutines begin; they do not reassign it on every later
+            // coroutine resume. A native PlayerCollider may therefore
+            // replace StDummy with StBoost after Player.Update, and the next
+            // Player.Update must retain StBoost while DummyWalk continues to
+            // write its walking speed.
+            if p.state == PlayerState::Normal {
+                p.state = PlayerState::Dummy;
+            }
             p.dummy_moving = true;
             let direction = (lookout.position.x - 8.0 - p.pos.x).signum();
             if direction != 0.0 {
@@ -14513,6 +14521,15 @@ mod tests {
         // DummyWalk approaches its x=932 alignment point; this is the native
         // callback, not a forced completed state.
         assert!((boost.pos.x - 921.0).abs() <= 0.01);
+        let boost_frame = trace
+            .states
+            .iter()
+            .position(|state| state.state == PlayerState::Boost)
+            .expect("Booster should expose StBoost on its PlayerCollider frame");
+        assert_eq!(boost_frame, 9);
+        let next = &trace.states[boost_frame + 1];
+        assert_eq!(next.state, PlayerState::Boost);
+        assert!((next.pos.x - 922.0).abs() <= 0.01);
         assert!(trace.states.iter().any(|state| {
             state.state == PlayerState::Normal
                 && state.lookouts[0].interacting
