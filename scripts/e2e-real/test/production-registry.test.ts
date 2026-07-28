@@ -13,7 +13,7 @@ describe('production scenario registry', () => {
     assert.equal(registry.byTarget.get('area-1')?.length, 36)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 150, candidate: 26 })
+    assert.deepEqual(registry.counts, { active: 151, candidate: 25 })
   })
 
   it('keeps evidence-less scenarios as opt-in candidates', () => {
@@ -25,7 +25,6 @@ describe('production scenario registry', () => {
       'entity-4.10.4-holdable-grabless-dream-hyper',
       'entity-4.14-heart-ultra',
       'entity-4.15-jumpthrough-clip',
-      'entity-4.18.2-reform-boost-cassette-boost',
       'entity-4.18.2.1-cassoosted-fuper',
       'entity-4.18.3-core-block-entity-displacement',
       'entity-4.19-seeker-bounce',
