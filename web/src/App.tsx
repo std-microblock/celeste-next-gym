@@ -497,14 +497,13 @@ export default function App() {
   return <div className={`app-shell ${mode === 'play' ? 'play-mode' : mode === 'training' ? 'training-mode' : 'advanced-mode'}`}>
     {mode === 'advanced' && <div className="mountain-backdrop" />}
     <header className="topbar">
-      <div className="brand-mark"><span className="wing">◇</span><div><strong>CELESTE</strong><em>NEXT GYM</em></div></div>
+      <div className="brand-mark"><div><strong>CELESTE</strong><em>NEXT GYM</em></div></div>
       <label className="mode-tabs">
         <small>工作区</small>
         <select aria-label="页面模式" value={mode} onChange={(event) => selectMode(event.target.value as 'play' | 'training' | 'advanced')}>
           <option value="play">游玩</option><option value="training">训练</option><option value="advanced">高级</option>
         </select>
       </label>
-      <div className={`wasm-status ${wasmStatus}`} title="celeste-wasm 0.2.0 · rebuilt from current Rust source"><i />WASM 0.2.0 <span>{wasmStatus === 'ready' ? 'ONLINE' : wasmStatus === 'error' ? 'FAILED' : 'BOOTING'}</span></div>
       {mode === 'advanced' ? <div className="top-actions">
         <button disabled={wasmStatus !== 'ready'} onClick={() => setStartSettingsOpen(true)}>起点</button>
         <button onClick={() => setBindingsOpen(true)}>控制</button>
@@ -512,7 +511,7 @@ export default function App() {
         <button onClick={exportRun}>导出时间线</button>
         <button onClick={() => void exportTrace()}>导出逐帧</button>
         <label className="file-button">对比逐帧<input type="file" accept="application/json,.json" onChange={(event) => event.target.files?.[0] && void compareTrace(event.target.files[0])} /></label>
-      </div> : mode === 'training' ? <div className="play-quick-actions"><div className="play-room"><small>LESSON MODE</small><strong>训练场</strong><span>Fuzz 驱动的实战练习</span></div></div> : <div className="play-quick-actions">
+      </div> : mode === 'training' ? <div className="play-quick-actions"><div className="play-room"><small>LESSON MODE</small><strong>训练场</strong></div></div> : <div className="play-quick-actions">
         <div className="play-room">
           <small>LIVE ROOM</small>
           <strong>{map.name}</strong>
