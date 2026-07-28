@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { ACTIONS, DEFAULT_BINDINGS, buttonsToInput, makeEmptyButtons, type FrameButtons, type GymMap, type KeyBindings, type SimState } from '../model'
 import { WasmClient } from '../simulator/wasmClient'
-import { assistedRate, candidateWindow, createTrainingSession, keySemantics, nextTargetFrame, rebuildTrainingSession, verifiedInputs, verifyTrainingInput, type TrainingCandidate, type TrainingDefinition, type TrainingSession } from '../training/session'
+import { assistedRate, candidateWindow, createTrainingSession, currentTrainingInput, nextTargetFrame, rebuildTrainingSession, trainingEntryContextPassed, trainingEntryInput, trainingVerificationTriggered, verificationKeys, verifyTrainingInput, type TrainingCandidate, type TrainingSession } from '../training/session'
 import { trainingCatalog, type TrainingDocument, type TrainingVariant } from '../training/catalog'
 import { GameView } from './GameView'
 import { TrainingCatalogSidebar, TrainingVariantThumbnail } from './TrainingCatalogSidebar'
 import { TrainingPrompt } from './TrainingPrompt'
 import { TrainingResultTimeline, TrainingTimeline } from './TrainingTimeline'
 
-interface Attempt { frame: number; keys: string[]; entryCheckPassed?: boolean }
+interface Attempt { frame: number; inputId: string; keys: string[]; entryCheckPassed?: boolean; entryAccepted?: boolean }
 interface PredictionPreview {
   targetFrame?: number
   windows: Array<{ from: number; to: number }>
@@ -32,22 +32,6 @@ function buttonsFromKeyboard(keys: ReadonlySet<string>, bindings: KeyBindings): 
   return buttons
 }
 
-function pressedVerification(current: FrameButtons, previous: FrameButtons): boolean {
-  return (current.dash && !previous.dash)
-    || (current.crouch_dash && !previous.crouch_dash)
-    || (current.jump && !previous.jump)
-    || (current.grab && !previous.grab)
-}
-
-export function trainingEntryDirectionPassed(buttons: FrameButtons, definition: TrainingDefinition): boolean {
-  const directions = ['up', 'down', 'left', 'right'] as const
-  const expected = new Set(definition.fuzz.inputs
-    .filter((input) => input.verify === false && input.at === 0)
-    .flatMap((input) => input.keys)
-    .filter((key): key is typeof directions[number] => directions.includes(key as typeof directions[number])))
-  return directions.every((direction) => buttons[direction] === expected.has(direction))
-}
-
 export function timingAssessment(actualFrame: number | undefined, targetFrame: number | undefined): string {
   if (actualFrame === undefined || targetFrame === undefined) return '无可比较的最佳点'
   const difference = actualFrame - targetFrame
@@ -61,18 +45,6 @@ export function outcomeSpeedX(after: SimState): number {
 
 export function trainingInputLocked(outcome: OutcomeAnimation | null): boolean {
   return outcome !== null
-}
-
-export function verificationKeys(buttons: FrameButtons, previous: FrameButtons, document: TrainingDefinition, step: number): string[] {
-  const expected = verifiedInputs(document)[step]?.keys ?? []
-  const actual = keySemantics(buttons)
-  const newlyPressed = actual.filter((key) => !previous[key as keyof FrameButtons])
-  // With verify:false direction holds, only the new action belongs to the
-  // teaching input. A definition that includes a direction in verify:true
-  // deliberately opts into strict directional matching.
-  return expected.some((key) => ['up', 'down', 'left', 'right'].includes(key))
-    ? actual.filter((key) => ['up', 'down', 'left', 'right'].includes(key) || newlyPressed.includes(key))
-    : newlyPressed.filter((key) => !['up', 'down', 'left', 'right'].includes(key))
 }
 
 /** The lesson runner owns simulation and review state, while its timeline is read-only. */
@@ -114,13 +86,16 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
     setPlaying(false)
     clearOutcome()
     setNotice(`正在加载 ${technique.title} · ${variant.title}…`)
+    const entry = trainingEntryInput(variant.document)
+    if (!entry) throw new Error(`训练 ${variant.document.id} 的 entry.input_id 未指向可验证输入`)
+    if (entry.at !== 0) throw new Error(`训练 ${variant.document.id} 的入口输入必须位于本地 F0`)
     const result = await client.fuzzSearch(variant.initial, JSON.stringify(variant.document.fuzz), variant.map)
     if (result.candidates.length === 0) throw new Error('该训练 Variant 没有成功候选，无法开始')
     setDocument(variant.document)
     setMap(variant.map)
     setInitial(variant.initial)
     setCandidates(result.candidates)
-    applySession(createTrainingSession(result.candidates))
+    applySession(createTrainingSession(result.candidates, variant.document))
     snapshotsRef.current = [variant.initial]
     setSnapshots([variant.initial])
     frameRef.current = 0
@@ -161,7 +136,7 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
     setOutcomeProgress(0)
   }
   const capturePrediction = (source: TrainingSession, start: number | null) => {
-    const inputIndex = verifiedInputs(document!)[source.nextVerifiedInput]?.fuzzInputIndex
+    const inputIndex = currentTrainingInput(source, document!)?.fuzzInputIndex
     if (inputIndex === undefined || start === null) return
     const next: PredictionPreview = {
       targetFrame: (() => {
@@ -202,12 +177,12 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
     frameRef.current = next
     setFrame(next)
     if (!document) return
-    const start = attempts.current.find((attempt) => attempt.entryCheckPassed === true
-      && attempt.keys.some((key) => key === 'dash' || key === 'crouch_dash'))?.frame ?? null
+    const start = attempts.current.find((attempt) => attempt.entryAccepted === true
+      && attempt.inputId === document.entry.input_id)?.frame ?? null
     if (start === null || next < start) {
       fuzzStartRef.current = null
       setFuzzStartFrame(null)
-      applySession(createTrainingSession(candidates))
+      applySession(createTrainingSession(candidates, document))
       return
     }
     fuzzStartRef.current = start
@@ -273,7 +248,7 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
     let last = performance.now()
     let carry = 0
     const tick = (now: number) => {
-      const fuzzInputIndex = verifiedInputs(document)[sessionRef.current.nextVerifiedInput]?.fuzzInputIndex
+      const fuzzInputIndex = currentTrainingInput(sessionRef.current, document)?.fuzzInputIndex
       const target = fuzzInputIndex === undefined ? undefined : nextTargetFrame(sessionRef.current.candidates, fuzzInputIndex)
       const fuzzFrame = fuzzStartRef.current === null ? 0 : Math.max(0, frameRef.current - fuzzStartRef.current)
       const assisted = autoSlowdown
@@ -301,10 +276,8 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
           : outcomeButtons.current
         const input = buttonsToInput(current, previousButtons.current)
         const beforeSession = sessionRef.current
-        const triggers = pressedVerification(current, previousButtons.current)
-        const shouldVerify = beforeSession.phase === 'pre_fuzz'
-          ? (current.dash && !previousButtons.current.dash) || (current.crouch_dash && !previousButtons.current.crouch_dash)
-          : triggers
+        const expectedInput = currentTrainingInput(beforeSession, document)
+        const shouldVerify = trainingVerificationTriggered(current, previousButtons.current, expectedInput)
         const previous = previousButtons.current
         previousButtons.current = current
         simulating.current = true
@@ -320,13 +293,14 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
           setFrame(nextFrame)
           if (shouldVerify) {
             const localFrame = beforeSession.phase === 'pre_fuzz' ? 0 : currentFrame - (fuzzStartRef.current ?? currentFrame)
-            const semanticKeys = verificationKeys(current, previous, document, beforeSession.nextVerifiedInput)
+            const semanticKeys = verificationKeys(current, previous, expectedInput)
             const entryPassed = beforeSession.phase === 'pre_fuzz'
-              ? trainingEntryDirectionPassed(current, document) && await client.entryCheck(after, document.entry.check)
+              ? trainingEntryContextPassed(current, document) && await client.entryCheck(after, document.entry.check)
               : true
             const nextSession = verifyTrainingInput(beforeSession, document, localFrame, semanticKeys, entryPassed)
-            attempts.current = [...attempts.current, { frame: currentFrame, keys: semanticKeys, entryCheckPassed: entryPassed }]
-            const expected = verifiedInputs(document)[beforeSession.nextVerifiedInput]?.keys ?? []
+            const entryAccepted = beforeSession.phase === 'pre_fuzz' && (nextSession.phase === 'fuzz' || nextSession.phase === 'success')
+            attempts.current = [...attempts.current, { frame: currentFrame, inputId: expectedInput?.id ?? '', keys: semanticKeys, entryCheckPassed: entryPassed, entryAccepted }]
+            const expected = expectedInput?.keys ?? []
             const verificationOutcome = nextSession.phase === 'failed'
               ? nextSession.failure?.kind ?? 'input_order_mismatch'
               : 'accepted'
@@ -337,7 +311,7 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
               outcome: verificationOutcome,
               after
             })
-            if (beforeSession.phase === 'pre_fuzz' && nextSession.phase === 'fuzz') {
+            if (entryAccepted) {
               fuzzStartRef.current = currentFrame
               setFuzzStartFrame(currentFrame)
             }
@@ -364,7 +338,7 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
     <div className="training-loading notice"><i />{notice}</div>
   </main>
   const state = snapshots[frame] ?? snapshots.at(-1) ?? initial
-  const fuzzInputIndex = verifiedInputs(document)[session.nextVerifiedInput]?.fuzzInputIndex
+  const fuzzInputIndex = currentTrainingInput(session, document)?.fuzzInputIndex
   const target = fuzzInputIndex === undefined ? undefined : nextTargetFrame(session.candidates, fuzzInputIndex)
   const prompt = session.phase === 'pre_fuzz' ? document.entry.hint : document.teaching.steps[session.nextVerifiedInput]?.prompt ?? '继续保持。'
   const effective = (autoSlowdown ? assistedRate(baseRate, fuzzStartFrame === null ? 0 : frame - fuzzStartFrame, target, document.assist.auto_slowdown.radius_frames, Math.max(MAX_AUTO_SLOWDOWN_REDUCTION, document.assist.auto_slowdown.minimum_multiplier)) : baseRate) * (1 - outcomeProgress)
