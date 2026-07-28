@@ -31,7 +31,13 @@ export interface VisualTheme {
   chapter: string
   collection: VisualThemeCollectionId
   tileset: string
-  spike: 'default' | 'cliffside' | 'outline' | 'reflection'
+  /** Atlas prefix without the _up/_down/_left/_right suffix. */
+  spike: string
+  spinner: {
+    foreground: string
+    background: string
+    rainbow?: boolean
+  }
   tileLayout?: VisualThemeTileLayout
   background: string
   layers: readonly VisualThemeLayer[]
@@ -45,7 +51,8 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     chapter: 'CHAPTER 1',
     collection: 'celeste',
     tileset: 'tilesets/dirt',
-    spike: 'default',
+    spike: 'danger/spikes/default',
+    spinner: { foreground: 'danger/crystal/fg_blue', background: 'danger/crystal/bg_blue' },
     background: '#11172f',
     layers: [
       { key: 'bgs/01/bg0' },
@@ -59,7 +66,8 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     chapter: 'CHAPTER 2',
     collection: 'celeste',
     tileset: 'tilesets/stone',
-    spike: 'default',
+    spike: 'danger/spikes/default',
+    spinner: { foreground: 'danger/crystal/fg_blue', background: 'danger/crystal/bg_blue' },
     background: '#100c2f',
     layers: [],
     stars: true,
@@ -70,7 +78,8 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     chapter: 'CHAPTER 3',
     collection: 'celeste',
     tileset: 'tilesets/wood',
-    spike: 'default',
+    spike: 'danger/spikes/default',
+    spinner: { foreground: 'danger/crystal/fg_red', background: 'danger/crystal/bg_red' },
     background: '#181027',
     layers: [
       { key: 'bgs/03/bg0' },
@@ -86,7 +95,8 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     chapter: 'CHAPTER 4',
     collection: 'celeste',
     tileset: 'tilesets/cliffside',
-    spike: 'cliffside',
+    spike: 'danger/spikes/cliffside',
+    spinner: { foreground: 'danger/crystal/fg_blue', background: 'danger/crystal/bg_blue' },
     background: '#6d4d79',
     layers: [
       { key: 'bgs/04/bg0' },
@@ -100,7 +110,8 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     chapter: 'CHAPTER 7',
     collection: 'celeste',
     tileset: 'tilesets/summit',
-    spike: 'outline',
+    spike: 'danger/spikes/outline',
+    spinner: { foreground: 'danger/crystal/fg_white', background: 'danger/crystal/bg_white', rainbow: true },
     background: '#2b2660',
     layers: [
       { key: 'bgs/07/bg0' },
@@ -114,7 +125,8 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     chapter: 'BEGINNER GYM',
     collection: 'strawberry-jam',
     tileset: 'sj/tilesets/gym/beginner',
-    spike: 'outline',
+    spike: 'sj/spikes/gym/beg',
+    spinner: { foreground: 'danger/crystal/fg_blue', background: 'danger/crystal/bg_blue' },
     tileLayout: 'sj-gym',
     background: '#071323',
     layers: [{ key: 'sj/bgs/gym/beginner-dark', repeat: true }],
@@ -125,7 +137,8 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     chapter: 'INTERMEDIATE GYM',
     collection: 'strawberry-jam',
     tileset: 'sj/tilesets/gym/intermediate',
-    spike: 'outline',
+    spike: 'sj/spikes/gym/int',
+    spinner: { foreground: 'danger/crystal/fg_purple', background: 'danger/crystal/bg_purple' },
     tileLayout: 'sj-gym',
     background: '#210a0b',
     layers: [{ key: 'sj/bgs/gym/intermediate-dark', repeat: true }],
@@ -136,7 +149,8 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     chapter: 'ADVANCED GYM',
     collection: 'strawberry-jam',
     tileset: 'sj/tilesets/gym/advanced',
-    spike: 'outline',
+    spike: 'sj/spikes/gym/adv',
+    spinner: { foreground: 'danger/crystal/fg_red', background: 'danger/crystal/bg_red' },
     tileLayout: 'sj-gym',
     background: '#191707',
     layers: [{ key: 'sj/bgs/gym/advanced-dark', repeat: true }],
@@ -147,7 +161,8 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     chapter: 'EXPERT GYM',
     collection: 'strawberry-jam',
     tileset: 'sj/tilesets/gym/expert',
-    spike: 'outline',
+    spike: 'sj/spikes/gym/exp',
+    spinner: { foreground: 'danger/crystal/fg_white', background: 'danger/crystal/bg_white', rainbow: true },
     tileLayout: 'sj-gym',
     background: '#1b0c04',
     layers: [{ key: 'sj/bgs/gym/expert-dark', repeat: true }],
@@ -158,7 +173,8 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     chapter: 'GRANDMASTER GYM',
     collection: 'strawberry-jam',
     tileset: 'sj/tilesets/gym/grandmaster',
-    spike: 'outline',
+    spike: 'sj/spikes/gym/gm',
+    spinner: { foreground: 'danger/crystal/fg_white', background: 'danger/crystal/bg_white', rainbow: true },
     tileLayout: 'sj-gym',
     background: '#190419',
     layers: [{ key: 'sj/bgs/gym/grandmaster-dark', repeat: true }],
@@ -169,7 +185,8 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     chapter: 'BEGINNER LOBBY',
     collection: 'strawberry-jam',
     tileset: 'sj/tilesets/lobby/beginner-cliff',
-    spike: 'cliffside',
+    spike: 'sj/spikes/lobby/beginner-bramble',
+    spinner: { foreground: 'sj/spinners/beginner/fg', background: 'sj/spinners/beginner/bg' },
     background: '#8dc8ec',
     layers: [
       { key: 'sj/bgs/lobby/beginner/sky' },
@@ -183,7 +200,8 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     chapter: 'INTERMEDIATE LOBBY',
     collection: 'strawberry-jam',
     tileset: 'sj/tilesets/lobby/intermediate-girder',
-    spike: 'reflection',
+    spike: 'sj/spikes/lobby/intermediate-pixel',
+    spinner: { foreground: 'sj/spinners/intermediate/fg', background: 'sj/spinners/intermediate/bg' },
     background: '#25204f',
     layers: [
       { key: 'sj/bgs/lobby/intermediate/skybox' },
@@ -197,7 +215,8 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     chapter: 'ADVANCED LOBBY',
     collection: 'strawberry-jam',
     tileset: 'sj/tilesets/lobby/advanced-cloud',
-    spike: 'cliffside',
+    spike: 'sj/spikes/lobby/advanced-orange',
+    spinner: { foreground: 'sj/spinners/advanced/fg', background: 'sj/spinners/advanced/bg' },
     background: '#351b55',
     layers: [
       { key: 'sj/bgs/lobby/advanced/sunset' },
@@ -211,7 +230,8 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     chapter: 'EXPERT LOBBY',
     collection: 'strawberry-jam',
     tileset: 'sj/tilesets/lobby/expert-vegetation',
-    spike: 'outline',
+    spike: 'sj/spikes/lobby/expert-space',
+    spinner: { foreground: 'danger/crystal/fg_white', background: 'danger/crystal/bg_white', rainbow: true },
     background: '#090511',
     layers: [
       { key: 'sj/bgs/lobby/expert/space' },
@@ -225,7 +245,8 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     chapter: 'GRANDMASTER LOBBY',
     collection: 'strawberry-jam',
     tileset: 'sj/tilesets/lobby/grandmaster-grass',
-    spike: 'outline',
+    spike: 'sj/spikes/lobby/grandmaster-marble',
+    spinner: { foreground: 'danger/crystal/fg_purple', background: 'danger/crystal/bg_purple' },
     background: '#eed095',
     layers: [
       { key: 'sj/bgs/lobby/grandmaster/sky' },

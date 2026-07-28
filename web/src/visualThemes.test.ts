@@ -11,9 +11,9 @@ describe('visual themes', () => {
     expect(VISUAL_THEMES.filter((theme) => theme.collection === 'strawberry-jam')).toHaveLength(10)
     expect(VISUAL_THEME_COLLECTIONS.map((collection) => collection.id)).toEqual(['celeste', 'strawberry-jam'])
     for (const theme of VISUAL_THEMES) expect(theme.tileset).toMatch(/^(tilesets|sj\/tilesets)\//)
-    expect(visualThemeById('celestial-resort').spike).toBe('default')
-    expect(visualThemeById('golden-ridge').spike).toBe('cliffside')
-    expect(visualThemeById('summit').spike).toBe('outline')
+    expect(visualThemeById('celestial-resort').spike).toBe('danger/spikes/default')
+    expect(visualThemeById('golden-ridge').spike).toBe('danger/spikes/cliffside')
+    expect(visualThemeById('summit').spike).toBe('danger/spikes/outline')
   })
 
   it('includes every Strawberry Jam gym tier with its native autotiler layout', () => {
@@ -32,10 +32,18 @@ describe('visual themes', () => {
   })
 
   it('backs every Strawberry Jam theme reference with a packed source texture', () => {
+    const entries = strawberryJamAtlas.entries as Record<string, unknown>
     for (const theme of VISUAL_THEMES.filter((candidate) => candidate.collection === 'strawberry-jam')) {
-      expect(strawberryJamAtlas.entries[theme.tileset as keyof typeof strawberryJamAtlas.entries]).toBeDefined()
+      expect(entries[theme.tileset]).toBeDefined()
       for (const layer of theme.layers) {
-        expect(strawberryJamAtlas.entries[layer.key as keyof typeof strawberryJamAtlas.entries]).toBeDefined()
+        expect(entries[layer.key]).toBeDefined()
+      }
+      for (const direction of ['up', 'down', 'left', 'right']) {
+        expect(Object.keys(entries).some((key) => key.startsWith(`${theme.spike}_${direction}`))).toBe(true)
+      }
+      if (theme.spinner.foreground.startsWith('sj/')) {
+        expect(Object.keys(entries).some((key) => key.startsWith(theme.spinner.foreground))).toBe(true)
+        expect(Object.keys(entries).some((key) => key.startsWith(theme.spinner.background))).toBe(true)
       }
     }
 

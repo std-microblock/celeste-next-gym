@@ -2,6 +2,12 @@ import type { MapEntity, Vec2 } from './model'
 
 export type SpikeDirection = 'up' | 'down' | 'left' | 'right'
 
+export function spikeTexturePrefixes(style: string, direction: SpikeDirection): string[] {
+  const preferred = `${style}_${direction}`
+  const fallback = `danger/spikes/default_${direction}`
+  return preferred === fallback ? [preferred] : [preferred, fallback]
+}
+
 export interface SpikePlacement {
   x: number
   y: number
