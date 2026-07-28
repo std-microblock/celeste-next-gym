@@ -2429,11 +2429,11 @@ fn glider_body_rect(position: Vec2) -> Rect {
 }
 
 fn glider_pickup_rect(position: Vec2) -> Rect {
-    // Glider's holdable pickup collider begins one pixel below the previous
-    // 20x22 approximation.  This strict edge is observable when a falling
-    // Player and a rising spring-boosted glider cross: the player moves first
-    // and can only regrab on the following frame.
-    Rect::new(position.x - 10.0, position.y - 15.0, 20.0, 21.0)
+    // Glider's Holdable check is centered around the lower pickup region,
+    // rather than its full visual/body bounds.  A falling Player therefore
+    // passes the upper pixels of a rising spring-boosted Glider for two more
+    // updates before the regrab becomes eligible.
+    Rect::new(position.x - 10.0, position.y - 4.0, 20.0, 10.0)
 }
 
 fn try_pickup_glider(p: &mut PlayerSnapshot) -> bool {
@@ -8314,13 +8314,19 @@ mod tests {
                         .collect::<Vec<_>>()
                 )
             });
-        // The source's strict holdable edge does not overlap at the frame the
-        // player is at y=460. Normal movement advances to y=462 first; only
-        // the next Player.Update is eligible to start Pickup.
+        // The lower Holdable pickup region stays clear while the bodies first
+        // cross. Player movement advances through y=462, y=465 and y=468;
+        // only the fourth overlap check starts the pickup tween.
         assert_eq!(trace.states[103].state, PlayerState::Normal);
         assert_eq!(trace.states[103].pos, Vec2::new(126.0, 462.0));
         assert_eq!(trace.states[103].speed, Vec2::new(0.0, MAX_FALL));
-        assert_eq!(regrab, 104);
+        assert_eq!(trace.states[104].state, PlayerState::Normal);
+        assert_eq!(trace.states[104].pos, Vec2::new(126.0, 465.0));
+        assert_eq!(trace.states[104].speed, Vec2::new(0.0, MAX_FALL));
+        assert_eq!(trace.states[105].state, PlayerState::Normal);
+        assert_eq!(trace.states[105].pos, Vec2::new(126.0, 468.0));
+        assert_eq!(trace.states[105].speed, Vec2::new(0.0, MAX_FALL));
+        assert_eq!(regrab, 106);
         assert!(regrab > spring);
     }
 
