@@ -67,6 +67,11 @@ pub enum EntityKind {
     ZipMover,
     /// Vanilla steerable MoveBlock ("moon block") Solid.
     MoveBlock,
+    /// Vanilla beat-indexed CassetteBlock Solid. `direction.x` stores its
+    /// integer index and `direction.y` stores its tempo multiplier.
+    CassetteBlock,
+    /// Vanilla CrystalStaticSpinner hazard.
+    CrystalStaticSpinner,
     /// Simulator-native constant-velocity Solid used to exercise Monocle
     /// carrying, pushing, and Player LiftSpeed inheritance independently of a
     /// specific vanilla entity state machine.
@@ -540,6 +545,38 @@ pub(crate) fn encode_celeste_rooms(
                         vec![],
                     ))
                 }
+                EntityKind::CassetteBlock => Some(element(
+                    "cassetteBlock",
+                    [
+                        ("height", BinaryValue::Int(height)),
+                        ("id", BinaryValue::Int(id)),
+                        ("index", BinaryValue::Int(entity.direction.x.round() as i32)),
+                        ("originX", BinaryValue::Int(0)),
+                        ("originY", BinaryValue::Int(0)),
+                        (
+                            "tempo",
+                            BinaryValue::Float(if entity.direction.y == 0.0 {
+                                1.0
+                            } else {
+                                entity.direction.y
+                            }),
+                        ),
+                        ("width", BinaryValue::Int(width)),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![],
+                )),
+                EntityKind::CrystalStaticSpinner => Some(element(
+                    "spinner",
+                    [
+                        ("attachToSolid", BinaryValue::Bool(false)),
+                        ("id", BinaryValue::Int(id)),
+                        ("x", BinaryValue::Int(x + width / 2)),
+                        ("y", BinaryValue::Int(y + height / 2)),
+                    ],
+                    vec![],
+                )),
                 EntityKind::MovingSolid => Some(element(
                     "celesteGymMovingSolid",
                     [
@@ -851,6 +888,8 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 "theoCrystal" => EntityKind::TheoCrystal,
                 "zipMover" => EntityKind::ZipMover,
                 "moveBlock" => EntityKind::MoveBlock,
+                "cassetteBlock" => EntityKind::CassetteBlock,
+                "spinner" => EntityKind::CrystalStaticSpinner,
                 "celesteGymMovingSolid" => EntityKind::MovingSolid,
                 _ => EntityKind::Unknown,
             };
@@ -867,12 +906,14 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 EntityKind::BadelineBoost => 32.0,
                 EntityKind::Strawberry => 14.0,
                 EntityKind::TheoCrystal => 8.0,
+                EntityKind::CrystalStaticSpinner => 16.0,
                 _ => 8.0,
             };
             let default_h = match kind {
                 EntityKind::TheoCrystal | EntityKind::Puffer => 10.0,
                 EntityKind::Snowball => 9.0,
                 EntityKind::Cloud => 5.0,
+                EntityKind::CrystalStaticSpinner => 12.0,
                 _ => default_w,
             };
             let raw_width = attr_f32(el, "width", default_w);
@@ -915,6 +956,19 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 "bounceBlock" | "zipMover" => {
                     (Rect::new(ex, ey, raw_width, raw_height), Vec2::default())
                 }
+                "cassetteBlock" => (
+                    Rect::new(ex, ey, raw_width, raw_height),
+                    Vec2::new(attr_f32(el, "index", 0.0), attr_f32(el, "tempo", 1.0)),
+                ),
+                "spinner" => (
+                    Rect::new(
+                        ex - raw_width * 0.5,
+                        ey - raw_height * 0.5,
+                        raw_width,
+                        raw_height,
+                    ),
+                    Vec2::default(),
+                ),
                 "moveBlock" => {
                     let direction = match attr_text(el, "direction").unwrap_or("Right") {
                         "Left" => Vec2::new(-1.0, 0.0),
@@ -1059,6 +1113,7 @@ impl Map {
                 matches!(
                     entity.kind,
                     EntityKind::BounceBlock
+                        | EntityKind::CassetteBlock
                         | EntityKind::MoveBlock
                         | EntityKind::MovingSolid
                         | EntityKind::ZipMover
@@ -1292,6 +1347,42 @@ mod tests {
         assert_eq!(entity.bounds, Rect::new(352.0, -120.0, 32.0, 16.0));
         assert_eq!(entity.direction, Vec2::new(1.0, 0.0));
         assert_eq!(entity.name, "moveBlock");
+    }
+
+    #[test]
+    fn cassette_and_spinner_round_trip_vanilla_entity_attributes() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            entities: vec![
+                Entity {
+                    kind: EntityKind::CassetteBlock,
+                    bounds: Rect::new(64.0, 120.0, 64.0, 16.0),
+                    direction: Vec2::new(2.0, 1.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "cassetteBlock".to_owned(),
+                },
+                Entity {
+                    kind: EntityKind::CrystalStaticSpinner,
+                    bounds: Rect::new(192.0, 94.0, 16.0, 12.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "spinner".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let bytes = encode_celeste_map(&map, "CelesteGymPlayground", "cassette-spinner")
+            .expect("fixture should encode");
+        let decoded = decode_map_room(&bytes, Some("cassette-spinner")).unwrap();
+        assert_eq!(decoded.entities[0].kind, EntityKind::CassetteBlock);
+        assert_eq!(decoded.entities[0].bounds, map.entities[0].bounds);
+        assert_eq!(decoded.entities[0].direction, Vec2::new(2.0, 1.0));
+        assert_eq!(decoded.entities[1].kind, EntityKind::CrystalStaticSpinner);
+        assert_eq!(decoded.entities[1].bounds, map.entities[1].bounds);
     }
 
     #[test]
