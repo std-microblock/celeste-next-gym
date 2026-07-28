@@ -19,6 +19,6 @@
   candidate-e2e: evidence(
     path: [scripts/e2e-real-collector.mjs],
     symbol: [entity-4.10.3.2-holdable-dream-hyper],
-    note: [真实候选未形成出口抓墙→投掷→Hyper 链；语义输出为 `grab=-1, release=0, blocked=true, hyper=-1, regrab=true`。CannotHold 与重新抓取虽可观测，但缺失 exit-grab 和 Hyper，保持未实现。],
+    note: [修正后的真实候选已形成出口抓持 `grab=49`、松物 `release=54`、CannotHold 阻止立即回抓与 325 Hyper `hyper=63`；最终 `regrab=false`，因此完整链仍缺重新抓回 Theo，保持未实现。],
   ),
 )

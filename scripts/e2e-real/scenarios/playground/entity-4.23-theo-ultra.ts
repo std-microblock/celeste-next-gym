@@ -7,8 +7,9 @@ import { ENTITY_4_23_THEO_ULTRA_PART } from '../entity-tail-parts.js'
 export const mapParts = [ENTITY_4_23_THEO_ULTRA_PART] as const
 
 export const scenario = defineScenario({
-  target: PLAYGROUND_TARGET, status: 'candidate', tags: [], techniqueIds: ['4.23'], mapParts,
+  target: PLAYGROUND_TARGET, status: 'active', tags: [], techniqueIds: ['4.23'], mapParts,
   name: 'entity-4.23-theo-ultra',
+  recording: { primaryFor: ['4.23'], startFrame: 0, endFrame: 24 },
   initial: { pos: [32, 160], speed: [300, 0], on_ground: true },
   inputs: Array.from({ length: 24 }, (_, frame) => input({
     move_x: 1, move_y: frame < 10 ? 1 : 0, dash_pressed: frame === 0, grab_held: frame >= 5 && frame <= 20,
