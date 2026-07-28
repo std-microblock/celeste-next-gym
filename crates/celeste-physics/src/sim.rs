@@ -2785,12 +2785,15 @@ fn prepare_lookout_player(p: &mut PlayerSnapshot) {
             // write its walking speed.
             if p.state == PlayerState::Normal {
                 p.state = PlayerState::Dummy;
+                // DummyWalkToExact chooses Facing once, when its coroutine
+                // starts. It does not flip again after PlayerCollider-driven
+                // movement carries Madeline past an intermediate position.
+                let direction = (lookout.position.x - p.pos.x).signum();
+                if direction != 0.0 {
+                    p.facing = direction > 0.0;
+                }
             }
             p.dummy_moving = true;
-            let direction = (lookout.position.x - 8.0 - p.pos.x).signum();
-            if direction != 0.0 {
-                p.facing = direction > 0.0;
-            }
         }
         2 | 3 => {
             p.state = PlayerState::Dummy;
@@ -14538,6 +14541,9 @@ mod tests {
         assert_eq!(after_walk_resume.state, PlayerState::Boost);
         assert!((after_walk_resume.pos.x - 931.0).abs() <= 0.01);
         assert!((after_walk_resume.speed.x - 64.0).abs() <= 0.01);
+        let facing_after_interruption = &trace.states[boost_frame + 9];
+        assert_eq!(facing_after_interruption.state, PlayerState::Boost);
+        assert!(facing_after_interruption.facing);
         assert!(trace.states.iter().any(|state| {
             state.state == PlayerState::Normal
                 && state.lookouts[0].interacting
