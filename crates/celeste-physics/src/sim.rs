@@ -3812,6 +3812,15 @@ fn step(
                 | PlayerState::Pickup
                 | PlayerState::RedDash
                 | PlayerState::HitSquash
+                // Player.InControl is false in StDummy, so Lookout aim
+                // moves the camera without changing the player's facing.
+                | PlayerState::Dummy
+                | PlayerState::Frozen
+                | PlayerState::IntroWalk
+                | PlayerState::IntroJump
+                | PlayerState::IntroRespawn
+                | PlayerState::IntroWakeUp
+                | PlayerState::BirdDashTutorial
         )
     {
         p.facing = p.move_x > 0;
@@ -14287,6 +14296,27 @@ mod tests {
         assert!(!trace.states[130].lookouts[0].interacting);
         assert!(!trace.states[150].lookouts[0].interacting);
         assert_eq!(trace.states[150].state, PlayerState::Normal);
+    }
+
+    #[test]
+    fn lookout_dummy_aim_does_not_change_player_facing() {
+        let player = PlayerSnapshot {
+            pos: Vec2::new(160.0, 160.0),
+            on_ground: true,
+            facing: true,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = vec![InputState::default(); 75];
+        inputs[0].talk_pressed = true;
+        for input in &mut inputs[55..75] {
+            input.move_x = -1;
+        }
+        let trace = simulate_trace(player, &inputs, &lookout_map(vec![], false, false), 75)
+            .unwrap();
+
+        assert_eq!(trace.states[70].state, PlayerState::Dummy);
+        assert!(trace.states[70].lookouts[0].phase >= 4);
+        assert!(trace.states[70].facing, "StDummy is outside Player.InControl");
     }
 
     #[test]
