@@ -28,7 +28,7 @@ function verifyDelayedWallbounce(states: readonly E2EState[]): void {
   const launch = states[18]
   semanticAssert(beforeJump?.state === 0 && Number(field(beforeJump, 'dashAttackTimer')) > 0,
     'delayed-wallbounce', 'jump did not occur in Normal with a lingering dash attack')
-  semanticAssert(launch?.state === 0 && near(launch.speed[0], 170) && near(launch.speed[1], -160),
+  semanticAssert(launch?.state === 0 && near(launch.speed[0], -170) && near(launch.speed[1], -160),
     'delayed-wallbounce', `lingering up-dash produced ${JSON.stringify(launch?.speed)}`)
   semanticAssert(Number(field(launch, 'forceMoveXTimer')) === 0,
     'delayed-wallbounce', `SuperWallJump unexpectedly forced horizontal input: ${String(field(launch, 'forceMoveXTimer'))}`)
