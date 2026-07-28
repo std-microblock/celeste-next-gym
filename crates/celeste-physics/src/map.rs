@@ -107,9 +107,9 @@ pub struct Entity {
     pub name: String,
 }
 
-/// Runtime data for one adjacent Celeste room.  `Level.LoadLevel` replaces
-/// room-local solids and entities during a transition while the session-wide
-/// state (notably CassetteBlockManager) remains alive.
+/// Runtime data for one Celeste room. `Level.LoadLevel` replaces room-local
+/// solids and entities during a transition while the session-wide state
+/// (notably CassetteBlockManager) remains alive.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct RoomRuntime {
     pub bounds: Rect,
@@ -128,11 +128,17 @@ pub struct Map {
     /// when decoding one room so Level.EnforceBounds can resolve transitions.
     #[serde(default)]
     pub transition_rooms: Vec<Rect>,
-    /// Decoded room-local data for `transition_rooms`, in the same map. This
-    /// lets TransitionRoutine model `LoadLevel` instead of carrying old-room
-    /// CassetteBlocks and spawn points into the new room.
+    /// Decoded room-local data for every room in the same map, including the
+    /// room initially loaded into `solids` and `entities`. Keeping the source
+    /// room is necessary when a player transitions back into it, such as a
+    /// Bubsdrop: `Level.LoadLevel` must restore its collision and choose from
+    /// its own spawn set rather than retaining the upper room's data.
     #[serde(default)]
     pub transition_runtime: Vec<RoomRuntime>,
+    /// Static `LevelData.Spawns` for the presently loaded room. `spawn` is
+    /// the session respawn selected from this set during a room transition.
+    #[serde(default)]
+    pub room_spawns: Vec<Vec2>,
     #[serde(default)]
     pub spawn: Vec2,
     #[serde(default)]
@@ -149,6 +155,7 @@ impl Default for Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
             transition_rooms: vec![],
             transition_runtime: vec![],
+            room_spawns: vec![],
             spawn: Vec2::new(24.0, 160.0),
             solids: vec![],
             entities: vec![],
@@ -975,7 +982,11 @@ fn map_from_binary_inner(
             let ex = x + attr_f32(el, "x", 0.0);
             let ey = y + attr_f32(el, "y", 0.0);
             if el.name == "player" {
-                map.spawn = Vec2::new(ex, ey);
+                let spawn = Vec2::new(ex, ey);
+                if map.room_spawns.is_empty() {
+                    map.spawn = spawn;
+                }
+                map.room_spawns.push(spawn);
                 continue;
             }
             let kind = match el.name.as_str() {
@@ -1193,13 +1204,16 @@ fn map_from_binary_inner(
         map.transition_runtime = levels
             .children
             .iter()
-            .filter(|candidate| !std::ptr::eq(*candidate, level))
             .map(|candidate| {
                 let name = attr_text(candidate, "name").ok_or(MapError::NoLevel)?;
                 let decoded = map_from_binary_inner(root.clone(), Some(name), false)?;
                 Ok(RoomRuntime {
                     bounds: decoded.bounds,
-                    spawns: vec![decoded.spawn],
+                    spawns: if decoded.room_spawns.is_empty() {
+                        vec![decoded.spawn]
+                    } else {
+                        decoded.room_spawns
+                    },
                     solids: decoded.solids,
                     entities: decoded.entities,
                 })
@@ -1396,9 +1410,23 @@ mod tests {
         let lower = decode_map_room(&bytes, Some("lower")).unwrap();
         assert_eq!(lower.bounds, map.bounds);
         assert_eq!(lower.transition_rooms, vec![adjacent]);
+        assert_eq!(lower.transition_runtime.len(), 2);
+        assert!(
+            lower
+                .transition_runtime
+                .iter()
+                .any(|room| room.bounds == map.bounds && room.spawns == vec![lower.spawn])
+        );
         let upper = decode_map_room(&bytes, Some("transition_0")).unwrap();
         assert_eq!(upper.bounds, adjacent);
         assert_eq!(upper.transition_rooms, vec![map.bounds]);
+        assert_eq!(upper.transition_runtime.len(), 2);
+        assert!(
+            upper
+                .transition_runtime
+                .iter()
+                .any(|room| room.bounds == map.bounds && room.spawns == vec![lower.spawn])
+        );
         assert_eq!(upper.spawn, Vec2::new(24.0, -16.0));
         let decoded_solids = vec![
             Rect::new(0.0, 176.0, 320.0, 8.0),
