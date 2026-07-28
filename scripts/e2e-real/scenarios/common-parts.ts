@@ -136,7 +136,8 @@ export const TECH_ENTITY_4_6_1_CLOUD_HYPER_SUPER = fixturePart('tech.entity-4.6.
   entities: [{ id: 'tech-4.6.1-cloud', kind: 'cloud', bounds: [600, 440, 32, 5], name: 'cloud' }],
 })
 export const TECH_ENTITY_4_6_2_CLOUD_HYPER_BUNNYHOP = fixturePart('tech.entity-4.6.2-cloud-hyper-bunnyhop', {
-  entities: [{ id: 'tech-4.6.2-cloud', kind: 'cloud', bounds: [504, 440, 32, 5], name: 'cloud' }],
+  solids: [[536, 416, 160, 8]],
+  entities: [{ id: 'tech-4.6.2-cloud', kind: 'cloud', bounds: [504, 434, 32, 5], name: 'cloud' }],
 })
 export const TECH_ENTITY_4_10_3_DREAM_SMUGGLE = fixturePart('tech.entity-4.10.3-dream-smuggle', {
   entities: [
