@@ -9,7 +9,7 @@ export const mapParts = [TECH_OTHER_5_3_CASSETTE_RAISE] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: ['feature:cassette-block'],
   techniqueIds: ['5.3'],
   mapParts,
