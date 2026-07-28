@@ -2064,6 +2064,19 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
                 0
             };
             if jump_wall == 0 {
+                if map.water_at(current_player_rect(p, p.pos.x, p.pos.y + 2.0)) {
+                    p.jump_buffer_timer = 0.0;
+                    p.jump_grace_timer = 0.0;
+                    p.speed.y = JUMP_SPEED;
+                    p.speed.x += p.move_x as f32 * JUMP_H_BOOST;
+                    add_lift_boost(p);
+                    p.auto_jump = false;
+                    p.dash_attack_timer = 0.0;
+                    p.wall_slide_timer = WALL_SLIDE_TIME;
+                    p.wall_boost_timer = 0.0;
+                    p.var_jump_speed = p.speed.y;
+                    p.var_jump_timer = VAR_JUMP_TIME;
+                }
                 return;
             }
             if p.holding_theo.is_none()
@@ -4338,6 +4351,32 @@ mod tests {
         map.solids.push(Rect::new(560.0, 176.0, 16.0, 48.0));
         map
     }
+    fn bumper_theo_map() -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 544.0),
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::Bumper,
+                    bounds: Rect::new(88.0, 88.0, 24.0, 24.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "bigSpinner".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::TheoCrystal,
+                    bounds: Rect::new(96.0, 78.0, 8.0, 10.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "theoCrystal".to_owned(),
+                },
+            ],
+            ..Map::default()
+        }
+    }
     fn ice_ball_map() -> Map {
         Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
@@ -5252,6 +5291,54 @@ mod tests {
     }
 
     #[test]
+    fn theovator_regrabs_after_updash_speed_is_live_and_restores_it_after_pickup() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 160.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..60)
+            .map(|frame| InputState {
+                move_y: if frame == 23 {
+                    1
+                } else if frame >= 30 {
+                    -1
+                } else {
+                    0
+                },
+                dash_pressed: frame == 30,
+                grab_held: frame <= 22 || frame >= 36,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &theo_crystal_map(), inputs.len() as u32).unwrap();
+        let pickup = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(30)
+            .find(|(_, state)| state.state == PlayerState::Pickup && state.holding_theo == Some(0))
+            .map(|(frame, _)| frame)
+            .unwrap();
+        let restored = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(pickup + 1)
+            .find(|(_, state)| state.state == PlayerState::Normal)
+            .map(|(frame, _)| frame)
+            .unwrap();
+
+        assert_eq!(
+            trace.states[pickup].pickup_old_speed,
+            Vec2::new(0.0, -DASH_SPEED)
+        );
+        assert_eq!(trace.states[pickup].speed, Vec2::default());
+        assert_eq!(trace.states[restored].speed.y, -DASH_SPEED);
+        assert!(trace.states[restored].pos.y < 160.0);
+    }
+
+    #[test]
     fn neutral_drop_climb_jump_regrabs_theo_after_the_lockout() {
         let map = Map {
             bounds: Rect::new(0.0, 0.0, 160.0, 180.0),
@@ -5391,6 +5478,94 @@ mod tests {
                 .iter()
                 .any(|state| state.state == PlayerState::Normal && state.speed.x <= END_DASH_SPEED)
         );
+    }
+
+    #[test]
+    fn bumper_freeze_smuggle_releases_dashes_and_regrabs_theo() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(100.0, 100.0),
+            holding_theo: Some(0),
+            theo_crystals: vec![crate::TheoCrystalSnapshot {
+                position: Vec2::new(100.0, 88.0),
+                held: true,
+                ..crate::TheoCrystalSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..80)
+            .map(|frame| InputState {
+                move_y: if frame == 0 || frame >= 18 { 1 } else { 0 },
+                dash_pressed: frame == 18,
+                grab_held: frame >= 18,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &bumper_theo_map(), inputs.len() as u32).unwrap();
+        let dash = trace
+            .states
+            .iter()
+            .position(|state| state.state == PlayerState::Dash)
+            .unwrap();
+        let regrab = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(dash + 1)
+            .find(|(_, state)| state.state == PlayerState::Pickup && state.holding_theo == Some(0))
+            .map(|(frame, _)| frame)
+            .unwrap();
+        assert_eq!(trace.states[1].state, PlayerState::Launch);
+        assert_eq!(trace.states[1].freeze_timer, 0.1);
+        assert_eq!(trace.states[1].holding_theo, None);
+        assert!(dash > 12);
+        assert_eq!(trace.states[dash].holding_theo, None);
+        assert_eq!(trace.states[dash].dashes, 0);
+        assert_eq!(trace.states[regrab].holding_theo, Some(0));
+        assert!(trace.states[regrab].pickup_old_speed.y > 0.0);
+    }
+
+    #[test]
+    fn throwable_backboost_adds_eighty_opposite_the_throw_facing() {
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(100.0, 100.0),
+            speed: Vec2::new(120.0, 0.0),
+            facing: false,
+            holding_theo: Some(0),
+            theo_crystals: vec![crate::TheoCrystalSnapshot {
+                position: Vec2::new(100.0, 88.0),
+                held: true,
+                ..crate::TheoCrystalSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        release_theo(&mut p, InputState::default());
+
+        assert_eq!(p.speed.x, 200.0);
+        assert_eq!(p.holding_theo, None);
+        assert_eq!(p.theo_crystals[0].speed, Vec2::new(-200.0, -80.0));
+        assert_eq!(p.theo_crystals[0].cannot_hold_timer, 0.1);
+    }
+
+    #[test]
+    fn water_surface_jumps_can_stack_multiple_forty_speed_boosts() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(504.0, 428.0),
+            state: PlayerState::Swim,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..100)
+            .map(|frame| InputState {
+                move_x: 1,
+                jump_pressed: matches!(frame, 0 | 1 | 2),
+                jump_held: false,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &water_map(), inputs.len() as u32).unwrap();
+        assert!((trace.states[1].speed.x - 50.0).abs() < 0.000_1);
+        assert!((trace.states[2].speed.x - 100.0).abs() < 0.000_1);
+        assert!((trace.states[3].speed.x - 135.666_66).abs() < 0.000_1);
+        assert_eq!(trace.states[3].speed.y, JUMP_SPEED);
     }
 
     #[test]

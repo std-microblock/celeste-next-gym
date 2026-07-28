@@ -24,6 +24,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         On.Monocle.Engine.Update += EngineUpdate;
         On.Celeste.Celeste.RenderCore += CelesteRenderCore;
         On.Celeste.Player.Update += PlayerUpdate;
+        On.Celeste.Player.Jump += PlayerJump;
         On.Celeste.Player.StartDash += PlayerStartDash;
         On.Celeste.Player.Die += PlayerDie;
         On.Celeste.Input.GetAimVector += GetAimVector;
@@ -35,6 +36,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         On.Monocle.Engine.Update -= EngineUpdate;
         On.Celeste.Celeste.RenderCore -= CelesteRenderCore;
         On.Celeste.Player.Update -= PlayerUpdate;
+        On.Celeste.Player.Jump -= PlayerJump;
         On.Celeste.Player.StartDash -= PlayerStartDash;
         On.Celeste.Player.Die -= PlayerDie;
         On.Celeste.Input.GetAimVector -= GetAimVector;
@@ -315,6 +317,18 @@ public sealed class CelesteGymCollectorModule : EverestModule {
             job.CrouchDashBufferFrames = 0;
         }
         return nextState;
+    }
+
+    private void PlayerJump(
+        On.Celeste.Player.orig_Jump orig,
+        Player self,
+        bool particles,
+        bool playSfx
+    ) {
+        orig(self, particles, playSfx);
+        if (job is not null) {
+            job.JumpBufferFrames = ScriptedInputBuffer.Consume(job.JumpBufferFrames);
+        }
     }
 
     private PlayerDeadBody? PlayerDie(
