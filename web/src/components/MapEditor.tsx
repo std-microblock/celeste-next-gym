@@ -5,11 +5,12 @@ import { GameView } from './GameView'
 
 const GRID_SIZE = 8
 
-type EditorTool = 'select' | 'solid' | 'spawn' | 'erase' | `entity:${EntityKind}`
+type EditorTool = 'select' | 'solid' | 'spawn' | 'erase' | `entity:${string}`
 type EditorSelection = { type: 'solid' | 'entity'; index: number }
 type EditableBounds = { x: number; y: number; width: number; height: number }
 
 interface EntityTemplate {
+  id: string
   kind: EntityKind
   label: string
   name: string
@@ -26,18 +27,37 @@ interface DragState {
 }
 
 const ENTITY_TEMPLATES: readonly EntityTemplate[] = [
-  { kind: 'jump_thru', label: '木板', name: 'jumpThru', width: 32, height: 8 },
-  { kind: 'spikes', label: '尖刺', name: 'spikesUp', width: 32, height: 3, direction: { x: 0, y: -1 } },
-  { kind: 'water', label: '水', name: 'water', width: 32, height: 32 },
-  { kind: 'dream_block', label: '梦块', name: 'dreamBlock', width: 32, height: 32 },
-  { kind: 'booster', label: '绿泡', name: 'booster', width: 16, height: 16 },
-  { kind: 'red_booster', label: '红泡', name: 'redBooster', width: 16, height: 16 },
-  { kind: 'spring', label: '弹簧', name: 'spring', width: 16, height: 8, direction: { x: 0, y: -1 } },
-  { kind: 'strawberry', label: '草莓', name: 'strawberry', width: 16, height: 16 },
-  { kind: 'fly_feather', label: '羽毛', name: 'infiniteStar', width: 20, height: 20 },
-  { kind: 'bumper', label: '碰碰球', name: 'bigSpinner', width: 24, height: 24 },
-  { kind: 'theo_crystal', label: 'Theo 水晶', name: 'theoCrystal', width: 8, height: 10 },
-  { kind: 'glider', label: '水母', name: 'glider', width: 8, height: 10 },
+  { id: 'jump-thru', kind: 'jump_thru', label: '木板', name: 'jumpThru', width: 32, height: 8 },
+  { id: 'spikes-up', kind: 'spikes', label: '上刺', name: 'spikesUp', width: 32, height: 3, direction: { x: 0, y: -1 } },
+  { id: 'spikes-down', kind: 'spikes', label: '下刺', name: 'spikesDown', width: 32, height: 3, direction: { x: 0, y: 1 } },
+  { id: 'spikes-left', kind: 'spikes', label: '左刺', name: 'spikesLeft', width: 3, height: 32, direction: { x: -1, y: 0 } },
+  { id: 'spikes-right', kind: 'spikes', label: '右刺', name: 'spikesRight', width: 3, height: 32, direction: { x: 1, y: 0 } },
+  { id: 'crystal-spinner', kind: 'crystal_static_spinner', label: '圆刺', name: 'spinner', width: 16, height: 12 },
+  { id: 'water', kind: 'water', label: '水', name: 'water', width: 32, height: 32 },
+  { id: 'dream-block', kind: 'dream_block', label: '梦块', name: 'dreamBlock', width: 32, height: 32 },
+  { id: 'booster', kind: 'booster', label: '绿泡', name: 'booster', width: 16, height: 16 },
+  { id: 'red-booster', kind: 'red_booster', label: '红泡', name: 'redBooster', width: 16, height: 16 },
+  { id: 'spring', kind: 'spring', label: '弹簧', name: 'spring', width: 16, height: 8, direction: { x: 0, y: -1 } },
+  { id: 'strawberry', kind: 'strawberry', label: '草莓', name: 'strawberry', width: 16, height: 16 },
+  { id: 'fly-feather', kind: 'fly_feather', label: '羽毛', name: 'infiniteStar', width: 20, height: 20 },
+  { id: 'bumper', kind: 'bumper', label: '碰碰球', name: 'bigSpinner', width: 24, height: 24 },
+  { id: 'theo-crystal', kind: 'theo_crystal', label: 'Theo 水晶', name: 'theoCrystal', width: 8, height: 10 },
+  { id: 'glider', kind: 'glider', label: '水母', name: 'glider', width: 8, height: 10 },
+] as const
+
+const SPIKE_DIRECTIONS = [
+  { label: '上', name: 'spikesUp', direction: { x: 0, y: -1 } },
+  { label: '下', name: 'spikesDown', direction: { x: 0, y: 1 } },
+  { label: '左', name: 'spikesLeft', direction: { x: -1, y: 0 } },
+  { label: '右', name: 'spikesRight', direction: { x: 1, y: 0 } },
+] as const
+
+const SPINNER_VARIANTS = [
+  { id: 'theme', label: '主题' },
+  { id: 'blue', label: '蓝' },
+  { id: 'red', label: '红' },
+  { id: 'purple', label: '紫' },
+  { id: 'rainbow', label: '彩虹' },
 ] as const
 
 export interface MapEditorProps {
@@ -56,15 +76,41 @@ export function snapToGrid(value: number, origin = 0, grid = GRID_SIZE): number 
   return Math.round((value - origin) / grid) * grid + origin
 }
 
-export function createEditorEntity(kind: EntityKind, x: number, y: number): MapEntity | null {
-  const template = ENTITY_TEMPLATES.find((candidate) => candidate.kind === kind)
+export function createEditorEntity(templateIdOrKind: string, x: number, y: number): MapEntity | null {
+  const template = ENTITY_TEMPLATES.find((candidate) => candidate.id === templateIdOrKind)
+    ?? ENTITY_TEMPLATES.find((candidate) => candidate.kind === templateIdOrKind)
   if (!template) return null
   return {
-    kind,
+    kind: template.kind,
     bounds: { x, y, width: template.width, height: template.height },
     direction: template.direction ? { ...template.direction } : { x: 0, y: 0 },
     name: template.name,
   }
+}
+
+export function setEditorSpikeDirection(entity: MapEntity, direction: { x: number; y: number }): MapEntity {
+  const config = SPIKE_DIRECTIONS.find((candidate) => candidate.direction.x === direction.x && candidate.direction.y === direction.y)
+  if (entity.kind !== 'spikes' || !config) return entity
+  const wasHorizontal = Math.abs(entity.direction.y) > 0
+  const willBeHorizontal = Math.abs(direction.y) > 0
+  const length = wasHorizontal ? entity.bounds.width : entity.bounds.height
+  return {
+    ...entity,
+    name: config.name,
+    direction: { ...direction },
+    bounds: {
+      ...entity.bounds,
+      width: willBeHorizontal ? length : 3,
+      height: willBeHorizontal ? 3 : length,
+    },
+  }
+}
+
+export function editorEntityHitBounds(entity: MapEntity): MapEntity['bounds'] {
+  const box = entity.bounds
+  if (entity.kind !== 'spikes') return box
+  if (Math.abs(entity.direction.y) > 0) return { x: box.x, y: box.y - 3, width: box.width, height: 9 }
+  return { x: box.x - 3, y: box.y, width: 9, height: box.height }
 }
 
 function selectionBounds(map: GymMap, selection: EditorSelection | null): EditableBounds | null {
@@ -120,8 +166,8 @@ function toolLabel(tool: EditorTool): string {
   if (tool === 'solid') return '实心块'
   if (tool === 'spawn') return '出生点'
   if (tool === 'erase') return '删除'
-  const kind = tool.slice('entity:'.length) as EntityKind
-  return ENTITY_TEMPLATES.find((template) => template.kind === kind)?.label ?? kind
+  const templateId = tool.slice('entity:'.length)
+  return ENTITY_TEMPLATES.find((template) => template.id === templateId)?.label ?? templateId
 }
 
 export function MapEditor({ map, state, frame, theme, experiencing, ready, onChange, onExperienceChange, onResetExperience }: MapEditorProps) {
@@ -199,7 +245,7 @@ export function MapEditor({ map, state, frame, theme, experiencing, ready, onCha
     } else if (tool === 'spawn') {
       rememberAndChange({ ...map, spawn: { x: snapToGrid(point.x, map.bounds.x), y: snapToGrid(point.y, map.bounds.y) } })
     } else if (tool.startsWith('entity:')) {
-      const entity = createEditorEntity(tool.slice('entity:'.length) as EntityKind, snapToGrid(point.x, map.bounds.x), snapToGrid(point.y, map.bounds.y))
+      const entity = createEditorEntity(tool.slice('entity:'.length), snapToGrid(point.x, map.bounds.x), snapToGrid(point.y, map.bounds.y))
       if (!entity) return
       rememberAndChange({ ...map, entities: [...map.entities, entity] })
       setSelection({ type: 'entity', index: map.entities.length })
@@ -256,6 +302,14 @@ export function MapEditor({ map, state, frame, theme, experiencing, ready, onCha
     setSelection(null)
   }
 
+  const updateSelectedEntity = (update: (entity: MapEntity) => MapEntity) => {
+    if (selection?.type !== 'entity') return
+    rememberAndChange({
+      ...map,
+      entities: map.entities.map((entity, index) => index === selection.index ? update(entity) : entity),
+    })
+  }
+
   return <main className={`map-editor ${experiencing ? 'experiencing' : ''}`}>
     <aside className="editor-palette">
       <div className="editor-panel-heading"><small>MAP TOOLS</small><h1>地图编辑器</h1></div>
@@ -266,8 +320,8 @@ export function MapEditor({ map, state, frame, theme, experiencing, ready, onCha
       </div>
       <div className="editor-tool-section"><small>实体</small><div className="editor-entity-tools">
         {ENTITY_TEMPLATES.map((template) => {
-          const candidate = `entity:${template.kind}` as EditorTool
-          return <button key={template.kind} className={tool === candidate ? 'active' : ''} onClick={() => chooseTool(candidate)} aria-pressed={tool === candidate}>{template.label}</button>
+          const candidate = `entity:${template.id}` as EditorTool
+          return <button key={template.id} className={tool === candidate ? 'active' : ''} onClick={() => chooseTool(candidate)} aria-pressed={tool === candidate}>{template.label}</button>
         })}
       </div></div>
       <div className="editor-history" data-revision={historyRevision}>
@@ -300,7 +354,7 @@ export function MapEditor({ map, state, frame, theme, experiencing, ready, onCha
           <rect data-editor-background="true" className="editor-map-hitarea" x={map.bounds.x} y={map.bounds.y} width={map.bounds.width} height={map.bounds.height} />
           <rect className="editor-grid" x={map.bounds.x} y={map.bounds.y} width={map.bounds.width} height={map.bounds.height} />
           {map.solids.map((solid, index) => <rect key={`solid-${index}`} className={`editor-object solid ${selection?.type === 'solid' && selection.index === index ? 'selected' : ''}`} {...solid} onPointerDown={(event) => beginSelectionDrag(event, { type: 'solid', index })} />)}
-          {map.entities.map((entity, index) => <rect key={`entity-${index}`} data-kind={entity.kind} className={`editor-object entity ${selection?.type === 'entity' && selection.index === index ? 'selected' : ''}`} {...entity.bounds} onPointerDown={(event) => beginSelectionDrag(event, { type: 'entity', index })} />)}
+          {map.entities.map((entity, index) => <rect key={`entity-${index}`} data-kind={entity.kind} className={`editor-object entity ${selection?.type === 'entity' && selection.index === index ? 'selected' : ''}`} {...editorEntityHitBounds(entity)} onPointerDown={(event) => beginSelectionDrag(event, { type: 'entity', index })} />)}
           {draft && <rect className="editor-draft" {...draft} />}
           <g className="editor-spawn" transform={`translate(${map.spawn.x} ${map.spawn.y})`}><circle r="7" /><path d="M -4 0 H 4 M 0 -4 V 4" /></g>
         </svg>}
@@ -315,6 +369,12 @@ export function MapEditor({ map, state, frame, theme, experiencing, ready, onCha
         <div className="editor-field-grid">
           {(['x', 'y', 'width', 'height'] as const).map((field) => <label key={field}><small>{field.toUpperCase()}</small><input type="number" value={bounds[field]} onChange={(event) => updateBounds(field, Number(event.target.value))} /></label>)}
         </div>
+        {selectedEntity?.kind === 'spikes' && <div className="editor-option-group"><small>尖刺方向</small><div className="editor-option-buttons">
+          {SPIKE_DIRECTIONS.map((option) => <button key={option.name} className={selectedEntity.name === option.name ? 'active' : ''} onClick={() => updateSelectedEntity((entity) => setEditorSpikeDirection(entity, option.direction))}>{option.label}</button>)}
+        </div></div>}
+        {selectedEntity?.kind === 'crystal_static_spinner' && <div className="editor-option-group"><small>圆刺外观</small><div className="editor-option-buttons spinner-variants">
+          {SPINNER_VARIANTS.map((option) => <button key={option.id} className={(selectedEntity.variant ?? 'theme') === option.id ? 'active' : ''} onClick={() => updateSelectedEntity((entity) => ({ ...entity, variant: option.id === 'theme' ? undefined : option.id }))}>{option.label}</button>)}
+        </div></div>}
         {selectedEntity && <div className="editor-readout"><small>方向</small><code>{selectedEntity.direction.x}, {selectedEntity.direction.y}</code></div>}
       </> : <>
         <label className="editor-room-name"><small>ROOM NAME</small><input value={map.name} onChange={(event) => onChange({ ...map, name: event.target.value })} /></label>

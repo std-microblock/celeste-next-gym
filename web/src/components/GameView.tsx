@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { atlasFrameKeys } from '../atlasFrames'
 import type { EntityKind, GymMap, MapEntity, SimState, Vec2 } from '../model'
 import { playerHairMetadata } from '../playerHair'
-import { spikeDirection, spikePlacement } from '../spikeRendering'
+import { spikeDirection, spikePlacement, spikeTexturePrefixes } from '../spikeRendering'
+import { resolveSpinnerStyle, spinnerCenter, spinnerHue, spinnersConnect } from '../spinnerRendering'
 import type { VisualTheme, VisualThemeLayer } from '../visualThemes'
 
 interface AtlasEntry {
@@ -130,6 +131,31 @@ function tintedEntry(assets: GameAssets, key: string, color: string): HTMLCanvas
   return canvas
 }
 
+function framedEntry(assets: GameAssets, key: string, tint?: string): HTMLCanvasElement | undefined {
+  const entry = assets.entries[key]
+  if (!entry) return undefined
+  const cacheKey = `frame:${key}:${tint ?? 'original'}`
+  const cached = assets.tinted.get(cacheKey)
+  if (cached) return cached
+  const canvas = document.createElement('canvas')
+  canvas.width = entry.frameWidth
+  canvas.height = entry.frameHeight
+  const context = canvas.getContext('2d')
+  if (!context) return undefined
+  context.drawImage(
+    assets.image,
+    entry.x, entry.y, entry.width, entry.height,
+    entry.drawOffsetX, entry.drawOffsetY, entry.width, entry.height,
+  )
+  if (tint) {
+    context.globalCompositeOperation = 'source-in'
+    context.fillStyle = tint
+    context.fillRect(0, 0, canvas.width, canvas.height)
+  }
+  assets.tinted.set(cacheKey, canvas)
+  return canvas
+}
+
 function dreamParticleTexture(assets: GameAssets, sourceX: number, color: string): HTMLCanvasElement | undefined {
   const entry = assets.entries['objects/dreamblock/particles']
   if (!entry) return undefined
@@ -202,6 +228,23 @@ function drawOutlinedEntry(
     drawEntry(context, assets, key, x + dx, y + dy, originX, originY, scaleX, scaleY, '#000000', rotation)
   }
   drawEntry(context, assets, key, x, y, originX, originY, scaleX, scaleY, undefined, rotation)
+}
+
+function drawOutlinedTintedEntry(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  key: string,
+  x: number,
+  y: number,
+  originX: number,
+  originY: number,
+  tint: string | undefined,
+  rotation = 0,
+): void {
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
+    drawEntry(context, assets, key, x + dx, y + dy, originX, originY, 1, 1, '#000000', rotation)
+  }
+  drawEntry(context, assets, key, x, y, originX, originY, 1, 1, tint, rotation)
 }
 
 function drawCenteredEntry(
@@ -445,7 +488,9 @@ function buildTileLayer(assets: GameAssets, map: GymMap, grid: string[][], theme
 function drawSpikes(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, style: VisualTheme['spike']): void {
   const box = entity.bounds
   const direction = spikeDirection(entity.direction)
-  const available = frames(assets, `danger/spikes/${style}_${direction}`)
+  const available = spikeTexturePrefixes(style, direction)
+    .map((prefix) => frames(assets, prefix))
+    .find((candidate) => candidate.length > 0) ?? []
   if (available.length === 0) return
   const length = direction === 'up' || direction === 'down' ? box.width : box.height
   for (let index = 0; index < Math.floor(length / 8); index += 1) {
@@ -842,14 +887,97 @@ function drawCassetteBlock(context: CanvasRenderingContext2D, assets: GameAssets
   }
 }
 
-function drawCrystalSpinner(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState, kindIndex: number): void {
+function pointInSolid(map: GymMap, x: number, y: number): boolean {
+  return map.solids.some((solid) => x >= solid.x && y >= solid.y && x < solid.x + solid.width && y < solid.y + solid.height)
+}
+
+function drawSpinnerSlice(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  key: string,
+  position: Vec2,
+  sourceX: number,
+  sourceY: number,
+  originX: number,
+  originY: number,
+  tint?: string,
+): void {
+  const original = framedEntry(assets, key, tint)
+  if (!original) return
+  context.drawImage(original, sourceX, sourceY, 14, 14, Math.round(position.x) - originX, Math.round(position.y) - originY, 14, 14)
+}
+
+function drawOutlinedSpinnerSlice(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  key: string,
+  position: Vec2,
+  sourceX: number,
+  sourceY: number,
+  originX: number,
+  originY: number,
+  tint?: string,
+): void {
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
+    drawSpinnerSlice(context, assets, key, { x: position.x + dx, y: position.y + dy }, sourceX, sourceY, originX, originY, '#000000')
+  }
+  drawSpinnerSlice(context, assets, key, position, sourceX, sourceY, originX, originY, tint)
+}
+
+function drawSpinnerConnections(context: CanvasRenderingContext2D, assets: GameAssets, map: GymMap, frame: number, state: SimState, theme: VisualTheme): void {
+  const records: { entity: MapEntity; position: Vec2; style: VisualTheme['spinner'] }[] = []
+  let spinnerIndex = 0
+  for (const entity of map.entities) {
+    if (entity.kind !== 'crystal_static_spinner') continue
+    const runtime = state.spinners?.[spinnerIndex]
+    spinnerIndex += 1
+    if (runtime && !runtime.visible) continue
+    records.push({
+      entity,
+      position: runtime?.position ?? spinnerCenter(entity),
+      style: resolveSpinnerStyle(theme, entity.variant),
+    })
+  }
+  for (let left = 0; left < records.length; left += 1) {
+    for (let right = left + 1; right < records.length; right += 1) {
+      const a = records[left]
+      const b = records[right]
+      if (a.style.background !== b.style.background || !spinnersConnect(a.entity, b.entity)) continue
+      const available = frames(assets, a.style.background)
+      if (available.length === 0) continue
+      const midpoint = { x: (a.position.x + b.position.x) * .5, y: (a.position.y + b.position.y) * .5 }
+      const seed = pseudo(midpoint.x * .23 + midpoint.y * .37)
+      const key = available[Math.floor(seed * available.length) % available.length]
+      const entry = assets.entries[key]
+      if (!entry) continue
+      const tint = a.style.rainbow ? spinnerHue(midpoint, frame) : undefined
+      drawOutlinedTintedEntry(context, assets, key, midpoint.x, midpoint.y, entry.frameWidth * .5, entry.frameHeight * .5, tint, Math.floor(seed * 4) * Math.PI * .5)
+    }
+  }
+}
+
+function drawCrystalSpinner(context: CanvasRenderingContext2D, assets: GameAssets, map: GymMap, entity: MapEntity, frame: number, state: SimState, kindIndex: number, theme: VisualTheme): void {
   const runtime = state.spinners?.[kindIndex]
   if (runtime && !runtime.visible) return
-  const position = runtime?.position ?? { x: entity.bounds.x + entity.bounds.width / 2, y: entity.bounds.y + entity.bounds.height / 2 }
-  const offset = runtime?.offset ?? 0
-  const index = Math.floor((frame + offset * 60) / 4) % 4
-  drawCenteredEntry(context, assets, `danger/crystal/bg_blue${String(index).padStart(2, '0')}`, position.x, position.y)
-  drawCenteredEntry(context, assets, `danger/crystal/fg_blue${String(index).padStart(2, '0')}`, position.x, position.y, true)
+  const position = runtime?.position ?? spinnerCenter(entity)
+  const style = resolveSpinnerStyle(theme, entity.variant)
+  const available = frames(assets, style.foreground)
+  if (available.length === 0) return
+  // CrystalStaticSpinner chooses one foreground sheet when its sprites are
+  // instantiated. It is static; the four files are variants, not animation.
+  const seed = pseudo(position.x * .17 + position.y * .31 + kindIndex * 7.13)
+  const key = available[Math.floor(seed * available.length) % available.length]
+  const tint = style.rainbow ? spinnerHue(position, frame) : undefined
+  const slices = [
+    { checkX: -4, checkY: -4, sourceX: 0, sourceY: 0, originX: 12, originY: 12 },
+    { checkX: 4, checkY: -4, sourceX: 10, sourceY: 0, originX: 2, originY: 12 },
+    { checkX: 4, checkY: 4, sourceX: 10, sourceY: 10, originX: 2, originY: 2 },
+    { checkX: -4, checkY: 4, sourceX: 0, sourceY: 10, originX: 12, originY: 2 },
+  ]
+  for (const slice of slices) {
+    if (pointInSolid(map, position.x + slice.checkX, position.y + slice.checkY)) continue
+    drawOutlinedSpinnerSlice(context, assets, key, position, slice.sourceX, slice.sourceY, slice.originX, slice.originY, tint)
+  }
 }
 
 function drawTheoCrystal(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, state: SimState, kindIndex: number): void {
@@ -1012,7 +1140,7 @@ function drawUnknownEntity(context: CanvasRenderingContext2D, entity: MapEntity)
   context.fillText(entity.name || entity.kind, box.x + 1, box.y - 1)
 }
 
-function drawEntity(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState, kindIndex: number, entityIndex: number, theme: VisualTheme): void {
+function drawEntity(context: CanvasRenderingContext2D, assets: GameAssets, map: GymMap, entity: MapEntity, frame: number, state: SimState, kindIndex: number, entityIndex: number, theme: VisualTheme): void {
   const box = entity.bounds
   if (entity.kind === 'spikes') {
     drawSpikes(context, assets, entity, theme.spike)
@@ -1063,7 +1191,7 @@ function drawEntity(context: CanvasRenderingContext2D, assets: GameAssets, entit
   } else if (entity.kind === 'cassette_block') {
     drawCassetteBlock(context, assets, entity, state, kindIndex)
   } else if (entity.kind === 'crystal_static_spinner') {
-    drawCrystalSpinner(context, assets, entity, frame, state, kindIndex)
+    drawCrystalSpinner(context, assets, map, entity, frame, state, kindIndex, theme)
   } else if (entity.kind === 'moving_solid') {
     drawMovingSolid(context, entity, state, kindIndex)
   } else if (entity.kind !== 'wind') {
@@ -1113,10 +1241,11 @@ export function GameView({ map, state, states, frame, stale, theme, children }: 
     context.scale(scale, scale)
     drawThemeBackground(context, assets, map, theme, frame)
     if (tileLayer) context.drawImage(tileLayer, map.bounds.x, map.bounds.y)
+    drawSpinnerConnections(context, assets, map, frame, state, theme)
     const kindCounts = new Map<EntityKind, number>()
     for (const [entityIndex, entity] of map.entities.entries()) {
       const kindIndex = kindCounts.get(entity.kind) ?? 0
-      drawEntity(context, assets, entity, frame, state, kindIndex, entityIndex, theme)
+      drawEntity(context, assets, map, entity, frame, state, kindIndex, entityIndex, theme)
       kindCounts.set(entity.kind, kindIndex + 1)
     }
     context.globalAlpha = stale ? .45 : 1

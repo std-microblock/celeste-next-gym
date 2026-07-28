@@ -43,6 +43,61 @@ const themeAssets = [
   ['sj/bgs/lobby/grandmaster/clouds', 'bgs/SJ2021/GMLobby/cloud-group-1.png'],
 ]
 
+function addDirectionalSpikes(keyPrefix, sourceRoot, files) {
+  for (const [direction, names] of Object.entries(files)) {
+    names.forEach((name, index) => themeAssets.push([
+      `${keyPrefix}_${direction}${String(index).padStart(2, '0')}`,
+      `${sourceRoot}/${name}`,
+    ]))
+  }
+}
+
+function addSpinner(keyPrefix, sourceRoot, backgroundName = 'bg00.png') {
+  for (let index = 0; index < 4; index += 1) {
+    const suffix = String(index).padStart(2, '0')
+    themeAssets.push([`${keyPrefix}/fg${suffix}`, `${sourceRoot}/fg${suffix}.png`])
+  }
+  themeAssets.push([`${keyPrefix}/bg00`, `${sourceRoot}/${backgroundName}`])
+}
+
+addDirectionalSpikes('sj/spikes/gym/beg', 'danger/spikes/SJ2021/Gym', {
+  up: ['beg_up00.png'], down: ['beg_down00.png'], left: ['beg_left00.png'], right: ['beg_right00.png'],
+})
+addDirectionalSpikes('sj/spikes/gym/int', 'danger/spikes/SJ2021/Gym', {
+  up: ['int_up00.png'], down: ['int_down00.png'], left: ['int_left.png'], right: ['int_right00.png'],
+})
+addDirectionalSpikes('sj/spikes/gym/adv', 'danger/spikes/SJ2021/Gym', {
+  up: ['adv_up00.png'], down: ['adv_down00.png'], left: ['adv_left00.png'], right: ['adv_right00.png'],
+})
+addDirectionalSpikes('sj/spikes/gym/exp', 'danger/spikes/SJ2021/Gym', {
+  up: ['exp_up00.png'], down: ['exp_down00.png'], left: ['exp_left00.png'], right: ['exp_right00.png'],
+})
+addDirectionalSpikes('sj/spikes/gym/gm', 'danger/spikes/SJ2021/Gym', {
+  up: ['gm_up00.png'], down: ['gm_down00.png'], left: ['gm_left00.png'], right: ['gm_right00.png'],
+})
+addDirectionalSpikes('sj/spikes/lobby/beginner-bramble', 'danger/spikes/SJ2021/1-Beginner', {
+  up: ['bramble_up00.png', 'bramble_up01.png', 'bramble_up02.png', 'bramble_up03.png'],
+  down: ['bramble_down00.png', 'bramble_down01.png', 'bramble_down02.png'],
+  left: ['bramble_left00.png', 'bramble_left01.png', 'bramble_left02.png'],
+  right: ['bramble_right00.png', 'bramble_right01.png', 'bramble_right02.png'],
+})
+addDirectionalSpikes('sj/spikes/lobby/intermediate-pixel', 'danger/spikes/SJ2021/pixelator', {
+  up: ['v_up00.png'], down: ['v_down00.png'], left: ['v_left00.png'], right: ['v_right00.png'],
+})
+addDirectionalSpikes('sj/spikes/lobby/advanced-orange', 'danger/spikes/SJ2021/Archire', {
+  up: ['orange_up00.png'], down: ['orange_down00.png'], left: ['orange_left00.png'], right: ['orange_right00.png'],
+})
+addDirectionalSpikes('sj/spikes/lobby/expert-space', 'danger/spikes/SJ2021/powerav', {
+  up: ['space_up00.png'], down: ['spacet_down00.png'], left: ['space_left00.png'], right: ['space_right00.png'],
+})
+addDirectionalSpikes('sj/spikes/lobby/grandmaster-marble', 'danger/spikes/SJ2021/Grandmaster', {
+  up: ['marble_up00.png'], down: ['marble_down00.png'], left: ['marble_left00.png'], right: ['marble_right00.png'],
+})
+
+addSpinner('sj/spinners/beginner', 'danger/spikes/SJ2021/1-Beginner/brambles')
+addSpinner('sj/spinners/intermediate', 'danger/SJ2021/Ceph/Spinner', 'bg.png')
+addSpinner('sj/spinners/advanced', 'danger/SJ2021/Julia/Spinner', 'bg.png')
+
 const gameplayRoot = path.join(source, 'Graphics', 'Atlases', 'Gameplay')
 const sheetWidth = 1024
 const padding = 2

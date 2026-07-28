@@ -171,6 +171,8 @@ export interface MapEntity {
   direction: Vec2
   shielded?: boolean
   single_use?: boolean
+  /** Web editor visual override for entities such as crystal spinners. */
+  variant?: string
   nodes?: Vec2[]
   name: string
 }
