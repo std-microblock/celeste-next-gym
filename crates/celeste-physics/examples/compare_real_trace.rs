@@ -76,7 +76,17 @@ fn main() -> ExitCode {
         }
     };
     let initial = to_snapshot(&trace.states[0]);
-    let simulated = match simulate_trace(initial, &trace.inputs, &map, trace.inputs.len() as u32) {
+    let mut inputs = trace.inputs.clone();
+    // State 0 precedes the first scripted Player.Update. Each later capture
+    // contains the Engine.DeltaTime consumed by its matching input frame.
+    for (input, state) in inputs.iter_mut().zip(trace.states.iter().skip(1)) {
+        input.frame_delta_time_bits = state
+            .fields
+            .get("engineDeltaTime")
+            .and_then(Value::as_f64)
+            .map(|delta| (delta as f32).to_bits());
+    }
+    let simulated = match simulate_trace(initial, &inputs, &map, inputs.len() as u32) {
         Ok(result) => result.states,
         Err(error) => {
             eprintln!("simulation failed: {error}");

@@ -52,6 +52,7 @@ impl CelesteInputPod {
             crouch_dash_pressed: self.flags & (1 << 3) != 0,
             grab_held: self.flags & (1 << 4) != 0,
             talk_pressed: self.flags & (1 << 5) != 0,
+            frame_delta_time_bits: None,
         }
     }
 }

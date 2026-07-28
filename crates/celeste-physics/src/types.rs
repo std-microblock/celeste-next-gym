@@ -60,6 +60,10 @@ pub struct InputState {
     pub grab_held: bool,
     #[serde(default)]
     pub talk_pressed: bool,
+    /// Exact `Engine.DeltaTime` bits captured from a real Everest frame. This
+    /// is diagnostic replay data only, so portable scenario inputs omit it.
+    #[serde(skip)]
+    pub frame_delta_time_bits: Option<u32>,
 }
 
 impl InputState {
