@@ -47,6 +47,7 @@ internal static class SnapshotCapture {
         BindingFlags.Instance | BindingFlags.NonPublic
     );
     private static readonly Dictionary<BounceBlock, BounceBlockReformProbe> bounceBlockReformProbes = [];
+    private static readonly Dictionary<BounceBlock, BounceBlockUpdateObservation> bounceBlockUpdateObservations = [];
     // This is a diagnostic lattice around BounceBlock.startPos, not a
     // substitute respawn rule. Entries are sorted by squared distance, then
     // Y/X, so the first clear entry is the nearest legal candidate among the
@@ -87,6 +88,20 @@ internal static class SnapshotCapture {
         public List<Dictionary<string, object?>> Solids = [];
     }
 
+    private sealed class BounceBlockUpdateObservation {
+        public int? PreState;
+        public int? PostState;
+        public bool PreCollidable;
+        public bool? PostCollidable;
+        public bool AlarmPresentBefore;
+        public bool AlarmActiveBefore;
+        public float? AlarmTimeLeftBefore;
+        public bool AlarmPresentAfter;
+        public bool AlarmActiveAfter;
+        public float? AlarmTimeLeftAfter;
+        public bool? StaticMoverEnabledAfter;
+    }
+
     public static void ResetLookoutLifecycleObservation() {
         lookoutRemovalObserved = false;
         lookoutRemovedWhileInteracting = false;
@@ -97,7 +112,47 @@ internal static class SnapshotCapture {
     // BounceBlock reform changes state during that update, so retaining a
     // previous frame's probe would falsely attribute an old BlockedCheck to a
     // later Waiting frame.
-    public static void BeginEngineFrame() => bounceBlockReformProbes.Clear();
+    public static void BeginEngineFrame() {
+        bounceBlockReformProbes.Clear();
+        bounceBlockUpdateObservations.Clear();
+    }
+
+    public static void ObserveBounceBlockUpdateBefore(BounceBlock bounceBlock) {
+        try {
+            Alarm? alarm = bounceBlock.Get<Alarm>();
+            bounceBlockUpdateObservations[bounceBlock] = new BounceBlockUpdateObservation {
+                PreState = ReadBounceBlockState(bounceBlock),
+                PreCollidable = bounceBlock.Collidable,
+                AlarmPresentBefore = alarm is not null,
+                AlarmActiveBefore = alarm?.Active ?? false,
+                AlarmTimeLeftBefore = alarm?.TimeLeft,
+            };
+        } catch {
+            // A missing/changed private field must not affect the real update.
+        }
+    }
+
+    public static void ObserveBounceBlockUpdateAfter(BounceBlock bounceBlock) {
+        if (!bounceBlockUpdateObservations.TryGetValue(
+                bounceBlock,
+                out BounceBlockUpdateObservation? observation)) return;
+        try {
+            Alarm? alarm = bounceBlock.Get<Alarm>();
+            observation.PostState = ReadBounceBlockState(bounceBlock);
+            observation.PostCollidable = bounceBlock.Collidable;
+            observation.AlarmPresentAfter = alarm is not null;
+            observation.AlarmActiveAfter = alarm?.Active ?? false;
+            observation.AlarmTimeLeftAfter = alarm?.TimeLeft;
+            if (bounceBlock.Scene is Level level) {
+                Spikes? spike = level.Entities.FindAll<Spikes>()
+                    .Find(candidate => candidate.Get<StaticMover>()?.Platform == bounceBlock);
+                observation.StaticMoverEnabledAfter = spike?.Get<StaticMover>()?.Active;
+            }
+        } catch {
+            // The snapshot fields below remain absent rather than turning a
+            // collector-only diagnostic into a gameplay failure.
+        }
+    }
 
     public static void ObserveBounceBlockReformProbe(BounceBlock bounceBlock) {
         object? rawState;
@@ -317,6 +372,7 @@ internal static class SnapshotCapture {
                     );
                     values["reformBounceBlockReformed"] = bounceBlockReformed?.GetValue(bounceBlock) as bool? ?? false;
                     AppendBounceBlockReformProbe(values, bounceBlock);
+                    AppendBounceBlockUpdateObservation(values, bounceBlock);
 
                     Alarm? staticMoverAlarm = bounceBlock.Get<Alarm>();
                     values["reformStaticMoverAlarmPresent"] = staticMoverAlarm is not null;
@@ -484,6 +540,59 @@ internal static class SnapshotCapture {
             result.Add(description);
         }
         return result;
+    }
+
+    // These fields are written only for the same Engine update as the native
+    // BounceBlock.Update call. They distinguish "the player merely crossed
+    // the body" from Waiting->WindingUp and the actual transition into
+    // Bouncing, while preserving the alarm/StaticMover state at that moment.
+    private static void AppendBounceBlockUpdateObservation(
+        Dictionary<string, object?> values,
+        BounceBlock bounceBlock
+    ) {
+        bool observed = bounceBlockUpdateObservations.TryGetValue(
+            bounceBlock,
+            out BounceBlockUpdateObservation? observation
+        );
+        values["reformBounceBlockUpdateObserved"] = observed;
+        if (!observed || observation is null) return;
+
+        if (observation.PreState is int preState) values["reformBounceBlockPreUpdateState"] = preState;
+        if (observation.PostState is int postState) values["reformBounceBlockPostUpdateState"] = postState;
+        values["reformBounceBlockPreUpdateCollidable"] = observation.PreCollidable;
+        if (observation.PostCollidable is bool postCollidable) {
+            values["reformBounceBlockPostUpdateCollidable"] = postCollidable;
+        }
+        values["reformBounceBlockAlarmPresentBeforeUpdate"] = observation.AlarmPresentBefore;
+        values["reformBounceBlockAlarmActiveBeforeUpdate"] = observation.AlarmActiveBefore;
+        if (observation.AlarmTimeLeftBefore is float beforeTimeLeft) {
+            values["reformBounceBlockAlarmTimeLeftBeforeUpdate"] = beforeTimeLeft;
+        }
+        values["reformBounceBlockAlarmPresentAfterUpdate"] = observation.AlarmPresentAfter;
+        values["reformBounceBlockAlarmActiveAfterUpdate"] = observation.AlarmActiveAfter;
+        if (observation.AlarmTimeLeftAfter is float afterTimeLeft) {
+            values["reformBounceBlockAlarmTimeLeftAfterUpdate"] = afterTimeLeft;
+        }
+        bool windUpStarted = observation.PreState == 0 && observation.PostState == 1;
+        bool nativeBounceStarted = observation.PreState != 2 && observation.PostState == 2;
+        values["reformBounceBlockWindUpStarted"] = windUpStarted;
+        values["reformBounceBlockNativeBounceStarted"] = nativeBounceStarted;
+        if (nativeBounceStarted) {
+            values["reformBounceBlockNativeBounceAlarmActive"] = observation.AlarmActiveAfter;
+            if (observation.StaticMoverEnabledAfter is bool staticMoverEnabled) {
+                values["reformBounceBlockNativeBounceStaticMoverEnabled"] = staticMoverEnabled;
+            }
+        }
+    }
+
+    private static int? ReadBounceBlockState(BounceBlock bounceBlock) {
+        try {
+            return bounceBlockState?.GetValue(bounceBlock) is Enum state
+                ? Convert.ToInt32(state)
+                : null;
+        } catch {
+            return null;
+        }
     }
 
     private static List<BounceBlockResetCollisionCandidate> ScanBounceBlockResetCandidates(

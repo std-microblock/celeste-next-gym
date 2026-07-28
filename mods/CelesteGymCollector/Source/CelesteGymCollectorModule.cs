@@ -316,9 +316,11 @@ public sealed class CelesteGymCollectorModule : EverestModule {
     }
 
     private void BounceBlockUpdate(On.Celeste.BounceBlock.orig_Update orig, BounceBlock self) {
+        SnapshotCapture.ObserveBounceBlockUpdateBefore(self);
         SnapshotCapture.ObserveBounceBlockReformProbe(self);
         orig(self);
         SnapshotCapture.ObserveBounceBlockReformResult(self);
+        SnapshotCapture.ObserveBounceBlockUpdateAfter(self);
     }
 
     private int PlayerStartDash(On.Celeste.Player.orig_StartDash orig, Player self) {
