@@ -53,11 +53,12 @@ interface FixtureEntityBase {
 }
 
 export type FixtureEntity =
-  | (FixtureEntityBase & { readonly kind: 'jump_thru' | 'water' | 'dream_block' | 'bumper' | 'puffer' | 'angry_oshiro' | 'seeker' | 'snowball' | 'cloud' | 'bounce_block' | 'theo_crystal' | 'glider' | 'strawberry' | 'booster' | 'red_booster' })
+  | (FixtureEntityBase & { readonly kind: 'jump_thru' | 'water' | 'dream_block' | 'bumper' | 'puffer' | 'angry_oshiro' | 'seeker' | 'snowball' | 'cloud' | 'bounce_block' | 'theo_crystal' | 'heart_gem' | 'glider' | 'strawberry' | 'booster' | 'red_booster' })
   | (FixtureEntityBase & { readonly kind: 'fly_feather'; readonly shielded?: boolean; readonly singleUse?: boolean })
   | (FixtureEntityBase & { readonly kind: 'badeline_boost'; readonly nodes?: readonly Vector2[] })
   | (FixtureEntityBase & { readonly kind: 'ice_ball'; readonly nodes?: readonly Vector2[]; readonly singleUse?: boolean })
-  | (FixtureEntityBase & { readonly kind: 'spikes' | 'spring' | 'wind' | 'move_block' | 'moving_solid'; readonly direction: Vector2 })
+  | (FixtureEntityBase & { readonly kind: 'spikes' | 'spring' | 'wind' | 'move_block' | 'moving_solid' | 'cassette_block'; readonly direction: Vector2 })
+  | (FixtureEntityBase & { readonly kind: 'crystal_static_spinner' })
   | (FixtureEntityBase & { readonly kind: 'zip_mover'; readonly nodes: readonly [Vector2] })
 
 export type FixtureEntityKind = FixtureEntity['kind']

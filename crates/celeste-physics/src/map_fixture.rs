@@ -38,9 +38,12 @@ pub enum FixtureEntityKind {
     Wind,
     BounceBlock,
     TheoCrystal,
+    HeartGem,
     Glider,
     ZipMover,
     MoveBlock,
+    CassetteBlock,
+    CrystalStaticSpinner,
     MovingSolid,
 }
 
@@ -401,6 +404,14 @@ fn validate_entity_fields(entity: &FixtureEntity, room: &str) -> Result<(), MapF
                 entity.id
             ));
         }
+        FixtureEntityKind::CassetteBlock
+            if direction[0] < 0 || direction[0] > 3 || direction[1] <= 0 =>
+        {
+            return validation(format!(
+                "room {room:?} entity {:?} requires cassette direction metadata [index 0..3, positive integer tempo]",
+                entity.id
+            ));
+        }
         _ => {}
     }
     if direction != [0, 0]
@@ -410,6 +421,7 @@ fn validate_entity_fields(entity: &FixtureEntity, room: &str) -> Result<(), MapF
                 | FixtureEntityKind::Spring
                 | FixtureEntityKind::Wind
                 | FixtureEntityKind::MoveBlock
+                | FixtureEntityKind::CassetteBlock
                 | FixtureEntityKind::MovingSolid
         )
     {
@@ -573,9 +585,12 @@ fn entity(value: &FixtureEntity) -> Entity {
             FixtureEntityKind::Wind => EntityKind::Wind,
             FixtureEntityKind::BounceBlock => EntityKind::BounceBlock,
             FixtureEntityKind::TheoCrystal => EntityKind::TheoCrystal,
+            FixtureEntityKind::HeartGem => EntityKind::HeartGem,
             FixtureEntityKind::Glider => EntityKind::Glider,
             FixtureEntityKind::ZipMover => EntityKind::ZipMover,
             FixtureEntityKind::MoveBlock => EntityKind::MoveBlock,
+            FixtureEntityKind::CassetteBlock => EntityKind::CassetteBlock,
+            FixtureEntityKind::CrystalStaticSpinner => EntityKind::CrystalStaticSpinner,
             FixtureEntityKind::MovingSolid => EntityKind::MovingSolid,
         },
         bounds: rect(value.bounds),
