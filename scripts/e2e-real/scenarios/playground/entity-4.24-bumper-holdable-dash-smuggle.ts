@@ -7,7 +7,7 @@ import { ENTITY_4_24_BUMPER_SMUGGLE_PART } from '../entity-tail-parts.js'
 export const mapParts = [ENTITY_4_24_BUMPER_SMUGGLE_PART] as const
 
 export const scenario = defineScenario({
-  target: PLAYGROUND_TARGET, status: 'candidate', tags: ['feature:bumper'], techniqueIds: ['4.24'], mapParts,
+  target: PLAYGROUND_TARGET, status: 'active', tags: ['feature:bumper'], techniqueIds: ['4.24'], mapParts,
   name: 'entity-4.24-bumper-holdable-dash-smuggle',
   initial: { pos: [100, 496], on_ground: true },
   inputs: Array.from({ length: 120 }, (_, frame) => input({

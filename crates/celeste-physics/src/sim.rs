@@ -2442,8 +2442,12 @@ fn holding_slow_fall(p: &PlayerSnapshot) -> bool {
 
 fn try_pickup_theo(p: &mut PlayerSnapshot) -> bool {
     let player = current_player_rect(p, p.pos.x, p.pos.y);
-    let Some(index) = p.theo_crystals.iter().position(|theo| {
-        !theo.held
+    let Some(index) = p.theo_crystals.iter().enumerate().position(|(index, theo)| {
+        // LaunchUpdate, unlike NormalUpdate and DashUpdate, does not guard
+        // its Holdable loop with `Holding == null`. Holdable.Pickup itself
+        // permits the current holder to pick up the same entity again, which
+        // restarts PickupCoroutine after a Bumper launch freeze.
+        (!theo.held || p.holding_theo == Some(index as u16))
             && theo.cannot_hold_timer <= 0.0
             && theo_pickup_rect(theo.position).intersects(player)
     }) else {
@@ -2500,8 +2504,8 @@ fn glider_pickup_rect(position: Vec2) -> Rect {
 
 fn try_pickup_glider(p: &mut PlayerSnapshot) -> bool {
     let player = current_player_rect(p, p.pos.x, p.pos.y);
-    let Some(index) = p.gliders.iter().position(|glider| {
-        !glider.held
+    let Some(index) = p.gliders.iter().enumerate().position(|(index, glider)| {
+        (!glider.held || p.holding_glider == Some(index as u16))
             && glider.cannot_hold_timer <= 0.0
             && glider_pickup_rect(glider.position).intersects(player)
     }) else {
@@ -4718,6 +4722,12 @@ fn launch_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         && p.dash_cooldown_timer <= 0.0
     {
         begin_dash(p, input, true, false, map);
+        return;
+    }
+    // Player.LaunchUpdate performs the Holdable scan even while already
+    // holding an entity. This permits a Bumper launch to restart the pickup
+    // tween after its freeze ends when Grab remains held.
+    if input.grab_held && p.stamina >= 20.0 && !p.ducking && try_pickup_holdable(p) {
         return;
     }
     p.speed.y = approach(
@@ -9196,6 +9206,26 @@ mod tests {
         assert!((f86.speed.y + 277.123_7).abs() < 0.000_1);
         assert!((f86.last_bumper_target.x - 132.725_8).abs() < 0.000_1);
         assert!((f86.last_bumper_target.y - 492.243_74).abs() < 0.000_1);
+
+        // LaunchUpdate does not require Holding == null before it scans
+        // Holdables. After the Bumper's 0.1 s freeze, the still-held Theo is
+        // inside its own PickupCollider, so f93 restarts PickupCoroutine.
+        // These are physical collector states 91-95.
+        for frame in 91..=92 {
+            let state = &trace.states[frame];
+            assert_eq!(state.state, PlayerState::Launch);
+            assert_eq!(state.pos, Vec2::new(135.0, 483.0));
+            assert_eq!(state.speed, f86.speed);
+            assert_eq!(state.holding_theo, Some(0));
+        }
+        for frame in 93..=95 {
+            let state = &trace.states[frame];
+            assert_eq!(state.state, PlayerState::Pickup);
+            assert_eq!(state.pos, Vec2::new(135.0, 483.0));
+            assert_eq!(state.speed, Vec2::default());
+            assert_eq!(state.holding_theo, Some(0));
+        }
+        assert_eq!(trace.states[93].min_hold_timer, 0.35);
         let pickup = trace
             .states
             .iter()
