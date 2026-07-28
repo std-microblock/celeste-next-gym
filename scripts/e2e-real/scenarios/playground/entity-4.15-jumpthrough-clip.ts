@@ -8,7 +8,7 @@ export const mapParts = [TECH_ENTITY_4_15_JUMPTHROUGH_CLIP] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: ['feature:zip-mover', 'feature:squish'],
   techniqueIds: ['4.15'],
   mapParts,
