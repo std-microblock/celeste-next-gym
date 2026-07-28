@@ -4,7 +4,7 @@
   id: "5.4",
   title-zh: "过场传送偏移",
   title-en: "Cutscene Warps",
-  status: "unimplemented",
+  status: "product-excluded",
   description-zh: [某些跳过过场只重设水平坐标而保留垂直坐标，因此可让玩家出现在房间中异常高度。],
   description-en: [Some CutsceneEntity.OnEnd skip handlers replace only player X and restore Normal, leaving the pre-skip Y intact; triggering them from an unusual height produces a warp. Cutscene/menu control is outside the simulator scope requested by the user, so this is mechanism-only.],
   source-evidence: evidence(

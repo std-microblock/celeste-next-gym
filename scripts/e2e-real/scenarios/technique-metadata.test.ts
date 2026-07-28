@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 
 import { scenarios } from './index.js'
 
-type TechniqueStatus = 'implemented' | 'unimplemented'
+type TechniqueStatus = 'implemented' | 'unimplemented' | 'product-excluded'
 
 interface TechniqueEvidence {
   readonly id: string
@@ -36,7 +36,10 @@ function techniqueCatalog(): TechniqueEvidence[] {
     const id = text.match(/\bid:\s*"([^"]+)"/)?.[1]
     const status = text.match(/\bstatus:\s*"([^"]+)"/)?.[1]
     assert.ok(id, `${path}: missing technique id`)
-    assert.ok(status === 'implemented' || status === 'unimplemented', `${path}: invalid status ${status}`)
+    assert.ok(
+      status === 'implemented' || status === 'unimplemented' || status === 'product-excluded',
+      `${path}: invalid status ${status}`,
+    )
     return {
       id,
       status,
@@ -51,10 +54,11 @@ describe('authoritative technique recording metadata', () => {
   const byId = new Map(techniques.map((technique) => [technique.id, technique]))
   const byName = new Map(scenarios.map((scenario) => [scenario.name, scenario]))
 
-  it('assigns exactly one primary to every implemented technique and none to unimplemented techniques', () => {
+  it('assigns exactly one primary to every implemented technique and none to nonimplemented techniques', () => {
     assert.equal(techniques.length, 120)
     assert.equal(techniques.filter((technique) => technique.status === 'implemented').length, 95)
-    assert.equal(techniques.filter((technique) => technique.status === 'unimplemented').length, 25)
+    assert.equal(techniques.filter((technique) => technique.status === 'unimplemented').length, 21)
+    assert.equal(techniques.filter((technique) => technique.status === 'product-excluded').length, 4)
 
     const primaryCounts = new Map<string, number>()
     for (const scenario of scenarios) {
