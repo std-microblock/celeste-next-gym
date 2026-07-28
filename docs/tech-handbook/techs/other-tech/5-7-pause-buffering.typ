@@ -10,6 +10,7 @@
   source-evidence: evidence(
     path: [Monocle/Engine.cs; Monocle/VirtualButton.cs; Celeste/Level.cs; Source/Player/Player.cs],
     symbol: [Engine.Update; VirtualButton.Update; Level.Pause; Level.Update; Player.Update],
+    snippet: raw(block: true, lang: "cs", "MInput.Update();\n...\nthis.scene.BeforeUpdate();\nthis.scene.Update();\n...\nbufferCounter -= Engine.DeltaTime;\nif (Binding.Pressed(GamepadIndex, Threshold))\n    bufferCounter = BufferTime;\n...\nforeach (Entity entity in base[Tags.PauseUpdate])\n    if (entity.Active) entity.Update();\n...\nbase.Update();"),
     note: [关键边界不在 Player 状态机，而在引擎输入节点与暂停 Scene 更新的分层：暂停阻止 Level/Player 帧推进，输入仍可进入 VirtualButton 缓冲；解除暂停后的首个 Player.Update 看到尚未过期的 Pressed。具体可用窗口受 VirtualButton.BufferTime 与原始时间递减顺序控制。],
   ),
   rust-evidence: none,
