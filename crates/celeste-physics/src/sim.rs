@@ -4225,7 +4225,6 @@ fn begin_dash(
 
 fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     if !holding_holdable(p)
-        && p.dash_dir != Vec2::default()
         && input.grab_held
         && p.stamina >= 20.0
         && can_unduck(p, map)
@@ -7603,12 +7602,14 @@ mod tests {
     }
 
     #[test]
-    fn dash_pickup_cancels_into_source_pickup_tween_and_restores_speed() {
+    fn dash_pickup_runs_before_the_dash_coroutine_samples_direction() {
         let p = PlayerSnapshot {
             pos: Vec2::new(60.0, 160.0),
             speed: Vec2::new(360.0, 0.0),
             state: PlayerState::Dash,
-            dash_dir: Vec2::new(1.0, 0.0),
+            // DashCoroutine sets DashDir only after its initial yield, but
+            // DashUpdate's Holdable loop executes before that coroutine.
+            dash_dir: Vec2::default(),
             state_timer: 0.1,
             on_ground: true,
             ..PlayerSnapshot::default()
