@@ -17,10 +17,11 @@ export const scenario = defineScenario({
   initial: { pos: [120, 496], speed: [0, 0], on_ground: true },
   inputs: inputFrames(60, (frame) => ({
     // With a fresh custom manager, tempo=3 reaches beat 8 after input 28.
-    // Starting at 23 makes the grounded 90-speed run hit index 1 in that
-    // Player.Update; its entity phase clears collision on input 29, and the
-    // following Player.Update restores retained speed inside the 0.06s window.
-    move_x: frame >= 23 ? 1 : 0,
+    // Starting at 22 makes the grounded 90-speed run hit index 1 before the
+    // beat-8 manager update writes Activated=false. Its next entity phase
+    // clears collision, and the following Player.Update restores retained
+    // speed inside the 0.06s window.
+    move_x: frame >= 22 ? 1 : 0,
     move_y: 0,
     jump_pressed: false,
     jump_held: false,
