@@ -1524,7 +1524,15 @@ fn sine_in(value: f32) -> f32 {
 }
 
 fn player_riding_solid(p: &PlayerSnapshot, bounds: Rect) -> bool {
-    bounds.intersects(current_player_rect(p, p.pos.x, p.pos.y + 1.0))
+    match p.state {
+        PlayerState::Attract => false,
+        PlayerState::DreamDash => bounds.intersects(current_player_rect(p, p.pos.x, p.pos.y)),
+        PlayerState::Climb | PlayerState::HitSquash => {
+            let facing = if p.facing { 1.0 } else { -1.0 };
+            bounds.intersects(current_player_rect(p, p.pos.x + facing, p.pos.y))
+        }
+        _ => bounds.intersects(current_player_rect(p, p.pos.x, p.pos.y + 1.0)),
+    }
 }
 
 fn initialize_heart_gems(p: &mut PlayerSnapshot, map: &mut Map) {
@@ -4158,7 +4166,11 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
         && !p.on_ground
         && !p.ducking
         && p.speed.y >= 0.0
-        && p.speed.x.signum() != -(facing_dir as f32)
+        // Player.cs uses Math.Sign, where both signed zero values return 0.
+        // Rust f32::signum returns +1/-1 for +/-0, which made a stationary
+        // left-facing player on a wall's right side look like they were
+        // moving away from it and prevented the grab.
+        && (p.speed.x == 0.0 || p.speed.x.signum() != -(facing_dir as f32))
         && check_stamina(p) >= CLIMB_TIRED_THRESHOLD
         && climb_check(p, map, facing_dir)
     {
@@ -7658,6 +7670,127 @@ mod tests {
         assert!(launched.speed.y < -100.0);
         assert!(launched.on_ground);
         assert!(!trace.states[launch_index + 1].on_ground);
+    }
+
+    #[test]
+    fn stationary_left_facing_player_can_grab_with_either_signed_zero() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 240.0),
+            solids: vec![Rect::new(64.0, 160.0, 32.0, 16.0)],
+            ..Map::default()
+        };
+        for speed_x in [0.0_f32, -0.0_f32] {
+            let grabbed = simulate(
+                PlayerSnapshot {
+                    pos: Vec2::new(100.0, 168.0),
+                    speed: Vec2::new(speed_x, 0.0),
+                    state: PlayerState::Normal,
+                    facing: false,
+                    stamina: 110.0,
+                    ..PlayerSnapshot::default()
+                },
+                &[InputState {
+                    grab_held: true,
+                    ..InputState::default()
+                }],
+                &map,
+                1,
+            )
+            .unwrap();
+
+            assert_eq!(grabbed.state, PlayerState::Climb, "speed_x={speed_x:?}");
+        }
+    }
+
+    #[test]
+    fn side_grab_activates_and_rides_move_block_away() {
+        let mut map = move_block_map();
+        map.entities[0].direction = Vec2::new(-1.0, 0.0);
+        let inputs = vec![
+            InputState {
+                grab_held: true,
+                ..InputState::default()
+            };
+            32
+        ];
+        let trace = simulate_trace(
+            PlayerSnapshot {
+                pos: Vec2::new(100.0, 168.0),
+                state: PlayerState::Normal,
+                facing: false,
+                stamina: 110.0,
+                ..PlayerSnapshot::default()
+            },
+            &inputs,
+            &map,
+            inputs.len() as u32,
+        )
+        .unwrap();
+
+        assert_eq!(trace.states[1].state, PlayerState::Climb);
+        assert_eq!(trace.states[1].move_blocks[0].phase, 1);
+        let moving = trace
+            .states
+            .iter()
+            .find(|state| {
+                state.move_blocks[0].phase == 2 && state.move_blocks[0].position.x < 64.0
+            })
+            .expect("side-grabbed MoveBlock should begin moving left");
+        assert_eq!(moving.state, PlayerState::Climb);
+        assert_eq!(moving.pos.x - moving.move_blocks[0].position.x, 36.0);
+        assert_eq!(moving.pos.y - moving.move_blocks[0].position.y, 8.0);
+    }
+
+    #[test]
+    fn side_grab_rides_bounce_block_until_source_shakeoff() {
+        let inputs = vec![
+            InputState {
+                grab_held: true,
+                ..InputState::default()
+            };
+            48
+        ];
+        let trace = simulate_trace(
+            PlayerSnapshot {
+                pos: Vec2::new(100.0, 168.0),
+                state: PlayerState::Normal,
+                facing: false,
+                stamina: 110.0,
+                ..PlayerSnapshot::default()
+            },
+            &inputs,
+            &bounce_block_map(),
+            inputs.len() as u32,
+        )
+        .unwrap();
+
+        assert_eq!(trace.states[1].state, PlayerState::Climb);
+        assert_eq!(trace.states[1].bounce_blocks[0].phase, 1);
+        let carried = trace
+            .states
+            .iter()
+            .find(|state| {
+                state.bounce_blocks[0].phase == 1 && state.bounce_blocks[0].position.x < 32.0
+            })
+            .expect("side-grabbed BounceBlock should wind away from the player");
+        assert_eq!(carried.state, PlayerState::Climb);
+        assert_eq!(carried.pos.x - carried.bounce_blocks[0].position.x, 68.0);
+        assert_eq!(carried.pos.y - carried.bounce_blocks[0].position.y, 8.0);
+
+        let launch_index = trace
+            .states
+            .iter()
+            .position(|state| state.bounce_blocks[0].phase == 3)
+            .expect("BounceBlock should reach BounceEnd");
+        assert!(
+            trace.states[1..launch_index]
+                .iter()
+                .all(|state| state.state == PlayerState::Climb)
+        );
+        let launched = &trace.states[launch_index];
+        assert_eq!(launched.state, PlayerState::Normal);
+        assert_eq!(launched.speed, launched.bounce_blocks[0].bounce_lift);
+        assert_eq!(launched.jump_grace_timer, JUMP_GRACE);
     }
 
     #[test]
