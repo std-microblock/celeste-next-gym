@@ -1,6 +1,11 @@
 import type { SimState } from '../model.ts'
 import type { TrainingMapDocument, TrainingModule, TrainingTrigger } from './catalog.ts'
 
+export interface TrainingObjectiveSeries {
+  expression: string
+  points: Array<{ frame: number; value: number; successful: boolean }>
+}
+
 export interface TrainingCompletion {
   moduleId: string
   title: string
@@ -12,6 +17,8 @@ export interface TrainingCompletion {
   accuracy: number
   reactionFrames: number
   objectiveValues: number[]
+  bestObjectiveValues: number[]
+  objectives: TrainingObjectiveSeries[]
   windows: Array<{ from: number; to: number }>
   actualInputs: Array<{ frame: number; keys: string[] }>
 }
@@ -43,10 +50,25 @@ export function allModulesCompleted(document: TrainingMapDocument, completedIds:
   return document.modules.every((module) => completedIds.has(module.id))
 }
 
-/** 100 at the Fuzzer best point, minus eight percentage points per frame. */
-export function timingAccuracy(actualFrame: number | undefined, targetFrame: number | undefined): number {
-  if (actualFrame === undefined || targetFrame === undefined) return 0
-  return Math.max(0, 100 - Math.abs(actualFrame - targetFrame) * 8)
+/** Relative output quality: exact Fuzz-best output is 100%. */
+export function outputAccuracy(actual: number | undefined, best: number | undefined): number {
+  if (actual === undefined || best === undefined || !Number.isFinite(actual) || !Number.isFinite(best)) return 0
+  if (Math.abs(best) < 1e-9) return Math.abs(actual - best) < 1e-9 ? 100 : 0
+  return Math.max(0, Math.min(100, (1 - Math.abs(actual - best) / Math.abs(best)) * 100))
+}
+
+export function objectiveOutputName(expression: string): string {
+  if (expression === 'final.speed.x') return '水平速度'
+  if (expression === 'final.speed.y') return '垂直速度'
+  if (expression === 'final.speed.x.abs()' || expression === 'abs(final.speed.x)') return '水平速度绝对值'
+  if (expression === 'final.speed.y.abs()' || expression === 'abs(final.speed.y)') return '垂直速度绝对值'
+  return expression
+}
+
+export function formatObjectiveOutput(expression: string, value: number | undefined): string {
+  if (value === undefined || !Number.isFinite(value)) return '—'
+  const formatted = Number.isInteger(value) ? value.toFixed(0) : value.toFixed(2)
+  return expression.includes('speed.') ? `${formatted} px/s` : formatted
 }
 
 export function average(values: readonly number[]): number {

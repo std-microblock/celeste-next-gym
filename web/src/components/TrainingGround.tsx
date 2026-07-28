@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { ACTIONS, buttonsToInput, makeEmptyButtons, type FrameButtons, type GymMap, type KeyBindings, type SimState } from '../model'
 import { WasmClient } from '../simulator/wasmClient'
-import { allModulesCompleted, average, moduleAtPlayer, timingAccuracy, triggerContainsPlayer, type TrainingCompletion } from '../training/course'
+import { allModulesCompleted, average, formatObjectiveOutput, moduleAtPlayer, objectiveOutputName, outputAccuracy, triggerContainsPlayer, type TrainingCompletion } from '../training/course'
 import { assistedRate, candidateObjectivePoints, candidateWindow, createTrainingSession, currentTrainingInput, matchingTrainingCandidate, nextTargetFrame, rebuildTrainingSession, trainingEntryContextPassed, trainingEntryInput, trainingVerificationTriggered, verificationKeys, verifyTrainingInput, type TrainingCandidate, type TrainingSession } from '../training/session'
 import { trainingCatalog, type TrainingDocument, type TrainingModule, type TrainingVariant } from '../training/catalog'
 import { GameView } from './GameView'
+import { GameplayStrawberry } from './GameplaySprite'
 import { TrainingCatalogSidebar, TrainingVariantThumbnail } from './TrainingCatalogSidebar'
 import { TrainingPrompt } from './TrainingPrompt'
 import { TrainingResultTimeline, TrainingTimeline, type TrainingObjectiveSeries } from './TrainingTimeline'
@@ -27,6 +28,11 @@ export interface OutcomeAnimation {
 
 const FAILURE_SLOWDOWN_MS = 1_000
 const MAX_AUTO_SLOWDOWN_REDUCTION = .7
+
+function completionOutputSummary(completion: TrainingCompletion): string {
+  const expression = completion.objectives[0]?.expression ?? 'objective'
+  return `${objectiveOutputName(expression)}：实际 ${formatObjectiveOutput(expression, completion.objectiveValues[0])} / 最佳 ${formatObjectiveOutput(expression, completion.bestObjectiveValues[0])}`
+}
 
 function buttonsFromKeyboard(keys: ReadonlySet<string>, bindings: KeyBindings): FrameButtons {
   const buttons = makeEmptyButtons()
@@ -372,6 +378,8 @@ export function TrainingGround({ techniqueId, variantId, bindings, theme, onSele
               const start = fuzzStartRef.current ?? currentFrame
               const absoluteInputs = nextSession.actualInputs.map((actual) => ({ ...actual, frame: start + actual.frame }))
               const actualActionFrame = absoluteInputs.at(-1)?.frame
+              const objectiveValues = evaluatedCandidate?.objective_values ?? nextSession.candidates[0]?.objective_values ?? []
+              const bestObjectiveValues = candidatesRef.current[0]?.objective_values ?? preview.bestObjectiveValues ?? []
               const completion: TrainingCompletion = {
                 moduleId: activeModule.id,
                 title: activeTutorial.title,
@@ -380,9 +388,11 @@ export function TrainingGround({ techniqueId, variantId, bindings, theme, onSele
                 completedFrame: nextFrame,
                 targetFrame: preview.targetFrame,
                 actualInputFrame: actualActionFrame,
-                accuracy: timingAccuracy(actualActionFrame, preview.targetFrame),
+                accuracy: outputAccuracy(objectiveValues[0], bestObjectiveValues[0]),
                 reactionFrames: Math.max(0, start - (triggerFrameRef.current ?? start)),
-                objectiveValues: evaluatedCandidate?.objective_values ?? nextSession.candidates[0]?.objective_values ?? [],
+                objectiveValues,
+                bestObjectiveValues,
+                objectives: preview.objectives,
                 windows: preview.windows,
                 actualInputs: absoluteInputs,
               }
@@ -439,8 +449,8 @@ export function TrainingGround({ techniqueId, variantId, bindings, theme, onSele
       <div className={`training-success-toasts ${settlement ? 'settling' : ''}`} aria-live="polite">
         {completions.map((completion, index) => <article className="training-success-toast" key={completion.moduleId} style={{ '--toast-index': index } as CSSProperties}>
           <header><span>✓</span><div><small>MODULE CLEAR</small><strong>{completion.title}</strong></div><b>{completion.accuracy.toFixed(0)}%</b></header>
-          <TrainingResultTimeline targetFrame={completion.targetFrame} windows={completion.windows} actualInputs={completion.actualInputs} objectives={[]} />
-          <footer>{timingAssessment(completion.actualInputFrame, completion.targetFrame)} · 反应 {completion.reactionFrames}F</footer>
+          <TrainingResultTimeline targetFrame={completion.targetFrame} windows={completion.windows} actualInputs={completion.actualInputs} objectives={completion.objectives} />
+          <footer><strong>{completionOutputSummary(completion)}</strong><span>{timingAssessment(completion.actualInputFrame, completion.targetFrame)} · 反应 {completion.reactionFrames}F</span></footer>
         </article>)}
       </div>
 
@@ -458,10 +468,14 @@ export function TrainingGround({ techniqueId, variantId, bindings, theme, onSele
 
       {settlement && <div className="training-settlement" role="dialog" aria-modal="true" aria-label="训练地图结算">
         <section className="training-settlement-history" aria-label="已完成模块">
-          {completions.map((completion, index) => <article key={completion.moduleId} style={{ '--settlement-index': index } as CSSProperties}><small>0{index + 1} · MODULE CLEAR</small><strong>{completion.title}</strong><span>{completion.accuracy.toFixed(0)}% · {completion.reactionFrames}F</span></article>)}
+          {completions.map((completion, index) => <article key={completion.moduleId} style={{ '--settlement-index': index } as CSSProperties}>
+            <header><div><small>0{index + 1} · MODULE CLEAR</small><strong>{completion.title}</strong></div><b>{completion.accuracy.toFixed(0)}%</b></header>
+            <TrainingResultTimeline targetFrame={completion.targetFrame} windows={completion.windows} actualInputs={completion.actualInputs} objectives={completion.objectives} />
+            <footer>{completionOutputSummary(completion)} · 反应 {completion.reactionFrames}F</footer>
+          </article>)}
         </section>
         <section className="training-settlement-card">
-          <div className="training-strawberry" role="img" aria-label="草莓">🍓</div>
+          <div className="training-strawberry"><GameplayStrawberry /></div>
           <small>MAP COMPLETE</small><h2>通过啦</h2>
           <strong className="training-accuracy">{averageAccuracy.toFixed(1)}%</strong><span>综合精准度</span>
           <div className="training-summary-stats">
