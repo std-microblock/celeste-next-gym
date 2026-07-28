@@ -15,7 +15,10 @@ export const scenario = defineScenario({
   name: 'entity-4.18.2.1-cassoosted-fuper',
   initial: { pos: [500, 496], speed: [0, 0], on_ground: true },
   inputs: Array.from({ length: 100 }, (_, frame) => input({
-    move_x: frame === 80 ? 1 : 0,
+    // StarFlyUpdate falls toward its 91 px/s idle speed when no aim is held;
+    // keep the source rightward aim live so the grounded Feather Super starts
+    // from the intended horizontal StarFly speed at frame 80.
+    move_x: 1,
     jump_pressed: frame === 80,
     jump_held: frame >= 80 && frame < 92,
   })),
