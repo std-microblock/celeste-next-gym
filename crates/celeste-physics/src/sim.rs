@@ -3215,6 +3215,8 @@ fn step(
     } else if !input.jump_held {
         p.jump_buffer_timer = 0.0;
     }
+    // Player state callbacks read VirtualButton.Pressed, not the raw edge.
+    input.jump_pressed = p.jump_buffer_timer > 0.0;
     // Dash and CrouchDash use a 0.08 second VirtualButton buffer. Their
     // portable input contract only records press edges, so keep the existing
     // press buffer alive across freeze until it is consumed or expires.
@@ -3755,9 +3757,8 @@ fn begin_dash(
 ) {
     p.dash_buffer_timer = 0.0;
     p.crouch_dash_buffer_timer = 0.0;
-    // DashBegin clears DashDir. DashCoroutine yields one scene update before
-    // it reads lastAim, so freeze-time aim changes can redirect the dash
-    // without changing the launch-frame demo/duck collider decision below.
+    // DashBegin clears DashDir. DashCoroutine does not sample lastAim until it
+    // resumes after its initial yield (and any Celeste.Freeze frames).
     p.dash_dir = Vec2::default();
     p.before_dash_speed = p.speed;
     p.demo_dashed = input.crouch_dash_pressed;
@@ -8207,7 +8208,7 @@ mod tests {
         let inputs: Vec<_> = (0..120)
             .map(|frame| InputState {
                 move_x: if frame >= 13 { 1 } else { 0 },
-                move_y: if frame == 26 || (45..=52).contains(&frame) {
+                move_y: if frame == 26 || (45..=51).contains(&frame) {
                     1
                 } else {
                     0
@@ -9127,17 +9128,75 @@ mod tests {
         assert!(trace.states.last().unwrap().speed.x >= 320.0);
     }
     #[test]
+    fn wavedash_buffers_jump_at_the_fourteen_pixel_minimum_height() {
+        let p = PlayerSnapshot {
+            // At fourteen pixels the fifth dash step ends exactly flush with
+            // the floor. The following frame checks Jump.Pressed while the
+            // dash is still diagonal, then the vertical collision converts
+            // DashDir. The buffered press must survive one more Dash frame.
+            pos: Vec2::new(32.0, 86.0),
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = vec![InputState::default(); 12];
+        for input in &mut inputs {
+            input.move_x = 1;
+            input.move_y = 1;
+        }
+        inputs[0].dash_pressed = true;
+        inputs[9].jump_pressed = true;
+        inputs[9].jump_held = true;
+        inputs[10].jump_held = true;
+
+        let trace = simulate_trace(p, &inputs, &floor_map(), inputs.len() as u32).unwrap();
+        let landing = &trace.states[10];
+        assert_eq!(landing.state, PlayerState::Dash);
+        assert!(landing.on_ground);
+        assert!(landing.ducking);
+        assert_eq!(landing.dash_dir, Vec2::new(1.0, 0.0));
+        assert!(landing.jump_buffer_timer > 0.0);
+        assert_eq!(landing.dashes, 0);
+        assert_eq!(landing.dash_refill_cooldown_timer, 0.0);
+
+        let wavedash = &trace.states[11];
+        assert_eq!(wavedash.state, PlayerState::Normal);
+        assert_eq!(wavedash.speed, Vec2::new(325.0, -52.5));
+        assert_eq!(wavedash.dashes, 1);
+        assert!(!wavedash.ducking);
+        assert_eq!(wavedash.jump_buffer_timer, 0.0);
+    }
+    #[test]
+    fn thirteen_pixel_wavedash_control_jumps_before_dash_refill() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 87.0),
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = vec![InputState::default(); 12];
+        for input in &mut inputs {
+            input.move_x = 1;
+            input.move_y = 1;
+        }
+        inputs[0].dash_pressed = true;
+        inputs[9].jump_pressed = true;
+        inputs[9].jump_held = true;
+
+        let trace = simulate_trace(p, &inputs, &floor_map(), inputs.len() as u32).unwrap();
+        let too_low = &trace.states[10];
+        assert_eq!(too_low.state, PlayerState::Normal);
+        assert_eq!(too_low.speed, Vec2::new(325.0, -52.5));
+        assert_eq!(too_low.dashes, 0);
+    }
+    #[test]
     fn reverse_super_uses_jump_frame_facing_not_dash_direction() {
-        let mut inputs = [InputState::default(); 7];
+        let mut inputs = [InputState::default(); 6];
         inputs[0] = InputState {
             move_x: 1,
             dash_pressed: true,
             ..InputState::default()
         };
-        for input in &mut inputs[1..=5] {
+        for input in &mut inputs[1..=4] {
             input.move_x = 1;
         }
-        inputs[6] = InputState {
+        inputs[5] = InputState {
             move_x: -1,
             jump_pressed: true,
             jump_held: true,
@@ -9276,7 +9335,7 @@ mod tests {
             dash_pressed: true,
             ..InputState::default()
         };
-        for input in &mut inputs[1..=5] {
+        for input in &mut inputs[1..=4] {
             input.move_y = -1;
         }
         inputs[5] = InputState {
@@ -9316,7 +9375,7 @@ mod tests {
             dash_pressed: true,
             ..InputState::default()
         };
-        for input in &mut on_time[1..=5] {
+        for input in &mut on_time[1..=4] {
             input.move_y = -1;
         }
         on_time[5] = InputState {
@@ -9336,7 +9395,7 @@ mod tests {
             dash_pressed: true,
             ..InputState::default()
         };
-        for input in &mut late[1..=6] {
+        for input in &mut late[1..=4] {
             input.move_y = -1;
         }
         late[6] = InputState {
@@ -11107,20 +11166,66 @@ mod tests {
         assert_eq!(first.speed, Vec2::default());
         assert_eq!(first.freeze_timer, 0.05);
         assert!(first.facing);
-        let aim = InputState {
+        let held_aim = InputState {
             move_x: 1,
             move_y: -1,
             ..InputState::default()
         };
-        let frozen = simulate(first, &[aim; 3], &floor_map(), 3).unwrap();
+        let frozen = simulate(first, &[held_aim; 3], &floor_map(), 3).unwrap();
         assert_eq!(frozen.speed, Vec2::default());
         assert_eq!(frozen.freeze_timer, 0.0);
         assert!(frozen.facing);
-        let p = simulate(frozen, &[aim], &floor_map(), 1).unwrap();
+        let p = simulate(frozen, &[held_aim], &floor_map(), 1).unwrap();
         assert_eq!(p.state, PlayerState::Dash);
         assert_eq!(p.dashes, 0);
         assert!((p.speed.x.abs() - 169.70563).abs() < 0.01);
         assert!(p.facing);
+    }
+
+    #[test]
+    fn dash_direction_is_sampled_when_coroutine_resumes_after_freeze() {
+        let inputs = [
+            InputState::default(),
+            InputState {
+                dash_pressed: true,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: -1,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: -1,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: -1,
+                ..InputState::default()
+            },
+            InputState {
+                move_x: -1,
+                ..InputState::default()
+            },
+        ];
+        let trace = simulate_trace(
+            grounded_player(),
+            &inputs,
+            &floor_map(),
+            inputs.len() as u32,
+        )
+        .unwrap();
+
+        let dash_begin = &trace.states[2];
+        assert_eq!(dash_begin.state, PlayerState::Dash);
+        assert_eq!(dash_begin.speed, Vec2::default());
+        assert_eq!(dash_begin.dash_dir, Vec2::default());
+        assert!(dash_begin.facing);
+
+        let launched = &trace.states[6];
+        assert_eq!(launched.state, PlayerState::Dash);
+        assert_eq!(launched.dash_dir, Vec2::new(-1.0, 0.0));
+        assert_eq!(launched.speed, Vec2::new(-DASH_SPEED, 0.0));
+        assert!(!launched.facing);
     }
 
     #[test]
