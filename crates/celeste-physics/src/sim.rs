@@ -2852,7 +2852,11 @@ fn prepare_lookout_player(p: &mut PlayerSnapshot) {
         return;
     };
     match lookout.phase {
-        1 => {
+        // DummyWalkToExact sets StDummy once as its coroutine starts.  It does
+        // not reassign that state on every yielded frame: a native Booster can
+        // therefore interrupt the walk and leave its StBoost/StNormal recovery
+        // running alongside the still-interacting Lookout.
+        1 if lookout.timer < 1.0 => {
             p.state = PlayerState::Dummy;
             p.dummy_moving = true;
             let direction = (lookout.position.x - p.pos.x).signum();
@@ -15193,6 +15197,10 @@ mod tests {
         assert_eq!(first_boost, 8);
         assert_eq!(trace.states[first_boost - 1].state, PlayerState::Dummy);
         assert!((trace.states[first_boost - 1].speed.x - 64.0).abs() < 0.001);
+        // DummyWalkToExact only assigns StDummy before its first yield.  The
+        // next frame must therefore remain in Boost instead of being forced
+        // back to Dummy by the still-running Lookout coroutine.
+        assert_eq!(trace.states[first_boost + 1].state, PlayerState::Boost);
         assert!(trace.states.iter().any(|state| state.state == PlayerState::Boost));
         assert!(trace.states.iter().any(|state| {
             state.state == PlayerState::Normal && state.lookouts[0].interacting
