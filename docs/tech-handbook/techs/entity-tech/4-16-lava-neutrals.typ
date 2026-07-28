@@ -10,8 +10,8 @@
   source-evidence: evidence(
     path: [Celeste/RisingLava.cs; Celeste/SandwichLava.cs],
     symbol: [RisingLava.Added / RisingLava.Update / SandwichLava.Update / Player.orig_Update],
-    snippet: raw(block: true, lang: "cs", "Collider = new Hitbox(340f, 120f);\nY = level.Bounds.Bottom + 16;\nX = level.Camera.X;\nY += -30f * multiplier * Engine.DeltaTime;\n// player: 8x11 body, 8x9 hurtbox at (-4,-11)\nCollider was = Collider;\nCollider = hurtbox;\nforeach (PlayerCollider pc in Scene.Tracker.GetComponents<PlayerCollider>()) pc.Check(this);"),
-    note: [RisingLava 从房间底部 +16 出生、每帧锁定 camera X，并以 -30×自适应倍率上升；SandwichLava 使用相隔 280px 的两个 340×120 collider，hot/cold 分别 -20/+20 px/s，另有 Waiting、persistent reuse 与 leaving。玩家移动/墙面动作使用 8×11 body，而 PlayerCollider 致死阶段临时换成同顶部、少 2px 高的 8×9 hurtbox，因此底部恰有 1px 可动作安全唇。],
+    snippet: raw(block: true, lang: "cs", "Collider = new Hitbox(340f, 120f);\nY = level.Bounds.Bottom + 16;\nX = level.Camera.X;\nY += -30f * multiplier * Engine.DeltaTime;\n// player: 8x11 body, 8x9 hurtbox at (-4,-11)\nCollider was = Collider;\nCollider = hurtbox;\nforeach (PlayerCollider pc in Scene.Tracker.GetComponents<PlayerCollider>()) pc.Check(this);\n// Player.ClimbBegin / ClimbUpdate\nclimbNoMoveTimer = 0.1f;\nclimbNoMoveTimer -= Engine.DeltaTime;"),
+    note: [RisingLava 从房间底部 +16 出生、每帧锁定 camera X，并以 -30×自适应倍率上升；SandwichLava 使用相隔 280px 的两个 340×120 collider，hot/cold 分别 -20/+20 px/s，另有 Waiting、persistent reuse 与 leaving。玩家移动/墙面动作使用 8×11 body，而 PlayerCollider 致死阶段临时换成同顶部、少 2px 高的 8×9 hurtbox，因此底部恰有 1px 可动作安全唇。进入 Climb 时先设 0.1 s `climbNoMoveTimer`，其首帧递减后仍禁止静止攀爬体力消耗。],
   ),
   rust-evidence: evidence(
     path: [crates/celeste-physics/src/map.rs / crates/celeste-physics/src/types.rs / crates/celeste-physics/src/sim.rs],
@@ -27,6 +27,6 @@
   candidate-e2e: evidence(
     path: [scripts/e2e-real/scenarios/core-heart-squish-parts.ts / scripts/e2e-real/scenarios/playground/entity-4.16-lava-neutral.ts],
     symbol: [tech.entity-4.16-lava-neutral / entity-4.16-lava-neutral],
-    note: [独立 MapPart 在训练场右墙加入 vanilla RisingLava；候选在第 169 帧安全唇缓冲 Neutral，真实 Everest 与 Rust 均得到 -105 垂直速度、wallBoostTimer 且未死亡，221 个状态的 position/speed 最大误差为 0。一次 Player.cs 驱动的初始化修正把 Facing 放到 Climb 状态入口之前；唯一复跑仍在 frame 1 出现 stamina 首差（Rust 109.833、Everest 110），超过 0.01，故保持 unimplemented。],
+    note: [独立 MapPart 在训练场右墙加入 vanilla RisingLava；候选在第 169 帧安全唇缓冲 Neutral，真实 Everest 与 Rust 均得到 -105 垂直速度、wallBoostTimer 且未死亡，221 个状态的 position/speed 最大误差为 0。首差复盘显示 Everest state 0 已反射 `climbNoMoveTimer=0.1`（StateMachine 进入 Climb 的 `ClimbBegin`），而 Rust real-trace 转换曾遗漏它，遂在 frame 1 错扣静止攀爬的 0.1667 体力；转换器现恢复该字段并有 110 stamina 回归，待独立真实复跑后才可转正。],
   ),
 )

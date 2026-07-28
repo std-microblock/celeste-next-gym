@@ -1,7 +1,8 @@
 use std::{env, fs, process::ExitCode};
 
 use celeste_physics::{
-    InputState, PlayerSnapshot, PlayerState, Vec2, decode_map_room, simulate_trace,
+    decode_map_room, simulate, simulate_trace, InputState, Map, PlayerSnapshot, PlayerState, Rect,
+    Vec2,
 };
 use serde::Deserialize;
 use serde_json::Value;
@@ -242,6 +243,10 @@ fn to_snapshot(value: &PortableSnapshot) -> PlayerSnapshot {
     snapshot.wall_boost_dir = int_field(&value.fields, "wallBoostDir") as i8;
     snapshot.wall_slide_timer = float_field(&value.fields, "wallSlideTimer");
     snapshot.wall_slide_dir = int_field(&value.fields, "wallSlideDir") as i8;
+    // A trace can begin immediately after StateMachine enters Climb. ClimbBegin
+    // sets this to 0.1 before the first ClimbUpdate subtracts DeltaTime; losing
+    // it charges the 10/s stationary-climb stamina cost one frame too early.
+    snapshot.climb_no_move_timer = float_field(&value.fields, "climbNoMoveTimer");
     snapshot.hop_wait_x = int_field(&value.fields, "hopWaitX") as i8;
     snapshot.hop_wait_x_speed = float_field(&value.fields, "hopWaitXSpeed");
     snapshot.max_fall = float_field(&value.fields, "maxFall");
@@ -284,6 +289,46 @@ fn vector_field(fields: &serde_json::Map<String, Value>, name: &str) -> Vec2 {
         values.first().and_then(Value::as_f64).unwrap_or(0.0) as f32,
         values.get(1).and_then(Value::as_f64).unwrap_or(0.0) as f32,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn captured_climb_entry_timer_keeps_the_first_stationary_frame_stamina_free() {
+        let snapshot = to_snapshot(&PortableSnapshot {
+            pos: [12.0, 100.0],
+            speed: [0.0, 0.0],
+            state: StateValue::Id(1),
+            facing: FacingValue::Bool(false),
+            dashes: 1,
+            stamina: 110.0,
+            on_ground: false,
+            ducking: false,
+            can_dream_dash: false,
+            dead: false,
+            freeze_timer: 0.0,
+            fields: serde_json::Map::from_iter([("climbNoMoveTimer".to_owned(), Value::from(0.1))]),
+        });
+        let map = Map {
+            solids: vec![Rect::new(0.0, 80.0, 8.0, 100.0)],
+            ..Map::default()
+        };
+        let after = simulate(
+            snapshot,
+            &[InputState {
+                grab_held: true,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+
+        assert!((after.climb_no_move_timer - (0.1 - 1.0 / 60.0)).abs() < 0.0001);
+        assert!((after.stamina - 110.0).abs() < 0.0001);
+    }
 }
 
 fn state_from_value(value: &StateValue) -> PlayerState {
