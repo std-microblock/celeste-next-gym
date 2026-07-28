@@ -16,5 +16,5 @@
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs; crates/celeste-physics/src/types.rs], symbol: [scene_time_active; scene_on_interval; advance_spinners], note: [快照字段和全部 interval 算术保持 `f32`；每个 Spinner 持久化自己的 offset、Visible 与 Collidable。]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [float32_scene_clock_freezes_spinner_interval_groups], note: [回归在 `524288f32` 断言 `TimeActive + 1/60 == TimeActive`，并扫描 offset 证明部分组恒命中、部分组恒错过。]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/other-5.11-spinner-freeze.ts; scripts/e2e-real/scenarios/cassette-spinner-parts.ts], symbol: [other-5.11-spinner-freeze; TECH_OTHER_5_11_SPINNER_FREEZE], note: [独立 Spinner baseline MapPart 已编译，但 runner 不能可信快进或注入 Level.TimeActive；约 116–118 小时真实 trace 与视频仍是明确验收缺口。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/other-5.11-spinner-freeze.ts; scripts/e2e-real/scenarios/cassette-spinner-parts.ts], symbol: [other-5.11-spinner-freeze; TECH_OTHER_5_11_SPINNER_FREEZE], note: [独立 Spinner baseline 的首次真实运行同样在 frame 1 得到 Everest dead=true、Rust dead=false，确认缺口来自 fresh invisible Spinner 的构造期 Collidable；runtime 与回归已按源码修正，尚待一次 baseline 复核。该短场景不快进或注入 TimeActive，约 116–118 小时的真实 freeze semantic 仍完全未证明，verdict 保持 unimplemented。]),
 )

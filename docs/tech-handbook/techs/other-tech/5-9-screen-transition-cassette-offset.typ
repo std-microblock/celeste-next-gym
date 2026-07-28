@@ -16,5 +16,5 @@
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [step; advance_cassette_manager; initialize_cassette_blocks], note: [transition early-return 前仍推进 block 与 global manager；缺口是 runtime Map 不会像 Level.LoadLevel 那样同帧加入下一房 CassetteBlock，故不伪造跨房偏移闭环。]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [cassette_manager_keeps_advancing_during_room_transition], note: [回归证明 transition 帧仍从 beat 6 进入 beat 7 并对两颜色执行相反 ShiftSize；它刻意不冒充下一房加载证据。]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/other-5.9-screen-transition-cassette-offset.ts; scripts/e2e-real/scenarios/cassette-spinner-parts.ts], symbol: [other-5.9-screen-transition-cassette-offset; TECH_OTHER_5_9_TRANSITION_CASSETTE_OFFSET], note: [独立双房/双颜色 MapPart 已通过 BinaryPacker 编译；必须由真实 Everest 同帧 trace 证明新旧房 block offset 后才能晋级。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/other-5.9-screen-transition-cassette-offset.ts; scripts/e2e-real/scenarios/cassette-spinner-parts.ts], symbol: [other-5.9-screen-transition-cassette-offset; TECH_OTHER_5_9_TRANSITION_CASSETTE_OFFSET], note: [独立双房/双颜色 MapPart 的普通 candidate E2E 已运行 91 个状态，九个玩家字段逐帧一致，最大 position 误差 0.000019、speed 误差 0。该 trace 只验证玩家完成向上过房及 refill；它没有采集新旧房 CassetteBlock 的实体 offset，不能冒充同帧加载技巧证据，verdict 继续为 unimplemented。]),
 )
