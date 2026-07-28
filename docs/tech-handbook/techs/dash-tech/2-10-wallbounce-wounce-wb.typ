@@ -15,6 +15,6 @@
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [normal_update; dash_update; super_wall_jump]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs; crates/celeste-physics/tests/timeline_regressions.rs; tests/timelines/delayed-wallbounce.json], symbol: [wallbounce_sets_super_wall_jump_speed_and_var_window; delayed_wallbounce_timeline_uses_lingering_dash_attack]),
-  e2e-evidence: evidence(path: [scripts/e2e-real-collector.mjs], symbol: [wallbounce], note: [真实关键帧 -170/-160，九类字段 max speed error 0.000038。]),
+  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/area-1/wallbounce.ts; scripts/e2e-real/scenarios/playground/delayed-wallbounce.ts], symbol: [wallbounce; delayed-wallbounce], note: [常规墙反的真实关键帧为 -170/-160，max speed error 0.000038。新增延迟场景在 Dash 状态结束三帧后、dashAttackTimer 仍约 0.08333 时按跳；25 个真实状态的 position 最大误差 0、speed 最大误差 0.000023，其余七类核心字段逐帧一致。]),
   candidate-e2e: none,
 )
