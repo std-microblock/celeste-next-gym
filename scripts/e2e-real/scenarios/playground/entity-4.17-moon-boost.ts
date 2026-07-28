@@ -8,9 +8,10 @@ export const mapParts = [TECH_ENTITY_4_17_MOON_BOOST] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: ['feature:move-block'],
   techniqueIds: ['4.17'],
+  recording: { primaryFor: ['4.17'], startFrame: 0, endFrame: 90 },
   mapParts,
   name: 'entity-4.17-moon-boost',
   initial: { pos: [80, 320], speed: [0, 0] },

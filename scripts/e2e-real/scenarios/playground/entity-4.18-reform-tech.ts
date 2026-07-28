@@ -8,9 +8,10 @@ export const mapParts = [TECH_ENTITY_4_18_REFORM_TECH] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: ['feature:move-block'],
   techniqueIds: ['4.18'],
+  recording: { primaryFor: ['4.18'], startFrame: 0, endFrame: 370 },
   mapParts,
   name: 'entity-4.18-reform-tech',
   initial: { pos: [336, 400], speed: [0, 0] },
