@@ -2779,7 +2779,7 @@ fn prepare_lookout_player(p: &mut PlayerSnapshot) {
         1 => {
             p.state = PlayerState::Dummy;
             p.dummy_moving = true;
-            let direction = (lookout.position.x - p.pos.x).signum();
+            let direction = (lookout.position.x - 8.0 - p.pos.x).signum();
             if direction != 0.0 {
                 p.facing = direction > 0.0;
             }
@@ -2961,8 +2961,14 @@ fn advance_lookouts(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
             // 16.667 speed after its two initial coroutine resumes. Advancing it in
             // prepare_lookout_player would move the Rust trace one frame
             // ahead of Everest.
-            if (p.pos.x - state.position.x).abs() <= 1.1 {
-                p.pos.x = state.position.x;
+            // Lookout positions its telescope center at `X`, but its
+            // `LookRoutine` aligns Madeline's center eight pixels to its left
+            // before it yields into the camera routine. Keep `position` as
+            // the entity position for `Removed`, while DummyWalk targets the
+            // source alignment point.
+            let dummy_target_x = state.position.x - 8.0;
+            if (p.pos.x - dummy_target_x).abs() <= 1.1 {
+                p.pos.x = dummy_target_x;
                 p.movement_remainder.x = 0.0;
                 p.speed.x = 0.0;
                 p.dummy_moving = false;
@@ -2979,7 +2985,7 @@ fn advance_lookouts(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
             } else if state.timer < 1.0 {
                 state.timer += 1.0;
             } else {
-                let direction = (state.position.x - p.pos.x).signum();
+                let direction = (dummy_target_x - p.pos.x).signum();
                 p.speed.x = approach(
                     p.speed.x,
                     direction * 64.0,
@@ -14465,7 +14471,7 @@ mod tests {
                 },
                 crate::Entity {
                     kind: EntityKind::Booster,
-                    bounds: Rect::new(944.0, 491.0, 16.0, 16.0),
+                    bounds: Rect::new(936.0, 491.0, 16.0, 16.0),
                     direction: Vec2::default(),
                     shielded: false,
                     single_use: false,
@@ -14490,7 +14496,12 @@ mod tests {
             .collect();
         let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
 
-        assert!(trace.states.iter().any(|state| state.state == PlayerState::Boost));
+        let boost = trace
+            .states
+            .iter()
+            .find(|state| state.state == PlayerState::Boost)
+            .expect("the native Booster should interrupt the completed Dummy walk");
+        assert!((boost.pos.x - 932.0).abs() <= 0.01);
         assert!(trace.states.iter().any(|state| {
             state.state == PlayerState::Normal
                 && state.lookouts[0].interacting

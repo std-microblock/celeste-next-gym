@@ -36,12 +36,13 @@ export const TECH_OTHER_5_1_3_BINO_INTERACTION_STORAGE = part('tech.other-5.1.3-
   {
     name: 'playground',
     // Dummy is outside Player.InControl, so DummyWalkToExact cannot itself
-    // initiate a room transition.  It first reaches x=940; the native
+    // initiate a room transition. LookRoutine's DummyWalk stops at x=932
+    // (telescope X minus its eight-pixel alignment offset); the native
     // Booster then interrupts the completed walk, leaving the Lookout's
     // entity coroutine alive while Normal movement crosses the boundary.
     entities: [
       { id: 'tech-5.1.3-lookout', kind: 'lookout', bounds: [938, 493, 4, 4], name: 'lookout' },
-      { id: 'tech-5.1.3-interrupting-booster', kind: 'booster', bounds: [944, 491, 16, 16], name: 'booster' },
+      { id: 'tech-5.1.3-interrupting-booster', kind: 'booster', bounds: [936, 491, 16, 16], name: 'booster' },
     ],
   },
   {

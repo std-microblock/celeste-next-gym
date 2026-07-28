@@ -60,7 +60,7 @@ describe('per-scenario Playground maps', () => {
     assert.deepEqual(lookout?.bounds, [938, 493, 4, 4])
     assert.deepEqual(interactionFixture.rooms
       .find((room) => room.name === 'playground')?.entities
-      .find((entity) => entity.id === 'tech-5.1.3-interrupting-booster')?.bounds, [944, 491, 16, 16])
+      .find((entity) => entity.id === 'tech-5.1.3-interrupting-booster')?.bounds, [936, 491, 16, 16])
 
     // The spinner starts in view, then the Lookout input travels left far
     // enough to put it outside the viewport for a full 0.25-second interval.
