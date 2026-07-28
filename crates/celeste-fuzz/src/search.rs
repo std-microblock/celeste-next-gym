@@ -294,6 +294,8 @@ impl CompiledFuzz {
             ..SearchStats::default()
         };
         let mut successful = Vec::new();
+        let mut evaluations = Vec::new();
+        let wants_evaluations = output.iter().any(|mode| matches!(mode, OutputMode::Evaluations));
         let mut all_tuples = Vec::with_capacity(all_bindings.len());
         for candidate_bindings in all_bindings {
             let tuple = self.tuple(&candidate_bindings);
@@ -305,11 +307,15 @@ impl CompiledFuzz {
             stats.naive_frame_count = stats
                 .naive_frame_count
                 .saturating_add(candidate.observe_until as u64);
-            if let Some(result) =
-                self.simulate_candidate(&engine, &initial, &candidate, &mut trie, &mut stats)?
+            if let Some(result) = self.simulate_candidate(
+                &engine, &initial, &candidate, &mut trie, &mut stats, wants_evaluations,
+            )?
             {
-                stats.successful_count += 1;
-                successful.push(result);
+                if result.successful {
+                    stats.successful_count += 1;
+                    successful.push(result.clone());
+                }
+                evaluations.push(result);
             }
         }
         stats.saved_frames = stats
@@ -317,17 +323,19 @@ impl CompiledFuzz {
             .saturating_sub(stats.unique_simulated_frames);
         stats.trie_nodes = trie.nodes.len() as u64;
         stats.peak_cache_bytes = trie.peak_cache_bytes;
-        Ok(self.build_result(successful, all_tuples, stats, output))
+        Ok(self.build_result(successful, evaluations, all_tuples, stats, output))
     }
 
     fn build_result(
         &self,
         mut successful: Vec<CandidateResult>,
+        mut evaluations: Vec<CandidateResult>,
         all_tuples: Vec<Vec<i64>>,
         stats: SearchStats,
         output: Vec<OutputMode>,
     ) -> FuzzResult {
         successful.sort_by(|left, right| self.compare_candidates(left, right));
+        evaluations.sort_by(|left, right| left.tuple.cmp(&right.tuple));
         let wants_best = output.iter().any(|mode| matches!(mode, OutputMode::Best));
         let wants_windows = output
             .iter()
@@ -338,6 +346,9 @@ impl CompiledFuzz {
         let wants_candidates = output
             .iter()
             .any(|mode| matches!(mode, OutputMode::Candidates));
+        let wants_evaluations = output
+            .iter()
+            .any(|mode| matches!(mode, OutputMode::Evaluations));
         let top_count = output
             .iter()
             .filter_map(|mode| match mode {
@@ -363,6 +374,7 @@ impl CompiledFuzz {
             best: wants_best.then(|| successful.first().cloned()).flatten(),
             top: successful.into_iter().take(top_count).collect(),
             candidates,
+            evaluations: wants_evaluations.then_some(evaluations).unwrap_or_default(),
             exact_windows,
             connected_regions,
             coverage_report,
@@ -409,16 +421,25 @@ impl CompiledFuzz {
         let results = pool.install(|| {
             shards
                 .into_par_iter()
-                .map(|shard| self.simulate_shard(&initial, map, shard, max_nodes, max_cache_bytes))
+                .map(|shard| self.simulate_shard(
+                    &initial,
+                    map,
+                    shard,
+                    max_nodes,
+                    max_cache_bytes,
+                    output.iter().any(|mode| matches!(mode, OutputMode::Evaluations)),
+                ))
                 .collect::<Result<Vec<_>, _>>()
         })?;
         let mut successful = Vec::new();
+        let mut evaluations = Vec::new();
         let mut stats = SearchStats::default();
-        for (shard_successes, shard_stats) in results {
+        for (shard_successes, shard_evaluations, shard_stats) in results {
             successful.extend(shard_successes);
+            evaluations.extend(shard_evaluations);
             add_stats(&mut stats, shard_stats);
         }
-        Ok(self.build_result(successful, all_tuples, stats, output))
+        Ok(self.build_result(successful, evaluations, all_tuples, stats, output))
     }
 
     #[cfg(feature = "parallel")]
@@ -458,7 +479,8 @@ impl CompiledFuzz {
         bindings: Vec<BTreeMap<String, i64>>,
         max_nodes: u64,
         max_cache_bytes: u64,
-    ) -> Result<(Vec<CandidateResult>, SearchStats), FuzzError> {
+        wants_evaluations: bool,
+    ) -> Result<(Vec<CandidateResult>, Vec<CandidateResult>, SearchStats), FuzzError> {
         let engine = build_engine(self.spec.limits.max_expression_operations);
         let root = Simulator::new(initial.clone(), map)?;
         let mut trie = PrefixTrie::new(root, max_nodes, max_cache_bytes);
@@ -467,6 +489,7 @@ impl CompiledFuzz {
             ..SearchStats::default()
         };
         let mut successful = Vec::new();
+        let mut evaluations = Vec::new();
         for candidate_bindings in bindings {
             let tuple = self.tuple(&candidate_bindings);
             let candidate = self.resolve_candidate(&engine, candidate_bindings, tuple)?;
@@ -476,11 +499,15 @@ impl CompiledFuzz {
             stats.naive_frame_count = stats
                 .naive_frame_count
                 .saturating_add(candidate.observe_until as u64);
-            if let Some(result) =
-                self.simulate_candidate(&engine, initial, &candidate, &mut trie, &mut stats)?
+            if let Some(result) = self.simulate_candidate(
+                &engine, initial, &candidate, &mut trie, &mut stats, wants_evaluations,
+            )?
             {
-                stats.successful_count += 1;
-                successful.push(result);
+                if result.successful {
+                    stats.successful_count += 1;
+                    successful.push(result.clone());
+                }
+                evaluations.push(result);
             }
         }
         stats.saved_frames = stats
@@ -488,7 +515,7 @@ impl CompiledFuzz {
             .saturating_sub(stats.unique_simulated_frames);
         stats.trie_nodes = trie.nodes.len() as u64;
         stats.peak_cache_bytes = trie.peak_cache_bytes;
-        Ok((successful, stats))
+        Ok((successful, evaluations, stats))
     }
 
     fn validate_configured_binding_names(&self) -> Result<(), FuzzError> {
@@ -802,6 +829,7 @@ impl CompiledFuzz {
         candidate: &ResolvedCandidate,
         trie: &mut PrefixTrie,
         stats: &mut SearchStats,
+        include_failed_evaluations: bool,
     ) -> Result<Option<CandidateResult>, FuzzError> {
         let mut simulator = trie.root();
         let mut current = 0u32;
@@ -855,6 +883,7 @@ impl CompiledFuzz {
             candidate.observe_until,
             stats,
         )?;
+        let mut successful = true;
         for expression in &self.success {
             stats.rhai_evaluations += 1;
             if !self.evaluate_bool(
@@ -876,8 +905,12 @@ impl CompiledFuzz {
                     verify: None,
                 },
             )? {
-                return Ok(None);
+                successful = false;
+                break;
             }
+        }
+        if !successful && !include_failed_evaluations {
+            return Ok(None);
         }
         let mut objective_values = Vec::with_capacity(self.objectives.len());
         for objective in &self.objectives {
@@ -915,6 +948,7 @@ impl CompiledFuzz {
             final_state: simulator.snapshot().clone(),
             objective_values,
             verified_inputs: candidate.verified_inputs.clone(),
+            successful,
             tuple: candidate.tuple.clone(),
         }))
     }

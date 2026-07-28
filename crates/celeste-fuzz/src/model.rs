@@ -142,6 +142,9 @@ pub enum OutputMode {
     /// this preserves every successful candidate so a live input can filter
     /// the feasible set without rerunning the search.
     Candidates,
+    /// Every fully simulated candidate, including candidates that failed the
+    /// final success expressions. Used by training objective timelines.
+    Evaluations,
     Top(usize),
 }
 
@@ -232,6 +235,7 @@ pub struct CandidateResult {
     pub final_state: PlayerSnapshot,
     pub objective_values: Vec<f64>,
     pub verified_inputs: Vec<VerifiedInput>,
+    pub successful: bool,
     #[serde(skip)]
     pub(crate) tuple: Vec<i64>,
 }
@@ -278,6 +282,7 @@ pub struct FuzzResult {
     pub best: Option<CandidateResult>,
     pub top: Vec<CandidateResult>,
     pub candidates: Vec<CandidateResult>,
+    pub evaluations: Vec<CandidateResult>,
     pub exact_windows: Vec<ExactWindow>,
     pub connected_regions: Vec<RegionSummary>,
     pub coverage_report: Option<CoverageReport>,
@@ -504,6 +509,7 @@ fn parse_output(value: &str) -> Result<OutputMode, FuzzError> {
         "windows" => Ok(OutputMode::Windows),
         "coverage" => Ok(OutputMode::Coverage),
         "candidates" => Ok(OutputMode::Candidates),
+        "evaluations" => Ok(OutputMode::Evaluations),
         _ => value
             .strip_prefix("top_")
             .ok_or_else(|| FuzzError::Spec(format!("unknown search output `{value}`")))

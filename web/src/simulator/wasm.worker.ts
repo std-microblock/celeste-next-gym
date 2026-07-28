@@ -57,8 +57,8 @@ self.onmessage = async (event: MessageEvent<Request>) => {
       throw new Error('WASM Worker 地图缓存版本不匹配')
     }
     if (request.type === 'fuzzSearch') {
-      const response = decode(fuzz_search_cached_map_msgpack(encode(request.state), request.fuzz)) as { candidates?: unknown[]; error?: string }
-      if (!response.candidates) throw new Error(response.error ?? 'Fuzz 没有返回候选集合')
+      const response = decode(fuzz_search_cached_map_msgpack(encode(request.state), request.fuzz)) as { candidates?: unknown[]; evaluations?: unknown[]; error?: string }
+      if (!response.candidates || !response.evaluations) throw new Error(response.error ?? 'Fuzz 没有返回候选评估')
       self.postMessage({ id: request.id, ok: true, value: response })
       return
     }

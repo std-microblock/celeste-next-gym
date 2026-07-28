@@ -12,7 +12,10 @@ export interface SimulationRunner {
   simulate(state: SimState, inputs: SimInput[], map: GymMap): Promise<SimState[]>
 }
 
-export interface FuzzSearchResult { candidates: TrainingCandidate[] }
+export interface FuzzSearchResult {
+  candidates: TrainingCandidate[]
+  evaluations: TrainingCandidate[]
+}
 
 export class WasmClient implements SimulationRunner {
   private readonly worker = new Worker(new URL('./wasm.worker.ts', import.meta.url), { type: 'module' })

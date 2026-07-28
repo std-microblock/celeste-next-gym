@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { makeEmptyButtons } from '../model'
 import {
+  candidateObjectivePoints,
   createTrainingSession,
   currentTrainingInput,
+  matchingTrainingCandidate,
   trainingEntryContextPassed,
   trainingEntryInput,
   trainingVerificationTriggered,
@@ -26,6 +28,8 @@ const definition: TrainingDefinition = {
 
 const candidates: TrainingCandidate[] = [{
   bindings: {},
+  objective_values: [325],
+  successful: true,
   verified_inputs: [
     { input_index: 0, frame: -2, keys: ['dash'] },
     { input_index: 2, frame: 0, keys: ['jump'] },
@@ -71,5 +75,17 @@ describe('training-defined entry input', () => {
     const invalid = { ...definition, entry: { ...definition.entry, input_id: 'hold_right' } }
     expect(trainingEntryInput(invalid)).toBeUndefined()
     expect(() => verifyTrainingInput(createTrainingSession(candidates, invalid), invalid, 0, ['right'])).toThrow(/entry\.input_id/)
+  })
+
+  it('exposes the objective values returned for each candidate frame', () => {
+    const alternatives: TrainingCandidate[] = [
+      { ...candidates[0], objective_values: [325], verified_inputs: candidates[0].verified_inputs.map((input) => input.input_index === 3 ? { ...input, frame: 6 } : input) },
+      { ...candidates[0], objective_values: [300] },
+    ]
+    expect(candidateObjectivePoints(alternatives, 3)).toEqual([
+      { frame: 4, values: [300], successful: true },
+      { frame: 6, values: [325], successful: true },
+    ])
+    expect(matchingTrainingCandidate(alternatives, definition, [{ frame: 0, keys: ['jump'] }, { frame: 4, keys: ['grab'] }])?.objective_values).toEqual([300])
   })
 })

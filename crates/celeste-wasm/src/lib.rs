@@ -115,7 +115,7 @@ pub fn fuzz_search_cached_map_msgpack(snapshot_bytes: &[u8], fuzz_json: &str) ->
                 snapshot,
                 map,
                 HashMap::new(),
-                vec![OutputMode::Best, OutputMode::Windows, OutputMode::Coverage, OutputMode::Candidates],
+                vec![OutputMode::Best, OutputMode::Windows, OutputMode::Coverage, OutputMode::Candidates, OutputMode::Evaluations],
                 SearchOptions::default(),
             ).map_err(|error| error.to_string())
         })?;

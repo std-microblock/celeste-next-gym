@@ -1,24 +1,25 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { ACTIONS, DEFAULT_BINDINGS, buttonsToInput, makeEmptyButtons, type FrameButtons, type GymMap, type KeyBindings, type SimState } from '../model'
 import { WasmClient } from '../simulator/wasmClient'
-import { assistedRate, candidateWindow, createTrainingSession, currentTrainingInput, nextTargetFrame, rebuildTrainingSession, trainingEntryContextPassed, trainingEntryInput, trainingVerificationTriggered, verificationKeys, verifyTrainingInput, type TrainingCandidate, type TrainingSession } from '../training/session'
+import { assistedRate, candidateObjectivePoints, candidateWindow, createTrainingSession, currentTrainingInput, matchingTrainingCandidate, nextTargetFrame, rebuildTrainingSession, trainingEntryContextPassed, trainingEntryInput, trainingVerificationTriggered, verificationKeys, verifyTrainingInput, type TrainingCandidate, type TrainingSession } from '../training/session'
 import { trainingCatalog, type TrainingDocument, type TrainingVariant } from '../training/catalog'
 import { GameView } from './GameView'
 import { TrainingCatalogSidebar, TrainingVariantThumbnail } from './TrainingCatalogSidebar'
 import { TrainingPrompt } from './TrainingPrompt'
-import { TrainingResultTimeline, TrainingTimeline } from './TrainingTimeline'
+import { TrainingResultTimeline, TrainingTimeline, type TrainingObjectiveSeries } from './TrainingTimeline'
 
 interface Attempt { frame: number; inputId: string; keys: string[]; entryCheckPassed?: boolean; entryAccepted?: boolean }
 interface PredictionPreview {
   targetFrame?: number
   windows: Array<{ from: number; to: number }>
-  bestFinalSpeed?: number
+  objectives: TrainingObjectiveSeries[]
+  bestObjectiveValues?: number[]
 }
 export interface OutcomeAnimation {
   phase: 'failed' | 'success'
   startedAt: number
   durationMs: number
-  resultSpeedX: number
+  objectiveValues: number[]
   timelineFrame: number
 }
 
@@ -39,10 +40,6 @@ export function timingAssessment(actualFrame: number | undefined, targetFrame: n
   return difference < 0 ? `早了 ${Math.abs(difference)} 帧` : `晚了 ${difference} 帧`
 }
 
-export function outcomeSpeedX(after: SimState): number {
-  return after.speed.x
-}
-
 export function trainingInputLocked(outcome: OutcomeAnimation | null): boolean {
   return outcome !== null
 }
@@ -57,6 +54,7 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
   const [map, setMap] = useState<GymMap | null>(null)
   const [initial, setInitial] = useState<SimState | null>(null)
   const [candidates, setCandidates] = useState<TrainingCandidate[]>([])
+  const [evaluations, setEvaluations] = useState<TrainingCandidate[]>([])
   const [session, setSession] = useState<TrainingSession>(() => createTrainingSession([]))
   const sessionRef = useRef(session)
   const [snapshots, setSnapshots] = useState<SimState[]>([])
@@ -69,7 +67,7 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
   const [resetFrame, setResetFrame] = useState(0)
   const [fuzzStartFrame, setFuzzStartFrame] = useState<number | null>(null)
   const fuzzStartRef = useRef<number | null>(null)
-  const [prediction, setPrediction] = useState<PredictionPreview>({ windows: [] })
+  const [prediction, setPrediction] = useState<PredictionPreview>({ windows: [], objectives: [] })
   const predictionDirty = useRef(false)
   const [followReference, setFollowReference] = useState(true)
   const [outcome, setOutcome] = useState<OutcomeAnimation | null>(null)
@@ -91,10 +89,12 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
     if (entry.at !== 0) throw new Error(`训练 ${variant.document.id} 的入口输入必须位于本地 F0`)
     const result = await client.fuzzSearch(variant.initial, JSON.stringify(variant.document.fuzz), variant.map)
     if (result.candidates.length === 0) throw new Error('该训练 Variant 没有成功候选，无法开始')
+    if (result.evaluations.length === 0) throw new Error('该训练 Variant 没有 Fuzz 候选评估')
     setDocument(variant.document)
     setMap(variant.map)
     setInitial(variant.initial)
     setCandidates(result.candidates)
+    setEvaluations(result.evaluations)
     applySession(createTrainingSession(result.candidates, variant.document))
     snapshotsRef.current = [variant.initial]
     setSnapshots([variant.initial])
@@ -107,21 +107,21 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
     previousButtons.current = makeEmptyButtons()
     outcomeButtons.current = makeEmptyButtons()
     keys.current.clear()
-    applyPrediction({ windows: [] })
+    applyPrediction({ windows: [], objectives: [] })
     setFollowReference(true)
     setAutoSlowdown(variant.document.assist.auto_slowdown.enabled_by_default)
-    console.info('[training] loaded', { technique: technique.id, variant: variant.id, candidates: result.candidates.length })
+    console.info('[training] loaded', { technique: technique.id, variant: variant.id, candidates: result.candidates.length, evaluations: result.evaluations.length })
     setNotice(`已加载 ${technique.title} · ${variant.title} · ${result.candidates.length} 个可行候选`)
   }
 
   const applySession = (next: TrainingSession) => { sessionRef.current = next; setSession(next) }
   const applyPrediction = (next: PredictionPreview) => setPrediction(next)
-  const beginOutcome = (phase: OutcomeAnimation['phase'], after: SimState, timelineFrame: number) => {
+  const beginOutcome = (phase: OutcomeAnimation['phase'], timelineFrame: number, candidate?: TrainingCandidate) => {
     const next = {
       phase,
       startedAt: performance.now(),
       durationMs: phase === 'success' ? SUCCESS_SLOWDOWN_MS : FAILURE_SLOWDOWN_MS,
-      resultSpeedX: outcomeSpeedX(after),
+      objectiveValues: candidate?.objective_values ?? [],
       timelineFrame,
     }
     outcomeRef.current = next
@@ -147,7 +147,15 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
         from: start + window.from,
         to: start + window.to,
       })),
-      bestFinalSpeed: source.candidates[0]?.final_state?.speed?.x,
+      objectives: document!.fuzz.objectives.map((objective, objectiveIndex) => ({
+        expression: objective.expression,
+        points: candidateObjectivePoints(evaluations, inputIndex).map((point) => ({
+          frame: start + point.frame,
+          value: point.values[objectiveIndex],
+          successful: point.successful,
+        })).filter((point) => Number.isFinite(point.value)),
+      })),
+      bestObjectiveValues: source.candidates[0]?.objective_values,
     }
     applyPrediction(next)
   }
@@ -225,7 +233,7 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
         setFollowReference(true)
         if (predictionDirty.current) {
           predictionDirty.current = false
-          applyPrediction({ windows: [] })
+          applyPrediction({ windows: [], objectives: [] })
         }
         setPlaying(true)
       }
@@ -298,6 +306,10 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
               ? trainingEntryContextPassed(current, document) && await client.entryCheck(after, document.entry.check)
               : true
             const nextSession = verifyTrainingInput(beforeSession, document, localFrame, semanticKeys, entryPassed)
+            const evaluatedCandidate = matchingTrainingCandidate(evaluations, document, [
+              ...beforeSession.actualInputs,
+              { frame: localFrame, keys: semanticKeys },
+            ])
             const entryAccepted = beforeSession.phase === 'pre_fuzz' && (nextSession.phase === 'fuzz' || nextSession.phase === 'success')
             attempts.current = [...attempts.current, { frame: currentFrame, inputId: expectedInput?.id ?? '', keys: semanticKeys, entryCheckPassed: entryPassed, entryAccepted }]
             const expected = expectedInput?.keys ?? []
@@ -319,10 +331,10 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
             applySession(nextSession)
             if (nextSession.phase === 'failed') {
               setNotice(nextSession.failure?.kind === 'input_order_mismatch' ? document.teaching.steps[nextSession.nextVerifiedInput]?.order_error.body ?? '输入顺序不正确。' : nextSession.failure?.kind === 'timing_window_miss' ? document.teaching.steps[nextSession.nextVerifiedInput]?.window_error.body ?? '错过输入窗口。' : document.entry.failure.body)
-              beginOutcome('failed', after, nextFrame)
+              beginOutcome('failed', nextFrame, evaluatedCandidate)
             } else if (nextSession.phase === 'success') {
               setNotice('成功：已命中可行候选。')
-              beginOutcome('success', after, nextFrame)
+              beginOutcome('success', nextFrame, evaluatedCandidate ?? nextSession.candidates[0])
             }
           }
         }).catch((error: Error) => { if (active) { setPlaying(false); setNotice(error.message) } }).finally(() => { simulating.current = false })
@@ -331,7 +343,7 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
     }
     animation = requestAnimationFrame(tick)
     return () => { active = false; cancelAnimationFrame(animation) }
-  }, [autoSlowdown, baseRate, client, document, initial, map, playing, session.phase])
+  }, [autoSlowdown, baseRate, client, document, evaluations, initial, map, playing, session.phase])
 
   if (!document || !map || !initial || snapshots.length === 0) return <main className="training-workspace">
     <TrainingCatalogSidebar techniqueId={technique.id} variantId={selectedVariant.id} onSelectTraining={onSelectTraining} />
@@ -342,11 +354,11 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
   const target = fuzzInputIndex === undefined ? undefined : nextTargetFrame(session.candidates, fuzzInputIndex)
   const prompt = session.phase === 'pre_fuzz' ? document.entry.hint : document.teaching.steps[session.nextVerifiedInput]?.prompt ?? '继续保持。'
   const effective = (autoSlowdown ? assistedRate(baseRate, fuzzStartFrame === null ? 0 : frame - fuzzStartFrame, target, document.assist.auto_slowdown.radius_frames, Math.max(MAX_AUTO_SLOWDOWN_REDUCTION, document.assist.auto_slowdown.minimum_multiplier)) : baseRate) * (1 - outcomeProgress)
-  const bestFinalSpeed = prediction.bestFinalSpeed
+  const bestObjectiveValues = prediction.bestObjectiveValues
   const actualInputs = session.actualInputs.map((input) => ({ ...input, frame: (fuzzStartFrame ?? 0) + input.frame }))
   const actualActionFrame = actualInputs.at(-1)?.frame
   const timing = timingAssessment(actualActionFrame, prediction.targetFrame)
-  const finalSpeed = outcome?.resultSpeedX
+  const resultObjectiveValues = outcome?.objectiveValues
   const recommendations = technique.variants.filter((variant) => variant.id !== selectedVariant.id).slice(0, 2)
   const failureFrame = session.failure ? (fuzzStartFrame ?? 0) + session.failure.frame : undefined
   const timelineFrame = outcome?.timelineFrame ?? frame
@@ -356,10 +368,10 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
       <div><small>ATTEMPT RESULT</small><strong>{outcome.phase === 'success' ? '成功' : session.failure?.kind === 'entry_check_failed' ? document.entry.failure.title : session.failure?.kind === 'input_order_mismatch' ? document.teaching.steps[session.nextVerifiedInput]?.order_error.title : document.teaching.steps[session.nextVerifiedInput]?.window_error.title}</strong></div>
       <em>{timing}</em>
     </div>
-    <TrainingResultTimeline targetFrame={prediction.targetFrame} windows={prediction.windows} actualInputs={actualInputs} failureFrame={failureFrame} />
+    <TrainingResultTimeline targetFrame={prediction.targetFrame} windows={prediction.windows} actualInputs={actualInputs} failureFrame={failureFrame} objectives={prediction.objectives} />
     <div className="training-result-stats">
-      <div><span>本次最终 X 速度</span><b>{finalSpeed === undefined ? '—' : finalSpeed.toFixed(2)}</b></div>
-      <div><span>最佳点结算速度</span><b>{bestFinalSpeed === undefined ? '—' : bestFinalSpeed.toFixed(2)}</b></div>
+      {document.fuzz.objectives.map((objective, index) => <div key={`${objective.expression}-${index}`}><span>本次 OBJECTIVE · {objective.expression}</span><b>{resultObjectiveValues?.[index] === undefined ? '—' : resultObjectiveValues[index].toFixed(2)}</b></div>)}
+      <div><span>FUZZER 最佳 · {document.fuzz.objectives[0]?.expression ?? 'objective'}</span><b>{bestObjectiveValues?.[0] === undefined ? '—' : bestObjectiveValues[0].toFixed(2)}</b></div>
       <div><span>输入时机</span><b>{timing}</b></div>
     </div>
     <p>{outcome.phase === 'success' ? '' : notice}</p>
@@ -371,7 +383,7 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
   return <main className="training-workspace">
     <TrainingCatalogSidebar techniqueId={technique.id} variantId={selectedVariant.id} onSelectTraining={onSelectTraining} />
     <section className="training-stage panel-frame">
-      <div className="stage-header"><div><small>TRAINING / {document.technique_id} / {document.variant_id}</small><h1>{document.title} · {document.variant_title} <em>第 {Math.min(session.nextVerifiedInput + 1, document.teaching.steps.length)}/{document.teaching.steps.length} 步</em></h1></div><div className="cache-meter"><span>{bestFinalSpeed === undefined ? '有效倍率' : '当前最佳候选最终 X 速度'}</span><strong>{bestFinalSpeed === undefined ? `${effective.toFixed(2)}×` : bestFinalSpeed.toFixed(2)}</strong></div></div>
+      <div className="stage-header"><div><small>TRAINING / {document.technique_id} / {document.variant_id}</small><h1>{document.title} · {document.variant_title} <em>第 {Math.min(session.nextVerifiedInput + 1, document.teaching.steps.length)}/{document.teaching.steps.length} 步</em></h1></div><div className="cache-meter"><span>{bestObjectiveValues?.[0] === undefined ? '有效倍率' : `当前最佳 · ${document.fuzz.objectives[0]?.expression ?? 'objective'}`}</span><strong>{bestObjectiveValues?.[0] === undefined ? `${effective.toFixed(2)}×` : bestObjectiveValues[0].toFixed(2)}</strong></div></div>
       <GameView map={map} state={state} states={snapshots} frame={frame} stale={false}>
         {(viewport) => <TrainingPrompt map={map} state={state} viewport={viewport} text={prompt} hidden={outcome !== null} />}
       </GameView>
@@ -389,8 +401,8 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
           {resultPanel}
         </div>
       </div>}
-      <div className="transport"><button aria-label="回到 R 点" onClick={() => resetTo()}>R</button><button aria-label="上一帧" onClick={() => seek(frame - 1)}>◀</button><button className="play-button" onClick={() => { if (!playing && predictionDirty.current) { predictionDirty.current = false; applyPrediction({ windows: [] }) } setPlaying((value) => !value) }}>{playing ? 'Ⅱ' : '▶'}</button><button aria-label="下一帧" onClick={() => { if (predictionDirty.current) { predictionDirty.current = false; applyPrediction({ windows: [] }) } setPlaying(true) }}>▶</button><select aria-label="训练基础速度" value={baseRate} onChange={(event) => setBaseRate(Number(event.target.value))}><option value={.25}>0.25×</option><option value={.5}>0.5×</option><option value={1}>1×</option><option value={2}>2×</option></select><label className="training-assist"><input type="checkbox" checked={autoSlowdown} onChange={(event) => setAutoSlowdown(event.target.checked)} />自动慢放</label></div>
+      <div className="transport"><button aria-label="回到 R 点" onClick={() => resetTo()}>R</button><button aria-label="上一帧" onClick={() => seek(frame - 1)}>◀</button><button className="play-button" onClick={() => { if (!playing && predictionDirty.current) { predictionDirty.current = false; applyPrediction({ windows: [], objectives: [] }) } setPlaying((value) => !value) }}>{playing ? 'Ⅱ' : '▶'}</button><button aria-label="下一帧" onClick={() => { if (predictionDirty.current) { predictionDirty.current = false; applyPrediction({ windows: [], objectives: [] }) } setPlaying(true) }}>▶</button><select aria-label="训练基础速度" value={baseRate} onChange={(event) => setBaseRate(Number(event.target.value))}><option value={.25}>0.25×</option><option value={.5}>0.5×</option><option value={1}>1×</option><option value={2}>2×</option></select><label className="training-assist"><input type="checkbox" checked={autoSlowdown} onChange={(event) => setAutoSlowdown(event.target.checked)} />自动慢放</label></div>
     </section>
-    <TrainingTimeline frame={timelineFrame} frameCount={timelineFrameCount} fuzzStart={fuzzStartFrame} targetFrame={prediction.targetFrame} windows={prediction.windows} actualInputs={actualInputs} failureFrame={failureFrame} resetFrame={resetFrame} bestFinalSpeed={bestFinalSpeed} followTarget={followReference && !outcome} onSeek={(value, manual) => { if (manual && value < timelineFrame) setFollowReference(false); seek(value) }} onSetReset={(value) => { setResetFrame(value); setNotice(`临时 R 点已设为 F${value}`) }} />
+    <TrainingTimeline frame={timelineFrame} frameCount={timelineFrameCount} fuzzStart={fuzzStartFrame} targetFrame={prediction.targetFrame} windows={prediction.windows} actualInputs={actualInputs} failureFrame={failureFrame} resetFrame={resetFrame} objectives={prediction.objectives} followTarget={followReference && !outcome} onSeek={(value, manual) => { if (manual && value < timelineFrame) setFollowReference(false); seek(value) }} onSetReset={(value) => { setResetFrame(value); setNotice(`临时 R 点已设为 F${value}`) }} />
   </main>
 }
