@@ -20,9 +20,13 @@ export const TECH_ENTITY_4_18_2_REFORM_BOOST = part('tech.entity-4.18.2-reform-b
 export const TECH_ENTITY_4_18_2_1_CASSOOSTED_FUPER = part('tech.entity-4.18.2.1-cassoosted-fuper', [{
   name: ROOM,
   entities: [
-    { id: 'tech-4.18.2.1-feather', kind: 'fly_feather', bounds: [490, 474, 20, 20], name: 'infiniteStar' },
-    { id: 'tech-4.18.2.1-cassette-0', kind: 'cassette_block', bounds: [448, 493, 240, 16], direction: [0, 1], name: 'cassetteBlock' },
-    { id: 'tech-4.18.2.1-cassette-1', kind: 'cassette_block', bounds: [720, 400, 64, 16], direction: [1, 1], name: 'cassetteBlock' },
+    // A fresh Feather takes 28 frames to finish StarFlyCoroutine.  The
+    // three-tempo cassette reaches beat 8 on that same first controllable
+    // StarFly frame, so CassetteBlock.Update reforms after Player.Jump.
+    // Keep the flight corridor left of the base map's x=688 wall.
+    { id: 'tech-4.18.2.1-feather', kind: 'fly_feather', bounds: [340, 474, 20, 20], name: 'infiniteStar' },
+    { id: 'tech-4.18.2.1-cassette-0', kind: 'cassette_block', bounds: [304, 493, 384, 16], direction: [0, 3], name: 'cassetteBlock' },
+    { id: 'tech-4.18.2.1-cassette-1', kind: 'cassette_block', bounds: [720, 400, 64, 16], direction: [1, 3], name: 'cassetteBlock' },
   ],
 }])
 
@@ -37,8 +41,8 @@ export const TECH_OTHER_5_3_CASSETTE_RAISE = part('tech.other-5.3-cassette-raise
 export const TECH_DASHLESS_3_7_11_DISAPPEARING_BLOCK_CORNERBOOST = part('tech.dashless-3.7.11-disappearing-block-cornerboost', [{
   name: ROOM,
   entities: [
-    { id: 'tech-3.7.11-cassette-0', kind: 'cassette_block', bounds: [320, 400, 64, 16], direction: [0, 1], name: 'cassetteBlock' },
-    { id: 'tech-3.7.11-cassette-1', kind: 'cassette_block', bounds: [128, 448, 32, 48], direction: [1, 1], name: 'cassetteBlock' },
+    { id: 'tech-3.7.11-cassette-0', kind: 'cassette_block', bounds: [320, 400, 64, 16], direction: [0, 3], name: 'cassetteBlock' },
+    { id: 'tech-3.7.11-cassette-1', kind: 'cassette_block', bounds: [128, 448, 32, 48], direction: [1, 3], name: 'cassetteBlock' },
   ],
 }])
 
