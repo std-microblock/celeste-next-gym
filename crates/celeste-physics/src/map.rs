@@ -107,6 +107,19 @@ pub struct Entity {
     pub name: String,
 }
 
+/// Runtime data for one Celeste room. `Level.LoadLevel` replaces room-local
+/// solids and entities during a transition while the session-wide state
+/// (notably CassetteBlockManager) remains alive.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct RoomRuntime {
+    pub bounds: Rect,
+    #[serde(default)]
+    pub spawns: Vec<Vec2>,
+    #[serde(default)]
+    pub solids: Vec<Rect>,
+    #[serde(default)]
+    pub entities: Vec<Entity>,
+}
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Map {
     pub bounds: Rect,
@@ -114,6 +127,17 @@ pub struct Map {
     /// when decoding one room so Level.EnforceBounds can resolve transitions.
     #[serde(default)]
     pub transition_rooms: Vec<Rect>,
+/// Decoded room-local data for every room in the same map, including the
+    /// room initially loaded into `solids` and `entities`. Keeping the source
+    /// room is necessary when a player transitions back into it, such as a
+    /// Bubsdrop: `Level.LoadLevel` must restore its collision and choose from
+    /// its own spawn set rather than retaining the upper room's data.
+    #[serde(default)]
+    pub transition_runtime: Vec<RoomRuntime>,
+    /// Static `LevelData.Spawns` for the presently loaded room. `spawn` is
+    /// the session respawn selected from this set during a room transition.
+    #[serde(default)]
+    pub room_spawns: Vec<Vec2>,
     #[serde(default)]
     pub spawn: Vec2,
     #[serde(default)]
@@ -129,6 +153,8 @@ impl Default for Map {
         Self {
             bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
             transition_rooms: vec![],
+            transition_runtime: vec![],
+            room_spawns: vec![],
             spawn: Vec2::new(24.0, 160.0),
             solids: vec![],
             entities: vec![],
@@ -204,21 +230,32 @@ pub(crate) fn encode_celeste_rooms(
     }
     let mut levels = Vec::with_capacity(rooms.len());
     for (room, map) in rooms {
-        let mut entities = vec![element(
-            "player",
-            [
-                ("id", BinaryValue::Int(0)),
-                ("originX", BinaryValue::Int(4)),
-                ("originY", BinaryValue::Int(8)),
-                ("width", BinaryValue::Int(8)),
-                ("x", BinaryValue::Int((map.spawn.x - map.bounds.x) as i32)),
-                ("y", BinaryValue::Int((map.spawn.y - map.bounds.y) as i32)),
-            ],
-            vec![],
-        )];
+        let spawns = if map.room_spawns.is_empty() {
+            vec![map.spawn]
+        } else {
+            map.room_spawns.clone()
+        };
+        let mut entities = spawns
+            .iter()
+            .enumerate()
+            .map(|(index, spawn)| {
+                element(
+                    "player",
+                    [
+                        ("id", BinaryValue::Int(index as i32)),
+                        ("originX", BinaryValue::Int(4)),
+                        ("originY", BinaryValue::Int(8)),
+                        ("width", BinaryValue::Int(8)),
+                        ("x", BinaryValue::Int((spawn.x - map.bounds.x) as i32)),
+                        ("y", BinaryValue::Int((spawn.y - map.bounds.y) as i32)),
+                    ],
+                    vec![],
+                )
+            })
+            .collect::<Vec<_>>();
         let mut triggers = Vec::new();
         for (index, entity) in map.entities.iter().enumerate() {
-            let id = index as i32 + 1;
+            let id = index as i32 + spawns.len() as i32;
             let x = (entity.bounds.x - map.bounds.x) as i32;
             let y = (entity.bounds.y - map.bounds.y) as i32;
             let width = entity.bounds.width as i32;
@@ -903,6 +940,14 @@ fn attr_bool(el: &BinaryElement, key: &str, default: bool) -> bool {
 }
 
 fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapError> {
+    map_from_binary_inner(root, room, true)
+}
+
+fn map_from_binary_inner(
+    root: BinaryElement,
+    room: Option<&str>,
+    include_transition_runtime: bool,
+) -> Result<Map, MapError> {
     let levels = root
         .children
         .iter()
@@ -938,7 +983,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 )
             })
             .collect(),
-        source_package: root.package,
+        source_package: root.package.clone(),
         ..Map::default()
     };
 
@@ -947,7 +992,11 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
             let ex = x + attr_f32(el, "x", 0.0);
             let ey = y + attr_f32(el, "y", 0.0);
             if el.name == "player" {
-                map.spawn = Vec2::new(ex, ey);
+                let spawn = Vec2::new(ex, ey);
+                if map.room_spawns.is_empty() {
+                    map.spawn = spawn;
+                }
+                map.room_spawns.push(spawn);
                 continue;
             }
             let kind = match el.name.as_str() {
@@ -1152,14 +1201,33 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
         }
     }
 
-    for room_level in &levels.children {
-        let room_x = attr_f32(room_level, "x", 0.0);
-        let room_y = attr_f32(room_level, "y", 0.0);
-        if let Some(solids) = room_level.children.iter().find(|e| e.name == "solids")
-            && let Some(text) = attr_text(solids, "innerText")
-        {
-            map.solids.extend(tile_rects(text, room_x, room_y));
-        }
+    // Level.LoadLevel keeps the source LevelData live until the transition
+    // coroutine completes. Decoding destination tiles here would make them
+    // collide during Player.TransitionTo, before that LoadLevel boundary.
+    if let Some(solids) = level.children.iter().find(|e| e.name == "solids")
+        && let Some(text) = attr_text(solids, "innerText")
+    {
+        map.solids.extend(tile_rects(text, x, y));
+    }
+    if include_transition_runtime {
+        map.transition_runtime = levels
+            .children
+            .iter()
+            .map(|candidate| {
+                let name = attr_text(candidate, "name").ok_or(MapError::NoLevel)?;
+                let decoded = map_from_binary_inner(root.clone(), Some(name), false)?;
+                Ok(RoomRuntime {
+                    bounds: decoded.bounds,
+                    spawns: if decoded.room_spawns.is_empty() {
+                        vec![decoded.spawn]
+                    } else {
+                        decoded.room_spawns
+                    },
+                    solids: decoded.solids,
+                    entities: decoded.entities,
+                })
+            })
+            .collect::<Result<Vec<_>, MapError>>()?;
     }
     Ok(map)
 }
@@ -1351,18 +1419,33 @@ mod tests {
         let lower = decode_map_room(&bytes, Some("lower")).unwrap();
         assert_eq!(lower.bounds, map.bounds);
         assert_eq!(lower.transition_rooms, vec![adjacent]);
+        assert_eq!(lower.transition_runtime.len(), 2);
+        assert!(
+            lower
+                .transition_runtime
+                .iter()
+                .any(|room| room.bounds == map.bounds && room.spawns == vec![lower.spawn])
+        );
         let upper = decode_map_room(&bytes, Some("transition_0")).unwrap();
         assert_eq!(upper.bounds, adjacent);
         assert_eq!(upper.transition_rooms, vec![map.bounds]);
+        assert_eq!(upper.transition_runtime.len(), 2);
+        assert!(
+            upper
+                .transition_runtime
+                .iter()
+                .any(|room| room.bounds == map.bounds && room.spawns == vec![lower.spawn])
+        );
         assert_eq!(upper.spawn, Vec2::new(24.0, -16.0));
-        let decoded_solids = vec![
-            Rect::new(0.0, 176.0, 320.0, 8.0),
-            Rect::new(160.0, -16.0, 8.0, 8.0),
-            Rect::new(160.0, -8.0, 8.0, 8.0),
-        ];
-        assert_eq!(lower.solids, decoded_solids);
-        assert_eq!(upper.solids, decoded_solids);
-        assert!(lower.solid_at(Rect::new(160.0, -12.0, 1.0, 1.0)));
+        assert_eq!(lower.solids, vec![Rect::new(0.0, 176.0, 320.0, 8.0)]);
+        assert_eq!(
+            upper.solids,
+            vec![
+                Rect::new(160.0, -16.0, 8.0, 8.0),
+                Rect::new(160.0, -8.0, 8.0, 8.0),
+            ]
+        );
+        assert!(!lower.solid_at(Rect::new(160.0, -12.0, 1.0, 1.0)));
         assert!(upper.solid_at(Rect::new(160.0, -12.0, 1.0, 1.0)));
     }
 

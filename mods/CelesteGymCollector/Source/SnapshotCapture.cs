@@ -66,6 +66,8 @@ internal static class SnapshotCapture {
             values["playerHurtbox"] = ColliderGeometry(hurtbox);
         }
         if (player.Scene is Level level) {
+            values["sessionLevel"] = level.Session.Level;
+            values["sessionRespawnPoint"] = Simplify(level.Session.RespawnPoint);
             values["levelWind"] = new[] { level.Wind.X, level.Wind.Y };
             values["levelCamera"] = new[] { level.Camera.Position.X, level.Camera.Position.Y };
             if (level.Entities.FindFirst<ZipMover>() is ZipMover zipMover) {

@@ -4,6 +4,7 @@ import { REFORM_MAP_PARTS } from './reform-parts.js'
 import { CASSETTE_SPINNER_MAP_PARTS } from './cassette-spinner-parts.js'
 import { CORE_HEART_SQUISH_MAP_PARTS } from './core-heart-squish-parts.js'
 import { LOOKOUT_MAP_PARTS } from './lookout-parts.js'
+import { BUBS_MAP_PARTS } from './bubs-parts.js'
 
 const PACKAGE = 'CelesteGymPlayground'
 const SID = 'CelesteGymPlayground/Playground'
@@ -233,4 +234,5 @@ export const COMMON_MAP_PARTS = new Map<string, MapPart>([
   ...CASSETTE_SPINNER_MAP_PARTS,
   ...CORE_HEART_SQUISH_MAP_PARTS,
   ...LOOKOUT_MAP_PARTS,
+  ...BUBS_MAP_PARTS,
 ].map((part) => [part.id, part]))

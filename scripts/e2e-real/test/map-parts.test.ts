@@ -20,9 +20,9 @@ const entity = defineMapPart({
 describe('map-part exporter', () => {
   it('assembles the full canonical Playground partition', () => {
     const fixture = assembleFixturePackage([...COMMON_MAP_PARTS.values()], COMMON_MAP_PARTS)
-    assert.equal(fixture.rooms.length, 4)
-    assert.equal(fixture.rooms.reduce((total, room) => total + room.solids.length, 0), 31)
-    assert.equal(fixture.rooms.reduce((total, room) => total + room.entities.length, 0), 84)
+    assert.equal(fixture.rooms.length, 5)
+    assert.equal(fixture.rooms.reduce((total, room) => total + room.solids.length, 0), 32)
+    assert.equal(fixture.rooms.reduce((total, room) => total + room.entities.length, 0), 85)
   })
 
   it('computes dependency closure and emits canonical stable sorting', () => {
