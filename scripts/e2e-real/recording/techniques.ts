@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 export type TechniqueStatus = 'implemented' | 'unimplemented'
@@ -15,8 +15,7 @@ export interface TechniqueCatalog {
 }
 
 export function loadTechniqueCatalog(repoRoot: string): TechniqueCatalog {
-  const root = join(repoRoot, 'docs', 'tech-handbook', 'techs')
-  const techniques = typstFiles(root).map((file) => parseTechnique(file))
+  const techniques = authoritativeTechniqueFiles(repoRoot).map((file) => parseTechnique(file))
     .sort((left, right) => compareTechniqueIds(left.id, right.id))
   const byId = new Map<string, TechniqueRecord>()
   for (const technique of techniques) {
@@ -24,15 +23,15 @@ export function loadTechniqueCatalog(repoRoot: string): TechniqueCatalog {
     byId.set(technique.id, technique)
   }
   const implementedIds = new Set(techniques.filter((technique) => technique.status === 'implemented').map((technique) => technique.id))
-  if (techniques.length !== 121) throw new Error(`unexpected handbook coverage count: ${techniques.length} total`)
+  if (techniques.length !== 120) throw new Error(`unexpected handbook coverage count: ${techniques.length} total`)
   return Object.freeze({ techniques: Object.freeze(techniques), byId, implementedIds })
 }
 
-function typstFiles(directory: string): string[] {
-  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const path = join(directory, entry.name)
-    return entry.isDirectory() ? typstFiles(path) : entry.name.endsWith('.typ') ? [path] : []
-  })
+function authoritativeTechniqueFiles(repoRoot: string): string[] {
+  const handbookRoot = join(repoRoot, 'docs', 'tech-handbook')
+  const index = readFileSync(join(handbookRoot, 'techs.typ'), 'utf8')
+  return [...index.matchAll(/#include\s+"(techs\/[^\"]+\.typ)"/g)]
+    .map((match) => join(handbookRoot, match[1]!))
 }
 
 function parseTechnique(file: string): TechniqueRecord {

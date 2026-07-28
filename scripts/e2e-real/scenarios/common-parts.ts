@@ -136,7 +136,8 @@ export const TECH_ENTITY_4_6_1_CLOUD_HYPER_SUPER = fixturePart('tech.entity-4.6.
   entities: [{ id: 'tech-4.6.1-cloud', kind: 'cloud', bounds: [600, 440, 32, 5], name: 'cloud' }],
 })
 export const TECH_ENTITY_4_6_2_CLOUD_HYPER_BUNNYHOP = fixturePart('tech.entity-4.6.2-cloud-hyper-bunnyhop', {
-  entities: [{ id: 'tech-4.6.2-cloud', kind: 'cloud', bounds: [504, 440, 32, 5], name: 'cloud' }],
+  solids: [[536, 416, 160, 8]],
+  entities: [{ id: 'tech-4.6.2-cloud', kind: 'cloud', bounds: [504, 434, 32, 5], name: 'cloud' }],
 })
 export const TECH_ENTITY_4_10_3_DREAM_SMUGGLE = fixturePart('tech.entity-4.10.3-dream-smuggle', {
   entities: [
@@ -197,6 +198,11 @@ export const PLAYGROUND_OTHER_KERMIT = defineMapPart({
   rooms: [{ name: 'transition_0' }],
 })
 export const PLAYGROUND_OTHER_SUBPIXEL = fixturePart('playground.other-subpixel')
+export const TECH_OTHER_5_13_UNDEMO_DASHING = fixturePart('tech.other-5.13-undemo-dashing')
+export const TECH_OTHER_5_8_ROBOBOOST = fixturePart('tech.other-5.8-roboboost', {
+  solids: [[480, 400, 8, 64]],
+  entities: [{ id: 'tech-5.8-move-block', kind: 'move_block', bounds: [400, 464, 64, 16], direction: [1, 0], name: 'moveBlock' }],
+})
 
 export const COMMON_MAP_PARTS = new Map<string, MapPart>([
   PLAYGROUND_BASE, PLAYGROUND_JUMP_THRU, PLAYGROUND_ZIP_MOVER, PLAYGROUND_BOOSTER, PLAYGROUND_SPIKES,
@@ -214,6 +220,8 @@ export const COMMON_MAP_PARTS = new Map<string, MapPart>([
   PLAYGROUND_OTHER_HALF_STAMINA,
   PLAYGROUND_OTHER_KERMIT,
   PLAYGROUND_OTHER_SUBPIXEL,
+  TECH_OTHER_5_13_UNDEMO_DASHING,
+  TECH_OTHER_5_8_ROBOBOOST,
   ...REFORM_MAP_PARTS,
   ...CASSETTE_SPINNER_MAP_PARTS,
   ...CORE_HEART_SQUISH_MAP_PARTS,

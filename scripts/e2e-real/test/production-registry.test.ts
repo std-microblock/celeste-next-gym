@@ -8,12 +8,12 @@ describe('production scenario registry', () => {
   const registry = buildRegistry(scenarios)
 
   it('derives all target and status counts from explicit indexes', () => {
-    assert.equal(registry.scenarios.length, 178)
-    assert.equal(registry.byTarget.get('playground')?.length, 136)
+    assert.equal(registry.scenarios.length, 181)
+    assert.equal(registry.byTarget.get('playground')?.length, 139)
     assert.equal(registry.byTarget.get('area-1')?.length, 36)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 159, candidate: 19 })
+    assert.deepEqual(registry.counts, { active: 160, candidate: 21 })
   })
 
   it('keeps evidence-less scenarios as opt-in candidates', () => {
@@ -21,6 +21,7 @@ describe('production scenario registry', () => {
       .filter((scenario) => scenario.status === 'candidate')
       .map((scenario) => scenario.name)
     assert.deepEqual(candidates, [
+      'dashless-3.7.11-disappearing-block-cornerboost',
       'entity-4.10.3.2-holdable-dream-hyper',
       'entity-4.15-jumpthrough-clip',
       'entity-4.16-lava-neutral',
@@ -39,6 +40,7 @@ describe('production scenario registry', () => {
       'other-5.10-spinner-stunning',
       'other-5.11-spinner-freeze',
       'other-5.3-cassette-raise',
+      'other-5.8-roboboost',
       'other-5.9-screen-transition-cassette-offset',
     ])
     assert.equal(selectScenarios(registry, { target: 'playground' }).some((scenario) => scenario.status === 'candidate'), false)

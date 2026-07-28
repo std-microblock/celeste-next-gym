@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readdirSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
@@ -16,13 +16,13 @@ interface TechniqueEvidence {
 }
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
-const TECHNIQUE_ROOT = join(REPO_ROOT, 'docs', 'tech-handbook', 'techs')
+const TECHNIQUE_INDEX = join(REPO_ROOT, 'docs', 'tech-handbook', 'techs.typ')
 
-function typstFiles(directory: string): string[] {
-  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const path = join(directory, entry.name)
-    return entry.isDirectory() ? typstFiles(path) : entry.name.endsWith('.typ') ? [path] : []
-  })
+function authoritativeTechniqueFiles(): string[] {
+  const handbookRoot = dirname(TECHNIQUE_INDEX)
+  const index = readFileSync(TECHNIQUE_INDEX, 'utf8')
+  return [...index.matchAll(/#include\s+"(techs\/[^\"]+\.typ)"/g)]
+    .map((match) => join(handbookRoot, match[1]!))
 }
 
 function evidenceSymbols(block: string | undefined): string[] {
@@ -31,7 +31,7 @@ function evidenceSymbols(block: string | undefined): string[] {
 }
 
 function techniqueCatalog(): TechniqueEvidence[] {
-  return typstFiles(TECHNIQUE_ROOT).map((path) => {
+  return authoritativeTechniqueFiles().map((path) => {
     const text = readFileSync(path, 'utf8')
     const id = text.match(/\bid:\s*"([^"]+)"/)?.[1]
     const status = text.match(/\bstatus:\s*"([^"]+)"/)?.[1]
@@ -52,9 +52,9 @@ describe('authoritative technique recording metadata', () => {
   const byName = new Map(scenarios.map((scenario) => [scenario.name, scenario]))
 
   it('assigns exactly one primary to every implemented technique and none to unimplemented techniques', () => {
-    assert.equal(techniques.length, 121)
+    assert.equal(techniques.length, 120)
     assert.equal(techniques.filter((technique) => technique.status === 'implemented').length, 93)
-    assert.equal(techniques.filter((technique) => technique.status === 'unimplemented').length, 28)
+    assert.equal(techniques.filter((technique) => technique.status === 'unimplemented').length, 27)
 
     const primaryCounts = new Map<string, number>()
     for (const scenario of scenarios) {

@@ -7477,7 +7477,7 @@ mod tests {
         let inputs: Vec<_> = (0..24)
             .map(|frame| InputState {
                 move_x: 1,
-                move_y: if frame == 0 { 1 } else { 0 },
+                move_y: if frame <= 5 { 1 } else { 0 },
                 dash_pressed: frame == 0,
                 grab_held: frame >= 5,
                 ..InputState::default()
@@ -8129,7 +8129,7 @@ mod tests {
         let inputs: Vec<_> = (0..24)
             .map(|frame| InputState {
                 move_x: 1,
-                move_y: if frame == 0 { 1 } else { 0 },
+                move_y: if frame <= 5 { 1 } else { 0 },
                 dash_pressed: frame == 0,
                 grab_held: (5..=20).contains(&frame),
                 ..InputState::default()
@@ -8787,71 +8787,59 @@ mod tests {
     }
 
     #[test]
-    fn cloud_hyper_speed_composes_with_an_apex_bunnyhop_snapshot() {
+    fn cloud_hyper_completes_an_apex_bunnyhop_in_one_runtime_trace() {
         let p = PlayerSnapshot {
             pos: Vec2::new(88.0, 100.0),
             on_ground: true,
             ..PlayerSnapshot::default()
         };
-        let inputs: Vec<_> = (0..110)
+        let inputs: Vec<_> = (0..45)
             .map(|frame| InputState {
-                move_x: if frame == 23 {
+                move_x: if (23..=27).contains(&frame) {
                     -1
-                } else if frame > 23 {
+                } else if frame >= 28 {
                     1
                 } else {
                     0
                 },
                 crouch_dash_pressed: frame == 23,
-                jump_pressed: frame == 27,
-                jump_held: frame == 27,
+                jump_pressed: frame == 28 || frame == 37,
+                jump_held: frame == 28 || frame == 37,
                 ..InputState::default()
             })
             .collect();
-        let setup =
-            simulate_trace(p.clone(), &inputs, &cloud_map(false), inputs.len() as u32).unwrap();
-        let hyper = setup
+        let mut runtime_map = cloud_map(false);
+        runtime_map.solids.push(Rect::new(116.0, 82.0, 160.0, 8.0));
+        let trace = simulate_trace(p.clone(), &inputs, &runtime_map, inputs.len() as u32).unwrap();
+        assert_eq!(trace.states[28].speed, Vec2::new(-DASH_SPEED, 0.0));
+        assert_eq!(trace.states[29].state, PlayerState::Normal);
+        assert_eq!(trace.states[29].speed.x, SUPER_JUMP_H * 1.25);
+
+        let apex_y = trace
             .states
             .iter()
-            .position(|state| {
-                state.state == PlayerState::Normal && (state.speed.x - 325.0).abs() < 0.001
-            })
-            .expect("short cloud hyper");
-        let apex = setup
-            .states
-            .iter()
-            .enumerate()
-            .min_by(|(_, left), (_, right)| {
-                left.clouds[0]
-                    .position
-                    .y
-                    .total_cmp(&right.clouds[0].position.y)
-            })
-            .map(|(frame, state)| (frame, state.clone()))
+            .map(|state| state.clouds[0].position.y)
+            .min_by(f32::total_cmp)
             .unwrap();
-        assert!(apex.0 > hyper);
-        let mut apex_player = apex.1;
-        apex_player.pos = Vec2::new(100.0, apex_player.clouds[0].position.y);
-        apex_player.speed = Vec2::new(300.0, 0.0);
-        apex_player.state = PlayerState::Normal;
-        apex_player.on_ground = true;
-        apex_player.player_on_ground = true;
-        apex_player.movement_remainder = Vec2::default();
-        let jump = InputState {
-            move_x: 1,
-            jump_pressed: true,
-            jump_held: true,
-            ..InputState::default()
-        };
-        let bunnyhop = simulate(apex_player.clone(), &[jump], &cloud_map(false), 1).unwrap();
+        let landed = &trace.states[37];
+        assert!(landed.on_ground);
+        assert_eq!(landed.pos.y, apex_y);
+        assert!((landed.clouds[0].position.y - apex_y).abs() <= 1.0);
+        let bunnyhop = &trace.states[38];
         assert_eq!(bunnyhop.state, PlayerState::Normal);
         assert!(bunnyhop.speed.x > 250.0);
-        assert_eq!(bunnyhop.speed.y, -235.0);
+        assert!((bunnyhop.speed.y - -175.000_47).abs() < 0.001);
+        assert!(!bunnyhop.on_ground);
 
-        let inputs = [jump, InputState::default()];
-        let whole = simulate(apex_player.clone(), &inputs, &cloud_map(false), 2).unwrap();
-        let first = simulate(apex_player, &inputs[..1], &cloud_map(false), 1).unwrap();
-        let split = simulate(first, &inputs[1..], &cloud_map(false), 1).unwrap();
+        let whole = trace.states.last().unwrap().clone();
+        let first = simulate(p, &inputs[..32], &runtime_map, 32).unwrap();
+        let split = simulate(
+            first,
+            &inputs[32..],
+            &runtime_map,
+            (inputs.len() - 32) as u32,
+        )
+        .unwrap();
         assert_eq!(split, whole);
     }
 
@@ -11328,6 +11316,50 @@ mod tests {
         assert_eq!(p.dashes, 0);
     }
     #[test]
+    fn undemo_redirects_after_dash_begin_without_changing_the_standing_collider() {
+        let inputs = [
+            InputState {
+                move_x: 1,
+                dash_pressed: true,
+                ..InputState::default()
+            },
+            InputState {
+                move_y: 1,
+                ..InputState::default()
+            },
+            InputState {
+                move_y: 1,
+                ..InputState::default()
+            },
+            InputState {
+                move_y: 1,
+                ..InputState::default()
+            },
+            InputState {
+                move_y: 1,
+                ..InputState::default()
+            },
+        ];
+        let trace = simulate_trace(
+            PlayerSnapshot {
+                pos: Vec2::new(160.0, 80.0),
+                ..PlayerSnapshot::default()
+            },
+            &inputs,
+            &Map::default(),
+            inputs.len() as u32,
+        )
+        .unwrap();
+
+        assert_eq!(trace.states[1].state, PlayerState::Dash);
+        assert_eq!(trace.states[1].dash_dir, Vec2::default());
+        assert!(!trace.states[1].demo_dashed);
+        assert!(!trace.states[1].ducking);
+        assert_eq!(trace.states[5].dash_dir, Vec2::new(0.0, 1.0));
+        assert_eq!(trace.states[5].speed, Vec2::new(0.0, DASH_SPEED));
+        assert!(!trace.states[5].ducking);
+    }
+    #[test]
     fn crouching_uses_source_duck_friction_and_six_pixel_collider() {
         let p = simulate(
             grounded_player(),
@@ -12389,6 +12421,27 @@ mod tests {
         assert_eq!(activated.cassette_blocks[1].position.y, 103.0);
         assert!(activated.cassette_blocks[0].collidable);
         assert!(!activated.cassette_blocks[1].collidable);
+    }
+
+    #[test]
+    fn disappearing_cassette_clears_collision_before_reactivation() {
+        let p = PlayerSnapshot {
+            state: PlayerState::Frozen,
+            cassette_manager: crate::CassetteManagerSnapshot {
+                initialized: true,
+                startup_music_pending: false,
+                beat_timer: CASSETTE_BEAT_INTERVAL - DT * 0.5,
+                beat_index: 6,
+                current_index: 1,
+                max_beat: 2,
+                tempo_mult: 1.0,
+            },
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(p, &[InputState::default(); 12], &cassette_map(), 12).unwrap();
+        assert!(!trace.states[1].cassette_blocks[0].collidable);
+        assert!(trace.states[1].cassette_blocks[1].collidable);
+        assert!(trace.states[12].cassette_blocks[0].collidable);
     }
 
     #[test]
