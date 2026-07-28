@@ -15,9 +15,9 @@ export const scenario = defineScenario({
   name: 'entity-4.18.1-reform-kick',
   initial: { pos: [80, 400], speed: [0, 0] },
   inputs: inputFrames(360, (frame) => input({
-    move_x: frame >= 20 && frame < 44 ? -1 : frame === 310 ? -1 : 0,
-    jump_pressed: frame === 310,
-    jump_held: frame === 310,
+    move_x: frame >= 20 && frame < 44 ? -1 : frame === 302 ? -1 : 0,
+    jump_pressed: frame === 300 || frame === 302,
+    jump_held: frame === 300 || frame === 302,
   })),
   verify(states) {
     const body = states.findIndex((state) => field(state, 'reformBlockCollidable') === true
