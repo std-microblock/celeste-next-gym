@@ -2500,6 +2500,12 @@ fn pickup_update(p: &mut PlayerSnapshot) {
     p.speed.y = p.speed.y.min(0.0);
     p.var_jump_timer = p.pickup_old_var_jump_timer;
     p.state = PlayerState::Normal;
+    // PickupCoroutine assigns StateMachine.State = Normal after restoring
+    // oldSpeed.  That transition invokes Player.NormalBegin, which resets
+    // maxFall before the next NormalUpdate can apply Glider slow-fall.
+    // Leaving the previous reduced cap in place makes an alternating-jelly
+    // ladder under-fall after a pickup tween.
+    p.max_fall = MAX_FALL;
     // Player.PickupCoroutine applies the slow-fall holdable branch after
     // restoring oldSpeed. A rising Glider pickup is clamped to at least the
     // normal jump speed even when the cached vertical speed was smaller.
@@ -8175,7 +8181,13 @@ mod tests {
 
         // The second jelly's 20x22 source PickupCollider starts the f25
         // tween while the first jelly remains under its own 0.3 s lockout.
-        assert_eq!(pickup_starts, vec![(1, Some(0)), (25, Some(1)), (67, Some(0)), (103, Some(1))]);
+        assert_eq!(pickup_starts, vec![(1, Some(0)), (25, Some(1)), (67, Some(0))]);
+        // PickupCoroutine's StateMachine transition invokes NormalBegin.
+        // Resetting maxFall there leaves the first post-tween slow-fall
+        // sequence at the source f55 cap and speed, rather than retaining
+        // the previous Glider cap (375 / 25).
+        assert_eq!(trace.states[55].pos, Vec2::new(96.0, 376.0));
+        assert!((trace.states[55].speed.y - 30.0).abs() <= 0.01);
     }
 
     #[test]
