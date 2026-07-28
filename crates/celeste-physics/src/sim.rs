@@ -11709,6 +11709,44 @@ mod tests {
     }
 
     #[test]
+    fn vertical_dash_entry_clears_velocity_before_the_coroutine_launches() {
+        // Player.DashBegin saves beforeDashSpeed, then clears both axes before
+        // DashCoroutine's initial `yield return null`. This needs to hold for
+        // both pure vertical directions, not just horizontal dashes.
+        for facing in [false, true] {
+            for (move_y, before_dash_speed) in [
+                (-1, Vec2::new(123.0, -80.0)),
+                (1, Vec2::new(-123.0, 80.0)),
+            ] {
+                let entry = simulate(
+                    PlayerSnapshot {
+                        pos: Vec2::new(64.0, 64.0),
+                        speed: before_dash_speed,
+                        facing,
+                        dashes: 1,
+                        ..PlayerSnapshot::default()
+                    },
+                    &[InputState {
+                        move_y,
+                        dash_pressed: true,
+                        ..InputState::default()
+                    }],
+                    &Map::default(),
+                    1,
+                )
+                .unwrap();
+
+                assert_eq!(entry.state, PlayerState::Dash);
+                assert_eq!(entry.before_dash_speed, before_dash_speed);
+                assert_eq!(entry.speed, Vec2::default());
+                assert_eq!(entry.dash_dir, Vec2::default());
+                assert_eq!(entry.pos, Vec2::new(64.0, 64.0));
+                assert_eq!(entry.facing, facing);
+            }
+        }
+    }
+
+    #[test]
     fn dash_direction_is_sampled_when_coroutine_resumes_after_freeze() {
         let inputs = [
             InputState::default(),

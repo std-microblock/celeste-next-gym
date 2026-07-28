@@ -60,6 +60,27 @@ if (!dashBegin || dashBegin.speed.x !== 0 || dashBegin.speed.y !== 0 || dashBegi
 if (!dashLaunch || dashLaunch.speed.x !== -240 || dashLaunch.speed.y !== 0 || dashLaunch.dash_dir.x !== -1 || dashLaunch.dash_dir.y !== 0 || dashLaunch.facing !== false) {
   throw new Error(delayedLeftTrace.error ?? 'DashCoroutine did not sample frame-3 left input')
 }
+for (const facing of [false, true]) {
+  for (const [move_y, speed] of [[-1, { x: 123, y: -80 }], [1, { x: -123, y: 80 }]]) {
+    const verticalEntryTrace = decode(simulate_msgpack(encode({
+      ...state,
+      pos: { x: 64, y: 300 },
+      speed,
+      facing,
+    }), encode([{ ...input, move_x: 0, move_y, dash_pressed: true }]), encode(map), 1))
+    const verticalEntry = verticalEntryTrace.states?.[1]
+    if (!verticalEntry
+      || verticalEntry.speed.x !== 0
+      || verticalEntry.speed.y !== 0
+      || verticalEntry.dash_dir.x !== 0
+      || verticalEntry.dash_dir.y !== 0
+      || verticalEntry.pos.x !== 64
+      || verticalEntry.pos.y !== 300
+      || verticalEntry.facing !== facing) {
+      throw new Error(verticalEntryTrace.error ?? `Vertical DashBegin retained velocity while facing ${facing ? 'right' : 'left'}`)
+    }
+  }
+}
 const mapBytes = await readFile(new URL('../public/assets/original/maps/CelesteGymPlayground-Playground.bin', import.meta.url))
 const decodedMap = decode(decode_celeste_map_msgpack(mapBytes, 'playground'))
 if (!decodedMap.map || decodedMap.map.source_package !== 'CelesteGymPlayground') throw new Error(decodedMap.error ?? 'WASM map decode failed')
