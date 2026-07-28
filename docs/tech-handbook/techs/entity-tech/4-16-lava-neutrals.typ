@@ -27,6 +27,6 @@
   candidate-e2e: evidence(
     path: [scripts/e2e-real/scenarios/core-heart-squish-parts.ts / scripts/e2e-real/scenarios/playground/entity-4.16-lava-neutral.ts],
     symbol: [tech.entity-4.16-lava-neutral / entity-4.16-lava-neutral],
-    note: [独立 MapPart 在训练场右墙加入 vanilla RisingLava；候选从 Climb 状态保持抓取，等待岩浆上升到 body 已接触但 hurtbox 尚未接触的第 169 帧，再缓冲 Neutral，并验证 -105 垂直速度、wallBoostTimer 与未死亡。真实 Everest 逐帧比较通过前保持 unimplemented。],
+    note: [独立 MapPart 在训练场右墙加入 vanilla RisingLava；候选在第 169 帧安全唇缓冲 Neutral，真实 Everest 与 Rust 均得到 -105 垂直速度、wallBoostTimer 且未死亡，221 个状态的 position/speed 最大误差为 0。一次 Player.cs 驱动的初始化修正把 Facing 放到 Climb 状态入口之前；唯一复跑仍在 frame 1 出现 stamina 首差（Rust 109.833、Everest 110），超过 0.01，故保持 unimplemented。],
   ),
 )
