@@ -13,13 +13,13 @@ export const scenario = defineScenario({
   techniqueIds: [],
   mapParts,
   name: 'mechanics-move-block-side-grab',
-  initial: { pos: [836, 328], speed: [0, 0], facing: 'Left', stamina: 110 },
+  initial: { pos: [636, 408], speed: [0, 0], facing: 'Left', stamina: 110 },
   inputs: inputFrames(40, () => input({ grab_held: true })),
   verify(states) {
     const grabbed = states.findIndex((state) => state.state === 'Climb' || state.state === 1)
     const carried = states.findIndex((state, frame) => frame > grabbed
       && (state.state === 'Climb' || state.state === 1)
-      && state.pos[0] < 835.99)
+      && state.pos[0] < 635.99)
     semanticAssert(grabbed >= 0, scenario.name,
       `stationary left-facing player did not grab the MoveBlock: ${JSON.stringify(states.slice(0, 4).map(pickCore))}`)
     semanticAssert(carried > grabbed, scenario.name,

@@ -10,7 +10,7 @@ export const MOVE_BLOCK_SIDE_GRAB_PART = defineMapPart({
     entities: [{
       id: 'mechanics-move-block-side-grab',
       kind: 'move_block',
-      bounds: [800, 320, 32, 16],
+      bounds: [600, 400, 32, 16],
       direction: [-1, 0],
       name: 'moveBlock',
     }],
