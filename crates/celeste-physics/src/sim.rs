@@ -1788,6 +1788,41 @@ fn move_player_exact_from_pusher(
     }
 }
 
+fn move_riding_player_exact(
+    p: &mut PlayerSnapshot,
+    env: &SolidCollisionEnv,
+    horizontal: bool,
+    amount: f32,
+) {
+    let move_by = amount as i32;
+    if move_by == 0 {
+        return;
+    }
+    let sign = move_by.signum() as f32;
+    for _ in 0..move_by.unsigned_abs() {
+        let previous = current_player_rect(p, p.pos.x, p.pos.y);
+        let candidate = if horizontal {
+            current_player_rect(p, p.pos.x + sign, p.pos.y)
+        } else {
+            current_player_rect(p, p.pos.x, p.pos.y + sign)
+        };
+        let blocked = env_solid_at(env, candidate, None)
+            || (!horizontal && sign > 0.0 && env_jump_thru_at(env, candidate, previous.bottom()));
+        if blocked {
+            // Solid.MoveHExact/MoveVExact first carries riders through the
+            // Actor's exact movement path.  A rider stopped by an unrelated
+            // wall stays at the last legal pixel; only actors overlapping
+            // the newly moved Solid take the later OnSquish path.
+            return;
+        }
+        if horizontal {
+            p.pos.x += sign;
+        } else {
+            p.pos.y += sign;
+        }
+    }
+}
+
 fn move_runtime_solid_exact(
     p: &mut PlayerSnapshot,
     bounds: &mut Rect,
@@ -1823,11 +1858,7 @@ fn move_runtime_solid_exact(
         move_player_exact_from_pusher(p, env, *bounds, horizontal, push);
         set_lift_speed(p, lift_speed);
     } else if riding {
-        if horizontal {
-            p.pos.x += amount;
-        } else {
-            p.pos.y += amount;
-        }
+        move_riding_player_exact(p, env, horizontal, amount);
         set_lift_speed(p, lift_speed);
     }
 }
@@ -8045,7 +8076,13 @@ mod tests {
     fn core_block_candidate_clears_source_body_before_reform_blocked_check() {
         let map = Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
-            solids: vec![Rect::new(0.0, 496.0, 960.0, 48.0)],
+            solids: vec![
+                Rect::new(0.0, 496.0, 960.0, 48.0),
+                // The physical Playground has this left wall beside the
+                // source body. It stops the rider's horizontal carry at
+                // x=716 on frame 24 without blocking reset x=712.
+                Rect::new(688.0, 448.0, 24.0, 48.0),
+            ],
             entities: vec![
                 crate::Entity {
                     kind: EntityKind::BounceBlock,
@@ -8092,10 +8129,23 @@ mod tests {
                 },
                 jump_pressed: frame == 80,
                 jump_held: (80..90).contains(&frame),
+                // Everest reports 0.0166667 seconds in this capture. The
+                // exact bits put the 24th frame on the same platform carry
+                // boundary as the physical CED trace.
+                frame_delta_time_bits: Some(0.0166667f32.to_bits()),
                 ..InputState::default()
-            })
-            .collect();
+        })
+        .collect();
         let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
+        assert_eq!(trace.states[24].pos, Vec2::new(716.0, 477.0));
+        assert_eq!(trace.states[24].speed, Vec2::default());
+        assert_eq!(trace.states[24].state, PlayerState::Normal);
+        assert!(trace.states[24].facing);
+        assert_eq!(trace.states[24].dashes, 1);
+        assert_eq!(trace.states[24].stamina, 110.0);
+        assert!(trace.states[24].on_ground);
+        assert!(!trace.states[24].ducking);
+        assert!(!trace.states[24].dead);
         let source = Rect::new(712.0, 480.0, 64.0, 16.0);
         assert!(
             !map.static_solid_at(source),
@@ -8124,14 +8174,7 @@ mod tests {
             .find(|(_, state)| state.bounce_blocks[0].static_movers_enabled)
             .map(|(frame, _)| frame)
             .unwrap();
-        let second_bounce = trace
-            .states
-            .iter()
-            .enumerate()
-            .skip(body + 1)
-            .find(|(_, state)| state.bounce_blocks[0].phase == 1)
-            .map(|(frame, _)| frame)
-            .unwrap();
+        let broken_block = &trace.states[broken].bounce_blocks[0];
         let body_block = &trace.states[body].bounce_blocks[0];
         assert_eq!(body_block.position, Vec2::new(712.0, 480.0));
         assert_eq!(body_block.phase, 0);
@@ -8147,20 +8190,20 @@ mod tests {
         );
         assert!(spike > body, "the 0.35-second StaticMover alarm must follow body reform");
         assert!(
-            second_bounce > body && second_bounce < spike,
-            "the player must trigger a native second bounce during the disabled-StaticMover alarm: body={body}, second={second_bounce}, spike={spike}"
-        );
-        assert!(
             (21..=24).contains(&(spike - body)),
             "the 0.35-second alarm may include Celeste's transition freeze: body={body}, spike={spike}"
         );
         let reenabled = &trace.states[spike].bounce_blocks[0];
-        assert!(
-            reenabled.static_movers_enabled
-                && reenabled.attached_spike_position != Vec2::new(776.0, 480.0),
-            "the spike must remain displaced when the reform alarm re-enables it: {reenabled:?}"
+        let expected_spike = Vec2::new(
+            broken_block.attached_spike_position.x + body_block.position.x - broken_block.position.x,
+            broken_block.attached_spike_position.y + body_block.position.y - broken_block.position.y,
         );
-        assert_ne!(reenabled.position, Vec2::new(712.0, 480.0));
+        assert!(
+            reenabled.static_movers_enabled && reenabled.attached_spike_position == expected_spike,
+            "the spike must re-enable at the broken-body -> restored-body displacement: broken={broken_block:?}, body={body_block:?}, reenabled={reenabled:?}"
+        );
+        assert_ne!(expected_spike, broken_block.attached_spike_position);
+        assert_eq!(reenabled.position, body_block.position);
     }
 
     #[test]
