@@ -16,5 +16,5 @@
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [advance_clouds; normal_update], note: [同一 runtime trace 保存云的 phase/position/remainder；反向 Demo Hyper 离开白云后落到与云顶最低 Y 完全相同的相邻 8px 网格平台，再由普通 Jump 延续高速。]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [cloud_hyper_completes_an_apex_bunnyhop_in_one_runtime_trace], note: [完整 45 帧回归断言反向 Demo Dash、325 Hyper、云顶高度 grounded 与下一帧 `(>250,-175.00047)` 兔跳，并验证 32 帧处分段重放一致。]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.6.2-cloud-hyper-bunnyhop.ts; scripts/e2e-real/scenarios/common-parts.ts], symbol: [entity-4.6.2-cloud-hyper-bunnyhop; TECH_ENTITY_4_6_2_CLOUD_HYPER_BUNNYHOP], note: [独立 MapPart 使用真实 Cloud 与对齐到其 18px 顶点位移的 8px 网格平台；平台左缘后移一个网格，避免反向 Hyper 离云时额外撞到平台侧面。候选按 45 帧反向 Demo Hyper、云顶落地与兔跳执行，仍待真实 Everest 九字段对照。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.6.2-cloud-hyper-bunnyhop.ts; scripts/e2e-real/scenarios/common-parts.ts], symbol: [entity-4.6.2-cloud-hyper-bunnyhop; TECH_ENTITY_4_6_2_CLOUD_HYPER_BUNNYHOP], note: [独立 MapPart 使用真实 Cloud 与对齐到其 18px 顶点位移的 8px 网格平台；平台左缘后移一个网格，避免反向 Hyper 离云时额外撞到平台侧面。真实 46 帧比较仍在第 35 帧首差 1px（Rust Y=414、Everest Y=415），最大 position 误差 1、speed 误差 0.000580，故保持 candidate。]),
 )
