@@ -20,8 +20,8 @@
   ),
   test-evidence: evidence(
     path: [crates/celeste-physics/src/sim.rs],
-    symbol: [downward_solid_push_uses_player_squish_target_to_clip_through_jump_thru / ordinary_downward_solid_push_moves_the_actor_without_squish / zip_mover_runtime_invokes_target_position_jump_thru_clip],
-    note: [两项单步回归分别锁定向下夹穿与普通非 squish 推动；完整 runtime 回归再由 ZipMover 的实际 outbound phase 触发 Solid push，验证 TargetPosition 穿过 JumpThru 且玩家存活。],
+    symbol: [downward_solid_push_uses_player_squish_target_to_clip_through_jump_thru / squish_wiggle_disables_the_pusher_after_target_position_checks / ordinary_downward_solid_push_moves_the_actor_without_squish / zip_mover_runtime_invokes_target_position_jump_thru_clip],
+    note: [单步回归锁定 TargetPosition 夹穿、关闭 pusher 后的 wiggle、以及普通非 squish 推动；完整 runtime 回归再由 ZipMover 的实际 outbound phase 触发 Solid push，验证 TargetPosition 穿过 JumpThru 且玩家存活。],
   ),
   e2e-evidence: none,
   candidate-e2e: evidence(

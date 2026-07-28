@@ -1561,11 +1561,12 @@ fn player_on_squish(p: &mut PlayerSnapshot, env: &SolidCollisionEnv, pusher: Rec
                     for y_sign in [1.0, -1.0] {
                         let candidate =
                             Vec2::new(origin.x + x as f32 * x_sign, origin.y + y as f32 * y_sign);
-                        if !env_solid_at(
-                            env,
-                            current_player_rect(p, candidate.x, candidate.y),
-                            Some(pusher),
-                        ) {
+                        // Player.OnSquish re-enables the pusher only for the
+                        // two initial Solid checks, then sets
+                        // data.Pusher.Collidable = false before calling
+                        // TrySquishWiggle. The wiggle itself must therefore
+                        // search against the room solids alone.
+                        if !env_solid_at(env, current_player_rect(p, candidate.x, candidate.y), None) {
                             p.pos = candidate;
                             if ducked && !env_solid_at(env, player_rect(p.pos.x, p.pos.y), None) {
                                 p.ducking = false;
@@ -6619,6 +6620,27 @@ mod tests {
         assert!(!p.dead);
         assert_eq!(p.last_lift_speed, Vec2::new(0.0, 120.0));
     }
+
+    #[test]
+    fn squish_wiggle_disables_the_pusher_after_target_position_checks() {
+        let env = SolidCollisionEnv::default();
+        let pusher = Rect::new(52.0, 43.0, 8.0, 11.0);
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(56.0, 48.0),
+            ..PlayerSnapshot::default()
+        };
+
+        let target = p.pos;
+        player_on_squish(&mut p, &env, pusher, target);
+
+        // The original position and TargetPosition are both inside the
+        // pusher. Player.OnSquish disables it before TrySquishWiggle, which
+        // lets the first one-pixel wiggle succeed instead of killing Player.
+        assert_eq!(p.pos, Vec2::new(56.0, 49.0));
+        assert!(!p.ducking);
+        assert!(!p.dead);
+    }
+
     #[test]
     fn zip_mover_runtime_invokes_target_position_jump_thru_clip() {
         let map = Map {
