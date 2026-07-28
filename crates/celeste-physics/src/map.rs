@@ -63,6 +63,8 @@ pub enum EntityKind {
     BounceBlock,
     /// Vanilla TheoCrystal Actor with a Holdable component.
     TheoCrystal,
+    /// Vanilla Farewell Glider Actor with a Holdable component.
+    Glider,
     /// Vanilla Celeste ZipMover Solid. The first node is its target position.
     ZipMover,
     /// Simulator-native constant-velocity Solid used to exercise Monocle
@@ -477,6 +479,17 @@ pub(crate) fn encode_celeste_rooms(
                     ],
                     vec![],
                 )),
+                EntityKind::Glider => Some(element(
+                    "glider",
+                    [
+                        ("bubble", BinaryValue::Bool(false)),
+                        ("id", BinaryValue::Int(id)),
+                        ("tutorial", BinaryValue::Bool(false)),
+                        ("x", BinaryValue::Int(x + 4)),
+                        ("y", BinaryValue::Int(y + 10)),
+                    ],
+                    vec![],
+                )),
                 EntityKind::ZipMover => {
                     let target = entity
                         .nodes
@@ -820,6 +833,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 "windTrigger" => EntityKind::Wind,
                 "bounceBlock" => EntityKind::BounceBlock,
                 "theoCrystal" => EntityKind::TheoCrystal,
+                "glider" => EntityKind::Glider,
                 "zipMover" => EntityKind::ZipMover,
                 "celesteGymMovingSolid" => EntityKind::MovingSolid,
                 _ => EntityKind::Unknown,
@@ -836,11 +850,11 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 EntityKind::Cloud => 32.0,
                 EntityKind::BadelineBoost => 32.0,
                 EntityKind::Strawberry => 14.0,
-                EntityKind::TheoCrystal => 8.0,
+                EntityKind::TheoCrystal | EntityKind::Glider => 8.0,
                 _ => 8.0,
             };
             let default_h = match kind {
-                EntityKind::TheoCrystal | EntityKind::Puffer => 10.0,
+                EntityKind::TheoCrystal | EntityKind::Glider | EntityKind::Puffer => 10.0,
                 EntityKind::Snowball => 9.0,
                 EntityKind::Cloud => 5.0,
                 _ => default_w,
@@ -885,7 +899,9 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 "bounceBlock" | "zipMover" => {
                     (Rect::new(ex, ey, raw_width, raw_height), Vec2::default())
                 }
-                "theoCrystal" => (Rect::new(ex - 4.0, ey - 10.0, 8.0, 10.0), Vec2::default()),
+                "theoCrystal" | "glider" => {
+                    (Rect::new(ex - 4.0, ey - 10.0, 8.0, 10.0), Vec2::default())
+                }
                 "celesteGymMovingSolid" => (
                     Rect::new(ex, ey, raw_width, raw_height),
                     Vec2::new(attr_f32(el, "speedX", 0.0), attr_f32(el, "speedY", 0.0)),
@@ -1272,5 +1288,29 @@ mod tests {
         assert_eq!(entity.kind, EntityKind::TheoCrystal);
         assert_eq!(entity.bounds, Rect::new(364.0, -130.0, 8.0, 10.0));
         assert_eq!(entity.name, "theoCrystal");
+    }
+
+    #[test]
+    fn vanilla_glider_round_trips_through_celeste_binary() {
+        let map = Map {
+            bounds: Rect::new(320.0, -240.0, 320.0, 184.0),
+            entities: vec![Entity {
+                kind: EntityKind::Glider,
+                bounds: Rect::new(364.0, -130.0, 8.0, 10.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "glider".to_owned(),
+            }],
+            ..Map::default()
+        };
+
+        let encoded = encode_celeste_map(&map, "CelesteGymTest", "glider").unwrap();
+        let decoded = decode_map_room(&encoded, Some("glider")).unwrap();
+        let entity = decoded.entities.first().unwrap();
+        assert_eq!(entity.kind, EntityKind::Glider);
+        assert_eq!(entity.bounds, Rect::new(364.0, -130.0, 8.0, 10.0));
+        assert_eq!(entity.name, "glider");
     }
 }

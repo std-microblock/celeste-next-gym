@@ -38,6 +38,7 @@ pub enum FixtureEntityKind {
     Wind,
     BounceBlock,
     TheoCrystal,
+    Glider,
     ZipMover,
     MovingSolid,
 }
@@ -570,6 +571,7 @@ fn entity(value: &FixtureEntity) -> Entity {
             FixtureEntityKind::Wind => EntityKind::Wind,
             FixtureEntityKind::BounceBlock => EntityKind::BounceBlock,
             FixtureEntityKind::TheoCrystal => EntityKind::TheoCrystal,
+            FixtureEntityKind::Glider => EntityKind::Glider,
             FixtureEntityKind::ZipMover => EntityKind::ZipMover,
             FixtureEntityKind::MovingSolid => EntityKind::MovingSolid,
         },
