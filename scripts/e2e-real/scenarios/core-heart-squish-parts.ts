@@ -39,7 +39,7 @@ export const TECH_ENTITY_4_15_JUMPTHROUGH_CLIP = defineMapPart({
   rooms: [{
     name: ROOM,
     entities: [
-      { id: 'tech-4.15-zip-mover', kind: 'zip_mover', bounds: [592, 304, 64, 16], nodes: [[592, 408]], name: 'zipMover' },
+      { id: 'tech-4.15-zip-mover', kind: 'zip_mover', bounds: [592, 400, 64, 16], nodes: [[592, 300]], name: 'zipMover' },
       { id: 'tech-4.15-jump-thru', kind: 'jump_thru', bounds: [568, 416, 112, 8], name: 'jumpThru' },
     ],
   }],

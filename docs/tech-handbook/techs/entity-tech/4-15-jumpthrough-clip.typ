@@ -27,6 +27,6 @@
   candidate-e2e: evidence(
     path: [scripts/e2e-real/scenarios/core-heart-squish-parts.ts / scripts/e2e-real/scenarios/playground/entity-4.15-jumpthrough-clip.ts],
     symbol: [tech.entity-4.15-jumpthrough-clip / entity-4.15-jumpthrough-clip],
-    note: [独立 MapPart 使用向下 ZipMover 与 JumpThru。首轮玩家直到 mover 到达后才落在其顶面；一次输入时序修正后，玩家从右缘只移动到 x=655，碰撞体仍与 mover 相交并持续作为 rider 被 carry 到 y=408，未落到 JumpThru、未触发 OnSquish，故不以候选近似宣称实现。],
+    note: [独立 MapPart 先让 ZipMover 向上离开，再让玩家从右缘落到其下方的 JumpThru，并在返回下压时恢复水平重叠。候选需依次观测离开 mover、落在 JumpThru、返回 phase 的 TargetPosition 夹穿且存活；尚待真实 Everest E2E 逐帧比较，故不以候选近似宣称实现。],
   ),
 )

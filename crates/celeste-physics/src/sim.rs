@@ -7131,6 +7131,57 @@ mod tests {
         assert!(state.zip_movers[0].position.y > 20.0);
         assert!(state.last_lift_speed.y > 0.0);
     }
+
+    #[test]
+    fn zip_mover_departure_and_return_pushes_player_through_jump_thru() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 800.0, 600.0),
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::ZipMover,
+                    bounds: Rect::new(592.0, 400.0, 64.0, 16.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![Vec2::new(592.0, 300.0)],
+                    name: "zipMover".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::JumpThru,
+                    bounds: Rect::new(568.0, 416.0, 112.0, 8.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "jumpThru".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let inputs: Vec<_> = (0..260).map(|frame| InputState {
+            move_x: if frame < 10 { 1 } else if (20..30).contains(&frame) { -1 } else { 0 },
+            ..InputState::default()
+        }).collect();
+        let trace = simulate_trace(PlayerSnapshot {
+            pos: Vec2::new(652.0, 400.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        }, &inputs, &map, inputs.len() as u32).unwrap();
+        let landed = trace
+            .states
+            .iter()
+            .position(|state| state.on_ground && state.pos.y == 416.0)
+            .expect("player should land on the JumpThru after leaving the ZipMover");
+        let clipped = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(landed + 1)
+            .find(|(_, state)| state.pos.y > 416.0 && !state.dead)
+            .expect("the returning ZipMover should push the player through the JumpThru");
+        assert_eq!(clipped.1.zip_movers[0].phase, 4);
+        assert!(trace.states[..=clipped.0].iter().all(|state| !state.dead));
+    }
     #[test]
     fn ordinary_downward_solid_push_moves_the_actor_without_squish() {
         let map = Map {

@@ -1,4 +1,4 @@
-import { input, inputFrames } from '../../inputs.js'
+import { inputFrames } from '../../inputs.js'
 import { defineScenario } from '../../scenario.js'
 import { PLAYGROUND_TARGET } from '../../targets.js'
 import { semanticAssert } from '../../verify.js'
@@ -13,9 +13,9 @@ export const scenario = defineScenario({
   techniqueIds: ['4.15'],
   mapParts,
   name: 'entity-4.15-jumpthrough-clip',
-  initial: { pos: [652, 304], speed: [0, 0], on_ground: true },
-  inputs: inputFrames(100, (frame) => input({
-    move_x: frame < 3 ? 1 : frame < 20 ? -1 : 0,
+  initial: { pos: [652, 400], speed: [0, 0], on_ground: true },
+  inputs: inputFrames(260, (frame) => ({
+    move_x: frame < 10 ? 1 : frame >= 20 && frame < 30 ? -1 : 0,
   })),
   verify(states) {
     const landed = states.findIndex((state, frame) => frame > 10 && state.on_ground && state.pos[1] <= 416)
