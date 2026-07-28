@@ -138,6 +138,10 @@ pub enum OutputMode {
     Best,
     Windows,
     Coverage,
+    /// Internal consumer output used by the training runtime.  Unlike `top`,
+    /// this preserves every successful candidate so a live input can filter
+    /// the feasible set without rerunning the search.
+    Candidates,
     Top(usize),
 }
 
@@ -273,6 +277,7 @@ pub struct CoverageReport {
 pub struct FuzzResult {
     pub best: Option<CandidateResult>,
     pub top: Vec<CandidateResult>,
+    pub candidates: Vec<CandidateResult>,
     pub exact_windows: Vec<ExactWindow>,
     pub connected_regions: Vec<RegionSummary>,
     pub coverage_report: Option<CoverageReport>,
@@ -418,7 +423,10 @@ fn parse_input(value: &Value, index: usize) -> Result<InputDeclaration, FuzzErro
             "inputs[{index}] uses a direction key but has no held_time"
         )));
     }
-    if has_dash && held_value.is_some() {
+    // A combined directional dash such as right+down+dash needs a held
+    // direction while Dash itself remains a one-frame edge.  The resolver
+    // applies holds only to directional keys, so this is unambiguous.
+    if has_dash && held_value.is_some() && !has_direction {
         return Err(FuzzError::Spec(format!(
             "inputs[{index}] uses dash/crouch_dash, which cannot have held_time"
         )));
@@ -495,6 +503,7 @@ fn parse_output(value: &str) -> Result<OutputMode, FuzzError> {
         "best" => Ok(OutputMode::Best),
         "windows" => Ok(OutputMode::Windows),
         "coverage" => Ok(OutputMode::Coverage),
+        "candidates" => Ok(OutputMode::Candidates),
         _ => value
             .strip_prefix("top_")
             .ok_or_else(|| FuzzError::Spec(format!("unknown search output `{value}`")))

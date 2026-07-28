@@ -1,6 +1,8 @@
 use celeste_physics::{
     InputState, Map, PlayerSnapshot, decode_map, decode_map_room, simulate_trace,
 };
+use celeste_fuzz::{OutputMode, SearchOptions, compile, evaluate_current_checks, parse_spec};
+use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use wasm_bindgen::prelude::*;
@@ -90,6 +92,56 @@ pub fn simulate_cached_map_msgpack(
             error: &message,
         })
         .unwrap_or_default(),
+    }
+}
+
+/// Run the same restricted-Rhai Fuzz engine used by native tooling against the
+/// Worker-owned map.  The training UI asks for all successful candidates so it
+/// can filter a live attempt incrementally; author configuration still only
+/// controls the documented Fuzz outputs.
+#[wasm_bindgen]
+pub fn fuzz_search_cached_map_msgpack(snapshot_bytes: &[u8], fuzz_json: &str) -> Vec<u8> {
+    let result = (|| -> Result<Vec<u8>, String> {
+        let snapshot: PlayerSnapshot = rmp_serde::from_slice(snapshot_bytes)
+            .map_err(|error| format!("invalid snapshot: {error}"))?;
+        let compiled = compile(parse_spec(fuzz_json).map_err(|error| error.to_string())?)
+            .map_err(|error| error.to_string())?;
+        let search = CACHED_MAP.with(|cached| {
+            let cached = cached.borrow();
+            let map = cached
+                .as_ref()
+                .ok_or_else(|| "simulation map is not cached".to_owned())?;
+            compiled.search(
+                snapshot,
+                map,
+                HashMap::new(),
+                vec![OutputMode::Best, OutputMode::Windows, OutputMode::Coverage, OutputMode::Candidates],
+                SearchOptions::default(),
+            ).map_err(|error| error.to_string())
+        })?;
+        rmp_serde::to_vec_named(&search).map_err(|error| error.to_string())
+    })();
+    match result {
+        Ok(bytes) => bytes,
+        Err(message) => rmp_serde::to_vec_named(&WasmError { success: false, error: &message }).unwrap_or_default(),
+    }
+}
+
+/// Evaluate a training entry check using the exact same restricted Rhai surface
+/// as Fuzz.  The caller supplies the post-simulation snapshot.
+#[wasm_bindgen]
+pub fn training_entry_check_msgpack(snapshot_bytes: &[u8], checks_json: &str) -> Vec<u8> {
+    let result = (|| -> Result<Vec<u8>, String> {
+        let snapshot: PlayerSnapshot = rmp_serde::from_slice(snapshot_bytes)
+            .map_err(|error| format!("invalid snapshot: {error}"))?;
+        let checks: Vec<String> = serde_json::from_str(checks_json)
+            .map_err(|error| format!("invalid entry checks: {error}"))?;
+        rmp_serde::to_vec_named(&evaluate_current_checks(&snapshot, &checks)
+            .map_err(|error| error.to_string())?).map_err(|error| error.to_string())
+    })();
+    match result {
+        Ok(bytes) => bytes,
+        Err(message) => rmp_serde::to_vec_named(&WasmError { success: false, error: &message }).unwrap_or_default(),
     }
 }
 

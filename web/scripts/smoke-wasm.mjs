@@ -3,8 +3,10 @@ import { decode, encode } from '@msgpack/msgpack'
 import init, {
   cache_simulation_map_msgpack,
   decode_celeste_map_msgpack,
+  fuzz_search_cached_map_msgpack,
   simulate_cached_map_msgpack,
   simulate_msgpack,
+  training_entry_check_msgpack,
 } from '../src/wasm/celeste_wasm.js'
 
 await init({ module_or_path: await readFile(new URL('../src/wasm/celeste_wasm_bg.wasm', import.meta.url)) })
@@ -115,4 +117,16 @@ const longMap = {
 const longTrace = decode(simulate_msgpack(encode(state), encode(Array.from({ length: 800 }, () => input)), encode(longMap), 800))
 const longFinal = longTrace.states?.at(-1)
 if (!longFinal || longFinal.pos.x < 1200 || Math.abs(longFinal.speed.x - 90) > .01) throw new Error(longTrace.error ?? 'Long-running movement stopped unexpectedly')
+const trainingMap = JSON.parse(await readFile(new URL('../public/training/hyper-basic.map.json', import.meta.url), 'utf8'))
+const trainingInitial = JSON.parse(await readFile(new URL('../public/training/hyper-basic.snapshot.json', import.meta.url), 'utf8'))
+const training = JSON.parse(await readFile(new URL('../public/training/hyper-basic.training.json', import.meta.url), 'utf8'))
+cache_simulation_map_msgpack(encode(trainingMap))
+const trainingFuzz = decode(fuzz_search_cached_map_msgpack(encode(trainingInitial), JSON.stringify(training.fuzz)))
+if (!trainingFuzz.candidates?.length) throw new Error(trainingFuzz.error ?? 'Training Fuzz produced no candidates')
+const trainingDash = decode(simulate_cached_map_msgpack(encode(trainingInitial), encode([{
+  ...input, move_x: 1, move_y: 1, dash_pressed: true,
+}]), 1)).states?.at(-1)
+if (!trainingDash || decode(training_entry_check_msgpack(encode(trainingDash), JSON.stringify(training.entry.check))) !== true) {
+  throw new Error('Training entry Rhai check did not accept the diagonal dash snapshot')
+}
 console.log(`WASM smoke test passed: decoded ${decodedMap.map.source_package}/playground; run x=${runTrace.states.at(-1).pos.x}; long-run x=${longFinal.pos.x}`)
