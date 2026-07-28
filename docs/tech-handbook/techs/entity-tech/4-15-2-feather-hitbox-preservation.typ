@@ -4,7 +4,7 @@
   id: "4.15.2",
   title-zh: "羽毛碰撞箱保留",
   title-en: "Feather Hitbox Preservation",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [用冰球、无敌反弹等特殊方式取消羽毛，可留下异常的碰撞箱与受伤箱组合，用于穿越原本不可能的空间。],
   description-en: [Special feather cancellations can preserve unusual collider and hurtbox combinations that fit or survive in otherwise impossible spaces.],
   source-evidence: evidence(
@@ -15,6 +15,6 @@
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [interact / bounce / star_fly_hurt_rect / current_player_rect / star_fly_hitbox_preserved], note: [移动后同帧执行 FireBall PlayerCollider bounce；Normal 状态下 preservation 标记选择 6×6 rect，上升结束转为下落时按 Player.Update 的 falling-unduck 顺序恢复普通 collider。]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [ice_ball_same_frame_callback_keeps_split_simulation_composable / ice_ball_feather_cancel_restores_star_fly_collider_after_normal_hurtbox / preserved_star_fly_hurtbox_returns_to_normal_when_falling / playground_feather_cancel_scenario_preserves_the_star_fly_collider]),
-  e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.15.2-feather-hitbox-preservation.ts; mods/CelesteGymCollector/Source/SnapshotCapture.cs], symbol: [entity-4.15.2-feather-hitbox-preservation / ColliderGeometry], note: [独立 Feather + Ice Ball MapPart 已断言 Bounce 后真实几何为更新期缓存的 StarFly hurtbox collider (-3,-9,6,6) 与 normal hurtbox (-4,-11,8,9)；等待真实 Everest 九字段差分。]),
+  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.15.2-feather-hitbox-preservation.ts; mods/CelesteGymCollector/Source/SnapshotCapture.cs], symbol: [entity-4.15.2-feather-hitbox-preservation / ColliderGeometry], note: [独立 Feather + Ice Ball MapPart 真实验证同帧 Bounce 后缓存的 collider 为 StarFly hurtbox `(-3,-9,6,6)`，而 hurtbox 已恢复 normal `(-4,-11,8,9)`。61 个状态的 position 与 speed 最大误差均为 0，其余核心字段及两组几何逐帧一致。]),
+  candidate-e2e: none,
 )

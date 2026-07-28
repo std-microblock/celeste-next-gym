@@ -8,11 +8,12 @@ export const mapParts = [TECH_ENTITY_4_15_2_HITBOX_PRESERVATION] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: ['feature:star-fly'],
   techniqueIds: ['4.15.2'],
   mapParts,
   name: 'entity-4.15.2-feather-hitbox-preservation',
+  recording: { primaryFor: ['4.15.2'], startFrame: 0, endFrame: 60 },
   initial: { pos: [320, 120], speed: [0, 0] },
   inputs: Array.from({ length: 60 }, () => input({ move_y: 1 })),
   verify(states) {

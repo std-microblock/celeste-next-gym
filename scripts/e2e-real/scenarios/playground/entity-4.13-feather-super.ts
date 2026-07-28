@@ -13,6 +13,7 @@ export const scenario = defineScenario({
   techniqueIds: ['4.13'],
   mapParts,
   name: 'entity-4.13-feather-super',
+  recording: { primaryFor: ['4.13'], startFrame: 0, endFrame: 50 },
   initial: { pos: [900, 496], speed: [0, 0] },
   inputs: Array.from({ length: 50 }, (_, frame) => input({
     move_x: 1,

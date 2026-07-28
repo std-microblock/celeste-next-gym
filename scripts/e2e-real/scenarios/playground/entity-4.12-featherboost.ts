@@ -13,6 +13,7 @@ export const scenario = defineScenario({
   techniqueIds: ['4.12'],
   mapParts,
   name: 'entity-4.12-featherboost',
+  recording: { primaryFor: ['4.12'], startFrame: 0, endFrame: 45 },
   initial: { pos: [120, 200], speed: [0, 0] },
   inputs: Array.from({ length: 45 }, (_, frame) => input(
     frame >= 27 ? { move_x: 1, move_y: -1 } : {},
