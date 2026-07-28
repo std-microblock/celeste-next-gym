@@ -47,6 +47,11 @@ internal static class SnapshotCapture {
         BindingFlags.Instance | BindingFlags.NonPublic
     );
     private static readonly Dictionary<BounceBlock, BounceBlockReformProbe> bounceBlockReformProbes = [];
+    // This is a diagnostic lattice around BounceBlock.startPos, not a
+    // substitute respawn rule. Entries are sorted by squared distance, then
+    // Y/X, so the first clear entry is the nearest legal candidate among the
+    // documented -8/-1/0/+1/+8 offsets.
+    private static readonly Vector2[] bounceBlockResetScanOffsets = BuildBounceBlockResetScanOffsets();
     // `Lookout.Removed` restores StNormal but intentionally does not call
     // StopInteracting. The entity is gone by the next PlayerFrame, so retain
     // this source-side observation for a transition trace to prove the split
@@ -64,10 +69,22 @@ internal static class SnapshotCapture {
         public string Result = "probe-error";
         public List<Dictionary<string, object?>> Actors = [];
         public List<Dictionary<string, object?>> Solids = [];
+        public List<BounceBlockResetCollisionCandidate> CollisionScan = [];
+        public Vector2? NearestLegalTarget;
+        public Vector2? NearestLegalOffset;
         public int? PostState;
         public bool? PostCollidable;
         public Vector2? PostPosition;
         public string? Error;
+    }
+
+    private sealed class BounceBlockResetCollisionCandidate {
+        public Vector2 Offset;
+        public Vector2 Target;
+        public bool ActorBlocked;
+        public bool SolidBlocked;
+        public List<Dictionary<string, object?>> Actors = [];
+        public List<Dictionary<string, object?>> Solids = [];
     }
 
     public static void ResetLookoutLifecycleObservation() {
@@ -111,17 +128,28 @@ internal static class SnapshotCapture {
             // Solid when no Actor blocks. The position overload preserves the
             // live broken-block position while reporting the actual colliders
             // the source check would see.
-            List<Entity> actors = bounceBlock.CollideAll<Actor>(target);
-            probe.Actors = DescribeCollisionEntities(actors);
-            probe.ActorBlocked = actors.Count > 0;
+            probe.CollisionScan = ScanBounceBlockResetCandidates(bounceBlock, target);
+            foreach (BounceBlockResetCollisionCandidate candidate in probe.CollisionScan) {
+                if (!candidate.ActorBlocked && !candidate.SolidBlocked) {
+                    probe.NearestLegalTarget = candidate.Target;
+                    probe.NearestLegalOffset = candidate.Offset;
+                    break;
+                }
+            }
+            if (probe.CollisionScan.Count == 0) {
+                probe.Error = "collision-scan-unavailable";
+                return;
+            }
+            BounceBlockResetCollisionCandidate sourceCandidate = probe.CollisionScan[0];
+            probe.Actors = sourceCandidate.Actors;
+            probe.ActorBlocked = sourceCandidate.ActorBlocked;
             if (probe.ActorBlocked) {
                 probe.Result = "actor";
                 return;
             }
 
-            List<Entity> solids = bounceBlock.CollideAll<Solid>(target);
-            probe.Solids = DescribeCollisionEntities(solids);
-            probe.SolidBlocked = solids.Count > 0;
+            probe.Solids = sourceCandidate.Solids;
+            probe.SolidBlocked = sourceCandidate.SolidBlocked;
             probe.Result = probe.SolidBlocked == true ? "solid" : "clear";
         } catch (Exception error) {
             // Telemetry must never take the game down. Keep the source-side
@@ -423,6 +451,16 @@ internal static class SnapshotCapture {
         values["reformResetBlockedCheckResult"] = probe.Result;
         values["reformResetBlockingActors"] = probe.Actors;
         values["reformResetBlockingSolids"] = probe.Solids;
+        values["reformResetCollisionScanTarget"] = probe.TargetPosition is Vector2 scanTarget
+            ? Simplify(scanTarget)
+            : null;
+        values["reformResetCollisionScan"] = DescribeBounceBlockResetCollisionScan(probe.CollisionScan);
+        values["reformResetNearestLegalTarget"] = probe.NearestLegalTarget is Vector2 legalTarget
+            ? Simplify(legalTarget)
+            : null;
+        values["reformResetNearestLegalOffset"] = probe.NearestLegalOffset is Vector2 legalOffset
+            ? Simplify(legalOffset)
+            : null;
         if (probe.PostState is int state) values["reformResetPostState"] = state;
         if (probe.PostCollidable is bool collidable) values["reformResetPostCollidable"] = collidable;
         if (probe.PostPosition is Vector2 position) values["reformResetPostPosition"] = Simplify(position);
@@ -446,5 +484,65 @@ internal static class SnapshotCapture {
             result.Add(description);
         }
         return result;
+    }
+
+    private static List<BounceBlockResetCollisionCandidate> ScanBounceBlockResetCandidates(
+        BounceBlock bounceBlock,
+        Vector2 target
+    ) {
+        List<BounceBlockResetCollisionCandidate> result = [];
+        foreach (Vector2 offset in bounceBlockResetScanOffsets) {
+            Vector2 candidateTarget = target + offset;
+            // Use the engine's position overloads directly. In particular,
+            // this lets a SolidTiles Grid decide collision tile-by-tile rather
+            // than reducing the map to an inaccurate Solid bounding box.
+            List<Entity> actors = bounceBlock.CollideAll<Actor>(candidateTarget);
+            List<Entity> solids = bounceBlock.CollideAll<Solid>(candidateTarget);
+            BounceBlockResetCollisionCandidate candidate = new() {
+                Offset = offset,
+                Target = candidateTarget,
+                ActorBlocked = actors.Count > 0,
+                SolidBlocked = solids.Count > 0,
+                Actors = DescribeCollisionEntities(actors),
+                Solids = DescribeCollisionEntities(solids),
+            };
+            result.Add(candidate);
+        }
+        return result;
+    }
+
+    private static List<Dictionary<string, object?>> DescribeBounceBlockResetCollisionScan(
+        List<BounceBlockResetCollisionCandidate> candidates
+    ) {
+        List<Dictionary<string, object?>> result = [];
+        foreach (BounceBlockResetCollisionCandidate candidate in candidates) {
+            result.Add(new Dictionary<string, object?> {
+                ["offset"] = Simplify(candidate.Offset),
+                ["target"] = Simplify(candidate.Target),
+                ["actorBlocked"] = candidate.ActorBlocked,
+                ["solidBlocked"] = candidate.SolidBlocked,
+                ["result"] = candidate.ActorBlocked
+                    ? "actor"
+                    : candidate.SolidBlocked ? "solid" : "clear",
+                ["actors"] = candidate.Actors,
+                ["solids"] = candidate.Solids,
+            });
+        }
+        return result;
+    }
+
+    private static Vector2[] BuildBounceBlockResetScanOffsets() {
+        float[] axis = [-8f, -1f, 0f, 1f, 8f];
+        List<Vector2> result = [];
+        foreach (float y in axis) {
+            foreach (float x in axis) result.Add(new Vector2(x, y));
+        }
+        result.Sort((first, second) => {
+            int distance = first.LengthSquared().CompareTo(second.LengthSquared());
+            if (distance != 0) return distance;
+            int y = first.Y.CompareTo(second.Y);
+            return y != 0 ? y : first.X.CompareTo(second.X);
+        });
+        return [.. result];
     }
 }
