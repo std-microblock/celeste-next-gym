@@ -52,11 +52,11 @@ export function TrainingCatalogSidebar({ techniqueId, variantId, onSelectTrainin
     })
   }
 
-  return <aside className="training-catalog" aria-label="训练技巧目录">
+  return <aside className="training-catalog" aria-label="训练地图目录">
     <div className="training-catalog-heading">
-      <small>TECH HANDBOOK</small>
-      <h2>技巧目录</h2>
-      <p>选择技巧，再展开具体训练。</p>
+      <small>TRAINING MAPS</small>
+      <h2>训练地图</h2>
+      <p>每张地图包含一个或多个教程模块。</p>
     </div>
     <nav>
       {trainingCatalogSections.map((section) => <section className="training-catalog-section" key={section.id}>
@@ -81,7 +81,7 @@ export function TrainingCatalogSidebar({ techniqueId, variantId, onSelectTrainin
                   onClick={() => onSelectTraining(technique.id, variant.id)}
                 >
                   <span className="training-variant-number">{String(index + 1).padStart(2, '0')}</span>
-                  <span><strong>{variant.title}</strong><small>{variant.summary}</small></span>
+                  <span><strong>{variant.title}</strong><small>{variant.training.modules.length} 个模块 · {variant.summary}</small></span>
                 </button>
               })}
             </div>}
