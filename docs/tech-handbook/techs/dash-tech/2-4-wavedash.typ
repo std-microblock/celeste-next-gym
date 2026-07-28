@@ -15,6 +15,6 @@
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [step; move_exact; dash_update; super_jump], note: [每帧先把 VirtualButton 的剩余缓冲映射回 `jump_pressed`，因此落地碰撞把斜向 DashDir 转为水平后，下一 DashUpdate 仍能消费同一次按跳。]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [wavedash_landing_converts_down_diagonal_dash_to_hyper; wavedash_buffers_jump_at_the_fourteen_pixel_minimum_height; thirteen_pixel_wavedash_control_jumps_before_dash_refill]),
-  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/area-1/wavedash.ts], symbol: [wavedash; verifyWavedashMinimumHeight], note: [14 像素起始高度在按跳帧落地并保持 Dash，下一帧 325/-52.5 且 Dash 已恢复；13 像素本地控制在回填前起跳。真实对照九类核心字段误差不超过 0.01。]),
+  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/area-1/wavedash.ts], symbol: [wavedash; verifyWavedashMinimumHeight], note: [14 像素起始高度的真实场景共 19 个状态：state 9 与地面齐平但仍为斜向 Dash，state 10 的落地碰撞转为 203.64676 水平蹲伏滑行并保留按跳，state 11 回填 Dash 后以 325/-52.5 起跳；13 像素本地控制在回填前起跳。position/speed 最大误差均为 0，其余七类核心字段逐帧一致。]),
   candidate-e2e: none,
 )
