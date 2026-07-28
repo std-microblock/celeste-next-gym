@@ -4,7 +4,7 @@
   id: "4.22.4",
   title-zh: "携物梯子",
   title-en: "Holdable Laddering",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [交替放下并抓取两只水母，可反复保留纵向或水平速度并持续上升；Theo 版本需要下方移动平台托举。],
   description-en: [Alternating two jelly drops and regrabs can sustain upward movement, while Theo laddering needs a rising support below.],
   source-evidence: evidence(
@@ -15,6 +15,5 @@
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/types.rs / crates/celeste-physics/src/sim.rs], symbol: [GliderSnapshot / gliders / holding_glider / release_glider]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [two_gliders_keep_independent_laddering_lockouts]),
-  e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.22.4-holdable-laddering.ts; .tmp/e2e-runs/2026-07-28T14-40-12.220Z-43348-907b38ec-c2d6-4873-a129-fc8f2e219e86/manifest.json], symbol: [entity-4.22.4-holdable-laddering], note: [2026-07-28 受锁主工作区在物理 `vendor/celeste-game` 上认证运行（nonce 与 spawned Celeste PID 已匹配，清理完成）。Pickup→Normal 的 `maxFall=160` 修复已消除旧第 55 帧差异；151 帧真实对比的新首差在第 62 帧，位置同为 `(96,381)`，但 Rust 速度 `(0,35)`、Everest `(0,40)`。最终最大位置／速度误差为 2／16；九字段门槛未通过，保持未实现。]),
+  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.22.4-holdable-laddering.ts; .tmp/e2e-runs/2026-07-28T14-54-25.385Z-84784-264b60dd-80d3-4c39-93d0-89bb2994f75d/manifest.json], symbol: [entity-4.22.4-holdable-laddering], note: [2026-07-28 在受锁主工作区的物理 `vendor/celeste-game` 上运行；runner nonce 与 spawned Celeste PID 匹配，隔离存档/临时目录、动态端口及受控清理均完成。151 帧 position、speed、state、facing、dashes、stamina、grounded、ducking、death 逐帧一致，position/speed 最大误差均为 0。]),
 )
