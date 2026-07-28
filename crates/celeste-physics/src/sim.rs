@@ -8049,7 +8049,7 @@ mod tests {
             entities: vec![
                 crate::Entity {
                     kind: EntityKind::BounceBlock,
-                    bounds: Rect::new(704.0, 480.0, 64.0, 16.0),
+                    bounds: Rect::new(712.0, 480.0, 64.0, 16.0),
                     direction: Vec2::default(),
                     shielded: false,
                     single_use: false,
@@ -8058,7 +8058,7 @@ mod tests {
                 },
                 crate::Entity {
                     kind: EntityKind::Spikes,
-                    bounds: Rect::new(768.0, 480.0, 3.0, 16.0),
+                    bounds: Rect::new(776.0, 480.0, 3.0, 16.0),
                     direction: Vec2::new(1.0, 0.0),
                     shielded: false,
                     single_use: false,
@@ -8067,7 +8067,7 @@ mod tests {
                 },
                 crate::Entity {
                     kind: EntityKind::JumpThru,
-                    bounds: Rect::new(769.0, 480.0, 64.0, 8.0),
+                    bounds: Rect::new(777.0, 480.0, 64.0, 8.0),
                     direction: Vec2::default(),
                     shielded: false,
                     single_use: false,
@@ -8096,6 +8096,11 @@ mod tests {
             })
             .collect();
         let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
+        let source = Rect::new(712.0, 480.0, 64.0, 16.0);
+        assert!(
+            !map.static_solid_at(source),
+            "the measured +8px reset target must be clear of playground tiles"
+        );
         let broken = trace
             .states
             .iter()
@@ -8119,7 +8124,18 @@ mod tests {
             .find(|(_, state)| state.bounce_blocks[0].static_movers_enabled)
             .map(|(frame, _)| frame)
             .unwrap();
-        let source = Rect::new(704.0, 480.0, 64.0, 16.0);
+        let second_bounce = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(body + 1)
+            .find(|(_, state)| state.bounce_blocks[0].phase == 1)
+            .map(|(frame, _)| frame)
+            .unwrap();
+        let body_block = &trace.states[body].bounce_blocks[0];
+        assert_eq!(body_block.position, Vec2::new(712.0, 480.0));
+        assert_eq!(body_block.phase, 0);
+        assert!(!body_block.static_movers_enabled);
         assert!(
             !source.intersects(current_player_rect(
                 &trace.states[body],
@@ -8131,15 +8147,20 @@ mod tests {
         );
         assert!(spike > body, "the 0.35-second StaticMover alarm must follow body reform");
         assert!(
+            second_bounce > body && second_bounce < spike,
+            "the player must trigger a native second bounce during the disabled-StaticMover alarm: body={body}, second={second_bounce}, spike={spike}"
+        );
+        assert!(
             (21..=24).contains(&(spike - body)),
             "the 0.35-second alarm may include Celeste's transition freeze: body={body}, spike={spike}"
         );
         let reenabled = &trace.states[spike].bounce_blocks[0];
         assert!(
-            !reenabled.static_movers_enabled || reenabled.attached_spike_position != Vec2::new(768.0, 480.0),
+            reenabled.static_movers_enabled
+                && reenabled.attached_spike_position != Vec2::new(776.0, 480.0),
             "the spike must remain displaced when the reform alarm re-enables it: {reenabled:?}"
         );
-        assert_ne!(reenabled.position, Vec2::new(704.0, 480.0));
+        assert_ne!(reenabled.position, Vec2::new(712.0, 480.0));
     }
 
     #[test]
