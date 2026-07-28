@@ -12740,6 +12740,68 @@ mod tests {
     }
 
     #[test]
+    fn candidate_holdable_dream_hyper_reproduces_the_frame_169_regrab_gap() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
+            solids: vec![Rect::new(0.0, 496.0, 960.0, 48.0)],
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::DreamBlock,
+                    bounds: Rect::new(231.0, 432.0, 104.0, 64.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "dreamBlock".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::TheoCrystal,
+                    bounds: Rect::new(228.0, 486.0, 8.0, 10.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "theoCrystal".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let initial = PlayerSnapshot {
+            pos: Vec2::new(208.0, 496.0),
+            can_dream_dash: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..240)
+            .map(|frame| InputState {
+                move_x: if (43..54).contains(&frame) || frame >= 85 { -1 } else { 1 },
+                jump_pressed: frame == 62,
+                jump_held: frame == 62,
+                dash_pressed: frame == 0,
+                crouch_dash_pressed: frame == 54,
+                grab_held: frame < 52 || frame >= 65,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(initial, &inputs, &map, inputs.len() as u32).unwrap();
+        let before = &trace.states[168];
+        assert_eq!(before.state, PlayerState::Normal);
+        assert_eq!(before.pos, Vec2::new(371.0, 496.0));
+        assert_eq!(before.speed, Vec2::new(-90.0, 0.0));
+        assert_eq!(before.theo_crystals[0].position, Vec2::new(357.0, 496.0));
+        // TheoCrystal.cs assigns this 16x22 pickup Hitbox. Its right edge
+        // (365) leaves a two-pixel gap to Player's left edge (367), so do not
+        // hide the known Everest discrepancy by widening the source collider.
+        assert_eq!(theo_pickup_rect(before.theo_crystals[0].position).right(), 365.0);
+        assert_eq!(current_player_rect(before, before.pos.x, before.pos.y).x, 367.0);
+
+        let first_difference = &trace.states[169];
+        assert_eq!(first_difference.state, PlayerState::Normal);
+        assert_eq!(first_difference.pos, Vec2::new(370.0, 496.0));
+        assert_eq!(first_difference.speed, Vec2::new(-90.0, 0.0));
+        assert_eq!(first_difference.holding_theo, None);
+    }
+
+    #[test]
     fn holdable_grabless_dream_hyper_uses_exit_grace_without_a_climb_state() {
         let map = dream_smuggle_map();
         let initial = PlayerSnapshot {
