@@ -101,6 +101,10 @@ import { scenario as scenario98 } from './entity-4.10.3-dream-smuggle.js'
 import { scenario as scenario99 } from './entity-4.10.3.1-dream-grab-hyper.js'
 import { scenario as scenario100 } from './entity-4.10.3.2-holdable-dream-hyper.js'
 import { scenario as scenario101 } from './entity-4.10.4-holdable-grabless-dream-hyper.js'
+import { scenario as scenario102 } from './entity-4.20-theo-regrab.js'
+import { scenario as scenario103 } from './entity-4.22-neutral-drop.js'
+import { scenario as scenario104 } from './entity-4.22.2-holdable-climb.js'
+import { scenario as scenario105 } from './entity-4.22.3-holdable-neutral-jump.js'
 
 export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario0,
@@ -205,4 +209,8 @@ export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario99,
   scenario100,
   scenario101,
+  scenario102,
+  scenario103,
+  scenario104,
+  scenario105,
 ])
