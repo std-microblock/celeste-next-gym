@@ -3782,12 +3782,10 @@ fn advance_post_player_entities(p: &mut PlayerSnapshot, map: &mut Map, input: In
     advance_clouds(p, map);
     advance_seekers(p, map);
     advance_temple_gates(p, map);
-    // Level queues the first CassetteBlock and then its manager during room
-    // loading. The entity-list flush gives the manager the earlier update
-    // slot: its beat writes Activated, then CassetteBlock.Update applies that
-    // value to Collidable in this same post-Player phase.
+    // CassetteBlockManager writes Activated after Player.Update. The block
+    // itself runs before the next Player update so its reform MoveV records
+    // LiftSpeed for that frame's grounded StarFly Jump.
     advance_cassette_manager(p, map);
-    advance_cassette_blocks(p, map);
     advance_spinners(p, map);
 }
 
@@ -3890,6 +3888,7 @@ fn step(
     // frame; WindTrigger interaction below selects the target for next frame.
     advance_wind_controller(p);
     apply_wind_movement(p, map);
+    advance_cassette_blocks(p, map);
     // Player.Update checks the force-move timer before subtracting DeltaTime,
     // and keeps the forced direction for that whole frame even when the
     // subtraction reaches zero.
@@ -5073,6 +5072,11 @@ fn star_fly_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
             p.jump_grace_timer = 0.0;
             p.speed.y = JUMP_SPEED;
             p.speed.x += input.move_x as f32 * JUMP_H_BOOST;
+            // StarFlyUpdate calls Player.Jump here.  Jump assigns JumpSpeed
+            // and then consumes the current or retained LiftBoost; preserve
+            // that order for a grounded Feather exit on a moving/reforming
+            // CassetteBlock.
+            add_lift_boost(p);
             p.auto_jump = false;
             p.dash_attack_timer = 0.0;
             p.wall_slide_timer = WALL_SLIDE_TIME;
@@ -13988,10 +13992,10 @@ mod tests {
     fn disappearing_cassette_cornerboost_restores_retained_speed_after_entity_phase() {
         let p = PlayerSnapshot {
             // The player's right edge is four pixels left of cassette index 0.
-            // Frame one collides. The manager then writes the beat-8
-            // activation change and CassetteBlock.Update clears collision in
-            // the same entity phase, so the second Player.Update refunds the
-            // retained speed.
+            // Frame one collides, then the beat-8 activation change is written
+            // after Player.Update. CassetteBlock.Update clears collision at
+            // the next frame's pre-Player entity phase, so retained speed
+            // only returns on the third player update.
             pos: Vec2::new(60.0, 112.0),
             speed: Vec2::new(120.0, 0.0),
             cassette_manager: crate::CassetteManagerSnapshot {
@@ -14009,7 +14013,8 @@ mod tests {
         assert_eq!(trace.states[1].speed.x, 0.0);
         assert!(trace.states[1].wall_speed_retention_timer > 0.05);
         assert!(!trace.states[1].cassette_blocks[0].activated);
-        assert!(!trace.states[1].cassette_blocks[0].collidable);
+        assert!(trace.states[1].cassette_blocks[0].collidable);
+        assert!(!trace.states[2].cassette_blocks[0].collidable);
         assert_eq!(trace.states[2].wall_speed_retention_timer, 0.0);
         assert!(trace.states[2].speed.x > 90.0);
     }
@@ -14018,8 +14023,8 @@ mod tests {
     fn disappearing_cassette_cornerboost_fixture_times_hit_clear_and_refund() {
         // This is the generated candidate's timing in a compact map: input
         // 27 hits the initially-active index 1 wall, manager activation then
-        // disables it, and that same input's CassetteBlock.Update clears the
-        // wall before the following Player.Update restores the 90-speed run.
+        // disables it, input 28's pre-Player entity phase clears it, and the
+        // following Player.Update restores the retained 90-speed run.
         let map = Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
             solids: vec![Rect::new(0.0, 496.0, 960.0, 48.0)],
@@ -14062,10 +14067,11 @@ mod tests {
         .unwrap();
         assert_eq!(trace.states[28].pos, Vec2::new(124.0, 496.0));
         assert_eq!(trace.states[28].speed.x, 0.0);
-        assert!(!trace.states[28].cassette_blocks[1].collidable);
-        assert_eq!(trace.states[29].pos, Vec2::new(126.0, 496.0));
-        assert_eq!(trace.states[29].speed.x, 90.0);
-        assert_eq!(trace.states[29].wall_speed_retention_timer, 0.0);
+        assert!(trace.states[28].cassette_blocks[1].collidable);
+        assert!(!trace.states[29].cassette_blocks[1].collidable);
+        assert_eq!(trace.states[30].pos, Vec2::new(127.0, 496.0));
+        assert_eq!(trace.states[30].speed.x, 90.0);
+        assert_eq!(trace.states[30].wall_speed_retention_timer, 0.0);
     }
 
     #[test]
@@ -14080,10 +14086,8 @@ mod tests {
         assert!(trace.states[0].cassette_manager.startup_music_pending);
         assert!(!trace.states[1].cassette_manager.startup_music_pending);
         assert_eq!(trace.states[1].cassette_manager.beat_timer, 0.0);
-        // The beat-8 manager update precedes the block update, allowing the
-        // reformed block to carry the frozen player in that same frame.
-        assert_eq!(trace.states[80].pos.y, 106.0);
-        assert_eq!(trace.states[81].pos.y, 101.0);
+        assert_eq!(trace.states[81].pos.y, 106.0);
+        assert_eq!(trace.states[82].pos.y, 101.0);
     }
 
     #[test]
@@ -14124,7 +14128,7 @@ mod tests {
         assert_eq!(result.pos.y, 101.0);
         assert_eq!(result.cassette_blocks[0].position.y, 101.0);
         assert!(result.cassette_blocks[0].collidable);
-        assert!((result.current_lift_speed.y + 60.0).abs() < 0.001);
+        assert!((result.last_lift_speed.y + 60.0).abs() < 0.001);
     }
 
     #[test]
@@ -14181,18 +14185,19 @@ mod tests {
         .unwrap();
         assert_eq!(result.state, PlayerState::Normal);
         assert!((result.speed.x - 273.333_34).abs() < 0.001);
-        assert_eq!(result.speed.y, JUMP_SPEED);
+        assert!((result.speed.y - (JUMP_SPEED - 60.0)).abs() < 0.001);
         assert!(result.cassette_blocks[0].collidable);
         assert_eq!(result.cassette_blocks[0].position.y, 101.0);
-        assert_eq!(result.pos.y, 101.0);
+        assert_eq!(result.pos.y, 98.0);
     }
 
     #[test]
-    fn cassoosted_fuper_fixture_aligns_first_starfly_jump_with_tempo_three_reform() {
-        // Mirror the candidate MapPart rather than pre-seeding StarFly.  The
+    fn cassoosted_fuper_fixture_consumes_reform_lift_on_next_player_update() {
+        // Mirror the candidate MapPart rather than pre-seeding StarFly. The
         // fresh custom manager skips its first AdvanceMusic call; with tempo
         // three, beat 8 writes Activated on input 27 and CassetteBlock.Update
-        // reforms during input 28, after this frame's Player.Jump.
+        // reforms during input 28, after Player.Update. That movement writes
+        // LiftSpeed, which the grounded StarFly Jump consumes next frame.
         let map = Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
             solids: vec![Rect::new(0.0, 496.0, 960.0, 48.0)],
@@ -14250,7 +14255,7 @@ mod tests {
             .position(|state| {
                 state.state == PlayerState::Normal
                     && (state.speed.x - 273.333_34).abs() < 0.001
-                    && state.speed.y == JUMP_SPEED
+                    && (state.speed.y - (JUMP_SPEED - 60.0)).abs() < 0.001
             })
             .expect("first controllable StarFly frame should produce a Feather Super");
         let reform = trace
@@ -14260,8 +14265,10 @@ mod tests {
                 state.cassette_blocks[0].collidable && state.cassette_blocks[0].position.y == 493.0
             })
             .expect("tempo-three cassette should reform");
-        assert_eq!(fuper, 29);
-        assert_eq!(reform, fuper);
+        assert_eq!(reform, 29);
+        assert_eq!(fuper, reform);
+        assert!((trace.states[reform].last_lift_speed.y + 60.0).abs() < 0.001);
+        assert!((trace.states[fuper].speed.y - (JUMP_SPEED - 60.0)).abs() < 0.001);
         assert!(trace.states[fuper].pos.y < 496.0);
     }
 
