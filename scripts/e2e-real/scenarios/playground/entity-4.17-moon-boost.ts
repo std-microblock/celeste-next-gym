@@ -15,10 +15,10 @@ export const scenario = defineScenario({
   name: 'entity-4.17-moon-boost',
   initial: { pos: [80, 320], speed: [0, 0] },
   inputs: inputFrames(90, (frame) => input({
-    move_x: frame >= 40 ? 1 : 0,
+    move_x: frame >= 38 ? 1 : 0,
     move_y: frame < 55 ? -1 : 0,
-    jump_pressed: frame === 40,
-    jump_held: frame === 40,
+    jump_pressed: frame === 38,
+    jump_held: frame === 38,
   })),
   verify(states) {
     const diagonal = states.find((state) => {
