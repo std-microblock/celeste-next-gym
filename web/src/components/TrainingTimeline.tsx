@@ -84,7 +84,7 @@ export function TrainingTimeline({ frame, frameCount, fuzzStart, targetFrame, wi
       }}
     >
       {visibleWindows.map((window, index) => <i key={`${window.from}-${window.to}-${index}`} className="training-window" style={{ left: percent(window.from), width: `${Math.max(.8, (window.to - window.from + 1) / viewportFrames * 100)}%` }} title={`成功窗口 F${window.from}–F${window.to}`} />)}
-      {fuzzStart !== null && inViewport(fuzzStart) && <b className="training-marker fuzz" style={{ left: percent(fuzzStart) }}>F0<span className="training-tooltip">操作起点：入口 Dash 是本地 F0</span></b>}
+      {fuzzStart !== null && inViewport(fuzzStart) && <b className="training-marker fuzz" style={{ left: percent(fuzzStart) }}>F0<span className="training-tooltip">操作起点：训练定义的入口输入是本地 F0</span></b>}
       {targetFrame !== undefined && <b className={`training-marker target ${inViewport(targetFrame) ? '' : targetFrame < viewportStart ? 'offscreen before' : 'offscreen after'}`} style={{ left: clampedPercent(targetFrame) }}>{inViewport(targetFrame) ? '◆' : targetFrame < viewportStart ? '‹' : '›'}<span className="training-tooltip">下一最佳关键点：F{targetFrame}{bestFinalSpeed === undefined ? '' : `；该候选最终 X 速度 ${bestFinalSpeed.toFixed(2)}`}</span></b>}
       {inputLabels.filter((input) => inViewport(input.frame)).map((input) => <b key={`${input.frame}-${input.label}`} className="training-marker input" style={{ left: percent(input.frame) }}>●<span className="training-tooltip">你的输入：F{input.frame} {input.label}</span></b>)}
       {failureFrame !== undefined && inViewport(failureFrame) && <b className="training-marker failure" style={{ left: percent(failureFrame) }}>×<span className="training-tooltip">失败发生在 F{failureFrame}</span></b>}
