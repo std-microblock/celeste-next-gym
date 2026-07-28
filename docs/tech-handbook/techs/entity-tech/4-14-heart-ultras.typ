@@ -20,7 +20,8 @@
   ),
   test-evidence: evidence(
     path: [crates/celeste-physics/src/map.rs / crates/celeste-physics/src/sim.rs],
-    symbol: [vanilla_heart_gem_round_trips_through_celeste_binary / heart_gem_collect_yields_then_freezes_before_setting_half_time_rate / heart_gem_point_bounces_a_non_dash_attacking_player],
+    symbol: [vanilla_heart_gem_round_trips_through_celeste_binary / heart_gem_collect_yields_then_freezes_before_setting_half_time_rate / heart_gem_point_bounces_a_non_dash_attacking_player / engine_time_rate_scales_the_entire_next_player_update],
+    note: [除 HeartGem 的 collect、raw-time Freeze 与 PointBounce 外，TimeRate 回归还锁定下一 raw frame 开头只捕获一次 `RawDeltaTime * TimeRate`，同帧玩家、实体、timer 与子像素移动共用该值。],
   ),
   e2e-evidence: none,
   candidate-e2e: evidence(
