@@ -121,6 +121,7 @@ export interface MapEntity {
 
 export interface GymMap {
   name: string
+  room?: string
   bounds: { x: number; y: number; width: number; height: number }
   spawn: Vec2
   solids: { x: number; y: number; width: number; height: number }[]
@@ -194,6 +195,7 @@ export function bindingLabel(code: string): string {
 
 export const PLAYGROUND: GymMap = {
   name: 'Mechanics Playground',
+  room: 'playground',
   bounds: { x: 0, y: 0, width: 960, height: 544 },
   spawn: { x: 64, y: 496 },
   solids: [

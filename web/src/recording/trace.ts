@@ -73,7 +73,7 @@ export function createWebTrace(
     recorded_at: recordedAt,
     map: {
       sid: 'CelesteGymPlayground/Playground',
-      room: 'playground',
+      room: map.room ?? 'playground',
       binary: 'maps/CelesteGymPlayground/Playground.bin',
       data: structuredClone(map),
     },

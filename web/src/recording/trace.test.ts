@@ -12,6 +12,12 @@ describe('portable frame traces', () => {
     expect(parseTrace(trace)).toBe(trace)
   })
 
+  it('exports the configured start room', () => {
+    const map = { ...PLAYGROUND, room: 'transition_0' }
+    const trace = createWebTrace(map, [], [createInitialState(map)], 0)
+    expect(trace.map.room).toBe('transition_0')
+  })
+
   it('compares all nine product-gate fields at 0.01 tolerance', () => {
     const initial = createInitialState(PLAYGROUND)
     const expected = createWebTrace(PLAYGROUND, [], [initial], 0)
