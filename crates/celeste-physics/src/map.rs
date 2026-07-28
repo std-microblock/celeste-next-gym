@@ -484,7 +484,7 @@ pub(crate) fn encode_celeste_rooms(
                     vec![],
                 )),
                 EntityKind::HeartGem => Some(element(
-                    "heartGem",
+                    "blackGem",
                     [
                         ("fake", BinaryValue::Bool(false)),
                         ("id", BinaryValue::Int(id)),
@@ -877,7 +877,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 "windTrigger" => EntityKind::Wind,
                 "bounceBlock" => EntityKind::BounceBlock,
                 "theoCrystal" => EntityKind::TheoCrystal,
-                "heartGem" => EntityKind::HeartGem,
+                "blackGem" | "heartGem" => EntityKind::HeartGem,
                 "glider" => EntityKind::Glider,
                 "zipMover" => EntityKind::ZipMover,
                 "moveBlock" => EntityKind::MoveBlock,
@@ -958,7 +958,9 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 "theoCrystal" | "glider" => {
                     (Rect::new(ex - 4.0, ey - 10.0, 8.0, 10.0), Vec2::default())
                 }
-                "heartGem" => (Rect::new(ex - 8.0, ey - 8.0, 16.0, 16.0), Vec2::default()),
+                "blackGem" | "heartGem" => {
+                    (Rect::new(ex - 8.0, ey - 8.0, 16.0, 16.0), Vec2::default())
+                }
                 "celesteGymMovingSolid" => (
                     Rect::new(ex, ey, raw_width, raw_height),
                     Vec2::new(attr_f32(el, "speedX", 0.0), attr_f32(el, "speedY", 0.0)),
@@ -1386,7 +1388,7 @@ mod tests {
                 shielded: false,
                 single_use: false,
                 nodes: vec![],
-                name: "heartGem".to_owned(),
+                name: "blackGem".to_owned(),
             }],
             ..Map::default()
         };
@@ -1396,7 +1398,7 @@ mod tests {
         let entity = decoded.entities.first().unwrap();
         assert_eq!(entity.kind, EntityKind::HeartGem);
         assert_eq!(entity.bounds, Rect::new(360.0, -136.0, 16.0, 16.0));
-        assert_eq!(entity.name, "heartGem");
+        assert_eq!(entity.name, "blackGem");
     }
 
     #[test]
