@@ -1536,6 +1536,20 @@ fn player_riding_solid(p: &PlayerSnapshot, bounds: Rect) -> bool {
     }
 }
 
+fn player_on_top_of_solid(p: &PlayerSnapshot, bounds: Rect) -> bool {
+    Rect::new(bounds.x, bounds.y - 1.0, bounds.width, bounds.height)
+        .intersects(current_player_rect(p, p.pos.x, p.pos.y))
+}
+
+fn player_climbing_solid(p: &PlayerSnapshot, bounds: Rect) -> bool {
+    if p.state != PlayerState::Climb {
+        return false;
+    }
+    let offset_x = if p.facing { -1.0 } else { 1.0 };
+    Rect::new(bounds.x + offset_x, bounds.y, bounds.width, bounds.height)
+        .intersects(current_player_rect(p, p.pos.x, p.pos.y))
+}
+
 fn initialize_heart_gems(p: &mut PlayerSnapshot, map: &mut Map) {
     let count = map
         .entities
@@ -2282,9 +2296,18 @@ fn advance_move_blocks(p: &mut PlayerSnapshot, map: &mut Map, input: InputState)
                 }
             }
             2 => {
-                let riding = player_riding_solid(p, map.entities[entity_index].bounds);
+                // MoveBlock.Controller distinguishes the source direction:
+                // a horizontal block follows a player on top, while a
+                // vertical block follows only a Player climbing its side.
+                // Treating a rider atop a vertical block as a steering player
+                // spends noSteerTimer and turns the block a frame early.
+                let steering_player = if horizontal_source {
+                    player_on_top_of_solid(p, map.entities[entity_index].bounds)
+                } else {
+                    player_climbing_solid(p, map.entities[entity_index].bounds)
+                };
                 let mut target_angle = home_angle;
-                if riding {
+                if steering_player {
                     if state.no_steer_timer > 0.0 {
                         state.no_steer_timer -= p.frame_delta_time;
                     }
@@ -15756,8 +15779,8 @@ mod tests {
         .unwrap();
 
         assert!(trace.states[50].speed.x > 300.0);
-        assert!(trace.states[51].wall_speed_retention_timer > 0.05);
-        assert!(trace.states[51].wall_speed_retained > 300.0);
+        assert!(trace.states[52].wall_speed_retention_timer > 0.05);
+        assert!(trace.states[52].wall_speed_retained > 300.0);
         assert!(trace.states[55].speed.x > 300.0);
         assert!(trace.states[59].speed.x < trace.states[58].speed.x);
         assert_eq!(trace.states[51].move_blocks[0].position.y, 440.0);

@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { spawn, type ChildProcess } from 'node:child_process'
 
@@ -225,16 +225,36 @@ async function runHarnessLifecycle(
     return { health, scenarios: summaries }
 
     async function runOneScenario(scenario: ScenarioDefinition, captureToken?: string, tracePath?: string): Promise<ScenarioSummary> {
-      return await executeScenario({
-        scenario, map, mapPath, repoRoot: config.repoRoot,
-        ...(config.room ? { room: config.room } : {}),
-        skipTransitions: config.skipTransitions, collectOnly: config.collectOnly,
-        ...(captureToken ? { captureToken } : {}), ...(tracePath ? { tracePath } : {}),
-        dependencies: {
-          simulate: async (request) => await client.simulate(request), writeTrace,
-          compare: (options) => compareRealTrace({ repoRoot: config.repoRoot, ...options }),
-        },
-      })
+      // Keep non-recording traces in the immutable per-run root as well: the
+      // old shared `.tmp/e2e-<scenario>-trace.json` path is overwritten by the
+      // next run and cannot prove which generated fixture produced a trace.
+      const resolvedTracePath = tracePath ?? resolve(runContext.runRoot, 'traces', `${scenario.name}.json`)
+      const traceEntry = {
+        scenario: scenario.name,
+        path: resolvedTracePath,
+        map_path: mapPath,
+        ...((config.room ?? scenario.room) ? { room: config.room ?? scenario.room } : {}),
+      }
+      try {
+        return await executeScenario({
+          scenario, map, mapPath, repoRoot: config.repoRoot,
+          ...(config.room ? { room: config.room } : {}),
+          skipTransitions: config.skipTransitions, collectOnly: config.collectOnly,
+          ...(captureToken ? { captureToken } : {}), tracePath: resolvedTracePath,
+          dependencies: {
+            simulate: async (request) => await client.simulate(request), writeTrace,
+            compare: (options) => compareRealTrace({ repoRoot: config.repoRoot, ...options }),
+          },
+        })
+      } finally {
+        // executeScenario writes the trace before semantic verification and
+        // Rust comparison.  Persist the binding even when either later guard
+        // fails, provided the trace was actually written.
+        if (existsSync(resolvedTracePath)) {
+          const traces = Array.isArray(runContext.manifest.traces) ? runContext.manifest.traces : []
+          updateRunManifest(runContext, { traces: [...traces, traceEntry] })
+        }
+      }
     }
 
   } catch (error) {
