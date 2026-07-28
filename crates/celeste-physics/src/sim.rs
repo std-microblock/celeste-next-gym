@@ -2429,11 +2429,10 @@ fn glider_body_rect(position: Vec2) -> Rect {
 }
 
 fn glider_pickup_rect(position: Vec2) -> Rect {
-    // Glider's Holdable check is centered around the lower pickup region,
-    // rather than its full visual/body bounds.  A falling Player therefore
-    // passes the upper pixels of a rising spring-boosted Glider for two more
-    // updates before the regrab becomes eligible.
-    Rect::new(position.x - 10.0, position.y - 4.0, 20.0, 10.0)
+    // Glider.cs assigns Hold.PickupCollider a 20x22 Hitbox offset -10,-16.
+    // This is deliberately taller than its 8x10 body, so Player.NormalUpdate
+    // can begin Pickup before the falling player reaches the jelly itself.
+    Rect::new(position.x - 10.0, position.y - 16.0, 20.0, 22.0)
 }
 
 fn try_pickup_glider(p: &mut PlayerSnapshot) -> bool {
@@ -8121,6 +8120,65 @@ mod tests {
     }
 
     #[test]
+    fn holdable_laddering_regrabs_with_glider_source_pickup_collider() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 544.0),
+            solids: vec![Rect::new(0.0, 496.0, 320.0, 48.0)],
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::Glider,
+                    bounds: Rect::new(92.0, 390.0, 8.0, 10.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "glider".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::Glider,
+                    bounds: Rect::new(92.0, 380.0, 8.0, 10.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "glider".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let inputs: Vec<_> = (0..150)
+            .map(|frame| InputState {
+                move_y: if matches!(frame, 23 | 65 | 101) { 1 } else { -1 },
+                grab_held: !matches!(frame, 23 | 65 | 101),
+                ..InputState::default()
+            })
+            .collect();
+        let initial = PlayerSnapshot {
+            pos: Vec2::new(96.0, 400.0),
+            speed: Vec2::new(0.0, -30.0),
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(initial, &inputs, &map, inputs.len() as u32).unwrap();
+        let pickup_starts: Vec<_> = trace
+            .states
+            .iter()
+            .enumerate()
+            .filter_map(|(frame, state)| {
+                (state.state == PlayerState::Pickup
+                    && trace
+                        .states
+                        .get(frame.wrapping_sub(1))
+                        .is_none_or(|previous| previous.state != PlayerState::Pickup))
+                .then_some((frame, state.holding_glider))
+            })
+            .collect();
+
+        // The second jelly's 20x22 source PickupCollider starts the f25
+        // tween while the first jelly remains under its own 0.3 s lockout.
+        assert_eq!(pickup_starts, vec![(1, Some(0)), (25, Some(1)), (67, Some(0)), (103, Some(1))]);
+    }
+
+    #[test]
     fn grounded_ultra_glider_pickup_cancel_preserves_multiplied_speed() {
         let p = PlayerSnapshot {
             pos: Vec2::new(32.0, 160.0),
@@ -8373,19 +8431,13 @@ mod tests {
                         .collect::<Vec<_>>()
                 )
             });
-        // The lower Holdable pickup region stays clear while the bodies first
-        // cross. Player movement advances through y=462, y=465 and y=468;
-        // only the fourth overlap check starts the pickup tween.
-        assert_eq!(trace.states[103].state, PlayerState::Normal);
-        assert_eq!(trace.states[103].pos, Vec2::new(126.0, 462.0));
-        assert_eq!(trace.states[103].speed, Vec2::new(0.0, MAX_FALL));
-        assert_eq!(trace.states[104].state, PlayerState::Normal);
-        assert_eq!(trace.states[104].pos, Vec2::new(126.0, 465.0));
-        assert_eq!(trace.states[104].speed, Vec2::new(0.0, MAX_FALL));
-        assert_eq!(trace.states[105].state, PlayerState::Normal);
-        assert_eq!(trace.states[105].pos, Vec2::new(126.0, 468.0));
-        assert_eq!(trace.states[105].speed, Vec2::new(0.0, MAX_FALL));
-        assert_eq!(regrab, 106);
+        // Glider.cs gives Holdable a 20x22 PickupCollider offset -10,-16.
+        // Its high upper edge catches the falling player while the jelly is
+        // still rising, so the Pickup tween begins before body overlap.
+        assert_eq!(trace.states[102].state, PlayerState::Normal);
+        assert_eq!(trace.states[102].pos, Vec2::new(126.0, 460.0));
+        assert_eq!(trace.states[102].speed, Vec2::new(0.0, MAX_FALL));
+        assert_eq!(regrab, 103);
         assert!(regrab > spring);
     }
 
