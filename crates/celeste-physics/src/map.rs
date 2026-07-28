@@ -82,6 +82,8 @@ pub enum EntityKind {
     CassetteBlock,
     /// Vanilla CrystalStaticSpinner hazard.
     CrystalStaticSpinner,
+    /// Vanilla binocular entity. direction.x/y persist onlyY/summit flags.
+    Lookout,
     /// Simulator-native constant-velocity Solid used to exercise Monocle
     /// carrying, pushing, and Player LiftSpeed inheritance independently of a
     /// specific vanilla entity state machine.
@@ -645,6 +647,22 @@ pub(crate) fn encode_celeste_rooms(
                     ],
                     vec![],
                 )),
+                EntityKind::Lookout => Some(element(
+                    // `Level.LoadLevel` instantiates the vanilla Lookout under the
+                    // map entity name `towerviewer`; `lookout` is only the Rust
+                    // fixture-facing alias and Everest rejects it.
+                    "towerviewer",
+                    [
+                        ("x", BinaryValue::Int(x + 2)),
+                        ("y", BinaryValue::Int(y + 4)),
+                        ("onlyY", BinaryValue::Bool(entity.direction.x != 0.0)),
+                        ("summit", BinaryValue::Bool(entity.direction.y != 0.0)),
+                    ],
+                    entity.nodes.iter().map(|node| element("node", [
+                        ("x", BinaryValue::Int((node.x - map.bounds.x).round() as i32)),
+                        ("y", BinaryValue::Int((node.y - map.bounds.y).round() as i32)),
+                    ], vec![])).collect(),
+                )),
                 EntityKind::MovingSolid => Some(element(
                     "celesteGymMovingSolid",
                     [
@@ -963,6 +981,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 "templeGate" => EntityKind::TempleGate,
                 "cassetteBlock" => EntityKind::CassetteBlock,
                 "spinner" => EntityKind::CrystalStaticSpinner,
+                "towerviewer" | "lookout" => EntityKind::Lookout,
                 "celesteGymMovingSolid" => EntityKind::MovingSolid,
                 _ => EntityKind::Unknown,
             };
@@ -980,6 +999,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 EntityKind::Strawberry => 14.0,
                 EntityKind::TheoCrystal | EntityKind::Glider | EntityKind::TempleGate => 8.0,
                 EntityKind::CrystalStaticSpinner => 16.0,
+                EntityKind::Lookout => 4.0,
                 EntityKind::HeartGem => 16.0,
                 EntityKind::RisingLava | EntityKind::SandwichLava => 340.0,
                 _ => 8.0,
@@ -990,6 +1010,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 EntityKind::Cloud => 5.0,
                 EntityKind::RisingLava | EntityKind::SandwichLava => 120.0,
                 EntityKind::CrystalStaticSpinner => 12.0,
+                EntityKind::Lookout => 4.0,
                 _ => default_w,
             };
             let raw_width = attr_f32(el, "width", default_w);
@@ -1044,6 +1065,13 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                         raw_height,
                     ),
                     Vec2::default(),
+                ),
+                "towerviewer" | "lookout" => (
+                    Rect::new(ex - 2.0, ey - 4.0, 4.0, 4.0),
+                    Vec2::new(
+                        if attr_bool(el, "onlyY", false) { 1.0 } else { 0.0 },
+                        if attr_bool(el, "summit", false) { 1.0 } else { 0.0 },
+                    ),
                 ),
                 "moveBlock" => {
                     let direction = match attr_text(el, "direction").unwrap_or("Right") {
@@ -1494,6 +1522,31 @@ mod tests {
         assert_eq!(decoded.entities[0].direction, Vec2::new(2.0, 1.0));
         assert_eq!(decoded.entities[1].kind, EntityKind::CrystalStaticSpinner);
         assert_eq!(decoded.entities[1].bounds, map.entities[1].bounds);
+    }
+
+    #[test]
+    fn lookout_flags_and_nodes_round_trip_with_room_relative_binary_nodes() {
+        let lookout = Entity {
+            kind: EntityKind::Lookout,
+            bounds: Rect::new(510.0, -68.0, 4.0, 4.0),
+            direction: Vec2::new(1.0, 1.0),
+            shielded: false,
+            single_use: false,
+            nodes: vec![Vec2::new(704.0, -160.0), Vec2::new(352.0, -224.0)],
+            name: "towerviewer".to_owned(),
+        };
+        let map = Map {
+            bounds: Rect::new(320.0, -240.0, 640.0, 184.0),
+            spawn: Vec2::new(344.0, -80.0),
+            entities: vec![lookout.clone()],
+            ..Map::default()
+        };
+
+        let encoded = encode_celeste_map(&map, "CelesteGymTest", "lookout").unwrap();
+        assert!(encoded.windows(b"towerviewer".len()).any(|window| window == b"towerviewer"),
+            "Everest Level.LoadLevel dispatches Lookout as `towerviewer`, not fixture alias `lookout`");
+        let decoded = decode_map_room(&encoded, Some("lookout")).unwrap();
+        assert_eq!(decoded.entities, vec![lookout]);
     }
 
     #[test]

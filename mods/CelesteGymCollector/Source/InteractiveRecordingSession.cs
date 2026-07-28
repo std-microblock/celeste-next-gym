@@ -72,7 +72,8 @@ internal sealed class InteractiveRecordingSession {
             JumpHeld = Input.Jump.Check,
             DashPressed = Input.Dash.Pressed,
             CrouchDashPressed = Input.CrouchDash.Pressed,
-            GrabHeld = Input.Grab.Check
+            GrabHeld = Input.Grab.Check,
+            TalkPressed = Input.Talk.Pressed
         };
     }
 

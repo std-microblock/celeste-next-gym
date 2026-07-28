@@ -8,12 +8,12 @@ describe('production scenario registry', () => {
   const registry = buildRegistry(scenarios)
 
   it('derives all target and status counts from explicit indexes', () => {
-    assert.equal(registry.scenarios.length, 181)
-    assert.equal(registry.byTarget.get('playground')?.length, 139)
+    assert.equal(registry.scenarios.length, 186)
+    assert.equal(registry.byTarget.get('playground')?.length, 144)
     assert.equal(registry.byTarget.get('area-1')?.length, 36)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 163, candidate: 18 })
+    assert.deepEqual(registry.counts, { active: 163, candidate: 23 })
   })
 
   it('keeps evidence-less scenarios as opt-in candidates', () => {
@@ -34,6 +34,11 @@ describe('production scenario registry', () => {
       'entity-4.26-theovator',
       'entity-4.29-springboost-cancel',
       'entity-4.6.2-cloud-hyper-bunnyhop',
+      'other-5.1-bino-tech',
+      'other-5.1.1-bino-clip',
+      'other-5.1.2-bino-control-storage',
+      'other-5.1.3-bino-interaction-storage',
+      'other-5.1.4-bino-extensions',
       'other-5.10-spinner-stunning',
       'other-5.11-spinner-freeze',
       'other-5.3-cassette-raise',
@@ -41,6 +46,24 @@ describe('production scenario registry', () => {
       'other-5.9-screen-transition-cassette-offset',
     ])
     assert.equal(selectScenarios(registry, { target: 'playground' }).some((scenario) => scenario.status === 'candidate'), false)
+  })
+
+  it('keeps every Lookout proof in an independently named map part', () => {
+    const techniqueIds = ['5.1', '5.1.1', '5.1.2', '5.1.3', '5.1.4']
+    const parts = techniqueIds.map((techniqueId) => {
+      const scenario = registry.scenarios.find((candidate) => candidate.techniqueIds.includes(techniqueId))
+      assert.ok(scenario, `missing scenario for ${techniqueId}`)
+      assert.equal(scenario.mapParts.length, 1)
+      return scenario.mapParts[0]?.id
+    })
+    assert.equal(new Set(parts).size, techniqueIds.length)
+    assert.deepEqual(parts, [
+      'tech.other-5.1-bino-tech',
+      'tech.other-5.1.1-bino-clip',
+      'tech.other-5.1.2-bino-control-storage',
+      'tech.other-5.1.3-bino-interaction-storage',
+      'tech.other-5.1.4-bino-extensions',
+    ])
   })
 
   it('keeps Theo regrab and slash proofs in independently named map parts', () => {

@@ -242,6 +242,7 @@ function validRequest(frames: number) {
     dash_pressed: false,
     crouch_dash_pressed: false,
     grab_held: false,
+    talk_pressed: false,
   };
   return {
     map: Uint8Array.of(0x43, 0x45, 0x4c),

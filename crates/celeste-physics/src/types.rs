@@ -58,6 +58,8 @@ pub struct InputState {
     #[serde(default)]
     pub crouch_dash_pressed: bool,
     pub grab_held: bool,
+    #[serde(default)]
+    pub talk_pressed: bool,
 }
 
 impl InputState {
@@ -302,6 +304,28 @@ pub struct SpinnerSnapshot {
     pub collidable: bool,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct LookoutSnapshot {
+    pub interacting: bool,
+    /// `Lookout.Removed` restores the player state but deliberately does not
+    /// clear the entity-owned interaction flag.
+    pub removed: bool,
+    /// 0 idle, 1 Dummy alignment, 2 pre-HUD wait, 3 HUD ease-in,
+    /// 4 camera control, 5 HUD ease-out, 6 long-distance exit wipe.
+    pub phase: u8,
+    pub timer: f32,
+    pub position: Vec2,
+    pub cam_start: Vec2,
+    pub cam: Vec2,
+    pub cam_speed: Vec2,
+    /// Camera position captured before the long-distance FadeWipe begins.
+    pub wipe_start: Vec2,
+    pub node: u16,
+    pub node_percent: f32,
+    pub hud_easer: f32,
+}
+
 fn default_stamina() -> f32 {
     110.0
 }
@@ -426,6 +450,8 @@ pub struct PlayerSnapshot {
     pub cassette_blocks: Vec<CassetteBlockSnapshot>,
     /// Per-entity CrystalStaticSpinner state, in map entity order.
     pub spinners: Vec<SpinnerSnapshot>,
+    /// Per-entity Lookout coroutine state, in map entity order.
+    pub lookouts: Vec<LookoutSnapshot>,
     /// Per-entity vanilla ZipMover coroutine and Platform movement state, in
     /// map entity order. This keeps segmented simulation composable.
     pub zip_movers: Vec<ZipMoverSnapshot>,
@@ -599,6 +625,7 @@ impl Default for PlayerSnapshot {
             cassette_manager: CassetteManagerSnapshot::default(),
             cassette_blocks: vec![],
             spinners: vec![],
+            lookouts: vec![],
             zip_movers: vec![],
             bounce_blocks: vec![],
             move_blocks: vec![],
