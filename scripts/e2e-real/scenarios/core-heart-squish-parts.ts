@@ -26,7 +26,7 @@ export const TECH_ENTITY_4_14_HEART_ULTRA = defineMapPart({
   rooms: [{
     name: ROOM,
     entities: [
-      { id: 'tech-4.14-heart', kind: 'heart_gem', bounds: [488, 472, 16, 16], name: 'heartGem' },
+      { id: 'tech-4.14-heart', kind: 'heart_gem', bounds: [488, 480, 16, 16], name: 'heartGem' },
     ],
   }],
 })
