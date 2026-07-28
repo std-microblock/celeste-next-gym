@@ -518,6 +518,9 @@ pub struct PlayerSnapshot {
     pub pickup_old_var_jump_timer: f32,
     pub pickup_timer: f32,
     pub climb_no_move_timer: f32,
+    /// The signed vertical target selected by the most recent ClimbUpdate.
+    /// Player.Update uses this to limit JumpThru Assist to upward climbing.
+    pub last_climb_move: i8,
     pub dream_dash_can_end_timer: f32,
     pub launch_approach_x: Option<f32>,
     pub summit_launch_target_x: f32,
@@ -681,6 +684,7 @@ impl Default for PlayerSnapshot {
             pickup_old_var_jump_timer: 0.0,
             pickup_timer: 0.0,
             climb_no_move_timer: 0.0,
+            last_climb_move: 0,
             dream_dash_can_end_timer: 0.0,
             launch_approach_x: None,
             summit_launch_target_x: 0.0,
