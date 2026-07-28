@@ -5462,6 +5462,13 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
         let player_box = if matches!(
             entity.kind,
             EntityKind::Spikes
+                // `Player.Update` swaps in `hurtbox` before iterating every
+                // PlayerCollider. Booster's default PlayerCollider therefore
+                // sees the 8x9 hurtbox too, rather than the normal 8x11
+                // movement collider. This one-pixel vertical difference is
+                // observable at the edge of its Circle(10, 0, 2).
+                | EntityKind::Booster
+                | EntityKind::RedBooster
                 | EntityKind::FlyFeather
                 | EntityKind::Bumper
                 | EntityKind::Spring
@@ -14501,10 +14508,11 @@ mod tests {
             .iter()
             .find(|state| state.state == PlayerState::Boost)
             .expect("the native Booster should interrupt the completed Dummy walk");
-        // The Circle(10, offset 0,2) reaches the normal player collider while
-        // DummyWalk approaches its x=932 alignment point; the callback occurs
-        // at the first native overlap, not by forcing the completed state.
-        assert!((boost.pos.x - 920.0).abs() <= 0.01);
+        // Player.Update swaps in its 8x9 hurtbox before PlayerCollider checks.
+        // The Circle(10, offset 0,2) first reaches that box at x=921 while
+        // DummyWalk approaches its x=932 alignment point; this is the native
+        // callback, not a forced completed state.
+        assert!((boost.pos.x - 921.0).abs() <= 0.01);
         assert!(trace.states.iter().any(|state| {
             state.state == PlayerState::Normal
                 && state.lookouts[0].interacting

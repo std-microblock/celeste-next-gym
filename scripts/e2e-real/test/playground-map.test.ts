@@ -58,9 +58,16 @@ describe('per-scenario Playground maps', () => {
       .find((room) => room.name === 'playground')?.entities
       .find((entity) => entity.id === 'tech-5.1.3-lookout')
     assert.deepEqual(lookout?.bounds, [938, 493, 4, 4])
-    assert.deepEqual(interactionFixture.rooms
+    const booster = interactionFixture.rooms
       .find((room) => room.name === 'playground')?.entities
-      .find((entity) => entity.id === 'tech-5.1.3-interrupting-booster')?.bounds, [924, 491, 16, 16])
+      .find((entity) => entity.id === 'tech-5.1.3-interrupting-booster')
+    assert.deepEqual(booster?.bounds, [924, 491, 16, 16])
+    // This keeps the Booster at [932, 499], so its Circle(10, 0, 2) is
+    // centered at [932, 501] and first overlaps DummyWalk's 8x9 hurtbox at x=921.
+    assert.deepEqual(
+      booster && [booster.bounds[0] + booster.bounds[2] / 2, booster.bounds[1] + booster.bounds[3] / 2],
+      [932, 499],
+    )
     assert.equal(interactionFixture.rooms.find((room) => room.name === 'playground')?.solids
       .some(([x, y, width, height]) => x === 936 && y === 0 && width === 24 && height === 496), false)
 
