@@ -14007,8 +14007,11 @@ mod tests {
         let trace = simulate_trace(player, &inputs, &lookout_map(vec![], false, false), 150)
             .unwrap();
 
-        assert_eq!(trace.states[1].state, PlayerState::Dummy);
+        // `Interact` starts the entity coroutine; `LookRoutine` assigns Dummy
+        // on its following update, matching the real Lookout lifecycle.
+        assert_eq!(trace.states[1].state, PlayerState::Normal);
         assert!(trace.states[1].lookouts[0].interacting);
+        assert_eq!(trace.states[2].state, PlayerState::Dummy);
         assert!(trace.states[70].lookouts[0].phase >= 4);
         assert!(trace.states[110].camera.x > 0.0);
         assert!(!trace.states[150].lookouts[0].interacting);

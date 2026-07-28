@@ -1533,7 +1533,7 @@ mod tests {
             shielded: false,
             single_use: false,
             nodes: vec![Vec2::new(704.0, -160.0), Vec2::new(352.0, -224.0)],
-            name: "lookout".to_owned(),
+            name: "towerviewer".to_owned(),
         };
         let map = Map {
             bounds: Rect::new(320.0, -240.0, 640.0, 184.0),
