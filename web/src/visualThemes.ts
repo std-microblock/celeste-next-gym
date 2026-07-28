@@ -11,6 +11,7 @@ export interface VisualTheme {
   label: string
   chapter: string
   tileset: string
+  spike: 'default' | 'cliffside' | 'outline' | 'reflection'
   background: string
   layers: readonly VisualThemeLayer[]
   stars?: boolean
@@ -22,6 +23,7 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     label: '遗忘之城',
     chapter: 'CHAPTER 1',
     tileset: 'tilesets/dirt',
+    spike: 'default',
     background: '#11172f',
     layers: [
       { key: 'bgs/01/bg0' },
@@ -34,6 +36,7 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     label: '旧址',
     chapter: 'CHAPTER 2',
     tileset: 'tilesets/stone',
+    spike: 'default',
     background: '#100c2f',
     layers: [],
     stars: true,
@@ -43,6 +46,7 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     label: '天镜山庄',
     chapter: 'CHAPTER 3',
     tileset: 'tilesets/wood',
+    spike: 'default',
     background: '#181027',
     layers: [
       { key: 'bgs/03/bg0' },
@@ -57,6 +61,7 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     label: '黄金山脊',
     chapter: 'CHAPTER 4',
     tileset: 'tilesets/cliffside',
+    spike: 'cliffside',
     background: '#6d4d79',
     layers: [
       { key: 'bgs/04/bg0' },
@@ -69,6 +74,7 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     label: '山顶',
     chapter: 'CHAPTER 7',
     tileset: 'tilesets/summit',
+    spike: 'outline',
     background: '#2b2660',
     layers: [
       { key: 'bgs/07/bg0' },

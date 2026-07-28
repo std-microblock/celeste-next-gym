@@ -109,7 +109,7 @@ const GAMEPLAY_PATHS = [
   'bgs/03/bg0', 'bgs/03/bg1', 'bgs/03/bg2', 'bgs/03/bg3', 'bgs/03/fg0',
   'bgs/04/bg0', 'bgs/04/bg1', 'bgs/04/bgCloud',
   'bgs/07/bg0', 'bgs/07/00/bg1', 'bgs/07/00/bg2',
-  'danger/spikes/default', 'objects/woodPlatform/default', 'objects/jumpthru/wood',
+  'danger/spikes/', 'objects/woodPlatform/default', 'objects/jumpthru/wood',
   'objects/booster/booster', 'objects/booster/boosterRed', 'objects/booster/outline',
   'objects/dreamblock/active', 'objects/dreamblock/particles',
   'objects/flyFeather/', 'objects/Bumper/', 'objects/badelineboost/',
