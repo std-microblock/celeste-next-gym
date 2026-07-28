@@ -53,7 +53,7 @@ interface FixtureEntityBase {
 }
 
 export type FixtureEntity =
-  | (FixtureEntityBase & { readonly kind: 'jump_thru' | 'water' | 'dream_block' | 'bumper' | 'puffer' | 'angry_oshiro' | 'seeker' | 'snowball' | 'cloud' | 'bounce_block' | 'theo_crystal' | 'glider' | 'strawberry' | 'booster' | 'red_booster' })
+  | (FixtureEntityBase & { readonly kind: 'jump_thru' | 'water' | 'dream_block' | 'bumper' | 'puffer' | 'angry_oshiro' | 'seeker' | 'snowball' | 'cloud' | 'bounce_block' | 'theo_crystal' | 'glider' | 'strawberry' | 'booster' | 'red_booster' | 'temple_gate' })
   | (FixtureEntityBase & { readonly kind: 'fly_feather'; readonly shielded?: boolean; readonly singleUse?: boolean })
   | (FixtureEntityBase & { readonly kind: 'badeline_boost'; readonly nodes?: readonly Vector2[] })
   | (FixtureEntityBase & { readonly kind: 'ice_ball'; readonly nodes?: readonly Vector2[]; readonly singleUse?: boolean })

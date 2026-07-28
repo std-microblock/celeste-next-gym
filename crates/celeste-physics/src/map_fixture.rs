@@ -41,6 +41,7 @@ pub enum FixtureEntityKind {
     Glider,
     ZipMover,
     MoveBlock,
+    TempleGate,
     MovingSolid,
 }
 
@@ -576,6 +577,7 @@ fn entity(value: &FixtureEntity) -> Entity {
             FixtureEntityKind::Glider => EntityKind::Glider,
             FixtureEntityKind::ZipMover => EntityKind::ZipMover,
             FixtureEntityKind::MoveBlock => EntityKind::MoveBlock,
+            FixtureEntityKind::TempleGate => EntityKind::TempleGate,
             FixtureEntityKind::MovingSolid => EntityKind::MovingSolid,
         },
         bounds: rect(value.bounds),

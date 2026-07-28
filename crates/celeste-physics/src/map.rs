@@ -69,6 +69,8 @@ pub enum EntityKind {
     ZipMover,
     /// Vanilla steerable MoveBlock ("moon block") Solid.
     MoveBlock,
+    /// Vanilla 8px-wide TempleGate using CloseBehindPlayerAlways.
+    TempleGate,
     /// Simulator-native constant-velocity Solid used to exercise Monocle
     /// carrying, pushing, and Player LiftSpeed inheritance independently of a
     /// specific vanilla entity state machine.
@@ -553,6 +555,21 @@ pub(crate) fn encode_celeste_rooms(
                         vec![],
                     ))
                 }
+                EntityKind::TempleGate => Some(element(
+                    "templeGate",
+                    [
+                        ("height", BinaryValue::Int(height)),
+                        ("id", BinaryValue::Int(id)),
+                        ("sprite", BinaryValue::String("default".to_owned())),
+                        (
+                            "type",
+                            BinaryValue::String("CloseBehindPlayerAlways".to_owned()),
+                        ),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![],
+                )),
                 EntityKind::MovingSolid => Some(element(
                     "celesteGymMovingSolid",
                     [
@@ -865,6 +882,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 "glider" => EntityKind::Glider,
                 "zipMover" => EntityKind::ZipMover,
                 "moveBlock" => EntityKind::MoveBlock,
+                "templeGate" => EntityKind::TempleGate,
                 "celesteGymMovingSolid" => EntityKind::MovingSolid,
                 _ => EntityKind::Unknown,
             };
@@ -880,7 +898,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 EntityKind::Cloud => 32.0,
                 EntityKind::BadelineBoost => 32.0,
                 EntityKind::Strawberry => 14.0,
-                EntityKind::TheoCrystal | EntityKind::Glider => 8.0,
+                EntityKind::TheoCrystal | EntityKind::Glider | EntityKind::TempleGate => 8.0,
                 _ => 8.0,
             };
             let default_h = match kind {
@@ -926,7 +944,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                     Rect::new(ex - 6.0, ey - 8.0, 6.0, 16.0),
                     Vec2::new(-1.0, 0.0),
                 ),
-                "bounceBlock" | "zipMover" => {
+                "bounceBlock" | "zipMover" | "templeGate" => {
                     (Rect::new(ex, ey, raw_width, raw_height), Vec2::default())
                 }
                 "moveBlock" => {
@@ -1078,6 +1096,7 @@ impl Map {
                         | EntityKind::MoveBlock
                         | EntityKind::MovingSolid
                         | EntityKind::ZipMover
+                        | EntityKind::TempleGate
                 ) && entity.bounds.intersects(rect)
             })
     }
@@ -1308,6 +1327,30 @@ mod tests {
         assert_eq!(entity.bounds, Rect::new(352.0, -120.0, 32.0, 16.0));
         assert_eq!(entity.direction, Vec2::new(1.0, 0.0));
         assert_eq!(entity.name, "moveBlock");
+    }
+
+    #[test]
+    fn vanilla_close_behind_player_temple_gate_round_trips_through_celeste_binary() {
+        let map = Map {
+            bounds: Rect::new(320.0, -240.0, 320.0, 184.0),
+            entities: vec![Entity {
+                kind: EntityKind::TempleGate,
+                bounds: Rect::new(352.0, -120.0, 8.0, 48.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "templeGate".to_owned(),
+            }],
+            ..Map::default()
+        };
+
+        let encoded = encode_celeste_map(&map, "CelesteGymTest", "gate").unwrap();
+        let decoded = decode_map_room(&encoded, Some("gate")).unwrap();
+        let entity = decoded.entities.first().unwrap();
+        assert_eq!(entity.kind, EntityKind::TempleGate);
+        assert_eq!(entity.bounds, Rect::new(352.0, -120.0, 8.0, 48.0));
+        assert_eq!(entity.name, "templeGate");
     }
 
     #[test]

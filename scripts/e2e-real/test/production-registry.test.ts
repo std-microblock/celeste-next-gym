@@ -8,12 +8,12 @@ describe('production scenario registry', () => {
   const registry = buildRegistry(scenarios)
 
   it('derives all target and status counts from explicit indexes', () => {
-    assert.equal(registry.scenarios.length, 166)
-    assert.equal(registry.byTarget.get('playground')?.length, 124)
+    assert.equal(registry.scenarios.length, 167)
+    assert.equal(registry.byTarget.get('playground')?.length, 125)
     assert.equal(registry.byTarget.get('area-1')?.length, 36)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 149, candidate: 17 })
+    assert.deepEqual(registry.counts, { active: 149, candidate: 18 })
   })
 
   it('keeps evidence-less scenarios as opt-in candidates', () => {
@@ -36,6 +36,7 @@ describe('production scenario registry', () => {
       'entity-4.24-bumper-holdable-dash-smuggle',
       'entity-4.26-jellyvator',
       'entity-4.26-theovator',
+      'entity-4.28-koral-clip',
       'entity-4.29-springboost-cancel',
       'entity-4.6.2-cloud-hyper-bunnyhop',
     ])
@@ -60,6 +61,14 @@ describe('production scenario registry', () => {
     assert.equal(seeker.mapParts.length, 1)
     assert.equal(seeker.mapParts[0]?.id, 'tech.entity-4.19-seeker-bounce')
     assert.deepEqual(seeker.mapParts[0]?.dependencies, [])
+  })
+
+  it('keeps the TempleGate squish proof in its own map part', () => {
+    const koral = registry.scenarios.find((candidate) => candidate.techniqueIds.includes('4.28'))
+    assert.ok(koral)
+    assert.equal(koral.mapParts.length, 1)
+    assert.equal(koral.mapParts[0]?.id, 'tech.entity-4.28-koral-clip')
+    assert.deepEqual(koral.mapParts[0]?.dependencies, [])
   })
 
   it('keeps every reform proof in an independently named map part', () => {

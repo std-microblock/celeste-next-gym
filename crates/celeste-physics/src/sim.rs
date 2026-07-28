@@ -145,6 +145,7 @@ pub fn simulate_trace(
     initialize_gliders(&mut snapshot, &mut runtime_map);
     initialize_clouds(&mut snapshot, &mut runtime_map);
     initialize_seekers(&mut snapshot, &mut runtime_map);
+    initialize_temple_gates(&mut snapshot, &mut runtime_map);
     position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
     let mut states = Vec::with_capacity(frames + 1);
     states.push(snapshot.clone());
@@ -361,6 +362,16 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         .iter()
         .all(|value| value.is_finite())
     });
+    let temple_gates_are_finite = s.temple_gates.iter().all(|gate| {
+        [
+            gate.position.x,
+            gate.position.y,
+            gate.current_height,
+            gate.closed_height,
+        ]
+        .iter()
+        .all(|value| value.is_finite())
+    });
     if values.iter().all(|x| x.is_finite())
         && zip_movers_are_finite
         && bounce_blocks_are_finite
@@ -369,6 +380,7 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         && gliders_are_finite
         && clouds_are_finite
         && seekers_are_finite
+        && temple_gates_are_finite
     {
         Ok(())
     } else {
@@ -394,8 +406,13 @@ fn initialize_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
         }
         let state = &mut p.theo_crystals[theo_index];
         state.held = p.holding_theo == Some(theo_index as u16);
-        entity.bounds.x = state.position.x - 4.0;
-        entity.bounds.y = state.position.y - 10.0;
+        if state.dead {
+            entity.bounds.x = -1_000_000.0;
+            entity.bounds.y = -1_000_000.0;
+        } else {
+            entity.bounds.x = state.position.x - 4.0;
+            entity.bounds.y = state.position.y - 10.0;
+        }
         entity.bounds.width = 8.0;
         entity.bounds.height = 10.0;
     }
@@ -424,8 +441,13 @@ fn initialize_gliders(p: &mut PlayerSnapshot, map: &mut Map) {
         }
         let state = &mut p.gliders[glider_index];
         state.held = p.holding_glider == Some(glider_index as u16);
-        entity.bounds.x = state.position.x - 4.0;
-        entity.bounds.y = state.position.y - 10.0;
+        if state.removed {
+            entity.bounds.x = -1_000_000.0;
+            entity.bounds.y = -1_000_000.0;
+        } else {
+            entity.bounds.x = state.position.x - 4.0;
+            entity.bounds.y = state.position.y - 10.0;
+        }
         entity.bounds.width = 8.0;
         entity.bounds.height = 10.0;
     }
@@ -879,6 +901,316 @@ fn advance_seekers(p: &mut PlayerSnapshot, map: &mut Map) {
             12.0,
         );
         p.seekers[seeker_index] = seeker;
+    }
+}
+
+fn solid_at_with_gate(
+    map: &Map,
+    rect: Rect,
+    pusher_index: usize,
+    pusher_collidable: bool,
+) -> bool {
+    map.static_solid_at(rect)
+        || map.entities.iter().enumerate().any(|(index, entity)| {
+            let solid = matches!(
+                entity.kind,
+                EntityKind::DreamBlock
+                    | EntityKind::BounceBlock
+                    | EntityKind::MoveBlock
+                    | EntityKind::MovingSolid
+                    | EntityKind::ZipMover
+                    | EntityKind::TempleGate
+            );
+            solid
+                && (index != pusher_index || pusher_collidable)
+                && entity.bounds.intersects(rect)
+        })
+}
+
+fn jump_thru_blocks_actor(map: &Map, rect: Rect, previous_bottom: f32) -> bool {
+    map.entities.iter().any(|entity| {
+        matches!(entity.kind, EntityKind::JumpThru | EntityKind::Cloud)
+            && previous_bottom <= entity.bounds.y
+            && entity.bounds.intersects(rect)
+    })
+}
+
+fn squish_wiggle_candidate<F>(
+    current: Vec2,
+    target: Vec2,
+    mut collides: F,
+) -> Option<Vec2>
+where
+    F: FnMut(Vec2) -> bool,
+{
+    for origin in [current, target] {
+        for x in 0..=3 {
+            for y in 0..=3 {
+                if x == 0 && y == 0 {
+                    continue;
+                }
+                for sign_x in [1.0, -1.0] {
+                    for sign_y in [1.0, -1.0] {
+                        let candidate = Vec2::new(
+                            origin.x + x as f32 * sign_x,
+                            origin.y + y as f32 * sign_y,
+                        );
+                        if !collides(candidate) {
+                            return Some(candidate);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+fn squish_player(
+    p: &mut PlayerSnapshot,
+    map: &Map,
+    gate_index: usize,
+    target: Vec2,
+) {
+    let ducked = !p.ducking;
+    if ducked {
+        p.ducking = true;
+        if !solid_at_with_gate(
+            map,
+            duck_player_rect(p.pos.x, p.pos.y),
+            gate_index,
+            true,
+        ) {
+            return;
+        }
+        let was = p.pos;
+        p.pos = target;
+        if !solid_at_with_gate(
+            map,
+            duck_player_rect(p.pos.x, p.pos.y),
+            gate_index,
+            true,
+        ) {
+            return;
+        }
+        p.pos = was;
+    }
+
+    let state = p.state;
+    let preserved = p.star_fly_hitbox_preserved;
+    let ducking = p.ducking;
+    let candidate = squish_wiggle_candidate(p.pos, target, |position| {
+        let rect = if state == PlayerState::StarFly {
+            star_fly_rect(position.x, position.y)
+        } else if preserved {
+            star_fly_hurt_rect(position.x, position.y)
+        } else if ducking {
+            duck_player_rect(position.x, position.y)
+        } else {
+            player_rect(position.x, position.y)
+        };
+        solid_at_with_gate(map, rect, gate_index, true)
+    });
+    if let Some(position) = candidate {
+        p.pos = position;
+        if ducked
+            && !solid_at_with_gate(
+                map,
+                player_rect(p.pos.x, p.pos.y),
+                gate_index,
+                false,
+            )
+        {
+            p.ducking = false;
+        }
+    } else {
+        p.dead = true;
+        p.speed = Vec2::default();
+        p.death_freeze_pending = true;
+        p.respawn_frames = 95;
+    }
+}
+
+fn move_player_v_from_gate(
+    p: &mut PlayerSnapshot,
+    map: &Map,
+    gate_index: usize,
+    amount: i32,
+) {
+    let target = Vec2::new(p.pos.x, p.pos.y + amount as f32);
+    let sign = amount.signum();
+    for _ in 0..amount.unsigned_abs() {
+        let next = Vec2::new(p.pos.x, p.pos.y + sign as f32);
+        let next_rect = current_player_rect(p, next.x, next.y);
+        let blocked = solid_at_with_gate(map, next_rect, gate_index, false)
+            || (sign > 0
+                && jump_thru_blocks_actor(
+                    map,
+                    next_rect,
+                    current_player_rect(p, p.pos.x, p.pos.y).bottom(),
+                ));
+        if blocked {
+            p.movement_remainder.y = 0.0;
+            squish_player(p, map, gate_index, target);
+            return;
+        }
+        p.pos = next;
+    }
+}
+
+fn move_theo_v_from_gate(
+    p: &mut PlayerSnapshot,
+    theo_index: usize,
+    map: &Map,
+    gate_index: usize,
+    amount: i32,
+) {
+    let mut theo = p.theo_crystals[theo_index].clone();
+    let target = Vec2::new(theo.position.x, theo.position.y + amount as f32);
+    let sign = amount.signum();
+    for _ in 0..amount.unsigned_abs() {
+        let next = Vec2::new(theo.position.x, theo.position.y + sign as f32);
+        let next_rect = theo_body_rect(next);
+        let blocked = solid_at_with_gate(map, next_rect, gate_index, false)
+            || (sign > 0
+                && jump_thru_blocks_actor(
+                    map,
+                    next_rect,
+                    theo_body_rect(theo.position).bottom(),
+                ));
+        if blocked {
+            theo.remainder.y = 0.0;
+            if let Some(position) = squish_wiggle_candidate(theo.position, target, |position| {
+                solid_at_with_gate(map, theo_body_rect(position), gate_index, true)
+            }) {
+                theo.position = position;
+            } else {
+                theo.dead = true;
+                theo.held = false;
+                p.holding_theo = None;
+                p.dead = true;
+                p.speed = Vec2::default();
+                p.death_freeze_pending = true;
+                p.respawn_frames = 95;
+            }
+            p.theo_crystals[theo_index] = theo;
+            return;
+        }
+        theo.position = next;
+    }
+    p.theo_crystals[theo_index] = theo;
+}
+
+fn move_glider_v_from_gate(
+    p: &mut PlayerSnapshot,
+    glider_index: usize,
+    map: &Map,
+    gate_index: usize,
+    amount: i32,
+) {
+    let mut glider = p.gliders[glider_index].clone();
+    let target = Vec2::new(glider.position.x, glider.position.y + amount as f32);
+    let sign = amount.signum();
+    for _ in 0..amount.unsigned_abs() {
+        let next = Vec2::new(glider.position.x, glider.position.y + sign as f32);
+        let next_rect = glider_body_rect(next);
+        let blocked = solid_at_with_gate(map, next_rect, gate_index, false)
+            || (sign > 0
+                && jump_thru_blocks_actor(
+                    map,
+                    next_rect,
+                    glider_body_rect(glider.position).bottom(),
+                ));
+        if blocked {
+            glider.remainder.y = 0.0;
+            if let Some(position) = squish_wiggle_candidate(glider.position, target, |position| {
+                solid_at_with_gate(map, glider_body_rect(position), gate_index, true)
+            }) {
+                glider.position = position;
+            } else {
+                glider.removed = true;
+                glider.held = false;
+                p.holding_glider = None;
+            }
+            p.gliders[glider_index] = glider;
+            return;
+        }
+        glider.position = next;
+    }
+    p.gliders[glider_index] = glider;
+}
+
+fn close_temple_gate(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    gate_index: usize,
+    gate: &mut crate::TempleGateSnapshot,
+) {
+    let old_height = gate.current_height as i32;
+    let close_height = gate.closed_height as i32;
+    let mut temporary_y = gate.position.y;
+    let mut temporary_height = gate.current_height;
+    if temporary_height < 64.0 {
+        temporary_y -= 64.0 - temporary_height;
+        temporary_height = 64.0;
+    }
+    let old_bottom = temporary_y + temporary_height;
+    let move_y = close_height - old_height;
+    temporary_y += move_y as f32;
+    let moved_gate = Rect::new(gate.position.x, temporary_y, 8.0, temporary_height);
+    map.entities[gate_index].bounds = moved_gate;
+
+    let player_rect = current_player_rect(p, p.pos.x, p.pos.y);
+    if moved_gate.intersects(player_rect) {
+        let push = move_y - (player_rect.y - old_bottom) as i32;
+        move_player_v_from_gate(p, map, gate_index, push);
+    }
+    for theo_index in 0..p.theo_crystals.len() {
+        if p.theo_crystals[theo_index].dead {
+            continue;
+        }
+        let body = theo_body_rect(p.theo_crystals[theo_index].position);
+        if moved_gate.intersects(body) {
+            let push = move_y - (body.y - old_bottom) as i32;
+            move_theo_v_from_gate(p, theo_index, map, gate_index, push);
+        }
+    }
+    for glider_index in 0..p.gliders.len() {
+        if p.gliders[glider_index].removed {
+            continue;
+        }
+        let body = glider_body_rect(p.gliders[glider_index].position);
+        if moved_gate.intersects(body) {
+            let push = move_y - (body.y - old_bottom) as i32;
+            move_glider_v_from_gate(p, glider_index, map, gate_index, push);
+        }
+    }
+
+    gate.current_height = gate.closed_height;
+    gate.open = false;
+    gate.triggered = true;
+    map.entities[gate_index].bounds = Rect::new(
+        gate.position.x,
+        gate.position.y,
+        8.0,
+        gate.closed_height,
+    );
+}
+
+fn advance_temple_gates(p: &mut PlayerSnapshot, map: &mut Map) {
+    let entity_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::TempleGate).then_some(index))
+        .collect();
+    for (snapshot_index, entity_index) in entity_indices.into_iter().enumerate() {
+        let mut gate = p.temple_gates[snapshot_index].clone();
+        let player_left = current_player_rect(p, p.pos.x, p.pos.y).x;
+        if gate.open && !gate.triggered && player_left > gate.position.x + 12.0 {
+            close_temple_gate(p, map, entity_index, &mut gate);
+        }
+        p.temple_gates[snapshot_index] = gate;
     }
 }
 
@@ -1738,6 +2070,35 @@ fn initialize_seekers(p: &mut PlayerSnapshot, map: &mut Map) {
     }
 }
 
+fn initialize_temple_gates(p: &mut PlayerSnapshot, map: &mut Map) {
+    let gate_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::TempleGate).then_some(index))
+        .collect();
+    p.temple_gates.truncate(gate_indices.len());
+    for (gate_index, entity_index) in gate_indices.into_iter().enumerate() {
+        let entity = &mut map.entities[entity_index];
+        if gate_index == p.temple_gates.len() {
+            p.temple_gates.push(crate::TempleGateSnapshot {
+                position: Vec2::new(entity.bounds.x, entity.bounds.y),
+                current_height: 0.0,
+                closed_height: entity.bounds.height,
+                open: true,
+                triggered: false,
+            });
+        }
+        let gate = &p.temple_gates[gate_index];
+        entity.bounds = Rect::new(
+            gate.position.x,
+            gate.position.y,
+            8.0,
+            gate.current_height,
+        );
+    }
+}
+
 fn hit_theo_spring(theo: &mut crate::TheoCrystalSnapshot, map: &Map) {
     if theo.held {
         return;
@@ -1783,6 +2144,11 @@ fn advance_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
         .collect();
     for (theo_index, entity_index) in entity_indices.into_iter().enumerate() {
         let mut theo = p.theo_crystals[theo_index].clone();
+        if theo.dead {
+            map.entities[entity_index].bounds.x = -1_000_000.0;
+            map.entities[entity_index].bounds.y = -1_000_000.0;
+            continue;
+        }
         theo.cannot_hold_timer = (theo.cannot_hold_timer - DT).max(0.0);
         theo.gravity_timer = (theo.gravity_timer - DT).max(0.0);
         if p.holding_theo == Some(theo_index as u16) {
@@ -1903,6 +2269,11 @@ fn advance_gliders(p: &mut PlayerSnapshot, map: &mut Map) {
         .collect();
     for (glider_index, entity_index) in entity_indices.into_iter().enumerate() {
         let mut glider = p.gliders[glider_index].clone();
+        if glider.removed {
+            map.entities[entity_index].bounds.x = -1_000_000.0;
+            map.entities[entity_index].bounds.y = -1_000_000.0;
+            continue;
+        }
         glider.cannot_hold_timer = (glider.cannot_hold_timer - DT).max(0.0);
         glider.gravity_timer = (glider.gravity_timer - DT).max(0.0);
         glider.no_gravity_timer = (glider.no_gravity_timer - DT).max(0.0);
@@ -2238,6 +2609,7 @@ fn step(
         advance_gliders(p, map);
         advance_clouds(p, map);
         advance_seekers(p, map);
+        advance_temple_gates(p, map);
         p.on_ground = grounded(p, map);
         return Ok(());
     }
@@ -2268,6 +2640,7 @@ fn step(
             advance_gliders(p, map);
             advance_clouds(p, map);
             advance_seekers(p, map);
+            advance_temple_gates(p, map);
             p.on_ground = grounded(p, map);
             return Ok(());
         }
@@ -2322,6 +2695,7 @@ fn step(
     advance_gliders(p, map);
     advance_clouds(p, map);
     advance_seekers(p, map);
+    advance_temple_gates(p, map);
     p.on_ground = grounded(p, map);
     Ok(())
 }
@@ -10599,6 +10973,110 @@ mod tests {
         assert_eq!(top.stamina, 110.0);
         assert_eq!(top.freeze_timer, 0.15);
         assert_eq!(top.seekers[0].state, 6);
+    }
+
+    fn temple_gate_map(obstacle_height: f32) -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            solids: vec![Rect::new(96.0, 148.0, 16.0, obstacle_height)],
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::TempleGate,
+                    bounds: Rect::new(100.0, 100.0, 8.0, 48.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "templeGate".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::TheoCrystal,
+                    bounds: Rect::new(100.0, 135.0, 8.0, 10.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "theoCrystal".to_owned(),
+                },
+            ],
+            ..Map::default()
+        }
+    }
+
+    #[test]
+    fn close_behind_player_gate_uses_target_position_fallback_to_clip_theo() {
+        let map = temple_gate_map(1.0);
+        let p = PlayerSnapshot {
+            pos: Vec2::new(120.0, 160.0),
+            theo_crystals: vec![crate::TheoCrystalSnapshot {
+                position: Vec2::new(104.0, 145.0),
+                ..crate::TheoCrystalSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let closed = simulate(p.clone(), &[InputState::default()], &map, 1).unwrap();
+
+        assert!(closed.temple_gates[0].triggered);
+        assert!(!closed.temple_gates[0].open);
+        assert_eq!(closed.temple_gates[0].current_height, 48.0);
+        assert_eq!(closed.theo_crystals[0].position, Vec2::new(104.0, 159.0));
+        assert!(!closed.theo_crystals[0].dead);
+        assert!(!closed.dead);
+
+        let whole = simulate(p, &[InputState::default(); 3], &map, 3).unwrap();
+        let split = simulate(closed, &[InputState::default(); 2], &map, 2).unwrap();
+        assert_eq!(split, whole);
+    }
+
+    #[test]
+    fn player_squish_tries_ducked_target_position_before_actor_wiggles() {
+        let mut map = temple_gate_map(1.0);
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(104.0, 145.0),
+            ..PlayerSnapshot::default()
+        };
+        initialize_temple_gates(&mut p, &mut map);
+        let mut gate = p.temple_gates[0].clone();
+        close_temple_gate(&mut p, &mut map, 0, &mut gate);
+
+        assert_eq!(p.pos, Vec2::new(104.0, 159.0));
+        assert!(p.ducking);
+        assert!(!p.dead);
+    }
+
+    #[test]
+    fn failed_gate_squish_kills_theo_with_player_and_removes_glider() {
+        let mut map = temple_gate_map(20.0);
+        map.entities.push(crate::Entity {
+            kind: EntityKind::Glider,
+            bounds: Rect::new(100.0, 135.0, 8.0, 10.0),
+            direction: Vec2::default(),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "glider".to_owned(),
+        });
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(120.0, 160.0),
+            theo_crystals: vec![crate::TheoCrystalSnapshot {
+                position: Vec2::new(104.0, 145.0),
+                ..crate::TheoCrystalSnapshot::default()
+            }],
+            gliders: vec![crate::GliderSnapshot {
+                position: Vec2::new(104.0, 145.0),
+                ..crate::GliderSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        initialize_temple_gates(&mut p, &mut map);
+        initialize_theo_crystals(&mut p, &mut map);
+        initialize_gliders(&mut p, &mut map);
+        let mut gate = p.temple_gates[0].clone();
+        close_temple_gate(&mut p, &mut map, 0, &mut gate);
+
+        assert!(p.theo_crystals[0].dead);
+        assert!(p.dead);
+        assert!(p.gliders[0].removed);
     }
 
     #[test]

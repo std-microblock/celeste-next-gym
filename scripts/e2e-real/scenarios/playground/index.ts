@@ -123,6 +123,7 @@ import { scenario as scenario120 } from './entity-4.26-jellyvator.js'
 import { scenario as scenario121 } from './entity-4.29-springboost-cancel.js'
 import { scenario as scenario122 } from './entity-4.21-holdable-slash.js'
 import { scenario as scenario123 } from './entity-4.19-seeker-bounce.js'
+import { scenario as scenario124 } from './entity-4.28-koral-clip.js'
 
 export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario0,
@@ -249,4 +250,5 @@ export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario121,
   scenario122,
   scenario123,
+  scenario124,
 ])
