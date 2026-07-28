@@ -154,6 +154,8 @@ pub fn encode_map_fixture(fixture: &CelesteMapFixture) -> Result<Vec<u8>, MapFix
                     .filter(|candidate| candidate.name != room.name)
                     .map(|candidate| rect(candidate.bounds))
                     .collect(),
+                transition_runtime: vec![],
+                room_spawns: vec![vec2(room.spawn)],
                 spawn: vec2(room.spawn),
                 solids: room.solids.iter().copied().map(rect).collect(),
                 entities: room.entities.iter().map(entity).collect(),
