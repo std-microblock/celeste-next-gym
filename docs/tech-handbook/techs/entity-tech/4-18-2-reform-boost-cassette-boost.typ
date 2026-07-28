@@ -4,7 +4,7 @@
   id: "4.18.2",
   title-zh: "Reform Boost 重组加速",
   title-en: "Reform Boost (Cassette Boost)",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [卡带方块在玩家靠近顶部时重组，会把玩家向上校正到顶面；同步起跳可把这段瞬移转成巨大 liftboost。],
   description-en: [CassetteBlock checks BlockedCheck, may wiggle an overlapping actor up by at most four pixels, then enables collision and shifts its Solid upward by one pixel. Rust reproduces the beat/index lifecycle and an ordinary real Everest run matches all nine core fields, but the formal recording lifecycle still has no trustworthy video artifact.],
   source-evidence: evidence(
@@ -15,6 +15,6 @@
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/map.rs; crates/celeste-physics/src/sim.rs; crates/celeste-physics/src/types.rs], symbol: [EntityKind.CassetteBlock; advance_cassette_blocks; advance_cassette_manager; CassetteBlockSnapshot], note: [快照持久化 beat/index、Activated/Collidable 与两阶段 Position；重组按源码先尝试玩家 1..4px 上移，再恢复 Solid 并用 -60px/s lift 执行 1px MoveV。custom cassette music 首帧只创建 sfx、不调用 AdvanceMusic 的分支也保存在 startup_music_pending。]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [cassette_reform_wiggles_player_four_pixels_then_carries_one; cassette_raise_uses_separate_will_toggle_and_activation_pixels; fresh_custom_cassette_manager_skips_music_advance_on_its_first_update], note: [回归固定验证 4px wiggle 后再被 Solid 上移 1px、预切换与正式激活分帧，并锁定 custom manager 首帧不推进音乐。]),
-  e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.18.2-reform-boost-cassette-boost.ts; scripts/e2e-real/scenarios/cassette-spinner-parts.ts], symbol: [entity-4.18.2-reform-boost-cassette-boost; TECH_ENTITY_4_18_2_REFORM_BOOST], note: [独立双颜色 CassetteBlock MapPart 的普通真实 Everest 运行采集 101 个状态与 130 个反射字段；九个必需字段逐帧一致，最大 position/speed 误差均为 0，阈值 0.01。但正式 record mode 的 presentation manifest 以 stopped / scenario execution failed 收尾，绑定 trace 的 101 个状态全部停在 pos=[96, 496]，没有可信 MP4、poster 或 artifacts manifest，因此暂不转正。]),
+  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.18.2-reform-boost-cassette-boost.ts; scripts/e2e-real/scenarios/cassette-spinner-parts.ts], symbol: [entity-4.18.2-reform-boost-cassette-boost; TECH_ENTITY_4_18_2_REFORM_BOOST], note: [独立双颜色 CassetteBlock MapPart 的普通真实 Everest 运行采集 101 个状态与 130 个反射字段；九个必需字段逐帧一致，最大 position/speed 误差均为 0，阈值 0.01。视频仍有明确技术债：正式 record mode 的 presentation manifest 以 stopped / scenario execution failed 收尾，绑定 trace 的 101 个状态全部停在 pos=[96, 496]，没有可信 MP4、poster 或 artifacts manifest，须在最终 record-all 前修复。]),
+  candidate-e2e: none,
 )
