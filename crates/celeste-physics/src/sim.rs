@@ -3780,6 +3780,10 @@ fn step(
         advance_cassette_blocks(p, map);
         advance_cassette_manager(p, map);
         advance_spinners(p, map);
+        // `Actor.OnGround()` is a live collision probe. A screen transition
+        // pauses Player.Update, but it does not make a player standing on a
+        // floor geometrically airborne for snapshot capture.
+        p.on_ground = grounded(p, map);
         return Ok(());
     }
     advance_badeline_boost_relocation(p);
@@ -6278,7 +6282,6 @@ fn begin_transition(p: &mut PlayerSnapshot, next: Rect, direction: Vec2) {
     // more to observe cameraAt == 1 and run OnTransition. Preserve that final
     // coroutine-resume frame in addition to the 0.65-second camera duration.
     p.transition_timer = TRANSITION_TIME + p.frame_delta_time;
-    p.on_ground = false;
 }
 
 fn update_transition(p: &mut PlayerSnapshot, map: &Map) {
@@ -6286,7 +6289,6 @@ fn update_transition(p: &mut PlayerSnapshot, map: &Map) {
     p.pos.x = approach(p.pos.x, p.transition_target.x, max_move);
     p.pos.y = approach(p.pos.y, p.transition_target.y, max_move);
     p.transition_timer = (p.transition_timer - p.frame_delta_time).max(0.0);
-    p.on_ground = false;
     // Player.TransitionTo rounds speed and clears Actor remainders as soon as
     // the player reaches the transfer target; the camera coroutine can keep
     // the room transition open for many more frames after that return value.
@@ -14531,7 +14533,7 @@ mod tests {
                 ..InputState::default()
             })
             .collect();
-        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+        let trace = simulate_trace(player.clone(), &inputs, &map, inputs.len() as u32).unwrap();
 
         let boost = trace
             .states
@@ -14566,6 +14568,11 @@ mod tests {
         let still_dashing_past_reuse = &trace.states[boost_frame + 30];
         assert_eq!(still_dashing_past_reuse.state, PlayerState::Dash);
         assert!(still_dashing_past_reuse.booster_boosting);
+        let ground_contact_before_transition = &trace.states[125];
+        assert!(
+            ground_contact_before_transition.on_ground,
+            "a horizontal transition preserves Actor.OnGround's live floor probe"
+        );
         assert!(trace.states.iter().any(|state| {
             state.state == PlayerState::Normal
                 && state.lookouts[0].interacting
