@@ -3747,11 +3747,12 @@ fn advance_post_player_entities(p: &mut PlayerSnapshot, map: &mut Map, input: In
     advance_clouds(p, map);
     advance_seekers(p, map);
     advance_temple_gates(p, map);
-    // Player is loaded before room entities. CassetteBlock.Update runs before
-    // the manager inserted after the first block, preserving WillToggle now /
-    // activation on the following frame.
-    advance_cassette_blocks(p, map);
+    // Level queues the first CassetteBlock and then its manager during room
+    // loading. The entity-list flush gives the manager the earlier update
+    // slot: its beat writes Activated, then CassetteBlock.Update applies that
+    // value to Collidable in this same post-Player phase.
     advance_cassette_manager(p, map);
+    advance_cassette_blocks(p, map);
     advance_spinners(p, map);
 }
 
@@ -13715,10 +13716,10 @@ mod tests {
     fn disappearing_cassette_cornerboost_restores_retained_speed_after_entity_phase() {
         let p = PlayerSnapshot {
             // The player's right edge is four pixels left of cassette index 0.
-            // Frame one collides, then the beat-8 activation change is written
-            // after Player.Update. CassetteBlock.Update does not actually
-            // clear collision until the following entity phase, so retained
-            // speed can only return on the third player update.
+            // Frame one collides. The manager then writes the beat-8
+            // activation change and CassetteBlock.Update clears collision in
+            // the same entity phase, so the second Player.Update refunds the
+            // retained speed.
             pos: Vec2::new(60.0, 112.0),
             speed: Vec2::new(120.0, 0.0),
             cassette_manager: crate::CassetteManagerSnapshot {
@@ -13736,19 +13737,17 @@ mod tests {
         assert_eq!(trace.states[1].speed.x, 0.0);
         assert!(trace.states[1].wall_speed_retention_timer > 0.05);
         assert!(!trace.states[1].cassette_blocks[0].activated);
-        assert!(trace.states[1].cassette_blocks[0].collidable);
-        assert!(trace.states[2].wall_speed_retention_timer > 0.0);
-        assert!(!trace.states[2].cassette_blocks[0].collidable);
-        assert_eq!(trace.states[3].wall_speed_retention_timer, 0.0);
-        assert!(trace.states[3].speed.x > 90.0);
+        assert!(!trace.states[1].cassette_blocks[0].collidable);
+        assert_eq!(trace.states[2].wall_speed_retention_timer, 0.0);
+        assert!(trace.states[2].speed.x > 90.0);
     }
 
     #[test]
     fn disappearing_cassette_cornerboost_fixture_times_hit_clear_and_refund() {
         // This is the generated candidate's timing in a compact map: input
         // 27 hits the initially-active index 1 wall, manager activation then
-        // disables it, input 28's entity phase clears it, and the following
-        // Player.Update restores the retained 90-speed run.
+        // disables it, and that same input's CassetteBlock.Update clears the
+        // wall before the following Player.Update restores the 90-speed run.
         let map = Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
             solids: vec![Rect::new(0.0, 496.0, 960.0, 48.0)],
@@ -13791,11 +13790,10 @@ mod tests {
         .unwrap();
         assert_eq!(trace.states[28].pos, Vec2::new(124.0, 496.0));
         assert_eq!(trace.states[28].speed.x, 0.0);
-        assert!(trace.states[28].cassette_blocks[1].collidable);
-        assert!(!trace.states[29].cassette_blocks[1].collidable);
-        assert_eq!(trace.states[30].pos, Vec2::new(126.0, 496.0));
-        assert_eq!(trace.states[30].speed.x, 90.0);
-        assert_eq!(trace.states[30].wall_speed_retention_timer, 0.0);
+        assert!(!trace.states[28].cassette_blocks[1].collidable);
+        assert_eq!(trace.states[29].pos, Vec2::new(126.0, 496.0));
+        assert_eq!(trace.states[29].speed.x, 90.0);
+        assert_eq!(trace.states[29].wall_speed_retention_timer, 0.0);
     }
 
     #[test]
@@ -13810,8 +13808,10 @@ mod tests {
         assert!(trace.states[0].cassette_manager.startup_music_pending);
         assert!(!trace.states[1].cassette_manager.startup_music_pending);
         assert_eq!(trace.states[1].cassette_manager.beat_timer, 0.0);
-        assert_eq!(trace.states[81].pos.y, 106.0);
-        assert_eq!(trace.states[82].pos.y, 101.0);
+        // The beat-8 manager update precedes the block update, allowing the
+        // reformed block to carry the frozen player in that same frame.
+        assert_eq!(trace.states[80].pos.y, 106.0);
+        assert_eq!(trace.states[81].pos.y, 101.0);
     }
 
     #[test]
