@@ -13302,24 +13302,35 @@ mod tests {
     }
 
     #[test]
-    fn disappearing_cassette_clears_collision_before_reactivation() {
+    fn disappearing_cassette_cornerboost_restores_retained_speed_after_entity_phase() {
         let p = PlayerSnapshot {
-            state: PlayerState::Frozen,
+            // The player's right edge is four pixels left of cassette index 0.
+            // Frame one collides, then the beat-8 activation change is written
+            // after Player.Update. CassetteBlock.Update does not actually
+            // clear collision until the following entity phase, so retained
+            // speed can only return on the third player update.
+            pos: Vec2::new(60.0, 112.0),
+            speed: Vec2::new(120.0, 0.0),
             cassette_manager: crate::CassetteManagerSnapshot {
                 initialized: true,
                 startup_music_pending: false,
                 beat_timer: CASSETTE_BEAT_INTERVAL - DT * 0.5,
-                beat_index: 6,
-                current_index: 1,
+                beat_index: 7,
+                current_index: 0,
                 max_beat: 2,
                 tempo_mult: 1.0,
             },
             ..PlayerSnapshot::default()
         };
-        let trace = simulate_trace(p, &[InputState::default(); 12], &cassette_map(), 12).unwrap();
-        assert!(!trace.states[1].cassette_blocks[0].collidable);
-        assert!(trace.states[1].cassette_blocks[1].collidable);
-        assert!(trace.states[12].cassette_blocks[0].collidable);
+        let trace = simulate_trace(p, &[InputState::default(); 3], &cassette_map(), 3).unwrap();
+        assert_eq!(trace.states[1].speed.x, 0.0);
+        assert!(trace.states[1].wall_speed_retention_timer > 0.05);
+        assert!(!trace.states[1].cassette_blocks[0].activated);
+        assert!(trace.states[1].cassette_blocks[0].collidable);
+        assert!(trace.states[2].wall_speed_retention_timer > 0.0);
+        assert!(!trace.states[2].cassette_blocks[0].collidable);
+        assert_eq!(trace.states[3].wall_speed_retention_timer, 0.0);
+        assert!(trace.states[3].speed.x > 90.0);
     }
 
     #[test]
