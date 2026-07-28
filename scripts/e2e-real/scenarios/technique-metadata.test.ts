@@ -43,7 +43,7 @@ function techniqueCatalog(): TechniqueEvidence[] {
     return {
       id,
       status,
-      e2eSymbols: evidenceSymbols(text.match(/e2e-evidence:\s*evidence\(([\s\S]*?)\),\s*candidate-e2e:/)?.[1]),
+      e2eSymbols: evidenceSymbols(text.match(/e2e-evidence:\s*evidence\(([\s\S]*?)\),\s*(?:candidate-e2e:|\))/)?.[1]),
       candidateSymbols: evidenceSymbols(text.match(/candidate-e2e:\s*evidence\(([\s\S]*?)\),?\s*\n\)/)?.[1]),
     }
   })
@@ -56,8 +56,8 @@ describe('authoritative technique recording metadata', () => {
 
   it('assigns exactly one primary to every implemented technique and none to nonimplemented techniques', () => {
     assert.equal(techniques.length, 120)
-    assert.equal(techniques.filter((technique) => technique.status === 'implemented').length, 95)
-    assert.equal(techniques.filter((technique) => technique.status === 'unimplemented').length, 21)
+    assert.equal(techniques.filter((technique) => technique.status === 'implemented').length, 102)
+    assert.equal(techniques.filter((technique) => technique.status === 'unimplemented').length, 14)
     assert.equal(techniques.filter((technique) => technique.status === 'product-excluded').length, 4)
 
     const primaryCounts = new Map<string, number>()

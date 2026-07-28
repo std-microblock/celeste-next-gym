@@ -8,9 +8,10 @@ export const mapParts = [TECH_OTHER_5_1_3_BINO_INTERACTION_STORAGE] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: ['feature:lookout', 'feature:booster', 'feature:transition', 'storage:interaction-removal'],
   techniqueIds: ['5.1.3'],
+  recording: { primaryFor: ['5.1.3'], startFrame: 0, endFrame: 300 },
   mapParts,
   name: 'other-5.1.3-bino-interaction-storage',
   initial: { pos: [916, 496], speed: [0, 0], on_ground: true },

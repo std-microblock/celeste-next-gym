@@ -13,7 +13,7 @@ describe('production scenario registry', () => {
     assert.equal(registry.byTarget.get('area-1')?.length, 38)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 168, candidate: 20 })
+    assert.deepEqual(registry.counts, { active: 169, candidate: 19 })
   })
 
   it('keeps evidence-less scenarios as opt-in candidates', () => {
@@ -34,7 +34,6 @@ describe('production scenario registry', () => {
       'entity-4.29-springboost-cancel',
       'entity-4.6.2-cloud-hyper-bunnyhop',
       'other-5.1.2-bino-control-storage',
-      'other-5.1.3-bino-interaction-storage',
       'other-5.1.4-bino-extensions',
       'other-5.10-spinner-stunning',
       'other-5.11-spinner-freeze',
