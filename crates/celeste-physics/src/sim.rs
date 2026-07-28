@@ -3672,6 +3672,13 @@ fn advance_spinners(p: &mut PlayerSnapshot, map: &mut Map) {
 }
 
 fn advance_post_player_entities(p: &mut PlayerSnapshot, map: &mut Map, input: InputState) {
+    // Booster.BoostRoutine runs after Player.Update. It retains
+    // BoostingPlayer throughout Dash/RedDash, then releases the player and
+    // starts the one-second respawn timer on the first later state.
+    if p.booster_boosting && !matches!(p.state, PlayerState::Dash | PlayerState::RedDash) {
+        p.booster_boosting = false;
+        p.booster_reuse_timer = p.booster_reuse_timer.max(1.0);
+    }
     advance_zip_movers(p, map);
     advance_bounce_blocks(p, map);
     advance_move_blocks(p, map, input);
@@ -4621,6 +4628,10 @@ fn boost_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         return;
     }
     snap_to_boost_target(p, map);
+    // `Player.CallDashEvents` notifies CurrentBooster as the Boost state
+    // hands over to Dash. The Booster coroutine then keeps its
+    // `BoostingPlayer` guard until that dash has ended.
+    p.booster_boosting = true;
     if p.boost_red {
         begin_red_dash(p, manual.then_some(input), !manual);
     } else {
@@ -5591,12 +5602,17 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                 if !matches!(
                     p.state,
                     PlayerState::Boost | PlayerState::RedDash | PlayerState::HitSquash
-                ) && (p.booster_reuse_timer <= 0.0
-                    || p.last_booster_target
-                        != Vec2::new(
-                            entity.bounds.x + entity.bounds.width * 0.5,
-                            entity.bounds.y + entity.bounds.height * 0.5 + 2.0,
-                        )) =>
+                ) && {
+                    let target = Vec2::new(
+                        entity.bounds.x + entity.bounds.width * 0.5,
+                        entity.bounds.y + entity.bounds.height * 0.5 + 2.0,
+                    );
+                    // A regular Dash can enter a Booster, but not the same
+                    // Booster whose BoostRoutine is still awaiting the end
+                    // of this dash.
+                    !(p.booster_boosting && p.last_booster_target == target)
+                        && (p.booster_reuse_timer <= 0.0 || p.last_booster_target != target)
+                } =>
             {
                 p.state = PlayerState::Boost;
                 p.speed = Vec2::default();
@@ -14547,6 +14563,9 @@ mod tests {
         assert!(facing_after_interruption.facing);
         let after_dummy_walk = &trace.states[boost_frame + 24];
         assert_eq!(after_dummy_walk.state, PlayerState::Dash);
+        let still_dashing_past_reuse = &trace.states[boost_frame + 30];
+        assert_eq!(still_dashing_past_reuse.state, PlayerState::Dash);
+        assert!(still_dashing_past_reuse.booster_boosting);
         assert!(trace.states.iter().any(|state| {
             state.state == PlayerState::Normal
                 && state.lookouts[0].interacting

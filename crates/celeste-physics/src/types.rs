@@ -401,6 +401,9 @@ pub struct PlayerSnapshot {
     pub boost_red: bool,
     pub last_booster_target: Vec2,
     pub booster_reuse_timer: f32,
+    /// Mirrors the active Booster's `BoostingPlayer` flag after
+    /// `Player.CallDashEvents` consumes `CurrentBooster`.
+    pub booster_boosting: bool,
     /// Current `Level.Wind`, advanced by the source WindController rules.
     pub wind: Vec2,
     /// Persistent WindController target selected by the last entered wind trigger.
@@ -594,6 +597,7 @@ impl Default for PlayerSnapshot {
             boost_red: false,
             last_booster_target: Vec2::default(),
             booster_reuse_timer: 0.0,
+            booster_boosting: false,
             wind: Vec2::default(),
             wind_target: Vec2::default(),
             no_wind_timer: 0.0,
