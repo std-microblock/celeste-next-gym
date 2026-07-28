@@ -59,6 +59,8 @@ uint32_t celeste_simulator_snapshot_msgpack(
     const CelesteSimulatorHandle *handle, uint8_t *out_buffer, uint32_t out_size);
 uint32_t celeste_player_pod_from_msgpack(
     const uint8_t *snapshot_ptr, uint32_t snapshot_len, CelestePlayerPod *out_snapshot);
+uint32_t celeste_player_pod_to_msgpack(
+    const CelestePlayerPod *snapshot, uint8_t *out_buffer, uint32_t out_size);
 
 /* Maximum output size currently required for a named-MessagePack PlayerSnapshot. */
 uint32_t celeste_snapshot_size(void);

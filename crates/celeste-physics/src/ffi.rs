@@ -346,6 +346,34 @@ pub unsafe extern "C" fn celeste_player_pod_from_msgpack(
     .unwrap_or(0)
 }
 
+/// Convert a compact POD into a portable initial snapshot. Variable-length
+/// entity state is initialized empty; create a simulator to populate it from
+/// the selected map before exporting a resumable snapshot.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn celeste_player_pod_to_msgpack(
+    snapshot: *const CelestePlayerPod,
+    out_buffer: *mut u8,
+    out_size: u32,
+) -> u32 {
+    if snapshot.is_null() || out_buffer.is_null() {
+        return 0;
+    }
+    catch_unwind(|| {
+        let snapshot = snapshot_from_pod(unsafe { &*snapshot })?;
+        let encoded = rmp_serde::to_vec_named(&snapshot).ok()?;
+        if encoded.len() > out_size as usize {
+            return None;
+        }
+        unsafe {
+            ptr::copy_nonoverlapping(encoded.as_ptr(), out_buffer, encoded.len());
+        }
+        Some(encoded.len() as u32)
+    })
+    .ok()
+    .flatten()
+    .unwrap_or(0)
+}
+
 /// Conservative upper bound for the current named MessagePack snapshot representation.
 #[unsafe(no_mangle)]
 pub extern "C" fn celeste_snapshot_size() -> u32 {
@@ -527,5 +555,12 @@ mod tests {
         assert_eq!(pod.state, PlayerState::Dash as u8);
         assert_eq!(pod.pos, snapshot.pos);
         assert_ne!(pod.flags & FLAG_DUCKING, 0);
+        let mut encoded = vec![0; celeste_snapshot_size() as usize];
+        let encoded_len = unsafe {
+            celeste_player_pod_to_msgpack(&pod, encoded.as_mut_ptr(), encoded.len() as u32)
+        };
+        let decoded: PlayerSnapshot =
+            rmp_serde::from_slice(&encoded[..encoded_len as usize]).unwrap();
+        assert_eq!(CelestePlayerPod::from(&decoded), pod);
     }
 }
