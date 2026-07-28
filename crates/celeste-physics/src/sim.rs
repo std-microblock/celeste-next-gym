@@ -645,7 +645,13 @@ fn initialize_spinners(p: &mut PlayerSnapshot, map: &mut Map) {
                 collidable: true,
             });
         }
-        park_entity(&mut map.entities[entity_index]);
+        let state = &p.spinners[spinner_index];
+        if state.collidable {
+            let entity = &mut map.entities[entity_index];
+            entity.bounds = Rect::new(state.position.x - 8.0, state.position.y - 6.0, 16.0, 12.0);
+        } else {
+            park_entity(&mut map.entities[entity_index]);
+        }
     }
 }
 
@@ -3162,7 +3168,11 @@ fn advance_spinners(p: &mut PlayerSnapshot, map: &mut Map) {
             }
         }
         let entity = &mut map.entities[entity_index];
-        if state.visible && state.collidable {
+        // Entity.Visible only controls rendering. Vanilla leaves the freshly
+        // constructed spinner Collidable=true while Visible=false, so Player
+        // (which updates earlier in room order) can hit it once before the
+        // spinner's first Update clears collision and instantiates sprites.
+        if state.collidable {
             entity.bounds = Rect::new(state.position.x - 8.0, state.position.y - 6.0, 16.0, 12.0);
         } else {
             park_entity(entity);
@@ -12347,6 +12357,17 @@ mod tests {
         assert!(!trace.states[1].dead);
         assert!(trace.states[1].spinners[0].collidable);
         assert!(trace.states[2].dead);
+    }
+
+    #[test]
+    fn fresh_invisible_spinner_keeps_constructor_collision_for_player_phase() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(100.0, 100.0),
+            state: PlayerState::Frozen,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(p, &[InputState::default()], &spinner_map(), 1).unwrap();
+        assert!(trace.states[1].dead);
     }
 
     #[test]
