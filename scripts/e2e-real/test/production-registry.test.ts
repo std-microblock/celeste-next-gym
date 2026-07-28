@@ -206,8 +206,8 @@ describe('production scenario registry', () => {
     })
     assert.equal(new Set(parts).size, names.length)
     const ladder = registry.byName.get('entity-4.22.4-holdable-laddering')
-    const ladderGliders = ladder?.mapParts[0]?.rooms[0]?.entities.filter((entity) => entity.kind === 'glider') ?? []
-    assert.deepEqual(ladderGliders.map((entity) => entity.bounds[1]), [390, 380])
+    const ladderGliders = ladder?.mapParts[0]?.rooms[0]?.entities?.filter((entity) => entity.kind === 'glider') ?? []
+    assert.deepEqual(ladderGliders.map((entity) => entity.bounds?.[1]), [390, 380])
   })
 
   it('keeps grounded ultra cancel in its own Theo-only map part', () => {
