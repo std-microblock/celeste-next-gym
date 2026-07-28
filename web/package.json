@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "test": "vitest run",
+    "test": "npm run test:training",
+    "test:training": "node --experimental-transform-types scripts/validate-training.mts",
     "test:watch": "vitest",
     "test:wasm": "node scripts/smoke-wasm.mjs"
   },
