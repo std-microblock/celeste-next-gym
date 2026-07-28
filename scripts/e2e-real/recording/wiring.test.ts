@@ -57,7 +57,7 @@ describe('recording planning and lifecycle orchestration', () => {
     assert.equal(summary.techniqueCount, 86)
   })
 
-  it('rejects unknown, unimplemented, and candidate selections while deduplicating multi-primary scenarios', () => {
+  it('requires explicit opt-in for candidate master captures while deduplicating multi-primary scenarios', () => {
     const catalog = loadTechniqueCatalog(repoRoot)
     const registry = buildRegistry(scenarios, { implementedTechniqueIds: catalog.implementedIds })
     const unknown = parseConfig(['--record-tech', '999.999'], {}, repoRoot)
@@ -68,6 +68,15 @@ describe('recording planning and lifecycle orchestration', () => {
     const candidate = registry.scenarios.find((scenario) => scenario.status === 'candidate')!
     const candidateConfig = parseConfig(['--record', '--scenario', candidate.name], {}, repoRoot)
     assert.throws(() => createRecordingPlan(candidateConfig, registry, catalog), /candidate|excluded/)
+    const candidatePlan = createRecordingPlan(
+      parseConfig(['--record', '--scenario', candidate.name, '--include-candidates'], {}, repoRoot),
+      registry,
+      catalog,
+    )
+    assert.equal(candidatePlan.scenarioCount, 1)
+    assert.equal(candidatePlan.techniqueCount, 0)
+    assert.equal(candidatePlan.groups[0]?.scenarios[0]?.scenario, candidate)
+    assert.deepEqual(candidatePlan.groups[0]?.scenarios[0]?.techniqueIds, [])
 
     const base = scenarios.find((scenario) => scenario.status === 'active')!
     const shared = { ...base, name: 'shared-primary-test', techniqueIds: ['a', 'b'],
