@@ -23,7 +23,7 @@ pub use binary_packer::{
     BinaryElement, BinaryPackerWriteError, BinaryValue, encode_celeste_bin, parse_celeste_bin,
 };
 pub use map::{
-    Entity, EntityKind, Map, MapEncodeError, Rect, decode_map, decode_map_room, encode_celeste_map,
+    Entity, EntityKind, Map, MapEncodeError, Rect, RoomRuntime, decode_map, decode_map_room, encode_celeste_map,
     encode_map,
 };
 pub use map_fixture::{

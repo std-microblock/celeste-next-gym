@@ -940,6 +940,14 @@ fn attr_bool(el: &BinaryElement, key: &str, default: bool) -> bool {
 }
 
 fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapError> {
+    map_from_binary_inner(root, room, true)
+}
+
+fn map_from_binary_inner(
+    root: BinaryElement,
+    room: Option<&str>,
+    include_transition_runtime: bool,
+) -> Result<Map, MapError> {
     let levels = root
         .children
         .iter()
@@ -975,7 +983,7 @@ fn map_from_binary(root: BinaryElement, room: Option<&str>) -> Result<Map, MapEr
                 )
             })
             .collect(),
-        source_package: root.package,
+        source_package: root.package.clone(),
         ..Map::default()
     };
 
