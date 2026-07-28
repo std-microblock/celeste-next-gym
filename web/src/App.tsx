@@ -468,27 +468,34 @@ export default function App() {
   }
 
   return <div className={`app-shell ${mode === 'play' ? 'play-mode' : 'advanced-mode'}`}>
-    <nav className="mode-tabs" role="tablist" aria-label="页面模式">
-      <button role="tab" aria-selected={mode === 'play'} onClick={() => selectMode('play')}>游玩</button>
-      <button role="tab" aria-selected={mode === 'advanced'} onClick={() => selectMode('advanced')}>高级</button>
-    </nav>
-
-    {mode === 'play' ? <main className="play-workspace">
-      <GameView map={map} state={liveState} states={[]} frame={liveFrame} stale={false} />
-    </main> : <>
-      <div className="mountain-backdrop" />
-      <header className="topbar">
+    {mode === 'advanced' && <div className="mountain-backdrop" />}
+    <header className="topbar">
       <div className="brand-mark"><span className="wing">◇</span><div><strong>CELESTE</strong><em>NEXT GYM</em></div></div>
+      <nav className="mode-tabs" role="tablist" aria-label="页面模式">
+        <small>工作区</small>
+        <div>
+          <button role="tab" aria-selected={mode === 'play'} onClick={() => selectMode('play')}>游玩</button>
+          <button role="tab" aria-selected={mode === 'advanced'} onClick={() => selectMode('advanced')}>高级</button>
+        </div>
+      </nav>
       <div className={`wasm-status ${wasmStatus}`} title="celeste-wasm 0.2.0 · rebuilt from current Rust source"><i />WASM 0.2.0 <span>{wasmStatus === 'ready' ? 'ONLINE' : wasmStatus === 'error' ? 'FAILED' : 'BOOTING'}</span></div>
-      <div className="top-actions">
+      {mode === 'advanced' ? <div className="top-actions">
         <button disabled={wasmStatus !== 'ready'} onClick={() => setStartSettingsOpen(true)}>起点</button>
         <button onClick={() => setBindingsOpen(true)}>控制</button>
         <label className="file-button">导入时间线<input type="file" accept="application/json,.json" onChange={(event) => event.target.files?.[0] && void importRun(event.target.files[0])} /></label>
         <button onClick={exportRun}>导出时间线</button>
         <button onClick={() => void exportTrace()}>导出逐帧</button>
         <label className="file-button">对比逐帧<input type="file" accept="application/json,.json" onChange={(event) => event.target.files?.[0] && void compareTrace(event.target.files[0])} /></label>
-      </div>
-      </header>
+      </div> : <div className="play-room">
+        <small>LIVE ROOM</small>
+        <strong>{map.name}</strong>
+        <span>{map.room ?? DEFAULT_ROOM}</span>
+      </div>}
+    </header>
+
+    {mode === 'play' ? <main className="play-workspace">
+      <GameView map={map} state={liveState} states={[]} frame={liveFrame} stale={false} />
+    </main> : <>
 
       <main className="workspace">
       <section className="stage panel-frame">

@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import type { GymMap, SimInput, SimState } from './model'
@@ -56,12 +56,15 @@ describe('App modes', () => {
     vi.clearAllMocks()
   })
 
-  it('opens in the canvas-only play mode and reveals the editor from the advanced tab', async () => {
+  it('keeps the mode switch in the shared top bar and reveals the editor from the advanced tab', async () => {
     render(<App />)
 
-    expect(screen.getByRole('tab', { name: '游玩' })).toHaveAttribute('aria-selected', 'true')
+    const topbar = screen.getByRole('banner')
+    expect(within(topbar).getByRole('tablist', { name: '页面模式' })).toBeInTheDocument()
+    expect(within(topbar).getByRole('tab', { name: '游玩' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByLabelText('游戏画布')).toHaveAttribute('data-state-count', '0')
-    expect(screen.queryByText('CELESTE')).not.toBeInTheDocument()
+    expect(within(topbar).getByText('CELESTE')).toBeInTheDocument()
+    expect(await within(topbar).findByText('Test room')).toBeInTheDocument()
     expect(screen.queryByText('录制输入')).not.toBeInTheDocument()
     expect(screen.queryByText('时间线编辑器')).not.toBeInTheDocument()
 
