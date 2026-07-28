@@ -44,6 +44,11 @@ describe('runtime entity rendering', () => {
       'objects/moveBlock/base',
       'objects/moveBlock/arrow00',
       'objects/moveBlock/x',
+      'collectables/heartGem/orb',
+      'objects/cassetteblock/solid',
+      'objects/cassetteblock/pressed00',
+      'danger/crystal/bg_blue00',
+      'danger/crystal/fg_blue00',
     ]))
   })
 

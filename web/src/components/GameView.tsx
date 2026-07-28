@@ -546,6 +546,12 @@ export function runtimeEntityBounds(entity: MapEntity, state: SimState, kindInde
   } else if (entity.kind === 'move_block') {
     const position = state.move_blocks?.[kindIndex]?.position
     if (position) return { ...box, x: position.x, y: position.y }
+  } else if (entity.kind === 'cassette_block') {
+    const position = state.cassette_blocks?.[kindIndex]?.position
+    if (position) return { ...box, x: position.x, y: position.y }
+  } else if (entity.kind === 'crystal_static_spinner') {
+    const position = state.spinners?.[kindIndex]?.position
+    if (position) return { ...box, x: position.x - box.width / 2, y: position.y - box.height / 2 }
   } else if (entity.kind === 'moving_solid') {
     const time = state.moving_solid_time ?? 0
     return {
@@ -708,6 +714,39 @@ function drawSnowball(context: CanvasRenderingContext2D, assets: GameAssets, ent
 function drawCloud(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, state: SimState, kindIndex: number): void {
   const box = runtimeEntityBounds(entity, state, kindIndex)
   drawCenteredEntry(context, assets, 'objects/clouds/cloud00', box.x + box.width / 2, box.y + 2, true)
+}
+
+function drawHeartGem(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState, kindIndex: number): void {
+  if (state.heart_gems?.[kindIndex]?.collected) return
+  const center = { x: entity.bounds.x + entity.bounds.width / 2, y: entity.bounds.y + entity.bounds.height / 2 }
+  drawCenteredEntry(context, assets, 'collectables/heartGem/orb', center.x, center.y + Math.sin(frame / 18) * 2, true)
+}
+
+function drawCassetteBlock(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, state: SimState, kindIndex: number): void {
+  const runtime = state.cassette_blocks?.[kindIndex]
+  if (runtime && !runtime.collidable && !runtime.activated) return
+  const box = runtimeEntityBounds(entity, state, kindIndex)
+  const index = runtime?.index ?? Math.max(0, Math.min(3, Math.round(entity.direction.x)))
+  const key = runtime?.activated ? `objects/cassetteblock/pressed${String(index).padStart(2, '0')}` : 'objects/cassetteblock/solid'
+  const source = assets.entries[key]
+  if (!source) return
+  for (let y = box.y; y < box.y + box.height; y += source.frameHeight) {
+    for (let x = box.x; x < box.x + box.width; x += source.frameWidth) {
+      const width = Math.min(source.frameWidth, box.x + box.width - x)
+      const height = Math.min(source.frameHeight, box.y + box.height - y)
+      context.drawImage(assets.image, source.x, source.y, width, height, x, y, width, height)
+    }
+  }
+}
+
+function drawCrystalSpinner(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState, kindIndex: number): void {
+  const runtime = state.spinners?.[kindIndex]
+  if (runtime && !runtime.visible) return
+  const position = runtime?.position ?? { x: entity.bounds.x + entity.bounds.width / 2, y: entity.bounds.y + entity.bounds.height / 2 }
+  const offset = runtime?.offset ?? 0
+  const index = Math.floor((frame + offset * 60) / 4) % 4
+  drawCenteredEntry(context, assets, `danger/crystal/bg_blue${String(index).padStart(2, '0')}`, position.x, position.y)
+  drawCenteredEntry(context, assets, `danger/crystal/fg_blue${String(index).padStart(2, '0')}`, position.x, position.y, true)
 }
 
 function drawTheoCrystal(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, state: SimState, kindIndex: number): void {
@@ -913,10 +952,16 @@ function drawEntity(context: CanvasRenderingContext2D, assets: GameAssets, entit
     drawTheoCrystal(context, assets, entity, state, kindIndex)
   } else if (entity.kind === 'glider') {
     drawGlider(context, assets, entity, frame, state, kindIndex)
+  } else if (entity.kind === 'heart_gem') {
+    drawHeartGem(context, assets, entity, frame, state, kindIndex)
   } else if (entity.kind === 'zip_mover') {
     drawZipMover(context, assets, entity, frame, state, kindIndex)
   } else if (entity.kind === 'move_block') {
     drawMoveBlock(context, assets, entity, state, kindIndex)
+  } else if (entity.kind === 'cassette_block') {
+    drawCassetteBlock(context, assets, entity, state, kindIndex)
+  } else if (entity.kind === 'crystal_static_spinner') {
+    drawCrystalSpinner(context, assets, entity, frame, state, kindIndex)
   } else if (entity.kind === 'moving_solid') {
     drawMovingSolid(context, entity, state, kindIndex)
   } else if (entity.kind !== 'wind') {

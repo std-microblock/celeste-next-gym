@@ -86,6 +86,29 @@ export interface MoveBlockState {
   static_movers_enabled: boolean
 }
 
+export interface HeartGemState {
+  phase: number
+  wait_frames: number
+  collected: boolean
+}
+
+export interface CassetteBlockState {
+  position: Vec2
+  start: Vec2
+  width: number
+  height: number
+  index: number
+  activated: boolean
+  collidable: boolean
+}
+
+export interface SpinnerState {
+  position: Vec2
+  offset: number
+  visible: boolean
+  collidable: boolean
+}
+
 export interface SimState {
   pos: Vec2
   speed: Vec2
@@ -126,6 +149,10 @@ export interface SimState {
   gliders?: GliderState[]
   clouds?: CloudState[]
   move_blocks?: MoveBlockState[]
+  heart_gems?: HeartGemState[]
+  cassette_blocks?: CassetteBlockState[]
+  spinners?: SpinnerState[]
+  cassette_manager?: { current_index?: number; beat_index?: number }
   holding_theo?: number | null
   holding_glider?: number | null
   badeline_boost_active?: boolean
@@ -135,7 +162,7 @@ export interface SimState {
   [key: string]: unknown
 }
 
-export type EntityKind = 'jump_thru' | 'spikes' | 'water' | 'dream_block' | 'booster' | 'red_booster' | 'fly_feather' | 'bumper' | 'ice_ball' | 'puffer' | 'angry_oshiro' | 'seeker' | 'snowball' | 'cloud' | 'badeline_boost' | 'spring' | 'strawberry' | 'wind' | 'bounce_block' | 'theo_crystal' | 'glider' | 'zip_mover' | 'move_block' | 'moving_solid' | 'unknown'
+export type EntityKind = 'jump_thru' | 'spikes' | 'water' | 'dream_block' | 'booster' | 'red_booster' | 'fly_feather' | 'bumper' | 'ice_ball' | 'puffer' | 'angry_oshiro' | 'seeker' | 'snowball' | 'cloud' | 'badeline_boost' | 'spring' | 'strawberry' | 'wind' | 'bounce_block' | 'theo_crystal' | 'heart_gem' | 'glider' | 'zip_mover' | 'move_block' | 'cassette_block' | 'crystal_static_spinner' | 'moving_solid' | 'unknown'
 
 export interface MapEntity {
   kind: EntityKind
