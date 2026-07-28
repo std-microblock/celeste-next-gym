@@ -31,9 +31,12 @@ export const scenario = defineScenario({
   })),
   verify(states) {
     const hit = states.findIndex((state) => state.speed[0] === 0 && state.pos[0] >= 123)
-    const disappeared = states.findIndex((state, frame) => frame > hit && cassetteBlock(state, 1)?.collidable === false)
-    const refunded = states.findIndex((state, frame) => frame > disappeared && state.speed[0] > 70)
-    semanticAssert(hit > 0 && disappeared > hit && refunded > disappeared && !states.some((state) => state.dead), scenario.name,
+    // CassetteBlock.Update runs after the Player collision in the same raw
+    // frame, so the post-frame snapshot can already show its cleared wall.
+    // The following Player update must then restore the retained wall speed.
+    const disappeared = states.findIndex((state, frame) => frame >= hit && cassetteBlock(state, 1)?.collidable === false)
+    const refunded = states.findIndex((state, frame) => frame > hit && state.speed[0] > 70)
+    semanticAssert(hit > 0 && disappeared >= hit && refunded > hit && !states.some((state) => state.dead), scenario.name,
       `cassette wall did not impact, disappear, then refund speed: hit=${hit}, disappeared=${disappeared}, refunded=${refunded}`)
   },
 })
