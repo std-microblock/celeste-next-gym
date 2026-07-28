@@ -78,6 +78,7 @@ internal static class SnapshotCapture {
                 values["crystalSpinnerPosition"] = Simplify(spinner.Position);
                 values["crystalSpinnerVisible"] = spinner.Visible;
                 values["crystalSpinnerCollidable"] = spinner.Collidable;
+            }
             TheoCrystal? theoCrystal = level.Entities.FindFirst<TheoCrystal>();
             if (theoCrystal is not null) {
                 values["theoPosition"] = Simplify(theoCrystal.Position);
