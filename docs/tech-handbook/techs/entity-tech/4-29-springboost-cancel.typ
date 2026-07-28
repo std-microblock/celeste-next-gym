@@ -14,7 +14,7 @@
     note: [Spring 直接把碰撞分派给 Holdable.HitSpring。未被持有的 Glider 在地板弹簧上把 X 减半、Y 设为 -160，并设置 0.15 秒无重力；Rust 按实体后更新顺序执行 Glider 移动再检查 Spring。后续丢出／重抓取消链仍待真实采集。],
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [advance_gliders / hit_glider_spring / release_glider / pickup_update]),
-  test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [floor_spring_launches_unheld_glider_after_actor_movement / glider_spring_no_gravity_keeps_its_final_source_frame / springboost_cancel_reverses_into_the_rising_glider_for_regrab], note: [回归锁定 Spring 的 -160 Y 速度和 0.15 秒无重力计时；最后一个正计时帧仍不施加重力，之后才可进入取消重抓链。]),
+  test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [floor_spring_launches_unheld_glider_after_actor_movement / glider_spring_no_gravity_keeps_its_final_source_frame / springboost_cancel_reverses_into_the_rising_glider_for_regrab], note: [回归锁定 Spring 的 -160 Y 速度、0.15 秒无重力及严格 Holdable 边界：第 103 帧仍为 Normal、位置 (126,462)、速度 (0,160)，第 104 帧才进入 Pickup。]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.29-springboost-cancel.ts], symbol: [entity-4.29-springboost-cancel], note: [2026-07-28 真实 Everest 重跑确认 release→Spring→regrab 语义，但第 103 帧 Rust 已在 (126,460) 进入 Pickup，Everest 为 (126,462)、速度 (0,160)、Normal；首差为位置 2／速度 160，最大位置／速度误差 8／160，保持未实现。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.29-springboost-cancel.ts], symbol: [entity-4.29-springboost-cancel], note: [2026-07-28 修复后真实 Everest 复跑已消除旧第 103 帧首差：双方均为 (126,462)、速度 (0,160)、Normal。但 Rust 于第 104 帧已进入 Pickup，Everest 仍在 (126,465)、速度 (0,160)、Normal，并于第 106 帧才零速；最大位置／速度误差仍为 6／160。因此保持 candidate，等待继续校准 Holdable 的后续重抓帧。]),
 )
