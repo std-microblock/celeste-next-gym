@@ -288,11 +288,7 @@ footer { padding: 0 14px 20px; color: #7d6889; text-align: center; font: 8px Con
 .editor-tool-section { padding: 13px 12px; border-bottom: 1px solid #3e2c50; }
 .editor-tool-section > small { display: block; margin: 0 2px 9px; color: #aa87bb; font: 8px Consolas, monospace; letter-spacing: .18em; }
 .editor-entity-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-.editor-entity-tools button { min-height: 42px; display: grid; grid-template-columns: 34px minmax(0, 1fr); align-items: center; gap: 5px; padding: 4px; overflow: hidden; color: #aa98b7; text-align: left; border: 1px solid #49355f; background: #100922; cursor: pointer; font-size: 9px; }
-.editor-entity-tools button > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.editor-entity-atlas, .editor-entity-fallback, .editor-entity-material { display: block; width: 34px; height: 28px; background-repeat: no-repeat; image-rendering: pixelated; }
-.editor-entity-fallback { display: grid; place-items: center; color: var(--cyan); border: 1px solid #4c6570; background: #0a1520; font-size: 14px; }
-.editor-entity-material.water { border: 1px solid #65d9ffaa; background: radial-gradient(circle at 8px 8px, #d9fbff 0 2px, transparent 3px), linear-gradient(180deg, #b9f5ff 0 18%, #3097d4 20% 55%, #17699f 57% 100%); background-size: 17px 15px, 100% 100%; }
+.editor-entity-tools button { min-height: 31px; padding: 5px 6px; color: #aa98b7; border: 1px solid #49355f; background: #100922; cursor: pointer; font-size: 9px; }
 .editor-history { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding: 12px; }
 .editor-history button, .editor-kind button { min-height: 32px; color: #cdbfd2; border: 1px solid #5f4775; background: #1b112d; cursor: pointer; font-size: 9px; }
 .editor-history button:disabled { opacity: .35; cursor: default; }
@@ -320,7 +316,7 @@ footer { padding: 0 14px 20px; color: #7d6889; text-align: center; font: 8px Con
 .editor-object.entity { fill: #ff4f8112; stroke: #ff8baa99; stroke-width: 1; }
 .editor-object:hover { fill: #ffffff1d; stroke: #fff; }
 .editor-object.selected { fill: #ffd37a33; stroke: var(--gold); stroke-width: 2; filter: drop-shadow(0 0 2px #ffd37a); cursor: move; }
-.editor-resize-handles rect { fill: #fff; stroke: var(--gold); stroke-width: 1.5; vector-effect: non-scaling-stroke; }.editor-resize-handles rect[data-corner="nw"], .editor-resize-handles rect[data-corner="se"] { cursor: nwse-resize; }.editor-resize-handles rect[data-corner="ne"], .editor-resize-handles rect[data-corner="sw"] { cursor: nesw-resize; }
+.editor-resize-handles rect { fill: #fff; stroke: var(--gold); stroke-width: 1; vector-effect: non-scaling-stroke; }.editor-resize-handles rect[data-corner="nw"], .editor-resize-handles rect[data-corner="se"] { cursor: nwse-resize; }.editor-resize-handles rect[data-corner="ne"], .editor-resize-handles rect[data-corner="sw"] { cursor: nesw-resize; }
 .editor-zip-node line { stroke: var(--gold); stroke-width: 1; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; pointer-events: none; }.editor-zip-node rect { fill: #ffd37a16; stroke: #ffd37a88; stroke-width: 1; stroke-dasharray: 3 2; vector-effect: non-scaling-stroke; pointer-events: none; }.editor-zip-node circle { fill: var(--gold); stroke: #fff; stroke-width: 1.5; vector-effect: non-scaling-stroke; cursor: move; }
 .editor-draft { fill: #65d9ff30; stroke: var(--cyan); stroke-width: 2; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; pointer-events: none; }
 .editor-spawn { pointer-events: none; filter: drop-shadow(0 0 3px #ff4f81); }.editor-spawn circle { fill: #ff4f8144; stroke: #fff; stroke-width: 1.5; vector-effect: non-scaling-stroke; }.editor-spawn path { fill: none; stroke: #fff; stroke-width: 1.5; vector-effect: non-scaling-stroke; }

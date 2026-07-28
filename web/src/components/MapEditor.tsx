@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import type { EntityKind, GymMap, MapEntity, SimState } from '../model'
 import type { VisualTheme } from '../visualThemes'
 import { GameView } from './GameView'
@@ -18,7 +18,6 @@ interface EntityTemplate {
   height: number
   direction?: { x: number; y: number }
   nodes?: Array<{ x: number; y: number }>
-  atlasKey?: string
 }
 
 interface DragState {
@@ -31,44 +30,20 @@ interface DragState {
 }
 
 const ENTITY_TEMPLATES: readonly EntityTemplate[] = [
-  { kind: 'jump_thru', label: '木板', name: 'jumpThru', width: 32, height: 8, atlasKey: 'objects/jumpthru/wood' },
-  { kind: 'spikes', label: '尖刺', name: 'spikesUp', width: 32, height: 3, direction: { x: 0, y: -1 }, atlasKey: 'danger/spikes/default_up00' },
+  { kind: 'jump_thru', label: '木板', name: 'jumpThru', width: 32, height: 8 },
+  { kind: 'spikes', label: '尖刺', name: 'spikesUp', width: 32, height: 3, direction: { x: 0, y: -1 } },
   { kind: 'water', label: '水', name: 'water', width: 32, height: 32 },
-  { kind: 'dream_block', label: '梦块', name: 'dreamBlock', width: 32, height: 32, atlasKey: 'objects/dreamblock/particles' },
-  { kind: 'booster', label: '绿泡', name: 'booster', width: 16, height: 16, atlasKey: 'objects/booster/booster00' },
-  { kind: 'red_booster', label: '红泡', name: 'redBooster', width: 16, height: 16, atlasKey: 'objects/booster/boosterRed00' },
-  { kind: 'spring', label: '弹簧', name: 'spring', width: 16, height: 8, direction: { x: 0, y: -1 }, atlasKey: 'objects/spring/00' },
-  { kind: 'strawberry', label: '草莓', name: 'strawberry', width: 16, height: 16, atlasKey: 'collectables/strawberry/normal00' },
-  { kind: 'fly_feather', label: '羽毛', name: 'infiniteStar', width: 20, height: 20, atlasKey: 'objects/flyFeather/idle00' },
-  { kind: 'bumper', label: '碰碰球', name: 'bigSpinner', width: 24, height: 24, atlasKey: 'objects/Bumper/Idle22' },
-  { kind: 'theo_crystal', label: 'Theo 水晶', name: 'theoCrystal', width: 8, height: 10, atlasKey: 'characters/theoCrystal/idle00' },
-  { kind: 'glider', label: '水母', name: 'glider', width: 8, height: 10, atlasKey: 'objects/glider/idle0' },
-  { kind: 'zip_mover', label: 'Zip Mover', name: 'zipMover', width: 32, height: 16, nodes: [{ x: 64, y: 0 }], atlasKey: 'objects/zipmover/block' },
+  { kind: 'dream_block', label: '梦块', name: 'dreamBlock', width: 32, height: 32 },
+  { kind: 'booster', label: '绿泡', name: 'booster', width: 16, height: 16 },
+  { kind: 'red_booster', label: '红泡', name: 'redBooster', width: 16, height: 16 },
+  { kind: 'spring', label: '弹簧', name: 'spring', width: 16, height: 8, direction: { x: 0, y: -1 } },
+  { kind: 'strawberry', label: '草莓', name: 'strawberry', width: 16, height: 16 },
+  { kind: 'fly_feather', label: '羽毛', name: 'infiniteStar', width: 20, height: 20 },
+  { kind: 'bumper', label: '碰碰球', name: 'bigSpinner', width: 24, height: 24 },
+  { kind: 'theo_crystal', label: 'Theo 水晶', name: 'theoCrystal', width: 8, height: 10 },
+  { kind: 'glider', label: '水母', name: 'glider', width: 8, height: 10 },
+  { kind: 'zip_mover', label: 'Zip Mover', name: 'zipMover', width: 32, height: 16, nodes: [{ x: 64, y: 0 }] },
 ] as const
-
-interface AtlasEntry { x: number; y: number; width: number; height: number }
-let atlasEntriesPromise: Promise<Record<string, AtlasEntry>> | undefined
-
-function loadAtlasEntries(): Promise<Record<string, AtlasEntry>> {
-  atlasEntriesPromise ??= fetch('/assets/original/gameplay/gameplay-selected.json')
-    .then((response) => response.json())
-    .then((manifest: { entries: Record<string, AtlasEntry> }) => manifest.entries)
-  return atlasEntriesPromise
-}
-
-function EntityPaletteIcon({ atlasKey, kind }: { atlasKey?: string; kind: EntityKind }) {
-  const [entry, setEntry] = useState<AtlasEntry | null>(null)
-  useEffect(() => { if (atlasKey) void loadAtlasEntries().then((entries) => setEntry(entries[atlasKey] ?? null)) }, [atlasKey])
-  if (!entry) return kind === 'water' ? <span className="editor-entity-material water" /> : <span className="editor-entity-fallback">◇</span>
-  const scale = Math.min(2, 28 / Math.max(1, entry.width), 24 / Math.max(1, entry.height))
-  const left = (34 - entry.width * scale) / 2 - entry.x * scale
-  const top = (28 - entry.height * scale) / 2 - entry.y * scale
-  return <span className="editor-entity-atlas" style={{
-    backgroundImage: "url('/assets/original/gameplay/gameplay-selected.png')",
-    backgroundPosition: `${left}px ${top}px`,
-    backgroundSize: `${1024 * scale}px ${1749 * scale}px`,
-  } as CSSProperties} />
-}
 
 export interface MapEditorProps {
   map: GymMap
@@ -376,7 +351,7 @@ export function MapEditor({ map, state, frame, theme, experiencing, ready, onCha
       <div className="editor-tool-section"><small>实体</small><div className="editor-entity-tools">
         {ENTITY_TEMPLATES.map((template) => {
           const candidate = `entity:${template.kind}` as EditorTool
-          return <button key={template.kind} className={tool === candidate ? 'active' : ''} onClick={() => chooseTool(candidate)} aria-pressed={tool === candidate}><EntityPaletteIcon atlasKey={template.atlasKey} kind={template.kind} /><span>{template.label}</span></button>
+          return <button key={template.kind} className={tool === candidate ? 'active' : ''} onClick={() => chooseTool(candidate)} aria-pressed={tool === candidate}>{template.label}</button>
         })}
       </div></div>
       <div className="editor-history" data-revision={historyRevision}>
@@ -416,7 +391,7 @@ export function MapEditor({ map, state, frame, theme, experiencing, ready, onCha
             <circle cx={node.x + selectedEntity.bounds.width / 2} cy={node.y + selectedEntity.bounds.height / 2} r="5" onPointerDown={(event) => beginNodeDrag(event, nodeIndex)} />
           </g>)}
           {selection && bounds && <g className="editor-resize-handles">
-            {([['nw', bounds.x, bounds.y], ['ne', bounds.x + bounds.width, bounds.y], ['se', bounds.x + bounds.width, bounds.y + bounds.height], ['sw', bounds.x, bounds.y + bounds.height]] as const).map(([corner, x, y]) => <rect key={corner} data-corner={corner} x={x - 4} y={y - 4} width="8" height="8" onPointerDown={(event) => beginResize(event, corner)} />)}
+            {([['nw', bounds.x, bounds.y], ['ne', bounds.x + bounds.width, bounds.y], ['se', bounds.x + bounds.width, bounds.y + bounds.height], ['sw', bounds.x, bounds.y + bounds.height]] as const).map(([corner, x, y]) => <rect key={corner} data-corner={corner} x={x - 2} y={y - 2} width="4" height="4" onPointerDown={(event) => beginResize(event, corner)} />)}
           </g>}
           {draft && <rect className="editor-draft" {...draft} />}
           <g className="editor-spawn" transform={`translate(${map.spawn.x} ${map.spawn.y})`}><circle r="7" /><path d="M -4 0 H 4 M 0 -4 V 4" /></g>

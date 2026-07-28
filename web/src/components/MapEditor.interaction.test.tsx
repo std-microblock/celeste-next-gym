@@ -13,7 +13,6 @@ import { MapEditor } from './MapEditor'
 
 beforeAll(() => {
   Object.defineProperty(Element.prototype, 'setPointerCapture', { configurable: true, value: vi.fn() })
-  vi.stubGlobal('fetch', vi.fn(async () => ({ json: async () => ({ entries: {} }) })))
 })
 
 function editor(map = createBlankGymMap(), onChange = vi.fn()) {
@@ -24,9 +23,17 @@ describe('MapEditor interactions', () => {
   it('shows four resize handles and deletes the selected object with Delete', () => {
     const { container, onChange } = editor()
     fireEvent.pointerDown(container.querySelector('.editor-object.solid')!, { clientX: 10, clientY: 10, pointerId: 1 })
-    expect(container.querySelectorAll('.editor-resize-handles rect')).toHaveLength(4)
+    const handles = [...container.querySelectorAll('.editor-resize-handles rect')]
+    expect(handles).toHaveLength(4)
+    expect(handles.every((handle) => handle.getAttribute('width') === '4' && handle.getAttribute('height') === '4')).toBe(true)
     fireEvent.keyDown(window, { key: 'Delete' })
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ solids: [] }))
+  })
+
+  it('keeps the entity palette text-only', () => {
+    const { container } = editor()
+    expect(container.querySelector('.editor-entity-atlas, .editor-entity-fallback, .editor-entity-material')).toBeNull()
+    expect(within(container).getByRole('button', { name: 'Zip Mover' })).toBeInTheDocument()
   })
 
   it('edits room and entity properties from the inspector', () => {
