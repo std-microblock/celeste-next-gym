@@ -13746,8 +13746,8 @@ mod tests {
     #[test]
     fn disappearing_cassette_cornerboost_fixture_times_hit_clear_and_refund() {
         // This is the generated candidate's timing in a compact map: input
-        // 28 hits the initially-active index 1 wall, manager activation then
-        // disables it, input 29's entity phase clears it, and the following
+        // 27 hits the initially-active index 1 wall, manager activation then
+        // disables it, input 28's entity phase clears it, and the following
         // Player.Update restores the retained 90-speed run.
         let map = Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
@@ -13775,7 +13775,7 @@ mod tests {
             ..Map::default()
         };
         let mut inputs = [InputState::default(); 36];
-        for input in &mut inputs[23..] {
+        for input in &mut inputs[22..] {
             input.move_x = 1;
         }
         let trace = simulate_trace(
@@ -13789,8 +13789,9 @@ mod tests {
             inputs.len() as u32,
         )
         .unwrap();
-        assert_eq!(trace.states[29].pos, Vec2::new(124.0, 496.0));
-        assert_eq!(trace.states[29].speed.x, 0.0);
+        assert_eq!(trace.states[28].pos, Vec2::new(124.0, 496.0));
+        assert_eq!(trace.states[28].speed.x, 0.0);
+        assert!(trace.states[28].cassette_blocks[1].collidable);
         assert!(!trace.states[29].cassette_blocks[1].collidable);
         assert_eq!(trace.states[30].pos, Vec2::new(126.0, 496.0));
         assert_eq!(trace.states[30].speed.x, 90.0);
