@@ -8067,7 +8067,16 @@ mod tests {
                 },
                 crate::Entity {
                     kind: EntityKind::JumpThru,
-                    bounds: Rect::new(635.0, 440.0, 64.0, 8.0),
+                    bounds: Rect::new(773.0, 480.0, 64.0, 8.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "jumpThru".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::JumpThru,
+                    bounds: Rect::new(773.0, 464.0, 64.0, 8.0),
                     direction: Vec2::default(),
                     shielded: false,
                     single_use: false,
@@ -8083,11 +8092,17 @@ mod tests {
         };
         let inputs: Vec<_> = (0..220)
             .map(|frame| InputState {
-                move_x: if (130..170).contains(&frame) {
+                move_x: if (36..108).contains(&frame) {
                     1
+                } else if (118..170).contains(&frame) {
+                    -1
                 } else {
                     0
                 },
+                move_y: if (118..130).contains(&frame) { -1 } else { 0 },
+                jump_pressed: frame == 80 || frame == 105,
+                jump_held: (80..90).contains(&frame) || (105..115).contains(&frame),
+                dash_pressed: frame == 118,
                 ..InputState::default()
             })
             .collect();
@@ -8125,7 +8140,11 @@ mod tests {
             "player must clear the source volume before reform: frame={body}, state={:?}",
             trace.states[body]
         );
-        assert!(spike > body);
+        assert!(spike > body, "the 0.35-second StaticMover alarm must follow body reform");
+        assert!(
+            (21..=24).contains(&(spike - body)),
+            "the 0.35-second alarm may include Celeste's transition freeze: body={body}, spike={spike}"
+        );
         let reenabled = &trace.states[spike].bounce_blocks[0];
         assert!(
             !reenabled.static_movers_enabled || reenabled.attached_spike_position != Vec2::new(768.0, 440.0),

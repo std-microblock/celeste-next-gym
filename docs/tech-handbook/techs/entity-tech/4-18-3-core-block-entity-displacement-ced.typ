@@ -6,7 +6,7 @@
   title-en: "Core Block Entity Displacement (ced)",
   status: "unimplemented",
   description-zh: [在 Core 方块恢复附属实体前再次打碎或移动它，可让尖刺等 static mover 在错误位置重生。],
-  description-en: [BounceBlock reform moves disabled StaticMovers to the restored body before a 0.35-second alarm re-enables them. Rust models that ordering, but the real candidate kept the player inside the source body so BlockedCheck prevented reform through frame 280; entity displacement therefore remains unimplemented.],
+  description-en: [BounceBlock reform moves disabled StaticMovers to the restored body before a 0.35-second alarm re-enables them. The replacement candidate first drives the player onto a separated landing, lets the body pass its real BlockedCheck, then returns during the disabled-StaticMover alarm; it remains unimplemented until that physical Everest path is verified.],
   source-evidence: evidence(
     path: [Celeste/BounceBlock.cs],
     symbol: [BounceBlock.Update],
@@ -16,5 +16,5 @@
   rust-evidence: evidence(path: [crates/celeste-physics/src/types.rs; crates/celeste-physics/src/sim.rs], symbol: [BounceBlockSnapshot.static_movers_enabled / advance_bounce_blocks]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [core_block_moves_disabled_spikes_before_the_reform_alarm_reenables_them / core_block_candidate_clears_source_body_before_reform_blocked_check]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.18.3-core-block-entity-displacement.ts; scripts/e2e-real/scenarios/reform-parts.ts; mods/CelesteGymCollector/Source/SnapshotCapture.cs], symbol: [entity-4.18.3-core-block-entity-displacement; TECH_ENTITY_4_18_3_CORE_BLOCK_ENTITY_DISPLACEMENT; SnapshotCapture.Capture], note: [2026-07-28 隔离真实 Everest run `2026-07-28T17-36-38.746Z-100144-9db259b6-006d-47f8-94c5-9c22eb6ab9c1` 完成物理 vendor 安装校验、nonce/精确 child PID 认证及受控清理。方块在 frame 35 破碎后停于 `(686,425)`，附属 spike 同为 `(750,425)`；玩家从 frame 81 起位于 `(716,496)`，但至 frame 220 仍未出现 `reformBlockCollidable=true`、`reformSpikeCollidable=false`。semantic gate 报 `block body did not reform while its StaticMover remained disabled`，故未取得九字段差分通过，保持未实现。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.18.3-core-block-entity-displacement.ts; scripts/e2e-real/scenarios/reform-parts.ts; mods/CelesteGymCollector/Source/SnapshotCapture.cs; Celeste/CassetteBlock.cs], symbol: [entity-4.18.3-core-block-entity-displacement; TECH_ENTITY_4_18_3_CORE_BLOCK_ENTITY_DISPLACEMENT; SnapshotCapture.Capture; CassetteBlock.Update], note: [2026-07-28 隔离真实 Everest run `2026-07-28T17-36-38.746Z-100144-9db259b6-006d-47f8-94c5-9c22eb6ab9c1` 在 frame 35 破碎后至 frame 220 仍未观测 body reform；f131 才开始离开原位置，因而不能证明 BounceBlock 的 BlockedCheck 已获准。重建候选在第 36–107 帧通过两级右侧 jump-thru 离开 source，第 118 帧预缓冲上左 dash；场景在 body reformed / spike disabled 帧显式拒绝 source-player overlap，再要求 0.35 秒后 spike re-enable 且已随二次 bounce 偏移。CassetteBlock 的 `BlockedCheck`/最多 4px actor wiggle 是同类实体更新先判阻塞、后启用碰撞的对照：不能用人工状态开关替代真实离开 source 的输入路径。尚未运行新真实 E2E，保持未实现。]),
 )
