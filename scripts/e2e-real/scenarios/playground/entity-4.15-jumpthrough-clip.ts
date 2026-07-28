@@ -1,4 +1,4 @@
-import { inputFrames } from '../../inputs.js'
+import { input, inputFrames } from '../../inputs.js'
 import { defineScenario } from '../../scenario.js'
 import { PLAYGROUND_TARGET } from '../../targets.js'
 import { semanticAssert } from '../../verify.js'
@@ -14,7 +14,7 @@ export const scenario = defineScenario({
   mapParts,
   name: 'entity-4.15-jumpthrough-clip',
   initial: { pos: [652, 400], speed: [0, 0], on_ground: true },
-  inputs: inputFrames(260, (frame) => ({
+  inputs: inputFrames(260, (frame) => input({
     move_x: frame < 10 ? 1 : frame >= 20 && frame < 30 ? -1 : 0,
   })),
   verify(states) {
