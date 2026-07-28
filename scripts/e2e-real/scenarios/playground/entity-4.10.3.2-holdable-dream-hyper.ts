@@ -20,7 +20,7 @@ export const scenario = defineScenario({
     jump_held: frame === 62,
     dash_pressed: frame === 0,
     crouch_dash_pressed: frame === 54,
-    grab_held: frame < 53 || frame >= 65,
+    grab_held: frame < 52 || frame >= 65,
   })),
   verify(states) {
     const exitGrab = states.findIndex((state, frame) => frame > 0 && state.state === 1 && states[frame - 1]?.state === 9 && state.holding_theo)

@@ -11,7 +11,7 @@ export const scenario = defineScenario({
   name: 'entity-4.23-theo-ultra',
   initial: { pos: [32, 160], speed: [300, 0], on_ground: true },
   inputs: Array.from({ length: 24 }, (_, frame) => input({
-    move_x: 1, move_y: frame === 0 ? 1 : 0, dash_pressed: frame === 0, grab_held: frame >= 5 && frame <= 20,
+    move_x: 1, move_y: frame < 10 ? 1 : 0, dash_pressed: frame === 0, grab_held: frame >= 5 && frame <= 20,
   })),
   verify(states) {
     const pickup = states.find((state) => state.state === 8 && state.holding_theo)

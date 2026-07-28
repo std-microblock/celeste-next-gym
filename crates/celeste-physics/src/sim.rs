@@ -2388,6 +2388,12 @@ fn pickup_update(p: &mut PlayerSnapshot) {
     p.speed.y = p.speed.y.min(0.0);
     p.var_jump_timer = p.pickup_old_var_jump_timer;
     p.state = PlayerState::Normal;
+    // Player.PickupCoroutine applies the slow-fall holdable branch after
+    // restoring oldSpeed. A rising Glider pickup is clamped to at least the
+    // normal jump speed even when the cached vertical speed was smaller.
+    if p.holding_glider.is_some() && p.speed.y < 0.0 {
+        p.speed.y = p.speed.y.min(JUMP_SPEED);
+    }
 }
 
 fn theo_collides(map: &Map, position: Vec2) -> bool {
@@ -7297,7 +7303,7 @@ mod tests {
     }
 
     #[test]
-    fn glider_pickup_tween_stalls_then_restores_only_upward_speed() {
+    fn glider_pickup_tween_stalls_then_clamps_upward_speed() {
         let p = PlayerSnapshot {
             pos: Vec2::new(60.0, 160.0),
             speed: Vec2::new(30.0, -20.0),
@@ -7313,7 +7319,7 @@ mod tests {
         assert_eq!(trace.states[1].speed, Vec2::default());
         assert_eq!(trace.states[1].pickup_old_speed, Vec2::new(30.0, -20.0));
         assert_eq!(trace.states[13].state, PlayerState::Normal);
-        assert_eq!(trace.states[13].speed, Vec2::new(30.0, -20.0));
+        assert_eq!(trace.states[13].speed, Vec2::new(30.0, JUMP_SPEED));
     }
 
     #[test]
