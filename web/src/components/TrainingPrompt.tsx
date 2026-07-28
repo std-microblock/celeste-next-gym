@@ -4,6 +4,7 @@ import type { GymMap, SimState, Vec2 } from '../model'
 const MAX_SPEED = 900
 const ACCELERATION = 5_400
 const TYPE_INTERVAL_MS = 28
+const PROMPT_ANCHOR_ABOVE_PLAYER = 20
 
 function approach(current: number, target: number, amount: number): number {
   return current < target ? Math.min(target, current + amount) : Math.max(target, current - amount)
@@ -18,7 +19,7 @@ export function promptTargetPercent(map: GymMap, state: SimState, viewport: { wi
   const offsetY = (viewport.height - contentHeight) / 2
   return {
     x: (offsetX + (state.pos.x - map.bounds.x) * scale) / viewport.width * 100,
-    y: (offsetY + (state.pos.y - map.bounds.y) * scale) / viewport.height * 100,
+    y: (offsetY + (state.pos.y - map.bounds.y - PROMPT_ANCHOR_ABOVE_PLAYER) * scale) / viewport.height * 100,
   }
 }
 

@@ -6,12 +6,12 @@ describe('training prompt target', () => {
   it('maps the player position into the game viewport', () => {
     const map = { bounds: { x: 10, y: 20, width: 200, height: 100 } } as GymMap
     const state = { pos: { x: 110, y: 70 } } as SimState
-    expect(promptTargetPercent(map, state, { width: 400, height: 400 })).toEqual({ x: 50, y: 50 })
+    expect(promptTargetPercent(map, state, { width: 400, height: 400 })).toEqual({ x: 50, y: 40 })
   })
 
   it('accounts for letterboxing around the fixed game aspect ratio', () => {
     const map = { bounds: { x: 0, y: 0, width: 200, height: 100 } } as GymMap
-    expect(promptTargetPercent(map, { pos: { x: 0, y: 0 } } as SimState, { width: 400, height: 400 })).toEqual({ x: 0, y: 25 })
-    expect(promptTargetPercent(map, { pos: { x: 200, y: 100 } } as SimState, { width: 400, height: 400 })).toEqual({ x: 100, y: 75 })
+    expect(promptTargetPercent(map, { pos: { x: 0, y: 0 } } as SimState, { width: 400, height: 400 })).toEqual({ x: 0, y: 15 })
+    expect(promptTargetPercent(map, { pos: { x: 200, y: 100 } } as SimState, { width: 400, height: 400 })).toEqual({ x: 100, y: 65 })
   })
 })
