@@ -7,8 +7,9 @@ import { ENTITY_4_27_WATERBOOST_PART } from '../entity-tail-parts.js'
 export const mapParts = [ENTITY_4_27_WATERBOOST_PART] as const
 
 export const scenario = defineScenario({
-  target: PLAYGROUND_TARGET, status: 'candidate', tags: ['feature:swim'], techniqueIds: ['4.27'], mapParts,
+  target: PLAYGROUND_TARGET, status: 'active', tags: ['feature:swim'], techniqueIds: ['4.27'], mapParts,
   name: 'entity-4.27-waterboost',
+  recording: { primaryFor: ['4.27'], startFrame: 0, endFrame: 24, posterFrame: 3 },
   initial: { pos: [136, 68], speed: [0, 0], state: 'Swim' },
   inputs: Array.from({ length: 24 }, (_, frame) => input({
     move_x: 1, jump_pressed: frame <= 2,
