@@ -16,5 +16,5 @@
   rust-evidence: evidence(path: [crates/celeste-physics/src/types.rs / crates/celeste-physics/src/sim.rs], symbol: [GliderSnapshot / gliders / holding_glider / release_glider]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [two_gliders_keep_independent_laddering_lockouts]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.22.4-holdable-laddering.ts], symbol: [entity-4.22.4-holdable-laddering], note: [延长后的真实候选已形成三段交替 Pickup，但最高点仅从 y=400 上升到 y=387，净升 13 px，未达到场景要求的持续 16 px 上升；因此仍保留 candidate。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.22.4-holdable-laddering.ts], symbol: [entity-4.22.4-holdable-laddering], note: [把第二只 Jelly 上移后，最终候选形成持续上升与三段 Pickup，但第 55 帧先差：Rust (96,375)、Y 速度 25，Everest (96,376)、Y 速度 30；最大位置／速度误差 97／136，保持未实现。]),
 )

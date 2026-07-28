@@ -4,7 +4,7 @@
   id: "4.28",
   title-zh: "Koral Clip",
   title-en: "Koral Clip",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [移动实体把玩家或投掷物压进屏幕边界后再反向移动时，防卡墙逻辑可能把对象传送到实体移动方向一侧。],
   description-en: [If a moving solid clips the player or a holdable against a screen edge and then reverses, escape logic can teleport it to the solid's moving side.],
   source-evidence: evidence(
@@ -15,6 +15,6 @@
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/types.rs / crates/celeste-physics/src/sim.rs], symbol: [TempleGateSnapshot / close_temple_gate / squish_wiggle_candidate / squish_player]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs / crates/celeste-physics/src/map.rs], symbol: [close_behind_player_gate_uses_target_position_fallback_to_clip_theo / player_squish_tries_ducked_target_position_before_actor_wiggles / failed_gate_squish_kills_theo_with_player_and_removes_glider / vanilla_close_behind_player_temple_gate_round_trips_through_celeste_binary]),
-  e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.28-koral-clip.ts], symbol: [entity-4.28-koral-clip], note: [独立候选使用真实 CloseBehindPlayerAlways TempleGate、JumpThru 与 Theo，已能验证关门后实体碰撞体；现有 Everest 九字段采集不暴露 Theo 位置，尚不能证明 TargetPosition 回退后的真实传送坐标，故保持未实现。]),
+  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.28-koral-clip.ts / mods/CelesteGymCollector/Source/SnapshotCapture.cs], symbol: [entity-4.28-koral-clip / theoPosition], note: [独立 MapPart 使用真实 CloseBehindPlayerAlways TempleGate、JumpThru 与 Theo；Collector 明确采集 Theo 坐标，语义门确认关门后 TargetPosition 回退把 Theo 从源位置搬移且玩家存活。91 个状态 position 最大误差 0、speed 最大误差 0.000008，其余七类字段逐帧一致。]),
+  candidate-e2e: none,
 )

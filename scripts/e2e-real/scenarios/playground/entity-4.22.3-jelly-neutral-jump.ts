@@ -7,7 +7,7 @@ import { ENTITY_4_22_3_JELLY_NEUTRAL_PART } from '../glider-parts.js'
 
 export const mapParts = [ENTITY_4_22_3_JELLY_NEUTRAL_PART] as const
 export const scenario = defineScenario({
-  target: PLAYGROUND_TARGET, status: 'candidate', tags: ['feature:glider'], techniqueIds: ['4.22.3'], mapParts,
+  target: PLAYGROUND_TARGET, status: 'active', tags: ['feature:glider'], techniqueIds: ['4.22.3'], mapParts,
   name: 'entity-4.22.3-jelly-neutral-jump', initial: { pos: [140, 420], facing: 'Right' },
   inputs: Array.from({ length: 100 }, (_, frame) => input({
     move_x: frame >= 30 ? 1 : 0,

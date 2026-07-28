@@ -9,11 +9,12 @@ export const mapParts = [ENTITY_4_28_KORAL_CLIP_PART] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: [],
   techniqueIds: ['4.28'],
   mapParts,
   name: 'entity-4.28-koral-clip',
+  recording: { primaryFor: ['4.28'], startFrame: 0, endFrame: 90 },
   initial: { pos: [540, 496], on_ground: true },
   inputs: Array.from({ length: 90 }, (_, frame) => input({
     move_x: frame >= 8 ? -1 : 0,

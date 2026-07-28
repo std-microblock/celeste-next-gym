@@ -9,11 +9,12 @@ export const mapParts = [ENTITY_4_22_3_HOLDABLE_NEUTRAL_PART] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: [],
   techniqueIds: ['4.22.3'],
   mapParts,
   name: 'entity-4.22.3-holdable-neutral-jump',
+  recording: { primaryFor: ['4.22.3'], startFrame: 0, endFrame: 40 },
   initial: { pos: [380, 420] },
   inputs: Array.from({ length: 40 }, (_, frame) => input({
     jump_pressed: frame === 23,
