@@ -8,11 +8,12 @@ export const mapParts = [TECH_ENTITY_4_11_HOLDABLE_CORE_HYPER] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: ['feature:bounce-block', 'feature:theo-crystal'],
   techniqueIds: ['4.11'],
   mapParts,
   name: 'entity-4.11-holdable-core-hyper',
+  recording: { primaryFor: ['4.11'], startFrame: 0, endFrame: 90, posterFrame: 38 },
   initial: { pos: [384, 360], speed: [0, 0], on_ground: true },
   inputs: inputFrames(90, (frame) => input({
     move_x: frame < 42 ? 1 : -1,

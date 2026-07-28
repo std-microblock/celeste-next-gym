@@ -4,7 +4,7 @@
   id: "4.11",
   title-zh: "携物 Core Hyper／Super",
   title-en: "Holdable Core Super/Hyper",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [携物抓在 Core 方块附近，利用方块土狼时间先丢出物品，再做 Core Super／Hyper 并在空中重新抓回。],
   description-en: [Throw a held item during core-block coyote time, perform the core super or hyper, and regrab the item in flight.],
   source-evidence: evidence(
@@ -23,10 +23,10 @@
     symbol: [holdable_core_hyper_releases_during_grace_then_regrabs_after_cannot_hold],
     note: [回归同时锁定 release recoil、0.1 秒 CannotHold、Core Hyper 速度和空中重抓顺序。],
   ),
-  e2e-evidence: none,
-  candidate-e2e: evidence(
+  e2e-evidence: evidence(
     path: [scripts/e2e-real/scenarios/core-heart-squish-parts.ts / scripts/e2e-real/scenarios/playground/entity-4.11-holdable-core-hyper.ts],
     symbol: [tech.entity-4.11-holdable-core-hyper / entity-4.11-holdable-core-hyper],
-    note: [独立 MapPart 放置标准热态 BounceBlock 与 Theo；候选场景验证抓取、释放、CannotHold、Core Hyper 和空中重抓，真实 Everest 尚待 FIFO 锁内调参与采集。],
+    note: [独立 MapPart 放置标准热态 BounceBlock 与 Theo。真实 Everest 场景依次完成抓取、提前一帧释放、0.1 秒 CannotHold、速度 `(325,-117.5)` 的 Core Hyper 与 frame 43 空中重抓；91 个状态九类核心字段逐帧一致，最大 position 误差为 0、speed 误差为 0.000053。],
   ),
+  candidate-e2e: none,
 )

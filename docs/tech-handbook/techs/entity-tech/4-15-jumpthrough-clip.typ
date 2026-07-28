@@ -27,6 +27,6 @@
   candidate-e2e: evidence(
     path: [scripts/e2e-real/scenarios/core-heart-squish-parts.ts / scripts/e2e-real/scenarios/playground/entity-4.15-jumpthrough-clip.ts],
     symbol: [tech.entity-4.15-jumpthrough-clip / entity-4.15-jumpthrough-clip],
-    note: [独立 MapPart 使用向下 ZipMover 与 JumpThru；候选守卫要求玩家先到平台上，再被 pusher 夹穿到平台下且全程存活。真实 Everest 尚待 FIFO 锁内调参与采集。],
+    note: [独立 MapPart 使用向下 ZipMover 与 JumpThru。首轮玩家直到 mover 到达后才落在其顶面；一次输入时序修正后，玩家从右缘只移动到 x=655，碰撞体仍与 mover 相交并持续作为 rider 被 carry 到 y=408，未落到 JumpThru、未触发 OnSquish，故不以候选近似宣称实现。],
   ),
 )

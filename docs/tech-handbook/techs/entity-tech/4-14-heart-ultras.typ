@@ -26,6 +26,6 @@
   candidate-e2e: evidence(
     path: [scripts/e2e-real/scenarios/core-heart-squish-parts.ts / scripts/e2e-real/scenarios/playground/entity-4.14-heart-ultra.ts],
     symbol: [tech.entity-4.14-heart-ultra / entity-4.14-heart-ultra],
-    note: [独立 MapPart 放置 vanilla heartGem；Collector 同时采集收集/可碰撞/可见状态与 Engine.TimeRate，候选守卫要求 collect、Ultra、yield 后 Freeze 与半速顺序全部出现。真实 Everest 尚待 FIFO 锁内调参与采集。],
+    note: [独立 MapPart 以 vanilla `blackGem` 编码水晶心，Collector 直接扫描未注册 Tracker 的 HeartGem。真实 trace 在 frame 5 收集、frame 7 进入 0.2 秒 Freeze、frame 20 得到首个 0.495833 TimeRate，语义链完整；但 frame 21 起原版用 `Engine.DeltaTime = RawDeltaTime * TimeRate` 每帧移动约 3px，Rust 固定 DT 每帧移动 6px，九字段首差因此保留未实现。],
   ),
 )
