@@ -142,6 +142,7 @@ pub fn simulate_trace(
     initialize_bounce_blocks(&mut snapshot, &mut runtime_map);
     initialize_move_blocks(&mut snapshot, &mut runtime_map);
     initialize_theo_crystals(&mut snapshot, &mut runtime_map);
+    initialize_heart_gems(&mut snapshot, &mut runtime_map);
     initialize_clouds(&mut snapshot, &mut runtime_map);
     position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
     let mut states = Vec::with_capacity(frames + 1);
@@ -166,6 +167,7 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         s.dash_attack_timer,
         s.dash_cooldown_timer,
         s.freeze_timer,
+        s.time_rate,
         s.current_room_bounds.map_or(0.0, |bounds| bounds.x),
         s.current_room_bounds.map_or(0.0, |bounds| bounds.y),
         s.current_room_bounds.map_or(0.0, |bounds| bounds.width),
@@ -660,9 +662,153 @@ fn player_riding_solid(p: &PlayerSnapshot, bounds: Rect) -> bool {
     bounds.intersects(current_player_rect(p, p.pos.x, p.pos.y + 1.0))
 }
 
+fn initialize_heart_gems(p: &mut PlayerSnapshot, map: &mut Map) {
+    let count = map
+        .entities
+        .iter()
+        .filter(|entity| entity.kind == EntityKind::HeartGem)
+        .count();
+    p.heart_gems.truncate(count);
+    while p.heart_gems.len() < count {
+        p.heart_gems.push(crate::HeartGemSnapshot::default());
+    }
+    if !p.time_rate.is_finite() || p.time_rate <= 0.0 {
+        p.time_rate = 1.0;
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+struct SolidCollisionEnv {
+    solids: Vec<Rect>,
+    jump_thrus: Vec<Rect>,
+}
+
+fn solid_collision_env(map: &Map, pusher_index: usize) -> SolidCollisionEnv {
+    let mut solids = map.solids.clone();
+    let mut jump_thrus = Vec::new();
+    for (index, entity) in map.entities.iter().enumerate() {
+        if index == pusher_index {
+            continue;
+        }
+        if matches!(
+            entity.kind,
+            EntityKind::BounceBlock
+                | EntityKind::DreamBlock
+                | EntityKind::MoveBlock
+                | EntityKind::MovingSolid
+                | EntityKind::ZipMover
+        ) {
+            solids.push(entity.bounds);
+        } else if matches!(entity.kind, EntityKind::JumpThru | EntityKind::Cloud) {
+            jump_thrus.push(entity.bounds);
+        }
+    }
+    SolidCollisionEnv { solids, jump_thrus }
+}
+
+fn env_solid_at(env: &SolidCollisionEnv, rect: Rect, pusher: Option<Rect>) -> bool {
+    env.solids.iter().any(|solid| solid.intersects(rect))
+        || pusher.is_some_and(|bounds| bounds.intersects(rect))
+}
+
+fn env_jump_thru_at(env: &SolidCollisionEnv, rect: Rect, previous_bottom: f32) -> bool {
+    env.jump_thrus
+        .iter()
+        .any(|jump_thru| previous_bottom <= jump_thru.y && jump_thru.intersects(rect))
+}
+
+fn player_on_squish(p: &mut PlayerSnapshot, env: &SolidCollisionEnv, pusher: Rect, target: Vec2) {
+    let mut ducked = false;
+    if !p.ducking {
+        ducked = true;
+        p.ducking = true;
+        if !env_solid_at(env, current_player_rect(p, p.pos.x, p.pos.y), Some(pusher)) {
+            return;
+        }
+
+        let was = p.pos;
+        p.pos = target;
+        if !env_solid_at(env, current_player_rect(p, p.pos.x, p.pos.y), Some(pusher)) {
+            return;
+        }
+        p.pos = was;
+    }
+
+    for origin in [p.pos, target] {
+        for x in 0..=3 {
+            for y in 0..=3 {
+                if x == 0 && y == 0 {
+                    continue;
+                }
+                for x_sign in [1.0, -1.0] {
+                    for y_sign in [1.0, -1.0] {
+                        let candidate =
+                            Vec2::new(origin.x + x as f32 * x_sign, origin.y + y as f32 * y_sign);
+                        if !env_solid_at(
+                            env,
+                            current_player_rect(p, candidate.x, candidate.y),
+                            Some(pusher),
+                        ) {
+                            p.pos = candidate;
+                            if ducked && !env_solid_at(env, player_rect(p.pos.x, p.pos.y), None) {
+                                p.ducking = false;
+                            }
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    p.dead = true;
+    p.speed = Vec2::default();
+    p.death_freeze_pending = true;
+    p.respawn_frames = 95;
+}
+
+fn move_player_exact_from_pusher(
+    p: &mut PlayerSnapshot,
+    env: &SolidCollisionEnv,
+    pusher: Rect,
+    horizontal: bool,
+    amount: f32,
+) {
+    let move_by = amount as i32;
+    if move_by == 0 {
+        return;
+    }
+    let target = if horizontal {
+        Vec2::new(p.pos.x + move_by as f32, p.pos.y)
+    } else {
+        Vec2::new(p.pos.x, p.pos.y + move_by as f32)
+    };
+    let sign = move_by.signum() as f32;
+    for _ in 0..move_by.unsigned_abs() {
+        let previous = current_player_rect(p, p.pos.x, p.pos.y);
+        let candidate = if horizontal {
+            current_player_rect(p, p.pos.x + sign, p.pos.y)
+        } else {
+            current_player_rect(p, p.pos.x, p.pos.y + sign)
+        };
+        let blocked = env_solid_at(env, candidate, None)
+            || (!horizontal && sign > 0.0 && env_jump_thru_at(env, candidate, previous.bottom()));
+        if blocked {
+            player_on_squish(p, env, pusher, target);
+            return;
+        }
+        if horizontal {
+            p.pos.x += sign;
+        } else {
+            p.pos.y += sign;
+        }
+    }
+}
+
 fn move_runtime_solid_exact(
     p: &mut PlayerSnapshot,
     bounds: &mut Rect,
+    env: &SolidCollisionEnv,
     horizontal: bool,
     amount: f32,
     lift_speed: Vec2,
@@ -671,6 +817,7 @@ fn move_runtime_solid_exact(
         return;
     }
     let riding = player_riding_solid(p, *bounds);
+    let old = *bounds;
     if horizontal {
         bounds.x += amount;
     } else {
@@ -679,17 +826,18 @@ fn move_runtime_solid_exact(
 
     let player = current_player_rect(p, p.pos.x, p.pos.y);
     if bounds.intersects(player) {
-        if horizontal {
+        let push = if horizontal {
             if amount > 0.0 {
-                p.pos.x += bounds.right() - player.x;
+                amount - (player.x - old.right())
             } else {
-                p.pos.x += bounds.x - player.right();
+                amount - (player.right() - old.x)
             }
         } else if amount > 0.0 {
-            p.pos.y += bounds.bottom() - player.y;
+            amount - (player.y - old.bottom())
         } else {
-            p.pos.y += bounds.y - player.bottom();
-        }
+            amount - (player.bottom() - old.y)
+        };
+        move_player_exact_from_pusher(p, env, *bounds, horizontal, push);
         set_lift_speed(p, lift_speed);
     } else if riding {
         if horizontal {
@@ -705,6 +853,7 @@ fn move_zip_mover_to(
     p: &mut PlayerSnapshot,
     entity: &mut crate::Entity,
     state: &mut crate::ZipMoverSnapshot,
+    env: &SolidCollisionEnv,
     target: Vec2,
 ) {
     // Platform.Update clears LiftSpeed before the entity calls MoveTo.
@@ -715,7 +864,14 @@ fn move_zip_mover_to(
     state.remainder.x += move_x;
     let exact_move_x = state.remainder.x.round_ties_even();
     state.remainder.x -= exact_move_x;
-    move_runtime_solid_exact(p, &mut entity.bounds, true, exact_move_x, state.lift_speed);
+    move_runtime_solid_exact(
+        p,
+        &mut entity.bounds,
+        env,
+        true,
+        exact_move_x,
+        state.lift_speed,
+    );
     state.position.x += exact_move_x;
 
     let exact_y = state.position.y + state.remainder.y;
@@ -724,7 +880,14 @@ fn move_zip_mover_to(
     state.remainder.y += move_y;
     let exact_move_y = state.remainder.y.round_ties_even();
     state.remainder.y -= exact_move_y;
-    move_runtime_solid_exact(p, &mut entity.bounds, false, exact_move_y, state.lift_speed);
+    move_runtime_solid_exact(
+        p,
+        &mut entity.bounds,
+        env,
+        false,
+        exact_move_y,
+        state.lift_speed,
+    );
     state.position.y += exact_move_y;
 }
 
@@ -772,6 +935,7 @@ fn move_bounce_block_to(
     p: &mut PlayerSnapshot,
     entity: &mut crate::Entity,
     state: &mut crate::BounceBlockSnapshot,
+    env: &SolidCollisionEnv,
     target: Vec2,
     lift_speed: Vec2,
 ) {
@@ -782,7 +946,7 @@ fn move_bounce_block_to(
     state.remainder.x += target.x - exact_x;
     let move_x = state.remainder.x.round_ties_even();
     state.remainder.x -= move_x;
-    move_runtime_solid_exact(p, &mut entity.bounds, true, move_x, state.lift_speed);
+    move_runtime_solid_exact(p, &mut entity.bounds, env, true, move_x, state.lift_speed);
     state.position.x += move_x;
 
     let exact_y = state.position.y + state.remainder.y;
@@ -790,7 +954,7 @@ fn move_bounce_block_to(
     state.remainder.y += target.y - exact_y;
     let move_y = state.remainder.y.round_ties_even();
     state.remainder.y -= move_y;
-    move_runtime_solid_exact(p, &mut entity.bounds, false, move_y, state.lift_speed);
+    move_runtime_solid_exact(p, &mut entity.bounds, env, false, move_y, state.lift_speed);
     state.position.y += move_y;
 }
 
@@ -839,6 +1003,7 @@ fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
         } else {
             None
         };
+        let env = solid_collision_env(map, entity_index);
         let entity = &mut map.entities[entity_index];
         match state.phase {
             0 => {
@@ -848,7 +1013,7 @@ fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
                 let delta = Vec2::new(desired.x - exact.x, desired.y - exact.y);
                 let mut lift = safe_normalize(delta, state.move_speed);
                 lift.x *= 0.75;
-                move_bounce_block_to(p, entity, &mut state, desired, lift);
+                move_bounce_block_to(p, entity, &mut state, &env, desired, lift);
                 if bounce_block_player_check(p, entity.bounds) {
                     state.move_speed = 80.0;
                     let player_center = Vec2::new(
@@ -899,7 +1064,7 @@ fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
                 let delta = Vec2::new(desired.x - exact.x, desired.y - exact.y);
                 let mut lift = safe_normalize(delta, state.move_speed);
                 lift.x *= 0.75;
-                move_bounce_block_to(p, entity, &mut state, desired, lift);
+                move_bounce_block_to(p, entity, &mut state, &env, desired, lift);
                 let remaining = Vec2::new(
                     bounce_block_exact_position(&state).x - target.x,
                     bounce_block_exact_position(&state).y - target.y,
@@ -921,7 +1086,7 @@ fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
                 state.bounce_lift = safe_normalize(delta, (state.move_speed * 3.0).min(200.0));
                 state.bounce_lift.x *= 0.75;
                 let lift = state.bounce_lift;
-                move_bounce_block_to(p, entity, &mut state, desired, lift);
+                move_bounce_block_to(p, entity, &mut state, &env, desired, lift);
                 if bounce_block_exact_position(&state) == target
                     || !bounce_block_player_check(p, entity.bounds)
                 {
@@ -1029,6 +1194,7 @@ fn move_move_block_axis(
     if amount == 0.0 {
         return false;
     }
+    let env = solid_collision_env(map, entity_index);
     let original = map.entities[entity_index].bounds;
     let shifted = if horizontal {
         Rect::new(
@@ -1071,13 +1237,27 @@ fn move_move_block_axis(
                     continue;
                 }
                 let entity = &mut map.entities[entity_index];
-                move_runtime_solid_exact(p, &mut entity.bounds, !horizontal, offset, lift_speed);
+                move_runtime_solid_exact(
+                    p,
+                    &mut entity.bounds,
+                    &env,
+                    !horizontal,
+                    offset,
+                    lift_speed,
+                );
                 if horizontal {
                     state.position.y += offset;
                 } else {
                     state.position.x += offset;
                 }
-                move_runtime_solid_exact(p, &mut entity.bounds, horizontal, amount, lift_speed);
+                move_runtime_solid_exact(
+                    p,
+                    &mut entity.bounds,
+                    &env,
+                    horizontal,
+                    amount,
+                    lift_speed,
+                );
                 if horizontal {
                     state.position.x += amount;
                 } else {
@@ -1089,7 +1269,7 @@ fn move_move_block_axis(
         return true;
     }
     let entity = &mut map.entities[entity_index];
-    move_runtime_solid_exact(p, &mut entity.bounds, horizontal, amount, lift_speed);
+    move_runtime_solid_exact(p, &mut entity.bounds, &env, horizontal, amount, lift_speed);
     if horizontal {
         state.position.x += amount;
     } else {
@@ -1447,6 +1627,33 @@ fn advance_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
     }
 }
 
+fn advance_heart_gems(p: &mut PlayerSnapshot) {
+    for heart in &mut p.heart_gems {
+        match heart.phase {
+            1 => {
+                if heart.wait_frames > 0 {
+                    heart.wait_frames -= 1;
+                } else {
+                    // HeartGem.CollectRoutine yields one scene frame, then
+                    // calls Celeste.Freeze(.2f) and yields again.
+                    p.freeze_timer = 0.2;
+                    heart.phase = 2;
+                }
+            }
+            2 => {
+                // The coroutine resumes on the first scene update after the
+                // raw-time freeze and writes Engine.TimeRate before its loop.
+                p.time_rate = 0.5;
+                heart.phase = 3;
+            }
+            3 => {
+                p.time_rate = approach(p.time_rate, 0.0, DT * 0.25);
+            }
+            _ => {}
+        }
+    }
+}
+
 fn advance_zip_movers(p: &mut PlayerSnapshot, map: &mut Map) {
     let zip_indices: Vec<usize> = map
         .entities
@@ -1456,6 +1663,7 @@ fn advance_zip_movers(p: &mut PlayerSnapshot, map: &mut Map) {
         .collect();
     for (zip_index, entity_index) in zip_indices.into_iter().enumerate() {
         let mut state = p.zip_movers[zip_index].clone();
+        let env = solid_collision_env(map, entity_index);
         let entity = &mut map.entities[entity_index];
         let target = entity.nodes.first().copied().unwrap_or(state.start);
         match state.phase {
@@ -1480,7 +1688,7 @@ fn advance_zip_movers(p: &mut PlayerSnapshot, map: &mut Map) {
                     state.start.x + (target.x - state.start.x) * eased,
                     state.start.y + (target.y - state.start.y) * eased,
                 );
-                move_zip_mover_to(p, entity, &mut state, desired);
+                move_zip_mover_to(p, entity, &mut state, &env, desired);
                 if state.at >= 1.0 {
                     state.phase = 3;
                     state.wait_timer = 0.5;
@@ -1501,7 +1709,7 @@ fn advance_zip_movers(p: &mut PlayerSnapshot, map: &mut Map) {
                     target.x + (state.start.x - target.x) * eased,
                     target.y + (state.start.y - target.y) * eased,
                 );
-                move_zip_mover_to(p, entity, &mut state, desired);
+                move_zip_mover_to(p, entity, &mut state, &env, desired);
                 if state.at >= 1.0 {
                     state.phase = 5;
                     state.wait_timer = 0.5;
@@ -1737,6 +1945,7 @@ fn step(
         advance_bounce_blocks(p, map);
         advance_move_blocks(p, map, input);
         advance_theo_crystals(p, map);
+        advance_heart_gems(p);
         advance_clouds(p, map);
         p.on_ground = grounded(p, map);
         return Ok(());
@@ -1765,6 +1974,7 @@ fn step(
             advance_bounce_blocks(p, map);
             advance_move_blocks(p, map, input);
             advance_theo_crystals(p, map);
+            advance_heart_gems(p);
             advance_clouds(p, map);
             p.on_ground = grounded(p, map);
             return Ok(());
@@ -1817,6 +2027,7 @@ fn step(
     advance_bounce_blocks(p, map);
     advance_move_blocks(p, map, input);
     advance_theo_crystals(p, map);
+    advance_heart_gems(p);
     advance_clouds(p, map);
     p.on_ground = grounded(p, map);
     Ok(())
@@ -3218,7 +3429,15 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
         }
     }
     let hitbox = current_player_rect(p, p.pos.x, p.pos.y);
+    let mut heart_index = 0usize;
     for (entity_index, entity) in map.entities.iter().enumerate() {
+        let current_heart = if entity.kind == EntityKind::HeartGem {
+            let index = heart_index;
+            heart_index += 1;
+            Some(index)
+        } else {
+            None
+        };
         let player_box = if matches!(
             entity.kind,
             EntityKind::Spikes
@@ -3371,6 +3590,27 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                         p.strawberry_collect_timer = 0.0;
                     }
                     p.carried_strawberries = p.carried_strawberries.saturating_add(1);
+                }
+            }
+            EntityKind::HeartGem => {
+                let Some(index) = current_heart else {
+                    continue;
+                };
+                if p.heart_gems.get(index).is_some_and(|heart| heart.collected) {
+                    continue;
+                }
+                let target = Vec2::new(
+                    entity.bounds.x + entity.bounds.width * 0.5,
+                    entity.bounds.y + entity.bounds.height * 0.5,
+                );
+                if p.dash_attack_timer > 0.0 || p.state == PlayerState::RedDash {
+                    if let Some(heart) = p.heart_gems.get_mut(index) {
+                        heart.collected = true;
+                        heart.phase = 1;
+                        heart.wait_frames = 1;
+                    }
+                } else {
+                    point_bounce(p, target);
                 }
             }
             EntityKind::IceBall => {
@@ -4641,6 +4881,72 @@ mod tests {
         assert_eq!(p.last_lift_speed, Vec2::default());
     }
     #[test]
+    fn downward_solid_push_uses_player_squish_target_to_clip_through_jump_thru() {
+        let map = Map {
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::BounceBlock,
+                    bounds: Rect::new(40.0, 20.0, 32.0, 16.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "bounceBlock".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::JumpThru,
+                    bounds: Rect::new(40.0, 48.0, 32.0, 8.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "jumpThru".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let env = solid_collision_env(&map, 0);
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(56.0, 48.0),
+            ..PlayerSnapshot::default()
+        };
+        let mut pusher = map.entities[0].bounds;
+
+        move_runtime_solid_exact(&mut p, &mut pusher, &env, false, 8.0, Vec2::new(0.0, 120.0));
+
+        assert_eq!(p.pos, Vec2::new(56.0, 55.0));
+        assert!(p.ducking);
+        assert!(!p.dead);
+        assert_eq!(p.last_lift_speed, Vec2::new(0.0, 120.0));
+    }
+    #[test]
+    fn ordinary_downward_solid_push_moves_the_actor_without_squish() {
+        let map = Map {
+            entities: vec![crate::Entity {
+                kind: EntityKind::BounceBlock,
+                bounds: Rect::new(40.0, 20.0, 32.0, 16.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "bounceBlock".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let env = solid_collision_env(&map, 0);
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(56.0, 48.0),
+            ..PlayerSnapshot::default()
+        };
+        let mut pusher = map.entities[0].bounds;
+
+        move_runtime_solid_exact(&mut p, &mut pusher, &env, false, 4.0, Vec2::new(0.0, 60.0));
+
+        assert_eq!(p.pos, Vec2::new(56.0, 51.0));
+        assert!(!p.ducking);
+        assert!(!p.dead);
+    }
+    #[test]
     fn zip_mover_uses_source_wait_yield_and_sine_outbound_phases() {
         let p = PlayerSnapshot {
             pos: Vec2::new(64.0, 440.0),
@@ -5439,6 +5745,167 @@ mod tests {
         assert!(trace.states[33].ducking);
         assert_eq!(trace.states[37].state, PlayerState::Normal);
         assert_eq!(trace.states[37].speed, Vec2::new(325.0, -117.5));
+    }
+
+    #[test]
+    fn holdable_core_hyper_releases_during_grace_then_regrabs_after_cannot_hold() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            entities: vec![crate::Entity {
+                kind: EntityKind::TheoCrystal,
+                bounds: Rect::new(96.0, 78.0, 8.0, 10.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "theoCrystal".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let initial = PlayerSnapshot {
+            pos: Vec2::new(100.0, 90.0),
+            speed: Vec2::new(0.0, -200.0),
+            facing: true,
+            jump_grace_timer: JUMP_GRACE,
+            last_lift_speed: Vec2::new(0.0, -200.0),
+            lift_speed_timer: 0.16,
+            holding_theo: Some(0),
+            theo_crystals: vec![crate::TheoCrystalSnapshot {
+                position: Vec2::new(100.0, 78.0),
+                held: true,
+                ..crate::TheoCrystalSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = vec![InputState {
+            move_x: 1,
+            crouch_dash_pressed: true,
+            ..InputState::default()
+        }];
+        inputs.extend(
+            [InputState {
+                move_x: 1,
+                ..InputState::default()
+            }; 3],
+        );
+        inputs.push(InputState {
+            move_x: 1,
+            jump_pressed: true,
+            jump_held: true,
+            ..InputState::default()
+        });
+        inputs.extend(
+            [InputState {
+                move_x: -1,
+                grab_held: true,
+                ..InputState::default()
+            }; 36],
+        );
+
+        let trace = simulate_trace(initial, &inputs, &map, inputs.len() as u32).unwrap();
+        let released = trace
+            .states
+            .iter()
+            .position(|state| state.holding_theo.is_none())
+            .unwrap();
+        let hyper = trace
+            .states
+            .iter()
+            .position(|state| {
+                state.state == PlayerState::Normal && (state.speed.x - 325.0).abs() < 0.001
+            })
+            .unwrap();
+        let regrabbed = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(hyper + 1)
+            .find(|(_, state)| state.state == PlayerState::Pickup && state.holding_theo == Some(0))
+            .map(|(frame, _)| frame)
+            .unwrap();
+
+        assert_eq!(released, 1);
+        assert!(trace.states[released].theo_crystals[0].cannot_hold_timer > 0.0);
+        assert!(
+            trace.states[released..regrabbed]
+                .iter()
+                .all(|state| state.holding_theo.is_none())
+        );
+        assert!(hyper < regrabbed);
+    }
+
+    #[test]
+    fn heart_gem_collect_yields_then_freezes_before_setting_half_time_rate() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            entities: vec![crate::Entity {
+                kind: EntityKind::HeartGem,
+                bounds: Rect::new(92.0, 82.0, 16.0, 16.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "heartGem".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let initial = PlayerSnapshot {
+            pos: Vec2::new(100.0, 93.0),
+            dash_attack_timer: 0.1,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [InputState::default(); 20];
+        let trace = simulate_trace(initial, &inputs, &map, inputs.len() as u32).unwrap();
+        let collected = trace
+            .states
+            .iter()
+            .position(|state| state.heart_gems[0].collected)
+            .unwrap();
+        let frozen = trace
+            .states
+            .iter()
+            .position(|state| state.freeze_timer >= 0.19)
+            .unwrap();
+        let half_time = trace
+            .states
+            .iter()
+            .position(|state| (state.time_rate - 0.5).abs() < 0.001)
+            .unwrap();
+
+        assert_eq!(frozen, collected + 1);
+        assert!(half_time > frozen + 10);
+        assert!(
+            trace.states[frozen..half_time]
+                .windows(2)
+                .all(|states| states[0].pos == states[1].pos)
+        );
+    }
+
+    #[test]
+    fn heart_gem_point_bounces_a_non_dash_attacking_player() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            entities: vec![crate::Entity {
+                kind: EntityKind::HeartGem,
+                bounds: Rect::new(92.0, 82.0, 16.0, 16.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "heartGem".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let initial = PlayerSnapshot {
+            pos: Vec2::new(100.0, 93.0),
+            speed: Vec2::new(0.0, 20.0),
+            ..PlayerSnapshot::default()
+        };
+        let state = simulate(initial, &[InputState::default()], &map, 1).unwrap();
+
+        assert_eq!(state.state, PlayerState::Normal);
+        assert!(state.speed.y < 0.0);
+        assert!(!state.heart_gems[0].collected);
     }
 
     #[test]

@@ -144,6 +144,15 @@ pub struct TheoCrystalSnapshot {
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
+pub struct HeartGemSnapshot {
+    /// Idle, one-frame pre-freeze yield, frozen yield, or time-rate cutscene.
+    pub phase: u8,
+    pub wait_frames: u8,
+    pub collected: bool,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct CloudSnapshot {
     /// Vanilla Cloud.Update phase: waiting, rebounding, or returning.
     pub phase: u8,
@@ -208,6 +217,8 @@ pub struct PlayerSnapshot {
     /// Global Monocle freeze remaining. While positive, Engine frames advance
     /// but the scene and player state machine do not update.
     pub freeze_timer: f32,
+    /// Engine.TimeRate written by HeartGem. Raw engine-frame time remains DT.
+    pub time_rate: f32,
     pub state_timer: f32,
     pub boost_target: Vec2,
     pub boost_red: bool,
@@ -263,6 +274,8 @@ pub struct PlayerSnapshot {
     pub move_blocks: Vec<MoveBlockSnapshot>,
     /// Per-entity vanilla TheoCrystal actor and Holdable state.
     pub theo_crystals: Vec<TheoCrystalSnapshot>,
+    /// Per-entity vanilla HeartGem collection coroutine state.
+    pub heart_gems: Vec<HeartGemSnapshot>,
     /// Per-entity vanilla non-fragile Cloud movement state.
     pub clouds: Vec<CloudSnapshot>,
     /// Map-order TheoCrystal index currently held by Player.
@@ -371,6 +384,7 @@ impl Default for PlayerSnapshot {
             dash_cooldown_timer: 0.0,
             dash_refill_cooldown_timer: 0.0,
             freeze_timer: 0.0,
+            time_rate: 1.0,
             state_timer: 0.0,
             boost_target: Vec2::default(),
             boost_red: false,
@@ -407,6 +421,7 @@ impl Default for PlayerSnapshot {
             bounce_blocks: vec![],
             move_blocks: vec![],
             theo_crystals: vec![],
+            heart_gems: vec![],
             clouds: vec![],
             holding_theo: None,
             min_hold_timer: 0.0,
