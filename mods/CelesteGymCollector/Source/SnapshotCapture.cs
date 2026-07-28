@@ -61,6 +61,7 @@ internal static class SnapshotCapture {
         }
         values["playerCollider"] = ColliderGeometry(player.Collider);
         values["engineTimeRate"] = Engine.TimeRate;
+        values["engineDeltaTime"] = Engine.DeltaTime;
         if (playerHurtbox?.GetValue(player) is Collider hurtbox) {
             values["playerHurtbox"] = ColliderGeometry(hurtbox);
         }

@@ -3662,7 +3662,12 @@ fn step(
     // Engine computes DeltaTime once at the beginning of the raw frame. A
     // HeartGem can write TimeRate during Scene.Update, but that write only
     // changes movement and timers from the next engine frame onward.
-    p.frame_delta_time = DT * p.time_rate;
+    let raw_delta_time = input
+        .frame_delta_time_bits
+        .map(f32::from_bits)
+        .filter(|delta| delta.is_finite() && *delta > 0.0)
+        .unwrap_or(DT);
+    p.frame_delta_time = raw_delta_time * p.time_rate;
     // VirtualButton.Update runs in MInput before Celeste.Freeze can skip the
     // Scene. It subtracts DeltaTime first, then a new press restores the full
     // buffer; Jump also clears its buffer as soon as the binding is not held.
@@ -3714,7 +3719,7 @@ fn step(
             return Ok(());
         }
         if p.freeze_timer > 0.0 {
-            p.freeze_timer = (p.freeze_timer - DT).max(0.0);
+            p.freeze_timer = (p.freeze_timer - raw_delta_time).max(0.0);
         }
         return Ok(());
     }
@@ -3728,7 +3733,7 @@ fn step(
     if p.just_respawned && p.speed != Vec2::default() {
         p.just_respawned = false;
     }
-    p.scene_time_active += DT;
+    p.scene_time_active += raw_delta_time;
     advance_moving_solids(p, map);
     if p.transition_timer > 0.0 {
         update_transition(p, map);
@@ -14459,6 +14464,26 @@ mod tests {
         assert!(trace.states[36].pos.x > 544.0);
         assert!(trace.states[38].on_ground);
         assert!(trace.states[39].speed.x > 300.0 && trace.states[39].speed.y < -160.0);
+    }
+
+    #[test]
+    fn real_trace_delta_time_controls_the_matching_player_frame() {
+        let state = simulate(
+            PlayerSnapshot {
+                pos: Vec2::new(160.0, 160.0),
+                ..PlayerSnapshot::default()
+            },
+            &[InputState {
+                frame_delta_time_bits: Some(0.02_f32.to_bits()),
+                ..InputState::default()
+            }],
+            &Map::default(),
+            1,
+        )
+        .unwrap();
+
+        assert!((state.frame_delta_time - 0.02).abs() < 0.000_001);
+        assert!((state.speed.y - 18.0).abs() < 0.000_001);
     }
 
     #[test]
