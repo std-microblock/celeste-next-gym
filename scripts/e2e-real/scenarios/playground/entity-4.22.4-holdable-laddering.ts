@@ -9,7 +9,7 @@ export const mapParts = [ENTITY_4_22_4_HOLDABLE_LADDER_PART] as const
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET, status: 'candidate', tags: ['feature:glider'], techniqueIds: ['4.22.4'], mapParts,
   name: 'entity-4.22.4-holdable-laddering', initial: { pos: [96, 400], speed: [0, -30] },
-  inputs: Array.from({ length: 120 }, (_, frame) => input({
+  inputs: Array.from({ length: 150 }, (_, frame) => input({
     move_y: frame === 23 || frame === 65 || frame === 101 ? 1 : -1,
     grab_held: ![23, 65, 101].includes(frame),
   })),
