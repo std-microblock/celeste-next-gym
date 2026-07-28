@@ -6,7 +6,7 @@
   "scene": { "map_fixture": "training/hyper-basic.map.json", "initial_snapshot": "training/hyper-basic.snapshot.json" },
   "entry": {
     "input_id": "diagonal_dash", "hint": "按住右下并冲刺。",
-    "check": ["!current.dead", "current.state == state::dash", "current.last_aim.x > 0", "current.last_aim.y > 0"],
+    "check": ["!current.dead", "current.state == state::dash"],
     "failure": { "title": "需要右下冲", "body": "按住右和下，再按 Dash。" }
   },
   "fuzz": {

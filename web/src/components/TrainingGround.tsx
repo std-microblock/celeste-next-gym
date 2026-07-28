@@ -39,6 +39,10 @@ function pressedVerification(current: FrameButtons, previous: FrameButtons): boo
   return (current.dash && !previous.dash) || (current.jump && !previous.jump) || (current.grab && !previous.grab)
 }
 
+export function trainingEntryDirectionPassed(buttons: FrameButtons): boolean {
+  return buttons.right && buttons.down
+}
+
 function verificationKeys(buttons: FrameButtons, document: TrainingDefinition, step: number): string[] {
   const expected = verifiedInputs(document)[step]?.keys ?? []
   const actual = keySemantics(buttons)
@@ -260,7 +264,9 @@ export function TrainingGround() {
           if (shouldVerify) {
             const localFrame = beforeSession.phase === 'pre_fuzz' ? 0 : currentFrame - (fuzzStartRef.current ?? currentFrame)
             const semanticKeys = verificationKeys(current, document, beforeSession.nextVerifiedInput)
-            const entryPassed = beforeSession.phase === 'pre_fuzz' ? await client.entryCheck(after, document.entry.check) : true
+            const entryPassed = beforeSession.phase === 'pre_fuzz'
+              ? trainingEntryDirectionPassed(current) && await client.entryCheck(after, document.entry.check)
+              : true
             const nextSession = verifyTrainingInput(beforeSession, document, localFrame, semanticKeys, entryPassed)
             attempts.current = [...attempts.current, { frame: currentFrame, keys: semanticKeys, entryCheckPassed: entryPassed }]
             const expected = verifiedInputs(document)[beforeSession.nextVerifiedInput]?.keys ?? []
@@ -307,7 +313,7 @@ export function TrainingGround() {
       <div className="stage-header"><div><small>TRAINING / {document.id}</small><h1>{document.title} <em>第 {Math.min(session.nextVerifiedInput + 1, document.teaching.steps.length)}/{document.teaching.steps.length} 步</em></h1></div><div className="cache-meter"><span>{bestFinalSpeed === undefined ? '有效倍率' : '当前最佳候选最终 X 速度'}</span><strong>{bestFinalSpeed === undefined ? `${effective.toFixed(2)}×` : bestFinalSpeed.toFixed(2)}</strong></div></div>
       <GameView map={map} state={state} states={snapshots} frame={frame} stale={false} />
       <div className="training-prompt">{prompt}</div>
-      {outcome?.phase === 'failed' && <div className="training-failure" style={{ '--outcome-progress': outcomeProgress } as CSSProperties}><strong>失败</strong><span>{notice}</span><button onClick={() => resetTo()}>R 重试</button></div>}
+      {outcome?.phase === 'failed' && <div className="training-failure" style={{ '--outcome-progress': outcomeProgress } as CSSProperties}><strong>{session.failure?.kind === 'entry_check_failed' ? document.entry.failure.title : session.failure?.kind === 'input_order_mismatch' ? document.teaching.steps[session.nextVerifiedInput]?.order_error.title : document.teaching.steps[session.nextVerifiedInput]?.window_error.title}</strong><span>{notice}</span><button onClick={() => resetTo()}>R 重试</button></div>}
       {outcome?.phase === 'success' && <div className="training-success" style={{ '--outcome-progress': outcomeProgress } as CSSProperties}><div className="training-fireworks" aria-hidden="true">{Array.from({ length: 18 }, (_, index) => <i key={index} style={{ '--firework-index': index } as CSSProperties} />)}</div><strong>成功</strong><span>实际输入已保留在训练时间线。</span><button onClick={() => resetTo(0)}>再试一次</button></div>}
       <div className="transport"><button aria-label="回到 R 点" onClick={() => resetTo()}>R</button><button aria-label="上一帧" onClick={() => seek(frame - 1)}>◀</button><button className="play-button" onClick={() => { if (!playing && predictionDirty.current) { predictionDirty.current = false; applyPrediction({ windows: [] }) } setPlaying((value) => !value) }}>{playing ? 'Ⅱ' : '▶'}</button><button aria-label="下一帧" onClick={() => { if (predictionDirty.current) { predictionDirty.current = false; applyPrediction({ windows: [] }) } setPlaying(true) }}>▶</button><select aria-label="训练基础速度" value={baseRate} onChange={(event) => setBaseRate(Number(event.target.value))}><option value={.25}>0.25×</option><option value={.5}>0.5×</option><option value={1}>1×</option><option value={2}>2×</option></select><label className="training-assist"><input type="checkbox" checked={autoSlowdown} onChange={(event) => setAutoSlowdown(event.target.checked)} />自动慢放</label></div>
     </section>
