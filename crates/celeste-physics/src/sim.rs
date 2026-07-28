@@ -14394,4 +14394,111 @@ mod tests {
         assert!(!trace.states[330].lookouts[0].interacting);
         assert_eq!(trace.states[330].state, PlayerState::Normal);
     }
+
+    #[test]
+    fn cloud_hyper_bunnyhop_fixture_leaves_the_platform_side_before_apex_landing() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
+            solids: vec![
+                Rect::new(0.0, 496.0, 960.0, 48.0),
+                Rect::new(544.0, 416.0, 160.0, 8.0),
+            ],
+            entities: vec![crate::Entity {
+                kind: EntityKind::Cloud,
+                bounds: Rect::new(504.0, 434.0, 32.0, 5.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "cloud".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let inputs: Vec<_> = (0..45)
+            .map(|frame| InputState {
+                move_x: if (24..=28).contains(&frame) {
+                    -1
+                } else if frame >= 29 {
+                    1
+                } else {
+                    0
+                },
+                crouch_dash_pressed: frame == 24,
+                jump_pressed: frame == 29 || frame == 38,
+                jump_held: frame == 29 || frame == 38,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(
+            PlayerSnapshot {
+                pos: Vec2::new(520.0, 434.0),
+                ..PlayerSnapshot::default()
+            },
+            &inputs,
+            &map,
+            inputs.len() as u32,
+        )
+        .unwrap();
+
+        assert_eq!(trace.states[30].speed.x, 325.0);
+        assert_eq!(trace.states[35].pos.y, 414.0);
+        assert!(trace.states[36].pos.x > 544.0);
+        assert!(trace.states[38].on_ground);
+        assert!(trace.states[39].speed.x > 300.0 && trace.states[39].speed.y < -160.0);
+    }
+
+    #[test]
+    fn roboboost_fixture_restores_climb_jump_speed_before_reversing_input() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
+            solids: vec![
+                Rect::new(0.0, 496.0, 960.0, 48.0),
+                Rect::new(448.0, 432.0, 8.0, 8.0),
+            ],
+            entities: vec![crate::Entity {
+                kind: EntityKind::MoveBlock,
+                bounds: Rect::new(400.0, 464.0, 64.0, 16.0),
+                direction: Vec2::new(0.0, -1.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "moveBlock".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let inputs: Vec<_> = (0..90)
+            .map(|frame| InputState {
+                move_x: if (45..58).contains(&frame) {
+                    1
+                } else if frame >= 58 {
+                    -1
+                } else {
+                    0
+                },
+                crouch_dash_pressed: frame == 45,
+                jump_pressed: frame == 49 || frame == 51,
+                jump_held: frame == 49 || frame == 51,
+                grab_held: frame == 51,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(
+            PlayerSnapshot {
+                pos: Vec2::new(432.0, 464.0),
+                on_ground: true,
+                ..PlayerSnapshot::default()
+            },
+            &inputs,
+            &map,
+            inputs.len() as u32,
+        )
+        .unwrap();
+
+        assert!(trace.states[50].speed.x > 300.0);
+        assert!(trace.states[51].wall_speed_retention_timer > 0.05);
+        assert!(trace.states[51].wall_speed_retained > 300.0);
+        assert!(trace.states[55].speed.x > 300.0);
+        assert!(trace.states[59].speed.x < trace.states[58].speed.x);
+        assert_eq!(trace.states[51].move_blocks[0].position.y, 440.0);
+    }
 }

@@ -137,7 +137,10 @@ export const TECH_ENTITY_4_6_1_CLOUD_HYPER_SUPER = fixturePart('tech.entity-4.6.
   entities: [{ id: 'tech-4.6.1-cloud', kind: 'cloud', bounds: [600, 440, 32, 5], name: 'cloud' }],
 })
 export const TECH_ENTITY_4_6_2_CLOUD_HYPER_BUNNYHOP = fixturePart('tech.entity-4.6.2-cloud-hyper-bunnyhop', {
-  solids: [[536, 416, 160, 8]],
+  // Keep the apex platform one grid cell past the cloud's right edge.  Starting
+  // it flush with the cloud adds a horizontal wall collision on the departure
+  // frame, which is not part of the cloud-apex bunnyhop.
+  solids: [[544, 416, 160, 8]],
   entities: [{ id: 'tech-4.6.2-cloud', kind: 'cloud', bounds: [504, 434, 32, 5], name: 'cloud' }],
 })
 export const TECH_ENTITY_4_10_3_DREAM_SMUGGLE = fixturePart('tech.entity-4.10.3-dream-smuggle', {
@@ -201,8 +204,11 @@ export const PLAYGROUND_OTHER_KERMIT = defineMapPart({
 export const PLAYGROUND_OTHER_SUBPIXEL = fixturePart('playground.other-subpixel')
 export const TECH_OTHER_5_13_UNDEMO_DASHING = fixturePart('tech.other-5.13-undemo-dashing')
 export const TECH_OTHER_5_8_ROBOBOOST = fixturePart('tech.other-5.8-roboboost', {
-  solids: [[480, 400, 8, 64]],
-  entities: [{ id: 'tech-5.8-move-block', kind: 'move_block', bounds: [400, 464, 64, 16], direction: [1, 0], name: 'moveBlock' }],
+  // The 8px-grid corner stops the ascending MoveBlock at its lower edge.  Its
+  // retained upward lift makes the post-hyper ClimbJump clear the wall within
+  // Player.WallSpeedRetentionTime.
+  solids: [[448, 432, 8, 8]],
+  entities: [{ id: 'tech-5.8-move-block', kind: 'move_block', bounds: [400, 464, 64, 16], direction: [0, -1], name: 'moveBlock' }],
 })
 
 export const COMMON_MAP_PARTS = new Map<string, MapPart>([
