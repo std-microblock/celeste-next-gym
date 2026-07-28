@@ -12,7 +12,7 @@ function isPair(value: unknown): value is readonly [number, number] {
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: ['feature:bounce-block'],
   techniqueIds: ['4.18.3'],
   mapParts,
