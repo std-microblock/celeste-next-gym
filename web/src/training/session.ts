@@ -22,7 +22,15 @@ export interface TrainingCandidateInput {
 export interface TrainingCandidate {
   bindings: Record<string, number>
   verified_inputs: TrainingCandidateInput[]
+  objective_values: number[]
+  successful: boolean
   final_state?: { speed?: { x: number; y: number } }
+}
+
+export interface TrainingObjectivePoint {
+  frame: number
+  values: number[]
+  successful: boolean
 }
 
 export interface TrainingDefinition {
@@ -146,10 +154,34 @@ export function candidateWindow(candidates: readonly TrainingCandidate[], inputI
 }
 
 export function nextTargetFrame(candidates: readonly TrainingCandidate[], inputIndex: number): number | undefined {
-  return candidates
-    .map((candidate) => candidateInput(candidate, inputIndex)?.frame)
-    .filter((frame): frame is number => frame !== undefined)
-    .sort((left, right) => left - right)[0]
+  return candidates.length === 0 ? undefined : candidateInput(candidates[0], inputIndex)?.frame
+}
+
+/** The Fuzz result is objective-sorted, so duplicate frames retain their best candidate. */
+export function candidateObjectivePoints(candidates: readonly TrainingCandidate[], inputIndex: number): TrainingObjectivePoint[] {
+  const points = new Map<number, { values: number[]; successful: boolean }>()
+  for (const candidate of candidates) {
+    const frame = candidateInput(candidate, inputIndex)?.frame
+    if (frame !== undefined && !points.has(frame)) points.set(frame, { values: candidate.objective_values, successful: candidate.successful })
+  }
+  return [...points].sort(([left], [right]) => left - right).map(([frame, point]) => ({
+    frame,
+    ...point,
+  }))
+}
+
+export function matchingTrainingCandidate(
+  candidates: readonly TrainingCandidate[],
+  definition: TrainingDefinition,
+  actualInputs: readonly { frame: number; keys: readonly string[] }[],
+): TrainingCandidate | undefined {
+  const inputs = verifiedInputs(definition)
+  const entryIndex = inputs.findIndex((input) => input.id === definition.entry.input_id)
+  return candidates.find((candidate) => actualInputs.every((actual, index) => {
+    const input = inputs[entryIndex + index]
+    const expected = input === undefined ? undefined : candidateInput(candidate, input.fuzzInputIndex)
+    return expected?.frame === actual.frame && sameKeySemantics(expected.keys, actual.keys)
+  }))
 }
 
 function failed(session: TrainingSession, kind: TrainingFailure, frame: number, fuzzInputIndex: number): TrainingSession {

@@ -183,6 +183,34 @@ fn windows_coverage_regions_and_objective_tiebreak_are_deterministic() {
 }
 
 #[test]
+fn evaluations_include_objectives_for_failed_candidates() {
+    let result = search(
+        r#"{
+          "version":1,
+          "variables":[{"name":"frame","range":{"from":0,"to":2}}],
+          "inputs":[], "observe_until":0,
+          "success":"frame == 1",
+          "objectives":[{"type":"maximize","expression":"frame + 10"}]
+        }"#,
+        vec![OutputMode::Candidates, OutputMode::Evaluations],
+    );
+    assert_eq!(result.candidates.len(), 1);
+    assert_eq!(result.evaluations.len(), 3);
+    assert_eq!(
+        result
+            .evaluations
+            .iter()
+            .map(|evaluation| (
+                evaluation.bindings["frame"],
+                evaluation.successful,
+                evaluation.objective_values[0],
+            ))
+            .collect::<Vec<_>>(),
+        [(0, false, 10.0), (1, true, 11.0), (2, false, 12.0)]
+    );
+}
+
+#[test]
 fn prefix_cache_reuses_identical_input_paths() {
     let result = search(
         r#"{
@@ -301,6 +329,7 @@ fn parallel_search_matches_serial_candidates_and_reports() {
                 OutputMode::Best,
                 OutputMode::Windows,
                 OutputMode::Coverage,
+                OutputMode::Evaluations,
                 OutputMode::Top(5),
             ],
             SearchOptions::default(),
@@ -315,6 +344,7 @@ fn parallel_search_matches_serial_candidates_and_reports() {
                 OutputMode::Best,
                 OutputMode::Windows,
                 OutputMode::Coverage,
+                OutputMode::Evaluations,
                 OutputMode::Top(5),
             ],
             SearchOptions {
@@ -328,6 +358,7 @@ fn parallel_search_matches_serial_candidates_and_reports() {
     assert_eq!(parallel.exact_windows, serial.exact_windows);
     assert_eq!(parallel.connected_regions, serial.connected_regions);
     assert_eq!(parallel.coverage_report, serial.coverage_report);
+    assert_eq!(parallel.evaluations, serial.evaluations);
     assert_eq!(parallel.stats.candidate_count, serial.stats.candidate_count);
     assert_eq!(
         parallel.stats.successful_count,

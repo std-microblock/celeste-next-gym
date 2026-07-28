@@ -1,6 +1,63 @@
 import { useMemo, useRef, useState } from 'react'
 import type { FrameWindow } from '../training/session'
 
+export interface TrainingObjectiveSeries {
+  expression: string
+  points: Array<{ frame: number; value: number; successful: boolean }>
+}
+
+function contiguousSegments(points: Array<{ frame: number; value: number }>): Array<Array<{ frame: number; value: number }>> {
+  const segments: Array<Array<{ frame: number; value: number }>> = []
+  for (const point of points) {
+    const segment = segments.at(-1)
+    if (!segment || point.frame > segment.at(-1)!.frame + 1) segments.push([point])
+    else segment.push(point)
+  }
+  return segments
+}
+
+function ObjectiveCurve({ series, from, to }: { series: TrainingObjectiveSeries[]; from: number; to: number }) {
+  const span = Math.max(1, to - from)
+  return <svg className="training-objective-curve" viewBox="0 0 100 50" preserveAspectRatio="none" aria-hidden="true">
+    {series.map((objective, objectiveIndex) => {
+      const visible = objective.points.filter((point) => point.frame >= from && point.frame <= to)
+      if (visible.length === 0) return null
+      const values = visible.map((point) => point.value)
+      const minimum = Math.min(...values)
+      const maximum = Math.max(...values)
+      const range = maximum - minimum
+      const x = (frame: number) => (frame - from) / span * 100
+      const y = (value: number) => range === 0 ? 25 : 44 - (value - minimum) / range * 36
+      return <g key={`${objective.expression}-${objectiveIndex}`} className={`training-objective-series objective-${objectiveIndex % 3}`}>
+        {contiguousSegments(visible).map((segment, segmentIndex) => <polyline key={segmentIndex} points={segment.map((point) => `${x(point.frame)},${y(point.value)}`).join(' ')} />)}
+      </g>
+    })}
+  </svg>
+}
+
+function ObjectiveHoverLayer({ series, from, to }: { series: TrainingObjectiveSeries[]; from: number; to: number }) {
+  const frames = series[0]?.points.filter((point) => point.frame >= from && point.frame <= to) ?? []
+  if (frames.length === 0) return null
+  const span = Math.max(1, to - from)
+  const width = Math.max(1.2, 100 / span)
+  return <div className="training-objective-hover-layer" aria-label="Fuzz objective 按帧结果">
+    {frames.map((frame) => {
+      const left = Math.max(0, Math.min(100 - width, (frame.frame - from) / span * 100 - width / 2))
+      const edge = left < 12 ? 'before' : left > 88 - width ? 'after' : ''
+      return <i key={frame.frame} className={`training-objective-hit ${edge}`} style={{ left: `${left}%`, width: `${width}%` }} tabIndex={0}>
+        <span className="training-objective-tooltip">
+          <b>F{frame.frame} · {frame.successful ? '可行候选' : '未通过 SUCCESS'}</b>
+          {series.map((objective, index) => {
+            const point = objective.points.find((candidate) => candidate.frame === frame.frame)
+            return point === undefined ? null : <em key={`${objective.expression}-${index}`}><code>{objective.expression}</code><strong>{point.value.toFixed(2)}</strong></em>
+          })}
+          <small>{frame.successful ? '该帧操作满足训练成功条件，位于绿色可行窗口内。' : '该帧已完整模拟，但终态未满足训练成功条件。'}</small>
+        </span>
+      </i>
+    })}
+  </div>
+}
+
 export interface TrainingTimelineProps {
   frame: number
   frameCount: number
@@ -10,14 +67,14 @@ export interface TrainingTimelineProps {
   actualInputs: readonly { frame: number; keys: readonly string[] }[]
   failureFrame?: number
   resetFrame: number
-  bestFinalSpeed?: number
+  objectives: TrainingObjectiveSeries[]
   followTarget?: boolean
   onSeek(frame: number, manual?: boolean): void
   onSetReset(frame: number): void
 }
 
 /** A review-only timeline for lessons.  It intentionally has no TAS editing affordances. */
-export function TrainingTimeline({ frame, frameCount, fuzzStart, targetFrame, windows, actualInputs, failureFrame, resetFrame, bestFinalSpeed, followTarget = false, onSeek, onSetReset }: TrainingTimelineProps) {
+export function TrainingTimeline({ frame, frameCount, fuzzStart, targetFrame, windows, actualInputs, failureFrame, resetFrame, objectives, followTarget = false, onSeek, onSetReset }: TrainingTimelineProps) {
   const track = useRef<HTMLDivElement>(null)
   const pointerStart = useRef<number | null>(null)
   const dragViewportStartRef = useRef<number | null>(null)
@@ -83,15 +140,17 @@ export function TrainingTimeline({ frame, frameCount, fuzzStart, targetFrame, wi
         if (event.code === 'ArrowLeft' || event.code === 'ArrowRight') { event.preventDefault(); onSeek(frame + (event.code === 'ArrowLeft' ? -1 : 1), true) }
       }}
     >
+      <ObjectiveCurve series={objectives} from={viewportStart} to={viewportEnd} />
+      <ObjectiveHoverLayer series={objectives} from={viewportStart} to={viewportEnd} />
       {visibleWindows.map((window, index) => <i key={`${window.from}-${window.to}-${index}`} className="training-window" style={{ left: percent(window.from), width: `${Math.max(.8, (window.to - window.from + 1) / viewportFrames * 100)}%` }} title={`成功窗口 F${window.from}–F${window.to}`} />)}
       {fuzzStart !== null && inViewport(fuzzStart) && <b className="training-marker fuzz" style={{ left: percent(fuzzStart) }}>F0<span className="training-tooltip">操作起点：训练定义的入口输入是本地 F0</span></b>}
-      {targetFrame !== undefined && <b className={`training-marker target ${inViewport(targetFrame) ? '' : targetFrame < viewportStart ? 'offscreen before' : 'offscreen after'}`} style={{ left: clampedPercent(targetFrame) }}>{inViewport(targetFrame) ? '◆' : targetFrame < viewportStart ? '‹' : '›'}<span className="training-tooltip">下一最佳关键点：F{targetFrame}{bestFinalSpeed === undefined ? '' : `；该候选最终 X 速度 ${bestFinalSpeed.toFixed(2)}`}</span></b>}
+      {targetFrame !== undefined && <b className={`training-marker target ${inViewport(targetFrame) ? '' : targetFrame < viewportStart ? 'offscreen before' : 'offscreen after'}`} style={{ left: clampedPercent(targetFrame) }}>{inViewport(targetFrame) ? '◆' : targetFrame < viewportStart ? '‹' : '›'}<span className="training-tooltip">下一最佳关键点：F{targetFrame}{objectives[0]?.points.find((point) => point.frame === targetFrame) === undefined ? '' : `；${objectives[0].expression} = ${objectives[0].points.find((point) => point.frame === targetFrame)!.value.toFixed(2)}`}</span></b>}
       {inputLabels.filter((input) => inViewport(input.frame)).map((input) => <b key={`${input.frame}-${input.label}`} className="training-marker input" style={{ left: percent(input.frame) }}>●<span className="training-tooltip">你的输入：F{input.frame} {input.label}</span></b>)}
       {failureFrame !== undefined && inViewport(failureFrame) && <b className="training-marker failure" style={{ left: percent(failureFrame) }}>×<span className="training-tooltip">失败发生在 F{failureFrame}</span></b>}
       {inViewport(resetFrame) && <button className="training-marker reset" style={{ left: percent(resetFrame) }} title={`R 点 F${resetFrame}`} onClick={(event) => { event.stopPropagation(); onSetReset(resetFrame) }}>R</button>}
       <b className="training-playhead" style={{ left: percent(frame) }} />
     </div>
-    <div className="training-timeline-actions"><span className="training-legend"><i className="fuzz" />操作起点<i className="target" />下一关键点<i className="window" />成功窗口<i className="input" />你的输入<i className="failure" />失败<i className="reset" />R 点</span><button onClick={() => onSetReset(frame)}>设为 R 点 F{frame}</button></div>
+    <div className="training-timeline-actions"><span className="training-legend"><i className="objective" />悬停查看 Objective<i className="fuzz" />操作起点<i className="target" />最佳点<i className="window" />成功窗口<i className="input" />你的输入<i className="failure" />失败<i className="reset" />R 点</span><button onClick={() => onSetReset(frame)}>设为 R 点 F{frame}</button></div>
   </section>
 }
 
@@ -100,21 +159,26 @@ export interface TrainingResultTimelineProps {
   windows: FrameWindow[]
   actualInputs: readonly { frame: number; keys: readonly string[] }[]
   failureFrame?: number
+  objectives: TrainingObjectiveSeries[]
 }
 
-export function TrainingResultTimeline({ targetFrame, windows, actualInputs, failureFrame }: TrainingResultTimelineProps) {
+export function TrainingResultTimeline({ targetFrame, windows, actualInputs, failureFrame, objectives }: TrainingResultTimelineProps) {
   const inputFrames = actualInputs.map((input) => input.frame)
   const points = [...inputFrames, ...windows.flatMap((window) => [window.from, window.to]), ...(targetFrame === undefined ? [] : [targetFrame]), ...(failureFrame === undefined ? [] : [failureFrame])]
-  const minimum = Math.min(...points, 0)
+  const minimum = points.length === 0 ? 0 : Math.min(...points)
   const maximum = Math.max(...points, minimum + 16)
   const padding = 3
   const from = minimum - padding
   const span = Math.max(16, maximum - minimum + padding * 2)
   const percent = (value: number) => `${(value - from) / span * 100}%`
   return <div className="training-result-timeline" aria-label="本次操作时间线">
+    <i className="training-result-axis-end start" />
+    <i className="training-result-axis-end end" />
+    <ObjectiveCurve series={objectives} from={from} to={from + span} />
+    <ObjectiveHoverLayer series={objectives} from={from} to={from + span} />
     {windows.map((window, index) => <i key={`${window.from}-${window.to}-${index}`} className="training-window" style={{ left: percent(window.from), width: `${Math.max(1.5, (window.to - window.from + 1) / span * 100)}%` }} />)}
-    {targetFrame !== undefined && <b className="training-result-target" style={{ left: percent(targetFrame) }}>◆<span>最佳 F{targetFrame}</span></b>}
-    {actualInputs.map((input, index) => <b key={`${input.frame}-${index}`} className="training-result-input" style={{ left: percent(input.frame) }}>●<span>F{input.frame} {input.keys.join('+').toUpperCase()}</span></b>)}
-    {failureFrame !== undefined && <b className="training-result-failure" style={{ left: percent(failureFrame) }}>×</b>}
+    {targetFrame !== undefined && <b className="training-result-target" style={{ left: percent(targetFrame) }}><span>最佳 F{targetFrame}</span></b>}
+    {actualInputs.map((input, index) => <b key={`${input.frame}-${index}`} className={`training-result-input label-row-${index % 3 + 1}`} style={{ left: percent(input.frame) }}><span>F{input.frame} {input.keys.join('+').toUpperCase()}</span></b>)}
+    {failureFrame !== undefined && <b className="training-result-failure" style={{ left: percent(failureFrame) }}><span>失败 F{failureFrame}</span></b>}
   </div>
 }
