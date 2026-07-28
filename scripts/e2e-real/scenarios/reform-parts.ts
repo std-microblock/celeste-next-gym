@@ -49,10 +49,10 @@ export const TECH_ENTITY_4_18_3_CORE_BLOCK_ENTITY_DISPLACEMENT = reformPart(
     entities: [
       { id: 'tech-4.18.3-bounce-block', kind: 'bounce_block', bounds: [704, 440, 64, 16], name: 'bounceBlock' },
       { id: 'tech-4.18.3-spikes', kind: 'spikes', bounds: [768, 440, 3, 16], direction: [1, 0], name: 'spikesRight' },
-      // Leave the BounceBlock's source body clear during its respawn check.
-      // The player lands on this adjacent ledge, then walks onto the reformed
-      // block while its StaticMovers remain disabled for the 0.35s alarm.
-      { id: 'tech-4.18.3-ced-ledge', kind: 'jump_thru', bounds: [640, 440, 64, 8], name: 'jumpThru' },
+      // Keep an 8px horizontal and vertical gap from the source body. The
+      // source `CollideCheck<Solid>()` can therefore permit reformation while
+      // the player waits close enough to enter during the StaticMover alarm.
+      { id: 'tech-4.18.3-ced-ledge', kind: 'jump_thru', bounds: [635, 440, 64, 8], name: 'jumpThru' },
     ],
   }],
 )

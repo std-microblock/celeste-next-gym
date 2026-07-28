@@ -7734,7 +7734,7 @@ mod tests {
                 },
                 crate::Entity {
                     kind: EntityKind::JumpThru,
-                    bounds: Rect::new(640.0, 440.0, 64.0, 8.0),
+                    bounds: Rect::new(635.0, 440.0, 64.0, 8.0),
                     direction: Vec2::default(),
                     shielded: false,
                     single_use: false,
@@ -7745,14 +7745,12 @@ mod tests {
             ..Map::default()
         };
         let p = PlayerSnapshot {
-            pos: Vec2::new(736.0, 440.0),
+            pos: Vec2::new(720.0, 440.0),
             ..PlayerSnapshot::default()
         };
         let inputs: Vec<_> = (0..220)
             .map(|frame| InputState {
-                move_x: if (40..72).contains(&frame) {
-                    -1
-                } else if (142..180).contains(&frame) {
+                move_x: if (130..170).contains(&frame) {
                     1
                 } else {
                     0
@@ -7784,7 +7782,16 @@ mod tests {
             .find(|(_, state)| state.bounce_blocks[0].static_movers_enabled)
             .map(|(frame, _)| frame)
             .unwrap();
-        assert!(trace.states[body].pos.x < 700.0);
+        let source = Rect::new(704.0, 440.0, 64.0, 16.0);
+        assert!(
+            !source.intersects(current_player_rect(
+                &trace.states[body],
+                trace.states[body].pos.x,
+                trace.states[body].pos.y,
+            )),
+            "player must clear the source volume before reform: frame={body}, state={:?}",
+            trace.states[body]
+        );
         assert!(spike > body);
         let reenabled = &trace.states[spike].bounce_blocks[0];
         assert!(
