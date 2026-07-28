@@ -110,6 +110,18 @@ internal static class SnapshotCapture {
             if (booster is not null) {
                 values["boosterBoostingPlayer"] = booster.BoostingPlayer;
             }
+            List<Dictionary<string, object?>> cassetteBlocks = [];
+            foreach (Entity entity in level.Entities) {
+                if (entity is CassetteBlock cassette) {
+                    cassetteBlocks.Add(new Dictionary<string, object?> {
+                        ["index"] = cassette.Index,
+                        ["position"] = Simplify(cassette.Position),
+                        ["activated"] = cassette.Activated,
+                        ["collidable"] = cassette.Collidable
+                    });
+                }
+            }
+            if (cassetteBlocks.Count > 0) values["cassetteBlocks"] = cassetteBlocks;
             TheoCrystal? theoCrystal = level.Entities.FindFirst<TheoCrystal>();
             if (theoCrystal is not null) {
                 values["theoPosition"] = Simplify(theoCrystal.Position);
