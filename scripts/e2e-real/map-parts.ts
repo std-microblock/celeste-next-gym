@@ -45,6 +45,7 @@ export function assembleFixturePackage(
   const rooms = new Map<string, {
     bounds?: Rect
     spawn?: Vector2
+    additionalSpawns: Map<string, Vector2>
     solids: Map<string, Rect>
     entities: Map<string, FixtureEntity>
   }>()
@@ -66,10 +67,12 @@ export function assembleFixturePackage(
     sid,
     rooms: [...rooms.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([name, room]) => {
       if (!room.bounds || !room.spawn) throw new Error(`room ${name} is missing bounds or spawn`)
+      const additionalSpawns = [...room.additionalSpawns.values()].sort((left, right) => stableJson(left).localeCompare(stableJson(right)))
       return {
         name,
         bounds: room.bounds,
         spawn: room.spawn,
+        ...(additionalSpawns.length > 0 ? { additionalSpawns } : {}),
         solids: [...room.solids.values()].sort((left, right) => stableJson(left).localeCompare(stableJson(right))),
         entities: [...room.entities.values()]
           .sort((left, right) => left.id.localeCompare(right.id))
@@ -84,11 +87,12 @@ export function assembleFixturePackage(
 function mergeRoom(
   partId: string,
   contribution: RoomContribution,
-  rooms: Map<string, { bounds?: Rect; spawn?: Vector2; solids: Map<string, Rect>; entities: Map<string, FixtureEntity> }>,
+  rooms: Map<string, { bounds?: Rect; spawn?: Vector2; additionalSpawns: Map<string, Vector2>; solids: Map<string, Rect>; entities: Map<string, FixtureEntity> }>,
 ): void {
-  const room = rooms.get(contribution.name) ?? { solids: new Map<string, Rect>(), entities: new Map<string, FixtureEntity>() }
+  const room = rooms.get(contribution.name) ?? { additionalSpawns: new Map<string, Vector2>(), solids: new Map<string, Rect>(), entities: new Map<string, FixtureEntity>() }
   if (contribution.bounds) room.bounds = mergeScalar(`${partId}:${contribution.name}:bounds`, room.bounds, contribution.bounds)
   if (contribution.spawn) room.spawn = mergeScalar(`${partId}:${contribution.name}:spawn`, room.spawn, contribution.spawn)
+  for (const spawn of contribution.additionalSpawns ?? []) room.additionalSpawns.set(stableJson(spawn), spawn)
   for (const solid of contribution.solids ?? []) room.solids.set(stableJson(solid), solid)
   for (const entity of contribution.entities ?? []) {
     validateAuthoringEntity(entity, contribution.name)
@@ -124,6 +128,11 @@ export function validateFixturePackage(fixture: FixturePackage): void {
     assertRect(room.bounds, `room ${room.name} bounds`, true)
     assertVector(room.spawn, `room ${room.name} spawn`)
     assertPointInRoom(room.spawn, room.bounds, `room ${room.name} spawn`)
+    for (const [index, spawn] of (room.additionalSpawns ?? []).entries()) {
+      assertVector(spawn, `room ${room.name} additionalSpawns[${index}]`)
+      assertPointInRoom(spawn, room.bounds, `room ${room.name} additionalSpawns[${index}]`)
+      if (stableJson(spawn) === stableJson(room.spawn)) throw new Error(`room ${room.name} additionalSpawns[${index}] duplicates spawn`)
+    }
     for (const solid of room.solids) {
       assertRect(solid, `room ${room.name} solid`, true)
       assertRectInRoom(solid, room.bounds, `room ${room.name} solid`)

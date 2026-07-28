@@ -1,7 +1,7 @@
 import { input } from '../../inputs.js'
 import { defineScenario } from '../../scenario.js'
 import { PLAYGROUND_TARGET } from '../../targets.js'
-import { semanticAssert } from '../../verify.js'
+import { field, semanticAssert } from '../../verify.js'
 import { TECH_OTHER_5_2_BUBSDROP } from '../bubs-parts.js'
 
 export const mapParts = [TECH_OTHER_5_2_BUBSDROP] as const
@@ -22,5 +22,9 @@ export const scenario = defineScenario({
       'wall jump did not replace the auto-jump trajectory')
     semanticAssert(states.some((state, frame) => frame > 41 && state.pos[1] > 0), scenario.name,
       'wall-jump route did not miss the upper JumpThru and return to the old room')
+    semanticAssert(states.some((state, frame) => {
+      const respawn = field<readonly number[]>(state, 'sessionRespawnPoint')
+      return frame > 100 && respawn?.[0] === 440 && respawn[1] === 496
+    }), scenario.name, 'return transition did not choose the nearer old-room spawn [440,496]')
   },
 })

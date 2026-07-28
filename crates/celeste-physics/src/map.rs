@@ -231,21 +231,32 @@ pub(crate) fn encode_celeste_rooms(
     }
     let mut levels = Vec::with_capacity(rooms.len());
     for (room, map) in rooms {
-        let mut entities = vec![element(
-            "player",
-            [
-                ("id", BinaryValue::Int(0)),
-                ("originX", BinaryValue::Int(4)),
-                ("originY", BinaryValue::Int(8)),
-                ("width", BinaryValue::Int(8)),
-                ("x", BinaryValue::Int((map.spawn.x - map.bounds.x) as i32)),
-                ("y", BinaryValue::Int((map.spawn.y - map.bounds.y) as i32)),
-            ],
-            vec![],
-        )];
+        let spawns = if map.room_spawns.is_empty() {
+            vec![map.spawn]
+        } else {
+            map.room_spawns.clone()
+        };
+        let mut entities = spawns
+            .iter()
+            .enumerate()
+            .map(|(index, spawn)| {
+                element(
+                    "player",
+                    [
+                        ("id", BinaryValue::Int(index as i32)),
+                        ("originX", BinaryValue::Int(4)),
+                        ("originY", BinaryValue::Int(8)),
+                        ("width", BinaryValue::Int(8)),
+                        ("x", BinaryValue::Int((spawn.x - map.bounds.x) as i32)),
+                        ("y", BinaryValue::Int((spawn.y - map.bounds.y) as i32)),
+                    ],
+                    vec![],
+                )
+            })
+            .collect::<Vec<_>>();
         let mut triggers = Vec::new();
         for (index, entity) in map.entities.iter().enumerate() {
-            let id = index as i32 + 1;
+            let id = index as i32 + spawns.len() as i32;
             let x = (entity.bounds.x - map.bounds.x) as i32;
             let y = (entity.bounds.y - map.bounds.y) as i32;
             let width = entity.bounds.width as i32;
