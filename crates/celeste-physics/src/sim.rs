@@ -1566,7 +1566,11 @@ fn player_on_squish(p: &mut PlayerSnapshot, env: &SolidCollisionEnv, pusher: Rec
                         // data.Pusher.Collidable = false before calling
                         // TrySquishWiggle. The wiggle itself must therefore
                         // search against the room solids alone.
-                        if !env_solid_at(env, current_player_rect(p, candidate.x, candidate.y), None) {
+                        if !env_solid_at(
+                            env,
+                            current_player_rect(p, candidate.x, candidate.y),
+                            None,
+                        ) {
                             p.pos = candidate;
                             if ducked && !env_solid_at(env, player_rect(p.pos.x, p.pos.y), None) {
                                 p.ducking = false;
