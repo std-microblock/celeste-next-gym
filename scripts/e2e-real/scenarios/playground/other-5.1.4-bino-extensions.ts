@@ -8,10 +8,11 @@ export const mapParts = [TECH_OTHER_5_1_4_BINO_EXTENSIONS] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: ['feature:lookout', 'feature:camera-node', 'feature:exit-wipe'],
   techniqueIds: ['5.1.4'],
   mapParts,
+  recording: { primaryFor: ['5.1.4'], startFrame: 0, endFrame: 640, posterFrame: 519 },
   name: 'other-5.1.4-bino-extensions',
   initial: { pos: [512, 496], speed: [0, 0], on_ground: true },
   inputs: Array.from({ length: 640 }, (_, frame) => input({
@@ -28,8 +29,12 @@ export const scenario = defineScenario({
       'Lookout did not traverse the independent node chain')
     semanticAssert(cameras.some((camera) => Math.hypot((camera?.[0] ?? 0) - 352, (camera?.[1] ?? 0) - 364) > 600), scenario.name,
       'node extension never exceeded the 600px FadeWipe threshold')
-    semanticAssert(field<boolean>(states[519], 'lookoutInteracting') === true, scenario.name,
-      'the terminal summit node exited before the MenuCancel input')
+    semanticAssert(field<number>(states[519], 'lookoutNode') === 2 && field<number>(states[519], 'lookoutNodePercent') === 1
+      && field<boolean>(states[519], 'lookoutInteracting') === true, scenario.name,
+    'the terminal summit node was not still interactive immediately before MenuCancel')
+    semanticAssert(states.slice(521, 581).every((state) => (state.state === 11 || state.state === 'Dummy')
+      && field<boolean>(state, 'lookoutInteracting') === true), scenario.name,
+    'the summit FadeWipe did not retain Dummy interaction through its full second')
     semanticAssert(field<boolean>(states.at(-1), 'lookoutInteracting') === false, scenario.name,
       'MenuCancel did not complete the summit Lookout exit')
     semanticAssert(states.at(-1)?.state === 0, scenario.name,
