@@ -4,7 +4,7 @@
   id: "4.29",
   title-zh: "Springboost Cancel",
   title-en: "Springboost cancel",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [携物触发弹簧后立刻丢出并重抓，可取消部分水平弹簧动量，换取更偏纵向的运动。],
   description-en: [Throwing and quickly regrabbing a holdable after a spring can cancel horizontal spring momentum while retaining more vertical motion.],
   source-evidence: evidence(
@@ -15,6 +15,6 @@
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [advance_gliders / hit_glider_spring / release_glider / pickup_update]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [floor_spring_launches_unheld_glider_after_actor_movement / glider_spring_no_gravity_keeps_its_final_source_frame / springboost_cancel_reverses_into_the_rising_glider_for_regrab], note: [回归锁定 Spring 的 -160 Y 速度、0.15 秒无重力及 Glider 下部 Holdable 判定：第 103／104／105 帧仍为 Normal，位置依次为 (126,462)/(126,465)/(126,468)，第 106 帧才进入 Pickup。]),
-  e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.29-springboost-cancel.ts], symbol: [entity-4.29-springboost-cancel], note: [2026-07-28 真实 Everest 的新首差发生在第 104 帧：游戏仍为 (126,465)、速度 (0,160)、Normal，并于第 106 帧才零速。后续修复将 Glider 重抓限制在下部 Holdable 判定，并以第 104–106 帧本地回归锁定；尚需复跑真实九字段比较，故保持 candidate。]),
+  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.29-springboost-cancel.ts], symbol: [entity-4.29-springboost-cancel], note: [2026-07-28 真实 Everest 复跑共 131 帧；position 最大误差 0、speed 最大误差 0.000019，state、facing、dashes、stamina、grounded、ducking 与 death 逐帧一致。重抓前第 103／104／105 帧依次仍为 Normal 的 (126,462)/(126,465)/(126,468)，第 106 帧进入 Pickup。]),
+  candidate-e2e: none,
 )
