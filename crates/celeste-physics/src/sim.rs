@@ -5865,6 +5865,81 @@ mod tests {
     }
 
     #[test]
+    fn core_block_candidate_clears_source_body_before_reform_blocked_check() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
+            solids: vec![Rect::new(0.0, 496.0, 960.0, 48.0)],
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::BounceBlock,
+                    bounds: Rect::new(704.0, 440.0, 64.0, 16.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "bounceBlock".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::Spikes,
+                    bounds: Rect::new(768.0, 440.0, 3.0, 16.0),
+                    direction: Vec2::new(1.0, 0.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "spikesRight".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::JumpThru,
+                    bounds: Rect::new(704.0, 456.0, 64.0, 8.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "jumpThru".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(736.0, 440.0),
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..280)
+            .map(|frame| InputState {
+                move_x: if frame < 80 { -1 } else { 0 },
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
+        let broken = trace
+            .states
+            .iter()
+            .position(|state| state.bounce_blocks[0].phase == 4)
+            .unwrap();
+        let body = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(broken + 1)
+            .find(|(_, state)| {
+                state.bounce_blocks[0].phase == 0
+                    && !state.bounce_blocks[0].static_movers_enabled
+            })
+            .map(|(frame, _)| frame)
+            .unwrap();
+        let spike = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(body + 1)
+            .find(|(_, state)| state.bounce_blocks[0].static_movers_enabled)
+            .map(|(frame, _)| frame)
+            .unwrap();
+        assert!(trace.states[body].pos.x < 700.0);
+        assert!(spike > body);
+    }
+
+    #[test]
     fn moon_block_steering_writes_diagonal_lift_for_a_jump() {
         let p = PlayerSnapshot {
             pos: Vec2::new(80.0, 160.0),
@@ -6407,6 +6482,117 @@ mod tests {
     }
 
     #[test]
+    fn springboost_cancel_reverses_into_the_rising_glider_for_regrab() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 544.0),
+            solids: vec![Rect::new(0.0, 496.0, 320.0, 48.0)],
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::Glider,
+                    bounds: Rect::new(96.0, 486.0, 8.0, 10.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "glider".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::Spring,
+                    bounds: Rect::new(128.0, 490.0, 16.0, 6.0),
+                    direction: Vec2::new(0.0, -1.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "spring".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(100.0, 496.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..130)
+            .map(|frame| InputState {
+                move_x: if (14..45).contains(&frame) {
+                    1
+                } else if (45..75).contains(&frame) {
+                    -1
+                } else {
+                    0
+                },
+                move_y: if frame == 35 { 1 } else { 0 },
+                jump_pressed: frame == 25,
+                jump_held: (25..34).contains(&frame),
+                grab_held: frame <= 34 || frame >= 100,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
+        let released = trace
+            .states
+            .windows(2)
+            .position(|pair| pair[0].holding_glider == Some(0) && pair[1].holding_glider.is_none())
+            .map(|frame| frame + 1)
+            .unwrap();
+        let spring = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(released + 1)
+            .find(|(_, state)| state.gliders[0].speed.y == -160.0)
+            .map(|(frame, _)| frame)
+            .unwrap_or_else(|| {
+                panic!(
+                    "missing spring release={released}: {:?}",
+                    trace
+                        .states
+                        .iter()
+                        .enumerate()
+                        .skip(released)
+                        .step_by(5)
+                        .map(|(frame, state)| (
+                            frame,
+                            state.pos,
+                            state.gliders[0].position,
+                            state.gliders[0].speed,
+                            state.holding_glider,
+                        ))
+                        .collect::<Vec<_>>()
+                )
+            });
+        let regrab = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(spring + 1)
+            .find(|(_, state)| state.state == PlayerState::Pickup && state.holding_glider == Some(0))
+            .map(|(frame, _)| frame)
+            .unwrap_or_else(|| {
+                panic!(
+                    "missing regrab release={released} spring={spring}: {:?}",
+                    trace
+                        .states
+                        .iter()
+                        .enumerate()
+                        .skip(spring)
+                        .step_by(5)
+                        .map(|(frame, state)| (
+                            frame,
+                            state.pos,
+                            state.speed,
+                            state.gliders[0].position,
+                            state.gliders[0].speed,
+                            state.holding_glider,
+                        ))
+                        .collect::<Vec<_>>()
+                )
+            });
+        assert!(regrab > spring);
+    }
+
+    #[test]
     fn holdable_springs_apply_theo_floor_and_wall_source_speeds() {
         let mut floor_map = theo_crystal_map();
         floor_map.solids.clear();
@@ -6924,6 +7110,104 @@ mod tests {
         assert_eq!(trace.states[dash].dashes, 0);
         assert_eq!(trace.states[regrab].holding_theo, Some(0));
         assert!(trace.states[regrab].pickup_old_speed.y > 0.0);
+    }
+
+    #[test]
+    fn bumper_smuggle_releases_down_after_buffered_diagonal_dash_to_regrab_theo() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 544.0),
+            solids: vec![Rect::new(0.0, 496.0, 320.0, 48.0)],
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::TheoCrystal,
+                    bounds: Rect::new(96.0, 486.0, 8.0, 10.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "theoCrystal".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::Bumper,
+                    bounds: Rect::new(120.0, 480.0, 24.0, 24.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "bigSpinner".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(100.0, 496.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..120)
+            .map(|frame| InputState {
+                move_x: if frame >= 13 { 1 } else { 0 },
+                move_y: if frame == 26 || (45..=47).contains(&frame) {
+                    1
+                } else {
+                    0
+                },
+                dash_pressed: frame == 45,
+                grab_held: frame <= 25 || frame >= 45,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
+        let pickup = trace
+            .states
+            .iter()
+            .position(|state| state.state == PlayerState::Pickup && state.holding_theo == Some(0))
+            .unwrap();
+        let launch = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(pickup + 1)
+            .find(|(_, state)| state.state == PlayerState::Launch && state.holding_theo.is_none())
+            .map(|(frame, _)| frame)
+            .unwrap();
+        let dash = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(launch + 1)
+            .find(|(_, state)| state.state == PlayerState::Dash && state.holding_theo.is_none())
+            .map(|(frame, _)| frame)
+            .unwrap();
+        let regrab = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(dash + 1)
+            .find(|(_, state)| state.state == PlayerState::Pickup && state.holding_theo == Some(0))
+            .map(|(frame, _)| frame)
+            .unwrap_or_else(|| {
+                panic!(
+                    "missing regrab pickup={pickup} launch={launch} dash={dash}: {:?}",
+                    trace
+                        .states
+                        .iter()
+                        .enumerate()
+                        .skip(dash)
+                        .step_by(5)
+                        .map(|(frame, state)| (
+                            frame,
+                            state.pos,
+                            state.speed,
+                            state.theo_crystals[0].position,
+                            state.holding_theo,
+                            state.state,
+                        ))
+                        .collect::<Vec<_>>()
+                )
+            });
+        assert!(regrab > dash);
+        assert!(trace.states[regrab].pickup_old_speed.x > MAX_RUN);
     }
 
     #[test]

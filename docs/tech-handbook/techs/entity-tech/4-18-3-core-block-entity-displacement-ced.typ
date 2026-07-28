@@ -14,7 +14,7 @@
     note: [方块先移动仍 disabled 的附属物并恢复 body，0.35 秒 Alarm 之后才重新启用 StaticMover；若方块在 Alarm 窗口再次移动，就可能把附属尖刺留在偏移位置。],
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/types.rs; crates/celeste-physics/src/sim.rs], symbol: [BounceBlockSnapshot.static_movers_enabled / advance_bounce_blocks]),
-  test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [core_block_moves_disabled_spikes_before_the_reform_alarm_reenables_them]),
+  test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [core_block_moves_disabled_spikes_before_the_reform_alarm_reenables_them / core_block_candidate_clears_source_body_before_reform_blocked_check]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.18.3-core-block-entity-displacement.ts], symbol: [entity-4.18.3-core-block-entity-displacement], note: [真实 trace 在 frame 35 观察到 block/spike 同时禁用，但 landing JumpThru 使玩家停在 `(736,456)` 并持续占据 source body，BlockedCheck 到 frame 280 仍阻止 body reform，未形成可宣称的 CED。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.18.3-core-block-entity-displacement.ts], symbol: [entity-4.18.3-core-block-entity-displacement], note: [唯一一次 source-informed 修正在前 80 帧持续向左离开 source body，使 BounceBlock 的 `!CollideCheck<Actor>()` reform 条件能够成立；Rust 候选已观测 body 先恢复、0.35 秒后 StaticMover 启用，真实 Everest 尚待最终重验。]),
 )
