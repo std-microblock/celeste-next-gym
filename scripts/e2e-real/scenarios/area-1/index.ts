@@ -37,7 +37,6 @@ import { scenario as scenario34 } from './stamina-cancel.js'
 import { scenario as scenario35 } from './spike-death-respawn.js'
 import { scenario as scenario36 } from './instant-super.js'
 import { scenario as scenario37 } from './instant-hyper.js'
-import { scenario as scenario38 } from './delayed-wallbounce.js'
 
 export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario0,
@@ -78,5 +77,4 @@ export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario35,
   scenario36,
   scenario37,
-  scenario38,
 ])
