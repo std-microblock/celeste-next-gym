@@ -8,12 +8,12 @@ describe('production scenario registry', () => {
   const registry = buildRegistry(scenarios)
 
   it('derives all target and status counts from explicit indexes', () => {
-    assert.equal(registry.scenarios.length, 148)
-    assert.equal(registry.byTarget.get('playground')?.length, 106)
+    assert.equal(registry.scenarios.length, 153)
+    assert.equal(registry.byTarget.get('playground')?.length, 111)
     assert.equal(registry.byTarget.get('area-1')?.length, 36)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 141, candidate: 7 })
+    assert.deepEqual(registry.counts, { active: 141, candidate: 12 })
   })
 
   it('keeps evidence-less scenarios as opt-in candidates', () => {
@@ -27,6 +27,11 @@ describe('production scenario registry', () => {
       'entity-4.22-neutral-drop',
       'entity-4.22.2-holdable-climb',
       'entity-4.22.3-holdable-neutral-jump',
+      'entity-4.23-theo-ultra',
+      'entity-4.24-bumper-holdable-dash-smuggle',
+      'entity-4.25-throwable-backboost',
+      'entity-4.26-theovator',
+      'entity-4.27-waterboost',
       'entity-4.6.2-cloud-hyper-bunnyhop',
     ])
     assert.equal(selectScenarios(registry, { target: 'playground' }).some((scenario) => scenario.status === 'candidate'), false)
@@ -88,6 +93,24 @@ describe('production scenario registry', () => {
       'tech.entity-4.13-feather-super',
       'tech.entity-4.15.1-feather-clip',
       'tech.entity-4.15.2-hitbox-preservation',
+    ])
+  })
+
+  it('keeps every entity-tail proof in an independently named map part', () => {
+    const techniqueIds = ['4.23', '4.24', '4.25', '4.26', '4.27']
+    const parts = techniqueIds.map((techniqueId) => {
+      const scenario = registry.scenarios.find((candidate) => candidate.techniqueIds.includes(techniqueId))
+      assert.ok(scenario, `missing scenario for ${techniqueId}`)
+      assert.equal(scenario.mapParts.length, 1)
+      return scenario.mapParts[0]?.id
+    })
+    assert.equal(new Set(parts).size, techniqueIds.length)
+    assert.deepEqual(parts, [
+      'tech.entity-4.23-theo-ultra',
+      'tech.entity-4.24-bumper-smuggle',
+      'tech.entity-4.25-throwable-backboost',
+      'tech.entity-4.26-theovator',
+      'tech.entity-4.27-waterboost',
     ])
   })
 
