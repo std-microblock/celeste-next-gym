@@ -27,6 +27,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         On.Celeste.Player.Jump += PlayerJump;
         On.Celeste.Player.StartDash += PlayerStartDash;
         On.Celeste.Player.Die += PlayerDie;
+        On.Celeste.Lookout.Removed += LookoutRemoved;
         On.Celeste.Input.GetAimVector += GetAimVector;
         server.Start(collectorPort);
     }
@@ -39,6 +40,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         On.Celeste.Player.Jump -= PlayerJump;
         On.Celeste.Player.StartDash -= PlayerStartDash;
         On.Celeste.Player.Die -= PlayerDie;
+        On.Celeste.Lookout.Removed -= LookoutRemoved;
         On.Celeste.Input.GetAimVector -= GetAimVector;
     }
 
@@ -346,6 +348,15 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         return body;
     }
 
+    private void LookoutRemoved(
+        On.Celeste.Lookout.orig_Removed orig,
+        Lookout self,
+        Scene scene
+    ) {
+        orig(self, scene);
+        SnapshotCapture.ObserveLookoutRemoved(self, scene);
+    }
+
     private void PrepareSimulationFrame() {
         if (job is null) {
             if (interactiveSession?.IsRunning == true && Engine.Scene is Level interactiveLevel) {
@@ -368,6 +379,10 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                 && Engine.Scene is Level level) {
                 level.Wipe?.Cancel();
             }
+            // The level loader may have removed a Lookout from a previous
+            // request. Start the proof window only once this job owns its
+            // freshly loaded player and room entities.
+            SnapshotCapture.ResetLookoutLifecycleObservation();
             InstallScriptedButtons();
             ApplyInitialSnapshot(player, job.Pending.Request.InitialSnapshot);
             // Player.Update normally eases toward CameraTarget, but scenario

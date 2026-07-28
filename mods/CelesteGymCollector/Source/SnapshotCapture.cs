@@ -30,6 +30,25 @@ internal static class SnapshotCapture {
         "nodePercent",
         BindingFlags.Instance | BindingFlags.NonPublic
     );
+    // `Lookout.Removed` restores StNormal but intentionally does not call
+    // StopInteracting. The entity is gone by the next PlayerFrame, so retain
+    // this source-side observation for a transition trace to prove the split
+    // lifecycle without treating a missing Lookout as `interacting = false`.
+    private static bool lookoutRemovalObserved;
+    private static bool lookoutRemovedWhileInteracting;
+    private static int? lookoutRemovalPlayerState;
+
+    public static void ResetLookoutLifecycleObservation() {
+        lookoutRemovalObserved = false;
+        lookoutRemovedWhileInteracting = false;
+        lookoutRemovalPlayerState = null;
+    }
+
+    public static void ObserveLookoutRemoved(Lookout lookout, Scene scene) {
+        lookoutRemovalObserved = true;
+        lookoutRemovedWhileInteracting = lookoutInteracting?.GetValue(lookout) as bool? ?? false;
+        lookoutRemovalPlayerState = scene.Tracker.GetEntity<Player>()?.StateMachine.State;
+    }
 
     public static PlayerFrame Capture(Player player, int frame) {
         Dictionary<string, object?> values = [];
@@ -67,6 +86,11 @@ internal static class SnapshotCapture {
                 values["heartGemVisible"] = heartGem.Visible;
             }
             Lookout? lookout = level.Entities.FindFirst<Lookout>();
+            values["lookoutRemovalObserved"] = lookoutRemovalObserved;
+            values["lookoutRemovedWhileInteracting"] = lookoutRemovedWhileInteracting;
+            if (lookoutRemovalPlayerState is int removedPlayerState) {
+                values["lookoutRemovalPlayerState"] = removedPlayerState;
+            }
             if (lookout is not null) {
                 values["lookoutPosition"] = Simplify(lookout.Position);
                 values["lookoutInteracting"] = lookoutInteracting?.GetValue(lookout) as bool? ?? false;
@@ -78,6 +102,10 @@ internal static class SnapshotCapture {
                 values["crystalSpinnerPosition"] = Simplify(spinner.Position);
                 values["crystalSpinnerVisible"] = spinner.Visible;
                 values["crystalSpinnerCollidable"] = spinner.Collidable;
+            }
+            Booster? booster = level.Entities.FindFirst<Booster>();
+            if (booster is not null) {
+                values["boosterBoostingPlayer"] = booster.BoostingPlayer;
             }
             TheoCrystal? theoCrystal = level.Entities.FindFirst<TheoCrystal>();
             if (theoCrystal is not null) {

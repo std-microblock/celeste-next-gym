@@ -14118,34 +14118,42 @@ mod tests {
 
     #[test]
     fn bino_control_storage_keeps_normal_player_and_camera_control_parallel() {
-        let map = lookout_map(vec![], false, false);
+        let mut map = lookout_map(vec![], false, false);
+        map.entities.push(crate::Entity {
+            kind: EntityKind::Booster,
+            bounds: Rect::new(150.0, 152.0, 20.0, 20.0),
+            direction: Vec2::default(),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "booster".to_owned(),
+        });
         let player = PlayerSnapshot {
-            pos: Vec2::new(160.0, 160.0),
-            state: PlayerState::Normal,
+            pos: Vec2::new(144.0, 160.0),
             on_ground: true,
-            camera_initialized: true,
-            camera: Vec2::default(),
-            lookouts: vec![crate::LookoutSnapshot {
-                interacting: true,
-                phase: 4,
-                position: Vec2::new(160.0, 160.0),
-                cam: Vec2::default(),
-                cam_start: Vec2::default(),
-                hud_easer: 1.0,
-                ..crate::LookoutSnapshot::default()
-            }],
             ..PlayerSnapshot::default()
         };
-        let inputs = [InputState {
-            move_x: 1,
-            ..InputState::default()
-        }; 30];
-        let result = simulate(player, &inputs, &map, 30).unwrap();
+        let mut inputs = vec![InputState::default(); 240];
+        inputs[0].talk_pressed = true;
+        for input in &mut inputs[100..180] {
+            input.move_x = 1;
+        }
+        inputs[180].jump_pressed = true;
+        inputs[180].jump_held = true;
+        let trace = simulate_trace(player, &inputs, &map, 240).unwrap();
 
-        assert_eq!(result.state, PlayerState::Normal);
-        assert!(result.pos.x > 160.0);
-        assert!(result.camera.x > 0.0);
-        assert!(result.lookouts[0].interacting);
+        assert!(trace.states.iter().any(|state| state.state == PlayerState::Boost));
+        assert!(trace.states.iter().any(|state| {
+            state.state == PlayerState::Normal && state.lookouts[0].interacting
+        }));
+        assert!(trace.states.windows(2).any(|states| {
+            let (before, after) = (&states[0], &states[1]);
+            after.state == PlayerState::Normal
+                && after.lookouts[0].interacting
+                && (after.pos.x - before.pos.x).abs() > 0.01
+                && (after.camera.x - before.camera.x).abs() > 0.01
+        }));
+        assert!(!trace.states[240].lookouts[0].interacting);
     }
 
     #[test]
