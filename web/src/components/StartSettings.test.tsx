@@ -1,6 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { StartSettings } from './StartSettings'
+
+afterEach(cleanup)
 
 describe('StartSettings', () => {
   it('submits a normalized room and numeric start position', () => {
