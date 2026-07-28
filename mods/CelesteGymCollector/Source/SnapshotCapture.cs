@@ -57,6 +57,10 @@ internal static class SnapshotCapture {
         "lastPathFound",
         BindingFlags.Instance | BindingFlags.NonPublic
     );
+    private static readonly FieldInfo? seekerPath = typeof(Seeker).GetField(
+        "path",
+        BindingFlags.Instance | BindingFlags.NonPublic
+    );
     // `Lookout.Removed` restores StNormal but intentionally does not call
     // StopInteracting. The entity is gone by the next PlayerFrame, so retain
     // this source-side observation for a transition trace to prove the split
@@ -145,6 +149,11 @@ internal static class SnapshotCapture {
                 values["seekerLastPathTo"] = Simplify(seekerLastPathTo?.GetValue(seeker));
                 values["seekerPathIndex"] = seekerPathIndex?.GetValue(seeker) as int? ?? -1;
                 values["seekerLastPathFound"] = seekerLastPathFound?.GetValue(seeker) as bool? ?? false;
+                if (seekerPath?.GetValue(seeker) is IEnumerable<Vector2> path) {
+                    values["seekerPath"] = path
+                        .Select(point => Simplify(point))
+                        .ToArray();
+                }
             }
             List<Dictionary<string, object?>> cassetteBlocks = [];
             foreach (Entity entity in level.Entities) {
