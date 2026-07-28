@@ -1445,6 +1445,20 @@ fn player_riding_solid(p: &PlayerSnapshot, bounds: Rect) -> bool {
     bounds.intersects(current_player_rect(p, p.pos.x, p.pos.y + 1.0))
 }
 
+fn player_on_top_of_solid(p: &PlayerSnapshot, bounds: Rect) -> bool {
+    Rect::new(bounds.x, bounds.y - 1.0, bounds.width, bounds.height)
+        .intersects(current_player_rect(p, p.pos.x, p.pos.y))
+}
+
+fn player_climbing_solid(p: &PlayerSnapshot, bounds: Rect) -> bool {
+    if p.state != PlayerState::Climb {
+        return false;
+    }
+    let offset_x = if p.facing { -1.0 } else { 1.0 };
+    Rect::new(bounds.x + offset_x, bounds.y, bounds.width, bounds.height)
+        .intersects(current_player_rect(p, p.pos.x, p.pos.y))
+}
+
 fn initialize_heart_gems(p: &mut PlayerSnapshot, map: &mut Map) {
     let count = map
         .entities
@@ -2186,9 +2200,18 @@ fn advance_move_blocks(p: &mut PlayerSnapshot, map: &mut Map, input: InputState)
                 }
             }
             2 => {
-                let riding = player_riding_solid(p, map.entities[entity_index].bounds);
+                // MoveBlock.Controller steers horizontal blocks only for a
+                // player on top, but vertical blocks only for a Player in
+                // Climb touching their side. Standing atop a vertical block
+                // must reset noSteerTimer rather than turning it into the
+                // player's MoveX direction.
+                let steering_player = if horizontal_source {
+                    player_on_top_of_solid(p, map.entities[entity_index].bounds)
+                } else {
+                    player_climbing_solid(p, map.entities[entity_index].bounds)
+                };
                 let mut target_angle = home_angle;
-                if riding {
+                if steering_player {
                     if state.no_steer_timer > 0.0 {
                         state.no_steer_timer -= p.frame_delta_time;
                     }
@@ -14277,12 +14300,12 @@ mod tests {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
             solids: vec![
                 Rect::new(0.0, 496.0, 960.0, 48.0),
-                Rect::new(448.0, 458.0, 8.0, 6.0),
+                Rect::new(448.0, 432.0, 8.0, 8.0),
             ],
             entities: vec![crate::Entity {
                 kind: EntityKind::MoveBlock,
                 bounds: Rect::new(400.0, 464.0, 64.0, 16.0),
-                direction: Vec2::new(1.0, 0.0),
+                direction: Vec2::new(0.0, -1.0),
                 shielded: false,
                 single_use: false,
                 nodes: vec![],
@@ -14290,19 +14313,19 @@ mod tests {
             }],
             ..Map::default()
         };
-        let inputs: Vec<_> = (0..45)
+        let inputs: Vec<_> = (0..90)
             .map(|frame| InputState {
-                move_x: if (16..27).contains(&frame) {
+                move_x: if (45..58).contains(&frame) {
                     1
-                } else if frame >= 27 {
+                } else if frame >= 58 {
                     -1
                 } else {
                     0
                 },
-                crouch_dash_pressed: frame == 16,
-                jump_pressed: frame == 20 || frame == 22,
-                jump_held: frame == 20 || frame == 22,
-                grab_held: frame == 22,
+                crouch_dash_pressed: frame == 45,
+                jump_pressed: frame == 49 || frame == 51,
+                jump_held: frame == 49 || frame == 51,
+                grab_held: frame == 51,
                 ..InputState::default()
             })
             .collect();
@@ -14318,11 +14341,17 @@ mod tests {
         )
         .unwrap();
 
-        assert!(trace.states[21].speed.x > 300.0);
-        assert!(trace.states[23].wall_speed_retention_timer > 0.05);
-        assert!(trace.states[23].wall_speed_retained > 300.0);
-        assert!(trace.states[26].speed.x > 300.0);
-        assert!(trace.states[28].speed.x < trace.states[27].speed.x);
-        assert_eq!(trace.states[26].move_blocks[0].position.y, 464.0);
+        // Everest stays at the MoveBlock's X=432 landing point while the
+        // DemoDash startup freeze is active.  A one-pixel translation here
+        // reaches the corner early and cascades through the retained-speed
+        // sequence.
+        assert_eq!(trace.states[46].pos, Vec2::new(432.0, 440.0));
+        assert_eq!(trace.states[46].state, PlayerState::Dash);
+        assert!(trace.states[50].speed.x > 300.0);
+        assert!(trace.states[52].wall_speed_retention_timer > 0.05);
+        assert!(trace.states[52].wall_speed_retained > 300.0);
+        assert!(trace.states[54].speed.x > 300.0);
+        assert!(trace.states[59].speed.x < trace.states[58].speed.x);
+        assert_eq!(trace.states[51].move_blocks[0].position.y, 440.0);
     }
 }
