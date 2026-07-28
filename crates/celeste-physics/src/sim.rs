@@ -12218,6 +12218,27 @@ mod tests {
     }
 
     #[test]
+    fn disappearing_cassette_clears_collision_before_reactivation() {
+        let p = PlayerSnapshot {
+            state: PlayerState::Frozen,
+            cassette_manager: crate::CassetteManagerSnapshot {
+                initialized: true,
+                startup_music_pending: false,
+                beat_timer: CASSETTE_BEAT_INTERVAL - DT * 0.5,
+                beat_index: 6,
+                current_index: 1,
+                max_beat: 2,
+                tempo_mult: 1.0,
+            },
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(p, &[InputState::default(); 12], &cassette_map(), 12).unwrap();
+        assert!(!trace.states[1].cassette_blocks[0].collidable);
+        assert!(trace.states[1].cassette_blocks[1].collidable);
+        assert!(trace.states[12].cassette_blocks[0].collidable);
+    }
+
+    #[test]
     fn fresh_custom_cassette_manager_skips_music_advance_on_its_first_update() {
         let p = PlayerSnapshot {
             pos: Vec2::new(96.0, 106.0),
