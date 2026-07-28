@@ -4,8 +4,8 @@ import type { MapPart } from '../types.js'
 const PACKAGE = 'CelesteGymPlayground'
 const SID = 'CelesteGymPlayground/Playground'
 
-function part(id: string, rooms: MapPart['rooms']): MapPart {
-  return defineMapPart({ id, dependencies: ['playground.base'], package: PACKAGE, sid: SID, rooms })
+function part(id: string, rooms: MapPart['rooms'], dependencies: readonly string[] = ['playground.base']): MapPart {
+  return defineMapPart({ id, dependencies, package: PACKAGE, sid: SID, rooms })
 }
 
 export const TECH_OTHER_5_1_BINO_TECH = part('tech.other-5.1-bino-tech', [{
@@ -38,11 +38,18 @@ export const TECH_OTHER_5_1_3_BINO_INTERACTION_STORAGE = part('tech.other-5.1.3-
     // Dummy is outside Player.InControl, so DummyWalkToExact cannot itself
     // initiate a room transition. LookRoutine's DummyWalk stops at x=932
     // (telescope X minus its eight-pixel alignment offset); the native
-    // Booster then interrupts the completed walk, leaving the Lookout's
+    // Booster is centered on that point and its native Circle collider
+    // interrupts DummyWalk on the first overlap, leaving the Lookout's
     // entity coroutine alive while Normal movement crosses the boundary.
+    // This room intentionally owns its floor rather than inheriting
+    // playground.base: that base has a solid right wall at x=936, which
+    // prevents a Normal player at x=932 from ever reaching the next room.
+    bounds: [0, 0, 960, 544],
+    spawn: [64, 496],
+    solids: [[0, 496, 960, 48], [0, 0, 24, 496]],
     entities: [
       { id: 'tech-5.1.3-lookout', kind: 'lookout', bounds: [938, 493, 4, 4], name: 'lookout' },
-      { id: 'tech-5.1.3-interrupting-booster', kind: 'booster', bounds: [936, 491, 16, 16], name: 'booster' },
+      { id: 'tech-5.1.3-interrupting-booster', kind: 'booster', bounds: [924, 491, 16, 16], name: 'booster' },
     ],
   },
   {
@@ -51,7 +58,7 @@ export const TECH_OTHER_5_1_3_BINO_INTERACTION_STORAGE = part('tech.other-5.1.3-
     spawn: [984, 496],
     solids: [[960, 496, 960, 48], [1896, 0, 24, 496]],
   },
-])
+], [])
 
 export const TECH_OTHER_5_1_4_BINO_EXTENSIONS = part('tech.other-5.1.4-bino-extensions', [{
   name: 'playground',

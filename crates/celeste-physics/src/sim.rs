@@ -14471,7 +14471,7 @@ mod tests {
                 },
                 crate::Entity {
                     kind: EntityKind::Booster,
-                    bounds: Rect::new(936.0, 491.0, 16.0, 16.0),
+                    bounds: Rect::new(924.0, 491.0, 16.0, 16.0),
                     direction: Vec2::default(),
                     shielded: false,
                     single_use: false,
@@ -14501,7 +14501,10 @@ mod tests {
             .iter()
             .find(|state| state.state == PlayerState::Boost)
             .expect("the native Booster should interrupt the completed Dummy walk");
-        assert!((boost.pos.x - 932.0).abs() <= 0.01);
+        // The Circle(10, offset 0,2) reaches the normal player collider while
+        // DummyWalk approaches its x=932 alignment point; the callback occurs
+        // at the first native overlap, not by forcing the completed state.
+        assert!((boost.pos.x - 920.0).abs() <= 0.01);
         assert!(trace.states.iter().any(|state| {
             state.state == PlayerState::Normal
                 && state.lookouts[0].interacting
