@@ -15476,6 +15476,9 @@ mod tests {
         assert!(trace.states.iter().any(|state| {
             state.state == PlayerState::Dash && state.booster_boosting
         }));
+        let f39 = &trace.states[39];
+        assert_eq!(f39.state, PlayerState::Dash);
+        assert!(f39.booster_boosting, "active Booster suppresses same-target re-entry");
         // The transition camera routine pauses Player.Update, but the source
         // capture's `Actor.OnGround()` remains a live floor collision query.
         assert!(trace.states[125].on_ground);
