@@ -2746,7 +2746,11 @@ fn advance_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
                 theo.speed.x = approach(
                     theo.speed.x,
                     0.0,
-                    if theo.speed.y < 0.0 { 175.0 } else { 350.0 } * p.frame_delta_time,
+                    // TheoCrystal's release gravity delay postpones vertical
+                    // acceleration only. Its airborne horizontal damping is
+                    // still the 200 px/s² carry-release curve, including
+                    // after the crystal starts falling back toward the floor.
+                    200.0 * p.frame_delta_time,
                 );
                 theo.speed.y = approach(theo.speed.y, 200.0, gravity * p.frame_delta_time);
             }
@@ -8613,7 +8617,9 @@ mod tests {
         )
         .unwrap();
         assert_eq!(floor.theo_crystals[0].speed.y, -160.0);
-        assert!((floor.theo_crystals[0].speed.x - 37.083_332).abs() < 0.000_1);
+        // Airborne Theo keeps the 200 px/s² release curve before the spring
+        // halves its horizontal speed on contact.
+        assert!((floor.theo_crystals[0].speed.x - 38.333_332).abs() < 0.000_1);
         assert_eq!(floor.theo_crystals[0].gravity_timer, 0.15);
 
         let mut wall_map = theo_crystal_map();
@@ -13064,7 +13070,7 @@ mod tests {
     }
 
     #[test]
-    fn candidate_holdable_dream_hyper_reproduces_the_frame_169_regrab_gap() {
+    fn holdable_dream_hyper_regrabs_on_frame_169_after_theo_release_curve() {
         let map = Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
             solids: vec![Rect::new(0.0, 496.0, 960.0, 48.0)],
@@ -13107,22 +13113,32 @@ mod tests {
             })
             .collect();
         let trace = simulate_trace(initial, &inputs, &map, inputs.len() as u32).unwrap();
+        // Player.Update carries Theo after its own movement.  The frame-168
+        // snapshot is therefore still Normal; its next NormalUpdate sees the
+        // released crystal's source-sized pickup collider and starts the
+        // coroutine on frame 169.
         let before = &trace.states[168];
         assert_eq!(before.state, PlayerState::Normal);
         assert_eq!(before.pos, Vec2::new(371.0, 496.0));
         assert_eq!(before.speed, Vec2::new(-90.0, 0.0));
-        assert_eq!(before.theo_crystals[0].position, Vec2::new(357.0, 496.0));
-        // TheoCrystal.cs assigns this 16x22 pickup Hitbox. Its right edge
-        // (365) leaves a two-pixel gap to Player's left edge (367), so do not
-        // hide the known Everest discrepancy by widening the source collider.
-        assert_eq!(theo_pickup_rect(before.theo_crystals[0].position).right(), 365.0);
+        assert_eq!(before.theo_crystals[0].position, Vec2::new(360.0, 496.0));
+        // TheoCrystal.cs assigns this 16x22 pickup Hitbox.  Its right edge
+        // now reaches 368, so the untouched source collider overlaps the
+        // player's left edge (367) on the following NormalUpdate.
+        assert_eq!(theo_pickup_rect(before.theo_crystals[0].position).right(), 368.0);
         assert_eq!(current_player_rect(before, before.pos.x, before.pos.y).x, 367.0);
 
-        let first_difference = &trace.states[169];
-        assert_eq!(first_difference.state, PlayerState::Normal);
-        assert_eq!(first_difference.pos, Vec2::new(370.0, 496.0));
-        assert_eq!(first_difference.speed, Vec2::new(-90.0, 0.0));
-        assert_eq!(first_difference.holding_theo, None);
+        let pickup = &trace.states[169];
+        assert_eq!(pickup.state, PlayerState::Pickup);
+        assert_eq!(pickup.pos, Vec2::new(371.0, 496.0));
+        assert_eq!(pickup.speed, Vec2::default());
+        assert_eq!(pickup.holding_theo, Some(0));
+        assert_eq!(pickup.theo_crystals[0].position, Vec2::new(371.0, 484.0));
+
+        let tween = &trace.states[170];
+        assert_eq!(tween.state, PlayerState::Pickup);
+        assert_eq!(tween.holding_theo, Some(0));
+        assert_eq!(tween.theo_crystals[0].position, Vec2::new(371.0, 484.0));
     }
 
     #[test]
