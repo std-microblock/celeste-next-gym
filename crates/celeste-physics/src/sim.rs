@@ -45,6 +45,7 @@ const CLIMB_DOWN_SPEED: f32 = 80.0;
 const CLIMB_SLIP_SPEED: f32 = 30.0;
 const CLIMB_ACCEL: f32 = 900.0;
 const CLIMB_CHECK_DIST: f32 = 2.0;
+const CLIMB_UP_CHECK_DIST: i32 = 2;
 const CLIMB_TIRED_THRESHOLD: f32 = 20.0;
 const CLIMB_JUMP_COST: f32 = 27.5;
 const CLIMB_UP_COST: f32 = 45.454_544;
@@ -4174,7 +4175,6 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
     let facing_dir = if p.facing { 1 } else { -1 };
     if !holding_holdable(p)
         && input.grab_held
-        && !p.on_ground
         && !p.ducking
         && p.speed.y >= 0.0
         // Player.cs uses Math.Sign, where both signed zero values return 0.
@@ -4183,30 +4183,46 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
         // moving away from it and prevented the grab.
         && (p.speed.x == 0.0 || p.speed.x.signum() != -(facing_dir as f32))
         && check_stamina(p) >= CLIMB_TIRED_THRESHOLD
-        && climb_check(p, map, facing_dir)
     {
-        // StateMachine invokes NormalEnd before ClimbBegin. Entering the
-        // actual grab state therefore destroys any pending cornerboost speed.
-        p.wall_speed_retention_timer = 0.0;
-        p.wall_boost_timer = 0.0;
-        p.hop_wait_x = 0;
-        p.state = PlayerState::Climb;
-        p.auto_jump = false;
-        p.speed.x = 0.0;
-        p.speed.y *= 0.2;
-        p.wall_slide_timer = WALL_SLIDE_TIME;
-        p.climb_no_move_timer = 0.1;
-        p.wall_boost_timer = 0.0;
-        // ClimbBegin closes a one-pixel gap when ClimbCheck found the wall at
-        // its full two-pixel probe distance. MoveHExact leaves the sub-pixel
-        // movement counter unchanged.
-        for _ in 0..CLIMB_CHECK_DIST as u8 {
-            if map.solid_at(current_player_rect(p, p.pos.x + facing_dir as f32, p.pos.y)) {
-                break;
+        let climb_y = if climb_check(p, map, facing_dir, 0.0) {
+            Some(0.0)
+        } else if input.move_y < 1 && p.wind.y <= 0.0 {
+            (1..=CLIMB_UP_CHECK_DIST).find_map(|offset| {
+                let y_add = -(offset as f32);
+                (!map.solid_at(current_player_rect(p, p.pos.x, p.pos.y + y_add))
+                    && climb_check(p, map, facing_dir, y_add))
+                    .then_some(y_add)
+            })
+        } else {
+            None
+        };
+        if let Some(y_add) = climb_y {
+            // Player.NormalUpdate uses MoveVExact for this one/two pixel
+            // upward correction. Keep the sub-pixel movement remainder intact.
+            p.pos.y += y_add;
+            // StateMachine invokes NormalEnd before ClimbBegin. Entering the
+            // actual grab state therefore destroys any pending cornerboost speed.
+            p.wall_speed_retention_timer = 0.0;
+            p.wall_boost_timer = 0.0;
+            p.hop_wait_x = 0;
+            p.state = PlayerState::Climb;
+            p.auto_jump = false;
+            p.speed.x = 0.0;
+            p.speed.y *= 0.2;
+            p.wall_slide_timer = WALL_SLIDE_TIME;
+            p.climb_no_move_timer = 0.1;
+            p.wall_boost_timer = 0.0;
+            // ClimbBegin closes a one-pixel gap when ClimbCheck found the wall at
+            // its full two-pixel probe distance. MoveHExact leaves the sub-pixel
+            // movement counter unchanged.
+            for _ in 0..CLIMB_CHECK_DIST as u8 {
+                if map.solid_at(current_player_rect(p, p.pos.x + facing_dir as f32, p.pos.y)) {
+                    break;
+                }
+                p.pos.x += facing_dir as f32;
             }
-            p.pos.x += facing_dir as f32;
+            return;
         }
-        return;
     }
 
     // Player.NormalUpdate changes the active collider before applying run
@@ -4610,27 +4626,41 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         enter_normal(p);
         return;
     }
-    let slipping = slip_check(p, map, 0.0);
-    let target = if p.climb_no_move_timer > 0.0 {
-        if slipping { CLIMB_SLIP_SPEED } else { 0.0 }
-    } else {
-        match input.move_y {
-            -1 if slipping => {
+    let mut target = 0.0;
+    let mut try_slip = false;
+    if p.climb_no_move_timer <= 0.0 {
+        if input.move_y == -1 {
+            target = CLIMB_UP_SPEED;
+            if map.solid_at(current_player_rect(p, p.pos.x, p.pos.y - 1.0))
+                || (climb_hop_blocked_check(p, map) && slip_check(p, map, -1.0))
+            {
+                if p.speed.y < 0.0 {
+                    p.speed.y = 0.0;
+                }
+                target = 0.0;
+                try_slip = true;
+            } else if slip_check(p, map, 0.0) {
                 climb_hop(p, map, wall);
                 enter_normal(p);
                 return;
             }
-            -1 => CLIMB_UP_SPEED,
-            1 => CLIMB_DOWN_SPEED,
-            _ => {
-                if slipping {
-                    CLIMB_SLIP_SPEED
-                } else {
-                    0.0
+        } else if input.move_y == 1 {
+            target = CLIMB_DOWN_SPEED;
+            if p.on_ground {
+                if p.speed.y > 0.0 {
+                    p.speed.y = 0.0;
                 }
+                target = 0.0;
             }
+        } else {
+            try_slip = true;
         }
-    };
+    } else {
+        try_slip = true;
+    }
+    if try_slip && slip_check(p, map, 0.0) {
+        target = CLIMB_SLIP_SPEED;
+    }
     p.speed.y = approach(p.speed.y, target, CLIMB_ACCEL * p.frame_delta_time);
     p.speed.x = 0.0;
     if p.climb_no_move_timer <= 0.0 {
@@ -4645,6 +4675,16 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     }
     if p.stamina <= 0.0 {
         enter_normal(p);
+    }
+    if input.move_y != 1
+        && p.speed.y > 0.0
+        && !map.solid_at(current_player_rect(
+            p,
+            p.pos.x + wall as f32,
+            p.pos.y + 1.0,
+        ))
+    {
+        p.speed.y = 0.0;
     }
 }
 
@@ -5250,13 +5290,17 @@ fn climb_bounds_check(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
         && rect.right() + dir as f32 * CLIMB_CHECK_DIST < bounds.right()
 }
 
-fn climb_check(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
+fn climb_check(p: &PlayerSnapshot, map: &Map, dir: i8, y_add: f32) -> bool {
     climb_bounds_check(p, map, dir)
         && map.solid_at(current_player_rect(
             p,
             p.pos.x + dir as f32 * CLIMB_CHECK_DIST,
-            p.pos.y,
+            p.pos.y + y_add,
         ))
+}
+
+fn climb_hop_blocked_check(p: &PlayerSnapshot, map: &Map) -> bool {
+    map.solid_at(current_player_rect(p, p.pos.x, p.pos.y - 6.0))
 }
 
 fn wall_jump_check(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
@@ -11244,7 +11288,7 @@ mod tests {
             ..PlayerSnapshot::default()
         };
         assert!(!touching_wall(&player, &map, 1));
-        assert!(!climb_check(&player, &map, 1));
+        assert!(!climb_check(&player, &map, 1, 0.0));
         assert!(wall_jump_check(&player, &map, 1));
 
         let directional = simulate(
@@ -11480,6 +11524,64 @@ mod tests {
     }
 
     #[test]
+    fn grounded_wall_grab_can_start_climbing_at_wall_root() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 220.0),
+            solids: vec![
+                Rect::new(40.0, 80.0, 8.0, 140.0),
+                Rect::new(0.0, 160.0, 320.0, 60.0),
+            ],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(36.0, 160.0),
+            speed: Vec2::default(),
+            facing: true,
+            stamina: 110.0,
+            ..PlayerSnapshot::default()
+        };
+        let input = InputState {
+            move_y: -1,
+            grab_held: true,
+            ..InputState::default()
+        };
+        let trace = simulate_trace(player, &[input; 20], &map, 20).unwrap();
+
+        assert_eq!(trace.states[1].state, PlayerState::Climb);
+        assert!(trace.states[19].state == PlayerState::Climb);
+        assert!(trace.states[19].pos.y < 160.0);
+    }
+
+    #[test]
+    fn blocked_climbhop_keeps_grabbing_the_wall_at_the_top() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 220.0),
+            solids: vec![
+                Rect::new(40.0, 80.0, 8.0, 140.0),
+                Rect::new(32.0, 64.0, 48.0, 9.0),
+            ],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(36.0, 84.0),
+            speed: Vec2::new(0.0, -45.0),
+            state: PlayerState::Climb,
+            facing: true,
+            stamina: 110.0,
+            ..PlayerSnapshot::default()
+        };
+        let input = InputState {
+            move_y: -1,
+            grab_held: true,
+            ..InputState::default()
+        };
+        let player = simulate(player, &[input], &map, 1).unwrap();
+
+        assert_eq!(player.state, PlayerState::Climb);
+        assert!(player.speed.y >= 0.0);
+    }
+
+    #[test]
     fn stamina_cancel_regrabs_to_reset_the_no_move_cost_window() {
         let map = Map {
             solids: vec![Rect::new(40.0, 0.0, 8.0, 100.0)],
@@ -11653,7 +11755,7 @@ mod tests {
             stamina: 110.0,
             ..PlayerSnapshot::default()
         };
-        assert!(!climb_check(&player, &map, 1));
+        assert!(!climb_check(&player, &map, 1, 0.0));
         assert!(wall_jump_check(&player, &map, 1));
         let trace = simulate_trace(
             player,
