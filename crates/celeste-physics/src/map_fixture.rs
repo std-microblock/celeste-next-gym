@@ -79,6 +79,8 @@ pub struct FixtureRoom {
     pub name: String,
     pub bounds: FixtureRect,
     pub spawn: FixtureVec2,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub additional_spawns: Vec<FixtureVec2>,
     #[serde(default)]
     pub solids: Vec<FixtureRect>,
     #[serde(default)]
@@ -111,6 +113,8 @@ pub struct RoomContribution {
     pub bounds: Option<FixtureRect>,
     #[serde(default)]
     pub spawn: Option<FixtureVec2>,
+    #[serde(default)]
+    pub additional_spawns: Vec<FixtureVec2>,
     #[serde(default)]
     pub solids: Vec<FixtureRect>,
     #[serde(default)]
@@ -155,7 +159,10 @@ pub fn encode_map_fixture(fixture: &CelesteMapFixture) -> Result<Vec<u8>, MapFix
                     .map(|candidate| rect(candidate.bounds))
                     .collect(),
                 transition_runtime: vec![],
-                room_spawns: vec![vec2(room.spawn)],
+                room_spawns: std::iter::once(room.spawn)
+                    .chain(room.additional_spawns.iter().copied())
+                    .map(vec2)
+                    .collect(),
                 spawn: vec2(room.spawn),
                 solids: room.solids.iter().copied().map(rect).collect(),
                 entities: room.entities.iter().map(entity).collect(),
@@ -207,6 +214,9 @@ pub fn merge_map_parts(
                 "spawn",
             )?;
             merged.solids.extend(contribution.solids.iter().copied());
+            merged
+                .additional_spawns
+                .extend(contribution.additional_spawns.iter().copied());
             for entity in &contribution.entities {
                 require_id(&entity.id, "entity id")?;
                 match merged.entities.get(&entity.id) {
@@ -240,6 +250,7 @@ pub fn merge_map_parts(
                 spawn: merged.spawn.ok_or_else(|| {
                     MapFixtureError::Validation(format!("room {name:?} has no spawn"))
                 })?,
+                additional_spawns: merged.additional_spawns,
                 name,
                 solids: merged.solids,
                 entities: merged.entities.into_values().collect(),
@@ -258,6 +269,7 @@ pub fn merge_map_parts(
 struct MergedRoom {
     bounds: Option<FixtureRect>,
     spawn: Option<FixtureVec2>,
+    additional_spawns: Vec<FixtureVec2>,
     solids: Vec<FixtureRect>,
     entities: BTreeMap<String, FixtureEntity>,
 }
@@ -309,6 +321,11 @@ fn canonicalize_map_fixture(
             return validation(format!("duplicate room name {:?}", room.name));
         }
         validate_room(room, &mut entity_ids)?;
+        room.additional_spawns.sort_by_key(|value| {
+            let [x, y] = integer_vec2(*value);
+            (x, y)
+        });
+        room.additional_spawns.dedup();
         room.solids.sort_by_key(|value| integer_rect(*value));
         room.solids.dedup();
         room.entities.sort_by(|left, right| left.id.cmp(&right.id));
@@ -327,6 +344,24 @@ fn validate_room(
             "room {:?} spawn must be inside its bounds",
             room.name
         ));
+    }
+    for (index, additional_spawn) in room.additional_spawns.iter().copied().enumerate() {
+        let spawn = validate_vec2(
+            additional_spawn,
+            &format!("room {:?} additionalSpawns[{index}]", room.name),
+        )?;
+        if spawn == validate_vec2(room.spawn, &format!("room {:?} spawn", room.name))? {
+            return validation(format!(
+                "room {:?} additionalSpawns[{index}] duplicates spawn",
+                room.name
+            ));
+        }
+        if !point_inside(spawn, bounds) {
+            return validation(format!(
+                "room {:?} additionalSpawns[{index}] must be inside its bounds",
+                room.name
+            ));
+        }
     }
     for (index, solid) in room.solids.iter().copied().enumerate() {
         let solid = validate_rect(
@@ -634,6 +669,7 @@ mod tests {
                 name: "room".to_owned(),
                 bounds,
                 spawn,
+                additional_spawns: vec![],
                 solids: vec![],
                 entities: vec![],
             }],
@@ -651,6 +687,7 @@ mod tests {
                     name: "right".to_owned(),
                     bounds: FixtureRect([320.0, 0.0, 320.0, 184.0]),
                     spawn: FixtureVec2([344.0, 160.0]),
+                    additional_spawns: vec![],
                     solids: vec![FixtureRect([320.0, 176.0, 320.0, 8.0])],
                     entities: vec![FixtureEntity {
                         id: "right-water".to_owned(),
@@ -667,6 +704,7 @@ mod tests {
                     name: "left".to_owned(),
                     bounds: FixtureRect([0.0, 0.0, 320.0, 184.0]),
                     spawn: FixtureVec2([24.0, 160.0]),
+                    additional_spawns: vec![FixtureVec2([280.0, 160.0])],
                     solids: vec![FixtureRect([0.0, 176.0, 320.0, 8.0])],
                     entities: vec![FixtureEntity {
                         id: "left-booster".to_owned(),
@@ -691,6 +729,7 @@ mod tests {
 
         let left = decode_map_room(&first, Some("left")).unwrap();
         assert_eq!(left.spawn, Vec2::new(24.0, 160.0));
+        assert_eq!(left.room_spawns, vec![Vec2::new(24.0, 160.0), Vec2::new(280.0, 160.0)]);
         assert_eq!(left.entities.len(), 1);
         assert_eq!(left.entities[0].kind, EntityKind::Booster);
         let right = decode_map_room(&first, Some("right")).unwrap();
@@ -709,6 +748,7 @@ mod tests {
                 name: "room".to_owned(),
                 bounds: Some(bounds),
                 spawn: None,
+                additional_spawns: vec![],
                 solids: vec![FixtureRect([0.0, 176.0, 320.0, 8.0])],
                 entities: vec![],
             }],
@@ -841,6 +881,7 @@ mod tests {
                 name: "r".to_owned(),
                 bounds: FixtureRect([0.0, 0.0, 320.0, 184.0]),
                 spawn: FixtureVec2([24.0, 160.0]),
+                additional_spawns: vec![],
                 solids: vec![],
                 entities: vec![],
             }],

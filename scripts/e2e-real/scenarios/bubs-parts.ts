@@ -7,7 +7,7 @@ const SID = 'CelesteGymPlayground/Playground'
 export const TECH_OTHER_5_2_BUBSDROP: MapPart = defineMapPart({
   id: 'tech.other-5.2-bubsdrop', dependencies: ['playground.base'], package: PACKAGE, sid: SID,
   rooms: [
-    { name: 'playground' },
+    { name: 'playground', additionalSpawns: [[440, 496]] },
     {
       name: 'bubsdrop_upper', bounds: [0, -544, 960, 544], spawn: [312, -16],
       solids: [[456, -544, 8, 544]],
