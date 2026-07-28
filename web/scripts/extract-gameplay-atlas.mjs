@@ -102,7 +102,13 @@ const PLAYER_PATHS = [
 ]
 const GAMEPLAY_PATHS = [
   ...PLAYER_PATHS,
-  'tilesets/dirt', 'tilesets/snow', 'tilesets/bgDirt', 'tilesets/bgSnow',
+  'tilesets/dirt', 'tilesets/snow', 'tilesets/stone', 'tilesets/wood',
+  'tilesets/cliffside', 'tilesets/summit', 'tilesets/bgDirt', 'tilesets/bgSnow',
+  'bgs/01/bg0', 'bgs/01/bg1', 'bgs/01/bg2',
+  'bgs/02/stars/',
+  'bgs/03/bg0', 'bgs/03/bg1', 'bgs/03/bg2', 'bgs/03/bg3', 'bgs/03/fg0',
+  'bgs/04/bg0', 'bgs/04/bg1', 'bgs/04/bgCloud',
+  'bgs/07/bg0', 'bgs/07/00/bg1', 'bgs/07/00/bg2',
   'danger/spikes/default', 'objects/woodPlatform/default', 'objects/jumpthru/wood',
   'objects/booster/booster', 'objects/booster/boosterRed', 'objects/booster/outline',
   'objects/dreamblock/active', 'objects/dreamblock/particles',
