@@ -60,17 +60,16 @@ describe('App modes', () => {
     render(<App />)
 
     const topbar = screen.getByRole('banner')
-    expect(within(topbar).getByRole('tablist', { name: '页面模式' })).toBeInTheDocument()
-    expect(within(topbar).getByRole('tab', { name: '游玩' })).toHaveAttribute('aria-selected', 'true')
+    expect(within(topbar).getByLabelText('页面模式')).toHaveValue('play')
     expect(screen.getByLabelText('游戏画布')).toHaveAttribute('data-state-count', '0')
     expect(within(topbar).getByText('CELESTE')).toBeInTheDocument()
     expect(await within(topbar).findByText('Test room')).toBeInTheDocument()
     expect(screen.queryByText('录制输入')).not.toBeInTheDocument()
     expect(screen.queryByText('时间线编辑器')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('tab', { name: '高级' }))
+    fireEvent.change(within(topbar).getByLabelText('页面模式'), { target: { value: 'advanced' } })
 
-    expect(screen.getByRole('tab', { name: '高级' })).toHaveAttribute('aria-selected', 'true')
+    expect(within(topbar).getByLabelText('页面模式')).toHaveValue('advanced')
     expect(screen.getByText('录制输入')).toBeInTheDocument()
     expect(screen.getByText('时间线编辑器')).toBeInTheDocument()
   })
