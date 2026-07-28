@@ -3251,6 +3251,9 @@ fn advance_gliders(p: &mut PlayerSnapshot, map: &mut Map) {
             map.entities[entity_index].bounds.y = -1_000_000.0;
             continue;
         }
+        // Glider.Update checks this timer before its DeltaTime subtraction,
+        // so the final positive frame still suppresses gravity.
+        let spring_no_gravity_active = glider.no_gravity_timer > 0.0;
         glider.cannot_hold_timer = (glider.cannot_hold_timer - p.frame_delta_time).max(0.0);
         glider.gravity_timer = (glider.gravity_timer - p.frame_delta_time).max(0.0);
         glider.no_gravity_timer = (glider.no_gravity_timer - p.frame_delta_time).max(0.0);
@@ -3278,7 +3281,7 @@ fn advance_gliders(p: &mut PlayerSnapshot, map: &mut Map) {
                     10.0
                 };
                 glider.speed.x = approach(glider.speed.x, 0.0, friction * p.frame_delta_time);
-                if glider.no_gravity_timer <= 0.0 {
+                if !spring_no_gravity_active {
                     glider.speed.y = approach(glider.speed.y, 30.0, gravity * p.frame_delta_time);
                 }
             }
@@ -8020,6 +8023,26 @@ mod tests {
         assert_eq!(next.gliders[0].speed.y, -160.0);
         assert!((next.gliders[0].speed.x - 39.666_668).abs() < 0.000_1);
         assert_eq!(next.gliders[0].no_gravity_timer, 0.15);
+    }
+
+    #[test]
+    fn glider_spring_no_gravity_keeps_its_final_source_frame() {
+        let map = glider_map();
+        let p = PlayerSnapshot {
+            pos: Vec2::new(200.0, 100.0),
+            gliders: vec![crate::GliderSnapshot {
+                position: Vec2::new(80.0, 100.0),
+                speed: Vec2::new(0.0, -160.0),
+                no_gravity_timer: DT,
+                ..crate::GliderSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+
+        let next = simulate(p, &[InputState::default()], &map, 1).unwrap();
+
+        assert_eq!(next.gliders[0].speed.y, -160.0);
+        assert_eq!(next.gliders[0].no_gravity_timer, 0.0);
     }
 
     #[test]
