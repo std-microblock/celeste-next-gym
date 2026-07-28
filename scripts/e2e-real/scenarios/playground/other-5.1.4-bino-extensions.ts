@@ -14,7 +14,10 @@ export const scenario = defineScenario({
   mapParts,
   name: 'other-5.1.4-bino-extensions',
   initial: { pos: [512, 496], speed: [0, 0], on_ground: true },
-  inputs: Array.from({ length: 560 }, (_, frame) => input({ talk_pressed: frame === 0, move_y: frame >= 55 ? -1 : 0 })),
+  // Summit LookRoutine needs the node travel, HUD close, and its one-second
+  // top-end FadeWipe.  560 frames stops during that source coroutine; 720
+  // leaves a full post-wipe observation window.
+  inputs: Array.from({ length: 720 }, (_, frame) => input({ talk_pressed: frame === 0, move_y: frame >= 55 ? -1 : 0 })),
   verify(states) {
     const cameras = states.map((state) => field<readonly number[]>(state, 'levelCamera'))
     semanticAssert(states.some((state) => (field<number>(state, 'lookoutNode') ?? 0) >= 2), scenario.name,

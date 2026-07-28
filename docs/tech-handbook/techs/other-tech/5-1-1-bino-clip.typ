@@ -16,5 +16,5 @@
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs; crates/celeste-physics/src/types.rs], symbol: [spinner_in_view; advance_spinners; advance_free_lookout_camera; SpinnerSnapshot], note: [Spinner `InView` 读取实时 `PlayerSnapshot.camera`，保持带 offset 的 0.25/0.05 秒 interval；不可见分支先清 Collidable，再按镜头重载。]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [bino_clip_uses_live_camera_and_spinner_interval_state], note: [回归先观察 spinner 可见，再将 Lookout 镜头移出 500px，验证 interval 后 Visible/Collidable 同时关闭。]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/other-5.1.1-bino-clip.ts; scripts/e2e-real/scenarios/lookout-parts.ts], symbol: [other-5.1.1-bino-clip; TECH_OTHER_5_1_1_BINO_CLIP], note: [2026-07-28 独立真实 Everest run `2026-07-28T10-30-54.209Z-101388-6a0526f7-2aa6-4bcd-b9ea-035296bbbedf` 已认证并清理；语义门未观察到 spinner 在 0.25 秒离开视野 interval 后隐藏。保持 candidate，待调整真实镜头距离/持续时间后复测。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/other-5.1.1-bino-clip.ts; crates/celeste-physics/src/sim.rs], symbol: [other-5.1.1-bino-clip; bino_clip_uses_live_camera_and_spinner_interval_state], note: [2026-07-28 的独立 Everest trace 未让 spinner 离开可视区。候选输入现将镜头从初始视野向左移到 x<300，并要求离屏后 16 帧内 Visible 与 Collidable 均关闭；保持 candidate，待真实 Everest 重跑。]),
 )
