@@ -126,6 +126,11 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .binding-list { display: grid; gap: 6px; padding: 0 13px; }
 .binding { min-height: 43px; display: grid; grid-template-columns: 29px 1fr 120px; align-items: center; gap: 9px; padding: 6px 8px; color: #cdbfd2; border: 1px solid #4d3862; background: #100922; cursor: pointer; text-align: left; }.binding:hover { border-color: #916ca1; }.binding.listening { border-color: var(--cyan); box-shadow: inset 3px 0 var(--cyan); }
 .action-glyph { display: grid; place-items: center; width: 27px; height: 27px; color: var(--lane, #fff); border: 1px solid currentColor; font: 9px Consolas, monospace; }.binding strong { font-size: 11px; }.binding kbd { padding: 6px; color: #fff; border: 1px solid #725884; background: #28183b; box-shadow: 0 2px #090512; font: 10px Consolas, monospace; text-align: center; }
+.gamepad-settings { display: grid; gap: 10px; margin: 13px 13px 0; padding: 12px; border: 1px solid #4d3862; background: #100922; }
+.gamepad-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }.gamepad-heading > div { display: grid; gap: 3px; }.gamepad-heading small { color: #aa87bb; font: 8px Consolas, monospace; letter-spacing: .18em; }.gamepad-heading strong { font-size: 11px; }
+.gamepad-heading > span { padding: 3px 6px; color: var(--muted); border: 1px solid #5a456b; font: 8px Consolas, monospace; }.gamepad-heading > span.connected { color: var(--green); border-color: #72f0b055; background: #72f0b012; }
+.gamepad-settings label { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #b9a8c3; font-size: 10px; }.gamepad-settings select { min-width: 120px; padding: 6px 8px; color: #fff; border: 1px solid #725884; background: #28183b; }
+.gamepad-settings p { margin: 0; overflow: hidden; color: #8f7a9d; font: 8px Consolas, monospace; text-overflow: ellipsis; white-space: nowrap; }.gamepad-settings > small { color: #8f7a9d; font: 8px Consolas, monospace; line-height: 1.5; }
 
 .start-modal form { padding: 0 14px; }
 .start-modal .modal-copy { margin-right: 0; margin-left: 0; }

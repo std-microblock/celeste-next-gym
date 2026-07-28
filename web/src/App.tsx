@@ -23,6 +23,15 @@ import {
 import { FrameCache } from './simulator/frameCache'
 import { WasmClient } from './simulator/wasmClient'
 import { compareTraces, createWebTrace, initialStateFromTrace, parseTrace } from './recording/trace'
+import {
+  DEFAULT_GAMEPAD_DIRECTION_SOURCE,
+  buttonsEqual,
+  buttonsFromGamepad,
+  isGamepadDirectionSource,
+  latchNewButtons,
+  mergeButtons,
+  type GamepadDirectionSource,
+} from './input/gamepad'
 
 interface RunDocument {
   version: 2
@@ -42,6 +51,11 @@ function loadBindings(): Bindings {
   } catch {
     return { ...DEFAULT_BINDINGS }
   }
+}
+
+function loadGamepadDirectionSource(): GamepadDirectionSource {
+  const saved = localStorage.getItem('celeste-gym-gamepad-direction')
+  return isGamepadDirectionSource(saved) ? saved : DEFAULT_GAMEPAD_DIRECTION_SOURCE
 }
 
 function download(name: string, contents: string): void {
@@ -81,12 +95,16 @@ export default function App() {
   const [wasmStatus, setWasmStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [notice, setNotice] = useState('WASM 核心启动中…')
   const [bindings, setBindings] = useState<Bindings>(loadBindings)
+  const [gamepadDirectionSource, setGamepadDirectionSource] = useState<GamepadDirectionSource>(loadGamepadDirectionSource)
+  const [gamepadName, setGamepadName] = useState<string | null>(null)
   const [liveButtons, setLiveButtons] = useState<FrameButtons>(makeEmptyButtons)
   const [bindingsOpen, setBindingsOpen] = useState(false)
   const [startSettingsOpen, setStartSettingsOpen] = useState(false)
   const [startSettingsBusy, setStartSettingsBusy] = useState(false)
   const keys = useRef(new Set<string>())
   const latched = useRef(new Set<string>())
+  const gamepadButtons = useRef<FrameButtons>(makeEmptyButtons())
+  const gamepadLatched = useRef<FrameButtons>(makeEmptyButtons())
   const advancing = useRef(false)
   const calculationRevision = useRef(0)
 
@@ -145,12 +163,15 @@ export default function App() {
         carry -= steps
         let previous = livePreviousButtons.current
         const inputs = Array.from({ length: steps }, (_, offset) => {
-          const current = buttonsFromKeys(keys.current, bindings, offset === 0 ? latched.current : undefined)
+          const keyboard = buttonsFromKeys(keys.current, bindings, offset === 0 ? latched.current : undefined)
+          const gamepad = offset === 0 ? mergeButtons(gamepadButtons.current, gamepadLatched.current) : gamepadButtons.current
+          const current = mergeButtons(keyboard, gamepad)
           const input = buttonsToInput(current, previous)
           previous = current
           return input
         })
         latched.current.clear()
+        gamepadLatched.current = makeEmptyButtons()
         livePreviousButtons.current = previous
         simulating = true
         void client.simulate(liveStateRef.current, inputs, map).then((trace) => {
@@ -180,17 +201,19 @@ export default function App() {
       if (!keys.current.has(event.code)) {
         latched.current.add(event.code)
         keys.current.add(event.code)
-        setLiveButtons(buttonsFromKeys(keys.current, bindings))
+        setLiveButtons(mergeButtons(buttonsFromKeys(keys.current, bindings), gamepadButtons.current))
       }
       keys.current.add(event.code)
       if (Object.values(bindings).includes(event.code)) event.preventDefault()
     }
     const up = (event: KeyboardEvent) => {
-      if (keys.current.delete(event.code)) setLiveButtons(buttonsFromKeys(keys.current, bindings))
+      if (keys.current.delete(event.code)) setLiveButtons(mergeButtons(buttonsFromKeys(keys.current, bindings), gamepadButtons.current))
     }
     const blur = () => {
       keys.current.clear()
       latched.current.clear()
+      gamepadButtons.current = makeEmptyButtons()
+      gamepadLatched.current = makeEmptyButtons()
       setLiveButtons(makeEmptyButtons())
     }
     window.addEventListener('keydown', down)
@@ -202,6 +225,27 @@ export default function App() {
       window.removeEventListener('blur', blur)
     }
   }, [bindings])
+
+  const gamepadSupported = typeof navigator !== 'undefined' && typeof navigator.getGamepads === 'function'
+
+  useEffect(() => {
+    if (!gamepadSupported) return
+    let animation = 0
+
+    const poll = () => {
+      const gamepad = Array.from(navigator.getGamepads()).find((candidate) => candidate?.connected) ?? null
+      const next = gamepad ? buttonsFromGamepad(gamepad, gamepadDirectionSource) : makeEmptyButtons()
+      gamepadLatched.current = latchNewButtons(gamepadButtons.current, next, gamepadLatched.current)
+      gamepadButtons.current = next
+      setGamepadName((current) => current === gamepad?.id ? current : gamepad?.id ?? null)
+      const combined = mergeButtons(buttonsFromKeys(keys.current, bindings), next)
+      setLiveButtons((current) => buttonsEqual(current, combined) ? current : combined)
+      animation = requestAnimationFrame(poll)
+    }
+
+    animation = requestAnimationFrame(poll)
+    return () => cancelAnimationFrame(animation)
+  }, [bindings, gamepadDirectionSource, gamepadSupported])
 
   const seek = useCallback((target: number, pause = true) => {
     const requested = Math.max(0, Math.round(target))
@@ -232,7 +276,9 @@ export default function App() {
     let carry = 0
 
     const sampleButtons = (includeLatched: boolean): FrameButtons => {
-      return buttonsFromKeys(keys.current, bindings, includeLatched ? latched.current : undefined)
+      const keyboard = buttonsFromKeys(keys.current, bindings, includeLatched ? latched.current : undefined)
+      const gamepad = includeLatched ? mergeButtons(gamepadButtons.current, gamepadLatched.current) : gamepadButtons.current
+      return mergeButtons(keyboard, gamepad)
     }
 
     const tick = (now: number) => {
@@ -249,6 +295,7 @@ export default function App() {
         if (recording) {
           cache.setButtonsRange(start, Array.from({ length: steps }, (_, offset) => sampleButtons(offset === 0)))
           latched.current.clear()
+          gamepadLatched.current = makeEmptyButtons()
         }
         advancing.current = true
         void cache.ensureFrame(target).then((state) => {
@@ -285,6 +332,23 @@ export default function App() {
       return next
     })
   }, [])
+
+  const changeGamepadDirectionSource = useCallback((source: GamepadDirectionSource) => {
+    setGamepadDirectionSource(source)
+    localStorage.setItem('celeste-gym-gamepad-direction', source)
+  }, [])
+
+  const toggleRecording = () => {
+    setPlaying(false)
+    setRecording((current) => {
+      const next = !current
+      if (next) {
+        latched.current.clear()
+        gamepadLatched.current = makeEmptyButtons()
+      }
+      return next
+    })
+  }
 
   const reset = () => {
     setPlaying(false)
@@ -418,7 +482,7 @@ export default function App() {
       <div className={`wasm-status ${wasmStatus}`} title="celeste-wasm 0.2.0 · rebuilt from current Rust source"><i />WASM 0.2.0 <span>{wasmStatus === 'ready' ? 'ONLINE' : wasmStatus === 'error' ? 'FAILED' : 'BOOTING'}</span></div>
       <div className="top-actions">
         <button disabled={wasmStatus !== 'ready'} onClick={() => setStartSettingsOpen(true)}>起点</button>
-        <button onClick={() => setBindingsOpen(true)}>键位</button>
+        <button onClick={() => setBindingsOpen(true)}>控制</button>
         <label className="file-button">导入时间线<input type="file" accept="application/json,.json" onChange={(event) => event.target.files?.[0] && void importRun(event.target.files[0])} /></label>
         <button onClick={exportRun}>导出时间线</button>
         <button onClick={() => void exportTrace()}>导出逐帧</button>
@@ -438,7 +502,7 @@ export default function App() {
           <button aria-label="上一帧" onClick={() => seek(frame - 1)}>◀</button>
           <button className="play-button" disabled={wasmStatus !== 'ready'} aria-label={playing ? '暂停' : '播放'} onClick={() => { setRecording(false); setPlaying((value) => !value) }}>{playing ? 'Ⅱ' : '▶'}</button>
           <button aria-label="下一帧" onClick={() => seek(frame + 1)}>▶</button>
-          <button className={recording ? 'record-button active' : 'record-button'} disabled={wasmStatus !== 'ready'} onClick={() => { setPlaying(false); setRecording((value) => !value) }}><i />{recording ? '录制中' : '录制输入'}</button>
+          <button className={recording ? 'record-button active' : 'record-button'} disabled={wasmStatus !== 'ready'} onClick={toggleRecording}><i />{recording ? '录制中' : '录制输入'}</button>
           <select aria-label="播放速度" value={speed} onChange={(event) => setSpeed(Number(event.target.value))}>
             <option value={0.25}>0.25×</option><option value={0.5}>0.5×</option><option value={1}>1×</option><option value={2}>2×</option>
           </select>
@@ -482,7 +546,15 @@ export default function App() {
       />
       </main>
       <footer>celeste-wasm 0.2.0 rebuilt · Celeste 1.4.0.0-fna Gameplay atlas · CelesteGymPlayground/Playground.bin · 60 FPS</footer>
-      {bindingsOpen && <KeyBindings bindings={bindings} onChange={changeBinding} onClose={() => setBindingsOpen(false)} />}
+      {bindingsOpen && <KeyBindings
+        bindings={bindings}
+        gamepadDirectionSource={gamepadDirectionSource}
+        gamepadName={gamepadName}
+        gamepadSupported={gamepadSupported}
+        onChange={changeBinding}
+        onGamepadDirectionSourceChange={changeGamepadDirectionSource}
+        onClose={() => setBindingsOpen(false)}
+      />}
       {startSettingsOpen && <StartSettings
         room={map.room ?? DEFAULT_ROOM}
         position={map.spawn}
