@@ -42,6 +42,11 @@ internal static class SnapshotCapture {
         "reformed",
         BindingFlags.Instance | BindingFlags.NonPublic
     );
+    private static readonly FieldInfo? bounceBlockStartPosition = typeof(BounceBlock).GetField(
+        "startPos",
+        BindingFlags.Instance | BindingFlags.NonPublic
+    );
+    private static readonly Dictionary<BounceBlock, BounceBlockReformProbe> bounceBlockReformProbes = [];
     // `Lookout.Removed` restores StNormal but intentionally does not call
     // StopInteracting. The entity is gone by the next PlayerFrame, so retain
     // this source-side observation for a transition trace to prove the split
@@ -50,10 +55,92 @@ internal static class SnapshotCapture {
     private static bool lookoutRemovedWhileInteracting;
     private static int? lookoutRemovalPlayerState;
 
+    private sealed class BounceBlockReformProbe {
+        public Vector2 PreviousPosition;
+        public Vector2? TargetPosition;
+        public float RespawnTimer;
+        public bool ActorBlocked;
+        public bool? SolidBlocked;
+        public string Result = "probe-error";
+        public List<Dictionary<string, object?>> Actors = [];
+        public List<Dictionary<string, object?>> Solids = [];
+        public int? PostState;
+        public bool? PostCollidable;
+        public Vector2? PostPosition;
+        public string? Error;
+    }
+
     public static void ResetLookoutLifecycleObservation() {
         lookoutRemovalObserved = false;
         lookoutRemovedWhileInteracting = false;
         lookoutRemovalPlayerState = null;
+    }
+
+    // The collector calls this before each Engine update. A successful
+    // BounceBlock reform changes state during that update, so retaining a
+    // previous frame's probe would falsely attribute an old BlockedCheck to a
+    // later Waiting frame.
+    public static void BeginEngineFrame() => bounceBlockReformProbes.Clear();
+
+    public static void ObserveBounceBlockReformProbe(BounceBlock bounceBlock) {
+        object? rawState;
+        object? rawTimer;
+        try {
+            rawState = bounceBlockState?.GetValue(bounceBlock);
+            rawTimer = bounceBlockRespawnTimer?.GetValue(bounceBlock);
+        } catch {
+            return;
+        }
+        if (rawState is not Enum state || Convert.ToInt32(state) != 4 || rawTimer is not float timer || timer > 0f) {
+            return;
+        }
+
+        BounceBlockReformProbe probe = new() {
+            PreviousPosition = bounceBlock.Position,
+            RespawnTimer = timer,
+        };
+        bounceBlockReformProbes[bounceBlock] = probe;
+        try {
+            if (bounceBlockStartPosition?.GetValue(bounceBlock) is not Vector2 target) {
+                probe.Error = "start-position-unavailable";
+                return;
+            }
+            probe.TargetPosition = target;
+            // This is source-equivalent to BounceBlock.Update's next branch:
+            // it calls CollideCheck<Actor>() at startPos, then only checks
+            // Solid when no Actor blocks. The position overload preserves the
+            // live broken-block position while reporting the actual colliders
+            // the source check would see.
+            List<Entity> actors = bounceBlock.CollideAll<Actor>(target);
+            probe.Actors = DescribeCollisionEntities(actors);
+            probe.ActorBlocked = actors.Count > 0;
+            if (probe.ActorBlocked) {
+                probe.Result = "actor";
+                return;
+            }
+
+            List<Entity> solids = bounceBlock.CollideAll<Solid>(target);
+            probe.Solids = DescribeCollisionEntities(solids);
+            probe.SolidBlocked = solids.Count > 0;
+            probe.Result = probe.SolidBlocked == true ? "solid" : "clear";
+        } catch (Exception error) {
+            // Telemetry must never take the game down. Keep the source-side
+            // failure visible on the frame instead of allowing it to become a
+            // runner backend timeout.
+            probe.Error = error.GetType().Name;
+        }
+    }
+
+    public static void ObserveBounceBlockReformResult(BounceBlock bounceBlock) {
+        if (!bounceBlockReformProbes.TryGetValue(bounceBlock, out BounceBlockReformProbe? probe)) return;
+        try {
+            object? state = bounceBlockState?.GetValue(bounceBlock);
+            probe.PostState = state is Enum value ? Convert.ToInt32(value) : null;
+            probe.PostCollidable = bounceBlock.Collidable;
+            probe.PostPosition = bounceBlock.Position;
+        } catch (Exception error) {
+            probe.Error ??= error.GetType().Name;
+        }
     }
 
     public static bool IsLookoutInteracting(Lookout lookout) =>
@@ -201,6 +288,7 @@ internal static class SnapshotCapture {
                         bounceBlockRespawnTimer?.GetValue(bounceBlock)
                     );
                     values["reformBounceBlockReformed"] = bounceBlockReformed?.GetValue(bounceBlock) as bool? ?? false;
+                    AppendBounceBlockReformProbe(values, bounceBlock);
 
                     Alarm? staticMoverAlarm = bounceBlock.Get<Alarm>();
                     values["reformStaticMoverAlarmPresent"] = staticMoverAlarm is not null;
@@ -318,4 +406,45 @@ internal static class SnapshotCapture {
         && WorldLeft(player.Collider, player) < WorldRight(source, sourceOwner)
         && WorldRight(player.Collider, player) > WorldLeft(source, sourceOwner)
         && MathF.Abs(WorldBottom(player.Collider, player) - WorldTop(source, sourceOwner)) <= 1f;
+
+    private static void AppendBounceBlockReformProbe(
+        Dictionary<string, object?> values,
+        BounceBlock bounceBlock
+    ) {
+        bool observed = bounceBlockReformProbes.TryGetValue(bounceBlock, out BounceBlockReformProbe? probe);
+        values["reformResetBlockedCheckObserved"] = observed;
+        if (!observed || probe is null) return;
+
+        values["reformResetPreviousPosition"] = Simplify(probe.PreviousPosition);
+        values["reformResetTargetPosition"] = probe.TargetPosition is Vector2 target ? Simplify(target) : null;
+        values["reformResetRespawnTimer"] = probe.RespawnTimer;
+        values["reformResetActorBlocked"] = probe.ActorBlocked;
+        values["reformResetSolidBlocked"] = probe.SolidBlocked;
+        values["reformResetBlockedCheckResult"] = probe.Result;
+        values["reformResetBlockingActors"] = probe.Actors;
+        values["reformResetBlockingSolids"] = probe.Solids;
+        if (probe.PostState is int state) values["reformResetPostState"] = state;
+        if (probe.PostCollidable is bool collidable) values["reformResetPostCollidable"] = collidable;
+        if (probe.PostPosition is Vector2 position) values["reformResetPostPosition"] = Simplify(position);
+        if (probe.Error is not null) values["reformResetProbeError"] = probe.Error;
+    }
+
+    private static List<Dictionary<string, object?>> DescribeCollisionEntities<T>(IEnumerable<T> entities)
+        where T : Entity {
+        List<Dictionary<string, object?>> result = [];
+        foreach (T entity in entities) {
+            Dictionary<string, object?> description = new() {
+                ["type"] = entity.GetType().Name,
+                ["position"] = Simplify(entity.Position),
+                ["active"] = entity.Active,
+                ["collidable"] = entity.Collidable,
+                ["colliderPresent"] = entity.Collider is not null,
+            };
+            if (entity.Collider is Collider collider) {
+                description["worldBounds"] = ColliderWorldGeometry(collider, entity);
+            }
+            result.Add(description);
+        }
+        return result;
+    }
 }

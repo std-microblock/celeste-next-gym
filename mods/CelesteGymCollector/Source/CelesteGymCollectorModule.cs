@@ -24,6 +24,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         On.Monocle.Engine.Update += EngineUpdate;
         On.Celeste.Celeste.RenderCore += CelesteRenderCore;
         On.Celeste.Player.Update += PlayerUpdate;
+        On.Celeste.BounceBlock.Update += BounceBlockUpdate;
         On.Celeste.Player.Jump += PlayerJump;
         On.Celeste.Player.StartDash += PlayerStartDash;
         On.Celeste.Player.Die += PlayerDie;
@@ -37,6 +38,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         On.Monocle.Engine.Update -= EngineUpdate;
         On.Celeste.Celeste.RenderCore -= CelesteRenderCore;
         On.Celeste.Player.Update -= PlayerUpdate;
+        On.Celeste.BounceBlock.Update -= BounceBlockUpdate;
         On.Celeste.Player.Jump -= PlayerJump;
         On.Celeste.Player.StartDash -= PlayerStartDash;
         On.Celeste.Player.Die -= PlayerDie;
@@ -45,6 +47,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
     }
 
     private void EngineUpdate(On.Monocle.Engine.orig_Update orig, Engine self, GameTime gameTime) {
+        SnapshotCapture.BeginEngineFrame();
         ProcessRequests();
         PrepareSimulationFrame();
         orig(self, gameTime);
@@ -310,6 +313,12 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                 || climbJumpCostPaid)) {
             job.JumpBufferFrames = 0;
         }
+    }
+
+    private void BounceBlockUpdate(On.Celeste.BounceBlock.orig_Update orig, BounceBlock self) {
+        SnapshotCapture.ObserveBounceBlockReformProbe(self);
+        orig(self);
+        SnapshotCapture.ObserveBounceBlockReformResult(self);
     }
 
     private int PlayerStartDash(On.Celeste.Player.orig_StartDash orig, Player self) {
