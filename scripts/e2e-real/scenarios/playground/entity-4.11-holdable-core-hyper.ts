@@ -19,7 +19,7 @@ export const scenario = defineScenario({
     jump_pressed: frame === 36,
     jump_held: frame === 36,
     crouch_dash_pressed: frame === 32,
-    grab_held: frame <= 31 || frame >= 42,
+    grab_held: frame <= 30 || frame >= 42,
   })),
   verify(states) {
     const pickup = states.findIndex((state) => state.state === 8 && state.holding_theo)
