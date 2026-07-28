@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import type { GymMap, SimInput, SimState } from './model'
@@ -56,12 +56,15 @@ describe('App modes', () => {
     vi.clearAllMocks()
   })
 
-  it('opens in the canvas-only play mode and reveals the editor from the advanced tab', async () => {
+  it('keeps the mode switch in the shared top bar and reveals the editor from the advanced tab', async () => {
     render(<App />)
 
-    expect(screen.getByRole('tab', { name: '游玩' })).toHaveAttribute('aria-selected', 'true')
+    const topbar = screen.getByRole('banner')
+    expect(within(topbar).getByRole('tablist', { name: '页面模式' })).toBeInTheDocument()
+    expect(within(topbar).getByRole('tab', { name: '游玩' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByLabelText('游戏画布')).toHaveAttribute('data-state-count', '0')
-    expect(screen.queryByText('CELESTE')).not.toBeInTheDocument()
+    expect(within(topbar).getByText('CELESTE')).toBeInTheDocument()
+    expect(await within(topbar).findByText('Test room')).toBeInTheDocument()
     expect(screen.queryByText('录制输入')).not.toBeInTheDocument()
     expect(screen.queryByText('时间线编辑器')).not.toBeInTheDocument()
 
@@ -88,5 +91,40 @@ describe('App modes', () => {
     expect(screen.getByLabelText('游戏画布')).toHaveAttribute('data-state-count', '0')
     expect(Number(screen.getByLabelText('游戏画布').getAttribute('data-frame'))).toBeGreaterThan(0)
     expect(screen.queryByText('时间线编辑器')).not.toBeInTheDocument()
+  })
+
+  it('exposes visual start settings and key bindings from play mode', async () => {
+    render(<App />)
+    await screen.findByText('ONLINE')
+
+    fireEvent.click(screen.getByRole('button', { name: '起点' }))
+    expect(screen.getByRole('dialog', { name: '选择开始位置' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /起点地图/ })).toBeInTheDocument()
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '关闭' }))
+
+    fireEvent.click(screen.getByRole('button', { name: '控制' }))
+    expect(screen.getByText('键位编辑器')).toBeInTheDocument()
+  })
+
+  it('drops elapsed background time instead of fast-forwarding play mode', async () => {
+    render(<App />)
+    await screen.findByText('ONLINE')
+    await waitFor(() => expect(nextAnimationFrame).toBeDefined())
+    wasm.simulate.mockClear()
+
+    const resumedAt = performance.now() + 60_000
+    await act(async () => {
+      nextAnimationFrame?.(resumedAt)
+      await Promise.resolve()
+    })
+    expect(wasm.simulate).not.toHaveBeenCalled()
+
+    await act(async () => {
+      nextAnimationFrame?.(resumedAt + 20)
+      await Promise.resolve()
+    })
+    await waitFor(() => expect(wasm.simulate).toHaveBeenCalledTimes(1))
+    expect(wasm.simulate.mock.calls[0][1]).toHaveLength(1)
   })
 })

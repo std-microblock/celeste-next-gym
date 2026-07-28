@@ -35,10 +35,10 @@ export function createRecordingPlan(
     const [scenario] = selectScenarios(registry, {
       names: new Set([name]),
       ...(config.targetExplicit && config.target ? { target: config.target } : {}),
-      includeCandidates: false,
+      includeCandidates: config.includeCandidates,
       disabledTags: config.disabledTags,
     })
-    if (!scenario || scenario.status !== 'active') throw new Error(`${name}: candidate scenarios cannot be recorded`)
+    if (!scenario) throw new Error(`${name}: scenario cannot be recorded`)
     planned.set(scenario.name, {
       scenario,
       techniqueIds: new Set(scenario.recording?.primaryFor ?? []),

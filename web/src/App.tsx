@@ -43,6 +43,8 @@ interface RunDocument {
 
 const PLAYGROUND_MAP_URL = '/assets/original/maps/CelesteGymPlayground-Playground.bin'
 const DEFAULT_ROOM = 'playground'
+const PLAYGROUND_ROOMS = ['playground', 'transition_0'] as const
+const MAX_ANIMATION_DELTA_MS = 250
 
 function loadBindings(): Bindings {
   try {
@@ -79,6 +81,7 @@ function buttonsFromKeys(keys: ReadonlySet<string>, bindings: Bindings, latched?
 export default function App() {
   const client = useMemo(() => new WasmClient(), [])
   const [map, setMap] = useState<GymMap>(() => structuredClone(PLAYGROUND))
+  const [startMaps, setStartMaps] = useState<GymMap[]>(() => [structuredClone(PLAYGROUND)])
   const cache = useMemo(() => new FrameCache(client, map, createInitialState(map), 360), [client])
   const [mode, setMode] = useState<'play' | 'advanced'>('play')
   const [liveState, setLiveState] = useState<SimState>(() => createInitialState(map))
@@ -124,13 +127,17 @@ export default function App() {
     let active = true
     client.ready().then(async () => {
       if (!active) return
-      const decodedMap = await client.loadMap(
-        PLAYGROUND_MAP_URL,
-        DEFAULT_ROOM,
-        'CelesteGymPlayground / playground',
-      )
+      const loadedRooms = await Promise.all(PLAYGROUND_ROOMS.map(async (room) => ({
+        ...await client.loadMap(
+          PLAYGROUND_MAP_URL,
+          room,
+          `CelesteGymPlayground / ${room}`,
+        ),
+        room,
+      })))
       if (!active) return
-      const loadedMap = { ...decodedMap, room: DEFAULT_ROOM }
+      const loadedMap = loadedRooms.find((candidate) => candidate.room === DEFAULT_ROOM) ?? loadedRooms[0]
+      setStartMaps(loadedRooms)
       setMap(loadedMap)
       const initial = createInitialState(loadedMap)
       cache.replace(loadedMap, initial, cache.getInputs().map((input) => ({ ...input })))
@@ -138,7 +145,7 @@ export default function App() {
       frameRef.current = 0
       setFrame(0)
       setWasmStatus('ready')
-      setNotice('WASM 已从 CelesteGymPlayground/Playground.bin 解码测试房间')
+      setNotice('WASM 已从 CelesteGymPlayground/Playground.bin 解码可选房间')
     }).catch((error: Error) => {
       if (!active) return
       setWasmStatus('error')
@@ -155,9 +162,16 @@ export default function App() {
     let carry = 0
     let simulating = false
 
+    const resetClock = () => {
+      last = performance.now()
+      carry = 0
+    }
+
     const tick = (now: number) => {
-      carry += (now - last) * 60 / 1000
+      const elapsed = now - last
       last = now
+      if (document.hidden || elapsed > MAX_ANIMATION_DELTA_MS) carry = 0
+      else carry += elapsed * 60 / 1000
       const steps = Math.min(6, Math.floor(carry))
       if (steps > 0 && !simulating) {
         carry -= steps
@@ -188,10 +202,12 @@ export default function App() {
       }
       if (active) animation = requestAnimationFrame(tick)
     }
+    document.addEventListener('visibilitychange', resetClock)
     animation = requestAnimationFrame(tick)
     return () => {
       active = false
       cancelAnimationFrame(animation)
+      document.removeEventListener('visibilitychange', resetClock)
     }
   }, [bindings, client, map, mode, wasmStatus])
 
@@ -275,6 +291,11 @@ export default function App() {
     let last = performance.now()
     let carry = 0
 
+    const resetClock = () => {
+      last = performance.now()
+      carry = 0
+    }
+
     const sampleButtons = (includeLatched: boolean): FrameButtons => {
       const keyboard = buttonsFromKeys(keys.current, bindings, includeLatched ? latched.current : undefined)
       const gamepad = includeLatched ? mergeButtons(gamepadButtons.current, gamepadLatched.current) : gamepadButtons.current
@@ -282,8 +303,10 @@ export default function App() {
     }
 
     const tick = (now: number) => {
-      carry += (now - last) * 60 / 1000 * speed
+      const elapsed = now - last
       last = now
+      if (document.hidden || elapsed > MAX_ANIMATION_DELTA_MS) carry = 0
+      else carry += elapsed * 60 / 1000 * speed
       const steps = Math.min(6, Math.floor(carry))
       if (steps > 0 && !advancing.current) {
         carry -= steps
@@ -310,10 +333,12 @@ export default function App() {
       }
       if (active) animation = requestAnimationFrame(tick)
     }
+    document.addEventListener('visibilitychange', resetClock)
     animation = requestAnimationFrame(tick)
     return () => {
       active = false
       cancelAnimationFrame(animation)
+      document.removeEventListener('visibilitychange', resetClock)
     }
   }, [bindings, cache, playing, recording, speed, wasmStatus])
 
@@ -321,6 +346,10 @@ export default function App() {
   const states = cache.getStates()
   const exactState = cache.getState(frame)
   const visible = exactState ? { frame, state: exactState } : cache.getNearestState(frame)
+  const selectableStartMaps = useMemo(() => [
+    map,
+    ...startMaps.filter((candidate) => candidate.room !== map.room),
+  ], [map, startMaps])
 
   const changeBinding = useCallback((action: Action, code: string) => {
     setBindings((current) => {
@@ -362,15 +391,12 @@ export default function App() {
     setPlaying(false)
     setRecording(false)
     setStartSettingsBusy(true)
-    setNotice(`正在加载房间 ${room}…`)
+    setNotice(`正在应用房间 ${room} 的新起点…`)
     try {
-      const decodedMap = await client.loadMap(
-        PLAYGROUND_MAP_URL,
-        room,
-        `CelesteGymPlayground / ${room}`,
-      )
+      const decodedMap = selectableStartMaps.find((candidate) => candidate.room === room)
+      if (!decodedMap) throw new Error(`房间 ${room} 不在可选地图中`)
       const configuredMap: GymMap = {
-        ...decodedMap,
+        ...structuredClone(decodedMap),
         room,
         spawn: { ...position },
       }
@@ -468,27 +494,40 @@ export default function App() {
   }
 
   return <div className={`app-shell ${mode === 'play' ? 'play-mode' : 'advanced-mode'}`}>
-    <nav className="mode-tabs" role="tablist" aria-label="页面模式">
-      <button role="tab" aria-selected={mode === 'play'} onClick={() => selectMode('play')}>游玩</button>
-      <button role="tab" aria-selected={mode === 'advanced'} onClick={() => selectMode('advanced')}>高级</button>
-    </nav>
-
-    {mode === 'play' ? <main className="play-workspace">
-      <GameView map={map} state={liveState} states={[]} frame={liveFrame} stale={false} />
-    </main> : <>
-      <div className="mountain-backdrop" />
-      <header className="topbar">
+    {mode === 'advanced' && <div className="mountain-backdrop" />}
+    <header className="topbar">
       <div className="brand-mark"><span className="wing">◇</span><div><strong>CELESTE</strong><em>NEXT GYM</em></div></div>
+      <nav className="mode-tabs" role="tablist" aria-label="页面模式">
+        <small>工作区</small>
+        <div>
+          <button role="tab" aria-selected={mode === 'play'} onClick={() => selectMode('play')}>游玩</button>
+          <button role="tab" aria-selected={mode === 'advanced'} onClick={() => selectMode('advanced')}>高级</button>
+        </div>
+      </nav>
       <div className={`wasm-status ${wasmStatus}`} title="celeste-wasm 0.2.0 · rebuilt from current Rust source"><i />WASM 0.2.0 <span>{wasmStatus === 'ready' ? 'ONLINE' : wasmStatus === 'error' ? 'FAILED' : 'BOOTING'}</span></div>
-      <div className="top-actions">
+      {mode === 'advanced' ? <div className="top-actions">
         <button disabled={wasmStatus !== 'ready'} onClick={() => setStartSettingsOpen(true)}>起点</button>
         <button onClick={() => setBindingsOpen(true)}>控制</button>
         <label className="file-button">导入时间线<input type="file" accept="application/json,.json" onChange={(event) => event.target.files?.[0] && void importRun(event.target.files[0])} /></label>
         <button onClick={exportRun}>导出时间线</button>
         <button onClick={() => void exportTrace()}>导出逐帧</button>
         <label className="file-button">对比逐帧<input type="file" accept="application/json,.json" onChange={(event) => event.target.files?.[0] && void compareTrace(event.target.files[0])} /></label>
-      </div>
-      </header>
+      </div> : <div className="play-quick-actions">
+        <div className="play-room">
+          <small>LIVE ROOM</small>
+          <strong>{map.name}</strong>
+          <span>{map.room ?? DEFAULT_ROOM}</span>
+        </div>
+        <div className="top-actions">
+          <button disabled={wasmStatus !== 'ready'} onClick={() => setStartSettingsOpen(true)}>起点</button>
+          <button onClick={() => setBindingsOpen(true)}>控制</button>
+        </div>
+      </div>}
+    </header>
+
+    {mode === 'play' ? <main className="play-workspace">
+      <GameView map={map} state={liveState} states={[]} frame={liveFrame} stale={false} />
+    </main> : <>
 
       <main className="workspace">
       <section className="stage panel-frame">
@@ -546,22 +585,23 @@ export default function App() {
       />
       </main>
       <footer>celeste-wasm 0.2.0 rebuilt · Celeste 1.4.0.0-fna Gameplay atlas · CelesteGymPlayground/Playground.bin · 60 FPS</footer>
-      {bindingsOpen && <KeyBindings
-        bindings={bindings}
-        gamepadDirectionSource={gamepadDirectionSource}
-        gamepadName={gamepadName}
-        gamepadSupported={gamepadSupported}
-        onChange={changeBinding}
-        onGamepadDirectionSourceChange={changeGamepadDirectionSource}
-        onClose={() => setBindingsOpen(false)}
-      />}
-      {startSettingsOpen && <StartSettings
-        room={map.room ?? DEFAULT_ROOM}
-        position={map.spawn}
-        busy={startSettingsBusy}
-        onApply={(configuration) => { void applyStartConfiguration(configuration) }}
-        onClose={() => setStartSettingsOpen(false)}
-      />}
     </>}
+    {bindingsOpen && <KeyBindings
+      bindings={bindings}
+      gamepadDirectionSource={gamepadDirectionSource}
+      gamepadName={gamepadName}
+      gamepadSupported={gamepadSupported}
+      onChange={changeBinding}
+      onGamepadDirectionSourceChange={changeGamepadDirectionSource}
+      onClose={() => setBindingsOpen(false)}
+    />}
+    {startSettingsOpen && <StartSettings
+      rooms={selectableStartMaps}
+      room={map.room ?? DEFAULT_ROOM}
+      position={map.spawn}
+      busy={startSettingsBusy}
+      onApply={(configuration) => { void applyStartConfiguration(configuration) }}
+      onClose={() => setStartSettingsOpen(false)}
+    />}
   </div>
 }
