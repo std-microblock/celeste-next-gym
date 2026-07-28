@@ -39,19 +39,24 @@ function ObjectiveHoverLayer({ series, from, to }: { series: TrainingObjectiveSe
   const frames = series[0]?.points.filter((point) => point.frame >= from && point.frame <= to) ?? []
   if (frames.length === 0) return null
   const span = Math.max(1, to - from)
-  const width = Math.max(1.2, 100 / span)
+  const frameWidth = 100 / span
   return <div className="training-objective-hover-layer" aria-label="Fuzz objective 按帧结果">
     {frames.map((frame) => {
-      const left = Math.max(0, Math.min(100 - width, (frame.frame - from) / span * 100 - width / 2))
-      const edge = left < 12 ? 'before' : left > 88 - width ? 'after' : ''
-      return <i key={frame.frame} className={`training-objective-hit ${edge}`} style={{ left: `${left}%`, width: `${width}%` }} tabIndex={0}>
+      const center = (frame.frame - from) / span * 100
+      const left = Math.max(0, center - frameWidth / 2)
+      const right = Math.min(100, center + frameWidth / 2)
+      const edge = center < 12 ? 'before' : center > 88 ? 'after' : ''
+      const details = series.flatMap((objective) => {
+        const point = objective.points.find((candidate) => candidate.frame === frame.frame)
+        return point === undefined ? [] : [`${objective.expression} ${point.value.toFixed(2)}`]
+      })
+      return <i key={frame.frame} className={`training-objective-hit ${edge} ${frame.successful ? 'successful' : 'failed'}`} style={{ left: `${left}%`, width: `${right - left}%` }} tabIndex={0} aria-label={`F${frame.frame} ${frame.successful ? '可行' : '未通过'}；${details.join('；')}`}>
         <span className="training-objective-tooltip">
-          <b>F{frame.frame} · {frame.successful ? '可行候选' : '未通过 SUCCESS'}</b>
+          <b>F{frame.frame}</b>
           {series.map((objective, index) => {
             const point = objective.points.find((candidate) => candidate.frame === frame.frame)
-            return point === undefined ? null : <em key={`${objective.expression}-${index}`}><code>{objective.expression}</code><strong>{point.value.toFixed(2)}</strong></em>
+            return point === undefined ? null : <strong key={`${objective.expression}-${index}`}>{Number.isInteger(point.value) ? point.value.toFixed(0) : point.value.toFixed(2)}</strong>
           })}
-          <small>{frame.successful ? '该帧操作满足训练成功条件，位于绿色可行窗口内。' : '该帧已完整模拟，但终态未满足训练成功条件。'}</small>
         </span>
       </i>
     })}
@@ -172,8 +177,6 @@ export function TrainingResultTimeline({ targetFrame, windows, actualInputs, fai
   const span = Math.max(16, maximum - minimum + padding * 2)
   const percent = (value: number) => `${(value - from) / span * 100}%`
   return <div className="training-result-timeline" aria-label="本次操作时间线">
-    <i className="training-result-axis-end start" />
-    <i className="training-result-axis-end end" />
     <ObjectiveCurve series={objectives} from={from} to={from + span} />
     <ObjectiveHoverLayer series={objectives} from={from} to={from + span} />
     {windows.map((window, index) => <i key={`${window.from}-${window.to}-${index}`} className="training-window" style={{ left: percent(window.from), width: `${Math.max(1.5, (window.to - window.from + 1) / span * 100)}%` }} />)}
