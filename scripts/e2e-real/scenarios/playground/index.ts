@@ -130,6 +130,9 @@ import { scenario as scenario127 } from './other-5.3-cassette-raise.js'
 import { scenario as scenario128 } from './other-5.9-screen-transition-cassette-offset.js'
 import { scenario as scenario129 } from './other-5.10-spinner-stunning.js'
 import { scenario as scenario130 } from './other-5.11-spinner-freeze.js'
+import { scenario as scenario131 } from './entity-4.21-holdable-slash.js'
+import { scenario as scenario132 } from './entity-4.19-seeker-bounce.js'
+import { scenario as scenario133 } from './entity-4.28-koral-clip.js'
 
 export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario0,
@@ -263,4 +266,7 @@ export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario128,
   scenario129,
   scenario130,
+  scenario131,
+  scenario132,
+  scenario133,
 ])

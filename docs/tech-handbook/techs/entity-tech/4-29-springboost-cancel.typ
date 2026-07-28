@@ -14,7 +14,7 @@
     note: [Spring 直接把碰撞分派给 Holdable.HitSpring。未被持有的 Glider 在地板弹簧上把 X 减半、Y 设为 -160，并设置 0.15 秒无重力；Rust 按实体后更新顺序执行 Glider 移动再检查 Spring。后续丢出／重抓取消链仍待真实采集。],
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [advance_gliders / hit_glider_spring / release_glider / pickup_update]),
-  test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [floor_spring_launches_unheld_glider_after_actor_movement]),
+  test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [floor_spring_launches_unheld_glider_after_actor_movement / springboost_cancel_reverses_into_the_rising_glider_for_regrab]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.29-springboost-cancel.ts], symbol: [entity-4.29-springboost-cancel], note: [独立 Glider＋地板弹簧 MapPart 已在真实 Everest 中执行丢出与实体弹簧回调，但没有完成后续重抓（regrab = -1），真实取消窗口尚未闭环，故保留 candidate。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.29-springboost-cancel.ts], symbol: [entity-4.29-springboost-cancel], note: [唯一一次 source-informed 修正把 Spring 对齐到中性放下的 X=133，并在玩家越过后反向，延迟到 frame 100 重抓上升 Glider。Rust 已形成 release→Spring -160→regrab 完整链；真实 Everest 尚待最终候选重验，因此保持未实现。]),
 )

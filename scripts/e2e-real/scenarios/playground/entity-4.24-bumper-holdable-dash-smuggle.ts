@@ -12,7 +12,7 @@ export const scenario = defineScenario({
   initial: { pos: [100, 496], on_ground: true },
   inputs: Array.from({ length: 120 }, (_, frame) => input({
     move_x: frame >= 13 && frame < 45 ? 1 : frame >= 45 ? 1 : 0,
-    move_y: frame === 26 || frame >= 45 ? 1 : 0,
+    move_y: frame === 26 || (frame >= 45 && frame <= 47) ? 1 : 0,
     dash_pressed: frame === 45,
     grab_held: frame <= 25 || frame >= 45,
   })),
