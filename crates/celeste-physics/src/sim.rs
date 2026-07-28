@@ -3992,6 +3992,8 @@ fn update_wall_speed_retention(p: &mut PlayerSnapshot, map: &Map) {
 }
 
 fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_ground: bool) {
+    let is_first_normal_update_after_transition = p.post_transition_normal_updates > 0;
+    p.post_transition_normal_updates = 0;
     let boost = lift_boost(p);
     if boost.y < 0.0 && was_on_ground && !p.on_ground && p.speed.y >= 0.0 {
         p.speed.y = boost.y;
@@ -4067,7 +4069,10 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
         AIR_MULT
     };
     let move_x = p.move_x;
-    if p.ducking && p.on_ground {
+    let neutral_wall_jump_friction_delayed = p.neutral_wall_jump_friction_delay > 0;
+    if neutral_wall_jump_friction_delayed {
+        p.neutral_wall_jump_friction_delay -= 1;
+    } else if p.ducking && p.on_ground {
         p.speed.x = approach(p.speed.x, 0.0, DUCK_FRICTION * p.frame_delta_time);
     } else {
         let max_run = if p.holding_theo.is_some() {
@@ -4200,6 +4205,12 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
                 if move_x != 0 {
                     p.force_move_x = -jump_wall;
                     p.force_move_x_timer = 0.16;
+                } else if is_first_normal_update_after_transition {
+                    // At the just-finished transition boundary, Everest
+                    // retains this neutral wall-jump launch through the next
+                    // update before air friction resumes. Ordinary neutral
+                    // wall jumps must retain their existing timing.
+                    p.neutral_wall_jump_friction_delay = 1;
                 }
                 p.var_jump_speed = p.speed.y;
                 p.var_jump_timer = VAR_JUMP_TIME;
@@ -6209,7 +6220,7 @@ fn begin_transition(p: &mut PlayerSnapshot, next: Rect, direction: Vec2) {
     p.on_ground = false;
 }
 
-fn update_transition(p: &mut PlayerSnapshot, map: &Map) {
+fn update_transition(p: &mut PlayerSnapshot, map: &mut Map) {
     let max_move = TRANSITION_MOVE_SPEED * p.frame_delta_time;
     p.pos.x = approach(p.pos.x, p.transition_target.x, max_move);
     p.pos.y = approach(p.pos.y, p.transition_target.y, max_move);
@@ -6284,6 +6295,7 @@ fn update_transition(p: &mut PlayerSnapshot, map: &Map) {
         }
         p.current_room_bounds = next_room;
         p.transition_direction = Vec2::default();
+        p.post_transition_normal_updates = 1;
     }
 }
 
@@ -12972,6 +12984,13 @@ mod tests {
         let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
 
         assert_eq!(trace.states[1].speed, Vec2::new(0.0, JUMP_SPEED));
+        // The real Bubsdrop trace wall-jumps on state 42. Its neutral launch
+        // remains (-130, -105) on state 43; air friction first applies on
+        // state 44, producing -119.16665 horizontal speed.
+        assert_eq!(trace.states[42].speed, Vec2::new(-WALL_JUMP_H, JUMP_SPEED));
+        assert_eq!(trace.states[43].speed, Vec2::new(-WALL_JUMP_H, JUMP_SPEED));
+        assert!((trace.states[44].speed.x + 119.166_65).abs() < 0.000_1);
+        assert_eq!(trace.states[44].speed.y, JUMP_SPEED);
         assert!(trace.states.iter().any(|state| {
             state.current_room_bounds == Some(upper)
                 && state.speed == Vec2::new(-WALL_JUMP_H, JUMP_SPEED)
