@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { GameView } from './components/GameView'
 import { InputTimeline } from './components/InputTimeline'
 import { KeyBindings } from './components/KeyBindings'
-import { MapEditor } from './components/MapEditor'
+import { EditorWorkspace } from './components/EditorWorkspace'
 import { StateInspector } from './components/StateInspector'
 import { TrainingGround } from './components/TrainingGround'
 import { trainingCatalog } from './training/catalog'
@@ -592,14 +592,15 @@ export default function App() {
 
     {mode === 'play' ? <main className="play-workspace">
       <GameView map={map} state={liveState} states={[]} frame={liveFrame} stale={false} theme={visualTheme} />
-    </main> : mode === 'training' ? <TrainingGround techniqueId={selectedTrainingTechnique.id} variantId={selectedTrainingVariant.id} bindings={bindings} theme={visualTheme} onSelectTraining={(techniqueId, variantId) => { setTrainingTechniqueId(techniqueId); setTrainingVariantId(variantId) }} /> : mode === 'editor' ? <MapEditor
+    </main> : mode === 'training' ? <TrainingGround techniqueId={selectedTrainingTechnique.id} variantId={selectedTrainingVariant.id} bindings={bindings} theme={visualTheme} onSelectTraining={(techniqueId, variantId) => { setTrainingTechniqueId(techniqueId); setTrainingVariantId(variantId) }} /> : mode === 'editor' ? <EditorWorkspace
       map={map}
       state={liveState}
       frame={liveFrame}
       theme={visualTheme}
+      bindings={bindings}
       experiencing={editorExperiencing}
       ready={wasmStatus === 'ready'}
-      onChange={updateEditorMap}
+      onMapChange={updateEditorMap}
       onExperienceChange={toggleEditorExperience}
       onResetExperience={resetLiveMap}
     /> : <>

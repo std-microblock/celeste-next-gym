@@ -46,11 +46,11 @@ export function trainingInputLocked(outcome: OutcomeAnimation | null, settlement
 }
 
 /** Map-driven lesson runner: triggers arm tutorial modules; the next action is local F0. */
-export function TrainingGround({ techniqueId, variantId, bindings, theme, onSelectTraining }: { techniqueId: string; variantId: string; bindings: KeyBindings; theme: VisualTheme; onSelectTraining(techniqueId: string, variantId: string): void }) {
+export function TrainingGround({ techniqueId, variantId, bindings, theme, onSelectTraining, variantOverride, editorPreview = false }: { techniqueId: string; variantId: string; bindings: KeyBindings; theme: VisualTheme; onSelectTraining(techniqueId: string, variantId: string): void; variantOverride?: TrainingVariant; editorPreview?: boolean }) {
   const client = useMemo(() => new WasmClient(), [])
   const technique = trainingCatalog.find((item) => item.id === techniqueId) ?? trainingCatalog[0]
   const variantIndex = Math.max(0, technique.variants.findIndex((variant) => variant.id === variantId))
-  const selectedVariant = technique.variants[variantIndex] ?? technique.variants[0]
+  const selectedVariant = variantOverride ?? technique.variants[variantIndex] ?? technique.variants[0]
   const [map, setMap] = useState<GymMap | null>(null)
   const [initial, setInitial] = useState<SimState | null>(null)
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null)
@@ -405,8 +405,8 @@ export function TrainingGround({ techniqueId, variantId, bindings, theme, onSele
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoSlowdown, baseRate, bindings, client, initial, map, playing, settlement])
 
-  if (!map || !initial || snapshots.length === 0) return <main className="training-workspace">
-    <TrainingCatalogSidebar techniqueId={technique.id} variantId={selectedVariant.id} onSelectTraining={onSelectTraining} />
+  if (!map || !initial || snapshots.length === 0) return <main className={`training-workspace ${editorPreview ? 'editor-training-preview' : ''}`}>
+    {!editorPreview && <TrainingCatalogSidebar techniqueId={technique.id} variantId={selectedVariant.id} onSelectTraining={onSelectTraining} />}
     <div className="training-loading notice"><i />{notice}</div>
   </main>
 
@@ -423,13 +423,13 @@ export function TrainingGround({ techniqueId, variantId, bindings, theme, onSele
   const failureFrame = session.failure ? (fuzzStartFrame ?? 0) + session.failure.frame : undefined
   const timelineFrame = outcome?.timelineFrame ?? frame
   const timelineFrameCount = outcome?.timelineFrame ?? Math.max(40, snapshots.length - 1, (prediction.targetFrame ?? 0) + 24)
-  const recommendations = technique.variants.filter((variant) => variant.id !== selectedVariant.id).slice(0, 2)
-  const nextVariant = technique.variants[variantIndex + 1]
+  const recommendations = editorPreview ? [] : technique.variants.filter((variant) => variant.id !== selectedVariant.id).slice(0, 2)
+  const nextVariant = editorPreview ? undefined : technique.variants[variantIndex + 1]
   const averageAccuracy = average(completions.map((completion) => completion.accuracy))
   const averageReactionFrames = average(completions.map((completion) => completion.reactionFrames))
 
-  return <main className="training-workspace">
-    <TrainingCatalogSidebar techniqueId={technique.id} variantId={selectedVariant.id} onSelectTraining={onSelectTraining} />
+  return <main className={`training-workspace ${editorPreview ? 'editor-training-preview' : ''}`}>
+    {!editorPreview && <TrainingCatalogSidebar techniqueId={technique.id} variantId={selectedVariant.id} onSelectTraining={onSelectTraining} />}
     <section className="training-stage panel-frame">
       <div className="stage-header"><div><small>TRAINING MAP / {selectedVariant.training.id}</small><h1>{selectedVariant.training.title} <em>{completions.length}/{selectedVariant.training.modules.length} 模块完成</em></h1></div><div className="cache-meter"><span>{tutorial ? '当前模块倍率' : '地图进度'}</span><strong>{tutorial ? `${effective.toFixed(2)}×` : `${Math.round(completions.length / selectedVariant.training.modules.length * 100)}%`}</strong></div></div>
       <GameView map={map} state={state} states={snapshots} frame={frame} stale={false} theme={theme}>
