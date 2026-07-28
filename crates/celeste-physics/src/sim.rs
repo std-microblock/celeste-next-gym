@@ -7634,6 +7634,46 @@ mod tests {
     }
 
     #[test]
+    fn dash_pickup_after_the_initial_yield_caches_live_updash_speed() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 160.0),
+            state: PlayerState::Dash,
+            // This is the state at the first DashUpdate following the
+            // coroutine's initial `yield return null`: it must publish the
+            // up-dash speed before a later holdable check can cache it.
+            state_timer: DASH_TIME + DT,
+            last_aim: Vec2::new(0.0, -1.0),
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(
+            p,
+            &[
+                InputState {
+                    move_y: -1,
+                    ..InputState::default()
+                },
+                InputState {
+                    move_y: -1,
+                    grab_held: true,
+                    ..InputState::default()
+                },
+            ],
+            &theo_crystal_map(),
+            2,
+        )
+        .unwrap();
+
+        assert_eq!(trace.states[1].state, PlayerState::Dash);
+        assert_eq!(trace.states[1].dash_dir, Vec2::new(0.0, -1.0));
+        assert_eq!(trace.states[1].speed, Vec2::new(0.0, -DASH_SPEED));
+        assert_eq!(trace.states[2].state, PlayerState::Pickup);
+        assert_eq!(
+            trace.states[2].pickup_old_speed,
+            Vec2::new(0.0, -DASH_SPEED)
+        );
+    }
+
+    #[test]
     fn theo_pickup_release_and_runtime_are_split_composable() {
         let p = PlayerSnapshot {
             pos: Vec2::new(60.0, 160.0),
