@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { makeEmptyButtons } from '../model'
-import { outcomeSpeedX, timingAssessment, trainingEntryDirectionPassed, trainingInputLocked } from './TrainingGround'
+import { outcomeSpeedX, timingAssessment, trainingEntryDirectionPassed, trainingInputLocked, verificationKeys } from './TrainingGround'
 import type { SimState } from '../model'
+import type { TrainingDefinition } from '../training/session'
+
+const definition = {
+  fuzz: { inputs: [
+    { id: 'dash', keys: ['dash'], at: 0 },
+    { id: 'jump', keys: ['jump'], at: 5 },
+  ] },
+} as TrainingDefinition
 
 describe('training entry direction', () => {
   it('accepts a held down-right direction independently of the simulated last-aim timing', () => {
@@ -25,5 +33,13 @@ describe('training result timing', () => {
   it('locks game input whenever a result overlay is active', () => {
     expect(trainingInputLocked(null)).toBe(false)
     expect(trainingInputLocked({ phase: 'success', startedAt: 0, durationMs: 3_000, resultSpeedX: 325, timelineFrame: 12 })).toBe(true)
+  })
+})
+
+describe('training verification keys', () => {
+  it('ignores a held dash when jump is newly pressed', () => {
+    const previous = { ...makeEmptyButtons(), dash: true }
+    const current = { ...previous, jump: true }
+    expect(verificationKeys(current, previous, definition, 1)).toEqual(['jump'])
   })
 })

@@ -62,15 +62,16 @@ export function trainingInputLocked(outcome: OutcomeAnimation | null): boolean {
   return outcome !== null
 }
 
-function verificationKeys(buttons: FrameButtons, document: TrainingDefinition, step: number): string[] {
+export function verificationKeys(buttons: FrameButtons, previous: FrameButtons, document: TrainingDefinition, step: number): string[] {
   const expected = verifiedInputs(document)[step]?.keys ?? []
   const actual = keySemantics(buttons)
+  const newlyPressed = actual.filter((key) => !previous[key as keyof FrameButtons])
   // With verify:false direction holds, only the new action belongs to the
   // teaching input. A definition that includes a direction in verify:true
   // deliberately opts into strict directional matching.
   return expected.some((key) => ['up', 'down', 'left', 'right'].includes(key))
-    ? actual
-    : actual.filter((key) => !['up', 'down', 'left', 'right'].includes(key))
+    ? actual.filter((key) => ['up', 'down', 'left', 'right'].includes(key) || newlyPressed.includes(key))
+    : newlyPressed.filter((key) => !['up', 'down', 'left', 'right'].includes(key))
 }
 
 /** The lesson runner owns simulation and review state, while its timeline is read-only. */
@@ -286,6 +287,7 @@ export function TrainingGround() {
         const beforeSession = sessionRef.current
         const triggers = pressedVerification(current, previousButtons.current)
         const shouldVerify = beforeSession.phase === 'pre_fuzz' ? current.dash && !previousButtons.current.dash : triggers
+        const previous = previousButtons.current
         previousButtons.current = current
         simulating.current = true
         void client.simulate(snapshotsRef.current[currentFrame]!, [input], map).then(async (trace) => {
@@ -300,7 +302,7 @@ export function TrainingGround() {
           setFrame(nextFrame)
           if (shouldVerify) {
             const localFrame = beforeSession.phase === 'pre_fuzz' ? 0 : currentFrame - (fuzzStartRef.current ?? currentFrame)
-            const semanticKeys = verificationKeys(current, document, beforeSession.nextVerifiedInput)
+            const semanticKeys = verificationKeys(current, previous, document, beforeSession.nextVerifiedInput)
             const entryPassed = beforeSession.phase === 'pre_fuzz'
               ? trainingEntryDirectionPassed(current) && await client.entryCheck(after, document.entry.check)
               : true

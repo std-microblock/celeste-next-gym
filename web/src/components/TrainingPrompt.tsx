@@ -4,7 +4,7 @@ import type { GymMap, SimState, Vec2 } from '../model'
 const MAX_SPEED = 900
 const ACCELERATION = 5_400
 const TYPE_INTERVAL_MS = 28
-const PROMPT_ANCHOR_ABOVE_PLAYER = 20
+const PROMPT_ANCHOR_ABOVE_PLAYER = 15
 
 function approach(current: number, target: number, amount: number): number {
   return current < target ? Math.min(target, current + amount) : Math.max(target, current - amount)
