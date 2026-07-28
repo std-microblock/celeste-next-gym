@@ -47,6 +47,7 @@ pub enum FixtureEntityKind {
     TempleGate,
     CassetteBlock,
     CrystalStaticSpinner,
+    Lookout,
     MovingSolid,
 }
 
@@ -425,6 +426,7 @@ fn validate_entity_fields(entity: &FixtureEntity, room: &str) -> Result<(), MapF
                 | FixtureEntityKind::Wind
                 | FixtureEntityKind::MoveBlock
                 | FixtureEntityKind::CassetteBlock
+                | FixtureEntityKind::Lookout
                 | FixtureEntityKind::MovingSolid
         )
     {
@@ -439,6 +441,7 @@ fn validate_entity_fields(entity: &FixtureEntity, room: &str) -> Result<(), MapF
             FixtureEntityKind::BadelineBoost
                 | FixtureEntityKind::IceBall
                 | FixtureEntityKind::ZipMover
+                | FixtureEntityKind::Lookout
         )
     {
         return validation(format!(
@@ -597,6 +600,7 @@ fn entity(value: &FixtureEntity) -> Entity {
             FixtureEntityKind::TempleGate => EntityKind::TempleGate,
             FixtureEntityKind::CassetteBlock => EntityKind::CassetteBlock,
             FixtureEntityKind::CrystalStaticSpinner => EntityKind::CrystalStaticSpinner,
+            FixtureEntityKind::Lookout => EntityKind::Lookout,
             FixtureEntityKind::MovingSolid => EntityKind::MovingSolid,
         },
         bounds: rect(value.bounds),

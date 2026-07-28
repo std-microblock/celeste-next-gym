@@ -42,6 +42,7 @@ export interface InputState {
   dash_pressed: boolean;
   crouch_dash_pressed: boolean;
   grab_held: boolean;
+  talk_pressed: boolean;
 }
 
 /**
@@ -293,6 +294,9 @@ function validateInput(value: unknown, index: number): InputState {
         `inputs[${index}].crouch_dash_pressed`,
       ),
     grab_held: requireBoolean(input.grab_held, `inputs[${index}].grab_held`),
+    talk_pressed: input.talk_pressed === undefined
+      ? false
+      : requireBoolean(input.talk_pressed, `inputs[${index}].talk_pressed`),
   };
 }
 

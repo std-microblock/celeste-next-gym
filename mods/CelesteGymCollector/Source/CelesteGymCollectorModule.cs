@@ -463,6 +463,10 @@ public sealed class CelesteGymCollectorModule : EverestModule {
             () => job?.CurrentInput?.GrabHeld ?? false,
             () => job?.PreviousInput?.GrabHeld != true && job?.CurrentInput?.GrabHeld == true,
             () => job?.PreviousInput?.GrabHeld == true && job?.CurrentInput?.GrabHeld != true);
+        ReplaceNodes(Input.Talk,
+            () => job?.CurrentInput?.TalkPressed ?? false,
+            () => job?.PreviousInput?.TalkPressed != true && job?.CurrentInput?.TalkPressed == true,
+            () => job?.PreviousInput?.TalkPressed == true && job?.CurrentInput?.TalkPressed != true);
     }
 
     private void ReplaceNodes(VirtualButton button, Func<bool> check, Func<bool> pressed, Func<bool> released) {

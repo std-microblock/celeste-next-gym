@@ -152,6 +152,7 @@ pub fn simulate_trace(
     initialize_temple_gates(&mut snapshot, &mut runtime_map);
     initialize_cassette_blocks(&mut snapshot, &mut runtime_map);
     initialize_spinners(&mut snapshot, &mut runtime_map);
+    initialize_lookouts(&mut snapshot, &runtime_map);
     position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
     let mut states = Vec::with_capacity(frames + 1);
     states.push(snapshot.clone());
@@ -419,6 +420,25 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
             .iter()
             .all(|value| value.is_finite())
     });
+    let lookouts_are_finite = s.lookouts.iter().all(|lookout| {
+        [
+            lookout.timer,
+            lookout.position.x,
+            lookout.position.y,
+            lookout.cam_start.x,
+            lookout.cam_start.y,
+            lookout.cam.x,
+            lookout.cam.y,
+            lookout.cam_speed.x,
+            lookout.cam_speed.y,
+            lookout.wipe_start.x,
+            lookout.wipe_start.y,
+            lookout.node_percent,
+            lookout.hud_easer,
+        ]
+        .iter()
+        .all(|value| value.is_finite())
+    });
     if values.iter().all(|x| x.is_finite())
         && zip_movers_are_finite
         && bounce_blocks_are_finite
@@ -432,6 +452,7 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         && temple_gates_are_finite
         && cassette_blocks_are_finite
         && spinners_are_finite
+        && lookouts_are_finite
     {
         Ok(())
     } else {
@@ -612,11 +633,11 @@ fn initialize_cassette_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
     }
 }
 
-fn spinner_in_view(position: Vec2, map: &Map) -> bool {
-    position.x > map.bounds.x - 16.0
-        && position.y > map.bounds.y - 16.0
-        && position.x < map.bounds.x + 320.0 + 16.0
-        && position.y < map.bounds.y + 180.0 + 16.0
+fn spinner_in_view(position: Vec2, camera: Vec2) -> bool {
+    position.x > camera.x - 16.0
+        && position.y > camera.y - 16.0
+        && position.x < camera.x + 336.0
+        && position.y < camera.y + 196.0
 }
 
 fn initialize_spinners(p: &mut PlayerSnapshot, map: &mut Map) {
@@ -646,6 +667,31 @@ fn initialize_spinners(p: &mut PlayerSnapshot, map: &mut Map) {
             });
         }
         park_entity(&mut map.entities[entity_index]);
+    }
+}
+
+fn lookout_entity_indices(map: &Map) -> Vec<usize> {
+    map.entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::Lookout).then_some(index))
+        .collect()
+}
+
+fn initialize_lookouts(p: &mut PlayerSnapshot, map: &Map) {
+    let indices = lookout_entity_indices(map);
+    p.lookouts.truncate(indices.len());
+    for (lookout_index, entity_index) in indices.into_iter().enumerate() {
+        if lookout_index == p.lookouts.len() {
+            let bounds = map.entities[entity_index].bounds;
+            let position = Vec2::new(bounds.x + 2.0, bounds.y + 4.0);
+            p.lookouts.push(crate::LookoutSnapshot {
+                position,
+                cam: p.camera,
+                cam_start: p.camera,
+                ..crate::LookoutSnapshot::default()
+            });
+        }
     }
 }
 
@@ -2602,6 +2648,14 @@ fn update_camera(p: &mut PlayerSnapshot, map: &Map) {
     if p.transition_timer > 0.0 || p.dead {
         return;
     }
+    // Lookout.LookRoutine owns Level.Camera directly from the first camera
+    // control frame through HUD exit and a possible long-distance FadeWipe.
+    if p.lookouts
+        .iter()
+        .any(|lookout| lookout.interacting && !lookout.removed && lookout.phase >= 4)
+    {
+        return;
+    }
     let target = camera_target(p, map);
     let multiplier = if p.state == PlayerState::TempleFall {
         8.0
@@ -2611,6 +2665,338 @@ fn update_camera(p: &mut PlayerSnapshot, map: &Map) {
     let amount = 1.0 - (0.01_f32 / multiplier).powf(p.frame_delta_time);
     p.camera.x += (target.x - p.camera.x) * amount;
     p.camera.y += (target.y - p.camera.y) * amount;
+}
+
+fn quadratic_curve(begin: Vec2, end: Vec2, control: Vec2, percent: f32) -> Vec2 {
+    let inverse = 1.0 - percent;
+    Vec2::new(
+        inverse * inverse * begin.x
+            + 2.0 * inverse * percent * control.x
+            + percent * percent * end.x,
+        inverse * inverse * begin.y
+            + 2.0 * inverse * percent * control.y
+            + percent * percent * end.y,
+    )
+}
+
+fn lerp_vec(begin: Vec2, end: Vec2, percent: f32) -> Vec2 {
+    Vec2::new(
+        begin.x + (end.x - begin.x) * percent,
+        begin.y + (end.y - begin.y) * percent,
+    )
+}
+
+fn lookout_camera_blocked(map: &Map, camera: Vec2) -> bool {
+    let viewport = Rect::new(camera.x, camera.y, 320.0, 180.0);
+    map.entities.iter().any(|entity| {
+        entity.name == "lookoutBlocker" && entity.bounds.intersects(viewport)
+    })
+}
+
+fn prepare_lookout_player(p: &mut PlayerSnapshot) {
+    let Some(lookout) = p
+        .lookouts
+        .iter()
+        .find(|lookout| lookout.interacting && !lookout.removed)
+        .cloned()
+    else {
+        return;
+    };
+    match lookout.phase {
+        1 => {
+            p.state = PlayerState::Dummy;
+            p.dummy_moving = true;
+            let direction = (lookout.position.x - p.pos.x).signum();
+            if direction != 0.0 {
+                p.facing = direction > 0.0;
+                p.speed.x = approach(
+                    p.speed.x,
+                    direction * 64.0,
+                    RUN_ACCEL * p.frame_delta_time,
+                );
+            }
+        }
+        2 | 3 => {
+            p.state = PlayerState::Dummy;
+            p.dummy_moving = false;
+            p.speed.x = 0.0;
+        }
+        _ => {}
+    }
+}
+
+fn advance_free_lookout_camera(
+    state: &mut crate::LookoutSnapshot,
+    entity: &crate::Entity,
+    p: &mut PlayerSnapshot,
+    map: &Map,
+    input: InputState,
+) {
+    let mut aim = input_vector(input);
+    if entity.direction.x != 0.0 {
+        aim.x = 0.0;
+    }
+    state.cam_speed.x += 800.0 * aim.x * p.frame_delta_time;
+    state.cam_speed.y += 800.0 * aim.y * p.frame_delta_time;
+    if aim.x == 0.0 {
+        state.cam_speed.x = approach(state.cam_speed.x, 0.0, 1600.0 * p.frame_delta_time);
+    }
+    if aim.y == 0.0 {
+        state.cam_speed.y = approach(state.cam_speed.y, 0.0, 1600.0 * p.frame_delta_time);
+    }
+    if length(state.cam_speed) > 240.0 {
+        state.cam_speed = scale(normalize(state.cam_speed), 240.0);
+    }
+
+    let bounds = p.current_room_bounds.unwrap_or(map.bounds);
+    let previous = state.cam;
+    state.cam.x += state.cam_speed.x * p.frame_delta_time;
+    if state.cam.x < bounds.x || state.cam.x + 320.0 > bounds.right() {
+        state.cam_speed.x = 0.0;
+    }
+    state.cam.x = state
+        .cam
+        .x
+        .clamp(bounds.x, (bounds.right() - 320.0).max(bounds.x));
+    if lookout_camera_blocked(map, state.cam) {
+        state.cam.x = previous.x;
+        state.cam_speed.x = 0.0;
+    }
+
+    state.cam.y += state.cam_speed.y * p.frame_delta_time;
+    if state.cam.y < bounds.y || state.cam.y + 180.0 > bounds.bottom() {
+        state.cam_speed.y = 0.0;
+    }
+    state.cam.y = state
+        .cam
+        .y
+        .clamp(bounds.y, (bounds.bottom() - 180.0).max(bounds.y));
+    if lookout_camera_blocked(map, state.cam) {
+        state.cam.y = previous.y;
+        state.cam_speed.y = 0.0;
+    }
+    p.camera = state.cam;
+}
+
+fn advance_node_lookout_camera(
+    state: &mut crate::LookoutSnapshot,
+    entity: &crate::Entity,
+    p: &mut PlayerSnapshot,
+    input: InputState,
+) -> bool {
+    let nodes = &entity.nodes;
+    if nodes.is_empty() {
+        return false;
+    }
+    let node = (state.node as usize).min(nodes.len() - 1);
+    state.node = node as u16;
+    let start_center = Vec2::new(state.cam_start.x + 160.0, state.cam_start.y + 90.0);
+    let begin = if node == 0 { start_center } else { nodes[node - 1] };
+    let end = nodes[node];
+    let percent = state.node_percent;
+    let center = if percent < 0.25 && node > 0 {
+        let curve_begin = lerp_vec(
+            if node <= 1 { start_center } else { nodes[node - 2] },
+            begin,
+            0.75,
+        );
+        let curve_end = lerp_vec(begin, end, 0.25);
+        quadratic_curve(
+            curve_begin,
+            curve_end,
+            begin,
+            0.5 + percent / 0.25 * 0.5,
+        )
+    } else if percent > 0.75 && node + 1 < nodes.len() {
+        let curve_begin = lerp_vec(begin, end, 0.75);
+        let curve_end = lerp_vec(end, nodes[node + 1], 0.25);
+        quadratic_curve(
+            curve_begin,
+            curve_end,
+            end,
+            (percent - 0.75) / 0.25 * 0.5,
+        )
+    } else {
+        lerp_vec(begin, end, percent)
+    };
+    state.cam = Vec2::new(center.x - 160.0, center.y - 90.0);
+    p.camera = state.cam;
+
+    let segment_length = length(Vec2::new(end.x - begin.x, end.y - begin.y));
+    if segment_length > 0.0 {
+        state.node_percent -= input.move_y as f32 * (240.0 / segment_length) * p.frame_delta_time;
+    }
+    if state.node_percent < 0.0 {
+        if state.node > 0 {
+            state.node -= 1;
+            state.node_percent = 1.0;
+        } else {
+            state.node_percent = 0.0;
+        }
+    } else if state.node_percent > 1.0 {
+        if state.node as usize + 1 < nodes.len() {
+            state.node += 1;
+            state.node_percent = 0.0;
+        } else {
+            state.node_percent = 1.0;
+            return entity.direction.y != 0.0;
+        }
+    }
+    false
+}
+
+fn finish_lookout(p: &mut PlayerSnapshot, state: &mut crate::LookoutSnapshot) {
+    state.interacting = false;
+    state.phase = 0;
+    state.timer = 0.0;
+    state.hud_easer = 0.0;
+    p.state = PlayerState::Normal;
+    p.dummy_moving = false;
+}
+
+fn advance_lookouts(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
+    let indices = lookout_entity_indices(map);
+    let Some((lookout_index, entity_index)) = indices
+        .into_iter()
+        .enumerate()
+        .find(|(lookout_index, _)| {
+            p.lookouts
+                .get(*lookout_index)
+                .is_some_and(|state| state.interacting && !state.removed)
+        })
+    else {
+        return;
+    };
+    let entity = &map.entities[entity_index];
+    let mut state = p.lookouts[lookout_index].clone();
+
+    match state.phase {
+        1 => {
+            if (p.pos.x - state.position.x).abs() <= 1.1 {
+                p.pos.x = state.position.x;
+                p.movement_remainder.x = 0.0;
+                p.speed.x = 0.0;
+                p.dummy_moving = false;
+                if p.dead || !grounded_at_offset(p, map, 1.0) {
+                    if !p.dead {
+                        p.state = PlayerState::Normal;
+                    }
+                    state.interacting = false;
+                    state.phase = 0;
+                } else {
+                    state.phase = 2;
+                    state.timer = 0.2;
+                }
+            }
+        }
+        2 => {
+            state.timer -= p.frame_delta_time;
+            if state.timer <= 0.0 {
+                state.phase = 3;
+                state.timer = 0.0;
+                state.hud_easer = 0.0;
+                state.node = 0;
+                state.node_percent = 0.0;
+            }
+        }
+        3 => {
+            state.hud_easer = approach(state.hud_easer, 1.0, p.frame_delta_time * 3.0);
+            if state.hud_easer >= 1.0 {
+                state.phase = 4;
+                state.cam_start = p.camera;
+                state.cam = p.camera;
+                state.cam_speed = Vec2::default();
+            }
+        }
+        4 => {
+            let exit_pressed = input.jump_pressed || input.dash_pressed || input.crouch_dash_pressed;
+            let summit_end = if entity.nodes.is_empty() {
+                advance_free_lookout_camera(&mut state, entity, p, map, input);
+                false
+            } else {
+                advance_node_lookout_camera(&mut state, entity, p, input)
+            };
+            if exit_pressed || summit_end {
+                state.phase = 5;
+            }
+        }
+        5 => {
+            state.hud_easer = approach(state.hud_easer, 0.0, p.frame_delta_time * 3.0);
+            if state.hud_easer <= 0.0 {
+                let delta = Vec2::new(p.camera.x - state.cam_start.x, p.camera.y - state.cam_start.y);
+                if length(delta) > 600.0 {
+                    state.phase = 6;
+                    state.timer = 0.0;
+                    state.wipe_start = p.camera;
+                } else {
+                    finish_lookout(p, &mut state);
+                }
+            }
+        }
+        6 => {
+            let at_summit_top = entity.direction.y != 0.0
+                && !entity.nodes.is_empty()
+                && state.node as usize >= entity.nodes.len() - 1
+                && state.node_percent >= 0.95;
+            let duration = if at_summit_top { 1.0 } else { 0.5 };
+            let direction = normalize(Vec2::new(
+                state.wipe_start.x - state.cam_start.x,
+                state.wipe_start.y - state.cam_start.y,
+            ));
+            if state.timer < 1.0 {
+                let cube = state.timer * state.timer * state.timer;
+                p.camera = Vec2::new(
+                    state.wipe_start.x - direction.x * 64.0 * cube,
+                    state.wipe_start.y - direction.y * 64.0 * cube,
+                );
+                state.cam = p.camera;
+                state.timer += p.frame_delta_time / duration;
+            } else {
+                p.camera = Vec2::new(
+                    state.cam_start.x + direction.x * 32.0,
+                    state.cam_start.y + direction.y * 32.0,
+                );
+                state.cam = p.camera;
+                finish_lookout(p, &mut state);
+            }
+        }
+        _ => finish_lookout(p, &mut state),
+    }
+    p.lookouts[lookout_index] = state;
+}
+
+fn try_begin_lookout(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
+    if !input.talk_pressed || p.dead || p.state != PlayerState::Normal {
+        return;
+    }
+    let player = current_player_rect(p, p.pos.x, p.pos.y);
+    for (lookout_index, entity_index) in lookout_entity_indices(map).into_iter().enumerate() {
+        let state = &p.lookouts[lookout_index];
+        if state.interacting || state.removed {
+            continue;
+        }
+        let position = Vec2::new(
+            map.entities[entity_index].bounds.x + 2.0,
+            map.entities[entity_index].bounds.y + 4.0,
+        );
+        let talk = Rect::new(position.x - 24.0, position.y - 8.0, 48.0, 8.0);
+        if talk.intersects(player) {
+            let state = &mut p.lookouts[lookout_index];
+            state.interacting = true;
+            state.phase = 1;
+            state.timer = 0.0;
+            state.position = position;
+            state.cam_start = p.camera;
+            state.cam = p.camera;
+            state.cam_speed = Vec2::default();
+            state.node = 0;
+            state.node_percent = 0.0;
+            state.hud_easer = 0.0;
+            p.state = PlayerState::Dummy;
+            p.dummy_moving = true;
+            break;
+        }
+    }
 }
 
 fn clamped_map(value: f32, min: f32, max: f32, out_min: f32, out_max: f32) -> f32 {
@@ -3146,7 +3532,7 @@ fn advance_spinners(p: &mut PlayerSnapshot, map: &mut Map) {
         .collect();
     for (spinner_index, entity_index) in spinner_indices.into_iter().enumerate() {
         let mut state = p.spinners[spinner_index].clone();
-        let in_view = spinner_in_view(state.position, map);
+        let in_view = spinner_in_view(state.position, p.camera);
         if !state.visible {
             state.collidable = false;
             if in_view {
@@ -3266,7 +3652,7 @@ fn step(
     p.scene_time_active += DT;
     advance_moving_solids(p, map);
     if p.transition_timer > 0.0 {
-        update_transition(p);
+        update_transition(p, map);
         advance_sandwich_lavas(p, map);
         advance_cassette_blocks(p, map);
         advance_cassette_manager(p, map);
@@ -3351,6 +3737,7 @@ fn step(
     // the same callback applies air control.
     update_wall_speed_retention(p, map);
     update_climb_hop_wait(p, map);
+    prepare_lookout_player(p);
 
     if p.badeline_boost_active {
         update_badeline_boost(p, map);
@@ -3420,6 +3807,8 @@ fn step(
     }
     update_camera(p, map);
     interact(p, map, input);
+    try_begin_lookout(p, map, input);
+    advance_lookouts(p, map, input);
     update_strawberry_train(p);
     try_begin_badeline_boost(p, map);
     enforce_level_bounds(p, map);
@@ -5719,7 +6108,7 @@ fn begin_transition(p: &mut PlayerSnapshot, next: Rect, direction: Vec2) {
     p.on_ground = false;
 }
 
-fn update_transition(p: &mut PlayerSnapshot) {
+fn update_transition(p: &mut PlayerSnapshot, map: &Map) {
     let max_move = TRANSITION_MOVE_SPEED * p.frame_delta_time;
     p.pos.x = approach(p.pos.x, p.transition_target.x, max_move);
     p.pos.y = approach(p.pos.y, p.transition_target.y, max_move);
@@ -5739,7 +6128,28 @@ fn update_transition(p: &mut PlayerSnapshot) {
         p.force_move_x_timer = 0.0;
         p.dashes = p.dashes.max(1);
         p.stamina = 110.0;
-        p.current_room_bounds = p.transition_room_bounds.take();
+        let previous_room = Some(p.current_room_bounds.unwrap_or(map.bounds));
+        let next_room = p.transition_room_bounds.take();
+        if let (Some(previous), Some(next)) = (previous_room, next_room) {
+            for lookout in &mut p.lookouts {
+                let was_in_room = lookout.position.x >= previous.x
+                    && lookout.position.x < previous.right()
+                    && lookout.position.y >= previous.y
+                    && lookout.position.y < previous.bottom();
+                let remains_in_room = lookout.position.x >= next.x
+                    && lookout.position.x < next.right()
+                    && lookout.position.y >= next.y
+                    && lookout.position.y < next.bottom();
+                if lookout.interacting && was_in_room && !remains_in_room {
+                    // Lookout.Removed restores StNormal but does not call
+                    // StopInteracting, preserving the storage flag.
+                    lookout.removed = true;
+                    p.state = PlayerState::Normal;
+                    p.dummy_moving = false;
+                }
+            }
+        }
+        p.current_room_bounds = next_room;
         p.transition_direction = Vec2::default();
     }
 }
@@ -6065,6 +6475,34 @@ mod tests {
                 nodes: vec![],
                 name: "spinner".to_owned(),
             }],
+            ..Map::default()
+        }
+    }
+    fn lookout_map(nodes: Vec<Vec2>, summit: bool, spinner: bool) -> Map {
+        let mut entities = vec![crate::Entity {
+            kind: EntityKind::Lookout,
+            bounds: Rect::new(158.0, 156.0, 4.0, 4.0),
+            direction: Vec2::new(0.0, if summit { 1.0 } else { 0.0 }),
+            shielded: false,
+            single_use: false,
+            nodes,
+            name: "lookout".to_owned(),
+        }];
+        if spinner {
+            entities.push(crate::Entity {
+                kind: EntityKind::CrystalStaticSpinner,
+                bounds: Rect::new(232.0, 94.0, 16.0, 12.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "spinner".to_owned(),
+            });
+        }
+        Map {
+            bounds: Rect::new(0.0, 0.0, 1280.0, 180.0),
+            solids: vec![Rect::new(0.0, 160.0, 1280.0, 20.0)],
+            entities,
             ..Map::default()
         }
     }
@@ -13293,5 +13731,154 @@ mod tests {
         let p = simulate(p, &[InputState::default()], &map, 1).unwrap();
         assert_eq!(p.pos, Vec2::new(476.0, 274.0));
         assert_eq!(p.speed, Vec2::new(0.0, -240.0));
+    }
+
+    #[test]
+    fn lookout_talk_runs_dummy_wait_hud_camera_and_exit_lifecycle() {
+        let player = PlayerSnapshot {
+            pos: Vec2::new(144.0, 160.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = vec![InputState::default(); 150];
+        inputs[0].talk_pressed = true;
+        for input in &mut inputs[60..110] {
+            input.move_x = 1;
+        }
+        inputs[110].jump_pressed = true;
+        inputs[110].jump_held = true;
+        let trace = simulate_trace(player, &inputs, &lookout_map(vec![], false, false), 150)
+            .unwrap();
+
+        assert_eq!(trace.states[1].state, PlayerState::Dummy);
+        assert!(trace.states[1].lookouts[0].interacting);
+        assert!(trace.states[70].lookouts[0].phase >= 4);
+        assert!(trace.states[110].camera.x > 0.0);
+        assert!(!trace.states[150].lookouts[0].interacting);
+        assert_eq!(trace.states[150].state, PlayerState::Normal);
+    }
+
+    #[test]
+    fn bino_clip_uses_live_camera_and_spinner_interval_state() {
+        let player = PlayerSnapshot {
+            pos: Vec2::new(160.0, 160.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = vec![InputState::default(); 260];
+        inputs[0].talk_pressed = true;
+        for input in &mut inputs[50..260] {
+            input.move_x = 1;
+        }
+        let trace = simulate_trace(player, &inputs, &lookout_map(vec![], false, true), 260)
+            .unwrap();
+
+        assert!(trace.states.iter().any(|state| state.spinners[0].visible));
+        assert!(trace.states[260].camera.x > 500.0);
+        assert!(!trace.states[260].spinners[0].visible);
+        assert!(!trace.states[260].spinners[0].collidable);
+    }
+
+    #[test]
+    fn bino_control_storage_keeps_normal_player_and_camera_control_parallel() {
+        let map = lookout_map(vec![], false, false);
+        let player = PlayerSnapshot {
+            pos: Vec2::new(160.0, 160.0),
+            state: PlayerState::Normal,
+            on_ground: true,
+            camera_initialized: true,
+            camera: Vec2::default(),
+            lookouts: vec![crate::LookoutSnapshot {
+                interacting: true,
+                phase: 4,
+                position: Vec2::new(160.0, 160.0),
+                cam: Vec2::default(),
+                cam_start: Vec2::default(),
+                hud_easer: 1.0,
+                ..crate::LookoutSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [InputState {
+            move_x: 1,
+            ..InputState::default()
+        }; 30];
+        let result = simulate(player, &inputs, &map, 30).unwrap();
+
+        assert_eq!(result.state, PlayerState::Normal);
+        assert!(result.pos.x > 160.0);
+        assert!(result.camera.x > 0.0);
+        assert!(result.lookouts[0].interacting);
+    }
+
+    #[test]
+    fn bino_interaction_storage_survives_lookout_room_removal() {
+        let mut map = lookout_map(vec![], false, false);
+        map.bounds = Rect::new(0.0, 0.0, 320.0, 180.0);
+        map.transition_rooms = vec![Rect::new(320.0, 0.0, 320.0, 180.0)];
+        map.solids = vec![Rect::new(0.0, 160.0, 640.0, 20.0)];
+        map.entities[0].bounds = Rect::new(298.0, 156.0, 4.0, 4.0);
+        let player = PlayerSnapshot {
+            pos: Vec2::new(316.0, 160.0),
+            state: PlayerState::Normal,
+            on_ground: true,
+            current_room_bounds: Some(map.bounds),
+            camera_initialized: true,
+            lookouts: vec![crate::LookoutSnapshot {
+                interacting: true,
+                phase: 4,
+                position: Vec2::new(300.0, 160.0),
+                hud_easer: 1.0,
+                ..crate::LookoutSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [InputState {
+            move_x: 1,
+            ..InputState::default()
+        }; 90];
+        let result = simulate(player, &inputs, &map, 90).unwrap();
+
+        assert_eq!(result.current_room_bounds, Some(map.transition_rooms[0]));
+        assert_eq!(result.state, PlayerState::Normal);
+        assert!(result.lookouts[0].removed);
+        assert!(result.lookouts[0].interacting);
+    }
+
+    #[test]
+    fn bino_extensions_follow_nodes_and_run_long_distance_exit_wipe() {
+        let map = lookout_map(vec![Vec2::new(960.0, 90.0)], true, false);
+        let player = PlayerSnapshot {
+            pos: Vec2::new(160.0, 160.0),
+            state: PlayerState::Dummy,
+            on_ground: true,
+            camera_initialized: true,
+            lookouts: vec![crate::LookoutSnapshot {
+                interacting: true,
+                phase: 4,
+                position: Vec2::new(160.0, 160.0),
+                cam: Vec2::default(),
+                cam_start: Vec2::default(),
+                hud_easer: 1.0,
+                ..crate::LookoutSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [InputState {
+            move_y: -1,
+            ..InputState::default()
+        }; 330];
+        let trace = simulate_trace(player, &inputs, &map, 330).unwrap();
+
+        assert!(trace.states.iter().any(|state| state.camera.x > 600.0));
+        assert!(trace.states.iter().any(|state| state.lookouts[0].phase == 6));
+        let exit = trace
+            .states
+            .iter()
+            .find(|state| !state.lookouts[0].interacting)
+            .expect("long-distance wipe completes");
+        assert!((exit.camera.x - 32.0).abs() < 0.01);
+        assert!(!trace.states[330].lookouts[0].interacting);
+        assert_eq!(trace.states[330].state, PlayerState::Normal);
     }
 }

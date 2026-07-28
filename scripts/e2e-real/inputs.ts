@@ -8,6 +8,7 @@ const EMPTY_INPUT: InputState = Object.freeze({
   dash_pressed: false,
   crouch_dash_pressed: false,
   grab_held: false,
+  talk_pressed: false,
 })
 
 export function input(overrides: Partial<InputState> = {}): InputState {

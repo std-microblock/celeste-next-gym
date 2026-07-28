@@ -14,6 +14,7 @@ export interface InputState {
   readonly dash_pressed: boolean
   readonly crouch_dash_pressed: boolean
   readonly grab_held: boolean
+  readonly talk_pressed: boolean
 }
 
 export type PlayerStateName =
@@ -60,6 +61,7 @@ export type FixtureEntity =
   | (FixtureEntityBase & { readonly kind: 'ice_ball'; readonly nodes?: readonly Vector2[]; readonly singleUse?: boolean })
   | (FixtureEntityBase & { readonly kind: 'spikes' | 'spring' | 'wind' | 'move_block' | 'moving_solid' | 'cassette_block'; readonly direction: Vector2 })
   | (FixtureEntityBase & { readonly kind: 'crystal_static_spinner' })
+  | (FixtureEntityBase & { readonly kind: 'lookout'; readonly nodes?: readonly Vector2[]; readonly direction?: Vector2 })
   | (FixtureEntityBase & { readonly kind: 'zip_mover'; readonly nodes: readonly [Vector2] })
 
 export type FixtureEntityKind = FixtureEntity['kind']
