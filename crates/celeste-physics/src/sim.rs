@@ -2782,11 +2782,6 @@ fn prepare_lookout_player(p: &mut PlayerSnapshot) {
             let direction = (lookout.position.x - p.pos.x).signum();
             if direction != 0.0 {
                 p.facing = direction > 0.0;
-                p.speed.x = approach(
-                    p.speed.x,
-                    direction * 64.0,
-                    RUN_ACCEL * p.frame_delta_time,
-                );
             }
         }
         2 | 3 => {
@@ -2962,6 +2957,11 @@ fn advance_lookouts(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
 
     match state.phase {
         1 => {
+            // Lookout updates after Player. Its coroutine first assigns
+            // StDummy, then its nested DummyWalkToExact only writes the first
+            // 16.667 speed after its two initial coroutine resumes. Advancing it in
+            // prepare_lookout_player would move the Rust trace one frame
+            // ahead of Everest.
             if (p.pos.x - state.position.x).abs() <= 1.1 {
                 p.pos.x = state.position.x;
                 p.movement_remainder.x = 0.0;
@@ -2977,6 +2977,15 @@ fn advance_lookouts(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                     state.phase = 2;
                     state.timer = 0.2;
                 }
+            } else if state.timer < 1.0 {
+                state.timer += 1.0;
+            } else {
+                let direction = (state.position.x - p.pos.x).signum();
+                p.speed.x = approach(
+                    p.speed.x,
+                    direction * 64.0,
+                    RUN_ACCEL * p.frame_delta_time,
+                );
             }
         }
         2 => {
@@ -3065,7 +3074,11 @@ fn try_begin_lookout(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
             let state = &mut p.lookouts[lookout_index];
             state.interacting = true;
             state.phase = 1;
-            state.timer = 0.0;
+            // `Interact` schedules LookRoutine, then its yielded
+            // DummyWalkToExact reaches its first movement write after two
+            // entity updates. Keep that coroutine latency apart from the
+            // phase-2 HUD timer.
+            state.timer = -1.0;
             state.position = position;
             state.cam_start = p.camera;
             state.cam = p.camera;
@@ -14377,6 +14390,9 @@ mod tests {
         inputs[220].jump_held = true;
         let trace = simulate_trace(player, &inputs, &map, 280).unwrap();
 
+        assert_eq!(trace.states[2].state, PlayerState::Dummy);
+        assert_eq!(trace.states[2].speed.x, 0.0);
+        assert!((trace.states[3].speed.x - 16.666_7).abs() < 0.001);
         assert!(trace.states.iter().any(|state| state.state == PlayerState::Boost));
         assert!(trace.states.iter().any(|state| {
             state.state == PlayerState::Normal && state.lookouts[0].interacting
