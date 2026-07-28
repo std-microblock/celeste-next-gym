@@ -92,4 +92,39 @@ describe('App modes', () => {
     expect(Number(screen.getByLabelText('游戏画布').getAttribute('data-frame'))).toBeGreaterThan(0)
     expect(screen.queryByText('时间线编辑器')).not.toBeInTheDocument()
   })
+
+  it('exposes visual start settings and key bindings from play mode', async () => {
+    render(<App />)
+    await screen.findByText('ONLINE')
+
+    fireEvent.click(screen.getByRole('button', { name: '起点' }))
+    expect(screen.getByRole('dialog', { name: '选择开始位置' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /起点地图/ })).toBeInTheDocument()
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '关闭' }))
+
+    fireEvent.click(screen.getByRole('button', { name: '控制' }))
+    expect(screen.getByText('键位编辑器')).toBeInTheDocument()
+  })
+
+  it('drops elapsed background time instead of fast-forwarding play mode', async () => {
+    render(<App />)
+    await screen.findByText('ONLINE')
+    await waitFor(() => expect(nextAnimationFrame).toBeDefined())
+    wasm.simulate.mockClear()
+
+    const resumedAt = performance.now() + 60_000
+    await act(async () => {
+      nextAnimationFrame?.(resumedAt)
+      await Promise.resolve()
+    })
+    expect(wasm.simulate).not.toHaveBeenCalled()
+
+    await act(async () => {
+      nextAnimationFrame?.(resumedAt + 20)
+      await Promise.resolve()
+    })
+    await waitFor(() => expect(wasm.simulate).toHaveBeenCalledTimes(1))
+    expect(wasm.simulate.mock.calls[0][1]).toHaveLength(1)
+  })
 })
