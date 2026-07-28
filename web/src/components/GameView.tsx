@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { atlasFrameKeys } from '../atlasFrames'
 import type { EntityKind, GymMap, MapEntity, SimState, Vec2 } from '../model'
+import { playerHairMetadata } from '../playerHair'
 import type { VisualTheme, VisualThemeLayer } from '../visualThemes'
 
 interface AtlasEntry {
@@ -26,21 +27,6 @@ interface AnimationChoice {
   prefix: string
   delay: number
   indices?: number[]
-}
-
-const HAIR_OFFSETS: Record<string, string[]> = {
-  idle: ['0,-2', '0,-2', '0,-2', '0,-2', '0,-1', '0,-1', '0,-1', '0,-1', '0,-1'],
-  runSlow: ['1,-2', '1,-1', '1,-1', '1,-1', '1,-3', '1,-2', '1,-1', '1,-1', '1,-1', '1,-1', '1,-3', '1,-2'],
-  runFast: ['1,-2', '1,-1', '1,-1', '1,-1', '1,-3', '1,-2', '1,-1', '1,-1', '1,-1', '1,-1', '1,-3', '1,-2'],
-  dash: ['2,0', '2,0', '2,0', '2,1'],
-  dreamDash: ['2,0', '1,0', '0,0', '0,0', '1,1', '2,1', '2,1', '2,0', '1,0', '1,0', '1,0', '1,0', '1,0', '1,0', '1,0', '1,0', '1,0', '0,0', '1,0', '1,0', '2,1'],
-  jumpSlow: ['1,-3', '1,-3', '1,-2', '0,-2'],
-  jumpFast: ['1,-3', '1,-3', '1,-2', '0,-2'],
-  climb: ['0,-2', '0,-2', '0,-2', '0,-2', '-1,-2', '-1,-2', '0,-1', '1,-2:1', '2,-2:2'],
-  duck: ['0,3'],
-  swim: ['0,-2', '0,-2', '0,-2', '0,-2', '0,-2', '0,-2', '0,-3', '0,-3', '0,-2', '0,-2', '0,-2', '0,-2', '1,-1', '1,-1', '1,0', '1,0', '1,0', '1,0'],
-  startStarFly: ['0,-2', '0,-2', '0,-2', '0,-2'],
-  starFly: ['0,3'],
 }
 
 let assetsPromise: Promise<GameAssets> | null = null
@@ -216,16 +202,6 @@ function drawCenteredEntry(
   else drawEntry(context, assets, key, x, y, originX, originY, scaleX, scaleY, undefined, rotation)
 }
 
-function hairMetadata(key: string | undefined): { offset: Vec2; frame: number } {
-  const match = key?.match(/\/([^/]+?)(\d+)$/)
-  if (!match) return { offset: { x: 0, y: -2 }, frame: 0 }
-  const values = HAIR_OFFSETS[match[1]]
-  const raw = values?.[Number(match[2])] ?? '0,-2'
-  const [position, frame = '0'] = raw.split(':')
-  const [x, y] = position.split(',').map(Number)
-  return { offset: { x, y }, frame: Number(frame) }
-}
-
 function approach(from: Vec2, to: Vec2, amount: number): Vec2 {
   const dx = to.x - from.x
   const dy = to.y - from.y
@@ -235,7 +211,7 @@ function approach(from: Vec2, to: Vec2, amount: number): Vec2 {
 }
 
 function hairRoot(state: SimState, key: string | undefined): Vec2 {
-  const metadata = hairMetadata(key)
+  const metadata = playerHairMetadata(key)
   const facing = state.facing ? 1 : -1
   return { x: state.pos.x + metadata.offset.x * facing, y: state.pos.y - 9 + metadata.offset.y }
 }
@@ -281,7 +257,7 @@ function drawPlayer(context: CanvasRenderingContext2D, assets: GameAssets, state
   context.globalAlpha = state.dead ? .75 : 1
   if (!state.dead) {
     const nodes = computeHairNodes(assets, states, state, frame)
-    const metadata = hairMetadata(key)
+    const metadata = playerHairMetadata(key)
     for (let index = 3; index >= 0; index -= 1) {
       const texture = index === 0 ? `characters/player/bangs0${metadata.frame}` : 'characters/player/hair00'
       const scale = .25 + (1 - index / 4) * .75
@@ -387,16 +363,23 @@ function drawThemeBackground(context: CanvasRenderingContext2D, assets: GameAsse
   context.fillRect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height)
 }
 
-function drawTiles(context: CanvasRenderingContext2D, assets: GameAssets, map: GymMap, grid: string[][], tilesetKey: string): void {
+function buildTileLayer(assets: GameAssets, map: GymMap, grid: string[][], tilesetKey: string): HTMLCanvasElement | undefined {
   const tileset = assets.entries[tilesetKey]
-  if (!tileset) return
+  if (!tileset) return undefined
+  const layer = document.createElement('canvas')
+  layer.width = Math.max(1, Math.ceil(map.bounds.width))
+  layer.height = Math.max(1, Math.ceil(map.bounds.height))
+  const context = layer.getContext('2d')
+  if (!context) return undefined
+  context.imageSmoothingEnabled = false
   for (let y = 0; y < grid.length; y += 1) {
     for (let x = 0; x < grid[y].length; x += 1) {
       if (grid[y][x] === '0') continue
       const [tileX, tileY] = tileCoordinate(grid, x, y)
-      context.drawImage(assets.image, tileset.x + tileX * 8, tileset.y + tileY * 8, 8, 8, map.bounds.x + x * 8, map.bounds.y + y * 8, 8, 8)
+      context.drawImage(assets.image, tileset.x + tileX * 8, tileset.y + tileY * 8, 8, 8, x * 8, y * 8, 8, 8)
     }
   }
+  return layer
 }
 
 function drawRepeated(context: CanvasRenderingContext2D, assets: GameAssets, key: string, entity: MapEntity, step: number): void {
@@ -1032,6 +1015,10 @@ export function GameView({ map, state, states, frame, stale, theme, children }: 
   const [assets, setAssets] = useState<GameAssets | null>(null)
   const [viewportRevision, setViewportRevision] = useState(0)
   const solidGrid = useMemo(() => buildSolidGrid(map), [map])
+  const tileLayer = useMemo(
+    () => assets ? buildTileLayer(assets, map, solidGrid, theme.tileset) : undefined,
+    [assets, map, solidGrid, theme.tileset],
+  )
 
   useEffect(() => { void loadAssets().then(setAssets) }, [])
   useEffect(() => {
@@ -1064,7 +1051,7 @@ export function GameView({ map, state, states, frame, stale, theme, children }: 
     context.translate(offsetX - map.bounds.x * scale, offsetY - map.bounds.y * scale)
     context.scale(scale, scale)
     drawThemeBackground(context, assets, map, theme, frame)
-    drawTiles(context, assets, map, solidGrid, theme.tileset)
+    if (tileLayer) context.drawImage(tileLayer, map.bounds.x, map.bounds.y)
     const kindCounts = new Map<EntityKind, number>()
     for (const [entityIndex, entity] of map.entities.entries()) {
       const kindIndex = kindCounts.get(entity.kind) ?? 0
@@ -1075,7 +1062,7 @@ export function GameView({ map, state, states, frame, stale, theme, children }: 
     drawPlayer(context, assets, states, state, frame)
     drawWind(context, assets, map, state, frame)
     context.restore()
-  }, [assets, frame, map, solidGrid, stale, state, states, theme, viewportRevision])
+  }, [assets, frame, map, solidGrid, stale, state, states, theme, tileLayer, viewportRevision])
 
   return <div className="game-screen">
     <canvas ref={canvasRef} aria-label={`CelesteGymPlayground 原版资源渲染画面 · ${theme.label}`} />
