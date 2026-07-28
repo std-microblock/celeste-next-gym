@@ -12,6 +12,7 @@ export interface HarnessConfig {
   readonly expectedGitBranch?: string
   readonly expectedGitHead?: string
   readonly requestedScenarios: ReadonlySet<string>
+  readonly timelineRegressions: boolean
   readonly target?: TargetId
   readonly areaId: number
   readonly areaSid?: string
@@ -67,6 +68,7 @@ export function parseConfig(
   let fixtureOutput: string | undefined
   let recordScenario = false
   let recordAll = false
+  let timelineRegressions = false
   const recordTechniqueIds = new Set<string>()
   const cliNames = new Set<string>()
   for (let index = 0; index < argv.length; index++) {
@@ -74,6 +76,7 @@ export function parseConfig(
     if (argument === '--list') listOnly = true
     else if (argument === '--include-candidates') includeCandidates = true
     else if (argument === '--scenario') cliNames.add(requireValue(argv, ++index, argument))
+    else if (argument === '--timeline-regressions') timelineRegressions = true
     else if (argument === '--target') cliTarget = parseTarget(requireValue(argv, ++index, argument))
     else if (argument === '--fixture-output') fixtureOutput = resolve(repoRoot, requireValue(argv, ++index, argument))
     else if (argument === '--record') recordScenario = true
@@ -97,6 +100,10 @@ export function parseConfig(
   if ((recordAll || recordTechniqueIds.size > 0) && cliNames.size > 0) {
     throw new Error('--record-tech and --record-all cannot be combined with --scenario')
   }
+  if (timelineRegressions && (cliNames.size > 0 || env.E2E_SCENARIOS !== undefined)) {
+    throw new Error('--timeline-regressions cannot be combined with explicit scenarios')
+  }
+  if (timelineRegressions && recording) throw new Error('--timeline-regressions cannot be combined with recording')
   if (recordAll && cliTarget !== undefined) throw new Error('--record-all cannot be constrained to one --target')
 
   const areaId = parseAreaId(env.E2E_AREA_ID ?? '1')
@@ -129,6 +136,7 @@ export function parseConfig(
     ...(expectedGitBranch ? { expectedGitBranch } : {}),
     ...(expectedGitHead ? { expectedGitHead } : {}),
     requestedScenarios,
+    timelineRegressions,
     ...(target ? { target } : {}),
     areaId: effectiveAreaId,
     ...(target === 'playground' ? { areaSid: PLAYGROUND_SID } : areaSid ? { areaSid } : {}),

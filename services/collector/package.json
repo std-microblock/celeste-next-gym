@@ -11,7 +11,9 @@
     "test": "tsx --test test/**/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "e2e:real": "tsx ../../scripts/e2e-real/run.ts",
+    "e2e:timeline-regressions": "tsx ../../scripts/e2e-real/run.ts --timeline-regressions",
     "test:e2e-harness": "tsx --test ../../scripts/e2e-real/test/**/*.test.ts ../../scripts/e2e-real/scenarios/**/*.test.ts",
+    "test:timeline-regressions": "tsx --test ../../scripts/e2e-real/test/timeline-regressions.test.ts",
     "typecheck:e2e-harness": "tsc -p ../../scripts/e2e-real/tsconfig.json",
     "test:e2e-recording": "tsx --test ../../scripts/e2e-real/recording/**/*.test.ts",
     "typecheck:e2e-recording": "tsc -p ../../scripts/e2e-real/recording/tsconfig.json"

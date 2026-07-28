@@ -39,3 +39,15 @@ it('builds the complete recording plan before any lifecycle and keeps ordinary E
   assert.equal(ordinaryCalls, 1)
   assert.equal(recordingCalls, 0)
 })
+
+it('discovers timeline JSON files and selects their real Everest E2E scenarios', async () => {
+  const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
+  let selectedNames: readonly string[] = []
+  await main(['--timeline-regressions'], {}, repoRoot, {
+    run: async (_config, selected) => {
+      selectedNames = selected.map((scenario) => scenario.name)
+      return { health: {}, scenarios: [] }
+    },
+  })
+  assert.deepEqual(selectedNames, ['delayed-wallbounce'])
+})

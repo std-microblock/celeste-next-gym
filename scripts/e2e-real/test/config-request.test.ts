@@ -28,6 +28,8 @@ describe('configuration and requests', () => {
     assert.throws(() => parseConfig(['--record', '--record-all', '--scenario', 'dash'], {}, 'D:\\repo'), /mutually exclusive/)
     assert.throws(() => parseConfig(['--record'], {}, 'D:\\repo'), /exactly one/)
     assert.throws(() => parseConfig(['--record-all', '--target', 'area-1'], {}, 'D:\\repo'), /cannot be constrained/)
+    assert.throws(() => parseConfig(['--timeline-regressions', '--scenario', 'dash'], {}, 'D:\\repo'), /cannot be combined/)
+    assert.throws(() => parseConfig(['--timeline-regressions', '--record-all'], {}, 'D:\\repo'), /cannot be combined/)
   })
 
   it('derives area and default map from a CLI target', () => {
