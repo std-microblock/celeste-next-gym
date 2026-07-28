@@ -10,6 +10,7 @@
 - 时间线由单个 Canvas 绘制和命中测试，不为每一帧创建 DOM 节点。
 - 默认键位：W / S / A / D / L / ; / '，可在界面中重新绑定。
 - 地图由 `celeste-wasm 0.2.0` 在 Worker 内直接解码重新生成的 `CelesteGymPlayground/Playground.bin`。
+- 顶栏“起点”可指定 BinaryPacker 房间名和绝对 X/Y 像素坐标；应用后会从新起点重建 F0、保留时间线输入，并把房间与位置写入导出数据。
 - 场景使用从 Celeste 1.4.0.0-fna Gameplay atlas 提取的原版角色动画和实体/地形贴图。
 
 ```bash

@@ -3,6 +3,7 @@ import { GameView } from './components/GameView'
 import { InputTimeline } from './components/InputTimeline'
 import { KeyBindings } from './components/KeyBindings'
 import { StateInspector } from './components/StateInspector'
+import { StartSettings, type StartConfiguration } from './components/StartSettings'
 import {
   ACTIONS,
   ACTION_GLYPHS,
@@ -29,6 +30,9 @@ interface RunDocument {
   inputs: FrameButtons[]
   bindings: Bindings
 }
+
+const PLAYGROUND_MAP_URL = '/assets/original/maps/CelesteGymPlayground-Playground.bin'
+const DEFAULT_ROOM = 'playground'
 
 function loadBindings(): Bindings {
   try {
@@ -72,6 +76,8 @@ export default function App() {
   const [bindings, setBindings] = useState<Bindings>(loadBindings)
   const [liveButtons, setLiveButtons] = useState<FrameButtons>(makeEmptyButtons)
   const [bindingsOpen, setBindingsOpen] = useState(false)
+  const [startSettingsOpen, setStartSettingsOpen] = useState(false)
+  const [startSettingsBusy, setStartSettingsBusy] = useState(false)
   const keys = useRef(new Set<string>())
   const latched = useRef(new Set<string>())
   const advancing = useRef(false)
@@ -86,13 +92,14 @@ export default function App() {
     client.ready().then(async () => {
       if (!active) return
       const decodedMap = await client.loadMap(
-        '/assets/original/maps/CelesteGymPlayground-Playground.bin',
-        'playground',
+        PLAYGROUND_MAP_URL,
+        DEFAULT_ROOM,
         'CelesteGymPlayground / playground',
       )
       if (!active) return
-      setMap(decodedMap)
-      cache.replace(decodedMap, createInitialState(decodedMap), cache.getInputs().map((input) => ({ ...input })))
+      const loadedMap = { ...decodedMap, room: DEFAULT_ROOM }
+      setMap(loadedMap)
+      cache.replace(loadedMap, createInitialState(loadedMap), cache.getInputs().map((input) => ({ ...input })))
       frameRef.current = 0
       setFrame(0)
       setWasmStatus('ready')
@@ -226,6 +233,37 @@ export default function App() {
     setNotice('输入和逐帧缓存已清空')
   }
 
+  const applyStartConfiguration = async ({ room, position }: StartConfiguration) => {
+    setPlaying(false)
+    setRecording(false)
+    setStartSettingsBusy(true)
+    setNotice(`正在加载房间 ${room}…`)
+    try {
+      const decodedMap = await client.loadMap(
+        PLAYGROUND_MAP_URL,
+        room,
+        `CelesteGymPlayground / ${room}`,
+      )
+      const configuredMap: GymMap = {
+        ...decodedMap,
+        room,
+        spawn: { ...position },
+      }
+      calculationRevision.current += 1
+      setMap(configuredMap)
+      cache.replace(configuredMap, createInitialState(configuredMap), cache.getInputs().map((input) => ({ ...input })))
+      frameRef.current = 0
+      setFrame(0)
+      setStartSettingsOpen(false)
+      setNotice(`已从房间 ${room} 的 (${position.x}, ${position.y}) 开始，时间线输入已保留`)
+      void cache.ensureFrame(1)
+    } catch (error) {
+      setNotice(error instanceof Error ? `起点设置失败：${error.message}` : '起点设置失败')
+    } finally {
+      setStartSettingsBusy(false)
+    }
+  }
+
   const exportRun = () => {
     const document: RunDocument = {
       version: 2,
@@ -257,12 +295,13 @@ export default function App() {
       const comparisonMap = expected.map.data ?? map
       setPlaying(false)
       setRecording(false)
-      setMap(comparisonMap)
-      cache.replaceSimulationInputs(comparisonMap, initialStateFromTrace(expected.states[0], comparisonMap), expected.inputs)
+      const traceMap = { ...comparisonMap, room: expected.map.room }
+      setMap(traceMap)
+      cache.replaceSimulationInputs(traceMap, initialStateFromTrace(expected.states[0], traceMap), expected.inputs)
       await cache.ensureFrame(endFrame)
       frameRef.current = endFrame
       setFrame(endFrame)
-      const actual = createWebTrace(comparisonMap, cache.getInputs(), cache.getStates(), endFrame, undefined, cache.getSimulationInputs(endFrame))
+      const actual = createWebTrace(traceMap, cache.getInputs(), cache.getStates(), endFrame, undefined, cache.getSimulationInputs(endFrame))
       const result = compareTraces(actual, expected)
       setNotice(result.matched
         ? `对比通过：${result.compared_frames} 帧，位置 ${result.max_position_error.toFixed(6)}，速度 ${result.max_speed_error.toFixed(6)}`
@@ -294,6 +333,7 @@ export default function App() {
       <div className="brand-mark"><span className="wing">◇</span><div><strong>CELESTE</strong><em>NEXT GYM</em></div></div>
       <div className={`wasm-status ${wasmStatus}`} title="celeste-wasm 0.2.0 · rebuilt from current Rust source"><i />WASM 0.2.0 <span>{wasmStatus === 'ready' ? 'ONLINE' : wasmStatus === 'error' ? 'FAILED' : 'BOOTING'}</span></div>
       <div className="top-actions">
+        <button disabled={wasmStatus !== 'ready'} onClick={() => setStartSettingsOpen(true)}>起点</button>
         <button onClick={() => setBindingsOpen(true)}>键位</button>
         <label className="file-button">导入时间线<input type="file" accept="application/json,.json" onChange={(event) => event.target.files?.[0] && void importRun(event.target.files[0])} /></label>
         <button onClick={exportRun}>导出时间线</button>
@@ -305,7 +345,7 @@ export default function App() {
     <main className="workspace">
       <section className="stage panel-frame">
         <div className="stage-header">
-          <div><small>CELESTE 1.4.0.0-FNA · BINARYPACKER TEST ROOM</small><h1>{map.name}</h1></div>
+          <div><small>CELESTE 1.4.0.0-FNA · ROOM {map.room ?? DEFAULT_ROOM} · START {map.spawn.x}, {map.spawn.y}</small><h1>{map.name}</h1></div>
           <div className="cache-meter"><span>VALID THROUGH</span><strong>F{String(cache.computedThrough).padStart(4, '0')}</strong></div>
         </div>
         <GameView map={map} state={visible.state} states={states} frame={visible.frame} stale={!exactState || visible.frame !== frame} />
@@ -359,5 +399,12 @@ export default function App() {
     </main>
     <footer>celeste-wasm 0.2.0 rebuilt · Celeste 1.4.0.0-fna Gameplay atlas · CelesteGymPlayground/Playground.bin · 60 FPS</footer>
     {bindingsOpen && <KeyBindings bindings={bindings} onChange={changeBinding} onClose={() => setBindingsOpen(false)} />}
+    {startSettingsOpen && <StartSettings
+      room={map.room ?? DEFAULT_ROOM}
+      position={map.spawn}
+      busy={startSettingsBusy}
+      onApply={(configuration) => { void applyStartConfiguration(configuration) }}
+      onClose={() => setStartSettingsOpen(false)}
+    />}
   </div>
 }

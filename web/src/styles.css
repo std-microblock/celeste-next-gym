@@ -112,12 +112,25 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .timeline-legend { min-height: 34px; display: flex; align-items: center; gap: 18px; padding: 6px 13px; color: #887592; border-top: 1px solid #49345e; background: #100921; font: 8px Consolas, monospace; }.timeline-legend span { display: flex; align-items: center; gap: 5px; }.timeline-legend i { width: 12px; height: 5px; background: #584665; }.timeline-legend i.held { background: var(--cyan); }.timeline-legend i.cached { background: var(--green); }.timeline-legend i.invalid { background: repeating-linear-gradient(135deg, #5c4868 0 2px, transparent 2px 4px); }.timeline-legend em { margin-left: auto; color: #b197bc; font-style: normal; }
 
 .modal-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 18px; background: #05020bd9; backdrop-filter: blur(7px); }
-.bindings-modal { width: min(440px, 100%); padding-bottom: 13px; }
+.bindings-modal, .start-modal { width: min(440px, 100%); padding-bottom: 13px; }
 .icon-button { width: 30px; height: 30px; color: #fff; border: 1px solid #634979; background: #251638; cursor: pointer; font-size: 18px; }
 .modal-copy { margin: 12px 14px; color: #a28eae; font-size: 11px; line-height: 1.6; }
 .binding-list { display: grid; gap: 6px; padding: 0 13px; }
 .binding { min-height: 43px; display: grid; grid-template-columns: 29px 1fr 120px; align-items: center; gap: 9px; padding: 6px 8px; color: #cdbfd2; border: 1px solid #4d3862; background: #100922; cursor: pointer; text-align: left; }.binding:hover { border-color: #916ca1; }.binding.listening { border-color: var(--cyan); box-shadow: inset 3px 0 var(--cyan); }
 .action-glyph { display: grid; place-items: center; width: 27px; height: 27px; color: var(--lane, #fff); border: 1px solid currentColor; font: 9px Consolas, monospace; }.binding strong { font-size: 11px; }.binding kbd { padding: 6px; color: #fff; border: 1px solid #725884; background: #28183b; box-shadow: 0 2px #090512; font: 10px Consolas, monospace; text-align: center; }
+
+.start-modal form { padding: 0 14px; }
+.start-modal .modal-copy { margin-right: 0; margin-left: 0; }
+.start-modal code { color: var(--cyan); font: 10px Consolas, monospace; }
+.start-field { display: grid; gap: 6px; margin-top: 10px; color: #b9a4c3; font: 10px Consolas, monospace; letter-spacing: .05em; }
+.start-field input { width: 100%; height: 38px; padding: 0 10px; color: #fff; border: 1px solid #5b426f; background: #0e081e; font: 12px Consolas, monospace; }
+.start-field input:disabled { opacity: .6; }
+.start-position { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.start-error { margin: 10px 0 0; color: var(--pink); font-size: 10px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.modal-actions button { min-width: 84px; height: 36px; padding: 0 12px; color: #e8ddeb; border: 1px solid #5f4775; background: linear-gradient(#2b1d43, #171027); cursor: pointer; }
+.modal-actions button.primary { min-width: 134px; color: #fff; border-color: #ff7198; background: linear-gradient(#ff5b89, #bd315e); }
+.modal-actions button:disabled, .icon-button:disabled { opacity: .45; cursor: wait; }
 
 footer { padding: 0 14px 20px; color: #7d6889; text-align: center; font: 8px Consolas, monospace; letter-spacing: .06em; }
 
