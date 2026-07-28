@@ -7774,7 +7774,7 @@ mod tests {
                 },
                 crate::Entity {
                     kind: EntityKind::JumpThru,
-                    bounds: Rect::new(704.0, 456.0, 64.0, 8.0),
+                    bounds: Rect::new(635.0, 440.0, 64.0, 8.0),
                     direction: Vec2::default(),
                     shielded: false,
                     single_use: false,
@@ -7785,12 +7785,16 @@ mod tests {
             ..Map::default()
         };
         let p = PlayerSnapshot {
-            pos: Vec2::new(736.0, 440.0),
+            pos: Vec2::new(720.0, 440.0),
             ..PlayerSnapshot::default()
         };
-        let inputs: Vec<_> = (0..280)
+        let inputs: Vec<_> = (0..220)
             .map(|frame| InputState {
-                move_x: if frame < 80 { -1 } else { 0 },
+                move_x: if (130..170).contains(&frame) {
+                    1
+                } else {
+                    0
+                },
                 ..InputState::default()
             })
             .collect();
@@ -7818,8 +7822,23 @@ mod tests {
             .find(|(_, state)| state.bounce_blocks[0].static_movers_enabled)
             .map(|(frame, _)| frame)
             .unwrap();
-        assert!(trace.states[body].pos.x < 700.0);
+        let source = Rect::new(704.0, 440.0, 64.0, 16.0);
+        assert!(
+            !source.intersects(current_player_rect(
+                &trace.states[body],
+                trace.states[body].pos.x,
+                trace.states[body].pos.y,
+            )),
+            "player must clear the source volume before reform: frame={body}, state={:?}",
+            trace.states[body]
+        );
         assert!(spike > body);
+        let reenabled = &trace.states[spike].bounce_blocks[0];
+        assert!(
+            !reenabled.static_movers_enabled || reenabled.attached_spike_position != Vec2::new(768.0, 440.0),
+            "the spike must remain displaced when the reform alarm re-enables it: {reenabled:?}"
+        );
+        assert_ne!(reenabled.position, Vec2::new(704.0, 440.0));
     }
 
     #[test]
