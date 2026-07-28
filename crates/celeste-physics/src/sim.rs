@@ -3755,6 +3755,13 @@ fn advance_spinners(p: &mut PlayerSnapshot, map: &mut Map) {
 }
 
 fn advance_post_player_entities(p: &mut PlayerSnapshot, map: &mut Map, input: InputState) {
+    // Booster.BoostRoutine runs after Player.Update. It retains
+    // BoostingPlayer throughout Dash/RedDash, then releases the player and
+    // starts the one-second respawn timer on the first later state.
+    if p.booster_boosting && !matches!(p.state, PlayerState::Dash | PlayerState::RedDash) {
+        p.booster_boosting = false;
+        p.booster_reuse_timer = p.booster_reuse_timer.max(1.0);
+    }
     advance_zip_movers(p, map);
     advance_bounce_blocks(p, map);
     advance_move_blocks(p, map, input);
@@ -3862,6 +3869,10 @@ fn step(
         advance_cassette_blocks(p, map);
         advance_cassette_manager(p, map);
         advance_spinners(p, map);
+        // `Actor.OnGround()` is a live collision probe. A screen transition
+        // pauses Player.Update, but it does not make a player standing on a
+        // floor geometrically airborne for snapshot capture.
+        p.on_ground = grounded(p, map);
         return Ok(());
     }
     advance_badeline_boost_relocation(p);
@@ -4718,6 +4729,10 @@ fn boost_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         return;
     }
     snap_to_boost_target(p, map);
+    // `Player.CallDashEvents` notifies CurrentBooster as the Boost state
+    // hands over to Dash. The Booster coroutine then keeps its
+    // `BoostingPlayer` guard until that dash has ended.
+    p.booster_boosting = true;
     if p.boost_red {
         begin_red_dash(p, manual.then_some(input), !manual);
     } else {
@@ -5732,12 +5747,17 @@ fn interact(
                 if !matches!(
                     p.state,
                     PlayerState::Boost | PlayerState::RedDash | PlayerState::HitSquash
-                ) && (p.booster_reuse_timer <= 0.0
-                    || p.last_booster_target
-                        != Vec2::new(
-                            entity.bounds.x + entity.bounds.width * 0.5,
-                            entity.bounds.y + entity.bounds.height * 0.5 + 2.0,
-                        )) =>
+                ) && {
+                    let target = Vec2::new(
+                        entity.bounds.x + entity.bounds.width * 0.5,
+                        entity.bounds.y + entity.bounds.height * 0.5 + 2.0,
+                    );
+                    // A regular Dash can enter a Booster, but not the same
+                    // Booster whose BoostRoutine is still awaiting the end
+                    // of this dash.
+                    !(p.booster_boosting && p.last_booster_target == target)
+                        && (p.booster_reuse_timer <= 0.0 || p.last_booster_target != target)
+                } =>
             {
                 p.state = PlayerState::Boost;
                 p.speed = Vec2::default();
@@ -6428,7 +6448,6 @@ fn begin_transition(p: &mut PlayerSnapshot, map: &mut Map, next: Rect, direction
     // more to observe cameraAt == 1 and run OnTransition. Preserve that final
     // coroutine-resume frame in addition to the 0.65-second camera duration.
     p.transition_timer = TRANSITION_TIME + p.frame_delta_time;
-    p.on_ground = false;
 }
 
 fn update_transition(p: &mut PlayerSnapshot, map: &mut Map) {
@@ -6436,7 +6455,6 @@ fn update_transition(p: &mut PlayerSnapshot, map: &mut Map) {
     p.pos.x = approach(p.pos.x, p.transition_target.x, max_move);
     p.pos.y = approach(p.pos.y, p.transition_target.y, max_move);
     p.transition_timer = (p.transition_timer - p.frame_delta_time).max(0.0);
-    p.on_ground = false;
     // Player.TransitionTo rounds speed and clears Actor remainders as soon as
     // the player reaches the transfer target; the camera coroutine can keep
     // the room transition open for many more frames after that return value.
@@ -15288,6 +15306,50 @@ mod tests {
         assert_eq!(result.state, PlayerState::Normal);
         assert!(result.lookouts[0].removed);
         assert!(result.lookouts[0].interacting);
+    }
+
+    #[test]
+    fn bino_interaction_storage_uses_a_native_booster_after_dummy_walk() {
+        let mut map = lookout_map(vec![], false, false);
+        map.bounds = Rect::new(0.0, 0.0, 960.0, 544.0);
+        map.transition_rooms = vec![Rect::new(960.0, 0.0, 960.0, 544.0)];
+        map.solids = vec![Rect::new(0.0, 496.0, 1920.0, 48.0)];
+        map.entities[0].bounds = Rect::new(938.0, 493.0, 4.0, 4.0);
+        map.entities.push(crate::Entity {
+            kind: EntityKind::Booster,
+            bounds: Rect::new(924.0, 491.0, 16.0, 16.0),
+            direction: Vec2::default(),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "interruptingBooster".to_owned(),
+        });
+        let player = PlayerSnapshot {
+            pos: Vec2::new(916.0, 496.0),
+            on_ground: true,
+            current_room_bounds: Some(map.bounds),
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..300)
+            .map(|frame| InputState {
+                talk_pressed: frame == 0,
+                move_x: (frame >= 120).then_some(1).unwrap_or_default(),
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
+
+        assert!(trace.states.iter().any(|state| state.state == PlayerState::Boost));
+        assert!(trace.states.iter().any(|state| {
+            state.state == PlayerState::Dash && state.booster_boosting
+        }));
+        // The transition camera routine pauses Player.Update, but the source
+        // capture's `Actor.OnGround()` remains a live floor collision query.
+        assert!(trace.states[125].on_ground);
+        assert!(trace
+            .states
+            .iter()
+            .any(|state| state.current_room_bounds == Some(map.transition_rooms[0])));
     }
 
     #[test]
