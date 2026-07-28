@@ -21,6 +21,7 @@ const JUMP_BUFFER_TIME: f32 = 0.08;
 const JUMP_SPEED: f32 = -105.0;
 const JUMP_H_BOOST: f32 = 40.0;
 const VAR_JUMP_TIME: f32 = 0.2;
+const JUMP_THRU_ASSIST_SPEED: f32 = -40.0;
 const WALL_JUMP_H: f32 = 130.0;
 const WALL_JUMP_CHECK_DIST: f32 = 3.0;
 const WALL_SLIDE_START_MAX: f32 = 20.0;
@@ -4136,6 +4137,24 @@ fn step(
         p.star_fly_hitbox_preserved = false;
     }
 
+    // Player.Update applies JumpThru Assist after its state callback and
+    // before the ordinary MoveH/MoveV physics pass.  It is a separate Actor
+    // MoveV, so its fractional displacement must share movement_remainder.y
+    // with the following Speed.Y movement.  This is what lets an upward jump
+    // clear a JumpThru by three pixels in one frame.
+    if !p.on_ground
+        && p.speed.y <= 0.0
+        && (p.state != PlayerState::Climb || p.last_climb_move == -1)
+        && touching_jump_thru(p, map)
+    {
+        move_axis_amount(
+            p,
+            map,
+            false,
+            JUMP_THRU_ASSIST_SPEED * p.frame_delta_time,
+        );
+    }
+
     if p.state != PlayerState::DreamDash {
         move_axis(p, map, true);
     }
@@ -4762,6 +4781,7 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     } else {
         try_slip = true;
     }
+    p.last_climb_move = target.signum() as i8;
     if try_slip && slip_check(p, map, 0.0) {
         target = CLIMB_SLIP_SPEED;
     }
@@ -5299,6 +5319,13 @@ fn current_player_rect(p: &PlayerSnapshot, x: f32, y: f32) -> Rect {
     } else {
         player_rect(x, y)
     }
+}
+
+fn touching_jump_thru(p: &PlayerSnapshot, map: &Map) -> bool {
+    let player = current_player_rect(p, p.pos.x, p.pos.y);
+    map.entities
+        .iter()
+        .any(|entity| entity.kind == EntityKind::JumpThru && entity.bounds.intersects(player))
 }
 
 fn player_hurt_rect(x: f32, y: f32) -> Rect {
@@ -8146,6 +8173,22 @@ mod tests {
         assert!(trace.states[24].on_ground);
         assert!(!trace.states[24].ducking);
         assert!(!trace.states[24].dead);
+        // Captured Everest frame 83 is inside the CED fixture's JumpThru.
+        // Player.Update first applies its -40 px/s JumpThru Assist and then
+        // regular -105 px/s jump movement, sharing the same subpixel counter.
+        // Lock all nine E2E fields here so a one-pass-only MoveV cannot regress
+        // back to the old `(783, 491)` result.
+        let jump_thru_assisted = &trace.states[83];
+        assert_eq!(jump_thru_assisted.pos, Vec2::new(783.0, 489.0));
+        assert!((jump_thru_assisted.speed.x - 121.333_31).abs() <= 0.01);
+        assert!((jump_thru_assisted.speed.y + 105.0).abs() <= 0.01);
+        assert_eq!(jump_thru_assisted.state, PlayerState::Normal);
+        assert!(jump_thru_assisted.facing);
+        assert_eq!(jump_thru_assisted.dashes, 1);
+        assert!((jump_thru_assisted.stamina - 110.0).abs() <= 0.01);
+        assert!(!jump_thru_assisted.on_ground);
+        assert!(!jump_thru_assisted.ducking);
+        assert!(!jump_thru_assisted.dead);
         let source = Rect::new(712.0, 480.0, 64.0, 16.0);
         assert!(
             !map.static_solid_at(source),
