@@ -13,7 +13,7 @@ describe('production scenario registry', () => {
     assert.equal(registry.byTarget.get('area-1')?.length, 36)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 159, candidate: 22 })
+    assert.deepEqual(registry.counts, { active: 160, candidate: 21 })
   })
 
   it('keeps evidence-less scenarios as opt-in candidates', () => {
@@ -39,7 +39,6 @@ describe('production scenario registry', () => {
       'entity-4.6.2-cloud-hyper-bunnyhop',
       'other-5.10-spinner-stunning',
       'other-5.11-spinner-freeze',
-      'other-5.13-undemo-omed-dashing',
       'other-5.3-cassette-raise',
       'other-5.8-roboboost',
       'other-5.9-screen-transition-cassette-offset',

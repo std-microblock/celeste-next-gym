@@ -16,5 +16,5 @@
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [update_wall_speed_retention; advance_cassette_blocks; advance_cassette_manager], note: [Player 在房间实体前更新；卡带 block 更新再到 manager beat 更新的顺序保持 WillToggle 与 activation 分帧，非碰撞 block 会被 park，下一帧 retained-speed 探测可见前方为空。]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [disappearing_cassette_clears_collision_before_reactivation], note: [精确回归从 beat 6 推进到 7/8，断言目标 block 在警告 beat 保持非碰撞，再在下一色 activation 时恢复。]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/dashless-3.7.11-disappearing-block-cornerboost.ts; scripts/e2e-real/scenarios/cassette-spinner-parts.ts], symbol: [dashless-3.7.11-disappearing-block-cornerboost; TECH_DASHLESS_3_7_11_DISAPPEARING_BLOCK_CORNERBOOST], note: [独立双颜色 CassetteBlock MapPart 让玩家在 beat 窗口撞上竖直 block，并要求消失后重新获得向右速度；真实帧序未通过前保持 candidate。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/dashless-3.7.11-disappearing-block-cornerboost.ts; scripts/e2e-real/scenarios/cassette-spinner-parts.ts], symbol: [dashless-3.7.11-disappearing-block-cornerboost; TECH_DASHLESS_3_7_11_DISAPPEARING_BLOCK_CORNERBOOST], note: [独立双颜色 CassetteBlock MapPart 让玩家在 beat 窗口撞上竖直 block，并要求消失后重新获得向右速度。最终真实 Everest 语义门得到 hit=-1、refunded=55：玩家从未形成预期的挡墙帧，因此保持 candidate。]),
 )

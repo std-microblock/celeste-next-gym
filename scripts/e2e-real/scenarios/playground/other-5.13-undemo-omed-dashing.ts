@@ -9,11 +9,12 @@ export const mapParts = [TECH_OTHER_5_13_UNDEMO_DASHING] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: [],
   techniqueIds: ['5.13'],
   mapParts,
   name: 'other-5.13-undemo-omed-dashing',
+  recording: { primaryFor: ['5.13'], startFrame: 0, endFrame: 10 },
   initial: { pos: [160, 80], speed: [0, 0], dashes: 1 },
   inputs: inputFrames(10, (frame) => ({
     move_x: frame === 0 ? 1 : 0,
