@@ -4,6 +4,7 @@ import { WasmClient } from '../simulator/wasmClient'
 import { assistedRate, candidateWindow, createTrainingSession, keySemantics, nextTargetFrame, rebuildTrainingSession, verifiedInputs, verifyTrainingInput, type TrainingCandidate, type TrainingDefinition, type TrainingSession } from '../training/session'
 import { trainingCatalog, type TrainingDocument, type TrainingVariant } from '../training/catalog'
 import { GameView } from './GameView'
+import { TrainingCatalogSidebar, TrainingVariantThumbnail } from './TrainingCatalogSidebar'
 import { TrainingPrompt } from './TrainingPrompt'
 import { TrainingResultTimeline, TrainingTimeline } from './TrainingTimeline'
 
@@ -348,7 +349,10 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
     return () => { active = false; cancelAnimationFrame(animation) }
   }, [autoSlowdown, baseRate, client, document, initial, map, playing, session.phase])
 
-  if (!document || !map || !initial || snapshots.length === 0) return <main className="training-workspace"><div className="notice"><i />{notice}</div></main>
+  if (!document || !map || !initial || snapshots.length === 0) return <main className="training-workspace">
+    <TrainingCatalogSidebar techniqueId={technique.id} variantId={selectedVariant.id} onSelectTraining={onSelectTraining} />
+    <div className="training-loading notice"><i />{notice}</div>
+  </main>
   const state = snapshots[frame] ?? snapshots.at(-1) ?? initial
   const fuzzInputIndex = verifiedInputs(document)[session.nextVerifiedInput]?.fuzzInputIndex
   const target = fuzzInputIndex === undefined ? undefined : nextTargetFrame(session.candidates, fuzzInputIndex)
@@ -359,6 +363,7 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
   const actualActionFrame = actualInputs.at(-1)?.frame
   const timing = timingAssessment(actualActionFrame, prediction.targetFrame)
   const finalSpeed = outcome?.resultSpeedX
+  const recommendations = technique.variants.filter((variant) => variant.id !== selectedVariant.id).slice(0, 2)
   const failureFrame = session.failure ? (fuzzStartFrame ?? 0) + session.failure.frame : undefined
   const timelineFrame = outcome?.timelineFrame ?? frame
   const timelineFrameCount = outcome?.timelineFrame ?? Math.max(40, snapshots.length - 1, (prediction.targetFrame ?? 0) + 24)
@@ -380,12 +385,26 @@ export function TrainingGround({ techniqueId, variantId, onSelectTraining }: { t
     </div>
   </div>
   return <main className="training-workspace">
+    <TrainingCatalogSidebar techniqueId={technique.id} variantId={selectedVariant.id} onSelectTraining={onSelectTraining} />
     <section className="training-stage panel-frame">
       <div className="stage-header"><div><small>TRAINING / {document.technique_id} / {document.variant_id}</small><h1>{document.title} · {document.variant_title} <em>第 {Math.min(session.nextVerifiedInput + 1, document.teaching.steps.length)}/{document.teaching.steps.length} 步</em></h1></div><div className="cache-meter"><span>{bestFinalSpeed === undefined ? '有效倍率' : '当前最佳候选最终 X 速度'}</span><strong>{bestFinalSpeed === undefined ? `${effective.toFixed(2)}×` : bestFinalSpeed.toFixed(2)}</strong></div></div>
       <GameView map={map} state={state} states={snapshots} frame={frame} stale={false}>
         {(viewport) => <TrainingPrompt map={map} state={state} viewport={viewport} text={prompt} hidden={outcome !== null} />}
       </GameView>
-      {outcome && <div className={outcome.phase === 'success' ? 'training-success' : 'training-failure'} style={{ '--outcome-progress': outcomeProgress } as CSSProperties}>{resultPanel}</div>}
+      {outcome && <div className={outcome.phase === 'success' ? 'training-success' : 'training-failure'} style={{ '--outcome-progress': outcomeProgress } as CSSProperties}>
+        <div className={`training-outcome-layout ${outcome.phase}`}>
+          {outcome.phase === 'success' && recommendations.length > 0 && <aside className="training-recommendations" aria-label="你还可以看看">
+            <div className="training-recommendations-heading"><small>KEEP CLIMBING</small><h2>你还可以看看</h2><p>继续挑战其他训练场景。</p></div>
+            <div className="training-recommendation-list">
+              {recommendations.map((variant) => <button type="button" key={variant.id} onClick={() => onSelectTraining(technique.id, variant.id)}>
+                <TrainingVariantThumbnail variant={variant} />
+                <span><small>{technique.title} · VARIANT</small><strong>{variant.title}</strong><em>{variant.summary}</em><b>开始训练 <i aria-hidden="true">→</i></b></span>
+              </button>)}
+            </div>
+          </aside>}
+          {resultPanel}
+        </div>
+      </div>}
       <div className="transport"><button aria-label="回到 R 点" onClick={() => resetTo()}>R</button><button aria-label="上一帧" onClick={() => seek(frame - 1)}>◀</button><button className="play-button" onClick={() => { if (!playing && predictionDirty.current) { predictionDirty.current = false; applyPrediction({ windows: [] }) } setPlaying((value) => !value) }}>{playing ? 'Ⅱ' : '▶'}</button><button aria-label="下一帧" onClick={() => { if (predictionDirty.current) { predictionDirty.current = false; applyPrediction({ windows: [] }) } setPlaying(true) }}>▶</button><select aria-label="训练基础速度" value={baseRate} onChange={(event) => setBaseRate(Number(event.target.value))}><option value={.25}>0.25×</option><option value={.5}>0.5×</option><option value={1}>1×</option><option value={2}>2×</option></select><label className="training-assist"><input type="checkbox" checked={autoSlowdown} onChange={(event) => setAutoSlowdown(event.target.checked)} />自动慢放</label></div>
     </section>
     <TrainingTimeline frame={timelineFrame} frameCount={timelineFrameCount} fuzzStart={fuzzStartFrame} targetFrame={prediction.targetFrame} windows={prediction.windows} actualInputs={actualInputs} failureFrame={failureFrame} resetFrame={resetFrame} bestFinalSpeed={bestFinalSpeed} followTarget={followReference && !outcome} onSeek={(value, manual) => { if (manual && value < timelineFrame) setFollowReference(false); seek(value) }} onSetReset={(value) => { setResetFrame(value); setNotice(`临时 R 点已设为 F${value}`) }} />

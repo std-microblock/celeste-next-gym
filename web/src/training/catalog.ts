@@ -41,6 +41,10 @@ export interface TrainingTechnique {
 
 export const trainingCatalog = [hyper]
 
+export const trainingCatalogSections = [
+  { id: 'dash-tech', title: '冲刺技巧', badge: 'DASH TECH', techniques: [hyper] },
+]
+
 export function findTrainingVariant(techniqueId: string, variantId: string): TrainingVariant | undefined {
   return trainingCatalog.find((technique) => technique.id === techniqueId)?.variants.find((variant) => variant.id === variantId)
 }

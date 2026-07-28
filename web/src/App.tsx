@@ -496,11 +496,6 @@ export default function App() {
     }
     setMode(nextMode)
   }
-  const selectTrainingTechnique = (techniqueId: string) => {
-    const technique = trainingCatalog.find((item) => item.id === techniqueId) ?? trainingCatalog[0]
-    setTrainingTechniqueId(technique.id)
-    setTrainingVariantId(technique.variants[0].id)
-  }
   const selectedTrainingTechnique = trainingCatalog.find((item) => item.id === trainingTechniqueId) ?? trainingCatalog[0]
   const selectedTrainingVariant = selectedTrainingTechnique.variants.find((item) => item.id === trainingVariantId) ?? selectedTrainingTechnique.variants[0]
 
@@ -521,10 +516,8 @@ export default function App() {
         <button onClick={exportRun}>导出时间线</button>
         <button onClick={() => void exportTrace()}>导出逐帧</button>
         <label className="file-button">对比逐帧<input type="file" accept="application/json,.json" onChange={(event) => event.target.files?.[0] && void compareTrace(event.target.files[0])} /></label>
-      </div> : mode === 'training' ? <div className="training-picker">
-        <label><small>技巧</small><select aria-label="训练技巧" value={selectedTrainingTechnique.id} onChange={(event) => selectTrainingTechnique(event.target.value)}>{trainingCatalog.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>
-        <label><small>Variant</small><select aria-label="训练 Variant" value={selectedTrainingVariant.id} onChange={(event) => setTrainingVariantId(event.target.value)}>{selectedTrainingTechnique.variants.map((item, index) => <option key={item.id} value={item.id}>{index + 1}. {item.title}</option>)}</select></label>
-        <div className="play-room"><small>LESSON MODE</small><strong>{selectedTrainingVariant.title}</strong><span>{selectedTrainingTechnique.related.length ? `你还可以看看：${selectedTrainingTechnique.related.join(' / ')}` : `${selectedTrainingTechnique.variants.length} 个训练`}</span></div>
+      </div> : mode === 'training' ? <div className="training-context">
+        <div className="play-room"><small>LESSON MODE</small><strong>{selectedTrainingTechnique.title} · {selectedTrainingVariant.title}</strong><span>{selectedTrainingVariant.summary}</span></div>
       </div> : <div className="play-quick-actions">
         <div className="play-room">
           <small>LIVE ROOM</small>
