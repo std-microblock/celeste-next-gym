@@ -4,9 +4,9 @@
   id: "5.1.3",
   title-zh: "望远镜交互存储",
   title-en: "Bino Interaction Storage",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [望远镜交互标志可在玩家状态已恢复 Normal 后继续保留，并通过房间切换在新的位置重新触发交互流程。],
-  description-en: [Room removal can restore the player to Normal without clearing Lookout.interacting; that entity-owned flag and TalkComponent lifecycle are the basis of interaction storage. Rust preserves the mismatch; real cross-room proof remains pending.],
+  description-en: [Room removal restores the player to Normal without clearing Lookout.interacting; the entity-owned flag and TalkComponent lifecycle therefore survive into the next room, where the interaction can be stored independently of the Player state.],
   source-evidence: evidence(
     path: [Celeste/Lookout.cs; Celeste/Level.cs],
     symbol: [Lookout.Removed; Lookout.StopInteracting; Level.TransitionRoutine],
@@ -15,6 +15,6 @@
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/types.rs; crates/celeste-physics/src/sim.rs], symbol: [booster_boosting; update_transition], note: [Booster 的 BoostingPlayer 生命周期在 Dash 结束前禁止同一 Booster 重入；切换完成时，旧房 Lookout 标记 removed 并恢复 Player Normal，但故意保留 `interacting=true`。]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [bino_interaction_storage_uses_a_native_booster_after_dummy_walk], note: [本地回归以真实 Booster 打断 DummyWalk，并验证 Dash 生命周期、过渡贴地碰撞查询和第二房间切换；跨房间交互标志仍由 `bino_interaction_storage_survives_lookout_room_removal` 覆盖。]),
-  e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/other-5.1.3-bino-interaction-storage.ts; scripts/e2e-real/scenarios/lookout-parts.ts; mods/CelesteGymCollector/Source/SnapshotCapture.cs], symbol: [other-5.1.3-bino-interaction-storage; TECH_OTHER_5_1_3_BINO_INTERACTION_STORAGE; IsLookoutInteracting], note: [候选 fixture 已改为有效的独立双房地图：Lookout `x=938`，Booster `[924,491,16,16]`，f120 后向右走以触发房间切换；collector 在 `Lookout.Removed` 原处理前捕获 `interacting`。尚未对该 rebased 版本运行真实 Everest，因此保持 candidate。]),
+  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/playground/other-5.1.3-bino-interaction-storage.ts; scripts/e2e-real/scenarios/lookout-parts.ts; mods/CelesteGymCollector/Source/CelesteGymCollectorModule.cs; mods/CelesteGymCollector/Source/SnapshotCapture.cs; crates/celeste-physics/src/sim.rs], symbol: [other-5.1.3-bino-interaction-storage; TECH_OTHER_5_1_3_BINO_INTERACTION_STORAGE; LookoutRemoved; IsLookoutInteracting; bino_interaction_storage_uses_a_native_booster_after_dummy_walk], note: [受控真实 Everest run `2026-07-28T19-18-56.652Z-115668-bad083c1-c4bf-41b2-aff8-8b2623bb2fe9` 在 detached candidate `0c9449318037a251a18d7d2db40ec17a9d3d890c` 上使用物理 `vendor/celeste-game`、隔离 save/tmp、动态端口，并以 nonce 和 child PID `88668` 完成握手及受控清理。301 帧 position、speed、state、facing、dashes、stamina、grounded、ducking、death 均逐帧一致，最大 position/speed 误差均为 0；语义门确认原生 Booster 打断、Lookout `interacting`、Removed 前捕获的 interaction 标志、Removed 时 Player `Normal`，及进入第二房间。]),
+  candidate-e2e: none,
 )
