@@ -4602,7 +4602,10 @@ fn dream_dash_update(p: &mut PlayerSnapshot) {
 }
 
 fn boost_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
-    p.speed = Vec2::default();
+    // Player.Boost zeroes Speed at PlayerCollider entry, but BoostUpdate only
+    // moves toward the booster target.  Do not clear speed here: an entity
+    // coroutine such as Lookout.DummyWalkToExact resumes after Player.Update
+    // and accumulates its 16.667 walking speed across Boost frames.
     let aim = input_vector(input);
     let target = Vec2::new(
         p.boost_target.x + aim.x * 3.0,
@@ -14521,6 +14524,7 @@ mod tests {
         // DummyWalk approaches its x=932 alignment point; this is the native
         // callback, not a forced completed state.
         assert!((boost.pos.x - 921.0).abs() <= 0.01);
+        assert!((boost.speed.x - 16.666_7).abs() <= 0.01);
         let boost_frame = trace
             .states
             .iter()
@@ -14530,6 +14534,7 @@ mod tests {
         let next = &trace.states[boost_frame + 1];
         assert_eq!(next.state, PlayerState::Boost);
         assert!((next.pos.x - 922.0).abs() <= 0.01);
+        assert!((next.speed.x - 33.333_3).abs() <= 0.01);
         assert!(trace.states.iter().any(|state| {
             state.state == PlayerState::Normal
                 && state.lookouts[0].interacting
