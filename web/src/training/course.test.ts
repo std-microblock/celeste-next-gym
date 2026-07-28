@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { snapshot } from './helpers.ts'
-import { allModulesCompleted, average, moduleAtPlayer, timingAccuracy, triggerContainsPlayer } from './course.ts'
+import { allModulesCompleted, average, formatObjectiveOutput, moduleAtPlayer, objectiveOutputName, outputAccuracy, triggerContainsPlayer } from './course.ts'
 import type { TrainingMapDocument } from './catalog.ts'
 
 const trigger = { id: 'lesson', bounds: { x: 40, y: 200, width: 40, height: 40 } }
@@ -12,11 +12,14 @@ describe('map-driven training helpers', () => {
     expect(triggerContainsPlayer(trigger, snapshot({ x: 60, y: 199 }))).toBe(false)
   })
 
-  it('scores timing and aggregates course statistics', () => {
-    expect(timingAccuracy(12, 12)).toBe(100)
-    expect(timingAccuracy(15, 12)).toBe(76)
-    expect(timingAccuracy(99, 12)).toBe(0)
-    expect(average([100, 76])).toBe(88)
+  it('scores actual output against the Fuzz-best output', () => {
+    expect(outputAccuracy(325, 325)).toBe(100)
+    expect(outputAccuracy(300, 325)).toBeCloseTo(92.3077)
+    expect(outputAccuracy(0, 325)).toBe(0)
+    expect(outputAccuracy(0, 0)).toBe(100)
+    expect(average([100, 80])).toBe(90)
+    expect(objectiveOutputName('final.speed.x')).toBe('水平速度')
+    expect(formatObjectiveOutput('final.speed.x', 325)).toBe('325 px/s')
   })
 
   it('selects only unfinished modules and unlocks the finish after all modules', () => {

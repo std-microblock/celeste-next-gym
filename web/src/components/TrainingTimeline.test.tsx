@@ -24,9 +24,10 @@ describe('training result timeline', () => {
     expect(container.querySelector('.training-window')).toBeInTheDocument()
     expect(container.querySelectorAll('circle')).toHaveLength(0)
     expect(container.querySelectorAll('.training-result-axis-end')).toHaveLength(0)
-    expect(screen.getByText('最佳 F0')).toBeInTheDocument()
-    expect(screen.getByText('F0 DASH')).toBeInTheDocument()
-    expect(screen.getByText('F1 JUMP')).toBeInTheDocument()
+    expect(screen.getByText('最佳 F0 · 325 px/s')).toBeInTheDocument()
+    expect(screen.getByText('F0 DASH · 325 px/s')).toBeInTheDocument()
+    expect(screen.getByText('F1 JUMP · 325 px/s')).toBeInTheDocument()
+    expect(screen.getByLabelText('F0 Fuzz 最佳点、你的输入、成功窗口；水平速度 325 px/s')).toBeInTheDocument()
   })
 
   it('exposes per-frame Fuzzer speed and success explanation through custom hover details', () => {
@@ -38,8 +39,10 @@ describe('training result timeline', () => {
 
     const timeline = within(container)
     expect(timeline.getAllByText('F0')).toHaveLength(1)
-    expect(timeline.getByLabelText('F2 未通过；final.speed.x 191.67')).toBeInTheDocument()
-    expect(timeline.getByText('191.67')).toBeInTheDocument()
+    expect(timeline.getByLabelText('F2 未通过候选；水平速度 191.67 px/s')).toBeInTheDocument()
+    expect(timeline.getByText('未通过候选')).toBeInTheDocument()
+    expect(timeline.getAllByText('水平速度')).toHaveLength(3)
+    expect(timeline.getByText('191.67 px/s')).toBeInTheDocument()
     expect(timeline.queryByText('终态未满足成功条件')).not.toBeInTheDocument()
 
     const hit = container.querySelector<HTMLElement>('.training-objective-hit')
