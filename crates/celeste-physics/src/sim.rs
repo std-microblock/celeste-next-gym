@@ -14428,12 +14428,12 @@ mod tests {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
             solids: vec![
                 Rect::new(0.0, 496.0, 960.0, 48.0),
-                Rect::new(448.0, 458.0, 8.0, 6.0),
+                Rect::new(448.0, 432.0, 8.0, 8.0),
             ],
             entities: vec![crate::Entity {
                 kind: EntityKind::MoveBlock,
                 bounds: Rect::new(400.0, 464.0, 64.0, 16.0),
-                direction: Vec2::new(1.0, 0.0),
+                direction: Vec2::new(0.0, -1.0),
                 shielded: false,
                 single_use: false,
                 nodes: vec![],
@@ -14441,19 +14441,19 @@ mod tests {
             }],
             ..Map::default()
         };
-        let inputs: Vec<_> = (0..45)
+        let inputs: Vec<_> = (0..90)
             .map(|frame| InputState {
-                move_x: if (16..27).contains(&frame) {
+                move_x: if (45..58).contains(&frame) {
                     1
-                } else if frame >= 27 {
+                } else if frame >= 58 {
                     -1
                 } else {
                     0
                 },
-                crouch_dash_pressed: frame == 16,
-                jump_pressed: frame == 20 || frame == 22,
-                jump_held: frame == 20 || frame == 22,
-                grab_held: frame == 22,
+                crouch_dash_pressed: frame == 45,
+                jump_pressed: frame == 49 || frame == 51,
+                jump_held: frame == 49 || frame == 51,
+                grab_held: frame == 51,
                 ..InputState::default()
             })
             .collect();
@@ -14469,11 +14469,11 @@ mod tests {
         )
         .unwrap();
 
-        assert!(trace.states[21].speed.x > 300.0);
-        assert!(trace.states[23].wall_speed_retention_timer > 0.05);
-        assert!(trace.states[23].wall_speed_retained > 300.0);
-        assert!(trace.states[26].speed.x > 300.0);
-        assert!(trace.states[28].speed.x < trace.states[27].speed.x);
-        assert_eq!(trace.states[26].move_blocks[0].position.y, 464.0);
+        assert!(trace.states[50].speed.x > 300.0);
+        assert!(trace.states[51].wall_speed_retention_timer > 0.05);
+        assert!(trace.states[51].wall_speed_retained > 300.0);
+        assert!(trace.states[55].speed.x > 300.0);
+        assert!(trace.states[59].speed.x < trace.states[58].speed.x);
+        assert_eq!(trace.states[51].move_blocks[0].position.y, 440.0);
     }
 }

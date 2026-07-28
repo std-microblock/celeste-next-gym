@@ -15,14 +15,14 @@ export const scenario = defineScenario({
   mapParts,
   name: 'other-5.8-roboboost',
   initial: { pos: [432, 464], speed: [0, 0], on_ground: true },
-  inputs: inputFrames(45, (frame) => ({
-    move_x: frame >= 16 && frame < 27 ? 1 : frame >= 27 ? -1 : 0,
+  inputs: inputFrames(90, (frame) => ({
+    move_x: frame >= 45 && frame < 58 ? 1 : frame >= 58 ? -1 : 0,
     move_y: 0,
-    jump_pressed: frame === 20 || frame === 22,
-    jump_held: frame === 20 || frame === 22,
+    jump_pressed: frame === 49 || frame === 51,
+    jump_held: frame === 49 || frame === 51,
     dash_pressed: false,
-    crouch_dash_pressed: frame === 16,
-    grab_held: frame === 22,
+    crouch_dash_pressed: frame === 45,
+    grab_held: frame === 51,
   })),
   verify: verifyRoboboostCandidate,
 })
