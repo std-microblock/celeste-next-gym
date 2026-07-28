@@ -16,5 +16,5 @@
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [advance_gliders / hit_glider_spring / release_glider / pickup_update]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [floor_spring_launches_unheld_glider_after_actor_movement / glider_spring_no_gravity_keeps_its_final_source_frame / springboost_cancel_reverses_into_the_rising_glider_for_regrab], note: [回归锁定 Spring 的 -160 Y 速度、0.15 秒无重力及严格 Holdable 边界：第 103 帧仍为 Normal、位置 (126,462)、速度 (0,160)，第 104 帧才进入 Pickup。]),
   e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.29-springboost-cancel.ts], symbol: [entity-4.29-springboost-cancel], note: [2026-07-28 的真实首差为第 103 帧：Everest 为 (126,462)、速度 (0,160)、Normal，旧 Rust 已在 (126,460) 进入 Pickup。后续修复收紧 Glider Holdable collider 的上边界，并在本地锁定第 103／104 帧；尚需在共享真实 E2E 环境复跑九字段比较，故保持 candidate。]),
+  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/entity-4.29-springboost-cancel.ts], symbol: [entity-4.29-springboost-cancel], note: [2026-07-28 修复后真实 Everest 复跑已消除旧第 103 帧首差：双方均为 (126,462)、速度 (0,160)、Normal。但 Rust 于第 104 帧已进入 Pickup，Everest 仍在 (126,465)、速度 (0,160)、Normal，并于第 106 帧才零速；最大位置／速度误差仍为 6／160。因此保持 candidate，等待继续校准 Holdable 的后续重抓帧。]),
 )
