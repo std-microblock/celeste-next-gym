@@ -316,6 +316,8 @@ footer { padding: 0 14px 20px; color: #7d6889; text-align: center; font: 8px Con
 .editor-object.entity { fill: #ff4f8112; stroke: #ff8baa99; stroke-width: 1; }
 .editor-object:hover { fill: #ffffff1d; stroke: #fff; }
 .editor-object.selected { fill: #ffd37a33; stroke: var(--gold); stroke-width: 2; filter: drop-shadow(0 0 2px #ffd37a); cursor: move; }
+.editor-resize-handles rect { fill: #fff; stroke: var(--gold); stroke-width: 1; vector-effect: non-scaling-stroke; }.editor-resize-handles rect[data-corner="nw"], .editor-resize-handles rect[data-corner="se"] { cursor: nwse-resize; }.editor-resize-handles rect[data-corner="ne"], .editor-resize-handles rect[data-corner="sw"] { cursor: nesw-resize; }
+.editor-zip-node line { stroke: var(--gold); stroke-width: 1; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; pointer-events: none; }.editor-zip-node rect { fill: #ffd37a16; stroke: #ffd37a88; stroke-width: 1; stroke-dasharray: 3 2; vector-effect: non-scaling-stroke; pointer-events: none; }.editor-zip-node circle { fill: var(--gold); stroke: #fff; stroke-width: 1.5; vector-effect: non-scaling-stroke; cursor: move; }
 .editor-draft { fill: #65d9ff30; stroke: var(--cyan); stroke-width: 2; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; pointer-events: none; }
 .editor-spawn { pointer-events: none; filter: drop-shadow(0 0 3px #ff4f81); }.editor-spawn circle { fill: #ff4f8144; stroke: #fff; stroke-width: 1.5; vector-effect: non-scaling-stroke; }.editor-spawn path { fill: none; stroke: #fff; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 .editor-live-note { position: absolute; z-index: 8; right: 14px; bottom: 13px; display: flex; align-items: center; gap: 7px; padding: 7px 10px; color: #d8f9e8; border: 1px solid #72f0b055; background: #071a12dc; box-shadow: 0 5px 20px #0009; font: 8px Consolas, monospace; pointer-events: none; }
@@ -325,9 +327,13 @@ footer { padding: 0 14px 20px; color: #7d6889; text-align: center; font: 8px Con
 .editor-kind span { color: var(--cyan); font: 9px Consolas, monospace; text-transform: uppercase; }
 .editor-kind button { min-height: 28px; padding: 0 8px; color: #ff9bb7; border-color: #743750; }
 .editor-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 14px 13px; border-bottom: 1px solid #3e2c50; }
-.editor-field-grid label, .editor-room-name { display: grid; gap: 5px; color: #aa87bb; font: 8px Consolas, monospace; letter-spacing: .12em; }
-.editor-field-grid input, .editor-room-name input { min-width: 0; height: 32px; padding: 0 8px; color: #fff; border: 1px solid #5e456e; background: #100922; font: 10px Consolas, monospace; }
+.editor-field-grid label, .editor-room-name, .editor-object-fields > label, .editor-map-fields > label { display: grid; gap: 5px; color: #aa87bb; font: 8px Consolas, monospace; letter-spacing: .12em; }
+.editor-field-grid input, .editor-room-name input, .editor-object-fields input, .editor-object-fields select, .editor-map-fields input { min-width: 0; width: 100%; height: 32px; padding: 0 8px; color: #fff; border: 1px solid #5e456e; background: #100922; font: 10px Consolas, monospace; }
 .editor-room-name { margin: 14px 13px; }
+.editor-field-grid.compact { padding: 0; border: 0; }
+.editor-object-fields, .editor-map-fields { display: grid; gap: 10px; padding: 13px; border-bottom: 1px solid #3e2c50; }
+.editor-boolean-fields { display: flex; flex-wrap: wrap; gap: 10px; color: #bbaac3; font-size: 9px; }.editor-boolean-fields label { display: flex; align-items: center; gap: 4px; }.editor-boolean-fields input { width: auto; height: auto; accent-color: var(--pink); }
+.editor-node-fields { display: grid; gap: 8px; margin: 2px 0 0; padding: 9px; color: #8f7b9b; border: 1px solid #4d3862; }.editor-node-fields legend { padding: 0 4px; color: var(--gold); font: 8px Consolas, monospace; }.editor-node-fields > small { line-height: 1.45; }
 .editor-readout { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 11px 13px; border-top: 1px solid #2f213f; }
 .editor-readout small { color: #8e789b; font-size: 9px; }.editor-readout code { color: #dfd2e4; font-size: 9px; }
 .editor-option-group { display: grid; gap: 8px; padding: 12px 13px; border-top: 1px solid #2f213f; }

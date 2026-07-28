@@ -8,12 +8,12 @@ describe('production scenario registry', () => {
   const registry = buildRegistry(scenarios)
 
   it('derives all target and status counts from explicit indexes', () => {
-    assert.equal(registry.scenarios.length, 191)
-    assert.equal(registry.byTarget.get('playground')?.length, 147)
+    assert.equal(registry.scenarios.length, 193)
+    assert.equal(registry.byTarget.get('playground')?.length, 149)
     assert.equal(registry.byTarget.get('area-1')?.length, 38)
     assert.equal(registry.byTarget.get('area-2')?.length, 5)
     assert.equal(registry.byTarget.get('area-4')?.length, 1)
-    assert.deepEqual(registry.counts, { active: 176, candidate: 15 })
+    assert.deepEqual(registry.counts, { active: 179, candidate: 14 })
   })
 
   it('keeps evidence-less scenarios as opt-in candidates', () => {
@@ -30,7 +30,6 @@ describe('production scenario registry', () => {
       'entity-4.29-springboost-cancel',
       'other-5.1-bino-tech',
       'other-5.1.1-bino-clip',
-      'other-5.1.3-bino-interaction-storage',
       'other-5.1.4-bino-extensions',
       'other-5.10-spinner-stunning',
       'other-5.11-spinner-freeze',

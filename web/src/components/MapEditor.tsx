@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import type { EntityKind, GymMap, MapEntity, SimState } from '../model'
 import type { VisualTheme } from '../visualThemes'
 import { GameView } from './GameView'
@@ -8,6 +8,7 @@ const GRID_SIZE = 8
 type EditorTool = 'select' | 'solid' | 'spawn' | 'erase' | `entity:${string}`
 type EditorSelection = { type: 'solid' | 'entity'; index: number }
 type EditableBounds = { x: number; y: number; width: number; height: number }
+type ResizeCorner = 'nw' | 'ne' | 'se' | 'sw'
 
 interface EntityTemplate {
   id: string
@@ -17,13 +18,16 @@ interface EntityTemplate {
   width: number
   height: number
   direction?: { x: number; y: number }
+  nodes?: Array<{ x: number; y: number }>
 }
 
 interface DragState {
-  kind: 'create-solid' | 'move-selection'
+  kind: 'create-solid' | 'move-selection' | 'resize-selection' | 'move-node'
   start: { x: number; y: number }
   originalMap: GymMap
   selection?: EditorSelection
+  corner?: ResizeCorner
+  nodeIndex?: number
 }
 
 const ENTITY_TEMPLATES: readonly EntityTemplate[] = [
@@ -43,6 +47,7 @@ const ENTITY_TEMPLATES: readonly EntityTemplate[] = [
   { id: 'bumper', kind: 'bumper', label: '碰碰球', name: 'bigSpinner', width: 24, height: 24 },
   { id: 'theo-crystal', kind: 'theo_crystal', label: 'Theo 水晶', name: 'theoCrystal', width: 8, height: 10 },
   { id: 'glider', kind: 'glider', label: '水母', name: 'glider', width: 8, height: 10 },
+  { id: 'zip-mover', kind: 'zip_mover', label: 'Zip Mover', name: 'zipMover', width: 32, height: 16, nodes: [{ x: 64, y: 0 }] },
 ] as const
 
 const SPIKE_DIRECTIONS = [
@@ -84,6 +89,7 @@ export function createEditorEntity(templateIdOrKind: string, x: number, y: numbe
     kind: template.kind,
     bounds: { x, y, width: template.width, height: template.height },
     direction: template.direction ? { ...template.direction } : { x: 0, y: 0 },
+    ...(template.nodes ? { nodes: template.nodes.map((node) => ({ x: x + node.x, y: y + node.y })) } : {}),
     name: template.name,
   }
 }
@@ -111,6 +117,26 @@ export function editorEntityHitBounds(entity: MapEntity): MapEntity['bounds'] {
   if (entity.kind !== 'spikes') return box
   if (Math.abs(entity.direction.y) > 0) return { x: box.x, y: box.y - 3, width: box.width, height: 9 }
   return { x: box.x - 3, y: box.y, width: 9, height: box.height }
+}
+
+export function resizeEditorBounds(bounds: EditableBounds, corner: ResizeCorner, point: { x: number; y: number }, map: GymMap): EditableBounds {
+  const left = bounds.x
+  const top = bounds.y
+  const right = bounds.x + bounds.width
+  const bottom = bounds.y + bounds.height
+  const snappedX = snapToGrid(point.x, map.bounds.x)
+  const snappedY = snapToGrid(point.y, map.bounds.y)
+  const minimum = GRID_SIZE
+  const nextLeft = corner === 'nw' || corner === 'sw' ? Math.min(snappedX, right - minimum) : left
+  const nextRight = corner === 'ne' || corner === 'se' ? Math.max(snappedX, left + minimum) : right
+  const nextTop = corner === 'nw' || corner === 'ne' ? Math.min(snappedY, bottom - minimum) : top
+  const nextBottom = corner === 'sw' || corner === 'se' ? Math.max(snappedY, top + minimum) : bottom
+  return {
+    x: Math.max(map.bounds.x, nextLeft),
+    y: Math.max(map.bounds.y, nextTop),
+    width: Math.min(map.bounds.x + map.bounds.width, nextRight) - Math.max(map.bounds.x, nextLeft),
+    height: Math.min(map.bounds.y + map.bounds.height, nextBottom) - Math.max(map.bounds.y, nextTop),
+  }
 }
 
 function selectionBounds(map: GymMap, selection: EditorSelection | null): EditableBounds | null {
@@ -233,6 +259,24 @@ export function MapEditor({ map, state, frame, theme, experiencing, ready, onCha
     event.currentTarget.setPointerCapture(event.pointerId)
   }
 
+  const beginResize = (event: ReactPointerEvent<SVGRectElement>, corner: ResizeCorner) => {
+    event.stopPropagation()
+    if (!selection || tool !== 'select') return
+    const svg = event.currentTarget.ownerSVGElement
+    if (!svg) return
+    drag.current = { kind: 'resize-selection', corner, start: pointInMap(event.clientX, event.clientY, svg, map), originalMap: structuredClone(map), selection }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  const beginNodeDrag = (event: ReactPointerEvent<SVGCircleElement>, nodeIndex: number) => {
+    event.stopPropagation()
+    if (!selection || selection.type !== 'entity' || tool !== 'select') return
+    const svg = event.currentTarget.ownerSVGElement
+    if (!svg) return
+    drag.current = { kind: 'move-node', nodeIndex, start: pointInMap(event.clientX, event.clientY, svg, map), originalMap: structuredClone(map), selection }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
   const pointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
     if (event.target !== event.currentTarget && !(event.target instanceof SVGRectElement && event.target.dataset.editorBackground === 'true')) return
     const point = pointInMap(event.clientX, event.clientY, event.currentTarget, map)
@@ -263,6 +307,23 @@ export function MapEditor({ map, state, frame, theme, experiencing, ready, onCha
     }
     const originalBounds = selectionBounds(currentDrag.originalMap, currentDrag.selection ?? null)
     if (!originalBounds || !currentDrag.selection) return
+    if (currentDrag.kind === 'resize-selection' && currentDrag.corner) {
+      onChange(replaceSelectionBounds(currentDrag.originalMap, currentDrag.selection, resizeEditorBounds(originalBounds, currentDrag.corner, point, map)))
+      return
+    }
+    if (currentDrag.kind === 'move-node' && currentDrag.selection.type === 'entity' && currentDrag.nodeIndex !== undefined) {
+      const entities = currentDrag.originalMap.entities.map((entity, index) => {
+        if (index !== currentDrag.selection?.index) return entity
+        const nodes = [...(entity.nodes ?? [])]
+        nodes[currentDrag.nodeIndex!] = {
+          x: snapToGrid(point.x - entity.bounds.width / 2, map.bounds.x),
+          y: snapToGrid(point.y - entity.bounds.height / 2, map.bounds.y),
+        }
+        return { ...entity, nodes }
+      })
+      onChange({ ...currentDrag.originalMap, entities })
+      return
+    }
     const dx = snapToGrid(point.x - currentDrag.start.x)
     const dy = snapToGrid(point.y - currentDrag.start.y)
     const moved = {
@@ -280,7 +341,7 @@ export function MapEditor({ map, state, frame, theme, experiencing, ready, onCha
       rememberAndChange({ ...map, solids: [...map.solids, draft] })
       setSelection({ type: 'solid', index: map.solids.length })
       setTool('select')
-    } else if (currentDrag.kind === 'move-selection') {
+    } else if (currentDrag.kind === 'move-selection' || currentDrag.kind === 'resize-selection' || currentDrag.kind === 'move-node') {
       finishContinuousChange(currentDrag.originalMap)
     }
     drag.current = null
@@ -302,13 +363,28 @@ export function MapEditor({ map, state, frame, theme, experiencing, ready, onCha
     setSelection(null)
   }
 
-  const updateSelectedEntity = (update: (entity: MapEntity) => MapEntity) => {
-    if (selection?.type !== 'entity') return
-    rememberAndChange({
-      ...map,
-      entities: map.entities.map((entity, index) => index === selection.index ? update(entity) : entity),
-    })
+  const updateSelectedEntity = (mutator: (entity: MapEntity) => MapEntity) => {
+    if (!selection || selection.type !== 'entity') return
+    rememberAndChange({ ...map, entities: map.entities.map((entity, index) => index === selection.index ? mutator(entity) : entity) })
   }
+
+  const updateMapBounds = (field: keyof GymMap['bounds'], value: number) => {
+    if (!Number.isFinite(value)) return
+    rememberAndChange({ ...map, bounds: { ...map.bounds, [field]: field === 'width' || field === 'height' ? Math.max(8, value) : value } })
+  }
+
+  useEffect(() => {
+    const keydown = (event: KeyboardEvent) => {
+      if (event.target instanceof HTMLElement && event.target.matches('input, textarea, select, button')) return
+      if (event.key === 'Escape') { setSelection(null); return }
+      if (!selection || (event.key !== 'Delete' && event.key !== 'Backspace')) return
+      event.preventDefault()
+      rememberAndChange(deleteSelection(map, selection))
+      setSelection(null)
+    }
+    window.addEventListener('keydown', keydown)
+    return () => window.removeEventListener('keydown', keydown)
+  }, [map, selection])
 
   return <main className={`map-editor ${experiencing ? 'experiencing' : ''}`}>
     <aside className="editor-palette">
@@ -355,6 +431,14 @@ export function MapEditor({ map, state, frame, theme, experiencing, ready, onCha
           <rect className="editor-grid" x={map.bounds.x} y={map.bounds.y} width={map.bounds.width} height={map.bounds.height} />
           {map.solids.map((solid, index) => <rect key={`solid-${index}`} className={`editor-object solid ${selection?.type === 'solid' && selection.index === index ? 'selected' : ''}`} {...solid} onPointerDown={(event) => beginSelectionDrag(event, { type: 'solid', index })} />)}
           {map.entities.map((entity, index) => <rect key={`entity-${index}`} data-kind={entity.kind} className={`editor-object entity ${selection?.type === 'entity' && selection.index === index ? 'selected' : ''}`} {...editorEntityHitBounds(entity)} onPointerDown={(event) => beginSelectionDrag(event, { type: 'entity', index })} />)}
+          {selectedEntity?.kind === 'zip_mover' && selectedEntity.nodes?.map((node, nodeIndex) => <g className="editor-zip-node" key={nodeIndex}>
+            <line x1={selectedEntity.bounds.x + selectedEntity.bounds.width / 2} y1={selectedEntity.bounds.y + selectedEntity.bounds.height / 2} x2={node.x + selectedEntity.bounds.width / 2} y2={node.y + selectedEntity.bounds.height / 2} />
+            <rect x={node.x} y={node.y} width={selectedEntity.bounds.width} height={selectedEntity.bounds.height} />
+            <circle cx={node.x + selectedEntity.bounds.width / 2} cy={node.y + selectedEntity.bounds.height / 2} r="5" onPointerDown={(event) => beginNodeDrag(event, nodeIndex)} />
+          </g>)}
+          {selection && bounds && <g className="editor-resize-handles">
+            {([['nw', bounds.x, bounds.y], ['ne', bounds.x + bounds.width, bounds.y], ['se', bounds.x + bounds.width, bounds.y + bounds.height], ['sw', bounds.x, bounds.y + bounds.height]] as const).map(([corner, x, y]) => <rect key={corner} data-corner={corner} x={x - 2} y={y - 2} width="4" height="4" onPointerDown={(event) => beginResize(event, corner)} />)}
+          </g>}
           {draft && <rect className="editor-draft" {...draft} />}
           <g className="editor-spawn" transform={`translate(${map.spawn.x} ${map.spawn.y})`}><circle r="7" /><path d="M -4 0 H 4 M 0 -4 V 4" /></g>
         </svg>}
@@ -370,19 +454,37 @@ export function MapEditor({ map, state, frame, theme, experiencing, ready, onCha
           {(['x', 'y', 'width', 'height'] as const).map((field) => <label key={field}><small>{field.toUpperCase()}</small><input type="number" value={bounds[field]} onChange={(event) => updateBounds(field, Number(event.target.value))} /></label>)}
         </div>
         {selectedEntity?.kind === 'spikes' && <div className="editor-option-group"><small>尖刺方向</small><div className="editor-option-buttons">
-          {SPIKE_DIRECTIONS.map((option) => <button key={option.name} className={selectedEntity.name === option.name ? 'active' : ''} onClick={() => updateSelectedEntity((entity) => setEditorSpikeDirection(entity, option.direction))}>{option.label}</button>)}
+          {SPIKE_DIRECTIONS.map((option) => <button key={option.name} className={selectedEntity.direction.x === option.direction.x && selectedEntity.direction.y === option.direction.y ? 'active' : ''} onClick={() => updateSelectedEntity((entity) => setEditorSpikeDirection(entity, option.direction))}>{option.label}</button>)}
         </div></div>}
         {selectedEntity?.kind === 'crystal_static_spinner' && <div className="editor-option-group"><small>圆刺外观</small><div className="editor-option-buttons spinner-variants">
           {SPINNER_VARIANTS.map((option) => <button key={option.id} className={(selectedEntity.variant ?? 'theme') === option.id ? 'active' : ''} onClick={() => updateSelectedEntity((entity) => ({ ...entity, variant: option.id === 'theme' ? undefined : option.id }))}>{option.label}</button>)}
         </div></div>}
-        {selectedEntity && <div className="editor-readout"><small>方向</small><code>{selectedEntity.direction.x}, {selectedEntity.direction.y}</code></div>}
+        {selectedEntity && <div className="editor-object-fields">
+          <label><small>NAME</small><input value={selectedEntity.name} onChange={(event) => updateSelectedEntity((entity) => ({ ...entity, name: event.target.value }))} /></label>
+          <label><small>KIND</small><select value={selectedEntity.kind} onChange={(event) => updateSelectedEntity((entity) => {
+            const kind = event.target.value as EntityKind
+            const template = ENTITY_TEMPLATES.find((candidate) => candidate.kind === kind)
+            return {
+              ...entity,
+              kind,
+              ...(kind === 'zip_mover' && !entity.nodes?.length ? { nodes: [{ x: entity.bounds.x + 64, y: entity.bounds.y }] } : {}),
+              ...(template && entity.name === selectedEntity.name ? { name: template.name } : {}),
+            }
+          })}>{[...new Set([selectedEntity.kind, ...ENTITY_TEMPLATES.map((template) => template.kind)])].map((kind) => <option value={kind} key={kind}>{kind}</option>)}</select></label>
+          <div className="editor-field-grid compact"><label><small>DIRECTION X</small><input type="number" step="0.1" value={selectedEntity.direction.x} onChange={(event) => updateSelectedEntity((entity) => ({ ...entity, direction: { ...entity.direction, x: Number(event.target.value) } }))} /></label><label><small>DIRECTION Y</small><input type="number" step="0.1" value={selectedEntity.direction.y} onChange={(event) => updateSelectedEntity((entity) => ({ ...entity, direction: { ...entity.direction, y: Number(event.target.value) } }))} /></label></div>
+          <div className="editor-boolean-fields"><label><input type="checkbox" checked={Boolean(selectedEntity.shielded)} onChange={(event) => updateSelectedEntity((entity) => ({ ...entity, shielded: event.target.checked }))} />shielded</label><label><input type="checkbox" checked={Boolean(selectedEntity.single_use)} onChange={(event) => updateSelectedEntity((entity) => ({ ...entity, single_use: event.target.checked }))} />single_use</label></div>
+          {selectedEntity.kind === 'zip_mover' && <fieldset className="editor-node-fields"><legend>ZIP MOVER 终点</legend><div className="editor-field-grid compact"><label><small>NODE X</small><input type="number" value={selectedEntity.nodes?.[0]?.x ?? selectedEntity.bounds.x + 64} onChange={(event) => updateSelectedEntity((entity) => ({ ...entity, nodes: [{ x: Number(event.target.value), y: entity.nodes?.[0]?.y ?? entity.bounds.y }] }))} /></label><label><small>NODE Y</small><input type="number" value={selectedEntity.nodes?.[0]?.y ?? selectedEntity.bounds.y} onChange={(event) => updateSelectedEntity((entity) => ({ ...entity, nodes: [{ x: entity.nodes?.[0]?.x ?? entity.bounds.x + 64, y: Number(event.target.value) }] }))} /></label></div><small>画布上的圆形手柄也可直接拖动终点。</small></fieldset>}
+        </div>}
       </> : <>
-        <label className="editor-room-name"><small>ROOM NAME</small><input value={map.name} onChange={(event) => onChange({ ...map, name: event.target.value })} /></label>
-        <div className="editor-readout"><small>边界</small><code>{map.bounds.width} × {map.bounds.height}</code></div>
-        <div className="editor-readout"><small>出生点</small><code>{map.spawn.x}, {map.spawn.y}</code></div>
-        <div className="editor-readout"><small>来源</small><code>{map.source_package ?? 'custom'}</code></div>
+        <div className="editor-map-fields">
+          <label><small>ROOM NAME</small><input value={map.name} onChange={(event) => rememberAndChange({ ...map, name: event.target.value })} /></label>
+          <label><small>ROOM ID</small><input value={map.room ?? ''} onChange={(event) => rememberAndChange({ ...map, room: event.target.value })} /></label>
+          <div className="editor-field-grid compact">{(['x', 'y', 'width', 'height'] as const).map((field) => <label key={field}><small>BOUND {field.toUpperCase()}</small><input type="number" value={map.bounds[field]} onChange={(event) => updateMapBounds(field, Number(event.target.value))} /></label>)}</div>
+          <div className="editor-field-grid compact"><label><small>SPAWN X</small><input type="number" value={map.spawn.x} onChange={(event) => rememberAndChange({ ...map, spawn: { ...map.spawn, x: Number(event.target.value) } })} /></label><label><small>SPAWN Y</small><input type="number" value={map.spawn.y} onChange={(event) => rememberAndChange({ ...map, spawn: { ...map.spawn, y: Number(event.target.value) } })} /></label></div>
+          <label><small>SOURCE PACKAGE</small><input placeholder="custom" value={map.source_package ?? ''} onChange={(event) => rememberAndChange({ ...map, source_package: event.target.value || null })} /></label>
+        </div>
       </>}
-      <div className="editor-inspector-tip"><strong>{experiencing ? '正在实时体验' : toolLabel(tool)}</strong><span>{experiencing ? '键盘和手柄输入直接送入 WASM；返回编辑时地图保持不变。' : tool === 'select' ? '点击对象以选择，拖动对象会按网格吸附。' : tool === 'solid' ? '在画布空白处拖动，创建新的碰撞块。' : '在画布中点击即可应用当前工具。'}</span></div>
+      <div className="editor-inspector-tip"><strong>{experiencing ? '正在实时体验' : toolLabel(tool)}</strong><span>{experiencing ? '键盘和手柄输入直接送入 WASM；返回编辑时地图保持不变。' : tool === 'select' ? '拖动对象移动，拖动四角缩放；Delete / Backspace 删除。' : tool === 'solid' ? '在画布空白处拖动，创建新的碰撞块。' : '在画布中点击即可应用当前工具。'}</span></div>
     </aside>
   </main>
 }
