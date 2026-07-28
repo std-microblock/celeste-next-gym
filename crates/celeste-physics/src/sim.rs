@@ -30,6 +30,7 @@ const END_DASH_SPEED: f32 = 160.0;
 const DASH_TIME: f32 = 0.15;
 const DASH_COOLDOWN: f32 = 0.2;
 const DASH_ATTACK_TIME: f32 = 0.3;
+const DASH_CORNER_CORRECTION: i32 = 4;
 const SUPER_JUMP_H: f32 = 260.0;
 const SUPER_BOUNCE_SPEED: f32 = -185.0;
 const BOUNCE_SPEED: f32 = -140.0;
@@ -5027,6 +5028,12 @@ fn grounded_at_offset(p: &PlayerSnapshot, map: &Map, offset: f32) -> bool {
     map.solid_at(at) || map.jump_thru_at(at, current_player_rect(p, p.pos.x, p.pos.y).bottom())
 }
 
+fn grounded_at_position(p: &PlayerSnapshot, map: &Map, position: Vec2) -> bool {
+    let player = current_player_rect(p, position.x, position.y);
+    let below = current_player_rect(p, position.x, position.y + 1.0);
+    map.solid_at(below) || map.jump_thru_at(below, player.bottom())
+}
+
 fn water_check(p: &PlayerSnapshot, map: &Map, offset_y: f32) -> bool {
     map.water_at(current_player_rect(p, p.pos.x, p.pos.y + offset_y))
 }
@@ -5198,7 +5205,7 @@ fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount:
                     && p.speed.y == 0.0
                     && p.speed.x != 0.0
                 {
-                    for correction in 1..=4 {
+                    for correction in 1..=DASH_CORNER_CORRECTION {
                         for direction in [1.0, -1.0] {
                             let offset = correction as f32 * direction;
                             let corrected =
@@ -5252,6 +5259,34 @@ fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount:
                                 p.pos.x += correction as f32;
                                 p.pos.y -= 1.0;
                                 p.movement_remainder.y = 0.0;
+                                return;
+                            }
+                        }
+                    }
+                }
+                if sign > 0
+                    && p.speed.y > 0.0
+                    && matches!(p.state, PlayerState::Dash | PlayerState::RedDash)
+                    && !p.dash_started_on_ground
+                {
+                    if p.speed.x <= 0.0 {
+                        for correction in 1..=DASH_CORNER_CORRECTION {
+                            let offset = -(correction as f32);
+                            let corrected = Vec2::new(p.pos.x + offset, p.pos.y);
+                            if !grounded_at_position(p, map, corrected) {
+                                p.pos = Vec2::new(corrected.x, corrected.y + 1.0);
+                                p.movement_remainder = Vec2::default();
+                                return;
+                            }
+                        }
+                    }
+                    if p.speed.x >= 0.0 {
+                        for correction in 1..=DASH_CORNER_CORRECTION {
+                            let offset = correction as f32;
+                            let corrected = Vec2::new(p.pos.x + offset, p.pos.y);
+                            if !grounded_at_position(p, map, corrected) {
+                                p.pos = Vec2::new(corrected.x, corrected.y + 1.0);
+                                p.movement_remainder = Vec2::default();
                                 return;
                             }
                         }
@@ -10282,6 +10317,64 @@ mod tests {
         let p = simulate(p, &[InputState::default()], &map, 1).unwrap();
         assert_eq!(p.pos, Vec2::new(37.0, 80.0));
         assert_eq!(p.speed, Vec2::new(DASH_SPEED, 0.0));
+    }
+    #[test]
+    fn downward_dash_corner_correction_moves_left_around_a_one_pixel_floor_overlap() {
+        let map = Map {
+            solids: vec![Rect::new(40.0, 80.0, 40.0, 80.0)],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(37.0, 80.0),
+            speed: Vec2::new(0.0, DASH_SPEED),
+            state: PlayerState::Dash,
+            dash_dir: Vec2::new(0.0, 1.0),
+            state_timer: DASH_TIME,
+            ducking: true,
+            ..PlayerSnapshot::default()
+        };
+        let p = simulate(p, &[InputState::default()], &map, 1).unwrap();
+        assert_eq!(p.pos, Vec2::new(36.0, 81.0));
+        assert_eq!(p.speed, Vec2::new(0.0, DASH_SPEED));
+    }
+    #[test]
+    fn downward_dash_corner_correction_follows_horizontal_speed_direction() {
+        let map = Map {
+            solids: vec![Rect::new(0.0, 80.0, 40.0, 80.0)],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(43.0, 80.0),
+            speed: Vec2::new(0.1, DASH_SPEED),
+            state: PlayerState::Dash,
+            dash_dir: Vec2::new(0.0, 1.0),
+            state_timer: DASH_TIME,
+            ducking: true,
+            ..PlayerSnapshot::default()
+        };
+        let p = simulate(p, &[InputState::default()], &map, 1).unwrap();
+        assert_eq!(p.pos, Vec2::new(44.0, 81.0));
+        assert_eq!(p.speed, Vec2::new(0.1, DASH_SPEED));
+    }
+    #[test]
+    fn downward_dash_started_on_ground_does_not_corner_correct() {
+        let map = Map {
+            solids: vec![Rect::new(40.0, 80.0, 40.0, 80.0)],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(37.0, 80.0),
+            speed: Vec2::new(0.0, DASH_SPEED),
+            state: PlayerState::Dash,
+            dash_dir: Vec2::new(0.0, 1.0),
+            state_timer: DASH_TIME,
+            dash_started_on_ground: true,
+            ducking: true,
+            ..PlayerSnapshot::default()
+        };
+        let p = simulate(p, &[InputState::default()], &map, 1).unwrap();
+        assert_eq!(p.pos, Vec2::new(37.0, 80.0));
+        assert_eq!(p.speed.y, 0.0);
     }
     #[test]
     fn dash_attack_survives_dash_end_and_breaks_a_late_feather_shield() {
