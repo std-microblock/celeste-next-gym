@@ -140,6 +140,8 @@ pub struct TheoCrystalSnapshot {
     pub held: bool,
     pub cannot_hold_timer: f32,
     pub gravity_timer: f32,
+    /// TheoCrystal.Die disables pushing and kills the player after failed squish escape.
+    pub dead: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -149,6 +151,46 @@ pub struct HeartGemSnapshot {
     pub phase: u8,
     pub wait_frames: u8,
     pub collected: bool,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CoreMode {
+    #[default]
+    None,
+    Hot,
+    Cold,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct RisingLavaSnapshot {
+    /// Entity.Position, which is also the top-left of the 340x120 lethal hitbox.
+    pub position: Vec2,
+    pub waiting: bool,
+    pub ice_mode: bool,
+    pub intro: bool,
+    pub delay: f32,
+    pub initialized: bool,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SandwichLavaSnapshot {
+    /// Entity.Position, shared by the bottom hitbox and the visual components.
+    pub position: Vec2,
+    pub start_x: f32,
+    pub waiting: bool,
+    pub ice_mode: bool,
+    pub leaving: bool,
+    pub persistent: bool,
+    pub removed: bool,
+    pub delay: f32,
+    pub leave_timer: f32,
+    /// Source-local LavaRect offsets; kept to preserve Waiting/leaving lifecycle.
+    pub top_rect_y: f32,
+    pub bottom_rect_y: f32,
+    pub initialized: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -163,6 +205,8 @@ pub struct GliderSnapshot {
     pub gravity_timer: f32,
     pub no_gravity_timer: f32,
     pub high_friction_timer: f32,
+    /// Glider.OnSquish removes the actor when both wiggle searches fail.
+    pub removed: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -178,6 +222,19 @@ pub struct CloudSnapshot {
     pub remainder_y: f32,
     /// Original entity position captured before the runtime map is moved.
     pub start: Vec2,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SeekerSnapshot {
+    /// Actor.Position / physics-hitbox center.
+    pub position: Vec2,
+    pub speed: Vec2,
+    pub remainder: Vec2,
+    /// Vanilla Seeker state index (Attack=3, Stunned=4, Skidding=5).
+    pub state: u8,
+    /// Coroutine time remaining for the supported Stunned lifecycle.
+    pub state_timer: f32,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -208,6 +265,17 @@ impl Default for CassetteManagerSnapshot {
             tempo_mult: 1.0,
         }
     }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct TempleGateSnapshot {
+    /// Original top-left entity position restored after SetHeight.
+    pub position: Vec2,
+    pub current_height: f32,
+    pub closed_height: f32,
+    pub open: bool,
+    pub triggered: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -243,6 +311,9 @@ fn default_dashes() -> u8 {
 fn default_facing() -> bool {
     true
 }
+fn default_frame_delta_time() -> f32 {
+    0.016_666_7
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -273,6 +344,13 @@ pub struct PlayerSnapshot {
     pub transition_direction: Vec2,
     pub transition_target: Vec2,
     pub transition_timer: f32,
+    /// Level.Camera.Position used by camera-driven hazards.
+    pub camera: Vec2,
+    pub camera_initialized: bool,
+    /// Session.CoreMode observed by CoreModeListener entities.
+    pub core_mode: CoreMode,
+    /// Player.JustRespawned gates RisingLava and SandwichLava waiting behavior.
+    pub just_respawned: bool,
     pub dash_dir: Vec2,
     pub last_aim: Vec2,
     pub before_dash_speed: Vec2,
@@ -287,6 +365,13 @@ pub struct PlayerSnapshot {
     pub freeze_timer: f32,
     /// Engine.TimeRate written by HeartGem. Raw engine-frame time remains DT.
     pub time_rate: f32,
+    /// Engine.DeltaTime captured once at the beginning of the current raw
+    /// engine frame. It is derived from `time_rate`, is not part of the
+    /// portable wire snapshot, and prevents an entity that writes TimeRate
+    /// mid-frame from changing later entities' delta until the next frame.
+    #[serde(skip, default = "default_frame_delta_time")]
+    #[doc(hidden)]
+    pub frame_delta_time: f32,
     pub state_timer: f32,
     pub boost_target: Vec2,
     pub boost_red: bool,
@@ -352,10 +437,18 @@ pub struct PlayerSnapshot {
     pub theo_crystals: Vec<TheoCrystalSnapshot>,
     /// Per-entity vanilla HeartGem collection coroutine state.
     pub heart_gems: Vec<HeartGemSnapshot>,
+    /// Per-entity Core RisingLava camera-following hazard state.
+    pub rising_lavas: Vec<RisingLavaSnapshot>,
+    /// Per-entity persistent Core SandwichLava hazard state.
+    pub sandwich_lavas: Vec<SandwichLavaSnapshot>,
     /// Per-entity vanilla Glider actor and Holdable state.
     pub gliders: Vec<GliderSnapshot>,
     /// Per-entity vanilla non-fragile Cloud movement state.
     pub clouds: Vec<CloudSnapshot>,
+    /// Per-entity Seeker Actor and StateMachine state, in map entity order.
+    pub seekers: Vec<SeekerSnapshot>,
+    /// Per-entity CloseBehindPlayerAlways TempleGate state.
+    pub temple_gates: Vec<TempleGateSnapshot>,
     /// Map-order TheoCrystal index currently held by Player.
     pub holding_theo: Option<u16>,
     /// Map-order Glider index currently held by Player.
@@ -454,6 +547,10 @@ impl Default for PlayerSnapshot {
             transition_direction: Vec2::default(),
             transition_target: Vec2::default(),
             transition_timer: 0.0,
+            camera: Vec2::default(),
+            camera_initialized: false,
+            core_mode: CoreMode::None,
+            just_respawned: false,
             dash_dir: Vec2::default(),
             last_aim: Vec2::new(1.0, 0.0),
             before_dash_speed: Vec2::default(),
@@ -465,6 +562,7 @@ impl Default for PlayerSnapshot {
             dash_refill_cooldown_timer: 0.0,
             freeze_timer: 0.0,
             time_rate: 1.0,
+            frame_delta_time: default_frame_delta_time(),
             state_timer: 0.0,
             boost_target: Vec2::default(),
             boost_red: false,
@@ -506,8 +604,12 @@ impl Default for PlayerSnapshot {
             move_blocks: vec![],
             theo_crystals: vec![],
             heart_gems: vec![],
+            rising_lavas: vec![],
+            sandwich_lavas: vec![],
             gliders: vec![],
             clouds: vec![],
+            seekers: vec![],
+            temple_gates: vec![],
             holding_theo: None,
             holding_glider: None,
             min_hold_timer: 0.0,

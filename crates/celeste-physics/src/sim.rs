@@ -143,8 +143,13 @@ pub fn simulate_trace(
     initialize_move_blocks(&mut snapshot, &mut runtime_map);
     initialize_theo_crystals(&mut snapshot, &mut runtime_map);
     initialize_heart_gems(&mut snapshot, &mut runtime_map);
+    initialize_rising_lavas(&mut snapshot, &mut runtime_map);
+    initialize_sandwich_lavas(&mut snapshot, &mut runtime_map);
     initialize_gliders(&mut snapshot, &mut runtime_map);
     initialize_clouds(&mut snapshot, &mut runtime_map);
+    initialize_camera(&mut snapshot, &runtime_map);
+    initialize_seekers(&mut snapshot, &mut runtime_map);
+    initialize_temple_gates(&mut snapshot, &mut runtime_map);
     initialize_cassette_blocks(&mut snapshot, &mut runtime_map);
     initialize_spinners(&mut snapshot, &mut runtime_map);
     position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
@@ -184,6 +189,8 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         s.transition_target.x,
         s.transition_target.y,
         s.transition_timer,
+        s.camera.x,
+        s.camera.y,
         s.state_timer,
         s.boost_target.x,
         s.boost_target.y,
@@ -342,6 +349,24 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         .iter()
         .all(|value| value.is_finite())
     });
+    let rising_lavas_are_finite = s.rising_lavas.iter().all(|lava| {
+        [lava.position.x, lava.position.y, lava.delay]
+            .iter()
+            .all(|value| value.is_finite())
+    });
+    let sandwich_lavas_are_finite = s.sandwich_lavas.iter().all(|lava| {
+        [
+            lava.position.x,
+            lava.position.y,
+            lava.start_x,
+            lava.delay,
+            lava.leave_timer,
+            lava.top_rect_y,
+            lava.bottom_rect_y,
+        ]
+        .iter()
+        .all(|value| value.is_finite())
+    });
     let clouds_are_finite = s.clouds.iter().all(|cloud| {
         [
             cloud.speed,
@@ -350,6 +375,19 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
             cloud.remainder_y,
             cloud.start.x,
             cloud.start.y,
+        ]
+        .iter()
+        .all(|value| value.is_finite())
+    });
+    let seekers_are_finite = s.seekers.iter().all(|seeker| {
+        [
+            seeker.position.x,
+            seeker.position.y,
+            seeker.speed.x,
+            seeker.speed.y,
+            seeker.remainder.x,
+            seeker.remainder.y,
+            seeker.state_timer,
         ]
         .iter()
         .all(|value| value.is_finite())
@@ -366,6 +404,16 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         .iter()
         .all(|value| value.is_finite())
     });
+    let temple_gates_are_finite = s.temple_gates.iter().all(|gate| {
+        [
+            gate.position.x,
+            gate.position.y,
+            gate.current_height,
+            gate.closed_height,
+        ]
+        .iter()
+        .all(|value| value.is_finite())
+    });
     let spinners_are_finite = s.spinners.iter().all(|spinner| {
         [spinner.position.x, spinner.position.y, spinner.offset]
             .iter()
@@ -376,8 +424,12 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         && bounce_blocks_are_finite
         && move_blocks_are_finite
         && theo_crystals_are_finite
+        && rising_lavas_are_finite
+        && sandwich_lavas_are_finite
         && gliders_are_finite
         && clouds_are_finite
+        && seekers_are_finite
+        && temple_gates_are_finite
         && cassette_blocks_are_finite
         && spinners_are_finite
     {
@@ -405,8 +457,13 @@ fn initialize_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
         }
         let state = &mut p.theo_crystals[theo_index];
         state.held = p.holding_theo == Some(theo_index as u16);
-        entity.bounds.x = state.position.x - 4.0;
-        entity.bounds.y = state.position.y - 10.0;
+        if state.dead {
+            entity.bounds.x = -1_000_000.0;
+            entity.bounds.y = -1_000_000.0;
+        } else {
+            entity.bounds.x = state.position.x - 4.0;
+            entity.bounds.y = state.position.y - 10.0;
+        }
         entity.bounds.width = 8.0;
         entity.bounds.height = 10.0;
     }
@@ -435,8 +492,13 @@ fn initialize_gliders(p: &mut PlayerSnapshot, map: &mut Map) {
         }
         let state = &mut p.gliders[glider_index];
         state.held = p.holding_glider == Some(glider_index as u16);
-        entity.bounds.x = state.position.x - 4.0;
-        entity.bounds.y = state.position.y - 10.0;
+        if state.removed {
+            entity.bounds.x = -1_000_000.0;
+            entity.bounds.y = -1_000_000.0;
+        } else {
+            entity.bounds.x = state.position.x - 4.0;
+            entity.bounds.y = state.position.y - 10.0;
+        }
         entity.bounds.width = 8.0;
         entity.bounds.height = 10.0;
     }
@@ -791,9 +853,9 @@ fn advance_clouds(p: &mut PlayerSnapshot, map: &mut Map) {
             }
             1 => {
                 if state.position.y >= state.start.y {
-                    state.speed -= 1200.0 * DT;
+                    state.speed -= 1200.0 * p.frame_delta_time;
                 } else {
-                    state.speed += 1200.0 * DT;
+                    state.speed += 1200.0 * p.frame_delta_time;
                     if state.speed >= -100.0 {
                         if player_riding_jump_thru(p, entity.bounds) && p.speed.y >= 0.0 {
                             p.speed.y = -200.0;
@@ -807,12 +869,12 @@ fn advance_clouds(p: &mut PlayerSnapshot, map: &mut Map) {
                     state.speed
                 };
                 let speed = state.speed;
-                move_cloud_v(p, entity, &mut state, speed * DT, lift_y);
+                move_cloud_v(p, entity, &mut state, speed * p.frame_delta_time, lift_y);
             }
             2 => {
-                state.speed = approach(state.speed, 180.0, 600.0 * DT);
+                state.speed = approach(state.speed, 180.0, 600.0 * p.frame_delta_time);
                 let exact_y = state.position.y + state.remainder_y;
-                let desired_y = approach(exact_y, state.start.y, state.speed * DT);
+                let desired_y = approach(exact_y, state.start.y, state.speed * p.frame_delta_time);
                 let amount = desired_y - exact_y;
                 let speed = state.speed;
                 move_cloud_v(p, entity, &mut state, amount, speed);
@@ -831,6 +893,435 @@ fn advance_clouds(p: &mut PlayerSnapshot, map: &mut Map) {
             }
         }
         p.clouds[cloud_index] = state;
+    }
+}
+
+fn seeker_physics_rect(position: Vec2) -> Rect {
+    Rect::new(position.x - 3.0, position.y - 3.0, 6.0, 6.0)
+}
+
+fn seeker_attack_rect(position: Vec2) -> Rect {
+    Rect::new(position.x - 6.0, position.y - 2.0, 12.0, 8.0)
+}
+
+fn seeker_bounce_rect(position: Vec2, state: u8, speed: Vec2) -> Rect {
+    if state == 3 && speed.x > 0.0 {
+        Rect::new(position.x - 10.0, position.y - 8.0, 16.0, 6.0)
+    } else if state == 3 && speed.y < 0.0 {
+        Rect::new(position.x - 6.0, position.y - 8.0, 16.0, 6.0)
+    } else {
+        Rect::new(position.x - 6.0, position.y - 8.0, 12.0, 6.0)
+    }
+}
+
+fn seeker_collides(map: &Map, position: Vec2) -> bool {
+    let collider = seeker_physics_rect(position);
+    map.solid_at(collider)
+        || collider.x < map.bounds.x
+        || collider.right() > map.bounds.right()
+        || collider.bottom() > map.bounds.bottom()
+        || collider.y < map.bounds.y - 8.0
+}
+
+fn move_seeker_vertical_exact(seeker: &mut crate::SeekerSnapshot, map: &Map, amount: i32) -> bool {
+    let sign = amount.signum();
+    for _ in 0..amount.unsigned_abs() {
+        let next = Vec2::new(seeker.position.x, seeker.position.y + sign as f32);
+        if seeker_collides(map, next) {
+            return false;
+        }
+        seeker.position = next;
+    }
+    true
+}
+
+fn move_seeker_axis(seeker: &mut crate::SeekerSnapshot, map: &Map, horizontal: bool) {
+    let amount = if horizontal {
+        seeker.speed.x * DT
+    } else {
+        seeker.speed.y * DT
+    };
+    let remainder = if horizontal {
+        &mut seeker.remainder.x
+    } else {
+        &mut seeker.remainder.y
+    };
+    *remainder += amount;
+    let pixels = remainder.round_ties_even() as i32;
+    *remainder -= pixels as f32;
+    let sign = pixels.signum();
+    for _ in 0..pixels.unsigned_abs() {
+        let next = Vec2::new(
+            seeker.position.x + if horizontal { sign as f32 } else { 0.0 },
+            seeker.position.y + if horizontal { 0.0 } else { sign as f32 },
+        );
+        if seeker_collides(map, next) {
+            if horizontal {
+                if seeker.state == 3 {
+                    let original_y = seeker.position.y;
+                    let corrected = [4, -4].into_iter().any(|offset| {
+                        seeker.position.y = original_y;
+                        !seeker_collides(map, Vec2::new(next.x, original_y + offset as f32))
+                            && move_seeker_vertical_exact(seeker, map, offset)
+                    });
+                    if corrected {
+                        seeker.position.x = next.x;
+                        continue;
+                    }
+                    seeker.position.y = original_y;
+                }
+                if matches!(seeker.state, 3 | 5) && seeker.speed.x.abs() >= 100.0 {
+                    seeker.speed.x = seeker.speed.x.signum() * -100.0;
+                    seeker.speed.y *= 0.4;
+                    seeker.state = 4;
+                    seeker.state_timer = 0.8;
+                } else {
+                    seeker.speed.x *= -0.2;
+                }
+                seeker.remainder.x = 0.0;
+            } else {
+                seeker.speed.y *= if seeker.state == 3 { -0.6 } else { -0.2 };
+                seeker.remainder.y = 0.0;
+            }
+            break;
+        }
+        seeker.position = next;
+    }
+}
+
+fn seeker_player_center(p: &PlayerSnapshot) -> Vec2 {
+    let collider = current_player_rect(p, p.pos.x, p.pos.y);
+    Vec2::new(
+        collider.x + collider.width * 0.5,
+        collider.y + collider.height * 0.5,
+    )
+}
+
+fn advance_seekers(p: &mut PlayerSnapshot, map: &mut Map) {
+    let entity_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::Seeker).then_some(index))
+        .collect();
+    for (seeker_index, entity_index) in entity_indices.into_iter().enumerate() {
+        let mut seeker = p.seekers[seeker_index].clone();
+        if seeker.state == 4 {
+            seeker.speed = approach_vec(seeker.speed, Vec2::default(), 150.0 * DT);
+            if seeker.state_timer > 0.0 {
+                seeker.state_timer -= DT;
+            } else {
+                seeker.state = 0;
+                seeker.state_timer = 0.0;
+            }
+        }
+
+        move_seeker_axis(&mut seeker, map, true);
+        move_seeker_axis(&mut seeker, map, false);
+
+        if !p.dead {
+            let player = current_player_rect(p, p.pos.x, p.pos.y);
+            let attack = seeker_attack_rect(seeker.position);
+            if attack.intersects(player) {
+                if seeker.state == 4 {
+                    let player_center = seeker_player_center(p);
+                    point_bounce(p, seeker.position);
+                    seeker.speed = scale(
+                        normalize(Vec2::new(
+                            seeker.position.x - player_center.x,
+                            seeker.position.y - player_center.y,
+                        )),
+                        100.0,
+                    );
+                } else {
+                    p.dead = true;
+                    p.speed = Vec2::default();
+                    p.death_freeze_pending = true;
+                    p.respawn_frames = 95;
+                }
+            } else if seeker_bounce_rect(seeker.position, seeker.state, seeker.speed)
+                .intersects(player)
+            {
+                let player_center = seeker_player_center(p);
+                bounce(p, map, seeker.position.y - 3.0);
+                seeker.speed = scale(
+                    normalize(Vec2::new(
+                        seeker.position.x - player_center.x,
+                        seeker.position.y - player_center.y,
+                    )),
+                    200.0,
+                );
+                seeker.state = 6;
+                seeker.state_timer = 0.0;
+                p.freeze_timer = 0.15;
+            }
+        }
+
+        map.entities[entity_index].bounds =
+            Rect::new(seeker.position.x - 6.0, seeker.position.y - 6.0, 12.0, 12.0);
+        p.seekers[seeker_index] = seeker;
+    }
+}
+
+fn solid_at_with_gate(map: &Map, rect: Rect, pusher_index: usize, pusher_collidable: bool) -> bool {
+    map.static_solid_at(rect)
+        || map.entities.iter().enumerate().any(|(index, entity)| {
+            let solid = matches!(
+                entity.kind,
+                EntityKind::DreamBlock
+                    | EntityKind::BounceBlock
+                    | EntityKind::MoveBlock
+                    | EntityKind::MovingSolid
+                    | EntityKind::ZipMover
+                    | EntityKind::TempleGate
+            );
+            solid && (index != pusher_index || pusher_collidable) && entity.bounds.intersects(rect)
+        })
+}
+
+fn jump_thru_blocks_actor(map: &Map, rect: Rect, previous_bottom: f32) -> bool {
+    map.entities.iter().any(|entity| {
+        matches!(entity.kind, EntityKind::JumpThru | EntityKind::Cloud)
+            && previous_bottom <= entity.bounds.y
+            && entity.bounds.intersects(rect)
+    })
+}
+
+fn squish_wiggle_candidate<F>(current: Vec2, target: Vec2, mut collides: F) -> Option<Vec2>
+where
+    F: FnMut(Vec2) -> bool,
+{
+    for origin in [current, target] {
+        for x in 0..=3 {
+            for y in 0..=3 {
+                if x == 0 && y == 0 {
+                    continue;
+                }
+                for sign_x in [1.0, -1.0] {
+                    for sign_y in [1.0, -1.0] {
+                        let candidate =
+                            Vec2::new(origin.x + x as f32 * sign_x, origin.y + y as f32 * sign_y);
+                        if !collides(candidate) {
+                            return Some(candidate);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+fn squish_player(p: &mut PlayerSnapshot, map: &Map, gate_index: usize, target: Vec2) {
+    let ducked = !p.ducking;
+    if ducked {
+        p.ducking = true;
+        if !solid_at_with_gate(map, duck_player_rect(p.pos.x, p.pos.y), gate_index, true) {
+            return;
+        }
+        let was = p.pos;
+        p.pos = target;
+        if !solid_at_with_gate(map, duck_player_rect(p.pos.x, p.pos.y), gate_index, true) {
+            return;
+        }
+        p.pos = was;
+    }
+
+    let state = p.state;
+    let preserved = p.star_fly_hitbox_preserved;
+    let ducking = p.ducking;
+    let candidate = squish_wiggle_candidate(p.pos, target, |position| {
+        let rect = if state == PlayerState::StarFly {
+            star_fly_rect(position.x, position.y)
+        } else if preserved {
+            star_fly_hurt_rect(position.x, position.y)
+        } else if ducking {
+            duck_player_rect(position.x, position.y)
+        } else {
+            player_rect(position.x, position.y)
+        };
+        solid_at_with_gate(map, rect, gate_index, true)
+    });
+    if let Some(position) = candidate {
+        p.pos = position;
+        if ducked && !solid_at_with_gate(map, player_rect(p.pos.x, p.pos.y), gate_index, false) {
+            p.ducking = false;
+        }
+    } else {
+        p.dead = true;
+        p.speed = Vec2::default();
+        p.death_freeze_pending = true;
+        p.respawn_frames = 95;
+    }
+}
+
+fn move_player_v_from_gate(p: &mut PlayerSnapshot, map: &Map, gate_index: usize, amount: i32) {
+    let target = Vec2::new(p.pos.x, p.pos.y + amount as f32);
+    let sign = amount.signum();
+    for _ in 0..amount.unsigned_abs() {
+        let next = Vec2::new(p.pos.x, p.pos.y + sign as f32);
+        let next_rect = current_player_rect(p, next.x, next.y);
+        let blocked = solid_at_with_gate(map, next_rect, gate_index, false)
+            || (sign > 0
+                && jump_thru_blocks_actor(
+                    map,
+                    next_rect,
+                    current_player_rect(p, p.pos.x, p.pos.y).bottom(),
+                ));
+        if blocked {
+            p.movement_remainder.y = 0.0;
+            squish_player(p, map, gate_index, target);
+            return;
+        }
+        p.pos = next;
+    }
+}
+
+fn move_theo_v_from_gate(
+    p: &mut PlayerSnapshot,
+    theo_index: usize,
+    map: &Map,
+    gate_index: usize,
+    amount: i32,
+) {
+    let mut theo = p.theo_crystals[theo_index].clone();
+    let target = Vec2::new(theo.position.x, theo.position.y + amount as f32);
+    let sign = amount.signum();
+    for _ in 0..amount.unsigned_abs() {
+        let next = Vec2::new(theo.position.x, theo.position.y + sign as f32);
+        let next_rect = theo_body_rect(next);
+        let blocked = solid_at_with_gate(map, next_rect, gate_index, false)
+            || (sign > 0
+                && jump_thru_blocks_actor(map, next_rect, theo_body_rect(theo.position).bottom()));
+        if blocked {
+            theo.remainder.y = 0.0;
+            if let Some(position) = squish_wiggle_candidate(theo.position, target, |position| {
+                solid_at_with_gate(map, theo_body_rect(position), gate_index, true)
+            }) {
+                theo.position = position;
+            } else {
+                theo.dead = true;
+                theo.held = false;
+                p.holding_theo = None;
+                p.dead = true;
+                p.speed = Vec2::default();
+                p.death_freeze_pending = true;
+                p.respawn_frames = 95;
+            }
+            p.theo_crystals[theo_index] = theo;
+            return;
+        }
+        theo.position = next;
+    }
+    p.theo_crystals[theo_index] = theo;
+}
+
+fn move_glider_v_from_gate(
+    p: &mut PlayerSnapshot,
+    glider_index: usize,
+    map: &Map,
+    gate_index: usize,
+    amount: i32,
+) {
+    let mut glider = p.gliders[glider_index].clone();
+    let target = Vec2::new(glider.position.x, glider.position.y + amount as f32);
+    let sign = amount.signum();
+    for _ in 0..amount.unsigned_abs() {
+        let next = Vec2::new(glider.position.x, glider.position.y + sign as f32);
+        let next_rect = glider_body_rect(next);
+        let blocked = solid_at_with_gate(map, next_rect, gate_index, false)
+            || (sign > 0
+                && jump_thru_blocks_actor(
+                    map,
+                    next_rect,
+                    glider_body_rect(glider.position).bottom(),
+                ));
+        if blocked {
+            glider.remainder.y = 0.0;
+            if let Some(position) = squish_wiggle_candidate(glider.position, target, |position| {
+                solid_at_with_gate(map, glider_body_rect(position), gate_index, true)
+            }) {
+                glider.position = position;
+            } else {
+                glider.removed = true;
+                glider.held = false;
+                p.holding_glider = None;
+            }
+            p.gliders[glider_index] = glider;
+            return;
+        }
+        glider.position = next;
+    }
+    p.gliders[glider_index] = glider;
+}
+
+fn close_temple_gate(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    gate_index: usize,
+    gate: &mut crate::TempleGateSnapshot,
+) {
+    let old_height = gate.current_height as i32;
+    let close_height = gate.closed_height as i32;
+    let mut temporary_y = gate.position.y;
+    let mut temporary_height = gate.current_height;
+    if temporary_height < 64.0 {
+        temporary_y -= 64.0 - temporary_height;
+        temporary_height = 64.0;
+    }
+    let old_bottom = temporary_y + temporary_height;
+    let move_y = close_height - old_height;
+    temporary_y += move_y as f32;
+    let moved_gate = Rect::new(gate.position.x, temporary_y, 8.0, temporary_height);
+    map.entities[gate_index].bounds = moved_gate;
+
+    let player_rect = current_player_rect(p, p.pos.x, p.pos.y);
+    if moved_gate.intersects(player_rect) {
+        let push = move_y - (player_rect.y - old_bottom) as i32;
+        move_player_v_from_gate(p, map, gate_index, push);
+    }
+    for theo_index in 0..p.theo_crystals.len() {
+        if p.theo_crystals[theo_index].dead {
+            continue;
+        }
+        let body = theo_body_rect(p.theo_crystals[theo_index].position);
+        if moved_gate.intersects(body) {
+            let push = move_y - (body.y - old_bottom) as i32;
+            move_theo_v_from_gate(p, theo_index, map, gate_index, push);
+        }
+    }
+    for glider_index in 0..p.gliders.len() {
+        if p.gliders[glider_index].removed {
+            continue;
+        }
+        let body = glider_body_rect(p.gliders[glider_index].position);
+        if moved_gate.intersects(body) {
+            let push = move_y - (body.y - old_bottom) as i32;
+            move_glider_v_from_gate(p, glider_index, map, gate_index, push);
+        }
+    }
+
+    gate.current_height = gate.closed_height;
+    gate.open = false;
+    gate.triggered = true;
+    map.entities[gate_index].bounds =
+        Rect::new(gate.position.x, gate.position.y, 8.0, gate.closed_height);
+}
+
+fn advance_temple_gates(p: &mut PlayerSnapshot, map: &mut Map) {
+    let entity_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::TempleGate).then_some(index))
+        .collect();
+    for (snapshot_index, entity_index) in entity_indices.into_iter().enumerate() {
+        let mut gate = p.temple_gates[snapshot_index].clone();
+        let player_left = current_player_rect(p, p.pos.x, p.pos.y).x;
+        if gate.open && !gate.triggered && player_left > gate.position.x + 12.0 {
+            close_temple_gate(p, map, entity_index, &mut gate);
+        }
+        p.temple_gates[snapshot_index] = gate;
     }
 }
 
@@ -862,6 +1353,96 @@ fn initialize_heart_gems(p: &mut PlayerSnapshot, map: &mut Map) {
     }
     if !p.time_rate.is_finite() || p.time_rate <= 0.0 {
         p.time_rate = 1.0;
+    }
+}
+
+fn initialize_camera(p: &mut PlayerSnapshot, map: &Map) {
+    if p.camera_initialized {
+        return;
+    }
+    p.camera = camera_target(p, map);
+    p.camera_initialized = true;
+}
+
+fn camera_target(p: &PlayerSnapshot, map: &Map) -> Vec2 {
+    let bounds = p.current_room_bounds.unwrap_or(map.bounds);
+    Vec2::new(
+        (p.pos.x - 160.0).clamp(bounds.x, (bounds.right() - 320.0).max(bounds.x)),
+        (p.pos.y - 90.0).clamp(bounds.y, (bounds.bottom() - 180.0).max(bounds.y)),
+    )
+}
+
+fn initialize_rising_lavas(p: &mut PlayerSnapshot, map: &mut Map) {
+    let indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::RisingLava).then_some(index))
+        .collect();
+    p.rising_lavas.truncate(indices.len());
+    for (lava_index, entity_index) in indices.into_iter().enumerate() {
+        if lava_index == p.rising_lavas.len() {
+            let intro = map.entities[entity_index].single_use;
+            p.rising_lavas.push(crate::RisingLavaSnapshot {
+                position: Vec2::new(map.bounds.x - 10.0, map.bounds.bottom() + 16.0),
+                waiting: intro || p.just_respawned,
+                ice_mode: p.core_mode == crate::CoreMode::Cold,
+                intro,
+                initialized: true,
+                ..crate::RisingLavaSnapshot::default()
+            });
+        }
+        let state = &p.rising_lavas[lava_index];
+        let entity = &mut map.entities[entity_index];
+        entity.bounds = Rect::new(state.position.x, state.position.y, 340.0, 120.0);
+    }
+}
+
+fn initialize_sandwich_lavas(p: &mut PlayerSnapshot, map: &mut Map) {
+    let indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::SandwichLava).then_some(index))
+        .collect();
+    p.sandwich_lavas.truncate(indices.len());
+    for (lava_index, entity_index) in indices.iter().copied().enumerate() {
+        if lava_index == p.sandwich_lavas.len() {
+            let start_x = map.entities[entity_index].bounds.x;
+            let respawn_intro = p.just_respawned;
+            p.sandwich_lavas.push(crate::SandwichLavaSnapshot {
+                position: Vec2::new(map.bounds.x - 10.0, map.bounds.bottom() - 10.0),
+                start_x,
+                waiting: respawn_intro || p.pos.x < start_x,
+                ice_mode: p.core_mode == crate::CoreMode::Cold,
+                persistent: lava_index == 0,
+                top_rect_y: if respawn_intro { -360.0 } else { -420.0 },
+                bottom_rect_y: if respawn_intro { 0.0 } else { 60.0 },
+                initialized: true,
+                ..crate::SandwichLavaSnapshot::default()
+            });
+        }
+    }
+    // Awake reuses the first persistent instance when the destination room
+    // contains another SandwichLava, updating its activation X and parking
+    // the duplicate rather than creating a second hazard.
+    if p.sandwich_lavas.len() > 1 {
+        for index in 1..p.sandwich_lavas.len() {
+            if !p.sandwich_lavas[index].removed && !p.sandwich_lavas[0].leaving {
+                p.sandwich_lavas[0].start_x = p.sandwich_lavas[index].start_x;
+                p.sandwich_lavas[0].waiting = true;
+                p.sandwich_lavas[index].removed = true;
+            }
+        }
+    }
+    for (lava_index, entity_index) in indices.into_iter().enumerate() {
+        let state = &p.sandwich_lavas[lava_index];
+        let entity = &mut map.entities[entity_index];
+        entity.bounds = if state.removed {
+            Rect::new(-1_000_000.0, -1_000_000.0, 340.0, 120.0)
+        } else {
+            Rect::new(state.position.x, state.position.y, 340.0, 120.0)
+        };
     }
 }
 
@@ -1048,7 +1629,7 @@ fn move_zip_mover_to(
     state.lift_speed = Vec2::default();
     let exact_x = state.position.x + state.remainder.x;
     let move_x = target.x - exact_x;
-    state.lift_speed.x = move_x / DT;
+    state.lift_speed.x = move_x / p.frame_delta_time;
     state.remainder.x += move_x;
     let exact_move_x = state.remainder.x.round_ties_even();
     state.remainder.x -= exact_move_x;
@@ -1064,7 +1645,7 @@ fn move_zip_mover_to(
 
     let exact_y = state.position.y + state.remainder.y;
     let move_y = target.y - exact_y;
-    state.lift_speed.y = move_y / DT;
+    state.lift_speed.y = move_y / p.frame_delta_time;
     state.remainder.y += move_y;
     let exact_move_y = state.remainder.y.round_ties_even();
     state.remainder.y -= exact_move_y;
@@ -1195,9 +1776,10 @@ fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
         let entity = &mut map.entities[entity_index];
         match state.phase {
             0 => {
-                state.move_speed = approach(state.move_speed, 100.0, 400.0 * DT);
+                state.move_speed = approach(state.move_speed, 100.0, 400.0 * p.frame_delta_time);
                 let exact = bounce_block_exact_position(&state);
-                let desired = approach_vec(exact, state.start, state.move_speed * DT);
+                let desired =
+                    approach_vec(exact, state.start, state.move_speed * p.frame_delta_time);
                 let delta = Vec2::new(desired.x - exact.x, desired.y - exact.y);
                 let mut lift = safe_normalize(delta, state.move_speed);
                 lift.x *= 0.75;
@@ -1242,13 +1824,13 @@ fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
                         1.0,
                     );
                 }
-                state.move_speed = approach(state.move_speed, 40.0, 600.0 * DT);
+                state.move_speed = approach(state.move_speed, 40.0, 600.0 * p.frame_delta_time);
                 let target = Vec2::new(
                     state.start.x - state.bounce_dir.x * 10.0,
                     state.start.y - state.bounce_dir.y * 10.0,
                 );
                 let exact = bounce_block_exact_position(&state);
-                let desired = approach_vec(exact, target, state.move_speed * DT);
+                let desired = approach_vec(exact, target, state.move_speed * p.frame_delta_time);
                 let delta = Vec2::new(desired.x - exact.x, desired.y - exact.y);
                 let mut lift = safe_normalize(delta, state.move_speed);
                 lift.x *= 0.75;
@@ -1263,13 +1845,13 @@ fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
                 }
             }
             2 => {
-                state.move_speed = approach(state.move_speed, 140.0, 800.0 * DT);
+                state.move_speed = approach(state.move_speed, 140.0, 800.0 * p.frame_delta_time);
                 let target = Vec2::new(
                     state.start.x + state.bounce_dir.x * 24.0,
                     state.start.y + state.bounce_dir.y * 24.0,
                 );
                 let exact = bounce_block_exact_position(&state);
-                let desired = approach_vec(exact, target, state.move_speed * DT);
+                let desired = approach_vec(exact, target, state.move_speed * p.frame_delta_time);
                 let delta = Vec2::new(desired.x - exact.x, desired.y - exact.y);
                 state.bounce_lift = safe_normalize(delta, (state.move_speed * 3.0).min(200.0));
                 state.bounce_lift.x *= 0.75;
@@ -1289,7 +1871,7 @@ fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
                 }
             }
             3 => {
-                state.bounce_end_timer -= DT;
+                state.bounce_end_timer -= p.frame_delta_time;
                 if state.bounce_end_timer <= 0.0 {
                     state.phase = 4;
                     state.respawn_timer = 1.6;
@@ -1301,7 +1883,7 @@ fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
             }
             4 => {
                 if state.respawn_timer > 0.0 {
-                    state.respawn_timer -= DT;
+                    state.respawn_timer -= p.frame_delta_time;
                 } else if reform_blocked == Some(false) {
                     entity.bounds.x = state.start.x;
                     entity.bounds.y = state.start.y;
@@ -1334,7 +1916,7 @@ fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
             state.attached_spike_position.y += block_delta.y;
         }
         if state.reform_timer > 0.0 && !started_reform_alarm {
-            state.reform_timer -= DT;
+            state.reform_timer -= p.frame_delta_time;
             if state.reform_timer <= 0.0 {
                 state.static_movers_enabled = true;
             }
@@ -1489,8 +2071,8 @@ fn advance_move_blocks(p: &mut PlayerSnapshot, map: &mut Map, input: InputState)
                 }
             }
             1 => {
-                if state.wait_timer > DT {
-                    state.wait_timer -= DT;
+                if state.wait_timer > p.frame_delta_time {
+                    state.wait_timer -= p.frame_delta_time;
                 } else {
                     state.wait_timer = 0.0;
                     state.phase = 2;
@@ -1504,7 +2086,7 @@ fn advance_move_blocks(p: &mut PlayerSnapshot, map: &mut Map, input: InputState)
                 let mut target_angle = home_angle;
                 if riding {
                     if state.no_steer_timer > 0.0 {
-                        state.no_steer_timer -= DT;
+                        state.no_steer_timer -= p.frame_delta_time;
                     }
                     if state.no_steer_timer <= 0.0 {
                         let steer = if horizontal_source {
@@ -1523,15 +2105,19 @@ fn advance_move_blocks(p: &mut PlayerSnapshot, map: &mut Map, input: InputState)
                 } else {
                     state.no_steer_timer = 0.2;
                 }
-                state.speed = approach(state.speed, 60.0, 300.0 * DT);
-                state.angle = approach(state.angle, target_angle, std::f32::consts::PI * 16.0 * DT);
+                state.speed = approach(state.speed, 60.0, 300.0 * p.frame_delta_time);
+                state.angle = approach(
+                    state.angle,
+                    target_angle,
+                    std::f32::consts::PI * 16.0 * p.frame_delta_time,
+                );
                 let velocity = Vec2::new(
                     state.angle.cos() * state.speed,
                     state.angle.sin() * state.speed,
                 );
                 state.lift_speed = velocity;
-                state.remainder.x += velocity.x * DT;
-                state.remainder.y += velocity.y * DT;
+                state.remainder.x += velocity.x * p.frame_delta_time;
+                state.remainder.y += velocity.y * p.frame_delta_time;
                 let move_x = state.remainder.x.round_ties_even();
                 let move_y = state.remainder.y.round_ties_even();
                 state.remainder.x -= move_x;
@@ -1589,7 +2175,7 @@ fn advance_move_blocks(p: &mut PlayerSnapshot, map: &mut Map, input: InputState)
                 if primary_blocked {
                     state.crash_reset_timer = 0.1;
                     if state.crash_timer > 0.0 {
-                        state.crash_timer -= DT;
+                        state.crash_timer -= p.frame_delta_time;
                     } else {
                         state.phase = 3;
                         state.wait_timer = 0.2;
@@ -1597,7 +2183,7 @@ fn advance_move_blocks(p: &mut PlayerSnapshot, map: &mut Map, input: InputState)
                         state.angle = home_angle;
                     }
                 } else if state.crash_reset_timer > 0.0 {
-                    state.crash_reset_timer -= DT;
+                    state.crash_reset_timer -= p.frame_delta_time;
                 } else {
                     state.crash_timer = 0.15;
                 }
@@ -1610,7 +2196,7 @@ fn advance_move_blocks(p: &mut PlayerSnapshot, map: &mut Map, input: InputState)
             }
             3 => {
                 if state.wait_timer > 0.0 {
-                    state.wait_timer -= DT;
+                    state.wait_timer -= p.frame_delta_time;
                 } else {
                     state.position = state.start;
                     state.remainder = Vec2::default();
@@ -1625,7 +2211,7 @@ fn advance_move_blocks(p: &mut PlayerSnapshot, map: &mut Map, input: InputState)
             }
             4 => {
                 if state.wait_timer > 0.0 {
-                    state.wait_timer -= DT;
+                    state.wait_timer -= p.frame_delta_time;
                 } else {
                     let source = map.entities[entity_index].bounds;
                     let restored =
@@ -1642,7 +2228,7 @@ fn advance_move_blocks(p: &mut PlayerSnapshot, map: &mut Map, input: InputState)
             }
             5 => {
                 if state.wait_timer > 0.0 {
-                    state.wait_timer -= DT;
+                    state.wait_timer -= p.frame_delta_time;
                 } else {
                     state.visible = true;
                     state.static_movers_enabled = true;
@@ -1702,7 +2288,7 @@ fn try_pickup_theo(p: &mut PlayerSnapshot) -> bool {
     // PickupCoroutine observes the Tween one player frame before Tween.Update
     // can deactivate it. Keep that trailing frame in the portable timer so
     // speed restoration matches the real state snapshot boundary.
-    p.pickup_timer = 0.16 + DT;
+    p.pickup_timer = 0.16 + p.frame_delta_time;
     p.speed = Vec2::default();
     p.demo_dashed = false;
     p.dash_end_pending = false;
@@ -1755,7 +2341,7 @@ fn try_pickup_glider(p: &mut PlayerSnapshot) -> bool {
     p.ducking = false;
     p.pickup_old_speed = p.speed;
     p.pickup_old_var_jump_timer = p.var_jump_timer;
-    p.pickup_timer = 0.16 + DT;
+    p.pickup_timer = 0.16 + p.frame_delta_time;
     p.speed = Vec2::default();
     p.demo_dashed = false;
     p.dash_end_pending = false;
@@ -1808,11 +2394,16 @@ fn theo_collides(map: &Map, position: Vec2) -> bool {
     map.solid_at(theo_body_rect(position))
 }
 
-fn move_theo_axis(theo: &mut crate::TheoCrystalSnapshot, map: &Map, horizontal: bool) {
+fn move_theo_axis(
+    theo: &mut crate::TheoCrystalSnapshot,
+    map: &Map,
+    horizontal: bool,
+    delta_time: f32,
+) {
     let amount = if horizontal {
-        theo.speed.x * DT
+        theo.speed.x * delta_time
     } else {
-        theo.speed.y * DT
+        theo.speed.y * delta_time
     };
     let remainder = if horizontal {
         &mut theo.remainder.x
@@ -1845,6 +2436,90 @@ fn move_theo_axis(theo: &mut crate::TheoCrystalSnapshot, map: &Map, horizontal: 
     }
 }
 
+fn initialize_seekers(p: &mut PlayerSnapshot, map: &mut Map) {
+    let seeker_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::Seeker).then_some(index))
+        .collect();
+    p.seekers.truncate(seeker_indices.len());
+    for (seeker_index, entity_index) in seeker_indices.into_iter().enumerate() {
+        let entity = &mut map.entities[entity_index];
+        if seeker_index == p.seekers.len() {
+            p.seekers.push(crate::SeekerSnapshot {
+                position: Vec2::new(
+                    entity.bounds.x + entity.bounds.width * 0.5,
+                    entity.bounds.y + entity.bounds.height * 0.5,
+                ),
+                ..crate::SeekerSnapshot::default()
+            });
+        }
+        let state = &p.seekers[seeker_index];
+        entity.bounds = Rect::new(state.position.x - 6.0, state.position.y - 6.0, 12.0, 12.0);
+    }
+}
+
+fn initialize_temple_gates(p: &mut PlayerSnapshot, map: &mut Map) {
+    let gate_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::TempleGate).then_some(index))
+        .collect();
+    p.temple_gates.truncate(gate_indices.len());
+    for (gate_index, entity_index) in gate_indices.into_iter().enumerate() {
+        let entity = &mut map.entities[entity_index];
+        if gate_index == p.temple_gates.len() {
+            p.temple_gates.push(crate::TempleGateSnapshot {
+                position: Vec2::new(entity.bounds.x, entity.bounds.y),
+                current_height: 0.0,
+                closed_height: entity.bounds.height,
+                open: true,
+                triggered: false,
+            });
+        }
+        let gate = &p.temple_gates[gate_index];
+        entity.bounds = Rect::new(gate.position.x, gate.position.y, 8.0, gate.current_height);
+    }
+}
+
+fn hit_theo_spring(theo: &mut crate::TheoCrystalSnapshot, map: &Map) {
+    if theo.held {
+        return;
+    }
+    let body = theo_body_rect(theo.position);
+    for spring in map
+        .entities
+        .iter()
+        .filter(|entity| entity.kind == EntityKind::Spring)
+    {
+        if !spring.bounds.intersects(body) {
+            continue;
+        }
+        if spring.direction.y < 0.0 && theo.speed.y >= 0.0 {
+            theo.speed.x *= 0.5;
+            theo.speed.y = -160.0;
+            theo.gravity_timer = 0.15;
+            return;
+        }
+        if spring.direction.x > 0.0 && theo.speed.x <= 0.0 {
+            theo.position.y = approach(theo.position.y, spring.bounds.y + 13.0, 4.0);
+            theo.speed.x = 220.0;
+            theo.speed.y = -80.0;
+            theo.gravity_timer = 0.1;
+            return;
+        }
+        if spring.direction.x < 0.0 && theo.speed.x >= 0.0 {
+            theo.position.y = approach(theo.position.y, spring.bounds.y + 13.0, 4.0);
+            theo.speed.x = -220.0;
+            theo.speed.y = -80.0;
+            theo.gravity_timer = 0.1;
+            return;
+        }
+    }
+}
+
 fn advance_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
     let entity_indices: Vec<usize> = map
         .entities
@@ -1854,8 +2529,13 @@ fn advance_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
         .collect();
     for (theo_index, entity_index) in entity_indices.into_iter().enumerate() {
         let mut theo = p.theo_crystals[theo_index].clone();
-        theo.cannot_hold_timer = (theo.cannot_hold_timer - DT).max(0.0);
-        theo.gravity_timer = (theo.gravity_timer - DT).max(0.0);
+        if theo.dead {
+            map.entities[entity_index].bounds.x = -1_000_000.0;
+            map.entities[entity_index].bounds.y = -1_000_000.0;
+            continue;
+        }
+        theo.cannot_hold_timer = (theo.cannot_hold_timer - p.frame_delta_time).max(0.0);
+        theo.gravity_timer = (theo.gravity_timer - p.frame_delta_time).max(0.0);
         if p.holding_theo == Some(theo_index as u16) {
             theo.held = true;
             theo.position = Vec2::new(p.pos.x, p.pos.y - 12.0);
@@ -1865,7 +2545,7 @@ fn advance_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
             theo.held = false;
             let on_ground = theo_collides(map, Vec2::new(theo.position.x, theo.position.y + 1.0));
             if on_ground {
-                theo.speed.x = approach(theo.speed.x, 0.0, 800.0 * DT);
+                theo.speed.x = approach(theo.speed.x, 0.0, 800.0 * p.frame_delta_time);
             } else if theo.gravity_timer <= 0.0 {
                 let gravity = if theo.speed.y.abs() <= 30.0 {
                     400.0
@@ -1875,12 +2555,13 @@ fn advance_theo_crystals(p: &mut PlayerSnapshot, map: &mut Map) {
                 theo.speed.x = approach(
                     theo.speed.x,
                     0.0,
-                    if theo.speed.y < 0.0 { 175.0 } else { 350.0 } * DT,
+                    if theo.speed.y < 0.0 { 175.0 } else { 350.0 } * p.frame_delta_time,
                 );
-                theo.speed.y = approach(theo.speed.y, 200.0, gravity * DT);
+                theo.speed.y = approach(theo.speed.y, 200.0, gravity * p.frame_delta_time);
             }
-            move_theo_axis(&mut theo, map, true);
-            move_theo_axis(&mut theo, map, false);
+            move_theo_axis(&mut theo, map, true, p.frame_delta_time);
+            move_theo_axis(&mut theo, map, false, p.frame_delta_time);
+            hit_theo_spring(&mut theo, map);
         }
         let entity = &mut map.entities[entity_index];
         entity.bounds.x = theo.position.x - 4.0;
@@ -1917,15 +2598,138 @@ fn advance_heart_gems(p: &mut PlayerSnapshot) {
     }
 }
 
+fn update_camera(p: &mut PlayerSnapshot, map: &Map) {
+    if p.transition_timer > 0.0 || p.dead {
+        return;
+    }
+    let target = camera_target(p, map);
+    let multiplier = if p.state == PlayerState::TempleFall {
+        8.0
+    } else {
+        1.0
+    };
+    let amount = 1.0 - (0.01_f32 / multiplier).powf(p.frame_delta_time);
+    p.camera.x += (target.x - p.camera.x) * amount;
+    p.camera.y += (target.y - p.camera.y) * amount;
+}
+
+fn clamped_map(value: f32, min: f32, max: f32, out_min: f32, out_max: f32) -> f32 {
+    if max == min {
+        return out_min;
+    }
+    let t = ((value - min) / (max - min)).clamp(0.0, 1.0);
+    out_min + (out_max - out_min) * t
+}
+
+fn advance_rising_lavas(p: &mut PlayerSnapshot, map: &mut Map) {
+    let indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::RisingLava).then_some(index))
+        .collect();
+    for (lava_index, entity_index) in indices.into_iter().enumerate() {
+        let state = &mut p.rising_lavas[lava_index];
+        state.ice_mode = p.core_mode == crate::CoreMode::Cold;
+        state.delay -= p.frame_delta_time;
+        state.position.x = p.camera.x;
+        if state.waiting {
+            if !state.intro && p.just_respawned {
+                state.position.y =
+                    approach(state.position.y, p.pos.y + 32.0, 32.0 * p.frame_delta_time);
+            }
+            if (!state.ice_mode || !state.intro) && !p.just_respawned {
+                state.waiting = false;
+            }
+        } else {
+            let camera_line = p.camera.y + 168.0;
+            if state.position.y > camera_line + 96.0 {
+                state.position.y = camera_line + 96.0;
+            }
+            let speed_multiplier = if state.position.y > camera_line {
+                clamped_map(state.position.y - camera_line, 0.0, 96.0, 1.0, 2.0)
+            } else {
+                clamped_map(camera_line - state.position.y, 0.0, 32.0, 1.0, 0.5)
+            };
+            if state.delay <= 0.0 {
+                state.position.y -= 30.0 * speed_multiplier * p.frame_delta_time;
+            }
+        }
+        map.entities[entity_index].bounds =
+            Rect::new(state.position.x, state.position.y, 340.0, 120.0);
+    }
+}
+
+fn advance_sandwich_lavas(p: &mut PlayerSnapshot, map: &mut Map) {
+    let indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::SandwichLava).then_some(index))
+        .collect();
+    let live_count = p.sandwich_lavas.iter().filter(|lava| !lava.removed).count();
+    for (lava_index, entity_index) in indices.into_iter().enumerate() {
+        let state = &mut p.sandwich_lavas[lava_index];
+        if state.removed {
+            map.entities[entity_index].bounds = Rect::new(-1_000_000.0, -1_000_000.0, 340.0, 120.0);
+            continue;
+        }
+        if p.transition_timer > 0.0 && state.persistent && live_count <= 1 && !state.leaving {
+            state.leaving = true;
+            state.leave_timer = 2.0;
+        }
+        state.ice_mode = p.core_mode == crate::CoreMode::Cold;
+        state.position.x = p.camera.x;
+        state.delay -= p.frame_delta_time;
+        if state.leaving {
+            state.leave_timer = (state.leave_timer - p.frame_delta_time).max(0.0);
+            if state.leave_timer <= 0.0 {
+                state.removed = true;
+            }
+        } else if state.waiting {
+            state.position.y = approach(
+                state.position.y,
+                map.bounds.bottom() - 10.0,
+                128.0 * p.frame_delta_time,
+            );
+            if p.pos.x >= state.start_x && !p.just_respawned && p.state != PlayerState::Frozen {
+                state.waiting = false;
+            }
+        } else if state.delay <= 0.0 {
+            state.position.y += if state.ice_mode { 20.0 } else { -20.0 } * p.frame_delta_time;
+        }
+        state.top_rect_y = approach(
+            state.top_rect_y,
+            -360.0 + if state.leaving { -512.0 } else { 0.0 },
+            if state.leaving { 256.0 } else { 64.0 } * p.frame_delta_time,
+        );
+        state.bottom_rect_y = approach(
+            state.bottom_rect_y,
+            if state.leaving { 512.0 } else { 0.0 },
+            if state.leaving { 256.0 } else { 64.0 } * p.frame_delta_time,
+        );
+        map.entities[entity_index].bounds = if state.leaving || state.removed {
+            Rect::new(-1_000_000.0, -1_000_000.0, 340.0, 120.0)
+        } else {
+            Rect::new(state.position.x, state.position.y, 340.0, 120.0)
+        };
+    }
+}
+
 fn glider_collides(map: &Map, position: Vec2) -> bool {
     map.solid_at(glider_body_rect(position))
 }
 
-fn move_glider_axis(glider: &mut crate::GliderSnapshot, map: &Map, horizontal: bool) {
+fn move_glider_axis(
+    glider: &mut crate::GliderSnapshot,
+    map: &Map,
+    horizontal: bool,
+    delta_time: f32,
+) {
     let amount = if horizontal {
-        glider.speed.x * DT
+        glider.speed.x * delta_time
     } else {
-        glider.speed.y * DT
+        glider.speed.y * delta_time
     };
     let remainder = if horizontal {
         &mut glider.remainder.x
@@ -2001,10 +2805,15 @@ fn advance_gliders(p: &mut PlayerSnapshot, map: &mut Map) {
         .collect();
     for (glider_index, entity_index) in entity_indices.into_iter().enumerate() {
         let mut glider = p.gliders[glider_index].clone();
-        glider.cannot_hold_timer = (glider.cannot_hold_timer - DT).max(0.0);
-        glider.gravity_timer = (glider.gravity_timer - DT).max(0.0);
-        glider.no_gravity_timer = (glider.no_gravity_timer - DT).max(0.0);
-        glider.high_friction_timer = (glider.high_friction_timer - DT).max(0.0);
+        if glider.removed {
+            map.entities[entity_index].bounds.x = -1_000_000.0;
+            map.entities[entity_index].bounds.y = -1_000_000.0;
+            continue;
+        }
+        glider.cannot_hold_timer = (glider.cannot_hold_timer - p.frame_delta_time).max(0.0);
+        glider.gravity_timer = (glider.gravity_timer - p.frame_delta_time).max(0.0);
+        glider.no_gravity_timer = (glider.no_gravity_timer - p.frame_delta_time).max(0.0);
+        glider.high_friction_timer = (glider.high_friction_timer - p.frame_delta_time).max(0.0);
         if p.holding_glider == Some(glider_index as u16) {
             glider.held = true;
             glider.position = Vec2::new(p.pos.x, p.pos.y - 12.0);
@@ -2015,7 +2824,7 @@ fn advance_gliders(p: &mut PlayerSnapshot, map: &mut Map) {
             let on_ground =
                 glider_collides(map, Vec2::new(glider.position.x, glider.position.y + 1.0));
             if on_ground {
-                glider.speed.x = approach(glider.speed.x, 0.0, 800.0 * DT);
+                glider.speed.x = approach(glider.speed.x, 0.0, 800.0 * p.frame_delta_time);
             } else if glider.gravity_timer <= 0.0 {
                 let gravity = if glider.speed.y >= -30.0 {
                     100.0
@@ -2027,13 +2836,13 @@ fn advance_gliders(p: &mut PlayerSnapshot, map: &mut Map) {
                 } else {
                     10.0
                 };
-                glider.speed.x = approach(glider.speed.x, 0.0, friction * DT);
+                glider.speed.x = approach(glider.speed.x, 0.0, friction * p.frame_delta_time);
                 if glider.no_gravity_timer <= 0.0 {
-                    glider.speed.y = approach(glider.speed.y, 30.0, gravity * DT);
+                    glider.speed.y = approach(glider.speed.y, 30.0, gravity * p.frame_delta_time);
                 }
             }
-            move_glider_axis(&mut glider, map, true);
-            move_glider_axis(&mut glider, map, false);
+            move_glider_axis(&mut glider, map, true, p.frame_delta_time);
+            move_glider_axis(&mut glider, map, false, p.frame_delta_time);
             hit_glider_spring(&mut glider, map);
         }
         let entity = &mut map.entities[entity_index];
@@ -2064,14 +2873,14 @@ fn advance_zip_movers(p: &mut PlayerSnapshot, map: &mut Map) {
             }
             1 => {
                 if state.wait_timer > 0.0 {
-                    state.wait_timer -= DT;
+                    state.wait_timer -= p.frame_delta_time;
                 } else {
                     state.phase = 2;
                     state.at = 0.0;
                 }
             }
             2 => {
-                state.at = approach(state.at, 1.0, 2.0 * DT);
+                state.at = approach(state.at, 1.0, 2.0 * p.frame_delta_time);
                 let eased = sine_in(state.at);
                 let desired = Vec2::new(
                     state.start.x + (target.x - state.start.x) * eased,
@@ -2085,14 +2894,14 @@ fn advance_zip_movers(p: &mut PlayerSnapshot, map: &mut Map) {
             }
             3 => {
                 if state.wait_timer > 0.0 {
-                    state.wait_timer -= DT;
+                    state.wait_timer -= p.frame_delta_time;
                 } else {
                     state.phase = 4;
                     state.at = 0.0;
                 }
             }
             4 => {
-                state.at = approach(state.at, 1.0, 0.5 * DT);
+                state.at = approach(state.at, 1.0, 0.5 * p.frame_delta_time);
                 let eased = sine_in(state.at);
                 let desired = Vec2::new(
                     target.x + (state.start.x - target.x) * eased,
@@ -2106,7 +2915,7 @@ fn advance_zip_movers(p: &mut PlayerSnapshot, map: &mut Map) {
             }
             5 => {
                 if state.wait_timer > 0.0 {
-                    state.wait_timer -= DT;
+                    state.wait_timer -= p.frame_delta_time;
                 } else if player_riding_solid(p, entity.bounds) {
                     state.phase = 1;
                     state.wait_timer = 0.1;
@@ -2126,7 +2935,7 @@ fn advance_zip_movers(p: &mut PlayerSnapshot, map: &mut Map) {
 
 fn advance_moving_solids(p: &mut PlayerSnapshot, map: &mut Map) {
     let old_time = p.moving_solid_time;
-    let new_time = old_time + DT;
+    let new_time = old_time + p.frame_delta_time;
     for entity in &mut map.entities {
         if entity.kind != EntityKind::MovingSolid {
             continue;
@@ -2368,8 +3177,12 @@ fn advance_post_player_entities(p: &mut PlayerSnapshot, map: &mut Map, input: In
     advance_move_blocks(p, map, input);
     advance_theo_crystals(p, map);
     advance_heart_gems(p);
+    advance_rising_lavas(p, map);
+    advance_sandwich_lavas(p, map);
     advance_gliders(p, map);
     advance_clouds(p, map);
+    advance_seekers(p, map);
+    advance_temple_gates(p, map);
     // Player is loaded before room entities. CassetteBlock.Update runs before
     // the manager inserted after the first block, preserving WillToggle now /
     // activation on the following frame.
@@ -2383,10 +3196,14 @@ fn step(
     mut input: InputState,
     map: &mut Map,
 ) -> Result<(), SimulationError> {
+    // Engine computes DeltaTime once at the beginning of the raw frame. A
+    // HeartGem can write TimeRate during Scene.Update, but that write only
+    // changes movement and timers from the next engine frame onward.
+    p.frame_delta_time = DT * p.time_rate;
     // VirtualButton.Update runs in MInput before Celeste.Freeze can skip the
     // Scene. It subtracts DeltaTime first, then a new press restores the full
     // buffer; Jump also clears its buffer as soon as the binding is not held.
-    p.jump_buffer_timer -= DT;
+    p.jump_buffer_timer -= p.frame_delta_time;
     if input.jump_pressed {
         p.jump_buffer_timer = JUMP_BUFFER_TIME;
     } else if !input.jump_held {
@@ -2395,8 +3212,8 @@ fn step(
     // Dash and CrouchDash use a 0.08 second VirtualButton buffer. Their
     // portable input contract only records press edges, so keep the existing
     // press buffer alive across freeze until it is consumed or expires.
-    p.dash_buffer_timer = (p.dash_buffer_timer - DT).max(0.0);
-    p.crouch_dash_buffer_timer = (p.crouch_dash_buffer_timer - DT).max(0.0);
+    p.dash_buffer_timer = (p.dash_buffer_timer - p.frame_delta_time).max(0.0);
+    p.crouch_dash_buffer_timer = (p.crouch_dash_buffer_timer - p.frame_delta_time).max(0.0);
     if input.dash_pressed {
         p.dash_buffer_timer = 0.08;
     }
@@ -2420,6 +3237,7 @@ fn step(
             p.dashes = p.dashes.max(1);
             p.stamina = 110.0;
             p.movement_remainder = Vec2::default();
+            p.just_respawned = true;
             return Ok(());
         }
         p.respawn_frames -= 1;
@@ -2442,10 +3260,14 @@ fn step(
         p.freeze_timer = (p.freeze_timer - DT).max(0.0);
         return Ok(());
     }
+    if p.just_respawned && p.speed != Vec2::default() {
+        p.just_respawned = false;
+    }
     p.scene_time_active += DT;
     advance_moving_solids(p, map);
     if p.transition_timer > 0.0 {
         update_transition(p);
+        advance_sandwich_lavas(p, map);
         advance_cassette_blocks(p, map);
         advance_cassette_manager(p, map);
         advance_spinners(p, map);
@@ -2469,16 +3291,17 @@ fn step(
             p.speed.x = p.explode_launch_boost_speed;
             p.explode_launch_boost_timer = 0.0;
         } else {
-            p.explode_launch_boost_timer -= DT;
+            p.explode_launch_boost_timer -= p.frame_delta_time;
         }
     }
     tick_timers(p);
     if p.wall_slide_dir != 0 {
-        p.wall_slide_timer = (p.wall_slide_timer - DT).max(0.0);
+        p.wall_slide_timer = (p.wall_slide_timer - p.frame_delta_time).max(0.0);
     }
     p.wall_slide_dir = 0;
     if p.strawberry_collect_reset_timer > 0.0 {
-        p.strawberry_collect_reset_timer = (p.strawberry_collect_reset_timer - DT).max(0.0);
+        p.strawberry_collect_reset_timer =
+            (p.strawberry_collect_reset_timer - p.frame_delta_time).max(0.0);
         if p.strawberry_collect_reset_timer <= 0.0 {
             p.strawberry_collect_index = 0;
         }
@@ -2566,7 +3389,7 @@ fn step(
     // frame only creates it; following Pickup frames decrement it here, and
     // the coroutine restores speed on the frame after it becomes inactive.
     if was_pickup && p.state == PlayerState::Pickup {
-        p.pickup_timer -= DT;
+        p.pickup_timer -= p.frame_delta_time;
     }
 
     // Actor.Update runs after the StateMachine component callback. Moving
@@ -2595,6 +3418,7 @@ fn step(
     if p.state != PlayerState::DreamDash {
         move_axis(p, map, false);
     }
+    update_camera(p, map);
     interact(p, map, input);
     update_strawberry_train(p);
     try_begin_badeline_boost(p, map);
@@ -2611,7 +3435,7 @@ fn step(
 fn tick_timers(p: &mut PlayerSnapshot) {
     if p.auto_jump_timer > 0.0 {
         if p.auto_jump {
-            p.auto_jump_timer = (p.auto_jump_timer - DT).max(0.0);
+            p.auto_jump_timer = (p.auto_jump_timer - p.frame_delta_time).max(0.0);
             if p.auto_jump_timer <= 0.0 {
                 p.auto_jump = false;
             }
@@ -2635,7 +3459,7 @@ fn tick_timers(p: &mut PlayerSnapshot) {
         &mut p.climb_no_move_timer,
         &mut p.dream_dash_can_end_timer,
     ] {
-        *timer = (*timer - DT).max(0.0);
+        *timer = (*timer - p.frame_delta_time).max(0.0);
     }
 }
 
@@ -2661,7 +3485,7 @@ fn add_lift_boost(p: &mut PlayerSnapshot) {
 fn tick_lift_speed(p: &mut PlayerSnapshot) {
     p.current_lift_speed = Vec2::default();
     if p.lift_speed_timer > 0.0 {
-        p.lift_speed_timer -= DT;
+        p.lift_speed_timer -= p.frame_delta_time;
         if p.lift_speed_timer <= 0.0 {
             p.lift_speed_timer = 0.0;
             p.last_lift_speed = Vec2::default();
@@ -2673,7 +3497,7 @@ fn update_wall_boost(p: &mut PlayerSnapshot) {
     if p.wall_boost_timer <= 0.0 {
         return;
     }
-    p.wall_boost_timer = (p.wall_boost_timer - DT).max(0.0);
+    p.wall_boost_timer = (p.wall_boost_timer - p.frame_delta_time).max(0.0);
     if p.move_x == p.wall_boost_dir {
         p.speed.x = WALL_JUMP_H * p.move_x as f32;
         p.stamina += 27.5;
@@ -2695,7 +3519,7 @@ fn update_wall_speed_retention(p: &mut PlayerSnapshot, map: &Map) {
         p.speed.x = p.wall_speed_retained;
         p.wall_speed_retention_timer = 0.0;
     } else {
-        p.wall_speed_retention_timer = (p.wall_speed_retention_timer - DT).max(0.0);
+        p.wall_speed_retention_timer = (p.wall_speed_retention_timer - p.frame_delta_time).max(0.0);
     }
 }
 
@@ -2776,7 +3600,7 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
     };
     let move_x = p.move_x;
     if p.ducking && p.on_ground {
-        p.speed.x = approach(p.speed.x, 0.0, DUCK_FRICTION * DT);
+        p.speed.x = approach(p.speed.x, 0.0, DUCK_FRICTION * p.frame_delta_time);
     } else {
         let max_run = if p.holding_theo.is_some() {
             70.0
@@ -2797,7 +3621,7 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
             } else {
                 RUN_ACCEL
             } * mult
-                * DT,
+                * p.frame_delta_time,
         );
     }
     if move_x != 0 {
@@ -2817,7 +3641,11 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
     } else {
         MAX_FALL
     };
-    p.max_fall = approach(p.max_fall, target_max_fall, FAST_MAX_ACCEL * DT);
+    p.max_fall = approach(
+        p.max_fall,
+        target_max_fall,
+        FAST_MAX_ACCEL * p.frame_delta_time,
+    );
     let mut fall_target = p.max_fall;
     if !holding_holdable(p) && wall != 0 && input.move_x == wall && p.speed.y >= 0.0 && !p.on_ground
     {
@@ -2835,7 +3663,11 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
         gravity_mult *= 0.5;
     }
     if !p.on_ground {
-        p.speed.y = approach(p.speed.y, fall_target, GRAVITY * gravity_mult * DT);
+        p.speed.y = approach(
+            p.speed.y,
+            fall_target,
+            GRAVITY * gravity_mult * p.frame_delta_time,
+        );
     }
     if p.var_jump_timer > 0.0 {
         if input.jump_held || p.auto_jump {
@@ -2926,7 +3758,7 @@ fn begin_dash(
     p.speed = Vec2::default();
     p.state = PlayerState::Dash;
     // Player.cs DashCoroutine yields once before applying dash speed.
-    p.state_timer = DASH_TIME + DT * if delayed_coroutine { 2.0 } else { 1.0 };
+    p.state_timer = DASH_TIME + p.frame_delta_time * if delayed_coroutine { 2.0 } else { 1.0 };
     p.dash_attack_timer = DASH_ATTACK_TIME;
     p.dash_cooldown_timer = DASH_COOLDOWN;
     p.dash_refill_cooldown_timer = 0.1;
@@ -2951,8 +3783,8 @@ fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     {
         return;
     }
-    p.state_timer = (p.state_timer - DT).max(0.0);
-    if (p.state_timer - DASH_TIME).abs() <= DT * 0.5 {
+    p.state_timer = (p.state_timer - p.frame_delta_time).max(0.0);
+    if (p.state_timer - DASH_TIME).abs() <= p.frame_delta_time * 0.5 {
         p.speed = Vec2::new(p.dash_dir.x * DASH_SPEED, p.dash_dir.y * DASH_SPEED);
         if p.before_dash_speed.x.signum() == p.speed.x.signum()
             && p.before_dash_speed.x.abs() > p.speed.x.abs()
@@ -3142,7 +3974,7 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
             }
         }
     };
-    p.speed.y = approach(p.speed.y, target, CLIMB_ACCEL * DT);
+    p.speed.y = approach(p.speed.y, target, CLIMB_ACCEL * p.frame_delta_time);
     p.speed.x = 0.0;
     if p.climb_no_move_timer <= 0.0 {
         let cost = if target < 0.0 {
@@ -3152,7 +3984,7 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         } else {
             0.0
         };
-        p.stamina = (p.stamina - cost * DT).max(0.0);
+        p.stamina = (p.stamina - cost * p.frame_delta_time).max(0.0);
     }
     if p.stamina <= 0.0 {
         enter_normal(p);
@@ -3193,17 +4025,21 @@ fn swim_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     } else {
         SWIM_ACCEL
     };
-    p.speed.x = approach(p.speed.x, horizontal_max * x, horizontal_accel * DT);
+    p.speed.x = approach(
+        p.speed.x,
+        horizontal_max * x,
+        horizontal_accel * p.frame_delta_time,
+    );
 
     if y == 0.0 && swim_rise_check(p, map) {
-        p.speed.y = approach(p.speed.y, SWIM_MAX_RISE, SWIM_ACCEL * DT);
+        p.speed.y = approach(p.speed.y, SWIM_MAX_RISE, SWIM_ACCEL * p.frame_delta_time);
     } else if y >= 0.0 || underwater {
         let vertical_accel = if p.speed.y.abs() > SWIM_MAX && p.speed.y.signum() == y.signum() {
             SWIM_REDUCE
         } else {
             SWIM_ACCEL
         };
-        p.speed.y = approach(p.speed.y, SWIM_MAX * y, vertical_accel * DT);
+        p.speed.y = approach(p.speed.y, SWIM_MAX * y, vertical_accel * p.frame_delta_time);
     }
 
     if p.jump_buffer_timer > 0.0 && swim_jump_check(p, map) {
@@ -3223,7 +4059,13 @@ fn swim_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
 
 fn dream_dash_update(p: &mut PlayerSnapshot) {
     p.on_ground = false;
-    naive_move(p, Vec2::new(p.speed.x * DT, p.speed.y * DT));
+    naive_move(
+        p,
+        Vec2::new(
+            p.speed.x * p.frame_delta_time,
+            p.speed.y * p.frame_delta_time,
+        ),
+    );
 }
 
 fn boost_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
@@ -3233,8 +4075,8 @@ fn boost_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         p.boost_target.x + aim.x * 3.0,
         p.boost_target.y + if p.ducking { 3.0 } else { 5.5 } + aim.y * 3.0,
     );
-    approach_exact_position(p, map, target, 80.0 * DT);
-    p.state_timer = (p.state_timer - DT).max(0.0);
+    approach_exact_position(p, map, target, 80.0 * p.frame_delta_time);
+    p.state_timer = (p.state_timer - p.frame_delta_time).max(0.0);
     let manual = input.dash_pressed || input.crouch_dash_pressed;
     if !manual && p.state_timer > 0.0 {
         return;
@@ -3260,7 +4102,7 @@ fn begin_red_dash(p: &mut PlayerSnapshot, input: Option<InputState>, delayed_cor
     p.dash_cooldown_timer = DASH_COOLDOWN;
     p.dash_refill_cooldown_timer = 0.1;
     p.freeze_timer = 0.05;
-    p.state_timer = DT * if delayed_coroutine { 2.0 } else { 1.0 };
+    p.state_timer = p.frame_delta_time * if delayed_coroutine { 2.0 } else { 1.0 };
     p.ducking = false;
 }
 
@@ -3273,7 +4115,7 @@ fn red_dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         return;
     }
     if p.dash_dir == Vec2::default() {
-        p.state_timer = (p.state_timer - DT).max(0.0);
+        p.state_timer = (p.state_timer - p.frame_delta_time).max(0.0);
         if p.state_timer <= 0.0 {
             p.dash_dir = p.last_aim;
             p.speed = Vec2::new(p.dash_dir.x * DASH_SPEED, p.dash_dir.y * DASH_SPEED);
@@ -3285,10 +4127,10 @@ fn red_dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
 }
 
 fn hit_squash_update(p: &mut PlayerSnapshot) {
-    p.speed.x = approach(p.speed.x, 0.0, 800.0 * DT);
-    p.speed.y = approach(p.speed.y, 0.0, 800.0 * DT);
+    p.speed.x = approach(p.speed.x, 0.0, 800.0 * p.frame_delta_time);
+    p.speed.y = approach(p.speed.y, 0.0, 800.0 * p.frame_delta_time);
     if p.state_timer > 0.0 {
-        p.state_timer -= DT;
+        p.state_timer -= p.frame_delta_time;
     } else {
         p.state = PlayerState::Normal;
     }
@@ -3296,7 +4138,7 @@ fn hit_squash_update(p: &mut PlayerSnapshot) {
 
 fn launch_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     if let Some(target_x) = p.launch_approach_x {
-        move_towards_x(p, map, target_x, 60.0 * DT);
+        move_towards_x(p, map, target_x, 60.0 * p.frame_delta_time);
     }
     if (input.dash_pressed || input.crouch_dash_pressed)
         && p.dashes > 0
@@ -3308,9 +4150,9 @@ fn launch_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     p.speed.y = approach(
         p.speed.y,
         MAX_FALL,
-        GRAVITY * if p.speed.y < 0.0 { 0.5 } else { 0.25 } * DT,
+        GRAVITY * if p.speed.y < 0.0 { 0.5 } else { 0.25 } * p.frame_delta_time,
     );
-    p.speed.x = approach(p.speed.x, 0.0, RUN_ACCEL * 0.2 * DT);
+    p.speed.x = approach(p.speed.x, 0.0, RUN_ACCEL * 0.2 * p.frame_delta_time);
     if length(p.speed) < LAUNCH_CANCEL_THRESHOLD {
         p.state = PlayerState::Normal;
         p.launch_approach_x = None;
@@ -3318,9 +4160,9 @@ fn launch_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
 }
 
 fn summit_launch_update(p: &mut PlayerSnapshot, map: &Map) {
-    p.summit_launch_particle_timer -= DT;
+    p.summit_launch_particle_timer -= p.frame_delta_time;
     p.facing = true;
-    move_towards_x(p, map, p.summit_launch_target_x, 20.0 * DT);
+    move_towards_x(p, map, p.summit_launch_target_x, 20.0 * p.frame_delta_time);
     p.speed = Vec2::new(0.0, -DASH_SPEED);
 }
 
@@ -3335,7 +4177,11 @@ fn dummy_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
             } else {
                 1.0
             };
-        p.speed.y = approach(p.speed.y, p.max_fall, GRAVITY * gravity_mult * DT);
+        p.speed.y = approach(
+            p.speed.y,
+            p.max_fall,
+            GRAVITY * gravity_mult * p.frame_delta_time,
+        );
     }
     if p.var_jump_timer > 0.0 {
         if p.auto_jump || input.jump_held {
@@ -3349,11 +4195,11 @@ fn dummy_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
             p.speed.x = approach(
                 p.speed.x,
                 MAX_RUN * p.speed.x.signum(),
-                RUN_ACCEL * 2.5 * DT,
+                RUN_ACCEL * 2.5 * p.frame_delta_time,
             );
         }
         if p.dummy_friction {
-            p.speed.x = approach(p.speed.x, 0.0, RUN_ACCEL * DT);
+            p.speed.x = approach(p.speed.x, 0.0, RUN_ACCEL * p.frame_delta_time);
         }
     }
 }
@@ -3367,9 +4213,17 @@ fn temple_fall_update(p: &mut PlayerSnapshot, map: &Map) {
         } else {
             0.0
         };
-        p.speed.x = approach(p.speed.x, MAX_RUN * 0.6 * move_x, 325.0 * DT);
+        p.speed.x = approach(
+            p.speed.x,
+            MAX_RUN * 0.6 * move_x,
+            325.0 * p.frame_delta_time,
+        );
         if p.dummy_gravity {
-            p.speed.y = approach(p.speed.y, MAX_FALL * 2.0, GRAVITY * 0.25 * DT);
+            p.speed.y = approach(
+                p.speed.y,
+                MAX_FALL * 2.0,
+                GRAVITY * 0.25 * p.frame_delta_time,
+            );
         }
         return;
     }
@@ -3394,9 +4248,13 @@ fn reflection_fall_update(p: &mut PlayerSnapshot, map: &Map) {
                 .bounds
                 .intersects(current_player_rect(p, p.pos.x, p.pos.y))
     }) {
-        p.speed.y = approach(p.speed.y, -20.0, 400.0 * DT);
+        p.speed.y = approach(p.speed.y, -20.0, 400.0 * p.frame_delta_time);
     } else {
-        p.speed.y = approach(p.speed.y, MAX_FALL * 2.0, GRAVITY * 0.25 * DT);
+        p.speed.y = approach(
+            p.speed.y,
+            MAX_FALL * 2.0,
+            GRAVITY * 0.25 * p.frame_delta_time,
+        );
     }
     match p.reflection_fall_phase {
         0 if p.reflection_fall_frames < 120 => {
@@ -3418,7 +4276,7 @@ fn reflection_fall_update(p: &mut PlayerSnapshot, map: &Map) {
             p.reflection_fall_wait_timer = 1.2;
         }
         2 if p.reflection_fall_wait_timer > 0.0 => {
-            p.reflection_fall_wait_timer -= DT;
+            p.reflection_fall_wait_timer -= p.frame_delta_time;
         }
         2 => {
             p.ignore_jump_thrus = false;
@@ -3442,7 +4300,11 @@ fn begin_star_fly(p: &mut PlayerSnapshot) {
 
 fn star_fly_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     if p.star_fly_transforming {
-        p.speed = approach_vector(p.speed, Vec2::default(), STAR_FLY_TRANSFORM_DECEL * DT);
+        p.speed = approach_vector(
+            p.speed,
+            Vec2::default(),
+            STAR_FLY_TRANSFORM_DECEL * p.frame_delta_time,
+        );
         p.star_fly_transform_frames = p.star_fly_transform_frames.saturating_sub(1);
         if p.star_fly_transform_frames == 0 {
             p.star_fly_transforming = false;
@@ -3469,7 +4331,11 @@ fn star_fly_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     if current_dir == Vec2::default() {
         current_dir = aim;
     } else {
-        current_dir = rotate_towards(current_dir, angle(aim), STAR_FLY_ROTATE_SPEED * DT);
+        current_dir = rotate_towards(
+            current_dir,
+            angle(aim),
+            STAR_FLY_ROTATE_SPEED * p.frame_delta_time,
+        );
     }
     p.star_fly_last_dir = current_dir;
 
@@ -3477,13 +4343,17 @@ fn star_fly_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         p.star_fly_speed_lerp = 0.0;
         STAR_FLY_SLOW_SPEED
     } else if current_dir != Vec2::default() && dot(current_dir, aim) >= 0.45 {
-        p.star_fly_speed_lerp = approach(p.star_fly_speed_lerp, 1.0, DT);
+        p.star_fly_speed_lerp = approach(p.star_fly_speed_lerp, 1.0, p.frame_delta_time);
         STAR_FLY_TARGET_SPEED + (STAR_FLY_MAX_SPEED - STAR_FLY_TARGET_SPEED) * p.star_fly_speed_lerp
     } else {
         p.star_fly_speed_lerp = 0.0;
         STAR_FLY_TARGET_SPEED
     };
-    let speed = approach(length(p.speed), max_speed, STAR_FLY_ACCEL * DT);
+    let speed = approach(
+        length(p.speed),
+        max_speed,
+        STAR_FLY_ACCEL * p.frame_delta_time,
+    );
     p.speed = scale(current_dir, speed);
 
     if input.jump_pressed {
@@ -3546,7 +4416,7 @@ fn star_fly_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         return;
     }
 
-    p.star_fly_timer -= DT;
+    p.star_fly_timer -= p.frame_delta_time;
     if p.star_fly_timer <= 0.0 {
         if input.move_y < 0 {
             p.speed.y = STAR_FLY_EXIT_UP;
@@ -3772,7 +4642,7 @@ fn wall_dir(p: &PlayerSnapshot, map: &Map) -> i8 {
 
 fn move_axis(p: &mut PlayerSnapshot, map: &Map, horizontal: bool) {
     let speed = if horizontal { p.speed.x } else { p.speed.y };
-    move_axis_amount(p, map, horizontal, speed * DT);
+    move_axis_amount(p, map, horizontal, speed * p.frame_delta_time);
 }
 
 fn naive_move(p: &mut PlayerSnapshot, amount: Vec2) {
@@ -4035,6 +4905,8 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
     }
     let hitbox = current_player_rect(p, p.pos.x, p.pos.y);
     let mut heart_index = 0usize;
+    let mut rising_lava_index = 0usize;
+    let mut sandwich_lava_index = 0usize;
     for (entity_index, entity) in map.entities.iter().enumerate() {
         let current_heart = if entity.kind == EntityKind::HeartGem {
             let index = heart_index;
@@ -4043,6 +4915,25 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
         } else {
             None
         };
+        let current_rising_lava = if entity.kind == EntityKind::RisingLava {
+            let index = rising_lava_index;
+            rising_lava_index += 1;
+            Some(index)
+        } else {
+            None
+        };
+        let current_sandwich_lava = if entity.kind == EntityKind::SandwichLava {
+            let index = sandwich_lava_index;
+            sandwich_lava_index += 1;
+            Some(index)
+        } else {
+            None
+        };
+        // Seeker PlayerColliders run from the dynamic Seeker update after
+        // Player.Update, using its live StateMachine collider selection.
+        if entity.kind == EntityKind::Seeker {
+            continue;
+        }
         let player_box = if matches!(
             entity.kind,
             EntityKind::Spikes
@@ -4050,6 +4941,8 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                 | EntityKind::Bumper
                 | EntityKind::Spring
                 | EntityKind::IceBall
+                | EntityKind::RisingLava
+                | EntityKind::SandwichLava
                 | EntityKind::CrystalStaticSpinner
         ) {
             current_player_hurt_rect(p)
@@ -4109,6 +5002,22 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                 );
                 bounce.intersects(player_box) || entity.bounds.intersects(player_box)
             }
+            EntityKind::RisingLava => current_rising_lava
+                .and_then(|index| p.rising_lavas.get(index))
+                .is_some_and(|lava| {
+                    Rect::new(lava.position.x, lava.position.y, 340.0, 120.0).intersects(player_box)
+                }),
+            EntityKind::SandwichLava => current_sandwich_lava
+                .and_then(|index| p.sandwich_lavas.get(index))
+                .is_some_and(|lava| {
+                    !lava.waiting
+                        && !lava.leaving
+                        && !lava.removed
+                        && (Rect::new(lava.position.x, lava.position.y, 340.0, 120.0)
+                            .intersects(player_box)
+                            || Rect::new(lava.position.x, lava.position.y - 280.0, 340.0, 120.0)
+                                .intersects(player_box))
+                }),
             _ => entity.bounds.intersects(player_box),
         };
         if !intersects {
@@ -4122,7 +5031,9 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                 p.respawn_frames = 95;
                 return;
             }
-            EntityKind::CrystalStaticSpinner => {
+            EntityKind::RisingLava
+            | EntityKind::SandwichLava
+            | EntityKind::CrystalStaticSpinner => {
                 p.dead = true;
                 p.speed = Vec2::default();
                 p.death_freeze_pending = true;
@@ -4150,7 +5061,7 @@ fn interact(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
                 p.boost_red = entity.kind == EntityKind::RedBooster;
                 p.last_booster_target = p.boost_target;
                 p.booster_reuse_timer = 0.45;
-                p.state_timer = 0.25 + DT * 2.0;
+                p.state_timer = 0.25 + p.frame_delta_time * 2.0;
                 p.dashes = p.dashes.max(1);
                 p.stamina = 110.0;
             }
@@ -4315,7 +5226,8 @@ fn update_strawberry_train(p: &mut PlayerSnapshot) {
         return;
     }
     if p.strawberry_follow_delay_timer > 0.0 {
-        p.strawberry_follow_delay_timer = (p.strawberry_follow_delay_timer - DT).max(0.0);
+        p.strawberry_follow_delay_timer =
+            (p.strawberry_follow_delay_timer - p.frame_delta_time).max(0.0);
         return;
     }
 
@@ -4323,7 +5235,7 @@ fn update_strawberry_train(p: &mut PlayerSnapshot) {
     // jumpthroughs are safe in the supported map subset, and Swim is always
     // treated as safe ground by Player.Update.
     if p.on_ground || p.state == PlayerState::Swim {
-        p.strawberry_collect_timer += DT;
+        p.strawberry_collect_timer += p.frame_delta_time;
         if p.strawberry_collect_timer > 0.15 {
             p.carried_strawberries -= 1;
             p.strawberry_collect_index = p.strawberry_collect_index.saturating_add(1);
@@ -4331,8 +5243,8 @@ fn update_strawberry_train(p: &mut PlayerSnapshot) {
             p.strawberry_collect_timer = if p.carried_strawberries > 0 {
                 // Followers update in train order. Once the first berry calls
                 // OnCollect, the next berry becomes FollowIndex 0 and runs its
-                // own Update later in the same frame, advancing -0.15 by DT.
-                -0.15 + DT
+                // own Update later in the same frame, advancing -0.15 by p.frame_delta_time.
+                -0.15 + p.frame_delta_time
             } else {
                 0.0
             };
@@ -4547,7 +5459,7 @@ fn advance_badeline_boost_relocation(p: &mut PlayerSnapshot) {
     if !p.badeline_boost_relocating {
         return;
     }
-    p.badeline_boost_relocation_elapsed += DT;
+    p.badeline_boost_relocation_elapsed += p.frame_delta_time;
     let progress = if p.badeline_boost_relocation_duration <= 0.0 {
         1.0
     } else {
@@ -4581,7 +5493,7 @@ fn update_badeline_boost(p: &mut PlayerSnapshot, map: &Map) {
     let wait_frames = if p.badeline_boost_final { 12 } else { 6 };
     match p.badeline_boost_phase {
         0 if p.badeline_boost_frame < 11 => {
-            let progress = (p.badeline_boost_frame as f32 + 1.0) * DT / 0.2;
+            let progress = (p.badeline_boost_frame as f32 + 1.0) * p.frame_delta_time / 0.2;
             let target = Vec2::new(
                 p.badeline_boost_start.x
                     + (p.badeline_boost_target.x - p.badeline_boost_start.x) * progress,
@@ -4803,15 +5715,15 @@ fn begin_transition(p: &mut PlayerSnapshot, next: Rect, direction: Vec2) {
     // TransitionRoutine updates cameraAt after yielding, then resumes once
     // more to observe cameraAt == 1 and run OnTransition. Preserve that final
     // coroutine-resume frame in addition to the 0.65-second camera duration.
-    p.transition_timer = TRANSITION_TIME + DT;
+    p.transition_timer = TRANSITION_TIME + p.frame_delta_time;
     p.on_ground = false;
 }
 
 fn update_transition(p: &mut PlayerSnapshot) {
-    let max_move = TRANSITION_MOVE_SPEED * DT;
+    let max_move = TRANSITION_MOVE_SPEED * p.frame_delta_time;
     p.pos.x = approach(p.pos.x, p.transition_target.x, max_move);
     p.pos.y = approach(p.pos.y, p.transition_target.y, max_move);
-    p.transition_timer = (p.transition_timer - DT).max(0.0);
+    p.transition_timer = (p.transition_timer - p.frame_delta_time).max(0.0);
     p.on_ground = false;
     // Player.TransitionTo rounds speed and clears Actor remainders as soon as
     // the player reaches the transfer target; the camera coroutine can keep
@@ -4890,8 +5802,8 @@ fn move_exact(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, sign: i32) ->
 }
 
 fn advance_wind_controller(p: &mut PlayerSnapshot) {
-    p.wind.x = approach(p.wind.x, p.wind_target.x, WIND_ACCEL * DT);
-    p.wind.y = approach(p.wind.y, p.wind_target.y, WIND_ACCEL * DT);
+    p.wind.x = approach(p.wind.x, p.wind_target.x, WIND_ACCEL * p.frame_delta_time);
+    p.wind.y = approach(p.wind.y, p.wind_target.y, WIND_ACCEL * p.frame_delta_time);
 }
 
 fn apply_wind_movement(p: &mut PlayerSnapshot, map: &Map) {
@@ -4905,7 +5817,7 @@ fn apply_wind_movement(p: &mut PlayerSnapshot, map: &Map) {
         return;
     }
 
-    let mut move_x = p.wind.x * WIND_MOVE_MULT * DT;
+    let mut move_x = p.wind.x * WIND_MOVE_MULT * p.frame_delta_time;
     if move_x != 0.0 && p.state != PlayerState::Climb {
         let shield_x = p.pos.x - move_x.signum() * WIND_WALL_DISTANCE;
         if !map.solid_at(current_player_rect(p, shield_x, p.pos.y)) {
@@ -4916,7 +5828,7 @@ fn apply_wind_movement(p: &mut PlayerSnapshot, map: &Map) {
         }
     }
 
-    let mut move_y = p.wind.y * WIND_MOVE_MULT * DT;
+    let mut move_y = p.wind.y * WIND_MOVE_MULT * p.frame_delta_time;
     if move_y != 0.0 && (p.speed.y < 0.0 || !grounded(p, map)) {
         if p.state == PlayerState::Climb {
             if move_y > 0.0 && p.climb_no_move_timer <= 0.0 {
@@ -5059,6 +5971,26 @@ mod tests {
                 single_use: false,
                 nodes: vec![],
                 name: "celesteGymMovingSolid".to_owned(),
+            }],
+            ..Map::default()
+        }
+    }
+    fn lava_map(kind: EntityKind, start_x: f32) -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 640.0, 360.0),
+            entities: vec![crate::Entity {
+                kind,
+                bounds: Rect::new(start_x, 0.0, 8.0, 8.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: match kind {
+                    EntityKind::RisingLava => "risingLava",
+                    EntityKind::SandwichLava => "sandwichLava",
+                    _ => unreachable!(),
+                }
+                .to_owned(),
             }],
             ..Map::default()
         }
@@ -5630,6 +6562,53 @@ mod tests {
         assert_eq!(p.last_lift_speed, Vec2::new(0.0, 120.0));
     }
     #[test]
+    fn zip_mover_runtime_invokes_target_position_jump_thru_clip() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::ZipMover,
+                    bounds: Rect::new(40.0, 20.0, 32.0, 16.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![Vec2::new(40.0, 60.0)],
+                    name: "zipMover".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::JumpThru,
+                    bounds: Rect::new(40.0, 48.0, 32.0, 8.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "jumpThru".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let initial = PlayerSnapshot {
+            pos: Vec2::new(56.0, 48.0),
+            zip_movers: vec![crate::ZipMoverSnapshot {
+                phase: 2,
+                at: 0.6,
+                position: Vec2::new(40.0, 20.0),
+                start: Vec2::new(40.0, 20.0),
+                ..crate::ZipMoverSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+
+        let state = simulate(initial, &[InputState::default()], &map, 1).unwrap();
+
+        assert_eq!(state.pos, Vec2::new(56.0, 65.0));
+        assert!(state.pos.y > map.entities[1].bounds.bottom());
+        assert!(state.ducking);
+        assert!(!state.dead);
+        assert!(state.zip_movers[0].position.y > 20.0);
+        assert!(state.last_lift_speed.y > 0.0);
+    }
+    #[test]
     fn ordinary_downward_solid_push_moves_the_actor_without_squish() {
         let map = Map {
             entities: vec![crate::Entity {
@@ -5923,6 +6902,80 @@ mod tests {
             trace.states[spikes_reenabled].bounce_blocks[0].position,
             Vec2::new(32.0, 160.0)
         );
+    }
+
+    #[test]
+    fn core_block_candidate_clears_source_body_before_reform_blocked_check() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
+            solids: vec![Rect::new(0.0, 496.0, 960.0, 48.0)],
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::BounceBlock,
+                    bounds: Rect::new(704.0, 440.0, 64.0, 16.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "bounceBlock".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::Spikes,
+                    bounds: Rect::new(768.0, 440.0, 3.0, 16.0),
+                    direction: Vec2::new(1.0, 0.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "spikesRight".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::JumpThru,
+                    bounds: Rect::new(704.0, 456.0, 64.0, 8.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "jumpThru".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(736.0, 440.0),
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..280)
+            .map(|frame| InputState {
+                move_x: if frame < 80 { -1 } else { 0 },
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
+        let broken = trace
+            .states
+            .iter()
+            .position(|state| state.bounce_blocks[0].phase == 4)
+            .unwrap();
+        let body = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(broken + 1)
+            .find(|(_, state)| {
+                state.bounce_blocks[0].phase == 0 && !state.bounce_blocks[0].static_movers_enabled
+            })
+            .map(|(frame, _)| frame)
+            .unwrap();
+        let spike = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(body + 1)
+            .find(|(_, state)| state.bounce_blocks[0].static_movers_enabled)
+            .map(|(frame, _)| frame)
+            .unwrap();
+        assert!(trace.states[body].pos.x < 700.0);
+        assert!(spike > body);
     }
 
     #[test]
@@ -6468,6 +7521,183 @@ mod tests {
     }
 
     #[test]
+    fn springboost_cancel_reverses_into_the_rising_glider_for_regrab() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 544.0),
+            solids: vec![Rect::new(0.0, 496.0, 320.0, 48.0)],
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::Glider,
+                    bounds: Rect::new(96.0, 486.0, 8.0, 10.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "glider".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::Spring,
+                    bounds: Rect::new(128.0, 490.0, 16.0, 6.0),
+                    direction: Vec2::new(0.0, -1.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "spring".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(100.0, 496.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..130)
+            .map(|frame| InputState {
+                move_x: if (14..45).contains(&frame) {
+                    1
+                } else if (45..75).contains(&frame) {
+                    -1
+                } else {
+                    0
+                },
+                move_y: if frame == 35 { 1 } else { 0 },
+                jump_pressed: frame == 25,
+                jump_held: (25..34).contains(&frame),
+                grab_held: frame <= 34 || frame >= 100,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
+        let released = trace
+            .states
+            .windows(2)
+            .position(|pair| pair[0].holding_glider == Some(0) && pair[1].holding_glider.is_none())
+            .map(|frame| frame + 1)
+            .unwrap();
+        let spring = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(released + 1)
+            .find(|(_, state)| state.gliders[0].speed.y == -160.0)
+            .map(|(frame, _)| frame)
+            .unwrap_or_else(|| {
+                panic!(
+                    "missing spring release={released}: {:?}",
+                    trace
+                        .states
+                        .iter()
+                        .enumerate()
+                        .skip(released)
+                        .step_by(5)
+                        .map(|(frame, state)| (
+                            frame,
+                            state.pos,
+                            state.gliders[0].position,
+                            state.gliders[0].speed,
+                            state.holding_glider,
+                        ))
+                        .collect::<Vec<_>>()
+                )
+            });
+        let regrab = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(spring + 1)
+            .find(|(_, state)| {
+                state.state == PlayerState::Pickup && state.holding_glider == Some(0)
+            })
+            .map(|(frame, _)| frame)
+            .unwrap_or_else(|| {
+                panic!(
+                    "missing regrab release={released} spring={spring}: {:?}",
+                    trace
+                        .states
+                        .iter()
+                        .enumerate()
+                        .skip(spring)
+                        .step_by(5)
+                        .map(|(frame, state)| (
+                            frame,
+                            state.pos,
+                            state.speed,
+                            state.gliders[0].position,
+                            state.gliders[0].speed,
+                            state.holding_glider,
+                        ))
+                        .collect::<Vec<_>>()
+                )
+            });
+        assert!(regrab > spring);
+    }
+
+    #[test]
+    fn holdable_springs_apply_theo_floor_and_wall_source_speeds() {
+        let mut floor_map = theo_crystal_map();
+        floor_map.solids.clear();
+        floor_map.entities[0].bounds = Rect::new(76.0, 88.0, 8.0, 10.0);
+        floor_map.entities.push(crate::Entity {
+            kind: EntityKind::Spring,
+            bounds: Rect::new(72.0, 94.0, 16.0, 6.0),
+            direction: Vec2::new(0.0, -1.0),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "spring".to_owned(),
+        });
+        let floor = simulate(
+            PlayerSnapshot {
+                pos: Vec2::new(200.0, 100.0),
+                theo_crystals: vec![crate::TheoCrystalSnapshot {
+                    position: Vec2::new(80.0, 98.0),
+                    speed: Vec2::new(80.0, 20.0),
+                    ..crate::TheoCrystalSnapshot::default()
+                }],
+                ..PlayerSnapshot::default()
+            },
+            &[InputState::default()],
+            &floor_map,
+            1,
+        )
+        .unwrap();
+        assert_eq!(floor.theo_crystals[0].speed.y, -160.0);
+        assert!((floor.theo_crystals[0].speed.x - 37.083_332).abs() < 0.000_1);
+        assert_eq!(floor.theo_crystals[0].gravity_timer, 0.15);
+
+        let mut wall_map = theo_crystal_map();
+        wall_map.solids.clear();
+        wall_map.entities[0].bounds = Rect::new(76.0, 88.0, 8.0, 10.0);
+        wall_map.entities.push(crate::Entity {
+            kind: EntityKind::Spring,
+            bounds: Rect::new(72.0, 84.0, 6.0, 16.0),
+            direction: Vec2::new(1.0, 0.0),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "wallSpringLeft".to_owned(),
+        });
+        let wall = simulate(
+            PlayerSnapshot {
+                pos: Vec2::new(200.0, 100.0),
+                theo_crystals: vec![crate::TheoCrystalSnapshot {
+                    position: Vec2::new(80.0, 98.0),
+                    speed: Vec2::new(-20.0, 0.0),
+                    ..crate::TheoCrystalSnapshot::default()
+                }],
+                ..PlayerSnapshot::default()
+            },
+            &[InputState::default()],
+            &wall_map,
+            1,
+        )
+        .unwrap();
+        assert_eq!(wall.theo_crystals[0].speed, Vec2::new(220.0, -80.0));
+        assert_eq!(wall.theo_crystals[0].gravity_timer, 0.1);
+    }
+
+    #[test]
     fn neutral_drop_releases_theo_without_throw_speed_or_player_recoil() {
         let p = PlayerSnapshot {
             pos: Vec2::new(60.0, 160.0),
@@ -6622,6 +7852,74 @@ mod tests {
         );
         assert_eq!(trace.states[regrabbed].pickup_old_speed.x, DASH_SPEED);
         assert_eq!(trace.states[regrabbed].speed, Vec2::default());
+    }
+
+    #[test]
+    fn holdable_slash_regrabs_theo_in_horizontal_dash_with_airborne_vertical_speed() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 160.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..70)
+            .map(|frame| InputState {
+                move_x: if (14..28).contains(&frame) {
+                    -1
+                } else if frame >= 28 {
+                    1
+                } else {
+                    0
+                },
+                move_y: if frame == 23 { 1 } else { 0 },
+                jump_pressed: frame == 14,
+                jump_held: (14..23).contains(&frame),
+                dash_pressed: frame == 28,
+                grab_held: frame <= 22 || frame >= 35,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &theo_crystal_map(), inputs.len() as u32).unwrap();
+        let released = trace
+            .states
+            .iter()
+            .position(|state| {
+                state.holding_theo.is_none() && state.theo_crystals[0].cannot_hold_timer > 0.0
+            })
+            .unwrap();
+        let dash = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(released + 1)
+            .find(|(_, state)| state.state == PlayerState::Dash)
+            .map(|(frame, _)| frame)
+            .unwrap();
+        let regrabbed = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(dash + 1)
+            .find(|(_, state)| state.state == PlayerState::Pickup && state.holding_theo == Some(0))
+            .map(|(frame, _)| frame)
+            .unwrap();
+        let restored = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(regrabbed + 1)
+            .find(|(_, state)| state.state == PlayerState::Normal)
+            .map(|(frame, _)| frame)
+            .unwrap();
+
+        assert!(!trace.states[released].on_ground);
+        assert_ne!(trace.states[released].speed.y, 0.0);
+        assert!(trace.states[dash - 1].theo_crystals[0].cannot_hold_timer > 0.0);
+        assert_eq!(
+            trace.states[regrabbed].pickup_old_speed,
+            Vec2::new(DASH_SPEED, 0.0)
+        );
+        assert_eq!(trace.states[regrabbed].speed, Vec2::default());
+        assert_eq!(trace.states[restored].speed, Vec2::new(DASH_SPEED, 0.0));
     }
 
     #[test]
@@ -6859,6 +8157,104 @@ mod tests {
     }
 
     #[test]
+    fn bumper_smuggle_releases_down_after_buffered_diagonal_dash_to_regrab_theo() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 544.0),
+            solids: vec![Rect::new(0.0, 496.0, 320.0, 48.0)],
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::TheoCrystal,
+                    bounds: Rect::new(96.0, 486.0, 8.0, 10.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "theoCrystal".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::Bumper,
+                    bounds: Rect::new(120.0, 480.0, 24.0, 24.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "bigSpinner".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(100.0, 496.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let inputs: Vec<_> = (0..120)
+            .map(|frame| InputState {
+                move_x: if frame >= 13 { 1 } else { 0 },
+                move_y: if frame == 26 || (45..=47).contains(&frame) {
+                    1
+                } else {
+                    0
+                },
+                dash_pressed: frame == 45,
+                grab_held: frame <= 25 || frame >= 45,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
+        let pickup = trace
+            .states
+            .iter()
+            .position(|state| state.state == PlayerState::Pickup && state.holding_theo == Some(0))
+            .unwrap();
+        let launch = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(pickup + 1)
+            .find(|(_, state)| state.state == PlayerState::Launch && state.holding_theo.is_none())
+            .map(|(frame, _)| frame)
+            .unwrap();
+        let dash = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(launch + 1)
+            .find(|(_, state)| state.state == PlayerState::Dash && state.holding_theo.is_none())
+            .map(|(frame, _)| frame)
+            .unwrap();
+        let regrab = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(dash + 1)
+            .find(|(_, state)| state.state == PlayerState::Pickup && state.holding_theo == Some(0))
+            .map(|(frame, _)| frame)
+            .unwrap_or_else(|| {
+                panic!(
+                    "missing regrab pickup={pickup} launch={launch} dash={dash}: {:?}",
+                    trace
+                        .states
+                        .iter()
+                        .enumerate()
+                        .skip(dash)
+                        .step_by(5)
+                        .map(|(frame, state)| (
+                            frame,
+                            state.pos,
+                            state.speed,
+                            state.theo_crystals[0].position,
+                            state.holding_theo,
+                            state.state,
+                        ))
+                        .collect::<Vec<_>>()
+                )
+            });
+        assert!(regrab > dash);
+        assert!(trace.states[regrab].pickup_old_speed.x > MAX_RUN);
+    }
+
+    #[test]
     fn throwable_backboost_adds_eighty_opposite_the_throw_facing() {
         let mut p = PlayerSnapshot {
             pos: Vec2::new(100.0, 100.0),
@@ -7086,6 +8482,25 @@ mod tests {
     }
 
     #[test]
+    fn engine_time_rate_scales_the_entire_next_player_update() {
+        let initial = PlayerSnapshot {
+            pos: Vec2::new(100.0, 100.0),
+            speed: Vec2::new(360.0, 0.0),
+            time_rate: 0.5,
+            ..PlayerSnapshot::default()
+        };
+
+        let state = simulate(initial, &[InputState::default()], &Map::default(), 1).unwrap();
+        let scaled_dt = DT * 0.5;
+        let expected_x = approach(360.0, 0.0, RUN_ACCEL * AIR_MULT * scaled_dt);
+
+        assert!((state.frame_delta_time - scaled_dt).abs() < 0.000_001);
+        assert!((state.speed.x - expected_x).abs() < 0.000_001);
+        assert!((state.speed.y - GRAVITY * scaled_dt).abs() < 0.000_001);
+        assert_eq!(state.pos, Vec2::new(103.0, 100.0));
+    }
+
+    #[test]
     fn heart_gem_point_bounces_a_non_dash_attacking_player() {
         let map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
@@ -7110,6 +8525,165 @@ mod tests {
         assert_eq!(state.state, PlayerState::Normal);
         assert!(state.speed.y < 0.0);
         assert!(!state.heart_gems[0].collected);
+    }
+
+    #[test]
+    fn rising_lava_uses_camera_x_and_source_adaptive_rise_speed() {
+        let initial = PlayerSnapshot {
+            pos: Vec2::new(320.0, 180.0),
+            state: PlayerState::Frozen,
+            ..PlayerSnapshot::default()
+        };
+
+        let state = simulate(
+            initial,
+            &[InputState::default()],
+            &lava_map(EntityKind::RisingLava, 0.0),
+            1,
+        )
+        .unwrap();
+        let lava = &state.rising_lavas[0];
+
+        assert_eq!(state.camera, Vec2::new(160.0, 90.0));
+        assert_eq!(lava.position.x, state.camera.x);
+        assert!((lava.position.y - 353.0).abs() < 0.000_1);
+        assert!(!lava.waiting);
+        assert!(!lava.ice_mode);
+    }
+
+    #[test]
+    fn sandwich_lava_waiting_core_mode_and_transition_lifecycle_match_source() {
+        let map = lava_map(EntityKind::SandwichLava, 100.0);
+        let cold = PlayerSnapshot {
+            pos: Vec2::new(200.0, 250.0),
+            state: PlayerState::Frozen,
+            core_mode: crate::CoreMode::Cold,
+            ..PlayerSnapshot::default()
+        };
+        let cold = simulate(cold, &[InputState::default()], &map, 1).unwrap();
+        let lava = &cold.sandwich_lavas[0];
+        assert!(lava.ice_mode);
+        assert!(!lava.waiting);
+        assert!((lava.position.y - (350.0 + 20.0 * DT)).abs() < 0.000_1);
+        assert_eq!(lava.position.x, cold.camera.x);
+        assert!(lava.persistent);
+
+        let waiting = PlayerSnapshot {
+            pos: Vec2::new(80.0, 350.0),
+            state: PlayerState::Frozen,
+            just_respawned: true,
+            ..PlayerSnapshot::default()
+        };
+        let waiting = simulate(waiting, &[InputState::default()], &map, 1).unwrap();
+        assert!(waiting.sandwich_lavas[0].waiting);
+        assert!(!waiting.dead);
+
+        let leaving = PlayerSnapshot {
+            pos: Vec2::new(200.0, 250.0),
+            state: PlayerState::Frozen,
+            transition_timer: 0.3,
+            transition_direction: Vec2::new(1.0, 0.0),
+            transition_target: Vec2::new(320.0, 250.0),
+            ..PlayerSnapshot::default()
+        };
+        let leaving = simulate(leaving, &[InputState::default()], &map, 1).unwrap();
+        assert!(leaving.sandwich_lavas[0].leaving);
+        assert!(leaving.sandwich_lavas[0].leave_timer < 2.0);
+    }
+
+    #[test]
+    fn lava_player_collider_preserves_the_one_pixel_safe_lip() {
+        let map = lava_map(EntityKind::RisingLava, 0.0);
+        let lava = crate::RisingLavaSnapshot {
+            position: Vec2::new(0.0, 100.0),
+            initialized: true,
+            ..crate::RisingLavaSnapshot::default()
+        };
+        let safe = PlayerSnapshot {
+            pos: Vec2::new(32.0, 102.0),
+            state: PlayerState::Frozen,
+            camera: Vec2::new(0.0, 0.0),
+            camera_initialized: true,
+            rising_lavas: vec![lava.clone()],
+            ..PlayerSnapshot::default()
+        };
+        assert!(
+            current_player_rect(&safe, safe.pos.x, safe.pos.y)
+                .intersects(Rect::new(0.0, 100.0, 340.0, 120.0))
+        );
+        assert!(!current_player_hurt_rect(&safe).intersects(Rect::new(0.0, 100.0, 340.0, 120.0)));
+        let safe = simulate(safe, &[InputState::default()], &map, 1).unwrap();
+        assert!(!safe.dead);
+
+        let lethal = PlayerSnapshot {
+            pos: Vec2::new(32.0, 103.0),
+            state: PlayerState::Frozen,
+            camera: Vec2::new(0.0, 0.0),
+            camera_initialized: true,
+            rising_lavas: vec![lava],
+            ..PlayerSnapshot::default()
+        };
+        let lethal = simulate(lethal, &[InputState::default()], &map, 1).unwrap();
+        assert!(lethal.dead);
+    }
+
+    #[test]
+    fn rising_lava_safe_lip_accepts_a_buffered_neutral_climb_jump() {
+        let mut map = lava_map(EntityKind::RisingLava, 760.0);
+        map.solids = vec![
+            Rect::new(0.0, 496.0, 960.0, 48.0),
+            Rect::new(688.0, 360.0, 24.0, 136.0),
+        ];
+        map.bounds = Rect::new(0.0, 0.0, 960.0, 544.0);
+        let initial = PlayerSnapshot {
+            pos: Vec2::new(716.0, 494.0),
+            state: PlayerState::Climb,
+            facing: false,
+            stamina: 110.0,
+            ..PlayerSnapshot::default()
+        };
+
+        let idle_inputs = vec![
+            InputState {
+                grab_held: true,
+                ..InputState::default()
+            };
+            220
+        ];
+        let idle = simulate_trace(initial.clone(), &idle_inputs, &map, 220).unwrap();
+        let safe_state = idle
+            .states
+            .iter()
+            .enumerate()
+            .filter(|(_, state)| {
+                let lava = &state.rising_lavas[0];
+                let hazard = Rect::new(lava.position.x, lava.position.y, 340.0, 120.0);
+                !state.dead
+                    && current_player_rect(state, state.pos.x, state.pos.y).intersects(hazard)
+                    && !current_player_hurt_rect(state).intersects(hazard)
+            })
+            .map(|(frame, _)| frame)
+            .last()
+            .unwrap();
+        let death_state = idle.states.iter().position(|state| state.dead).unwrap();
+        assert_eq!(safe_state, 169);
+        assert!(death_state > safe_state);
+
+        let inputs: Vec<InputState> = (0..220)
+            .map(|frame| InputState {
+                jump_pressed: frame == safe_state,
+                jump_held: frame >= safe_state && frame < safe_state + 8,
+                grab_held: frame <= safe_state,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(initial, &inputs, &map, inputs.len() as u32).unwrap();
+        let neutral = &trace.states[safe_state + 1];
+
+        assert_eq!(neutral.state, PlayerState::Normal);
+        assert!(neutral.wall_boost_timer > 0.0);
+        assert!((neutral.speed.y - JUMP_SPEED).abs() < 0.001);
+        assert!(!neutral.dead);
     }
 
     #[test]
@@ -11101,11 +12675,10 @@ mod tests {
     }
 
     #[test]
-    fn fish_oshiro_seeker_and_snowball_top_callbacks_share_player_bounce_semantics() {
+    fn fish_oshiro_and_snowball_top_callbacks_share_player_bounce_semantics() {
         for kind in [
             EntityKind::Puffer,
             EntityKind::AngryOshiro,
-            EntityKind::Seeker,
             EntityKind::Snowball,
         ] {
             let mut p = PlayerSnapshot {
@@ -11126,6 +12699,261 @@ mod tests {
             assert_eq!(p.dash_attack_timer, 0.0, "kind={kind:?}");
             assert_eq!(p.var_jump_timer, VAR_JUMP_TIME, "kind={kind:?}");
         }
+    }
+
+    #[test]
+    fn seeker_attack_wall_collision_enters_stunned_with_source_speeds_and_timer() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 200.0, 180.0),
+            solids: vec![Rect::new(104.0, 0.0, 16.0, 180.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::Seeker,
+                bounds: Rect::new(94.0, 94.0, 12.0, 12.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "seeker".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(20.0, 160.0),
+            seekers: vec![crate::SeekerSnapshot {
+                position: Vec2::new(100.0, 100.0),
+                speed: Vec2::new(120.0, 50.0),
+                state: 3,
+                ..crate::SeekerSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(p, &[InputState::default(); 2], &map, 2).unwrap();
+
+        assert_eq!(trace.states[1].seekers[0].state, 4);
+        assert_eq!(trace.states[1].seekers[0].speed, Vec2::new(-100.0, 20.0));
+        assert_eq!(trace.states[1].seekers[0].state_timer, 0.8);
+        assert_eq!(
+            trace.states[2].seekers[0].speed,
+            approach_vec(Vec2::new(-100.0, 20.0), Vec2::default(), 150.0 * DT)
+        );
+        assert_eq!(trace.states[2].seekers[0].state_timer, 0.8 - DT);
+    }
+
+    #[test]
+    fn seeker_stunned_coroutine_returns_idle_and_split_simulation_is_composable() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            solids: vec![Rect::new(0.0, 160.0, 320.0, 20.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::Seeker,
+                bounds: Rect::new(194.0, 94.0, 12.0, 12.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "seeker".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let initial = PlayerSnapshot {
+            pos: Vec2::new(20.0, 160.0),
+            on_ground: true,
+            seekers: vec![crate::SeekerSnapshot {
+                position: Vec2::new(200.0, 100.0),
+                speed: Vec2::new(-100.0, 20.0),
+                state: 4,
+                state_timer: 0.8,
+                ..crate::SeekerSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [InputState::default(); 55];
+        let trace = simulate_trace(initial.clone(), &inputs, &map, inputs.len() as u32).unwrap();
+        let returned = trace
+            .states
+            .iter()
+            .enumerate()
+            .skip(1)
+            .find(|(_, state)| state.seekers[0].state == 0)
+            .map(|(frame, _)| frame)
+            .expect("StunnedCoroutine should return to Idle after 0.8 seconds");
+        assert_eq!(returned, 49);
+        assert_eq!(trace.states[returned].seekers[0].speed, Vec2::default());
+
+        let whole = trace.states.last().unwrap().clone();
+        let first = simulate(initial, &inputs[..20], &map, 20).unwrap();
+        let split = simulate(first, &inputs[20..], &map, 35).unwrap();
+        assert_eq!(split, whole);
+    }
+
+    #[test]
+    fn stunned_seeker_side_contact_point_bounces_player_and_recoils_at_one_hundred() {
+        let mut map = bounce_actor_map(EntityKind::Seeker);
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(92.0, 105.5),
+            dashes: 0,
+            stamina: 5.0,
+            seekers: vec![crate::SeekerSnapshot {
+                position: Vec2::new(100.0, 100.0),
+                state: 4,
+                state_timer: 0.8,
+                ..crate::SeekerSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        initialize_seekers(&mut p, &mut map);
+        advance_seekers(&mut p, &mut map);
+
+        assert!(!p.dead);
+        assert_eq!(p.dashes, 1);
+        assert_eq!(p.stamina, 110.0);
+        assert!(p.speed.x < -300.0);
+        assert_eq!(p.seekers[0].speed, Vec2::new(100.0, 0.0));
+        assert_eq!(p.seekers[0].state, 4);
+    }
+
+    #[test]
+    fn attacking_seeker_side_contact_kills_but_top_contact_bounces_and_regenerates() {
+        let mut side_map = bounce_actor_map(EntityKind::Seeker);
+        let mut side = PlayerSnapshot {
+            pos: Vec2::new(92.0, 105.5),
+            seekers: vec![crate::SeekerSnapshot {
+                position: Vec2::new(100.0, 100.0),
+                state: 3,
+                ..crate::SeekerSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        initialize_seekers(&mut side, &mut side_map);
+        advance_seekers(&mut side, &mut side_map);
+        assert!(side.dead);
+
+        let mut top_map = bounce_actor_map(EntityKind::Seeker);
+        let mut top = PlayerSnapshot {
+            pos: Vec2::new(100.0, 97.0),
+            speed: Vec2::new(50.0, 20.0),
+            dashes: 0,
+            stamina: 5.0,
+            seekers: vec![crate::SeekerSnapshot {
+                position: Vec2::new(100.0, 102.0),
+                state: 3,
+                ..crate::SeekerSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        initialize_seekers(&mut top, &mut top_map);
+        advance_seekers(&mut top, &mut top_map);
+        assert!(!top.dead);
+        assert_eq!(top.state, PlayerState::Normal);
+        assert_eq!(top.speed, Vec2::new(50.0, BOUNCE_SPEED));
+        assert_eq!(top.dashes, 1);
+        assert_eq!(top.stamina, 110.0);
+        assert_eq!(top.freeze_timer, 0.15);
+        assert_eq!(top.seekers[0].state, 6);
+    }
+
+    fn temple_gate_map(obstacle_height: f32) -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            solids: vec![Rect::new(96.0, 148.0, 16.0, obstacle_height)],
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::TempleGate,
+                    bounds: Rect::new(100.0, 100.0, 8.0, 48.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "templeGate".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::TheoCrystal,
+                    bounds: Rect::new(100.0, 135.0, 8.0, 10.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "theoCrystal".to_owned(),
+                },
+            ],
+            ..Map::default()
+        }
+    }
+
+    #[test]
+    fn close_behind_player_gate_uses_target_position_fallback_to_clip_theo() {
+        let map = temple_gate_map(1.0);
+        let p = PlayerSnapshot {
+            pos: Vec2::new(120.0, 160.0),
+            theo_crystals: vec![crate::TheoCrystalSnapshot {
+                position: Vec2::new(104.0, 145.0),
+                ..crate::TheoCrystalSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let closed = simulate(p.clone(), &[InputState::default()], &map, 1).unwrap();
+
+        assert!(closed.temple_gates[0].triggered);
+        assert!(!closed.temple_gates[0].open);
+        assert_eq!(closed.temple_gates[0].current_height, 48.0);
+        assert_eq!(closed.theo_crystals[0].position, Vec2::new(104.0, 159.0));
+        assert!(!closed.theo_crystals[0].dead);
+        assert!(!closed.dead);
+
+        let whole = simulate(p, &[InputState::default(); 3], &map, 3).unwrap();
+        let split = simulate(closed, &[InputState::default(); 2], &map, 2).unwrap();
+        assert_eq!(split, whole);
+    }
+
+    #[test]
+    fn player_squish_tries_ducked_target_position_before_actor_wiggles() {
+        let mut map = temple_gate_map(1.0);
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(104.0, 145.0),
+            ..PlayerSnapshot::default()
+        };
+        initialize_temple_gates(&mut p, &mut map);
+        let mut gate = p.temple_gates[0].clone();
+        close_temple_gate(&mut p, &mut map, 0, &mut gate);
+
+        assert_eq!(p.pos, Vec2::new(104.0, 159.0));
+        assert!(p.ducking);
+        assert!(!p.dead);
+    }
+
+    #[test]
+    fn failed_gate_squish_kills_theo_with_player_and_removes_glider() {
+        let mut map = temple_gate_map(20.0);
+        map.entities.push(crate::Entity {
+            kind: EntityKind::Glider,
+            bounds: Rect::new(100.0, 135.0, 8.0, 10.0),
+            direction: Vec2::default(),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "glider".to_owned(),
+        });
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(120.0, 160.0),
+            theo_crystals: vec![crate::TheoCrystalSnapshot {
+                position: Vec2::new(104.0, 145.0),
+                ..crate::TheoCrystalSnapshot::default()
+            }],
+            gliders: vec![crate::GliderSnapshot {
+                position: Vec2::new(104.0, 145.0),
+                ..crate::GliderSnapshot::default()
+            }],
+            ..PlayerSnapshot::default()
+        };
+        initialize_temple_gates(&mut p, &mut map);
+        initialize_theo_crystals(&mut p, &mut map);
+        initialize_gliders(&mut p, &mut map);
+        let mut gate = p.temple_gates[0].clone();
+        close_temple_gate(&mut p, &mut map, 0, &mut gate);
+
+        assert!(p.theo_crystals[0].dead);
+        assert!(p.dead);
+        assert!(p.gliders[0].removed);
     }
 
     #[test]

@@ -110,7 +110,7 @@ const ENTITY_KINDS = new Set<FixtureEntity['kind']>([
   'puffer', 'angry_oshiro', 'seeker', 'snowball', 'cloud',
   'wind', 'bounce_block', 'theo_crystal', 'glider', 'zip_mover', 'move_block', 'moving_solid',
   'cassette_block', 'crystal_static_spinner',
-  'heart_gem',
+  'heart_gem', 'rising_lava', 'sandwich_lava', 'temple_gate',
 ])
 
 export function validateFixturePackage(fixture: FixturePackage): void {
@@ -146,6 +146,7 @@ function validateAuthoringEntity(entity: FixtureEntity, roomName: string): void 
   assertRect(entity.bounds, `entity ${entity.id} bounds`, false)
   const allowed = new Set(['id', 'kind', 'bounds', 'name'])
   if (entity.kind === 'fly_feather') { allowed.add('shielded'); allowed.add('singleUse') }
+  if (entity.kind === 'rising_lava') allowed.add('singleUse')
   if (entity.kind === 'ice_ball') { allowed.add('nodes'); allowed.add('singleUse') }
   if (entity.kind === 'badeline_boost' || entity.kind === 'zip_mover') allowed.add('nodes')
   if (entity.kind === 'spikes' || entity.kind === 'spring' || entity.kind === 'wind' || entity.kind === 'move_block' || entity.kind === 'moving_solid' || entity.kind === 'cassette_block') allowed.add('direction')
@@ -216,7 +217,7 @@ function validateCanonicalEntity(entity: CanonicalFixtureEntity, roomName: strin
     throw new Error(`entity ${entity.id} kind ${entity.kind} forbids nodes`)
   }
   if (entity.shielded && entity.kind !== 'fly_feather') throw new Error(`entity ${entity.id} kind ${entity.kind} forbids shielded`)
-  if (entity.singleUse && entity.kind !== 'fly_feather' && entity.kind !== 'ice_ball') {
+  if (entity.singleUse && entity.kind !== 'fly_feather' && entity.kind !== 'ice_ball' && entity.kind !== 'rising_lava') {
     throw new Error(`entity ${entity.id} kind ${entity.kind} forbids singleUse`)
   }
 }
