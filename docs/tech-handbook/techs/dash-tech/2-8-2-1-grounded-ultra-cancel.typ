@@ -4,7 +4,7 @@
   id: "2.8.2.1",
   title-zh: "贴地 Ultra 取消",
   title-en: "Grounded Ultra Cancel",
-  status: "unimplemented",
+  status: "implemented",
   description-zh: [用抓取投掷物、跳过过场或弹跳等方式提前打断贴地 Ultra，可以绕过冲刺结束时的速度重置。],
   description-en: [Interrupting a grounded ultra before dash end, for example with a grab or bounce, preserves speed that the normal dash exit would remove.],
   source-evidence: evidence(
@@ -15,6 +15,6 @@
   ),
   rust-evidence: evidence(path: [crates/celeste-physics/src/sim.rs; crates/celeste-physics/src/types.rs], symbol: [dash_update; try_pickup_theo; pickup_update; PlayerSnapshot.pickup_old_speed]),
   test-evidence: evidence(path: [crates/celeste-physics/src/sim.rs], symbol: [grounded_ultra_pickup_cancel_skips_dash_end_speed_normalization]),
-  e2e-evidence: none,
-  candidate-e2e: evidence(path: [scripts/e2e-real/scenarios/playground/dash-grounded-ultra-cancel.ts; scripts/e2e-real/scenarios/playground/dash-grounded-ultra-cancel-control.ts], symbol: [dash-grounded-ultra-cancel; dash-grounded-ultra-cancel-control; verifyGroundedUltraCancel], note: [同一独立 Theo MapPart 上的取消与自然 DashEnd 对照候选；真实九字段 E2E 未完成前保持 unimplemented。]),
+  e2e-evidence: evidence(path: [scripts/e2e-real/scenarios/playground/dash-grounded-ultra-cancel.ts; scripts/e2e-real/scenarios/playground/dash-grounded-ultra-cancel-control.ts], symbol: [dash-grounded-ultra-cancel; dash-grounded-ultra-cancel-control; verifyGroundedUltraCancel], note: [同一独立 Theo MapPart 上的真实取消与自然结束对照各 25 个状态。取消场景 state 9 仍为 Dash、360/0 且蹲伏，state 10 进入 Pickup、holding_theo=true、速度归零并解除蹲伏，state 22 回到 Normal 并恢复 360；无抓取 control 在 state 15 自然归一到 160。两场九类字段逐帧一致，位置与速度最大误差均为 0。]),
+  candidate-e2e: none,
 )

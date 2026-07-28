@@ -9,11 +9,12 @@ export const mapParts = [GROUNDED_ULTRA_CANCEL_PART] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: [],
   techniqueIds: ['2.8.2.1'],
   mapParts,
   name: 'dash-grounded-ultra-cancel',
+  recording: { primaryFor: ['2.8.2.1'], startFrame: 0, endFrame: 24 },
   initial: { pos: [32, 160], speed: [300, 0], on_ground: true },
   inputs: Array.from({ length: 24 }, (_, frame) => input({
     move_x: 1,

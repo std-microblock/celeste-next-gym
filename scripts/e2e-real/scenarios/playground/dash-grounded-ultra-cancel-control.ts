@@ -9,7 +9,7 @@ export const mapParts = [GROUNDED_ULTRA_CANCEL_PART] as const
 
 export const scenario = defineScenario({
   target: PLAYGROUND_TARGET,
-  status: 'candidate',
+  status: 'active',
   tags: [],
   techniqueIds: ['2.8.2.1'],
   mapParts,
