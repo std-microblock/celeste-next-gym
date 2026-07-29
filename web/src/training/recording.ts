@@ -59,6 +59,15 @@ export interface RecordedCriticalNode {
   label: string;
 }
 
+interface RecordedEvent {
+  frame: number;
+  actions: Action[];
+  directions: Action[];
+  previousDirections: Action[];
+  directionChanged: boolean;
+  label: string;
+}
+
 export type RecordingTargetSelections = Record<
   string,
   RecordingTargetKind[]
@@ -122,10 +131,108 @@ function sameDirections(left: readonly Action[], right: readonly Action[]) {
   );
 }
 
+function recordedEvents(frames: readonly FrameButtons[]): RecordedEvent[] {
+  const events: RecordedEvent[] = [];
+  let previous = makeEmptyButtons();
+  let previousDirections: Action[] = [];
+  for (const [frame, current] of frames.entries()) {
+    const actions = RECORDED_ACTIONS.filter(
+      (action) => current[action] && !previous[action],
+    );
+    const directions = directionKeys(current);
+    const directionChanged =
+      frame > 0 && !sameDirections(previousDirections, directions);
+    if (actions.length || directionChanged) {
+      const labels: string[] = [];
+      if (actions.length) labels.push(`按 ${actionText(actions)}`);
+      if (directionChanged)
+        labels.push(
+          directions.length
+            ? `方向切换为 ${actionText(directions)}`
+            : "松开方向",
+        );
+      else if (frame === 0 && directions.length)
+        labels.push(`保持 ${actionText(directions)}`);
+      events.push({
+        frame,
+        actions,
+        directions,
+        previousDirections,
+        directionChanged,
+        label: `F${frame} · ${labels.join("；")}`,
+      });
+    }
+    previous = current;
+    previousDirections = directions;
+  }
+  return events;
+}
+
+function recordedTimingPlan(frames: readonly FrameButtons[]) {
+  const events = recordedEvents(frames);
+  const fuzzed = events.filter((event) => event.frame > 0);
+  const occurrences = new Map<string, number>();
+  let directionOccurrence = 0;
+  const named = fuzzed.map((event) => {
+    let base: string;
+    if (event.actions.length) base = `${event.actions.join("_")}_frame`;
+    else {
+      directionOccurrence += 1;
+      base = `direction_change_${directionOccurrence}`;
+    }
+    const occurrence = (occurrences.get(base) ?? 0) + 1;
+    occurrences.set(base, occurrence);
+    return {
+      event,
+      name: occurrence === 1 ? base : `${base}_${occurrence}`,
+    };
+  });
+  const valuesPerVariable = named.length
+    ? Math.max(1, Math.floor(750_000 ** (1 / named.length)))
+    : 1;
+  const radius = Math.min(6, Math.floor((valuesPerVariable - 1) / 2));
+  const variables = named.map(({ event, name }, index) => {
+    const previous = named[index - 1]?.event.frame;
+    const following = named[index + 1]?.event.frame;
+    const closesDirection =
+      event.directionChanged && event.previousDirections.length > 0;
+    const orderFrom =
+      previous === undefined
+        ? closesDirection
+          ? 1
+          : 0
+        : Math.floor((previous + event.frame) / 2) + 1;
+    const orderTo =
+      following === undefined
+        ? Number.POSITIVE_INFINITY
+        : Math.floor((event.frame + following) / 2);
+    return {
+      name,
+      range: {
+        from: Math.max(orderFrom, event.frame - radius),
+        to: Math.min(orderTo, event.frame + radius),
+      },
+    };
+  });
+  const atByFrame = new Map<number, number | string>([[0, 0]]);
+  for (const [index, { event }] of named.entries())
+    atByFrame.set(event.frame, variables[index].name);
+  const last = named.at(-1);
+  return {
+    events,
+    variables,
+    atByFrame,
+    observeUntil:
+      last === undefined
+        ? Math.max(1, frames.length)
+        : `max(${Math.max(1, frames.length)}, ${last.name} + ${Math.max(1, frames.length - last.event.frame)})`,
+  };
+}
+
 /**
  * Records WASD as direction-combination segments. A segment that reaches the
- * end region is infinite; every real transition/release gets one ordered Fuzz
- * variable shared by the old segment end and the new segment start.
+ * end region is infinite. Every event after F0 gets an ordered Fuzz variable;
+ * a same-frame action and direction transition deliberately share it.
  */
 export function recordedDirectionPlanFromFrames(
   frames: readonly FrameButtons[],
@@ -133,6 +240,7 @@ export function recordedDirectionPlanFromFrames(
   if (!frames.length)
     return { inputs: [], variables: [], observeUntil: 1, changes: [] };
 
+  const timing = recordedTimingPlan(frames);
   const transitions: number[] = [];
   const segments: Array<{
     keys: Action[];
@@ -151,34 +259,16 @@ export function recordedDirectionPlanFromFrames(
   }
   if (current.length) segments.push({ keys: current, start });
 
-  const variables = transitions.map((frame, index) => {
-    const previous = transitions[index - 1];
-    const following = transitions[index + 1];
-    return {
-      name: `direction_change_${index + 1}`,
-      range: {
-        from:
-          previous === undefined
-            ? Math.max(1, frame - 6)
-            : Math.floor((previous + frame) / 2) + 1,
-        to:
-          following === undefined
-            ? frame + 6
-            : Math.floor((frame + following) / 2),
-      },
-    };
-  });
-  const variableAt = new Map(
-    transitions.map((frame, index) => [frame, variables[index].name]),
-  );
   const occurrences = new Map<string, number>();
   const inputs = segments.map((segment) => {
     const base = segment.keys.join("-");
     const occurrence = (occurrences.get(base) ?? 0) + 1;
     occurrences.set(base, occurrence);
-    const startAt = segment.start === 0 ? 0 : variableAt.get(segment.start)!;
+    const startAt = timing.atByFrame.get(segment.start)!;
     const endAt =
-      segment.end === undefined ? undefined : variableAt.get(segment.end)!;
+      segment.end === undefined
+        ? undefined
+        : timing.atByFrame.get(segment.end)!;
     return {
       id: occurrence === 1 ? `hold-${base}` : `hold-${base}-${occurrence}`,
       keys: segment.keys,
@@ -192,18 +282,13 @@ export function recordedDirectionPlanFromFrames(
       verify: false,
     } satisfies TrainingInput;
   });
-  const lastTransition = transitions.at(-1);
-  const observeUntil =
-    lastTransition === undefined
-      ? Math.max(1, frames.length)
-      : `max(${Math.max(1, frames.length)}, ${variableAt.get(lastTransition)} + ${Math.max(1, frames.length - lastTransition)})`;
   return {
     inputs,
-    variables,
-    observeUntil,
+    variables: timing.variables,
+    observeUntil: timing.observeUntil,
     changes: transitions.map((frame) => ({
       frame,
-      at: variableAt.get(frame)!,
+      at: String(timing.atByFrame.get(frame)),
     })),
   };
 }
@@ -212,42 +297,13 @@ export function recordedDirectionPlanFromFrames(
 export function recordedCriticalNodesFromFrames(
   frames: readonly FrameButtons[],
 ): RecordedCriticalNode[] {
-  const plan = recordedDirectionPlanFromFrames(frames);
-  const directionChanges = new Map(
-    plan.changes.map((change) => [change.frame, change.at]),
-  );
-  const nodes: RecordedCriticalNode[] = [];
-  let previous = makeEmptyButtons();
-  for (const [frame, current] of frames.entries()) {
-    const actions = RECORDED_ACTIONS.filter(
-      (action) => current[action] && !previous[action],
-    );
-    const changedAt = directionChanges.get(frame);
-    if (actions.length || changedAt) {
-      const labels: string[] = [];
-      if (actions.length) labels.push(`按 ${actionText(actions)}`);
-      if (changedAt) {
-        const directions = directionKeys(current);
-        labels.push(
-          directions.length
-            ? `方向切换为 ${actionText(directions)}`
-            : "松开方向",
-        );
-      } else if (frame === 0) {
-        const directions = directionKeys(current);
-        if (directions.length)
-          labels.push(`保持 ${actionText(directions)}`);
-      }
-      nodes.push({
-        id: `recorded-node-${frame}`,
-        frame,
-        at: actions.length ? frame : changedAt!,
-        label: `F${frame} · ${labels.join("；")}`,
-      });
-    }
-    previous = current;
-  }
-  return nodes;
+  const timing = recordedTimingPlan(frames);
+  return timing.events.map((event) => ({
+    id: `recorded-node-${event.frame}`,
+    frame: event.frame,
+    at: timing.atByFrame.get(event.frame)!,
+    label: event.label,
+  }));
 }
 
 function conciseNumber(value: number): string {
@@ -326,6 +382,32 @@ function targetObjective(
   }
 }
 
+export function recordingTargetCondition(
+  kind: RecordingTargetKind,
+  state: SimState,
+  initial: SimState,
+): string {
+  switch (kind) {
+    case "speed_x":
+      return `≈ ${conciseNumber(state.speed.x)} px/s`;
+    case "speed_y":
+      return `≈ ${conciseNumber(state.speed.y)} px/s`;
+    case "speed_total":
+      return `≈ ${conciseNumber(Math.hypot(state.speed.x, state.speed.y))} px/s`;
+    case "dashes":
+      return `= ${state.dashes}`;
+    case "coordinate_crossing": {
+      const useX =
+        Math.abs(state.pos.x - initial.pos.x) >=
+        Math.abs(state.pos.y - initial.pos.y);
+      const axis = useX ? "x" : "y";
+      return `${axis.toUpperCase()} ≈ ${conciseNumber(state.pos[axis])}`;
+    }
+    case "stamina":
+      return `≈ ${conciseNumber(state.stamina)}`;
+  }
+}
+
 export function recordingCheckpoints(
   initial: SimState,
   frames: readonly FrameButtons[],
@@ -377,7 +459,14 @@ export function applyTutorialRecording(
   snapshots: readonly SimState[] = [initialState],
   targetSelections: RecordingTargetSelections = {},
 ): TrainingProject {
-  const inputs = recordedInputsFromFrames(frames);
+  const nodes = recordedCriticalNodesFromFrames(frames);
+  const atByRecordedFrame = new Map(
+    nodes.map((node) => [node.frame, node.at]),
+  );
+  const inputs = recordedInputsFromFrames(frames).map((input) => ({
+    ...input,
+    at: atByRecordedFrame.get(Number(input.at)) ?? input.at,
+  }));
   if (!inputs.length) throw new Error("录制中没有检测到非方向动作");
   const next = structuredClone(project);
   const module = next.training.modules[moduleIndex];
@@ -391,10 +480,9 @@ export function applyTutorialRecording(
     targetSelections,
   );
   const descriptionAt = new Map(
-    checkpoints
-      .filter((checkpoint) => typeof checkpoint.at === "number")
-      .map((checkpoint) => [checkpoint.at, checkpoint.description]),
+    checkpoints.map((checkpoint) => [checkpoint.at, checkpoint.description]),
   );
+  const recordedFrameAt = new Map(nodes.map((node) => [node.at, node.frame]));
 
   module.tutorial.entry.input_id = entry.id;
   module.tutorial.entry.hint = `开始区已激活：按 ${entryText} 开始。`;
@@ -409,8 +497,8 @@ export function applyTutorialRecording(
       typeof input.held_time === "number" && input.held_time > 1
         ? `并保持 ${input.held_time} 帧`
         : "";
-    const target =
-      typeof input.at === "number" ? descriptionAt.get(input.at) : undefined;
+    const target = descriptionAt.get(input.at);
+    const recordedFrame = recordedFrameAt.get(input.at) ?? input.at;
     return {
       prompt: target ? `${target}。` : `按 ${text}${hold}。`,
       order_error: {
@@ -420,8 +508,8 @@ export function applyTutorialRecording(
       window_error: {
         title: "错过输入窗口",
         body: target
-          ? `请在录制的 F${input.at} 附近输入 ${text}，并达到所选目标。`
-          : `请在录制的 F${input.at} 附近输入 ${text}。`,
+          ? `请在录制的 F${recordedFrame} 附近输入 ${text}，并达到所选目标。`
+          : `请在录制的 F${recordedFrame} 附近输入 ${text}。`,
       },
     };
   });

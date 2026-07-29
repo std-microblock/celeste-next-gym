@@ -67,27 +67,36 @@ describe("tutorial editor recording", () => {
         id: "hold-down-right",
         keys: ["down", "right"],
         at: 0,
-        held_time: "direction_change_1",
+        held_time: "jump_frame",
         verify: false,
       },
       {
         id: "hold-right",
         keys: ["right"],
-        at: "direction_change_1",
+        at: "jump_frame",
         held_time: "hold::inf",
         verify: false,
       },
     ]);
     expect(module.tutorial.fuzz.variables).toEqual([
       {
-        name: "direction_change_1",
+        name: "jump_frame",
         range: { from: 1, to: 8 },
       },
     ]);
     expect(module.tutorial.teaching.steps).toHaveLength(2);
     expect(module.tutorial.fuzz.observe_until).toBe(
-      "max(3, direction_change_1 + 1)",
+      "max(3, jump_frame + 1)",
     );
+    expect(module.tutorial.fuzz.inputs.slice(2)).toEqual([
+      { id: "dash", keys: ["dash"], at: 0, verify: true },
+      {
+        id: "jump",
+        keys: ["jump"],
+        at: "jump_frame",
+        verify: true,
+      },
+    ]);
     expect(module.tutorial.fuzz.success).toContain("!final.dead");
     expect(module.tutorial.fuzz.objectives).toEqual([
       {
@@ -127,8 +136,10 @@ describe("tutorial editor recording", () => {
           verify: false,
         },
       ],
-      variables: [],
-      observeUntil: 3,
+      variables: [
+        { name: "jump_frame", range: { from: 0, to: 8 } },
+      ],
+      observeUntil: "max(3, jump_frame + 1)",
       changes: [],
     });
   });
@@ -173,6 +184,36 @@ describe("tutorial editor recording", () => {
     ]);
   });
 
+  it("defines every later action frame as a bounded fuzz variable", () => {
+    const frames = [buttons("dash")];
+    for (let frame = 1; frame <= 20; frame += 1)
+      frames.push(frame % 2 ? buttons("jump") : buttons());
+    const project = applyTutorialRecording(
+      createTrainingProject(PLAYGROUND),
+      0,
+      createTrainingProject(PLAYGROUND).training.modules[0].validation
+        .initial_state,
+      frames,
+    );
+    const fuzz = project.training.modules[0].tutorial.fuzz;
+    expect(fuzz.variables).toHaveLength(10);
+    expect(fuzz.inputs[0]).toEqual({
+      id: "dash",
+      keys: ["dash"],
+      at: 0,
+      verify: true,
+    });
+    expect(fuzz.inputs.slice(1).every((input) => typeof input.at === "string"))
+      .toBe(true);
+    const candidateCount = fuzz.variables.reduce(
+      (count, variable) =>
+        count *
+        (Number(variable.range.to) - Number(variable.range.from) + 1),
+      1,
+    );
+    expect(candidateCount).toBeLessThanOrEqual(750_000);
+  });
+
   it("builds multi-select objectives and descriptions at every critical node", () => {
     const project = createTrainingProject(PLAYGROUND);
     const initial = structuredClone(
@@ -203,13 +244,13 @@ describe("tutorial editor recording", () => {
       {
         id: "recorded-node-2",
         frame: 2,
-        at: 2,
+        at: "jump_frame",
         label: "F2 · 按 跳跃；松开方向",
       },
       {
         id: "recorded-node-3",
         frame: 3,
-        at: "direction_change_2",
+        at: "direction_change_1",
         label: "F3 · 方向切换为 左",
       },
     ]);
@@ -239,7 +280,7 @@ describe("tutorial editor recording", () => {
     ]);
     expect(checkpoints[0].description).toContain("水平速度接近 240 px/s");
     expect(checkpoints[0].description).toContain("坐标越过 X=");
-    expect(checkpoints[1].at).toBe("direction_change_2");
+    expect(checkpoints[1].at).toBe("direction_change_1");
 
     const next = applyTutorialRecording(
       project,
