@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeEmptyButtons } from "../model";
 import {
+  candidateOperationObjectivePoints,
   candidateObjectivePoints,
   createTrainingSession,
   currentTrainingInput,
@@ -141,5 +142,52 @@ describe("training-defined entry input", () => {
         { frame: 4, keys: ["grab"] },
       ])?.objective_values,
     ).toEqual([300]);
+  });
+
+  it("plots current-operation output by operation frame with prior inputs fixed", () => {
+    const currentInputIndex = 3;
+    const matchingSuccess = {
+      ...candidates[0],
+      objective_values: [300],
+    };
+    const evaluations: TrainingCandidate[] = [
+      {
+        ...candidates[0],
+        objective_values: [999],
+        successful: false,
+        verified_inputs: candidates[0].verified_inputs.map((input) =>
+          input.input_index === 2 ? { ...input, frame: 1 } : input,
+        ),
+      },
+      {
+        ...candidates[0],
+        objective_values: [100],
+        successful: false,
+      },
+      matchingSuccess,
+      {
+        ...candidates[0],
+        objective_values: [250],
+        successful: false,
+        verified_inputs: candidates[0].verified_inputs.map((input) =>
+          input.input_index === currentInputIndex
+            ? { ...input, frame: 5 }
+            : input,
+        ),
+      },
+    ];
+
+    expect(
+      candidateOperationObjectivePoints(
+        [matchingSuccess],
+        evaluations,
+        definition,
+        currentInputIndex,
+        [{ frame: 0, keys: ["jump"] }],
+      ),
+    ).toEqual([
+      { frame: 4, values: [300], successful: true },
+      { frame: 5, values: [250], successful: false },
+    ]);
   });
 });

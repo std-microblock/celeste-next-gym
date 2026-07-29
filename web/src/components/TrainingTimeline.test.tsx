@@ -38,12 +38,12 @@ describe("training result timeline", () => {
     expect(
       container.querySelectorAll(".training-result-axis-end"),
     ).toHaveLength(0);
-    expect(screen.getByText("最佳 F0 · 325 px/s")).toBeInTheDocument();
-    expect(screen.getByText("F0 DASH · 325 px/s")).toBeInTheDocument();
-    expect(screen.getByText("F1 JUMP · 325 px/s")).toBeInTheDocument();
+    expect(screen.getByText("最佳操作 F0 · 325 px/s")).toBeInTheDocument();
+    expect(screen.getByText("实际 F0 DASH · 325 px/s")).toBeInTheDocument();
+    expect(screen.getByText("实际 F1 JUMP · 325 px/s")).toBeInTheDocument();
     expect(
       screen.getByLabelText(
-        "F0 Fuzz 最佳点、你的输入、成功窗口；水平速度 325 px/s",
+        "在 F0 操作：Fuzz 最佳点、你的输入、成功窗口；水平速度 325 px/s",
       ),
     ).toBeInTheDocument();
   });
@@ -58,9 +58,11 @@ describe("training result timeline", () => {
     );
 
     const timeline = within(container);
-    expect(timeline.getAllByText("F0")).toHaveLength(1);
+    expect(timeline.getAllByText("在 F0 操作")).toHaveLength(1);
     expect(
-      timeline.getByLabelText("F2 未通过候选；水平速度 191.67 px/s"),
+      timeline.getByLabelText(
+        "在 F2 操作：未通过候选；水平速度 191.67 px/s",
+      ),
     ).toBeInTheDocument();
     expect(timeline.getByText("未通过候选")).toBeInTheDocument();
     expect(timeline.getAllByText("水平速度")).toHaveLength(3);

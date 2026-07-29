@@ -97,7 +97,7 @@ function ObjectiveHoverLayer({
   return (
     <div
       className="training-objective-hover-layer"
-      aria-label="Fuzz objective 按帧结果"
+      aria-label="Fuzz objective 按操作帧输出"
     >
       {frames.map((frame) => {
         const center = ((frame.frame - from) / span) * 100;
@@ -134,10 +134,10 @@ function ObjectiveHoverLayer({
             className={`training-objective-hit ${edge} ${frame.successful ? "successful" : "failed"}`}
             style={{ left: `${left}%`, width: `${right - left}%` }}
             tabIndex={0}
-            aria-label={`F${frame.frame} ${pointTypes.join("、")}；${details.join("；")}`}
+            aria-label={`在 F${frame.frame} 操作：${pointTypes.join("、")}；${details.join("；")}`}
           >
             <span className="training-objective-tooltip">
-              <b>F{frame.frame}</b>
+              <b>在 F{frame.frame} 操作</b>
               <em>{pointTypes.join(" · ")}</em>
               {series.map((objective, index) => {
                 const point = objective.points.find(
@@ -401,7 +401,7 @@ export function TrainingTimeline({
       <div className="training-timeline-actions">
         <span className="training-legend">
           <i className="objective" />
-          悬停查看 Objective
+          悬停查看该帧操作的 Objective
           <i className="fuzz" />
           操作起点
           <i className="target" />
@@ -485,7 +485,7 @@ export function TrainingResultTimeline({
           style={{ left: percent(targetFrame) }}
         >
           <span>
-            最佳 F{targetFrame}
+            最佳操作 F{targetFrame}
             {outputAt(targetFrame) ? ` · ${outputAt(targetFrame)}` : ""}
           </span>
         </b>
@@ -497,7 +497,7 @@ export function TrainingResultTimeline({
           style={{ left: percent(input.frame) }}
         >
           <span>
-            F{input.frame} {input.keys.join("+").toUpperCase()}
+            实际 F{input.frame} {input.keys.join("+").toUpperCase()}
             {outputAt(input.frame) ? ` · ${outputAt(input.frame)}` : ""}
           </span>
         </b>

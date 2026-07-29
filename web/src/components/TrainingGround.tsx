@@ -27,7 +27,7 @@ import {
 } from "../training/course";
 import {
   assistedRate,
-  candidateObjectivePoints,
+  candidateOperationObjectivePoints,
   candidateWindow,
   createTrainingSession,
   currentTrainingInput,
@@ -413,7 +413,13 @@ export function TrainingGround({
       })),
       objectives: indexedObjectives.map(({ objective, resultIndex }) => ({
         expression: objective.expression,
-        points: candidateObjectivePoints(sourceEvaluations, inputIndex)
+        points: candidateOperationObjectivePoints(
+          source.candidates,
+          sourceEvaluations,
+          tutorial,
+          inputIndex,
+          source.actualInputs,
+        )
           .map((point) => ({
             frame: start + point.frame,
             value: point.values[resultIndex],
