@@ -369,7 +369,7 @@ function measuredTarget(
   if (mode === "maximize") {
     return {
       objective,
-      description: `最大化${name}（录制值 ${recorded}）`,
+      description: name,
     };
   }
   return {
@@ -378,10 +378,7 @@ function measuredTarget(
       `${expression} >= ${conciseNumber(target - 0.01)}`,
       `${expression} <= ${conciseNumber(target + 0.01)}`,
     ],
-    description:
-      mode === "match_and_maximize"
-        ? `${name}必须达到 ${recorded}（误差 ≤ 0.01），并最大化`
-        : `${name}必须达到 ${recorded}（误差 ≤ 0.01）`,
+    description: `${name} ${recorded}`,
   };
 }
 
@@ -441,7 +438,7 @@ function targetObjective(
         success: [
           `after.pos.${axis} ${operator} ${conciseNumber(target)}`,
         ],
-        description: `坐标越过 ${axis.toUpperCase()} ${operator === ">=" ? "≥" : "≤"} ${conciseNumber(target)}`,
+        description: `${axis.toUpperCase()} ${operator === ">=" ? "≥" : "≤"} ${conciseNumber(target)}`,
       };
     }
     case "stamina":
@@ -504,7 +501,7 @@ export function recordingCheckpoints(
       {
         id: node.id,
         at: node.at,
-        description: `${node.label}；${targets.map((target) => target.description).join("，")}`,
+        description: targets.map((target) => target.description).join("，"),
         ...(success.length ? { success } : {}),
         objectives: targets.flatMap((target) =>
           target.objective === undefined ? [] : [target.objective],
@@ -548,14 +545,13 @@ export function applyTutorialRecording(
   const descriptionAt = new Map(
     checkpoints.map((checkpoint) => [checkpoint.at, checkpoint.description]),
   );
-  const recordedFrameAt = new Map(nodes.map((node) => [node.at, node.frame]));
 
   module.tutorial.entry.input_id = entry.id;
-  module.tutorial.entry.hint = `开始区已激活：按 ${entryText} 开始。`;
+  module.tutorial.entry.hint = `按 ${entryText} 开始。`;
   module.tutorial.entry.check = ["!current.dead"];
   module.tutorial.entry.failure = {
     title: `需要 ${entryText}`,
-    body: `进入开始区后，第一个教程动作应为 ${entryText}。`,
+    body: `先按 ${entryText}。`,
   };
   module.tutorial.teaching.steps = inputs.map((input) => {
     const text = actionText(input.keys);
@@ -564,24 +560,23 @@ export function applyTutorialRecording(
         ? `并保持 ${input.held_time} 帧`
         : "";
     const target = descriptionAt.get(input.at);
-    const recordedFrame = recordedFrameAt.get(input.at) ?? input.at;
     return {
-      prompt: target ? `${target}。` : `按 ${text}${hold}。`,
+      prompt: target
+        ? `按 ${text}${hold}；${target}。`
+        : `按 ${text}${hold}。`,
       order_error: {
         title: "动作顺序不正确",
-        body: `这里需要 ${text}。`,
+        body: `按 ${text}。`,
       },
       window_error: {
         title: "错过输入窗口",
-        body: target
-          ? `请在录制的 F${recordedFrame} 附近输入 ${text}，并达到所选目标。`
-          : `请在录制的 F${recordedFrame} 附近输入 ${text}。`,
+        body: `稍早或稍晚按 ${text}。`,
       },
     };
   });
-  module.tutorial.summary = checkpoints.length
-    ? `录制目标：${checkpoints.map((checkpoint) => checkpoint.description).join("；")}`
-    : `按录制顺序完成 ${inputs.map((input) => actionText(input.keys)).join("、")}。`;
+  module.tutorial.summary = `依次完成 ${inputs
+    .map((input) => actionText(input.keys))
+    .join("、")}。`;
   const directionPlan = recordedDirectionPlanFromFrames(frames);
   module.tutorial.fuzz.inputs = [...directionPlan.inputs, ...inputs];
   module.tutorial.fuzz.variables = directionPlan.variables;
