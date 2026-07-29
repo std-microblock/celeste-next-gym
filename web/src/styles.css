@@ -4731,6 +4731,11 @@ footer {
   gap: 3px;
   min-width: 0;
 }
+.training-record-target-option {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+}
 .training-record-target-group button {
   display: inline-flex;
   gap: 3px;
@@ -4763,6 +4768,16 @@ footer {
 }
 .training-record-target-group button.selected b {
   color: #ffd3e0;
+}
+.training-record-target-option select {
+  min-width: 0;
+  height: 25px;
+  padding: 2px 3px;
+  color: #f7edf9;
+  border: 1px solid #8b5f86;
+  border-radius: 3px;
+  background: #2a1839;
+  font-size: 8px;
 }
 .training-record-objective-window footer {
   display: flex;

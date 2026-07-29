@@ -94,6 +94,16 @@ describe("training recorder runtime", () => {
     fireEvent.click(speedTarget);
     expect(speedTarget).toHaveAttribute("aria-pressed", "true");
     expect(ySpeedTarget).toHaveAttribute("aria-pressed", "false");
+    const speedMode = view.getByRole("combobox", {
+      name: "X 速度目标方式",
+    });
+    expect(speedMode).toHaveValue("match_and_maximize");
+    fireEvent.change(speedMode, { target: { value: "maximize" } });
+    expect(speedMode).toHaveValue("maximize");
+    fireEvent.click(view.getByRole("button", { name: /冲刺/ }));
+    expect(
+      view.getByRole("combobox", { name: "冲刺目标方式" }),
+    ).toHaveValue("maximize");
     expect(
       view.container.querySelector(".training-record-objective-window"),
     ).toHaveStyle({ left: "198px" });
