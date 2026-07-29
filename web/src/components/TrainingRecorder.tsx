@@ -18,6 +18,7 @@ import {
   RECORDING_TARGET_OPTIONS,
   recordedCriticalNodesFromFrames,
   recordingStartState,
+  recordingTargetCondition,
   type RecordedCriticalNode,
   type RecordingTargetKind,
   type RecordingTargetSelections,
@@ -206,19 +207,19 @@ export function TrainingRecorder({
     });
   };
 
-  const finishReview = () => {
-    if (!review) return;
+  const finishReview = (pending: PendingReview | null = review) => {
+    if (!pending) return;
     const next = applyTutorialRecording(
       projectRef.current,
-      review.moduleIndex,
-      review.initial,
-      review.frames,
-      review.snapshots,
-      review.selections,
+      pending.moduleIndex,
+      pending.initial,
+      pending.frames,
+      pending.snapshots,
+      pending.selections,
     );
     projectRef.current = next;
     onChangeRef.current(next);
-    completedRef.current.add(review.moduleIndex);
+    completedRef.current.add(pending.moduleIndex);
     setCompletedCount(completedRef.current.size);
     recordingInitial.current = null;
     recordingFrames.current = [];
@@ -235,14 +236,31 @@ export function TrainingRecorder({
       setPhase("done");
       setNotice(
         scope.type === "module"
-          ? `${review.title} 已生成教程 JSON。`
+          ? `${pending.title} 已生成教程 JSON。`
           : `全部 ${next.training.modules.length} 个教程均已生成 JSON。`,
       );
     } else {
       setPhase("roaming");
-      setNotice(`${review.title} 已写入；继续前往下一个开始区。`);
-      armModuleAt(review.after);
+      setNotice(`${pending.title} 已写入；继续前往下一个开始区。`);
+      armModuleAt(pending.after);
     }
+  };
+
+  const deleteReviewNode = () => {
+    if (!review) return;
+    const current = review.nodes[review.currentNode];
+    if (!current) return;
+    const nodes = review.nodes.filter((node) => node.id !== current.id);
+    const selections = { ...review.selections };
+    delete selections[current.id];
+    const pending = {
+      ...review,
+      nodes,
+      selections,
+      currentNode: Math.min(review.currentNode, Math.max(0, nodes.length - 1)),
+    };
+    if (!nodes.length) finishReview(pending);
+    else showReviewNode(pending, pending.currentNode);
   };
 
   useEffect(() => {
@@ -440,20 +458,6 @@ export function TrainingRecorder({
     review && reviewNode
       ? (review.snapshots[reviewNode.frame + 1] ?? review.after)
       : null;
-  const mapBounds = projectRef.current.map.bounds;
-  const reviewWindow =
-    reviewSnapshot === null
-      ? null
-      : {
-          x: Math.min(
-            Math.max(mapBounds.x + 6, reviewSnapshot.pos.x + 12),
-            mapBounds.x + mapBounds.width - 206,
-          ),
-          y: Math.min(
-            Math.max(mapBounds.y + 6, reviewSnapshot.pos.y - 88),
-            mapBounds.y + mapBounds.height - 184,
-          ),
-        };
   return (
     <main className="training-recorder">
       <div className="training-recorder-bar">
@@ -490,11 +494,32 @@ export function TrainingRecorder({
         stale={false}
         theme={theme}
       >
-        <svg
+        {({ width, height }) => {
+          const bounds = projectRef.current.map.bounds;
+          const scale = Math.min(width / bounds.width, height / bounds.height);
+          const offsetX = (width - bounds.width * scale) / 2;
+          const offsetY = (height - bounds.height * scale) / 2;
+          const anchorX = reviewSnapshot
+            ? offsetX + (reviewSnapshot.pos.x - bounds.x) * scale
+            : 0;
+          const anchorY = reviewSnapshot
+            ? offsetY + (reviewSnapshot.pos.y - bounds.y) * scale
+            : 0;
+          const windowLeft = Math.min(
+            Math.max(8, anchorX + 12),
+            Math.max(8, width - 244),
+          );
+          const windowTop = Math.min(
+            Math.max(8, anchorY - 116),
+            Math.max(8, height - 226),
+          );
+          return (
+            <>
+              <svg
           className={`training-recorder-regions ${phase === "reviewing" ? "reviewing" : ""}`}
           viewBox={`${projectRef.current.map.bounds.x} ${projectRef.current.map.bounds.y} ${projectRef.current.map.bounds.width} ${projectRef.current.map.bounds.height}`}
           preserveAspectRatio="xMidYMid meet"
-        >
+              >
           {projectRef.current.training.modules.map((module, index) => {
             if (
               scope.type === "module" &&
@@ -530,13 +555,11 @@ export function TrainingRecorder({
                 </g>
               );
             })}
-          {review && reviewNode && reviewSnapshot && reviewWindow && (
-            <foreignObject
+              </svg>
+          {review && reviewNode && reviewSnapshot && (
+            <div
               className="training-record-objective-window"
-              x={reviewWindow.x}
-              y={reviewWindow.y}
-              width="200"
-              height="178"
+              style={{ left: windowLeft, top: windowTop }}
             >
               <div>
                 <header>
@@ -544,23 +567,28 @@ export function TrainingRecorder({
                     关键节点 {review.currentNode + 1}/{review.nodes.length}
                   </small>
                   <strong>{reviewNode.label}</strong>
-                  <span>
-                    速度 {reviewSnapshot.speed.x.toFixed(1)}, {reviewSnapshot.speed.y.toFixed(1)} · 冲刺 {reviewSnapshot.dashes} · 体力 {reviewSnapshot.stamina.toFixed(1)}
-                  </span>
                 </header>
-                <fieldset>
-                  <legend>以什么为目标（可多选）</legend>
+                <section className="training-record-target-cards">
                   {RECORDING_TARGET_OPTIONS.map((option) => (
-                    <label key={option.id}>
-                      <input
-                        type="checkbox"
-                        checked={reviewTargets.includes(option.id)}
-                        onChange={() => toggleReviewTarget(option.id)}
-                      />
-                      {option.label}
-                    </label>
+                    <button
+                      aria-pressed={reviewTargets.includes(option.id)}
+                      className={
+                        reviewTargets.includes(option.id) ? "selected" : ""
+                      }
+                      key={option.id}
+                      onClick={() => toggleReviewTarget(option.id)}
+                    >
+                      <span>{option.label}</span>
+                      <b>
+                        {recordingTargetCondition(
+                          option.id,
+                          reviewSnapshot,
+                          review.initial,
+                        )}
+                      </b>
+                    </button>
                   ))}
-                </fieldset>
+                </section>
                 <footer>
                   <button
                     disabled={review.currentNode === 0}
@@ -570,9 +598,11 @@ export function TrainingRecorder({
                   >
                     上一步
                   </button>
+                  <button className="danger" onClick={deleteReviewNode}>
+                    删除关键点
+                  </button>
                   <button
                     className="primary"
-                    disabled={!reviewTargets.length}
                     onClick={() => {
                       if (review.currentNode === review.nodes.length - 1)
                         finishReview();
@@ -585,9 +615,11 @@ export function TrainingRecorder({
                   </button>
                 </footer>
               </div>
-            </foreignObject>
+            </div>
           )}
-        </svg>
+            </>
+          );
+        }}
       </GameView>
       <div className={`training-recorder-hud ${phase}`}>
         <i />
@@ -611,7 +643,7 @@ export function TrainingRecorder({
               : phase === "recording"
                 ? "粉色框是当前教程结束区；进入后自动生成并保存 JSON 数据。"
                 : phase === "reviewing"
-                  ? "在节点旁的窗口选择目标；每个节点至少选择一项后才能继续。"
+                  ? "点击卡片切换目标；可以不选，也可以删除不需要的关键点。"
                 : "方向键可正常游玩；进入蓝色开始区后等待第一个教程动作。"}
           </span>
         </div>

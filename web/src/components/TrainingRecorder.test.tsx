@@ -6,8 +6,18 @@ import { createTrainingProject } from "../training/editorProject";
 import { VISUAL_THEMES } from "../visualThemes";
 
 vi.mock("./GameView", () => ({
-  GameView: ({ children }: { children?: ReactNode }) => (
-    <div className="game-screen">{children}</div>
+  GameView: ({
+    children,
+  }: {
+    children?:
+      | ReactNode
+      | ((viewport: { width: number; height: number }) => ReactNode);
+  }) => (
+    <div className="game-screen">
+      {typeof children === "function"
+        ? children({ width: 960, height: 544 })
+        : children}
+    </div>
   ),
 }));
 
@@ -69,23 +79,19 @@ describe("training recorder runtime", () => {
       expect(view.getByText("目标节点 1/1")).toBeInTheDocument(),
     );
     expect(onChange).not.toHaveBeenCalled();
-    fireEvent.click(view.getByLabelText("水平速度"));
-    fireEvent.click(view.getByRole("button", { name: "生成教程" }));
+    const speedTarget = view.getByRole("button", { name: /水平速度/ });
+    expect(speedTarget).toHaveTextContent("≈ 0 px/s");
+    expect(view.getByRole("button", { name: "生成教程" })).toBeEnabled();
+    fireEvent.click(speedTarget);
+    expect(speedTarget).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(view.getByRole("button", { name: "删除关键点" }));
     await waitFor(() => expect(onChange).toHaveBeenCalledTimes(1));
     expect(
       onChange.mock.calls[0][0].training.modules[0].tutorial.fuzz.inputs,
     ).toEqual([{ id: "dash", keys: ["dash"], at: 0, verify: true }]);
     expect(
       onChange.mock.calls[0][0].training.modules[0].tutorial.fuzz.checkpoints,
-    ).toEqual([
-      expect.objectContaining({
-        id: "recorded-node-0",
-        at: 0,
-        objectives: [
-          expect.objectContaining({ expression: "after.speed.x" }),
-        ],
-      }),
-    ]);
+    ).toEqual([]);
     expect(view.getByText("录制完成")).toBeInTheDocument();
     fireEvent.keyDown(window, { code: "KeyR" });
     await waitFor(() => expect(onChange).toHaveBeenCalledTimes(2));
