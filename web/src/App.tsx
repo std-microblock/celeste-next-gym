@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GameView } from "./components/GameView";
+import { GameplayStrawberry } from "./components/GameplaySprite";
 import { InputTimeline } from "./components/InputTimeline";
 import { KeyBindings } from "./components/KeyBindings";
 import { EditorWorkspace } from "./components/EditorWorkspace";
@@ -69,6 +70,17 @@ const VISUAL_THEME_STORAGE_KEY = "celeste-gym-visual-theme";
 
 type AppMode = "play" | "training" | "editor" | "advanced";
 
+const MODE_OPTIONS: readonly {
+  id: AppMode;
+  label: string;
+  subtitle: string;
+}[] = [
+  { id: "play", label: "自由攀登", subtitle: "PLAY" },
+  { id: "training", label: "技巧训练", subtitle: "TRAIN" },
+  { id: "editor", label: "地图工坊", subtitle: "BUILD" },
+  { id: "advanced", label: "逐帧研究", subtitle: "LAB" },
+];
+
 function loadBindings(): Bindings {
   try {
     const saved = JSON.parse(
@@ -126,7 +138,8 @@ export default function App() {
     () => new FrameCache(client, map, createInitialState(map), 360),
     [client],
   );
-  const [mode, setMode] = useState<AppMode>("play");
+  const [mode, setMode] = useState<AppMode>("training");
+  const [otherModesOpen, setOtherModesOpen] = useState(false);
   const [editorExperiencing, setEditorExperiencing] = useState(false);
   const [trainingTechniqueId, setTrainingTechniqueId] = useState(
     trainingCatalog[0].id,
@@ -738,6 +751,7 @@ export default function App() {
     } else if (nextMode === "editor") {
       resetLiveMap();
     }
+    setOtherModesOpen(false);
     setMode(nextMode);
   };
   const selectedTrainingTechnique =
@@ -759,14 +773,68 @@ export default function App() {
       className={`app-shell ${mode === "play" ? "play-mode" : mode === "training" ? "training-mode" : mode === "editor" ? "editor-mode" : "advanced-mode"}`}
       data-visual-theme={visualTheme.id}
     >
+      <div className="celeste-sky" aria-hidden="true">
+        <i />
+        <i />
+        <i />
+      </div>
       {mode === "advanced" && <div className="mountain-backdrop" />}
       <header className="topbar">
         <div className="brand-mark">
+          <GameplayStrawberry scale={3} />
           <div>
             <strong>CELESTE</strong>
             <em>NEXT GYM</em>
           </div>
         </div>
+        <nav className="celeste-mode-menu" aria-label="工作区">
+          {MODE_OPTIONS.filter((option) => option.id === "training").map(
+            (option) => (
+              <button
+                type="button"
+                key={option.id}
+                aria-current={mode === option.id ? "page" : undefined}
+                onClick={() => selectMode(option.id)}
+              >
+                <span>{option.subtitle}</span>
+                <strong>{option.label}</strong>
+              </button>
+            ),
+          )}
+          <div className="celeste-other-modes">
+            <button
+              type="button"
+              className="celeste-other-toggle"
+              aria-expanded={otherModesOpen}
+              aria-controls="celeste-other-mode-list"
+              onClick={() => setOtherModesOpen((open) => !open)}
+            >
+              <span>MORE</span>
+              <strong>其他</strong>
+              <i aria-hidden="true">{otherModesOpen ? "▲" : "▼"}</i>
+            </button>
+            {otherModesOpen && (
+              <div
+                className="celeste-other-mode-list"
+                id="celeste-other-mode-list"
+              >
+                {MODE_OPTIONS.filter((option) => option.id !== "training").map(
+                  (option) => (
+                    <button
+                      type="button"
+                      key={option.id}
+                      aria-current={mode === option.id ? "page" : undefined}
+                      onClick={() => selectMode(option.id)}
+                    >
+                      <span>{option.subtitle}</span>
+                      <strong>{option.label}</strong>
+                    </button>
+                  ),
+                )}
+              </div>
+            )}
+          </div>
+        </nav>
         <label className="mode-tabs">
           <small>工作区</small>
           <select

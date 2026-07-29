@@ -1,0 +1,1027 @@
+/*
+ * Celeste UI skin
+ *
+ * The simulator still owns its layout and behavior in styles.css. This layer
+ * gives every workspace the same visual grammar as Celeste's pause/file menus:
+ * opaque indigo panels, chunky highlights, hard pixel shadows and a single
+ * bright selection color. Original game art remains sharp and unfiltered.
+ */
+
+:root {
+  --ink: #09051d;
+  --panel: #17103a;
+  --panel-deep: #0d0928;
+  --panel-bright: #27205a;
+  --line: #776bb0;
+  --muted: #b5add2;
+  --pink: #ff5b8d;
+  --pink-deep: #a72d68;
+  --cyan: #7ce8ff;
+  --gold: #ffd980;
+  --green: #8cf5bd;
+  color: #fff;
+  background: #09051d;
+  font-family: "Arial Black", "Microsoft YaHei", "PingFang SC", sans-serif;
+}
+
+html,
+body {
+  background: #09051d;
+}
+
+body {
+  letter-spacing: 0.02em;
+}
+
+button,
+select,
+input,
+textarea {
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+}
+
+button,
+.file-button,
+select {
+  border-radius: 0 !important;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+button:not(:disabled),
+.file-button,
+select:not(:disabled) {
+  transition:
+    color 80ms linear,
+    background-color 80ms linear,
+    border-color 80ms linear,
+    transform 80ms linear;
+}
+
+.app-shell {
+  --chrome-height: 76px;
+  background:
+    linear-gradient(180deg, #100931ed, #08051df5),
+    url("/assets/original/celeste-splash.png") center 36% / cover fixed;
+}
+
+.app-shell.play-mode,
+.app-shell.training-mode,
+.app-shell.editor-mode {
+  background: #08051d;
+}
+
+.celeste-sky {
+  position: fixed;
+  z-index: -3;
+  inset: 0;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, #0c0829aa 0%, #211341cc 57%, #09051df5 100%),
+    url("/assets/original/celeste-splash.png") center 32% / cover;
+  pointer-events: none;
+}
+
+.play-mode .celeste-sky,
+.training-mode .celeste-sky,
+.editor-mode .celeste-sky {
+  display: none;
+}
+
+.celeste-sky::before,
+.celeste-sky::after,
+.celeste-sky i {
+  content: "";
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: #fff;
+  box-shadow:
+    92px 48px #ffffffcc,
+    184px 116px #9ee9ff,
+    328px 38px #fff,
+    514px 158px #ffffffaa,
+    690px 72px #dccbff,
+    818px 136px #fff,
+    1034px 45px #9ee9ff,
+    1224px 112px #fff,
+    1410px 57px #ffffffaa;
+  image-rendering: pixelated;
+}
+
+.celeste-sky::before {
+  top: 7%;
+  left: 3%;
+}
+
+.celeste-sky::after {
+  top: 25%;
+  left: 12%;
+  opacity: 0.6;
+  transform: scale(0.65);
+}
+
+.celeste-sky i:nth-child(1) {
+  top: 16%;
+  left: 43%;
+  opacity: 0.45;
+  transform: scale(0.5);
+}
+
+.celeste-sky i:nth-child(2) {
+  top: 38%;
+  left: 7%;
+  opacity: 0.34;
+  transform: scale(0.75);
+}
+
+.celeste-sky i:nth-child(3) {
+  top: 31%;
+  left: 59%;
+  opacity: 0.55;
+}
+
+.mountain-backdrop {
+  opacity: 0.72;
+  filter: saturate(0.82) contrast(1.05);
+}
+
+/* Main menu bar */
+.topbar {
+  position: relative;
+  top: auto;
+  height: var(--chrome-height);
+  gap: 13px;
+  padding: 0 max(16px, calc((100vw - 1700px) / 2));
+  border: 0;
+  border-bottom: 4px solid #09051d;
+  background:
+    linear-gradient(180deg, #24194dfa 0 4px, #130d35fa 4px 100%);
+  box-shadow:
+    inset 0 -2px #594d91,
+    inset 0 -5px #282052,
+    0 6px 0 #050316,
+    0 12px 24px #0009;
+  backdrop-filter: none;
+}
+
+.topbar::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -3px;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #ee80c4, #8deaff, transparent);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.brand-mark {
+  min-width: 188px;
+  gap: 8px;
+  filter: drop-shadow(3px 4px 0 #050316);
+}
+
+.brand-mark > .training-strawberry-sprite {
+  width: 54px;
+  height: 48px;
+  flex: 0 0 54px;
+  filter: drop-shadow(0 0 7px #ff5b8d99);
+  animation: celeste-menu-berry 2s steps(2, end) infinite;
+}
+
+.brand-mark strong {
+  color: #fff;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-shadow:
+    2px 0 #493478,
+    -2px 0 #493478,
+    0 2px #493478,
+    3px 4px #070417;
+}
+
+.brand-mark em {
+  margin-top: 6px;
+  color: #8feaff;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: 0.38em;
+  text-shadow: 2px 2px #09051d;
+}
+
+.mode-tabs {
+  display: none !important;
+}
+
+.celeste-mode-menu {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.celeste-mode-menu button {
+  position: relative;
+  min-width: 86px;
+  height: 47px;
+  display: grid;
+  align-content: center;
+  gap: 1px;
+  padding: 4px 12px 5px;
+  color: #a9a2c8;
+  border: 2px solid transparent;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  text-align: left;
+  text-shadow: 2px 2px #070416;
+}
+
+.celeste-mode-menu button span {
+  color: #77709c;
+  font: 700 7px/1 Consolas, monospace;
+  letter-spacing: 0.18em;
+}
+
+.celeste-mode-menu button strong {
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.celeste-mode-menu .celeste-other-modes {
+  position: relative;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
+.celeste-mode-menu .celeste-other-toggle {
+  min-width: 76px;
+  grid-template-columns: 1fr auto;
+}
+
+.celeste-other-toggle span,
+.celeste-other-toggle strong {
+  grid-column: 1;
+}
+
+.celeste-other-toggle i {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  align-self: center;
+  color: #8feaff;
+  font: normal 8px Consolas, monospace;
+}
+
+.celeste-other-toggle[aria-expanded="true"] {
+  color: #fff;
+  border-color: #8d76c0;
+  background: #2c2257;
+}
+
+.celeste-other-mode-list {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 6px);
+  left: -3px;
+  width: 154px;
+  display: grid;
+  gap: 3px;
+  padding: 7px;
+  border: 3px solid #7769aa;
+  background: #100a31;
+  box-shadow:
+    0 0 0 3px #070416,
+    6px 8px 0 #050313,
+    12px 18px 30px #000a;
+}
+
+.celeste-other-mode-list::before {
+  content: "";
+  position: absolute;
+  top: -10px;
+  left: 28px;
+  width: 12px;
+  height: 12px;
+  border-top: 3px solid #7769aa;
+  border-left: 3px solid #7769aa;
+  background: #100a31;
+  transform: rotate(45deg);
+}
+
+.celeste-mode-menu .celeste-other-mode-list button {
+  width: 100%;
+  min-width: 0;
+  height: 45px;
+  border-color: #3f3567;
+  background: #17103a;
+}
+
+.celeste-mode-menu .celeste-other-mode-list button:hover,
+.celeste-mode-menu .celeste-other-mode-list button[aria-current="page"] {
+  border-color: #ff83ad;
+  background: linear-gradient(90deg, #a42e6c, #472557);
+}
+
+.celeste-mode-menu .celeste-other-mode-list button[aria-current="page"]::before {
+  display: none;
+}
+
+.celeste-mode-menu button:hover {
+  color: #fff;
+  background: #2c2257;
+  transform: translateY(-1px);
+}
+
+.celeste-mode-menu button[aria-current="page"] {
+  color: #fff;
+  border-color: #8d76c0;
+  background: linear-gradient(90deg, #a82f6e, #52275f 78%, #342052);
+  box-shadow:
+    inset 0 2px #ef71a6,
+    inset 0 -2px #35163f,
+    3px 4px 0 #070416;
+}
+
+.celeste-mode-menu button[aria-current="page"]::before {
+  content: "◆";
+  position: absolute;
+  left: -10px;
+  top: 13px;
+  color: #fff;
+  font-size: 13px;
+  text-shadow:
+    1px 0 #ff5b8d,
+    -1px 0 #ff5b8d,
+    0 1px #ff5b8d,
+    2px 3px #070416;
+  animation: celeste-menu-cursor 0.65s steps(2, end) infinite;
+}
+
+.celeste-mode-menu button[aria-current="page"] span {
+  color: #ffbdd4;
+}
+
+.visual-theme-picker {
+  min-width: 164px;
+  gap: 3px;
+  margin-left: 2px;
+  padding-left: 13px;
+  border-left: 2px solid #312753;
+}
+
+.visual-theme-picker small,
+.play-room small {
+  color: #9b91bd;
+  font: 700 7px/1 Consolas, monospace;
+  letter-spacing: 0.18em;
+}
+
+.visual-theme-picker select,
+.mode-tabs select,
+.training-picker select {
+  height: 32px;
+  padding: 0 27px 0 9px;
+  color: #fff;
+  border: 2px solid #665a99;
+  border-left: 4px solid #ff5b8d;
+  background: #0c0825;
+  box-shadow:
+    inset 0 -2px #070416,
+    2px 3px 0 #050313;
+  font: 700 9px Consolas, monospace;
+}
+
+.visual-theme-picker select:hover,
+.training-picker select:hover {
+  border-color: #d8c9ff;
+  border-left-color: #ff5b8d;
+  background: #201746;
+}
+
+.play-quick-actions {
+  gap: 12px;
+}
+
+.play-room {
+  gap: 3px 8px;
+}
+
+.play-room strong {
+  font-size: 10px;
+  text-shadow: 2px 2px #080418;
+}
+
+.play-room span {
+  padding: 3px 7px;
+  color: #9deeff;
+  border: 2px solid #4d6c91;
+  background: #0d1731;
+  box-shadow: 2px 2px #050313;
+  font: 700 8px Consolas, monospace;
+}
+
+.top-actions {
+  gap: 6px;
+}
+
+.top-actions button,
+.file-button,
+.editor-workspace-nav button,
+.editor-workspace-nav select,
+.training-editor-toolbar button,
+.training-preview-bar button {
+  min-height: 31px;
+  padding: 6px 11px;
+  color: #e9e4ff;
+  border: 2px solid #665a99;
+  background: #211946;
+  box-shadow:
+    inset 0 2px #33285f,
+    inset 0 -2px #0a061d,
+    2px 3px 0 #050313;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-shadow: 1px 2px #070416;
+}
+
+.top-actions button:hover,
+.file-button:hover,
+.editor-workspace-nav button:hover,
+.training-editor-toolbar button:hover,
+.training-preview-bar button:hover {
+  color: #fff;
+  border-color: #fff;
+  background: #a52e6d;
+  transform: translateY(-1px);
+}
+
+/* Game viewport */
+.play-workspace {
+  inset: var(--chrome-height) 0 0;
+  border-top: 0;
+  background: #000;
+  box-shadow: inset 0 5px 0 #09051d;
+}
+
+.game-screen,
+.game-screen canvas,
+.training-strawberry-sprite,
+.editor-entity-atlas {
+  image-rendering: pixelated;
+}
+
+/* Research workspace and shared panels */
+.workspace {
+  width: min(1660px, calc(100% - 32px));
+  gap: 18px;
+  padding: 22px 0 28px;
+}
+
+.panel-frame,
+.state-inspector,
+.current-input,
+.timeline-panel {
+  border: 3px solid #645897;
+  background: linear-gradient(145deg, #1b1441f5, #0d0929fa 76%);
+  box-shadow:
+    0 0 0 3px #080419,
+    0 0 0 4px #312756,
+    6px 8px 0 #050313,
+    12px 18px 30px #0008;
+}
+
+.panel-frame::before,
+.panel-frame::after {
+  width: 11px;
+  height: 11px;
+  border-color: #d6c9ff;
+  border-width: 3px;
+}
+
+.stage-header,
+.panel-heading,
+.timeline-heading,
+.training-timeline-head {
+  border-bottom: 3px solid #42366c;
+  background: linear-gradient(90deg, #2a2157, #17113a 66%, #0f0a2b);
+  box-shadow: inset 0 -2px #09051e;
+}
+
+.stage-header small,
+.panel-heading small,
+.timeline-heading small,
+.training-timeline-head small,
+.cache-meter span {
+  color: #8feaff;
+  font-weight: 700;
+  text-shadow: 2px 2px #070416;
+}
+
+.stage-header h1,
+.panel-heading h2,
+.timeline-heading h2,
+.training-timeline-head h2 {
+  color: #fff;
+  font-weight: 900;
+  text-shadow:
+    2px 0 #493478,
+    -2px 0 #493478,
+    0 2px #493478,
+    3px 4px #070416;
+}
+
+.cache-meter,
+.notice {
+  border: 2px solid #51467d;
+  background: #0b0722;
+  box-shadow: inset 0 0 0 2px #171038;
+}
+
+.cache-meter strong {
+  color: #ffd980;
+  text-shadow: 2px 2px #6a3c32;
+}
+
+.transport {
+  border-top: 3px solid #42366c;
+  background: #110c30;
+  box-shadow: inset 0 2px #231a4b;
+}
+
+.transport button,
+.transport select,
+.input-buttons button,
+.timeline-controls button,
+.timeline-controls select,
+.modal-actions button {
+  border: 2px solid #5d518d;
+  background: #211947;
+  box-shadow:
+    inset 0 2px #342961,
+    inset 0 -2px #0a061d,
+    2px 3px #050313;
+  color: #e7e0ff;
+  font-weight: 700;
+  text-shadow: 1px 2px #070416;
+}
+
+.transport button:hover,
+.timeline-controls button:hover,
+.input-buttons button:hover,
+.modal-actions button:hover {
+  color: #fff;
+  border-color: #fff;
+  background: #9f2e69;
+}
+
+.transport .play-button,
+.modal-actions button.primary,
+.training-editor-toolbar button.primary {
+  color: #fff;
+  border-color: #ffd4e3;
+  background: linear-gradient(#ff6394, #b52f6e);
+  box-shadow:
+    inset 0 2px #ff9fbd,
+    inset 0 -2px #651541,
+    3px 4px #050313;
+}
+
+.record-button.active {
+  border-color: #fff;
+  background: #bd315f;
+}
+
+.input-buttons button.active {
+  color: #fff;
+  border-color: #fff;
+  background: linear-gradient(#b54182, #5c286d);
+  box-shadow:
+    inset 0 0 0 2px #e765a7,
+    3px 4px #050313;
+}
+
+.notice {
+  color: #c9c0e3;
+  text-shadow: 1px 2px #050313;
+}
+
+footer {
+  color: #9187b0;
+  text-shadow: 1px 2px #050313;
+}
+
+/* Training catalog and editor chrome */
+.training-workspace,
+.map-editor,
+.editor-workspace-shell,
+.training-flow-editor {
+  background: #09051d;
+}
+
+.training-workspace {
+  height: calc(100vh - var(--chrome-height));
+}
+
+.map-editor {
+  height: calc(100vh - var(--chrome-height));
+}
+
+.editor-workspace-shell {
+  height: calc(100vh - var(--chrome-height));
+}
+
+.training-catalog,
+.editor-palette,
+.editor-inspector,
+.training-project-tree,
+.training-flow-inspector {
+  border-color: #4d4279;
+  background:
+    linear-gradient(160deg, #1f1749f8, #0b0726fb 72%),
+    url("/assets/original/celeste-splash.png") center / cover;
+  box-shadow:
+    inset -2px 0 #09051d,
+    6px 0 0 #050313,
+    10px 0 24px #0009;
+  scrollbar-color: #7568a7 #0b0725;
+}
+
+.editor-inspector,
+.training-flow-inspector {
+  box-shadow:
+    inset 2px 0 #09051d,
+    -6px 0 0 #050313,
+    -10px 0 24px #0009;
+}
+
+.training-catalog-heading,
+.editor-panel-heading,
+.training-project-tree > header,
+.training-flow-inspector > header {
+  border-bottom: 3px solid #51457f;
+  background: linear-gradient(135deg, #30235f, #161039 72%);
+  box-shadow:
+    inset 0 -2px #09051d,
+    0 4px #060318;
+}
+
+.training-catalog-heading small,
+.editor-panel-heading small,
+.training-project-tree > header small,
+.training-flow-inspector > header small {
+  color: #ff7eaa;
+  font-weight: 900;
+  text-shadow: 2px 2px #501739;
+}
+
+.training-catalog-heading h2,
+.editor-panel-heading h1,
+.editor-panel-heading h2,
+.training-project-tree > header h1,
+.training-flow-inspector > header h2 {
+  color: #fff;
+  font-weight: 900;
+  text-shadow:
+    2px 0 #493478,
+    -2px 0 #493478,
+    0 2px #493478,
+    3px 4px #070416;
+}
+
+.training-technique-toggle,
+.training-variant-option,
+.room-picker button,
+.editor-entity-button,
+.training-module-list button,
+.training-project-tree > button.finish {
+  border-color: #3f3567;
+  background: #100b30;
+  color: #bdb4d6;
+  box-shadow: inset 0 -2px #09051d;
+}
+
+.training-technique-toggle:hover,
+.training-variant-option:hover,
+.room-picker button:hover,
+.editor-entity-button:hover,
+.training-module-list button:hover,
+.training-project-tree > button.finish:hover {
+  color: #fff;
+  border-color: #8c7ab9;
+  background: #282052;
+}
+
+.training-technique-toggle.active,
+.training-variant-option.selected,
+.room-picker button.selected,
+.editor-entity-button.active,
+.training-module-list button.selected,
+.training-project-tree > button.finish.selected {
+  color: #fff;
+  border-color: #ff83ad;
+  background: linear-gradient(90deg, #a42e6c, #54275f 70%, #271c4b);
+  box-shadow:
+    inset 5px 0 #ff8cb4,
+    inset 0 2px #d44c8a,
+    inset 0 -2px #4e1539;
+  text-shadow: 1px 2px #070416;
+}
+
+.training-technique-toggle.active::before,
+.training-variant-option.selected::before,
+.room-picker button.selected::before {
+  color: #fff;
+}
+
+.editor-tool-group,
+.training-catalog nav,
+.training-inspector-fields,
+.editor-inspector-fields {
+  border-color: #3d3366;
+}
+
+.editor-workspace-nav,
+.training-editor-toolbar,
+.training-preview-bar {
+  border-bottom: 3px solid #09051d;
+  background: #17103a;
+  box-shadow:
+    inset 0 -2px #54477e,
+    0 5px #050313;
+}
+
+.editor-section-tabs button.active {
+  color: #fff;
+  background: #a62f6e;
+  box-shadow:
+    inset 0 -4px #ff92b6,
+    inset 0 2px #d9538d;
+}
+
+.training-flow-editor input:not([type="checkbox"]),
+.training-flow-editor textarea,
+.training-flow-editor select,
+.editor-inspector input:not([type="checkbox"]),
+.editor-inspector textarea,
+.editor-inspector select,
+.key-bindings input,
+.key-bindings select,
+.start-settings input,
+.start-settings select {
+  color: #fff;
+  border: 2px solid #554a82;
+  background: #09051f;
+  box-shadow: inset 2px 2px #050313;
+}
+
+.training-inspector-fields fieldset,
+.training-step-editor,
+.fuzz-input-editor,
+.training-validation-summary,
+.training-issue-list,
+.training-test-results,
+.start-preview {
+  border: 2px solid #44396f;
+  background: #0d0929;
+  box-shadow: 3px 4px #050313;
+}
+
+.training-inspector-fields legend,
+.training-flow-editor h4,
+.training-step-editor header strong,
+.fuzz-input-editor header strong {
+  color: #ffd980;
+  text-shadow: 1px 2px #4a2d24;
+}
+
+/* Dialogs */
+.modal-backdrop,
+.key-bindings-backdrop,
+.start-settings-backdrop {
+  background: #050318d9;
+  backdrop-filter: none;
+}
+
+.modal,
+.key-bindings,
+.start-settings {
+  border: 4px solid #7769aa;
+  background: linear-gradient(145deg, #20184b, #0d0929 72%);
+  box-shadow:
+    0 0 0 4px #080419,
+    0 0 0 6px #413569,
+    9px 12px 0 #050313,
+    18px 26px 60px #000b;
+}
+
+.modal header,
+.key-bindings header,
+.start-settings header,
+.modal-heading {
+  border-bottom: 3px solid #51457f;
+  background: linear-gradient(90deg, #31245f, #17103a);
+  box-shadow: inset 0 -2px #09051d;
+}
+
+.modal h2,
+.key-bindings h2,
+.start-settings h2,
+.modal-heading h2 {
+  color: #fff;
+  font-weight: 900;
+  text-shadow:
+    2px 0 #493478,
+    -2px 0 #493478,
+    0 2px #493478,
+    3px 4px #070416;
+}
+
+@keyframes celeste-menu-cursor {
+  50% {
+    transform: translateX(3px);
+  }
+}
+
+@keyframes celeste-menu-berry {
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@media (max-width: 1320px) {
+  .topbar {
+    gap: 9px;
+  }
+
+  .brand-mark {
+    min-width: 150px;
+  }
+
+  .brand-mark > .training-strawberry-sprite {
+    width: 45px;
+    height: 40px;
+    flex-basis: 45px;
+  }
+
+  .brand-mark strong {
+    font-size: 15px;
+  }
+
+  .brand-mark em {
+    font-size: 7px;
+  }
+
+  .celeste-mode-menu button {
+    min-width: 69px;
+    padding-inline: 8px;
+  }
+
+  .play-room span {
+    display: none;
+  }
+}
+
+@media (max-width: 980px) {
+  .brand-mark {
+    min-width: auto;
+  }
+
+  .brand-mark > div {
+    display: none;
+  }
+
+  .celeste-mode-menu button {
+    min-width: 54px;
+  }
+
+  .celeste-mode-menu button span {
+    display: none;
+  }
+
+  .visual-theme-picker {
+    min-width: 130px;
+  }
+
+  .play-room {
+    display: none;
+  }
+}
+
+@media (max-width: 680px) {
+  .app-shell {
+    --chrome-height: 64px;
+  }
+
+  .topbar {
+    min-height: var(--chrome-height);
+    padding-inline: 7px;
+    gap: 5px;
+  }
+
+  .brand-mark > .training-strawberry-sprite {
+    width: 36px;
+    height: 32px;
+    flex-basis: 36px;
+  }
+
+  .celeste-mode-menu {
+    gap: 1px;
+  }
+
+  .celeste-mode-menu button {
+    min-width: 38px;
+    height: 40px;
+    padding: 3px 5px;
+    text-align: center;
+  }
+
+  .celeste-mode-menu .celeste-other-toggle {
+    min-width: 42px;
+  }
+
+  .celeste-other-toggle i {
+    font-size: 6px;
+  }
+
+  .celeste-other-toggle span {
+    font-size: 0;
+  }
+
+  .celeste-other-toggle span::after {
+    content: "其他";
+    font-size: 8px;
+  }
+
+  .celeste-other-mode-list {
+    right: 0;
+    left: auto;
+    width: 136px;
+  }
+
+  .celeste-mode-menu button strong {
+    display: none;
+  }
+
+  .celeste-mode-menu button span {
+    display: block;
+    color: #c4badf;
+    font-size: 7px;
+    letter-spacing: 0.02em;
+  }
+
+  .celeste-mode-menu button[aria-current="page"]::before {
+    display: none;
+  }
+
+  .visual-theme-picker {
+    min-width: 92px;
+    padding-left: 5px;
+  }
+
+  .visual-theme-picker small {
+    display: none;
+  }
+
+  .visual-theme-picker select {
+    width: 92px;
+    height: 30px;
+    font-size: 8px;
+  }
+
+  .play-quick-actions {
+    margin-left: 0;
+  }
+
+  .top-actions button,
+  .file-button {
+    min-width: 42px;
+    padding-inline: 7px;
+    font-size: 8px;
+  }
+
+  .workspace {
+    width: calc(100% - 18px);
+    padding-top: 13px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-mark > .training-strawberry-sprite,
+  .celeste-mode-menu button[aria-current="page"]::before {
+    animation: none;
+  }
+}
