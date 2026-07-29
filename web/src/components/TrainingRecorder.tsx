@@ -15,6 +15,7 @@ import {
   applyTutorialRecording,
   hasRecordedAction,
   nextSequentialModuleAtPlayer,
+  recordingStartState,
 } from "../training/recording";
 import type { VisualTheme } from "../visualThemes";
 import { GameView } from "./GameView";
@@ -52,8 +53,7 @@ function initialForScope(
   scope: TrainingRecordingScope,
 ): SimState {
   if (scope.type === "module") {
-    const state = project.training.modules[scope.index]?.validation.initial_state;
-    if (state) return structuredClone(state);
+    return recordingStartState(project, scope.index);
   }
   return createInitialState(project.map);
 }
@@ -411,7 +411,7 @@ export function TrainingRecorder({
           </strong>
           <span>
             {phase === "armed"
-              ? "按 Jump / Dash / Crouch Dash / Grab 中任一个动作开始；WASD 只移动，不写入教程。"
+              ? "按 Jump / Dash / Crouch Dash / Grab 中任一个动作开始；WASD 仅作为后台方向上下文。"
               : phase === "recording"
                 ? "粉色框是当前教程结束区；进入后自动生成并保存 JSON 数据。"
                 : "方向键可正常游玩；进入蓝色开始区后等待第一个教程动作。"}

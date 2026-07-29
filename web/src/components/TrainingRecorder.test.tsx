@@ -66,9 +66,9 @@ describe("training recorder runtime", () => {
     fireEvent.keyDown(window, { code: "Semicolon" });
     callbacks.shift()?.(1_000_000);
     await waitFor(() => expect(onChange).toHaveBeenCalledTimes(1));
-    expect(onChange.mock.calls[0][0].training.modules[0].tutorial.fuzz.inputs).toEqual([
-      { id: "dash", keys: ["dash"], at: 0, verify: true },
-    ]);
+    expect(
+      onChange.mock.calls[0][0].training.modules[0].tutorial.fuzz.inputs,
+    ).toEqual([{ id: "dash", keys: ["dash"], at: 0, verify: true }]);
     expect(view.getByText("录制完成")).toBeInTheDocument();
   });
 });

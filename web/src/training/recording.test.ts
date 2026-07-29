@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { makeEmptyButtons, PLAYGROUND } from "../model";
-import { createTrainingProject } from "./editorProject";
+import {
+  createTrainingProject,
+  validateTrainingProject,
+} from "./editorProject";
 import {
   applyTutorialRecording,
   hasRecordedAction,
   nextSequentialModuleAtPlayer,
+  recordingStartState,
   recordedInputsFromFrames,
 } from "./recording";
 
@@ -49,13 +53,46 @@ describe("tutorial editor recording", () => {
     const module = next.training.modules[0];
     expect(module.tutorial.entry.input_id).toBe("dash");
     expect(module.tutorial.fuzz.inputs.map((input) => input.keys)).toEqual([
+      ["down"],
+      ["right"],
       ["dash"],
       ["jump"],
+    ]);
+    expect(module.tutorial.fuzz.inputs.slice(0, 2)).toEqual([
+      {
+        id: "hold-down",
+        keys: ["down"],
+        at: 0,
+        held_time: 2,
+        verify: false,
+      },
+      {
+        id: "hold-right",
+        keys: ["right"],
+        at: 0,
+        held_time: 3,
+        verify: false,
+      },
     ]);
     expect(module.tutorial.teaching.steps).toHaveLength(2);
     expect(module.tutorial.fuzz.observe_until).toBe(3);
     expect(module.tutorial.fuzz.success).toContain("!final.dead");
+    expect(module.tutorial.fuzz.objectives).toEqual([
+      {
+        type: "approach",
+        expression: "final.pos.x",
+        target:
+          module.end_trigger.bounds.x + module.end_trigger.bounds.width / 2,
+      },
+      {
+        type: "approach",
+        expression: "final.pos.y",
+        target:
+          module.end_trigger.bounds.y + module.end_trigger.bounds.height,
+      },
+    ]);
     expect(module.validation.initial_state.pos).toEqual({ x: 111, y: 222 });
+    expect(validateTrainingProject(next)).toEqual([]);
     expect(project.training.modules[0].tutorial.fuzz.inputs).not.toEqual(
       module.tutorial.fuzz.inputs,
     );
@@ -73,5 +110,15 @@ describe("tutorial editor recording", () => {
     atSecond.pos = { x: 450, y: 496 };
     expect(nextSequentialModuleAtPlayer(project, atSecond, new Set())).toBeNull();
     expect(nextSequentialModuleAtPlayer(project, atSecond, new Set([0]))).toBe(1);
+  });
+
+  it("places current-region recording inside a moved start region", () => {
+    const project = createTrainingProject(PLAYGROUND);
+    const module = project.training.modules[0];
+    module.trigger.bounds = { x: 400, y: 400, width: 80, height: 80 };
+    module.end_trigger.bounds = { x: 200, y: 400, width: 40, height: 80 };
+    const state = recordingStartState(project, 0);
+    expect(state.pos).toEqual({ x: 440, y: 480 });
+    expect(state.facing).toBe(false);
   });
 });

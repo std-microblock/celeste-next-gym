@@ -1,6 +1,7 @@
 import {
   ACTIONS,
   ACTION_LABELS,
+  createInitialState,
   makeEmptyButtons,
   type Action,
   type FrameButtons,
@@ -62,6 +63,28 @@ export function recordedInputsFromFrames(
   return inputs;
 }
 
+function recordedDirectionInputsFromFrames(
+  frames: readonly FrameButtons[],
+): TrainingInput[] {
+  const inputs: TrainingInput[] = [];
+  for (const action of DIRECTION_ACTIONS) {
+    let occurrence = 0;
+    for (let frame = 0; frame < frames.length; frame += 1) {
+      if (!frames[frame][action] || (frame > 0 && frames[frame - 1][action]))
+        continue;
+      occurrence += 1;
+      inputs.push({
+        id: `hold-${action}${occurrence === 1 ? "" : `-${occurrence}`}`,
+        keys: [action],
+        at: frame,
+        held_time: heldFrames(frames, frame, action),
+        verify: false,
+      });
+    }
+  }
+  return inputs.sort((left, right) => Number(left.at) - Number(right.at));
+}
+
 function actionText(keys: readonly string[]): string {
   return keys
     .map((key) => ACTION_LABELS[key as Action] ?? key)
@@ -120,10 +143,25 @@ export function applyTutorialRecording(
       },
     };
   });
-  module.tutorial.fuzz.inputs = inputs;
+  module.tutorial.fuzz.inputs = [
+    ...recordedDirectionInputsFromFrames(frames),
+    ...inputs,
+  ].sort((left, right) => Number(left.at) - Number(right.at));
   module.tutorial.fuzz.variables = [];
   module.tutorial.fuzz.observe_until = Math.max(1, frames.length);
   module.tutorial.fuzz.success = endRegionSuccess(module.end_trigger.bounds);
+  module.tutorial.fuzz.objectives = [
+    {
+      type: "approach",
+      expression: "final.pos.x",
+      target: module.end_trigger.bounds.x + module.end_trigger.bounds.width / 2,
+    },
+    {
+      type: "approach",
+      expression: "final.pos.y",
+      target: module.end_trigger.bounds.y + module.end_trigger.bounds.height,
+    },
+  ];
   module.tutorial.fuzz.search.bindings = {};
   module.validation.initial_state = structuredClone(initialState);
   if (module.validation.fuzz)
@@ -156,4 +194,25 @@ export function nextSequentialModuleAtPlayer(
   )
     ? nextIndex
     : null;
+}
+
+/** Current-region recording needs no manually maintained validation position. */
+export function recordingStartState(
+  project: TrainingProject,
+  moduleIndex: number,
+): SimState {
+  const module = project.training.modules[moduleIndex];
+  if (!module) return createInitialState(project.map);
+  const existing = structuredClone(module.validation.initial_state);
+  if (triggerContainsPlayer(module.trigger, existing)) return existing;
+  const bounds = module.trigger.bounds;
+  const state = createInitialState(project.map);
+  state.pos = {
+    x: bounds.x + bounds.width / 2,
+    y: bounds.y + bounds.height,
+  };
+  state.facing =
+    module.end_trigger.bounds.x + module.end_trigger.bounds.width / 2 >=
+    state.pos.x;
+  return state;
 }

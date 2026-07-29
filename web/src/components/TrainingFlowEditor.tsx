@@ -1161,18 +1161,18 @@ export function TrainingFlowEditor({
         </button>
         <div className="training-record-actions">
           <button
-            onClick={() =>
-              onStartRecording(
-                target.type === "module"
-                  ? { type: "module", index: target.index }
-                  : { type: "module", index: 0 },
-              )
-            }
-            disabled={!project.training.modules.length}
+            onClick={() => {
+              if (target.type === "module")
+                onStartRecording({ type: "module", index: target.index });
+            }}
+            disabled={target.type !== "module"}
           >
             ● 录制当前区域
           </button>
-          <button onClick={() => onStartRecording({ type: "all" })}>
+          <button
+            disabled={!project.training.modules.length}
+            onClick={() => onStartRecording({ type: "all" })}
+          >
             ● 录制全部区域
           </button>
         </div>
