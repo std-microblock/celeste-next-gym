@@ -123,6 +123,7 @@ export function TrainingRecorder({
   );
   const completedRef = useRef(new Set<number>());
   const [completedCount, setCompletedCount] = useState(0);
+  const capturedReviewsRef = useRef<PendingReview[]>([]);
   const recordingInitial = useRef<SimState | null>(null);
   const recordingFrames = useRef<FrameButtons[]>([]);
   const recordingSnapshots = useRef<SimState[]>([]);
@@ -179,6 +180,7 @@ export function TrainingRecorder({
     setReview(null);
     completedRef.current.clear();
     setCompletedCount(0);
+    capturedReviewsRef.current = [];
     setPlaying(false);
     if (scope.type === "module") setActive(scope.index);
     else {
@@ -245,8 +247,6 @@ export function TrainingRecorder({
     );
     projectRef.current = next;
     onChangeRef.current(next);
-    completedRef.current.add(pending.moduleIndex);
-    setCompletedCount(completedRef.current.size);
     recordingInitial.current = null;
     recordingFrames.current = [];
     recordingSnapshots.current = [];
@@ -254,21 +254,31 @@ export function TrainingRecorder({
     setActiveIndex(null);
     setReview(null);
     setFrame(frameRef.current);
-    if (
-      scope.type === "module" ||
-      completedRef.current.size === next.training.modules.length
-    ) {
+    if (scope.type === "module") {
+      completedRef.current.add(pending.moduleIndex);
+      setCompletedCount(completedRef.current.size);
       setPlaying(false);
       setPhase("done");
-      setNotice(
-        scope.type === "module"
-          ? `${pending.title} 已生成教程 JSON。`
-          : `全部 ${next.training.modules.length} 个教程均已生成 JSON。`,
-      );
+      setNotice(`${pending.title} 已生成教程 JSON。`);
     } else {
-      setPhase("roaming");
-      setNotice(`${pending.title} 已写入；继续前往下一个开始区。`);
-      armModuleAt(pending.after);
+      capturedReviewsRef.current = capturedReviewsRef.current.filter(
+        (candidate) => candidate.moduleIndex !== pending.moduleIndex,
+      );
+      const nextReview = capturedReviewsRef.current[0];
+      if (nextReview) {
+        setPlaying(false);
+        setPhase("reviewing");
+        setNotice(
+          `${pending.title} 已写入；继续编辑 ${nextReview.title} 的关键节点。`,
+        );
+        showReviewNode(nextReview, 0);
+      } else {
+        setPlaying(false);
+        setPhase("done");
+        setNotice(
+          `全部 ${next.training.modules.length} 个教程均已生成 JSON。`,
+        );
+      }
     }
   };
 
@@ -440,11 +450,38 @@ export function TrainingRecorder({
                 after: structuredClone(after),
               };
               setPlaying(false);
-              setPhase("reviewing");
-              setNotice(
-                `${title} 录制完成；请逐个关键节点选择一个或多个目标。`,
-              );
-              showReviewNode(pending, 0);
+              if (scope.type === "module") {
+                setPhase("reviewing");
+                setNotice(
+                  `${title} 录制完成；请逐个关键节点选择一个或多个目标。`,
+                );
+                showReviewNode(pending, 0);
+              } else {
+                capturedReviewsRef.current.push(pending);
+                completedRef.current.add(pending.moduleIndex);
+                setCompletedCount(completedRef.current.size);
+                recordingInitial.current = null;
+                recordingFrames.current = [];
+                recordingSnapshots.current = [];
+                activeIndexRef.current = null;
+                setActiveIndex(null);
+                if (
+                  completedRef.current.size ===
+                  projectRef.current.training.modules.length
+                ) {
+                  setPhase("reviewing");
+                  setNotice(
+                    `全部 ${completedRef.current.size} 个区域录制完成；现在开始编辑关键节点。`,
+                  );
+                  showReviewNode(capturedReviewsRef.current[0], 0);
+                } else {
+                  setPhase("roaming");
+                  setNotice(
+                    `${title} 录制完成；继续前往下一个开始区。`,
+                  );
+                  armModuleAt(after);
+                }
+              }
             } else {
               if (after.dead) {
                 setPlaying(false);

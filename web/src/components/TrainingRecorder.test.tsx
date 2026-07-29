@@ -2,7 +2,10 @@ import { fireEvent, render, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { PLAYGROUND } from "../model";
-import { createTrainingProject } from "../training/editorProject";
+import {
+  createTrainingModule,
+  createTrainingProject,
+} from "../training/editorProject";
 import { VISUAL_THEMES } from "../visualThemes";
 
 vi.mock("./GameView", () => ({
@@ -38,6 +41,90 @@ vi.mock("../simulator/wasmClient", () => ({
 import { TrainingRecorder } from "./TrainingRecorder";
 
 describe("training recorder runtime", () => {
+  it("records every region before opening record-all editing", async () => {
+    const project = createTrainingProject(PLAYGROUND);
+    project.training.modules = Array.from({ length: 3 }, (_, index) => {
+      const module = createTrainingModule(project.map, index);
+      module.trigger.bounds = { x: 0, y: 0, width: 200, height: 544 };
+      module.end_trigger.bounds = { x: 140, y: 140, width: 40, height: 30 };
+      return module;
+    });
+    const onChange = vi.fn();
+    let nextAnimationId = 0;
+    const animations = new Map<number, (time: number) => void>();
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      (callback: (time: number) => void) => {
+        const id = ++nextAnimationId;
+        animations.set(id, callback);
+        return id;
+      },
+    );
+    vi.stubGlobal("cancelAnimationFrame", (id: number) => {
+      animations.delete(id);
+    });
+    const view = render(
+      <TrainingRecorder
+        project={project}
+        scope={{ type: "all" }}
+        bindings={{
+          up: "KeyW",
+          down: "KeyS",
+          left: "KeyA",
+          right: "KeyD",
+          jump: "KeyL",
+          dash: "Semicolon",
+          crouch_dash: "KeyK",
+          grab: "Quote",
+        }}
+        theme={VISUAL_THEMES[0]}
+        onChange={onChange}
+        onExit={vi.fn()}
+      />,
+    );
+    await waitFor(() =>
+      expect(view.getByText("已暂停待命")).toBeInTheDocument(),
+    );
+
+    const recordModule = async (code: string, completed: number) => {
+      fireEvent.keyDown(window, { code });
+      const animation = animations.values().next().value;
+      if (!animation) throw new Error("录制器没有请求动画帧");
+      animations.clear();
+      animation(performance.now() + 1_000);
+      fireEvent.keyUp(window, { code });
+      await waitFor(() =>
+        expect(
+          view.getByText(`录制全部 · ${completed}/3`),
+        ).toBeInTheDocument(),
+      );
+    };
+
+    await recordModule("Semicolon", 1);
+    expect(
+      view.container.querySelector(".training-record-objective-window"),
+    ).not.toBeInTheDocument();
+    await recordModule("KeyL", 2);
+    expect(
+      view.container.querySelector(".training-record-objective-window"),
+    ).not.toBeInTheDocument();
+    await recordModule("KeyK", 3);
+    await waitFor(() =>
+      expect(
+        view.container.querySelector(".training-record-objective-window"),
+      ).toBeInTheDocument(),
+    );
+    expect(view.container.querySelector(".training-recorder-bar > span"))
+      .toHaveTextContent("全部 3 个区域录制完成；现在开始编辑关键节点。");
+
+    for (let count = 1; count <= 3; count += 1) {
+      fireEvent.click(view.getByRole("button", { name: "删除关键点" }));
+      await waitFor(() => expect(onChange).toHaveBeenCalledTimes(count));
+    }
+    expect(view.getByText("录制完成")).toBeInTheDocument();
+    view.unmount();
+  });
+
   it("writes a module and resets the full record-all session with R", async () => {
     const project = createTrainingProject(PLAYGROUND);
     project.training.modules[0].end_trigger.bounds = {
