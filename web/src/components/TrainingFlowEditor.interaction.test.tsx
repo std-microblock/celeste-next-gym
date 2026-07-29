@@ -74,6 +74,57 @@ describe("training recording controls", () => {
     expect(within(container).getByText("END TRIGGER ID")).toBeInTheDocument();
   });
 
+  it("edits recorded checkpoint conditions and objectives in form mode", () => {
+    const project = createTrainingProject(PLAYGROUND);
+    project.training.modules[0].tutorial.fuzz.checkpoints = [
+      {
+        id: "recorded-node-3",
+        at: "jump_frame",
+        description: "F3 · 跳跃后最大化 X 速度",
+        success: ["after.pos.x >= 120"],
+        objectives: [{ type: "maximize", expression: "after.speed.x" }],
+      },
+    ];
+    const onChange = vi.fn();
+    const view = render(
+      <TrainingFlowEditor
+        project={project}
+        theme={VISUAL_THEMES[0]}
+        bindings={{
+          up: "KeyW",
+          down: "KeyS",
+          left: "KeyA",
+          right: "KeyD",
+          jump: "KeyL",
+          dash: "Semicolon",
+          crouch_dash: "KeyK",
+          grab: "Quote",
+        }}
+        ready
+        onChange={onChange}
+        onStartRecording={vi.fn()}
+      />,
+    );
+    const checkpoint = view.container.querySelector<HTMLElement>(
+      ".fuzz-checkpoint-editor",
+    )!;
+    expect(within(checkpoint).getByText("CHECKPOINT 1")).toBeInTheDocument();
+    expect(within(checkpoint).getByLabelText("目标 1 表达式")).toHaveValue(
+      "after.speed.x",
+    );
+
+    fireEvent.change(
+      within(checkpoint).getByLabelText(
+        "CHECKPOINT SUCCESS · 每行一个 Rhai 条件",
+      ),
+      { target: { value: "after.pos.x >= 140" } },
+    );
+    expect(
+      onChange.mock.calls.at(-1)?.[0].training.modules[0].tutorial.fuzz
+        .checkpoints[0].success,
+    ).toEqual(["after.pos.x >= 140"]);
+  });
+
   it("starts either the selected or all-region recording session", () => {
     const project = createTrainingProject(PLAYGROUND);
     const onStartRecording = vi.fn();
@@ -96,9 +147,16 @@ describe("training recording controls", () => {
         onStartRecording={onStartRecording}
       />,
     );
-    fireEvent.click(within(view.container).getByRole("button", { name: /录制当前区域/ }));
-    fireEvent.click(within(view.container).getByRole("button", { name: /录制全部区域/ }));
-    expect(onStartRecording).toHaveBeenNthCalledWith(1, { type: "module", index: 0 });
+    fireEvent.click(
+      within(view.container).getByRole("button", { name: /录制当前区域/ }),
+    );
+    fireEvent.click(
+      within(view.container).getByRole("button", { name: /录制全部区域/ }),
+    );
+    expect(onStartRecording).toHaveBeenNthCalledWith(1, {
+      type: "module",
+      index: 0,
+    });
     expect(onStartRecording).toHaveBeenNthCalledWith(2, { type: "all" });
     expect(createInitialState(project.map).pos).toEqual(project.map.spawn);
   });
@@ -126,7 +184,9 @@ describe("training recording controls", () => {
       />,
     );
     const end = view.container.querySelector("rect.module-end")!;
-    const overlay = view.container.querySelector("svg.training-trigger-overlay")!;
+    const overlay = view.container.querySelector(
+      "svg.training-trigger-overlay",
+    )!;
     const originalX = project.training.modules[0].end_trigger.bounds.x;
     fireEvent.pointerDown(end, {
       pointerId: 1,
@@ -201,9 +261,7 @@ describe("training recording controls", () => {
       within(view.container).getByRole("button", { name: /终点 Trigger/ }),
     );
     expect(
-      view.container.querySelectorAll(
-        ".training-trigger-resize-handles rect",
-      ),
+      view.container.querySelectorAll(".training-trigger-resize-handles rect"),
     ).toHaveLength(4);
   });
 });
