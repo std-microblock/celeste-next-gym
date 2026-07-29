@@ -219,6 +219,55 @@ if (
   throw new Error(
     checkpointFuzz.error ?? "WASM checkpoint objective smoke test failed",
   );
+const recordedTimingFuzz = decode(
+  fuzz_search_cached_map_msgpack(
+    encode(playgroundState),
+    JSON.stringify({
+      version: 1,
+      variables: [{ name: "jump_frame", range: { from: 1, to: 3 } }],
+      inputs: [
+        {
+          keys: ["right"],
+          at: 0,
+          held_time: "jump_frame",
+          verify: false,
+        },
+        {
+          keys: ["left"],
+          at: "jump_frame",
+          held_time: "hold::inf",
+          verify: false,
+        },
+        { keys: ["dash"], at: 0, verify: true },
+        { keys: ["jump"], at: "jump_frame", verify: true },
+      ],
+      observe_until: "max(5, jump_frame + 2)",
+      success: ["!final.dead"],
+      checkpoints: [
+        {
+          at: "jump_frame",
+          objectives: [
+            {
+              type: "approach",
+              expression: "after.speed.x",
+              target: 0,
+            },
+          ],
+        },
+      ],
+    }),
+  ),
+);
+if (
+  recordedTimingFuzz.error ||
+  recordedTimingFuzz.candidates?.length !== 3 ||
+  recordedTimingFuzz.candidates.some(
+    (candidate) => candidate.verified_inputs?.[1]?.frame !== candidate.bindings?.jump_frame,
+  )
+)
+  throw new Error(
+    recordedTimingFuzz.error ?? "Recorded timing variable WASM smoke test failed",
+  );
 const runTrace = decode(
   simulate_msgpack(
     encode(playgroundState),
