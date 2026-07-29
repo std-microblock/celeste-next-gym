@@ -48,6 +48,11 @@ export function prepareTrainingMod(
     ],
     paths.repoRoot,
   );
+  runCommand(
+    "cargo",
+    ["build", "-q", "-p", "celeste-gym-native", "--release"],
+    paths.repoRoot,
+  );
   const gameModsRoot = resolve(gameInstall.gameRoot, "Mods");
   mkdirSync(gameModsRoot, { recursive: true });
   if (
@@ -77,6 +82,19 @@ export function prepareTrainingMod(
       "CelesteGymTraining.dll",
     ),
     resolve(installed, "Code", "CelesteGymTraining.dll"),
+  );
+  copyFileSync(
+    resolve(
+      paths.repoRoot,
+      "target",
+      "release",
+      process.platform === "win32" ? "celeste_gym_native.dll" : "libceleste_gym_native.so",
+    ),
+    resolve(
+      installed,
+      "Code",
+      process.platform === "win32" ? "celeste_gym_native.dll" : "libceleste_gym_native.so",
+    ),
   );
   for (const directory of ["Dialog", "Maps", "Graphics", "Content"]) {
     const source = resolve(trainingModRoot, directory);

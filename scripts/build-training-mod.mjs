@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
-import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -193,7 +193,14 @@ async function main() {
   const fixturePath = resolve(modRoot, "Build/generated.fixture.json");
   const catalogPath = resolve(modRoot, "Content/CelesteGymTraining/training-catalog.json");
   const rawMapPath = resolve(repoRoot, ".tmp/training-build/Training.raw.bin");
+  const skinnedMapPath = resolve(repoRoot, ".tmp/training-build/Training.skinned.bin");
   const mapPath = resolve(modRoot, "Maps/CelesteGymTraining/Training.bin");
+  const nativeName = process.platform === "win32"
+    ? "celeste_gym_native.dll"
+    : process.platform === "darwin"
+      ? "libceleste_gym_native.dylib"
+      : "libceleste_gym_native.so";
+  const nativePath = resolve(modRoot, "Build", nativeName);
   mkdirSync(dirname(fixturePath), { recursive: true });
   mkdirSync(dirname(catalogPath), { recursive: true });
   mkdirSync(dirname(mapPath), { recursive: true });
@@ -201,10 +208,13 @@ async function main() {
   writeFileSync(fixturePath, `${JSON.stringify(generated.fixture, null, 2)}\n`, "utf8");
   writeFileSync(catalogPath, `${JSON.stringify(generated.catalog, null, 2)}\n`, "utf8");
   run("cargo", ["run", "-q", "-p", "celeste-physics", "--example", "compile_map_fixture", "--", fixturePath, rawMapPath]);
-  run("cargo", ["run", "-q", "-p", "celeste-physics", "--example", "skin_training_map", "--", rawMapPath, mapPath]);
+  run("cargo", ["run", "-q", "-p", "celeste-physics", "--example", "skin_training_map", "--", rawMapPath, skinnedMapPath]);
+  run("cargo", ["run", "-q", "-p", "celeste-physics", "--example", "inject_training_triggers", "--", skinnedMapPath, catalogPath, mapPath]);
+  run("cargo", ["build", "-q", "-p", "celeste-gym-native", "--release"]);
+  copyFileSync(resolve(repoRoot, "target", "release", nativeName), nativePath);
   await buildSkinTexture(modRoot);
   run("dotnet", ["build", resolve(modRoot, "Source/CelesteGymTraining.csproj"), "-c", "Release"]);
-  console.log(JSON.stringify({ workspace: workspaceRoot, projects: generated.catalog.projects.length, map: mapPath, catalog: catalogPath }, null, 2));
+  console.log(JSON.stringify({ workspace: workspaceRoot, projects: generated.catalog.projects.length, map: mapPath, catalog: catalogPath, native: nativePath }, null, 2));
 }
 
 async function buildSkinTexture(modRoot) {

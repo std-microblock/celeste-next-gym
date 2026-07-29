@@ -63,7 +63,8 @@ public sealed class TrainingProjectMenu : Entity {
 
         if (Input.MenuCancel.Pressed || MInput.Keyboard.Pressed(Keys.Escape)) {
             Back();
-        } else if (Input.MenuConfirm.Pressed || MInput.Keyboard.Pressed(Keys.Enter) || MInput.Keyboard.Pressed(Keys.Space)) {
+        } else if (Input.MenuConfirm.Pressed || MInput.Keyboard.Pressed(Keys.Enter)
+            || MInput.Keyboard.Pressed(Keys.Space) || MInput.Keyboard.Pressed(Keys.L)) {
             ActivateFocused();
         }
     }
@@ -139,7 +140,7 @@ public sealed class TrainingProjectMenu : Entity {
         RenderScrollAffordance();
         RenderButton(StartBounds, "开始训练", model.Focus == TrainingMenuFocus.Start, Primary);
         RenderButton(BackBounds, "返回", model.Focus == TrainingMenuFocus.Back, Card);
-        ChineseText.Draw("WASD / 方向键选择    鼠标滚轮浏览    Enter 确认    Esc 返回", new Vector2(120f, 1016f), new Vector2(0f, 1f), 0.42f, new Color(173, 188, 213), 2f);
+        ChineseText.Draw("WASD / 方向键选择    鼠标滚轮浏览    L / Enter 确认    Esc 返回", new Vector2(120f, 1016f), new Vector2(0f, 1f), 0.42f, new Color(173, 188, 213), 2f);
         RenderMouseCursor(MousePositionInUi());
     }
 
@@ -156,7 +157,7 @@ public sealed class TrainingProjectMenu : Entity {
         ChineseText.Draw(project.Difficulty, new Vector2(bounds.X + 61f, bounds.Y + 193f), new Vector2(0.5f, 0.5f), 0.38f, Color.White, 2f);
         ChineseText.Draw(project.Title, new Vector2(bounds.X + 20f, bounds.Y + 218f), Vector2.Zero, 0.58f, Color.White, 3f);
         ChineseText.Draw(project.Summary, new Vector2(bounds.X + 21f, bounds.Y + 258f), new Vector2(0f, 0.5f), 0.32f, new Color(190, 205, 228), 2f);
-        if (focused) ChineseText.Draw("Enter 开始", new Vector2(bounds.Right - 20f, bounds.Bottom - 18f), Vector2.One, 0.34f, Highlight, 2f);
+        if (focused) ChineseText.Draw("L / Enter 开始", new Vector2(bounds.Right - 20f, bounds.Bottom - 18f), Vector2.One, 0.34f, Highlight, 2f);
     }
 
     private void RenderScrollAffordance() {

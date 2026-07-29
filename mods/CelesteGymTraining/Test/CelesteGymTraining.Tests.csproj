@@ -4,6 +4,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <DefineConstants>$(DefineConstants);CELESTE_GYM_TEST</DefineConstants>
+    <RepoRoot>$(MSBuildThisFileDirectory)..\..\..\</RepoRoot>
+    <NativeLibraryName Condition="$([MSBuild]::IsOSPlatform('Windows'))">celeste_gym_native.dll</NativeLibraryName>
+    <NativeLibraryName Condition="$([MSBuild]::IsOSPlatform('Linux'))">libceleste_gym_native.so</NativeLibraryName>
+    <NativeLibraryName Condition="$([MSBuild]::IsOSPlatform('OSX'))">libceleste_gym_native.dylib</NativeLibraryName>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
@@ -14,5 +19,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\Source\TrainingMenuModel.cs" Link="TrainingMenuModel.cs" />
+    <Compile Include="..\Source\TrainingNative.cs" Link="TrainingNative.cs" />
   </ItemGroup>
+  <Target Name="BuildTrainingNative" BeforeTargets="Build">
+    <Exec Command="cargo build -q -p celeste-gym-native --release" WorkingDirectory="$(RepoRoot)" />
+    <Copy SourceFiles="$(RepoRoot)target\release\$(NativeLibraryName)" DestinationFolder="$(OutDir)" />
+  </Target>
 </Project>

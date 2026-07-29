@@ -92,6 +92,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "celeste-gym-native"
+version = "0.2.0"
+dependencies = [
+ "celeste-fuzz",
+ "celeste-physics",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "celeste-physics"
 version = "0.2.0"
 dependencies = [
