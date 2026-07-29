@@ -197,6 +197,7 @@ const checkpointFuzz = decode(
       checkpoints: [
         {
           at: "frame",
+          success: ["at == 1"],
           objectives: [
             { type: "maximize", expression: "at" },
             {
@@ -212,7 +213,8 @@ const checkpointFuzz = decode(
 );
 if (
   checkpointFuzz.error ||
-  checkpointFuzz.candidates?.length !== 2 ||
+  checkpointFuzz.candidates?.length !== 1 ||
+  checkpointFuzz.evaluations?.length !== 2 ||
   checkpointFuzz.candidates[0].objective_values?.length !== 2 ||
   checkpointFuzz.candidates[0].bindings?.frame !== 1
 )

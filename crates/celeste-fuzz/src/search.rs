@@ -59,6 +59,7 @@ struct CompiledInput {
 #[derive(Clone)]
 struct CompiledCheckpoint {
     at: CompiledNumber,
+    success: Vec<CompiledExpression>,
     objective_indices: Vec<usize>,
 }
 
@@ -81,6 +82,7 @@ struct ResolvedCandidate {
     observe_until: u32,
     inputs: Vec<InputState>,
     input_checkpoints: BTreeMap<u32, Vec<usize>>,
+    success_checkpoints: BTreeMap<u32, Vec<usize>>,
     objective_checkpoints: BTreeMap<u32, Vec<usize>>,
     metadata: Vec<ResolvedInputMetadata>,
     verified_inputs: Vec<VerifiedInput>,
@@ -239,6 +241,11 @@ impl CompiledFuzz {
                 }
                 Ok(CompiledCheckpoint {
                     at: compile_number(&checkpoint.at, &engine, &mut cache)?,
+                    success: checkpoint
+                        .success
+                        .iter()
+                        .map(|source| compile_cached(source, &engine, &mut cache))
+                        .collect::<Result<Vec<_>, _>>()?,
                     objective_indices,
                 })
             })
@@ -858,6 +865,7 @@ impl CompiledFuzz {
                 _ => 0,
             };
         }
+        let mut success_checkpoints = BTreeMap::<u32, Vec<usize>>::new();
         let mut objective_checkpoints = BTreeMap::<u32, Vec<usize>>::new();
         for (index, checkpoint) in self.checkpoints.iter().enumerate() {
             let at = self.eval_frame(
@@ -873,10 +881,15 @@ impl CompiledFuzz {
                     "checkpoint {index} occurs at frame {at}, outside observe_until {observe_until}"
                 )));
             }
-            objective_checkpoints
-                .entry(at)
-                .or_default()
-                .extend(checkpoint.objective_indices.iter().copied());
+            if !checkpoint.success.is_empty() {
+                success_checkpoints.entry(at).or_default().push(index);
+            }
+            if !checkpoint.objective_indices.is_empty() {
+                objective_checkpoints
+                    .entry(at)
+                    .or_default()
+                    .extend(checkpoint.objective_indices.iter().copied());
+            }
         }
         Ok(ResolvedCandidate {
             variables,
@@ -884,6 +897,7 @@ impl CompiledFuzz {
             observe_until,
             inputs,
             input_checkpoints,
+            success_checkpoints,
             objective_checkpoints,
             metadata,
             verified_inputs,
@@ -905,10 +919,12 @@ impl CompiledFuzz {
         let checkpoint_frames = candidate
             .input_checkpoints
             .keys()
+            .chain(candidate.success_checkpoints.keys())
             .chain(candidate.objective_checkpoints.keys())
             .copied()
             .collect::<BTreeSet<_>>();
         let mut objective_values = vec![f64::NAN; self.objectives.len()];
+        let mut successful = true;
         for frame in checkpoint_frames {
             let declarations = candidate
                 .input_checkpoints
@@ -955,6 +971,34 @@ impl CompiledFuzz {
                     return Ok(None);
                 }
             }
+            if let Some(indices) = candidate.success_checkpoints.get(&frame) {
+                for &checkpoint_index in indices {
+                    for expression in &self.checkpoints[checkpoint_index].success {
+                        stats.rhai_evaluations += 1;
+                        if !self.evaluate_bool(
+                            engine,
+                            expression,
+                            "checkpoint success",
+                            Some(checkpoint_index),
+                            &candidate.variables,
+                            ExpressionContext {
+                                variables: &candidate.variables,
+                                initial: Some(initial),
+                                current: Some(simulator.snapshot()),
+                                before: Some(&before_snapshot),
+                                after: Some(simulator.snapshot()),
+                                final_state: None,
+                                at: Some(frame.into()),
+                                held_time: None,
+                                input_index: None,
+                                verify: None,
+                            },
+                        )? {
+                            successful = false;
+                        }
+                    }
+                }
+            }
             if let Some(indices) = candidate.objective_checkpoints.get(&frame) {
                 for &objective_index in indices {
                     let objective = &self.objectives[objective_index];
@@ -998,7 +1042,6 @@ impl CompiledFuzz {
             candidate.observe_until,
             stats,
         )?;
-        let mut successful = true;
         for expression in &self.success {
             stats.rhai_evaluations += 1;
             if !self.evaluate_bool(
@@ -1021,7 +1064,6 @@ impl CompiledFuzz {
                 },
             )? {
                 successful = false;
-                break;
             }
         }
         if !successful && !include_failed_evaluations {

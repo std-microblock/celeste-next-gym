@@ -133,10 +133,11 @@ pub struct Objective {
     pub expression: String,
 }
 
-/// An objective sampled immediately after the input frame at `at`.
+/// Conditions and objectives sampled immediately after the input frame at `at`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Checkpoint {
     pub(crate) at: NumberExpression,
+    pub(crate) success: Vec<String>,
     pub objectives: Vec<Objective>,
 }
 
@@ -499,20 +500,28 @@ fn parse_objective(value: &Value, index: usize) -> Result<Objective, FuzzError> 
 fn parse_checkpoint(value: &Value, index: usize) -> Result<Checkpoint, FuzzError> {
     let fields = object(value, &format!("checkpoints[{index}]"))?;
     let at = parse_number_expression(required(fields, "at")?, &format!("checkpoints[{index}].at"))?;
-    let objectives = array(
-        required(fields, "objectives")?,
-        &format!("checkpoints[{index}].objectives"),
-    )?
-    .iter()
-    .enumerate()
-    .map(|(objective_index, value)| parse_objective(value, objective_index))
-    .collect::<Result<Vec<_>, _>>()?;
-    if objectives.is_empty() {
+    let success = match fields.get("success") {
+        Some(value) => expressions(value, &format!("checkpoints[{index}].success"))?,
+        None => Vec::new(),
+    };
+    let objectives = match fields.get("objectives") {
+        Some(value) => array(value, &format!("checkpoints[{index}].objectives"))?
+            .iter()
+            .enumerate()
+            .map(|(objective_index, value)| parse_objective(value, objective_index))
+            .collect::<Result<Vec<_>, _>>()?,
+        None => Vec::new(),
+    };
+    if success.is_empty() && objectives.is_empty() {
         return Err(FuzzError::Spec(format!(
-            "checkpoints[{index}] has no objectives"
+            "checkpoints[{index}] has no success conditions or objectives"
         )));
     }
-    Ok(Checkpoint { at, objectives })
+    Ok(Checkpoint {
+        at,
+        success,
+        objectives,
+    })
 }
 
 fn parse_search(value: &Value) -> Result<SearchSpec, FuzzError> {
