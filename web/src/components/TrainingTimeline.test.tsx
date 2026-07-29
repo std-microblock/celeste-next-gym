@@ -48,6 +48,29 @@ describe("training result timeline", () => {
     ).toBeInTheDocument();
   });
 
+  it("draws frame values as midpoint steps without interpolated slopes", () => {
+    const { container } = render(
+      <TrainingResultTimeline
+        windows={[]}
+        actualInputs={[]}
+        objectives={objectives}
+      />,
+    );
+
+    const points = container
+      .querySelector(".training-objective-curve polyline")
+      ?.getAttribute("points")
+      ?.split(" ")
+      .map((point) => point.split(",").map(Number));
+    expect(points).toHaveLength(7);
+    expect(points?.[1]?.[1]).toBe(points?.[0]?.[1]);
+    expect(points?.[2]?.[0]).toBe(points?.[1]?.[0]);
+    expect(points?.[3]?.[1]).toBe(points?.[2]?.[1]);
+    expect(points?.[4]?.[1]).toBe(points?.[3]?.[1]);
+    expect(points?.[5]?.[0]).toBe(points?.[4]?.[0]);
+    expect(points?.[6]?.[1]).toBe(points?.[5]?.[1]);
+  });
+
   it("exposes per-frame Fuzzer speed and success explanation through custom hover details", () => {
     const { container } = render(
       <TrainingResultTimeline

@@ -21,6 +21,27 @@ function contiguousSegments(
   return segments;
 }
 
+function steppedPolylinePoints(
+  points: Array<{ frame: number; value: number }>,
+  x: (frame: number) => number,
+  y: (value: number) => number,
+): string {
+  const first = points[0];
+  if (!first) return "";
+  const coordinates = [`${x(first.frame)},${y(first.value)}`];
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1];
+    const current = points[index];
+    const midpoint = (x(previous.frame) + x(current.frame)) / 2;
+    coordinates.push(
+      `${midpoint},${y(previous.value)}`,
+      `${midpoint},${y(current.value)}`,
+      `${x(current.frame)},${y(current.value)}`,
+    );
+  }
+  return coordinates.join(" ");
+}
+
 function ObjectiveCurve({
   series,
   from,
@@ -58,9 +79,7 @@ function ObjectiveCurve({
             {contiguousSegments(visible).map((segment, segmentIndex) => (
               <polyline
                 key={segmentIndex}
-                points={segment
-                  .map((point) => `${x(point.frame)},${y(point.value)}`)
-                  .join(" ")}
+                points={steppedPolylinePoints(segment, x, y)}
               />
             ))}
           </g>
