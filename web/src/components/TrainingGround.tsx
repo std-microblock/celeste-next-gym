@@ -697,6 +697,7 @@ export function TrainingGround({
         startFrame,
         module,
         stage === "demo" ? "assisted" : "free",
+        true,
       );
     }, GUIDED_RESULT_HOLD_MS);
   };
@@ -1256,10 +1257,11 @@ export function TrainingGround({
               setSnapshots(snapshotsRef.current);
               frameRef.current = nextFrame;
               setFrame(nextFrame);
-              previousButtons.current = makeEmptyButtons();
-              keys.current.clear();
+              previousButtons.current = buttonsFromKeyboard(
+                keys.current,
+                bindings,
+              );
               occupiedTriggers.current = idsInside(nextState, selectedVariant);
-              setPlaying(false);
               setActiveModule(nextModule, nextFrame, "free");
               setNotice(
                 `${activeModule.tutorial.title} 完成；${nextModule.tutorial.title} 已进入自由练习。`,
@@ -1267,8 +1269,9 @@ export function TrainingGround({
               return;
             }
             setActiveModule(null, null);
-            setPlaying(false);
-            setNotice(`${activeModule.tutorial.title} 完成；房间内训练已全部通过。`);
+            setNotice(
+              `${activeModule.tutorial.title} 完成；房间内训练已全部通过，继续前往终点。`,
+            );
           }
           scanTriggers(after, nextFrame, completionsRef.current);
         })()
