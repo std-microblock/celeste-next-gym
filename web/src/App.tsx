@@ -773,11 +773,6 @@ export default function App() {
       className={`app-shell ${mode === "play" ? "play-mode" : mode === "training" ? "training-mode" : mode === "editor" ? "editor-mode" : "advanced-mode"}`}
       data-visual-theme={visualTheme.id}
     >
-      <div className="celeste-sky" aria-hidden="true">
-        <i />
-        <i />
-        <i />
-      </div>
       {mode === "advanced" && <div className="mountain-backdrop" />}
       <header className="topbar">
         <div className="brand-mark">

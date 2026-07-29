@@ -169,6 +169,7 @@ export function TrainingGround({
   const [playing, setPlaying] = useState(false);
   const [baseRate, setBaseRate] = useState(1);
   const [autoSlowdown, setAutoSlowdown] = useState(true);
+  const [timelineOpen, setTimelineOpen] = useState(false);
   const [resetFrame, setResetFrame] = useState(0);
   const [triggerFrame, setTriggerFrame] = useState<number | null>(null);
   const triggerFrameRef = useRef<number | null>(null);
@@ -846,7 +847,7 @@ export function TrainingGround({
 
   return (
     <main
-      className={`training-workspace ${editorPreview ? "editor-training-preview" : ""}`}
+      className={`training-workspace ${timelineOpen ? "timeline-open" : ""} ${editorPreview ? "editor-training-preview" : ""}`}
     >
       {!editorPreview && (
         <TrainingCatalogSidebar
@@ -1112,6 +1113,15 @@ export function TrainingGround({
         )}
 
         <div className="transport">
+          <button
+            type="button"
+            className="timeline-toggle"
+            aria-expanded={timelineOpen}
+            aria-controls="training-timeline"
+            onClick={() => setTimelineOpen((open) => !open)}
+          >
+            {timelineOpen ? "收起时间线" : "时间线"}
+          </button>
           <button aria-label="回到 R 点" onClick={() => resetTo()}>
             R
           </button>
@@ -1153,26 +1163,30 @@ export function TrainingGround({
           </label>
         </div>
       </section>
-      <TrainingTimeline
-        frame={timelineFrame}
-        frameCount={timelineFrameCount}
-        fuzzStart={fuzzStartFrame}
-        targetFrame={prediction.targetFrame}
-        windows={prediction.windows}
-        actualInputs={actualInputs}
-        failureFrame={failureFrame}
-        resetFrame={resetFrame}
-        objectives={prediction.objectives}
-        followTarget={followReference && !outcome}
-        onSeek={(value, manual) => {
-          if (manual && value < timelineFrame) setFollowReference(false);
-          seek(value);
-        }}
-        onSetReset={(value) => {
-          setResetFrame(value);
-          setNotice(`临时 R 点已设为 F${value}`);
-        }}
-      />
+      {timelineOpen && (
+        <div id="training-timeline">
+          <TrainingTimeline
+            frame={timelineFrame}
+            frameCount={timelineFrameCount}
+            fuzzStart={fuzzStartFrame}
+            targetFrame={prediction.targetFrame}
+            windows={prediction.windows}
+            actualInputs={actualInputs}
+            failureFrame={failureFrame}
+            resetFrame={resetFrame}
+            objectives={prediction.objectives}
+            followTarget={followReference && !outcome}
+            onSeek={(value, manual) => {
+              if (manual && value < timelineFrame) setFollowReference(false);
+              seek(value);
+            }}
+            onSetReset={(value) => {
+              setResetFrame(value);
+              setNotice(`临时 R 点已设为 F${value}`);
+            }}
+          />
+        </div>
+      )}
     </main>
   );
 }

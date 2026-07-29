@@ -1,222 +1,73 @@
-/*
- * Celeste UI skin
- *
- * The simulator still owns its layout and behavior in styles.css. This layer
- * gives every workspace the same visual grammar as Celeste's pause/file menus:
- * opaque indigo panels, chunky highlights, hard pixel shadows and a single
- * bright selection color. Original game art remains sharp and unfiltered.
- */
-
+/* Compact Celeste UI: the room is the interface; chrome stays out of its way. */
 :root {
-  --ink: #09051d;
-  --panel: #17103a;
-  --panel-deep: #0d0928;
-  --panel-bright: #27205a;
-  --line: #776bb0;
-  --muted: #b5add2;
-  --pink: #ff5b8d;
-  --pink-deep: #a72d68;
-  --cyan: #7ce8ff;
-  --gold: #ffd980;
-  --green: #8cf5bd;
+  --ink: #08051c;
+  --panel: #15102f;
+  --line: #514372;
+  --muted: #aaa0ba;
+  --pink: #ff4f81;
+  --cyan: #65d9ff;
+  --gold: #ffd37a;
+  --green: #72f0b0;
   color: #fff;
-  background: #09051d;
-  font-family: "Arial Black", "Microsoft YaHei", "PingFang SC", sans-serif;
+  background: #08051c;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
 }
 
 html,
 body {
-  background: #09051d;
-}
-
-body {
-  letter-spacing: 0.02em;
+  background: #08051c;
 }
 
 button,
-select,
 input,
+select,
 textarea {
-  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
-}
-
-button,
-.file-button,
-select {
-  border-radius: 0 !important;
+  font-family: inherit;
 }
 
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid #fff;
-  outline-offset: 3px;
-}
-
-button:not(:disabled),
-.file-button,
-select:not(:disabled) {
-  transition:
-    color 80ms linear,
-    background-color 80ms linear,
-    border-color 80ms linear,
-    transform 80ms linear;
+  outline: 2px solid #fff;
+  outline-offset: 1px;
 }
 
 .app-shell {
-  --chrome-height: 76px;
-  background:
-    linear-gradient(180deg, #100931ed, #08051df5),
-    url("/assets/original/celeste-splash.png") center 36% / cover fixed;
+  --chrome-height: 48px;
+  background: #08051c;
 }
 
-.app-shell.play-mode,
-.app-shell.training-mode,
-.app-shell.editor-mode {
-  background: #08051d;
-}
-
-.celeste-sky {
-  position: fixed;
-  z-index: -3;
-  inset: 0;
-  overflow: hidden;
-  background:
-    linear-gradient(180deg, #0c0829aa 0%, #211341cc 57%, #09051df5 100%),
-    url("/assets/original/celeste-splash.png") center 32% / cover;
-  pointer-events: none;
-}
-
-.play-mode .celeste-sky,
-.training-mode .celeste-sky,
-.editor-mode .celeste-sky {
-  display: none;
-}
-
-.celeste-sky::before,
-.celeste-sky::after,
-.celeste-sky i {
-  content: "";
-  position: absolute;
-  width: 3px;
-  height: 3px;
-  background: #fff;
-  box-shadow:
-    92px 48px #ffffffcc,
-    184px 116px #9ee9ff,
-    328px 38px #fff,
-    514px 158px #ffffffaa,
-    690px 72px #dccbff,
-    818px 136px #fff,
-    1034px 45px #9ee9ff,
-    1224px 112px #fff,
-    1410px 57px #ffffffaa;
-  image-rendering: pixelated;
-}
-
-.celeste-sky::before {
-  top: 7%;
-  left: 3%;
-}
-
-.celeste-sky::after {
-  top: 25%;
-  left: 12%;
-  opacity: 0.6;
-  transform: scale(0.65);
-}
-
-.celeste-sky i:nth-child(1) {
-  top: 16%;
-  left: 43%;
-  opacity: 0.45;
-  transform: scale(0.5);
-}
-
-.celeste-sky i:nth-child(2) {
-  top: 38%;
-  left: 7%;
-  opacity: 0.34;
-  transform: scale(0.75);
-}
-
-.celeste-sky i:nth-child(3) {
-  top: 31%;
-  left: 59%;
-  opacity: 0.55;
-}
-
-.mountain-backdrop {
-  opacity: 0.72;
-  filter: saturate(0.82) contrast(1.05);
-}
-
-/* Main menu bar */
+/* Compact global navigation. */
 .topbar {
   position: relative;
   top: auto;
   height: var(--chrome-height);
-  gap: 13px;
-  padding: 0 max(16px, calc((100vw - 1700px) / 2));
+  gap: 8px;
+  padding: 0 10px;
   border: 0;
-  border-bottom: 4px solid #09051d;
-  background:
-    linear-gradient(180deg, #24194dfa 0 4px, #130d35fa 4px 100%);
-  box-shadow:
-    inset 0 -2px #594d91,
-    inset 0 -5px #282052,
-    0 6px 0 #050316,
-    0 12px 24px #0009;
+  border-bottom: 2px solid #40345e;
+  background: #100b28;
+  box-shadow: none;
   backdrop-filter: none;
 }
 
-.topbar::after {
-  content: "";
-  position: absolute;
-  right: 0;
-  bottom: -3px;
-  left: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #ee80c4, #8deaff, transparent);
-  opacity: 0.55;
-  pointer-events: none;
-}
-
 .brand-mark {
-  min-width: 188px;
-  gap: 8px;
-  filter: drop-shadow(3px 4px 0 #050316);
+  min-width: auto;
+  gap: 5px;
 }
 
 .brand-mark > .training-strawberry-sprite {
-  width: 54px;
-  height: 48px;
-  flex: 0 0 54px;
-  filter: drop-shadow(0 0 7px #ff5b8d99);
-  animation: celeste-menu-berry 2s steps(2, end) infinite;
+  width: 32px;
+  height: 28px;
+  flex: 0 0 32px;
+  image-rendering: pixelated;
+  filter: none;
+  animation: none;
 }
 
-.brand-mark strong {
-  color: #fff;
-  font-size: 18px;
-  font-weight: 900;
-  letter-spacing: 0.16em;
-  text-shadow:
-    2px 0 #493478,
-    -2px 0 #493478,
-    0 2px #493478,
-    3px 4px #070417;
-}
-
-.brand-mark em {
-  margin-top: 6px;
-  color: #8feaff;
-  font-size: 8px;
-  font-style: normal;
-  font-weight: 900;
-  letter-spacing: 0.38em;
-  text-shadow: 2px 2px #09051d;
+.brand-mark div {
+  display: none;
 }
 
 .mode-tabs {
@@ -227,801 +78,664 @@ select:not(:disabled) {
   align-self: stretch;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 8px 0;
+  gap: 3px;
 }
 
 .celeste-mode-menu button {
-  position: relative;
-  min-width: 86px;
-  height: 47px;
-  display: grid;
-  align-content: center;
-  gap: 1px;
-  padding: 4px 12px 5px;
-  color: #a9a2c8;
-  border: 2px solid transparent;
+  min-width: 68px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  color: #aaa0ba;
+  border: 1px solid transparent;
+  border-radius: 0;
   background: transparent;
   box-shadow: none;
   cursor: pointer;
   text-align: left;
-  text-shadow: 2px 2px #070416;
 }
 
 .celeste-mode-menu button span {
-  color: #77709c;
-  font: 700 7px/1 Consolas, monospace;
-  letter-spacing: 0.18em;
+  color: #7f7592;
+  font: 7px Consolas, monospace;
+  letter-spacing: 0.08em;
 }
 
 .celeste-mode-menu button strong {
-  font-size: 11px;
-  line-height: 1.35;
+  font-size: 10px;
   white-space: nowrap;
 }
 
-.celeste-mode-menu .celeste-other-modes {
+.celeste-mode-menu button:hover,
+.celeste-mode-menu button[aria-current="page"],
+.celeste-mode-menu .celeste-other-toggle[aria-expanded="true"] {
+  color: #fff;
+  border-color: #6e5d8d;
+  background: #29203f;
+}
+
+.celeste-mode-menu button[aria-current="page"] {
+  border-bottom-color: #ff4f81;
+}
+
+.celeste-other-modes {
   position: relative;
-  align-self: stretch;
-  display: flex;
-  align-items: center;
 }
 
 .celeste-mode-menu .celeste-other-toggle {
-  min-width: 76px;
-  grid-template-columns: 1fr auto;
-}
-
-.celeste-other-toggle span,
-.celeste-other-toggle strong {
-  grid-column: 1;
+  min-width: 57px;
 }
 
 .celeste-other-toggle i {
-  grid-column: 2;
-  grid-row: 1 / 3;
-  align-self: center;
-  color: #8feaff;
-  font: normal 8px Consolas, monospace;
-}
-
-.celeste-other-toggle[aria-expanded="true"] {
-  color: #fff;
-  border-color: #8d76c0;
-  background: #2c2257;
+  color: #9085a2;
+  font: normal 7px Consolas, monospace;
 }
 
 .celeste-other-mode-list {
   position: absolute;
   z-index: 50;
-  top: calc(100% + 6px);
-  left: -3px;
-  width: 154px;
-  display: grid;
-  gap: 3px;
-  padding: 7px;
-  border: 3px solid #7769aa;
-  background: #100a31;
-  box-shadow:
-    0 0 0 3px #070416,
-    6px 8px 0 #050313,
-    12px 18px 30px #000a;
-}
-
-.celeste-other-mode-list::before {
-  content: "";
-  position: absolute;
-  top: -10px;
-  left: 28px;
-  width: 12px;
-  height: 12px;
-  border-top: 3px solid #7769aa;
-  border-left: 3px solid #7769aa;
-  background: #100a31;
-  transform: rotate(45deg);
+  top: 38px;
+  left: 0;
+  width: 138px;
+  padding: 4px;
+  border: 1px solid #58486f;
+  background: #100b28;
+  box-shadow: 4px 5px 0 #050313aa;
 }
 
 .celeste-mode-menu .celeste-other-mode-list button {
   width: 100%;
-  min-width: 0;
-  height: 45px;
-  border-color: #3f3567;
-  background: #17103a;
-}
-
-.celeste-mode-menu .celeste-other-mode-list button:hover,
-.celeste-mode-menu .celeste-other-mode-list button[aria-current="page"] {
-  border-color: #ff83ad;
-  background: linear-gradient(90deg, #a42e6c, #472557);
-}
-
-.celeste-mode-menu .celeste-other-mode-list button[aria-current="page"]::before {
-  display: none;
-}
-
-.celeste-mode-menu button:hover {
-  color: #fff;
-  background: #2c2257;
-  transform: translateY(-1px);
-}
-
-.celeste-mode-menu button[aria-current="page"] {
-  color: #fff;
-  border-color: #8d76c0;
-  background: linear-gradient(90deg, #a82f6e, #52275f 78%, #342052);
-  box-shadow:
-    inset 0 2px #ef71a6,
-    inset 0 -2px #35163f,
-    3px 4px 0 #070416;
-}
-
-.celeste-mode-menu button[aria-current="page"]::before {
-  content: "◆";
-  position: absolute;
-  left: -10px;
-  top: 13px;
-  color: #fff;
-  font-size: 13px;
-  text-shadow:
-    1px 0 #ff5b8d,
-    -1px 0 #ff5b8d,
-    0 1px #ff5b8d,
-    2px 3px #070416;
-  animation: celeste-menu-cursor 0.65s steps(2, end) infinite;
-}
-
-.celeste-mode-menu button[aria-current="page"] span {
-  color: #ffbdd4;
+  height: 35px;
 }
 
 .visual-theme-picker {
-  min-width: 164px;
-  gap: 3px;
-  margin-left: 2px;
-  padding-left: 13px;
-  border-left: 2px solid #312753;
+  min-width: 154px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+  padding-left: 9px;
+  border-left: 1px solid #3e3455;
 }
 
-.visual-theme-picker small,
-.play-room small {
-  color: #9b91bd;
-  font: 700 7px/1 Consolas, monospace;
-  letter-spacing: 0.18em;
+.visual-theme-picker small {
+  color: #897e9a;
+  font: 7px Consolas, monospace;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
 }
 
 .visual-theme-picker select,
 .mode-tabs select,
 .training-picker select {
-  height: 32px;
-  padding: 0 27px 0 9px;
-  color: #fff;
-  border: 2px solid #665a99;
-  border-left: 4px solid #ff5b8d;
-  background: #0c0825;
-  box-shadow:
-    inset 0 -2px #070416,
-    2px 3px 0 #050313;
-  font: 700 9px Consolas, monospace;
-}
-
-.visual-theme-picker select:hover,
-.training-picker select:hover {
-  border-color: #d8c9ff;
-  border-left-color: #ff5b8d;
-  background: #201746;
+  width: 140px;
+  height: 27px;
+  padding: 0 22px 0 7px;
+  color: #eee9f2;
+  border: 1px solid #51456a;
+  border-radius: 0;
+  background: #0a071c;
+  font: 8px Consolas, monospace;
 }
 
 .play-quick-actions {
-  gap: 12px;
+  min-width: 0;
+  gap: 8px;
 }
 
 .play-room {
-  gap: 3px 8px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.play-room small,
+.play-room span {
+  display: none;
 }
 
 .play-room strong {
-  font-size: 10px;
-  text-shadow: 2px 2px #080418;
-}
-
-.play-room span {
-  padding: 3px 7px;
-  color: #9deeff;
-  border: 2px solid #4d6c91;
-  background: #0d1731;
-  box-shadow: 2px 2px #050313;
-  font: 700 8px Consolas, monospace;
+  max-width: 310px;
+  font-size: 9px;
+  font-weight: 600;
 }
 
 .top-actions {
-  gap: 6px;
+  gap: 4px;
 }
 
 .top-actions button,
-.file-button,
-.editor-workspace-nav button,
-.editor-workspace-nav select,
-.training-editor-toolbar button,
-.training-preview-bar button {
-  min-height: 31px;
-  padding: 6px 11px;
-  color: #e9e4ff;
-  border: 2px solid #665a99;
-  background: #211946;
-  box-shadow:
-    inset 0 2px #33285f,
-    inset 0 -2px #0a061d,
-    2px 3px 0 #050313;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-shadow: 1px 2px #070416;
+.file-button {
+  min-width: 42px;
+  min-height: 26px;
+  padding: 4px 8px;
+  color: #ddd6e5;
+  border: 1px solid #51456a;
+  border-radius: 0;
+  background: #1b1434;
+  box-shadow: none;
+  font-size: 8px;
 }
 
 .top-actions button:hover,
-.file-button:hover,
-.editor-workspace-nav button:hover,
-.training-editor-toolbar button:hover,
-.training-preview-bar button:hover {
+.file-button:hover {
   color: #fff;
-  border-color: #fff;
-  background: #a52e6d;
-  transform: translateY(-1px);
+  border-color: #9a89b0;
+  background: #2b2144;
 }
 
-/* Game viewport */
+/* Play mode gets the entire remainder of the viewport. */
 .play-workspace {
   inset: var(--chrome-height) 0 0;
-  border-top: 0;
-  background: #000;
-  box-shadow: inset 0 5px 0 #09051d;
+  border: 0;
+  box-shadow: none;
 }
 
-.game-screen,
-.game-screen canvas,
-.training-strawberry-sprite,
-.editor-entity-atlas {
-  image-rendering: pixelated;
+/* Training: timeline is opt-in so the room owns all remaining height. */
+.training-workspace {
+  height: calc(100vh - var(--chrome-height));
+  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  background: #05030f;
 }
 
-/* Research workspace and shared panels */
-.workspace {
-  width: min(1660px, calc(100% - 32px));
-  gap: 18px;
-  padding: 22px 0 28px;
+.training-workspace.timeline-open {
+  grid-template-rows: minmax(0, 1fr) 104px;
 }
 
-.panel-frame,
-.state-inspector,
-.current-input,
-.timeline-panel {
-  border: 3px solid #645897;
-  background: linear-gradient(145deg, #1b1441f5, #0d0929fa 76%);
-  box-shadow:
-    0 0 0 3px #080419,
-    0 0 0 4px #312756,
-    6px 8px 0 #050313,
-    12px 18px 30px #0008;
+#training-timeline {
+  grid-column: 2;
+  grid-row: 2;
+  min-height: 0;
+}
+
+#training-timeline > .training-timeline {
+  height: 100%;
+}
+
+.training-catalog {
+  border-right: 1px solid #433655;
+  background: #0e0923;
+  box-shadow: none;
+  scrollbar-color: #51446a #0a0619;
+}
+
+.training-catalog-heading {
+  padding: 10px 11px 8px;
+  border-bottom: 1px solid #433655;
+  background: #16102e;
+}
+
+.training-catalog-heading small {
+  color: #ff6c94;
+  font: 7px Consolas, monospace;
+  letter-spacing: 0.12em;
+}
+
+.training-catalog-heading h2 {
+  margin: 3px 0 0;
+  font-size: 14px;
+}
+
+.training-catalog-heading p,
+.training-technique-toggle small,
+.training-variant-option small,
+.training-catalog-section-title small {
+  display: none;
+}
+
+.training-catalog nav {
+  padding: 7px 6px 14px;
+}
+
+.training-catalog-section + .training-catalog-section {
+  margin-top: 8px;
+}
+
+.training-catalog-section-title {
+  margin: 0 4px 5px;
+  font-size: 8px;
+}
+
+.training-technique {
+  border: 1px solid #382b49;
+  background: #0b071c;
+}
+
+.training-technique.selected {
+  border-color: #604672;
+  background: #120b25;
+}
+
+.training-technique-toggle {
+  min-height: 35px;
+  grid-template-columns: 7px minmax(0, 1fr) 10px;
+  gap: 6px;
+  padding: 7px;
+}
+
+.training-technique-toggle strong {
+  font-size: 10px;
+}
+
+.training-technique-toggle i {
+  font-size: 11px;
+}
+
+.training-tree-point {
+  width: 5px;
+  height: 5px;
+  margin-top: 4px;
+  box-shadow: none;
+}
+
+.training-variant-list {
+  gap: 1px;
+  padding: 1px 4px 4px 14px;
+}
+
+.training-variant-list::before {
+  left: 8px;
+}
+
+.training-variant-option {
+  min-height: 31px;
+  grid-template-columns: 19px minmax(0, 1fr);
+  gap: 4px;
+  padding: 7px 5px;
+}
+
+.training-variant-option::before {
+  top: 15px;
+  left: -6px;
+  width: 6px;
+}
+
+.training-variant-number {
+  font-size: 7px;
+}
+
+.training-variant-option strong {
+  font-size: 9px;
+}
+
+.training-variant-option.active {
+  border-color: #65d9ff66;
+  background: #15213a;
+  box-shadow: inset 2px 0 #65d9ff;
+}
+
+.training-stage,
+.training-timeline,
+.panel-frame {
+  border: 0;
+  background: #070412;
+  box-shadow: none;
 }
 
 .panel-frame::before,
 .panel-frame::after {
-  width: 11px;
-  height: 11px;
-  border-color: #d6c9ff;
-  border-width: 3px;
+  display: none;
 }
 
-.stage-header,
-.panel-heading,
-.timeline-heading,
-.training-timeline-head {
-  border-bottom: 3px solid #42366c;
-  background: linear-gradient(90deg, #2a2157, #17113a 66%, #0f0a2b);
-  box-shadow: inset 0 -2px #09051e;
+.training-stage {
+  grid-template-rows: 34px minmax(0, 1fr) 36px;
 }
 
-.stage-header small,
-.panel-heading small,
-.timeline-heading small,
-.training-timeline-head small,
-.cache-meter span {
-  color: #8feaff;
-  font-weight: 700;
-  text-shadow: 2px 2px #070416;
+.training-stage .stage-header {
+  min-height: 34px;
+  padding: 4px 8px;
+  border: 0;
+  border-bottom: 1px solid #433655;
+  background: #100b28;
+  box-shadow: none;
 }
 
-.stage-header h1,
-.panel-heading h2,
-.timeline-heading h2,
-.training-timeline-head h2 {
+.training-stage .stage-header small {
+  display: none;
+}
+
+.training-stage .stage-header h1 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-shadow: none;
+}
+
+.training-stage .stage-header h1 em {
+  margin-left: 5px;
+  font-size: 8px;
+}
+
+.training-stage .cache-meter {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.training-stage .cache-meter span {
+  font-size: 7px;
+}
+
+.training-stage .cache-meter strong {
+  font-size: 10px;
+}
+
+.training-stage .game-screen {
+  border: 0;
+}
+
+.training-stage .transport {
+  min-height: 36px;
+  gap: 4px;
+  padding: 3px 7px;
+  border: 0;
+  border-top: 1px solid #433655;
+  background: #0e0923;
+  box-shadow: none;
+}
+
+.training-stage .transport button,
+.training-stage .transport select {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 7px;
+  border: 1px solid #504467;
+  border-radius: 0;
+  background: #18122e;
+  box-shadow: none;
+  font-size: 9px;
+}
+
+.training-stage .transport .timeline-toggle {
+  min-width: 50px;
+  margin-right: 3px;
+  color: #9edfff;
+}
+
+.training-stage .transport .timeline-toggle[aria-expanded="true"] {
   color: #fff;
-  font-weight: 900;
-  text-shadow:
-    2px 0 #493478,
-    -2px 0 #493478,
-    0 2px #493478,
-    3px 4px #070416;
+  border-color: #65d9ff;
+  background: #15213a;
 }
 
-.cache-meter,
-.notice {
-  border: 2px solid #51467d;
-  background: #0b0722;
-  box-shadow: inset 0 0 0 2px #171038;
-}
-
-.cache-meter strong {
-  color: #ffd980;
-  text-shadow: 2px 2px #6a3c32;
-}
-
-.transport {
-  border-top: 3px solid #42366c;
-  background: #110c30;
-  box-shadow: inset 0 2px #231a4b;
-}
-
-.transport button,
-.transport select,
-.input-buttons button,
-.timeline-controls button,
-.timeline-controls select,
-.modal-actions button {
-  border: 2px solid #5d518d;
-  background: #211947;
-  box-shadow:
-    inset 0 2px #342961,
-    inset 0 -2px #0a061d,
-    2px 3px #050313;
-  color: #e7e0ff;
-  font-weight: 700;
-  text-shadow: 1px 2px #070416;
-}
-
-.transport button:hover,
-.timeline-controls button:hover,
-.input-buttons button:hover,
-.modal-actions button:hover {
-  color: #fff;
-  border-color: #fff;
-  background: #9f2e69;
-}
-
-.transport .play-button,
-.modal-actions button.primary,
-.training-editor-toolbar button.primary {
-  color: #fff;
-  border-color: #ffd4e3;
-  background: linear-gradient(#ff6394, #b52f6e);
-  box-shadow:
-    inset 0 2px #ff9fbd,
-    inset 0 -2px #651541,
-    3px 4px #050313;
-}
-
-.record-button.active {
-  border-color: #fff;
+.training-stage .transport .play-button {
+  border-color: #ff83a6;
   background: #bd315f;
 }
 
-.input-buttons button.active {
-  color: #fff;
-  border-color: #fff;
-  background: linear-gradient(#b54182, #5c286d);
-  box-shadow:
-    inset 0 0 0 2px #e765a7,
-    3px 4px #050313;
+.training-assist {
+  font-size: 8px;
 }
 
-.notice {
-  color: #c9c0e3;
-  text-shadow: 1px 2px #050313;
+.training-timeline {
+  border-top: 1px solid #433655;
 }
 
-footer {
-  color: #9187b0;
-  text-shadow: 1px 2px #050313;
+.training-timeline-head {
+  min-height: 25px;
+  padding: 3px 8px;
+  border: 0;
+  border-bottom: 1px solid #31283f;
+  background: #0e0923;
 }
 
-/* Training catalog and editor chrome */
-.training-workspace,
+.training-timeline-head small {
+  font-size: 6px;
+}
+
+.training-timeline-head h2 {
+  display: none;
+}
+
+.training-timeline-head output {
+  font-size: 9px;
+}
+
+.training-track {
+  height: 48px;
+  margin: 4px 8px 2px;
+}
+
+.training-timeline-actions {
+  min-height: 23px;
+  padding: 2px 8px 4px;
+}
+
+.training-timeline-actions button {
+  min-height: 19px;
+  padding: 2px 6px;
+  border: 1px solid #51456a;
+  background: #18122e;
+  font-size: 7px;
+}
+
+.training-legend {
+  gap: 3px 6px;
+  font-size: 6px;
+}
+
+/* Other workspaces retain clear structure without decorative frames. */
+.workspace {
+  width: min(1640px, calc(100% - 18px));
+  padding: 10px 0 16px;
+  gap: 9px;
+}
+
+.advanced-mode .panel-frame,
+.right-rail > section,
+.timeline-panel {
+  border: 1px solid #514372;
+  background: #100b28;
+  box-shadow: none;
+}
+
+.advanced-mode .stage-header,
+.advanced-mode .panel-heading,
+.timeline-heading {
+  background: #17102f;
+  box-shadow: none;
+}
+
 .map-editor,
 .editor-workspace-shell,
 .training-flow-editor {
-  background: #09051d;
-}
-
-.training-workspace {
   height: calc(100vh - var(--chrome-height));
+  background: #08051c;
 }
 
-.map-editor {
-  height: calc(100vh - var(--chrome-height));
-}
-
-.editor-workspace-shell {
-  height: calc(100vh - var(--chrome-height));
-}
-
-.training-catalog,
 .editor-palette,
 .editor-inspector,
 .training-project-tree,
 .training-flow-inspector {
-  border-color: #4d4279;
-  background:
-    linear-gradient(160deg, #1f1749f8, #0b0726fb 72%),
-    url("/assets/original/celeste-splash.png") center / cover;
-  box-shadow:
-    inset -2px 0 #09051d,
-    6px 0 0 #050313,
-    10px 0 24px #0009;
-  scrollbar-color: #7568a7 #0b0725;
-}
-
-.editor-inspector,
-.training-flow-inspector {
-  box-shadow:
-    inset 2px 0 #09051d,
-    -6px 0 0 #050313,
-    -10px 0 24px #0009;
-}
-
-.training-catalog-heading,
-.editor-panel-heading,
-.training-project-tree > header,
-.training-flow-inspector > header {
-  border-bottom: 3px solid #51457f;
-  background: linear-gradient(135deg, #30235f, #161039 72%);
-  box-shadow:
-    inset 0 -2px #09051d,
-    0 4px #060318;
-}
-
-.training-catalog-heading small,
-.editor-panel-heading small,
-.training-project-tree > header small,
-.training-flow-inspector > header small {
-  color: #ff7eaa;
-  font-weight: 900;
-  text-shadow: 2px 2px #501739;
-}
-
-.training-catalog-heading h2,
-.editor-panel-heading h1,
-.editor-panel-heading h2,
-.training-project-tree > header h1,
-.training-flow-inspector > header h2 {
-  color: #fff;
-  font-weight: 900;
-  text-shadow:
-    2px 0 #493478,
-    -2px 0 #493478,
-    0 2px #493478,
-    3px 4px #070416;
-}
-
-.training-technique-toggle,
-.training-variant-option,
-.room-picker button,
-.editor-entity-button,
-.training-module-list button,
-.training-project-tree > button.finish {
-  border-color: #3f3567;
-  background: #100b30;
-  color: #bdb4d6;
-  box-shadow: inset 0 -2px #09051d;
-}
-
-.training-technique-toggle:hover,
-.training-variant-option:hover,
-.room-picker button:hover,
-.editor-entity-button:hover,
-.training-module-list button:hover,
-.training-project-tree > button.finish:hover {
-  color: #fff;
-  border-color: #8c7ab9;
-  background: #282052;
-}
-
-.training-technique-toggle.active,
-.training-variant-option.selected,
-.room-picker button.selected,
-.editor-entity-button.active,
-.training-module-list button.selected,
-.training-project-tree > button.finish.selected {
-  color: #fff;
-  border-color: #ff83ad;
-  background: linear-gradient(90deg, #a42e6c, #54275f 70%, #271c4b);
-  box-shadow:
-    inset 5px 0 #ff8cb4,
-    inset 0 2px #d44c8a,
-    inset 0 -2px #4e1539;
-  text-shadow: 1px 2px #070416;
-}
-
-.training-technique-toggle.active::before,
-.training-variant-option.selected::before,
-.room-picker button.selected::before {
-  color: #fff;
-}
-
-.editor-tool-group,
-.training-catalog nav,
-.training-inspector-fields,
-.editor-inspector-fields {
-  border-color: #3d3366;
+  background: #0e0923;
+  box-shadow: none;
 }
 
 .editor-workspace-nav,
 .training-editor-toolbar,
 .training-preview-bar {
-  border-bottom: 3px solid #09051d;
-  background: #17103a;
-  box-shadow:
-    inset 0 -2px #54477e,
-    0 5px #050313;
-}
-
-.editor-section-tabs button.active {
-  color: #fff;
-  background: #a62f6e;
-  box-shadow:
-    inset 0 -4px #ff92b6,
-    inset 0 2px #d9538d;
-}
-
-.training-flow-editor input:not([type="checkbox"]),
-.training-flow-editor textarea,
-.training-flow-editor select,
-.editor-inspector input:not([type="checkbox"]),
-.editor-inspector textarea,
-.editor-inspector select,
-.key-bindings input,
-.key-bindings select,
-.start-settings input,
-.start-settings select {
-  color: #fff;
-  border: 2px solid #554a82;
-  background: #09051f;
-  box-shadow: inset 2px 2px #050313;
-}
-
-.training-inspector-fields fieldset,
-.training-step-editor,
-.fuzz-input-editor,
-.training-validation-summary,
-.training-issue-list,
-.training-test-results,
-.start-preview {
-  border: 2px solid #44396f;
-  background: #0d0929;
-  box-shadow: 3px 4px #050313;
-}
-
-.training-inspector-fields legend,
-.training-flow-editor h4,
-.training-step-editor header strong,
-.fuzz-input-editor header strong {
-  color: #ffd980;
-  text-shadow: 1px 2px #4a2d24;
-}
-
-/* Dialogs */
-.modal-backdrop,
-.key-bindings-backdrop,
-.start-settings-backdrop {
-  background: #050318d9;
-  backdrop-filter: none;
+  background: #100b28;
+  box-shadow: none;
 }
 
 .modal,
 .key-bindings,
 .start-settings {
-  border: 4px solid #7769aa;
-  background: linear-gradient(145deg, #20184b, #0d0929 72%);
-  box-shadow:
-    0 0 0 4px #080419,
-    0 0 0 6px #413569,
-    9px 12px 0 #050313,
-    18px 26px 60px #000b;
-}
-
-.modal header,
-.key-bindings header,
-.start-settings header,
-.modal-heading {
-  border-bottom: 3px solid #51457f;
-  background: linear-gradient(90deg, #31245f, #17103a);
-  box-shadow: inset 0 -2px #09051d;
-}
-
-.modal h2,
-.key-bindings h2,
-.start-settings h2,
-.modal-heading h2 {
-  color: #fff;
-  font-weight: 900;
-  text-shadow:
-    2px 0 #493478,
-    -2px 0 #493478,
-    0 2px #493478,
-    3px 4px #070416;
-}
-
-@keyframes celeste-menu-cursor {
-  50% {
-    transform: translateX(3px);
-  }
-}
-
-@keyframes celeste-menu-berry {
-  50% {
-    transform: translateY(-2px);
-  }
-}
-
-@media (max-width: 1320px) {
-  .topbar {
-    gap: 9px;
-  }
-
-  .brand-mark {
-    min-width: 150px;
-  }
-
-  .brand-mark > .training-strawberry-sprite {
-    width: 45px;
-    height: 40px;
-    flex-basis: 45px;
-  }
-
-  .brand-mark strong {
-    font-size: 15px;
-  }
-
-  .brand-mark em {
-    font-size: 7px;
-  }
-
-  .celeste-mode-menu button {
-    min-width: 69px;
-    padding-inline: 8px;
-  }
-
-  .play-room span {
-    display: none;
-  }
+  border: 2px solid #65557f;
+  background: #100b28;
+  box-shadow: 6px 8px 0 #050313aa;
 }
 
 @media (max-width: 980px) {
-  .brand-mark {
-    min-width: auto;
-  }
-
-  .brand-mark > div {
-    display: none;
-  }
-
-  .celeste-mode-menu button {
-    min-width: 54px;
-  }
-
-  .celeste-mode-menu button span {
+  .visual-theme-picker small,
+  .play-room {
     display: none;
   }
 
   .visual-theme-picker {
-    min-width: 130px;
+    min-width: 118px;
   }
 
-  .play-room {
-    display: none;
+  .visual-theme-picker select {
+    width: 118px;
+  }
+
+  .training-workspace {
+    grid-template-columns: 170px minmax(0, 1fr);
   }
 }
 
 @media (max-width: 680px) {
   .app-shell {
-    --chrome-height: 64px;
+    --chrome-height: 42px;
   }
 
   .topbar {
-    min-height: var(--chrome-height);
-    padding-inline: 7px;
-    gap: 5px;
+    min-height: 42px;
+    gap: 3px;
+    padding: 0 4px;
+  }
+
+  .training-mode .topbar {
+    height: 42px;
+    min-height: 42px;
   }
 
   .brand-mark > .training-strawberry-sprite {
-    width: 36px;
-    height: 32px;
-    flex-basis: 36px;
-  }
-
-  .celeste-mode-menu {
-    gap: 1px;
+    width: 27px;
+    height: 24px;
+    flex-basis: 27px;
   }
 
   .celeste-mode-menu button {
-    min-width: 38px;
-    height: 40px;
-    padding: 3px 5px;
-    text-align: center;
+    min-width: 39px;
+    height: 28px;
+    padding: 0 5px;
   }
 
-  .celeste-mode-menu .celeste-other-toggle {
-    min-width: 42px;
-  }
-
-  .celeste-other-toggle i {
-    font-size: 6px;
-  }
-
-  .celeste-other-toggle span {
-    font-size: 0;
-  }
-
-  .celeste-other-toggle span::after {
-    content: "其他";
-    font-size: 8px;
-  }
-
-  .celeste-other-mode-list {
-    right: 0;
-    left: auto;
-    width: 136px;
-  }
-
+  .celeste-mode-menu button span,
   .celeste-mode-menu button strong {
     display: none;
   }
 
-  .celeste-mode-menu button span {
-    display: block;
-    color: #c4badf;
-    font-size: 7px;
-    letter-spacing: 0.02em;
+  .celeste-mode-menu button[aria-current="page"]::after {
+    content: "训练";
+    font-size: 8px;
   }
 
-  .celeste-mode-menu button[aria-current="page"]::before {
+  .celeste-mode-menu .celeste-other-toggle::after {
+    content: "其他";
+    font-size: 8px;
+  }
+
+  .celeste-other-toggle i {
     display: none;
+  }
+
+  .celeste-other-mode-list {
+    top: 33px;
+    width: 116px;
+  }
+
+  .celeste-mode-menu .celeste-other-mode-list button strong {
+    display: inline;
   }
 
   .visual-theme-picker {
-    min-width: 92px;
-    padding-left: 5px;
-  }
-
-  .visual-theme-picker small {
-    display: none;
+    min-width: 88px;
+    padding-left: 4px;
   }
 
   .visual-theme-picker select {
-    width: 92px;
-    height: 30px;
-    font-size: 8px;
+    width: 88px;
+    height: 25px;
+    font-size: 7px;
   }
 
   .play-quick-actions {
-    margin-left: 0;
+    margin-left: auto;
   }
 
-  .top-actions button,
-  .file-button {
-    min-width: 42px;
-    padding-inline: 7px;
+  .training-context .top-actions {
+    display: none;
+  }
+
+  .training-workspace {
+    height: calc(100vh - var(--chrome-height));
+    grid-template-columns: 116px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .training-workspace.timeline-open {
+    grid-template-rows: minmax(0, 1fr) 96px;
+  }
+
+  .training-catalog-heading {
+    padding: 7px 6px;
+  }
+
+  .training-catalog-heading h2 {
+    font-size: 11px;
+  }
+
+  .training-catalog nav {
+    padding: 5px 3px 10px;
+  }
+
+  .training-technique-toggle {
+    padding: 5px;
+  }
+
+  .training-variant-list {
+    padding-left: 9px;
+  }
+
+  .training-variant-option {
+    grid-template-columns: 14px minmax(0, 1fr);
+    padding: 6px 3px;
+  }
+
+  .training-variant-option strong {
     font-size: 8px;
   }
 
-  .workspace {
-    width: calc(100% - 18px);
-    padding-top: 13px;
+  .training-stage {
+    grid-template-rows: 30px minmax(0, 1fr) 69px;
   }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .brand-mark > .training-strawberry-sprite,
-  .celeste-mode-menu button[aria-current="page"]::before {
-    animation: none;
+  .training-stage .stage-header {
+    min-height: 30px;
+    padding: 3px 5px;
+  }
+
+  .training-stage .stage-header h1 em,
+  .training-stage .cache-meter span {
+    display: none;
+  }
+
+  .training-stage .transport {
+    min-height: 69px;
+    flex-wrap: wrap;
+    align-content: center;
+    padding: 4px;
+  }
+
+  .training-timeline-head {
+    min-height: 22px;
+  }
+
+  .training-track {
+    height: 45px;
+    margin-inline: 5px;
+  }
+
+  .training-timeline-actions {
+    display: none;
   }
 }
