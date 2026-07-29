@@ -91,6 +91,8 @@ export interface OutcomeAnimation {
 }
 
 const FAILURE_SLOWDOWN_MS = 1_000;
+const GUIDED_RESULT_HOLD_MS = 1_000;
+const MOUSE_ACTIVITY_VISIBLE_MS = 1_200;
 export type TrainingResetMode = "current" | "start";
 
 export type TrainingLessonStage = "demo" | "assisted" | "free";
@@ -247,8 +249,9 @@ export function TrainingGround({
   const [playing, setPlaying] = useState(false);
   const [baseRate, setBaseRate] = useState(1);
   const [autoSlowdown, setAutoSlowdown] = useState(true);
-  const [lessonStage, setLessonStage] = useState<TrainingLessonStage>("demo");
-  const lessonStageRef = useRef<TrainingLessonStage>("demo");
+  const [lessonStage, setLessonStage] = useState<TrainingLessonStage>("free");
+  const lessonStageRef = useRef<TrainingLessonStage>("free");
+  const [lessonMode, setLessonMode] = useState(false);
   const lessonStartFrameRef = useRef(0);
   const [demoStepIndex, setDemoStepIndex] = useState(0);
   const demoStepIndexRef = useRef(0);
@@ -256,6 +259,15 @@ export function TrainingGround({
   const demoInputsFinishedRef = useRef(false);
   const stageInputSuccessRef = useRef(false);
   const pendingCompletionRef = useRef<TrainingCompletion | null>(null);
+  const [guidedResultStage, setGuidedResultStage] =
+    useState<"demo" | "assisted" | null>(null);
+  const guidedResultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const [mouseActive, setMouseActive] = useState(false);
+  const mouseActivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const referenceCandidatesRef = useRef<TrainingCandidate[]>([]);
   const referenceEvaluationsRef = useRef<TrainingCandidate[]>([]);
   const referenceModuleIdRef = useRef<string | null>(null);
@@ -309,6 +321,13 @@ export function TrainingGround({
     setOutcome(null);
     setOutcomeProgress(0);
   };
+  const clearGuidedResult = () => {
+    if (guidedResultTimerRef.current !== null) {
+      clearTimeout(guidedResultTimerRef.current);
+      guidedResultTimerRef.current = null;
+    }
+    setGuidedResultStage(null);
+  };
   const beginFailure = (
     timelineFrame: number,
     candidate?: TrainingCandidate,
@@ -330,11 +349,13 @@ export function TrainingGround({
   const setActiveModule = (
     module: TrainingModule | null,
     atFrame: number | null,
-    stage: TrainingLessonStage = module ? "demo" : lessonStageRef.current,
+    stage: TrainingLessonStage = module ? "free" : lessonStageRef.current,
   ) => {
+    clearGuidedResult();
     activeModuleRef.current = module;
     lessonStageRef.current = stage;
     setLessonStage(stage);
+    setLessonMode(module !== null && stage !== "free");
     lessonStartFrameRef.current = atFrame ?? frameRef.current;
     demoStepIndexRef.current = 0;
     setDemoStepIndex(0);
@@ -374,7 +395,7 @@ export function TrainingGround({
             ? `${module.tutorial.title}：轮到你操作，接近窗口末段会渐慢并停在提示点。`
             : `${module.tutorial.title}：自由练习，提示与慢放已关闭。`,
       );
-      if (stage === "demo") setPlaying(true);
+      if (stage === "demo") setPlaying(cachedCandidates.length === 0);
     }
   };
   const activateModule = (module: TrainingModule, atFrame: number) => {
@@ -385,7 +406,7 @@ export function TrainingGround({
       )
     )
       return;
-    setActiveModule(module, atFrame);
+    setActiveModule(module, atFrame, "free");
   };
 
   const idsInside = (state: SimState, variant: TrainingVariant) =>
@@ -534,6 +555,27 @@ export function TrainingGround({
 
   useEffect(() => () => client.dispose(), [client]);
   useEffect(() => {
+    const revealTutorialButton = () => {
+      setMouseActive(true);
+      if (mouseActivityTimerRef.current !== null)
+        clearTimeout(mouseActivityTimerRef.current);
+      mouseActivityTimerRef.current = setTimeout(() => {
+        mouseActivityTimerRef.current = null;
+        setMouseActive(false);
+      }, MOUSE_ACTIVITY_VISIBLE_MS);
+    };
+    window.addEventListener("pointermove", revealTutorialButton, {
+      passive: true,
+    });
+    return () => {
+      window.removeEventListener("pointermove", revealTutorialButton);
+      if (mouseActivityTimerRef.current !== null)
+        clearTimeout(mouseActivityTimerRef.current);
+      if (guidedResultTimerRef.current !== null)
+        clearTimeout(guidedResultTimerRef.current);
+    };
+  }, []);
+  useEffect(() => {
     let active = true;
     void (async () => {
       try {
@@ -628,6 +670,37 @@ export function TrainingGround({
     if (resume) setPlaying(true);
   };
 
+  const holdGuidedResult = (
+    stage: "demo" | "assisted",
+    module: TrainingModule,
+  ) => {
+    if (guidedResultTimerRef.current !== null) return;
+    const epoch = simulationEpoch.current;
+    const startFrame = lessonStartFrameRef.current;
+    setPlaying(false);
+    setGuidedResultStage(stage);
+    setNotice(
+      stage === "demo"
+        ? `${module.tutorial.title}：演示完成，停留一秒查看结果。`
+        : `${module.tutorial.title}：辅助实操完成，停留一秒查看结果。`,
+    );
+    guidedResultTimerRef.current = setTimeout(() => {
+      guidedResultTimerRef.current = null;
+      if (
+        simulationEpoch.current !== epoch ||
+        activeModuleRef.current?.id !== module.id ||
+        lessonStageRef.current !== stage
+      )
+        return;
+      setGuidedResultStage(null);
+      resetTo(
+        startFrame,
+        module,
+        stage === "demo" ? "assisted" : "free",
+      );
+    }, GUIDED_RESULT_HOLD_MS);
+  };
+
   const retry = () => {
     const resetModule = activeModuleRef.current ?? resetModuleRef.current;
     const target = trainingRetryTarget(
@@ -648,7 +721,14 @@ export function TrainingGround({
     const module = activeModuleRef.current ?? resetModuleRef.current;
     if (!module) return;
     keys.current.clear();
-    resetTo(lessonStartFrameRef.current, module, stage, stage !== "free");
+    resetTo(lessonStartFrameRef.current, module, stage);
+  };
+
+  const startLesson = () => {
+    const module = activeModuleRef.current ?? resetModuleRef.current;
+    if (!module) return;
+    keys.current.clear();
+    resetTo(lessonStartFrameRef.current, module, "demo");
   };
 
   const moveDemoStep = (direction: -1 | 1) => {
@@ -1130,11 +1210,7 @@ export function TrainingGround({
             stage === "demo" &&
             demoInputsFinishedRef.current
           ) {
-            resetTo(
-              lessonStartFrameRef.current,
-              activeModule,
-              "assisted",
-            );
+            holdGuidedResult("demo", activeModule);
             return;
           }
           if (
@@ -1143,7 +1219,7 @@ export function TrainingGround({
             stage === "assisted" &&
             stageInputSuccessRef.current
           ) {
-            resetTo(lessonStartFrameRef.current, activeModule, "free");
+            holdGuidedResult("assisted", activeModule);
             return;
           }
           if (
@@ -1183,9 +1259,10 @@ export function TrainingGround({
               previousButtons.current = makeEmptyButtons();
               keys.current.clear();
               occupiedTriggers.current = idsInside(nextState, selectedVariant);
-              setActiveModule(nextModule, nextFrame, "demo");
+              setPlaying(false);
+              setActiveModule(nextModule, nextFrame, "free");
               setNotice(
-                `${activeModule.tutorial.title} 完成；接续 ${nextModule.tutorial.title}。`,
+                `${activeModule.tutorial.title} 完成；${nextModule.tutorial.title} 已进入自由练习。`,
               );
               return;
             }
@@ -1258,7 +1335,6 @@ export function TrainingGround({
     fuzzInputIndex === undefined
       ? undefined
       : nextTargetFrame(session.candidates, fuzzInputIndex);
-  const demoFrame = Math.max(0, frame - lessonStartFrameRef.current);
   const demoCandidate = candidates[0];
   const demoSteps =
     tutorial && demoCandidate
@@ -1266,31 +1342,21 @@ export function TrainingGround({
       : [];
   const activeDemoStep =
     lessonStage === "demo" ? demoSteps[demoStepIndex] : undefined;
-  const demoNextInput =
-    lessonStage === "demo" && demoCandidate
-      ? [...demoCandidate.verified_inputs]
-          .sort((left, right) => left.frame - right.frame)
-          .find((input) => input.frame >= demoFrame)
-      : undefined;
-  const demoCue =
-    tutorial && demoCandidate && demoNextInput
-      ? ACTIONS.filter(
-          (action) =>
-            trainingReferenceButtons(
-              demoCandidate,
-              tutorial,
-              demoNextInput.frame,
-            )[action],
-        )
-          .map((action) => ACTION_LABELS[action])
-          .join(" + ")
-      : "";
+  const demoCue = (activeDemoStep?.keys ?? [])
+    .map((key) =>
+      ACTIONS.includes(key as (typeof ACTIONS)[number])
+        ? ACTION_LABELS[key as (typeof ACTIONS)[number]]
+        : key,
+    )
+    .join(" + ");
   const prompt = (() => {
     if (!tutorial) return "";
-    if (lessonStage === "demo")
-      return demoNextInput
-        ? `演示 · ${demoNextInput.frame === demoFrame ? "现在" : `${demoNextInput.frame - demoFrame} 帧后`}：${demoCue}`
-        : "演示 · 观察这一步产生的结果。";
+    if (lessonStage === "demo") {
+      if (!demoCandidate) return "正在准备本段演示…";
+      if (!activeDemoStep) return "演示动作完成，正在播放到结束位置…";
+      const teachingPrompt = tutorial.teaching.steps[demoStepIndex]?.prompt;
+      return `演示 ${demoStepIndex + 1}/${demoSteps.length} · ${teachingPrompt ?? `现在按：${demoCue}`}`;
+    }
     if (lessonStage === "free") return "自由练习：自己决定按法与时机。";
     return session.phase === "pre_fuzz"
       ? tutorial.entry.hint
@@ -1318,8 +1384,11 @@ export function TrainingGround({
     lessonStage === "demo" && !demoAdvanceRef.current
       ? referenceStepBrake(renderFuzzFrame, activeDemoStep?.frame)
       : undefined;
-  const displayedPrompt =
-    lessonStage === "assisted" && renderBrake?.stopped
+  const displayedPrompt = guidedResultStage
+    ? guidedResultStage === "demo"
+      ? "演示完成 · 看一下角色最后的落点和状态"
+      : "辅助实操完成 · 看一下这次操作的最终结果"
+    : lessonStage === "assisted" && renderBrake?.stopped
       ? `现在按：${(currentTrainingInput(session, tutorial!)?.keys ?? [])
           .map((key) =>
             ACTIONS.includes(key as (typeof ACTIONS)[number])
@@ -1396,7 +1465,7 @@ export function TrainingGround({
                 模块完成
               </em>
             </h1>
-            {tutorial && (
+            {tutorial && lessonMode && (
               <div className="training-lesson-stages" aria-label="训练三步">
                 {LESSON_STAGES.map((item, index) => (
                   <button
@@ -1442,8 +1511,8 @@ export function TrainingGround({
                 map={map}
                 state={state}
                 viewport={viewport}
-                 text={displayedPrompt}
-                 hidden={
+                text={displayedPrompt}
+                hidden={
                    outcome !== null || settlement || lessonStage === "free"
                  }
               />
@@ -1451,24 +1520,48 @@ export function TrainingGround({
           }
         </GameView>
 
-        {tutorial && lessonStage === "demo" && demoCandidate && (
-          <div className="training-demo-controls" aria-label="演示步骤">
-            <button
-              type="button"
-              disabled={demoStepIndex <= 0}
-              onClick={() => moveDemoStep(-1)}
-            >
-              上一步
-            </button>
-            <span>
-              {Math.min(demoStepIndex + 1, Math.max(1, demoSteps.length))}/
-              {Math.max(1, demoSteps.length)}
-            </span>
-            <button type="button" onClick={() => moveDemoStep(1)}>
-              {demoStepIndex >= demoSteps.length ? "继续到结束区" : "下一步"}
-            </button>
-          </div>
+        {tutorial && lessonStage === "free" && !lessonMode && !outcome && (
+          <button
+            type="button"
+            className={`training-tutorial-launch ${mouseActive ? "mouse-active" : ""}`}
+            onClick={startLesson}
+          >
+            查看本段教学
+          </button>
         )}
+
+        {tutorial &&
+          lessonMode &&
+          lessonStage === "demo" &&
+          !guidedResultStage && (
+            <div className="training-demo-controls" aria-label="演示步骤">
+              <button
+                type="button"
+                disabled={!demoCandidate || playing || demoStepIndex <= 0}
+                onClick={() => moveDemoStep(-1)}
+              >
+                上一步
+              </button>
+              <span>
+                {demoCandidate
+                  ? `${Math.min(demoStepIndex + 1, Math.max(1, demoSteps.length))}/${Math.max(1, demoSteps.length)}`
+                  : "准备中"}
+              </span>
+              <button
+                type="button"
+                disabled={!demoCandidate || playing}
+                onClick={() => moveDemoStep(1)}
+              >
+                {!demoCandidate
+                  ? "准备演示"
+                  : playing
+                    ? "播放中"
+                    : demoStepIndex >= demoSteps.length - 1
+                      ? "完成演示"
+                      : "下一步"}
+              </button>
+            </div>
+          )}
 
         <div
           className={`training-success-toasts ${settlement ? "settling" : ""}`}
