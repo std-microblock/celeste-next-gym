@@ -10,6 +10,10 @@ import {
 } from "../training/editorProject";
 import { MapEditor } from "./MapEditor";
 import { TrainingFlowEditor } from "./TrainingFlowEditor";
+import {
+  TrainingRecorder,
+  type TrainingRecordingScope,
+} from "./TrainingRecorder";
 
 function downloadJson(name: string, value: unknown): void {
   const url = URL.createObjectURL(
@@ -52,6 +56,8 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
     "memory" | "dirty" | "saving" | "saved" | "error"
   >("memory");
   const [notice, setNotice] = useState("当前为浏览器内存项目");
+  const [recordingScope, setRecordingScope] =
+    useState<TrainingRecordingScope | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const revision = useRef(0);
   const current = projects[projectIndex] ?? projects[0];
@@ -198,6 +204,21 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
   };
 
   if (!current) return null;
+  if (recordingScope) {
+    return (
+      <TrainingRecorder
+        project={current}
+        scope={recordingScope}
+        bindings={props.bindings}
+        theme={props.theme}
+        onChange={(next) => {
+          changeCurrent(next);
+          setNotice("教程录制数据已更新；可继续录制其它区域或导出 JSON");
+        }}
+        onExit={() => setRecordingScope(null)}
+      />
+    );
+  }
   return (
     <div className="editor-workspace-shell">
       <nav className="editor-workspace-nav" aria-label="编辑器工作区">
@@ -293,6 +314,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
           bindings={props.bindings}
           ready={props.ready}
           onChange={changeCurrent}
+          onStartRecording={(scope) => setRecordingScope(scope)}
         />
       )}
     </div>

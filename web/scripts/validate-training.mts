@@ -37,6 +37,18 @@ for (const technique of trainingCatalog) {
           `${technique.id}/${variant.id} trigger id ${module.trigger.id} 重复`,
         );
       triggerIds.add(module.trigger.id);
+      if (
+        module.end_trigger.bounds.width <= 0 ||
+        module.end_trigger.bounds.height <= 0
+      )
+        throw new Error(
+          `${technique.id}/${variant.id}/${module.id} end trigger 尺寸必须为正数`,
+        );
+      if (triggerIds.has(module.end_trigger.id))
+        throw new Error(
+          `${technique.id}/${variant.id} trigger id ${module.end_trigger.id} 重复`,
+        );
+      triggerIds.add(module.end_trigger.id);
       const result = decode(
         fuzz_search_cached_map_msgpack(
           encode(module.validation.initial_state),

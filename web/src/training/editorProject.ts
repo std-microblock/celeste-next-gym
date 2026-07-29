@@ -71,12 +71,26 @@ export function createTrainingModule(map: GymMap, index = 0): TrainingModule {
   const id = `lesson-${index + 1}`;
   const initial = createInitialState(map);
   initial.on_ground = true;
+  const startX = map.spawn.x - 24;
+  const endX = Math.min(
+    map.bounds.x + Math.max(0, map.bounds.width - 64),
+    startX + 128,
+  );
   return {
     id,
     trigger: {
       id: `${id}-start`,
       bounds: {
-        x: map.spawn.x - 24,
+        x: startX,
+        y: map.spawn.y - 40,
+        width: 64,
+        height: 48,
+      },
+    },
+    end_trigger: {
+      id: `${id}-end`,
+      bounds: {
+        x: endX,
         y: map.spawn.y - 40,
         width: 64,
         height: 48,
@@ -152,13 +166,36 @@ export function createTrainingProject(
   training = createTrainingDocument(map),
 ): TrainingProject {
   const id = slug(training.id);
+  const normalized = normalizeTrainingDocument(map, training);
   return {
     id,
     mapFileName: `${id}.map.json`,
     trainingFileName: `${id}.training.json`,
     map: structuredClone(map),
-    training: structuredClone(training),
+    training: normalized,
   };
+}
+
+/** Adds editor recording regions to training files created before end_trigger existed. */
+export function normalizeTrainingDocument(
+  map: GymMap,
+  training: TrainingMapDocument,
+): TrainingMapDocument {
+  const normalized = structuredClone(training);
+  normalized.modules.forEach((module, index) => {
+    if (module.end_trigger) return;
+    const nextStart = normalized.modules[index + 1]?.trigger.bounds;
+    const fallback = normalized.finish.trigger.bounds;
+    const bounds = nextStart ?? fallback;
+    module.end_trigger = {
+      id: `${module.id}-end`,
+      bounds: { ...bounds },
+    };
+  });
+  // Keep the parameter in the migration signature so later schema migrations
+  // can use map bounds without changing every workspace loading call.
+  void map;
+  return normalized;
 }
 
 function issue(
@@ -199,6 +236,26 @@ export function validateTrainingProject(
     triggerIds.add(module.trigger.id);
     if (module.trigger.bounds.width <= 0 || module.trigger.bounds.height <= 0)
       result.push(issue(`${base}.trigger.bounds`, "Trigger 尺寸必须为正数"));
+
+    if (!module.end_trigger?.id.trim())
+      result.push(issue(`${base}.end_trigger.id`, "结束 Trigger ID 不能为空"));
+    else if (triggerIds.has(module.end_trigger.id))
+      result.push(
+        issue(
+          `${base}.end_trigger.id`,
+          `Trigger ID ${module.end_trigger.id} 重复`,
+        ),
+      );
+    if (module.end_trigger) {
+      triggerIds.add(module.end_trigger.id);
+      if (
+        module.end_trigger.bounds.width <= 0 ||
+        module.end_trigger.bounds.height <= 0
+      )
+        result.push(
+          issue(`${base}.end_trigger.bounds`, "结束 Trigger 尺寸必须为正数"),
+        );
+    }
 
     const entry = trainingEntryInput(module.tutorial);
     if (!entry)
@@ -319,16 +376,20 @@ export async function openTrainingWorkspace(
   }
   if (manifest?.version === 1) {
     return Promise.all(
-      manifest.projects.map(async (entry) => ({
-        id: entry.id,
-        mapFileName: entry.map,
-        trainingFileName: entry.training,
-        map: await readJson<GymMap>(directory, entry.map),
-        training: await readJson<TrainingMapDocument>(
+      manifest.projects.map(async (entry) => {
+        const map = await readJson<GymMap>(directory, entry.map);
+        const training = await readJson<TrainingMapDocument>(
           directory,
           entry.training,
-        ),
-      })),
+        );
+        return {
+          id: entry.id,
+          mapFileName: entry.map,
+          trainingFileName: entry.training,
+          map,
+          training: normalizeTrainingDocument(map, training),
+        };
+      }),
     );
   }
 
@@ -357,7 +418,7 @@ export async function openTrainingWorkspace(
         mapFileName,
         trainingFileName,
         map,
-        training,
+        training: normalizeTrainingDocument(map, training),
       };
     }),
   );

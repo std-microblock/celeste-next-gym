@@ -10,6 +10,10 @@
         "id": "gap-start",
         "bounds": { "x": 64, "y": 190, "width": 96, "height": 50 }
       },
+      "end_trigger": {
+        "id": "gap-end",
+        "bounds": { "x": 272, "y": 180, "width": 72, "height": 60 }
+      },
       "tutorial": {
         "version": 2,
         "id": "gap-hyper-tutorial",
@@ -116,6 +120,10 @@
       "trigger": {
         "id": "charged-start",
         "bounds": { "x": 360, "y": 190, "width": 120, "height": 50 }
+      },
+      "end_trigger": {
+        "id": "charged-end",
+        "bounds": { "x": 680, "y": 180, "width": 96, "height": 60 }
       },
       "tutorial": {
         "version": 2,

@@ -53,6 +53,10 @@ Trigger 采用“进入边沿”语义：玩家从区域外进入时触发一次
         "id": "first-lesson-start",
         "bounds": { "x": 64, "y": 190, "width": 96, "height": 50 }
       },
+      "end_trigger": {
+        "id": "first-lesson-end",
+        "bounds": { "x": 272, "y": 180, "width": 72, "height": 60 }
+      },
       "tutorial": {
         "version": 2,
         "id": "first-lesson-tutorial",
@@ -153,11 +157,18 @@ Trigger 采用“进入边沿”语义：玩家从区域外进入时触发一次
 | 字段                       | 类型               | 含义                                                                                                 |
 | -------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------- |
 | `id`                       | string             | 地图内唯一、稳定的模块 ID。                                                                          |
-| `trigger`                  | `TrainingTrigger`  | 武装本模块的不可见区域。                                                                             |
+| `trigger`                  | `TrainingTrigger`  | 武装本模块的开始区域；编辑器中显示为蓝色。                                                             |
+| `end_trigger`              | `TrainingTrigger`  | 完成本模块录制的结束区域；编辑器中显示为粉色。                                                         |
 | `tutorial`                 | `TrainingDocument` | 本模块的提示、错误文案、辅助选项和 Fuzz。                                                            |
 | `validation`               | object             | 离线训练校验专用数据，不参与玩家实际尝试。                                                           |
 | `validation.initial_state` | `SimState`         | 校验此模块时的代表性起始快照，应放在 Trigger 附近并符合地图碰撞。                                    |
 | `validation.fuzz`          | Fuzz object，可选  | 只用于离线校验的 Fuzz 覆盖；省略时使用 `tutorial.fuzz`。适合把实际技巧成功条件扩展为“最终越过障碍”。 |
+
+编辑器的“录制当前区域”会从 `validation.initial_state` 开始，在首个非 WASD
+动作按下时把该帧记为本地 F0，并在玩家进入 `end_trigger` 后自动回写
+`tutorial.entry`、`teaching.steps`、`fuzz.inputs`、`observe_until`、`success` 和
+`validation.initial_state`。“录制全部区域”只会按 `modules` 数组顺序武装开始区；WASD
+仍然可以移动玩家，但默认不会写入生成的教程 JSON。
 
 ### `TrainingTrigger`
 
