@@ -4635,6 +4635,27 @@ footer {
   fill: #ff6f9b18;
   stroke: var(--pink);
 }
+
+.training-cue-braking .training-prompt {
+  border-color: #ffd166;
+  box-shadow: 0 0 0 1px #ffd16655, 0 8px 24px #09051dbb;
+}
+
+.training-cue-stopped .training-prompt {
+  color: #17102e;
+  border-color: #ffd166;
+  background: #ffd166;
+  box-shadow: 0 0 22px #ffd16688;
+  font-weight: 800;
+}
+
+.training-cue-stopped .training-prompt::after {
+  border-top-color: #ffd166;
+}
+
+.training-cue-stopped .training-prompt i {
+  background: #bd315f;
+}
 .training-recorder-regions .finish {
   fill: #65ff9a18;
   stroke: #65ff9a;

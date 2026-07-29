@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeEmptyButtons } from "../model";
 import {
+  assistedWindowBrake,
   candidateOperationObjectivePoints,
   candidateObjectivePoints,
   createTrainingSession,
@@ -8,6 +9,8 @@ import {
   matchingTrainingCandidate,
   trainingEntryContextPassed,
   trainingEntryInput,
+  trainingReferenceButtons,
+  trainingReferenceEndFrame,
   trainingVerificationTriggered,
   verificationKeys,
   verifyTrainingInput,
@@ -189,5 +192,49 @@ describe("training-defined entry input", () => {
       { frame: 4, values: [300], successful: true },
       { frame: 5, values: [250], successful: false },
     ]);
+  });
+
+  it("replays the best candidate with its held and momentary controls", () => {
+    expect(trainingReferenceButtons(candidates[0], definition, 0)).toMatchObject({
+      right: true,
+      jump: true,
+      grab: false,
+    });
+    expect(trainingReferenceButtons(candidates[0], definition, 1)).toMatchObject({
+      right: false,
+      jump: false,
+      grab: false,
+    });
+    expect(trainingReferenceButtons(candidates[0], definition, 4)).toMatchObject({
+      right: false,
+      jump: false,
+      grab: true,
+    });
+    expect(trainingReferenceEndFrame(candidates[0], definition)).toBe(28);
+  });
+
+  it("smoothly brakes without pausing at frame 17 of a 20-frame window", () => {
+    const windowCandidates = Array.from({ length: 20 }, (_, frame) => ({
+      ...candidates[0],
+      verified_inputs: candidates[0].verified_inputs.map((input) =>
+        input.input_index === 3 ? { ...input, frame } : input,
+      ),
+    }));
+    expect(assistedWindowBrake(windowCandidates, 3, 9).multiplier).toBe(1);
+    expect(assistedWindowBrake(windowCandidates, 3, 10)).toMatchObject({
+      multiplier: 1,
+      braking: true,
+      stopped: false,
+      stopFrame: 17,
+    });
+    const middle = assistedWindowBrake(windowCandidates, 3, 14).multiplier;
+    expect(middle).toBeGreaterThan(0);
+    expect(middle).toBeLessThan(1);
+    expect(assistedWindowBrake(windowCandidates, 3, 17)).toMatchObject({
+      multiplier: 0,
+      braking: true,
+      stopped: true,
+      stopFrame: 17,
+    });
   });
 });

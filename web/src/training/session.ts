@@ -1,5 +1,6 @@
 import {
   ACTIONS,
+  makeEmptyButtons,
   type Action,
   type FrameButtons,
   type SimState,
@@ -260,6 +261,108 @@ export function nextTargetFrame(
   return candidates.length === 0
     ? undefined
     : candidateInput(candidates[0], inputIndex)?.frame;
+}
+
+function resolvedCandidateInputFrame(
+  candidate: TrainingCandidate,
+  input: TrainingInput,
+  inputIndex: number,
+): number | undefined {
+  const verifiedFrame = candidateInput(candidate, inputIndex)?.frame;
+  if (verifiedFrame !== undefined) return verifiedFrame;
+  if (typeof input.at === "number") return input.at;
+  const bound = candidate.bindings[input.at];
+  return Number.isFinite(bound) ? bound : undefined;
+}
+
+function resolvedHoldFrames(
+  candidate: TrainingCandidate,
+  heldTime: TrainingInput["held_time"],
+): number | "infinite" {
+  if (heldTime === "hold::inf") return "infinite";
+  if (typeof heldTime === "number") return Math.max(1, heldTime);
+  if (typeof heldTime === "string") {
+    const bound = candidate.bindings[heldTime];
+    if (Number.isFinite(bound)) return Math.max(1, bound);
+  }
+  return 1;
+}
+
+/** Builds the frame-exact controls for replaying the best existing candidate. */
+export function trainingReferenceButtons(
+  candidate: TrainingCandidate,
+  definition: TrainingDefinition,
+  frame: number,
+): FrameButtons {
+  const buttons = makeEmptyButtons();
+  definition.fuzz.inputs.forEach((input, inputIndex) => {
+    const at = resolvedCandidateInputFrame(candidate, input, inputIndex);
+    if (at === undefined) return;
+    const heldFrames = resolvedHoldFrames(candidate, input.held_time);
+    const active =
+      heldFrames === "infinite"
+        ? frame >= at
+        : frame >= at && frame < at + heldFrames;
+    if (!active) return;
+    for (const key of input.keys) {
+      if (isAction(key)) buttons[key] = true;
+    }
+  });
+  return buttons;
+}
+
+/** Leaves enough post-input frames for the player to see the demonstrated result. */
+export function trainingReferenceEndFrame(
+  candidate: TrainingCandidate,
+  definition: TrainingDefinition,
+  tailFrames = 24,
+): number {
+  const lastInput = definition.fuzz.inputs.reduce((last, input, inputIndex) => {
+    const at = resolvedCandidateInputFrame(candidate, input, inputIndex);
+    if (at === undefined) return last;
+    const heldFrames = resolvedHoldFrames(candidate, input.held_time);
+    return Math.max(last, at + (heldFrames === "infinite" ? 0 : heldFrames - 1));
+  }, 0);
+  return lastInput + Math.max(1, tailFrames);
+}
+
+export interface AssistedBrake {
+  multiplier: number;
+  braking: boolean;
+  stopped: boolean;
+  stopFrame?: number;
+}
+
+/**
+ * Brakes through the latter half of the feasible window and reaches zero at
+ * 85% of it (frame 17 in a 20-frame window). The simulation remains
+ * frame-exact; only the wall-clock cadence changes.
+ */
+export function assistedWindowBrake(
+  candidates: readonly TrainingCandidate[],
+  inputIndex: number,
+  frame: number,
+): AssistedBrake {
+  const windows = candidateWindow(candidates, inputIndex);
+  const window = windows.find((candidate) => frame <= candidate.to) ?? windows.at(-1);
+  if (!window) return { multiplier: 1, braking: false, stopped: false };
+  const length = window.to - window.from + 1;
+  const stopFrame = window.from + Math.min(length - 1, Math.floor(length * 0.85));
+  const midpoint = window.from + Math.floor(length * 0.5);
+  const brakeStart = Math.min(midpoint, Math.max(0, stopFrame - 3));
+  if (frame < brakeStart)
+    return { multiplier: 1, braking: false, stopped: false, stopFrame };
+  if (frame >= stopFrame)
+    return { multiplier: 0, braking: true, stopped: true, stopFrame };
+  const span = Math.max(1, stopFrame - brakeStart);
+  const progress = Math.max(0, Math.min(1, (frame - brakeStart) / span));
+  const smooth = progress * progress * (3 - 2 * progress);
+  return {
+    multiplier: 1 - smooth,
+    braking: true,
+    stopped: false,
+    stopFrame,
+  };
 }
 
 /** Duplicate frames retain the first candidate supplied by the caller. */

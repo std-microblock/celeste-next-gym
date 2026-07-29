@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -44,9 +44,8 @@ vi.mock("./GameView", () => ({
   ),
 }));
 vi.mock("./TrainingPrompt", () => ({
-  TrainingPrompt: ({ text }: { text: string }) => (
-    <div data-testid="training-prompt">{text}</div>
-  ),
+  TrainingPrompt: ({ text, hidden }: { text: string; hidden?: boolean }) =>
+    hidden ? null : <div data-testid="training-prompt">{text}</div>,
 }));
 vi.mock("./TrainingCatalogSidebar", () => ({
   TrainingCatalogSidebar: () => null,
@@ -63,7 +62,7 @@ vi.mock("./GameplaySprite", () => ({
 import { TrainingGround } from "./TrainingGround";
 
 describe("training R reset", () => {
-  it("restores the completed module, counter and entry prompt", async () => {
+  it("keeps stage transitions playing and can restart the whole map", async () => {
     const project = createTrainingProject(createBlankGymMap());
     const variant = {
       id: project.id,
@@ -73,15 +72,17 @@ describe("training R reset", () => {
       training: project.training,
       initial: project.training.modules[0].validation.initial_state,
     };
-    const callbacks: Array<(time: number) => void> = [];
+    const callbacks = new Map<number, (time: number) => void>();
+    let nextAnimation = 0;
     vi.stubGlobal(
       "requestAnimationFrame",
       (callback: (time: number) => void) => {
-        callbacks.push(callback);
-        return callbacks.length;
+        nextAnimation += 1;
+        callbacks.set(nextAnimation, callback);
+        return nextAnimation;
       },
     );
-    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    vi.stubGlobal("cancelAnimationFrame", (id: number) => callbacks.delete(id));
     const view = render(
       <TrainingGround
         techniqueId="hyper"
@@ -107,12 +108,44 @@ describe("training R reset", () => {
         view.container.querySelector(".stage-header h1"),
       ).toHaveTextContent("0/1 模块完成"),
     );
-    expect(view.getByTestId("training-prompt")).toHaveTextContent(
-      project.training.modules[0].tutorial.entry.hint,
-    );
+    expect(view.getByTestId("training-prompt")).toHaveTextContent("演示");
     expect(view.getByTestId("training-timeline")).toBeInTheDocument();
+
+    let time = performance.now();
+    const advance = async () => {
+      time += 17;
+      await act(async () => {
+        const next = callbacks.entries().next().value;
+        if (next) {
+          callbacks.delete(next[0]);
+          next[1](time);
+        }
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+    };
+    for (let frame = 0; frame < 32; frame += 1) await advance();
+    await waitFor(() =>
+      expect(
+        view.container.querySelector(".training-lesson-stages .active"),
+      ).toHaveTextContent("辅助实操"),
+    );
+    expect(view.getByRole("button", { name: "Ⅱ" })).toBeInTheDocument();
+
     fireEvent.keyDown(window, { code: "Semicolon" });
-    callbacks.shift()?.(1_000_000);
+    for (let frame = 0; frame < 12; frame += 1) await advance();
+    await waitFor(() =>
+      expect(
+        view.container.querySelector(".training-lesson-stages .active"),
+      ).toHaveTextContent("自由练习"),
+    );
+    expect(view.queryByTestId("training-prompt")).not.toBeInTheDocument();
+    expect(view.getByRole("button", { name: "Ⅱ" })).toBeInTheDocument();
+
+    fireEvent.keyUp(window, { code: "Semicolon" });
+    await advance();
+    fireEvent.keyDown(window, { code: "Semicolon" });
+    for (let frame = 0; frame < 12; frame += 1) await advance();
     await waitFor(() =>
       expect(
         view.container.querySelector(".stage-header h1"),
@@ -122,15 +155,16 @@ describe("training R reset", () => {
     expect(view.container).not.toHaveTextContent("NaN");
     expect(view.container).toHaveTextContent("已通过当前步骤条件");
 
+    fireEvent.change(view.getByRole("combobox", { name: "R 重试位置" }), {
+      target: { value: "start" },
+    });
     fireEvent.keyDown(window, { code: "KeyR" });
     await waitFor(() =>
       expect(
         view.container.querySelector(".stage-header h1"),
       ).toHaveTextContent("0/1 模块完成"),
     );
-    expect(view.getByTestId("training-prompt")).toHaveTextContent(
-      project.training.modules[0].tutorial.entry.hint,
-    );
+    expect(view.getByTestId("training-prompt")).toHaveTextContent("演示");
     expect(
       view.container.querySelectorAll(".training-success-toast"),
     ).toHaveLength(0);

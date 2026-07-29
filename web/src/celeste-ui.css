@@ -391,7 +391,7 @@ textarea:focus-visible {
 }
 
 .training-stage {
-  grid-template-rows: 34px minmax(0, 1fr) 36px;
+  grid-template-rows: 48px minmax(0, 1fr) 36px;
 }
 
 .training-stage .stage-header {
@@ -417,6 +417,55 @@ textarea:focus-visible {
 .training-stage .stage-header h1 em {
   margin-left: 5px;
   font-size: 8px;
+}
+
+.training-lesson-stages {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  color: #74678f;
+  font-size: 7px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.training-lesson-stages span {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.training-lesson-stages span + span::before {
+  content: "→";
+  margin-right: 1px;
+  color: #4d406a;
+}
+
+.training-lesson-stages b {
+  display: inline-grid;
+  width: 12px;
+  height: 12px;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 7px;
+  font-weight: 700;
+}
+
+.training-lesson-stages .active {
+  color: #ffd166;
+}
+
+.training-lesson-stages .active b {
+  color: #17102e;
+  border-color: #ffd166;
+  background: #ffd166;
+}
+
+.training-lesson-stages .complete {
+  color: #7de8bd;
 }
 
 .training-stage .cache-meter {
@@ -716,7 +765,7 @@ textarea:focus-visible {
   }
 
   .training-stage {
-    grid-template-rows: 30px minmax(0, 1fr) 69px;
+    grid-template-rows: 48px minmax(0, 1fr) 69px;
   }
 
   .training-stage .stage-header {

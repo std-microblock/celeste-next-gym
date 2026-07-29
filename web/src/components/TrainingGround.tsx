@@ -6,6 +6,7 @@ import {
   type CSSProperties,
 } from "react";
 import {
+  ACTION_LABELS,
   ACTIONS,
   buttonsToInput,
   makeEmptyButtons,
@@ -26,7 +27,7 @@ import {
   type TrainingCompletion,
 } from "../training/course";
 import {
-  assistedRate,
+  assistedWindowBrake,
   candidateOperationObjectivePoints,
   candidateWindow,
   createTrainingSession,
@@ -37,6 +38,8 @@ import {
   trainingEntryContextPassed,
   trainingEntryInput,
   trainingVerificationTriggered,
+  trainingReferenceButtons,
+  trainingReferenceEndFrame,
   verificationKeys,
   verifyTrainingInput,
   type TrainingCandidate,
@@ -85,20 +88,28 @@ export interface OutcomeAnimation {
 }
 
 const FAILURE_SLOWDOWN_MS = 1_000;
-const MAX_AUTO_SLOWDOWN_REDUCTION = 0.7;
 const TRAINING_RESET_MODE_KEY = "celeste-gym-training-reset-mode";
 
-export type TrainingResetMode = "current" | "previous";
+export type TrainingResetMode = "current" | "start";
 
 function storedTrainingResetMode(): TrainingResetMode {
   try {
-    return localStorage.getItem(TRAINING_RESET_MODE_KEY) === "previous"
-      ? "previous"
+    const stored = localStorage.getItem(TRAINING_RESET_MODE_KEY);
+    return stored === "start" || stored === "previous"
+      ? "start"
       : "current";
   } catch {
     return "current";
   }
 }
+
+export type TrainingLessonStage = "demo" | "assisted" | "free";
+
+const LESSON_STAGES: Array<{ id: TrainingLessonStage; label: string }> = [
+  { id: "demo", label: "演示" },
+  { id: "assisted", label: "辅助实操" },
+  { id: "free", label: "自由练习" },
+];
 
 function completionOutputSummary(completion: TrainingCompletion): string {
   if (
@@ -175,16 +186,8 @@ export function trainingRetryTarget(
 ): { frame: number; moduleId: string | null } {
   const current = { frame: resetFrame, moduleId: resetModuleId };
   if (mode === "current") return current;
-  const completedCurrentIndex = completed.findIndex(
-    (completion) => completion.moduleId === resetModuleId,
-  );
-  const previous =
-    completedCurrentIndex >= 0
-      ? completed[completedCurrentIndex - 1]
-      : completed.at(-1);
-  return previous
-    ? { frame: previous.triggerFrame, moduleId: previous.moduleId }
-    : current;
+  void completed;
+  return { frame: 0, moduleId: null };
 }
 
 /** Map-driven lesson runner: triggers arm tutorial modules; the next action is local F0. */
@@ -236,6 +239,13 @@ export function TrainingGround({
   const [playing, setPlaying] = useState(false);
   const [baseRate, setBaseRate] = useState(1);
   const [autoSlowdown, setAutoSlowdown] = useState(true);
+  const [lessonStage, setLessonStage] = useState<TrainingLessonStage>("demo");
+  const lessonStageRef = useRef<TrainingLessonStage>("demo");
+  const lessonStartFrameRef = useRef(0);
+  const referenceCandidatesRef = useRef<TrainingCandidate[]>([]);
+  const referenceEvaluationsRef = useRef<TrainingCandidate[]>([]);
+  const referenceModuleIdRef = useRef<string | null>(null);
+  const forceAdvanceRef = useRef(false);
   const [timelineOpen, setTimelineOpen] = useState(true);
   const [resetFrame, setResetFrame] = useState(0);
   const [resetMode, setResetMode] = useState<TrainingResetMode>(
@@ -309,25 +319,45 @@ export function TrainingGround({
   const setActiveModule = (
     module: TrainingModule | null,
     atFrame: number | null,
+    stage: TrainingLessonStage = module ? "demo" : lessonStageRef.current,
   ) => {
     activeModuleRef.current = module;
+    lessonStageRef.current = stage;
+    setLessonStage(stage);
+    lessonStartFrameRef.current = atFrame ?? frameRef.current;
     setActiveModuleId(module?.id ?? null);
     triggerFrameRef.current = atFrame;
     setTriggerFrame(atFrame);
     fuzzStartRef.current = null;
     setFuzzStartFrame(null);
-    candidatesRef.current = [];
-    evaluationsRef.current = [];
-    setCandidates([]);
-    setEvaluations([]);
-    applySession(createTrainingSession([], module?.tutorial));
+    const cachedCandidates =
+      module && referenceModuleIdRef.current === module.id
+        && referenceCandidatesRef.current.length > 0
+        ? referenceCandidatesRef.current
+        : [];
+    candidatesRef.current = cachedCandidates;
+    evaluationsRef.current =
+      module && referenceModuleIdRef.current === module.id
+        && referenceEvaluationsRef.current.length > 0
+        ? referenceEvaluationsRef.current
+        : [];
+    setCandidates(cachedCandidates);
+    setEvaluations(evaluationsRef.current);
+    applySession(createTrainingSession(cachedCandidates, module?.tutorial));
     attempts.current = [];
     applyPrediction({ windows: [], objectives: [] });
     if (module) {
       resetModuleRef.current = module;
       setResetFrame(atFrame ?? frameRef.current);
       setAutoSlowdown(module.tutorial.assist.auto_slowdown.enabled_by_default);
-      setNotice(`${module.tutorial.title} 已触发；下一个动作将作为 F0。`);
+      setNotice(
+        stage === "demo"
+          ? `${module.tutorial.title}：系统先演示一次完整按法。`
+          : stage === "assisted"
+            ? `${module.tutorial.title}：轮到你操作，接近窗口末段会渐慢并停在提示点。`
+            : `${module.tutorial.title}：自由练习，提示与慢放已关闭。`,
+      );
+      if (stage === "demo") setPlaying(true);
     }
   };
   const activateModule = (module: TrainingModule, atFrame: number) => {
@@ -418,7 +448,11 @@ export function TrainingGround({
     setResetFrame(0);
     completionsRef.current = [];
     setCompletions([]);
+    referenceModuleIdRef.current = null;
+    referenceCandidatesRef.current = [];
+    referenceEvaluationsRef.current = [];
     previousButtons.current = makeEmptyButtons();
+    forceAdvanceRef.current = false;
     keys.current.clear();
     resetModuleRef.current = null;
     setActiveModule(null, null);
@@ -533,17 +567,22 @@ export function TrainingGround({
   const resetTo = (
     target = resetFrame,
     moduleOverride?: TrainingModule | null,
+    stageOverride?: TrainingLessonStage,
+    resume = false,
   ) => {
     const snapshot = snapshotsRef.current[target] ?? initial;
     if (!snapshot) return;
     simulationEpoch.current += 1;
-    setPlaying(false);
+    if (!resume) setPlaying(false);
     snapshotsRef.current = snapshotsRef.current.slice(0, target + 1);
     setSnapshots([...snapshotsRef.current]);
     frameRef.current = target;
     setFrame(target);
-    previousButtons.current = makeEmptyButtons();
-    keys.current.clear();
+    previousButtons.current = resume
+      ? buttonsFromKeyboard(keys.current, bindings)
+      : makeEmptyButtons();
+    forceAdvanceRef.current = false;
+    if (!resume) keys.current.clear();
     clearOutcome();
     settlementRef.current = false;
     setSettlement(false);
@@ -558,13 +597,18 @@ export function TrainingGround({
     );
     completionsRef.current = keptCompletions;
     setCompletions(keptCompletions);
-    setActiveModule(module, module ? target : null);
+    setActiveModule(
+      module,
+      module ? target : null,
+      stageOverride ?? (module ? lessonStageRef.current : lessonStageRef.current),
+    );
     occupiedTriggers.current = idsInside(snapshot, selectedVariant);
     setNotice(
       module
         ? `${module.tutorial.title} 已重置；${module.tutorial.entry.hint}`
         : "训练地图已重置；前往不可见训练触发区。",
     );
+    if (resume) setPlaying(true);
   };
 
   const retry = () => {
@@ -575,12 +619,19 @@ export function TrainingGround({
       resetModule?.id ?? null,
       completionsRef.current,
     );
-    const module = target.moduleId
-      ? (selectedVariant.training.modules.find(
-          (candidate) => candidate.id === target.moduleId,
-        ) ?? resetModule)
-      : null;
-    resetTo(target.frame, module);
+    const module =
+      resetMode === "start"
+        ? (moduleAtPlayer(selectedVariant.training, initial!, new Set()) ?? null)
+        : target.moduleId
+          ? (selectedVariant.training.modules.find(
+              (candidate) => candidate.id === target.moduleId,
+            ) ?? resetModule)
+          : null;
+    resetTo(
+      target.frame,
+      module,
+      resetMode === "start" && module ? "demo" : undefined,
+    );
   };
 
   useEffect(() => {
@@ -597,10 +648,12 @@ export function TrainingGround({
         retry();
         return;
       }
+      if (lessonStageRef.current === "demo") return;
       if (trainingInputLocked(outcomeRef.current, settlementRef.current))
         return;
       keys.current.add(event.code);
       if (gameInput) {
+        forceAdvanceRef.current = true;
         setFollowReference(true);
         if (predictionDirty.current) {
           predictionDirty.current = false;
@@ -632,6 +685,7 @@ export function TrainingGround({
     const tick = (now: number) => {
       const tutorial = activeModuleRef.current?.tutorial;
       const sourceSession = sessionRef.current;
+      const stage = lessonStageRef.current;
       const fuzzInputIndex = tutorial
         ? currentTrainingInput(sourceSession, tutorial)?.fuzzInputIndex
         : undefined;
@@ -640,21 +694,25 @@ export function TrainingGround({
           ? undefined
           : nextTargetFrame(sourceSession.candidates, fuzzInputIndex);
       const fuzzFrame =
-        fuzzStartRef.current === null
-          ? 0
-          : Math.max(0, frameRef.current - fuzzStartRef.current);
-      const assisted =
-        tutorial && autoSlowdown
-          ? assistedRate(
-              baseRate,
+        stage === "demo"
+          ? Math.max(0, frameRef.current - lessonStartFrameRef.current)
+          : fuzzStartRef.current === null
+            ? 0
+            : Math.max(0, frameRef.current - fuzzStartRef.current);
+      const brake =
+        stage === "assisted" &&
+        tutorial &&
+        autoSlowdown &&
+        fuzzInputIndex !== undefined
+          ? assistedWindowBrake(
+              sourceSession.candidates,
+              fuzzInputIndex,
               fuzzFrame,
-              target,
-              tutorial.assist.auto_slowdown.radius_frames,
-              Math.max(
-                MAX_AUTO_SLOWDOWN_REDUCTION,
-                tutorial.assist.auto_slowdown.minimum_multiplier,
-              ),
             )
+          : undefined;
+      const assisted =
+        stage === "assisted" && autoSlowdown && brake
+          ? baseRate * brake.multiplier
           : baseRate;
       const activeOutcome = outcomeRef.current;
       const progress =
@@ -667,7 +725,7 @@ export function TrainingGround({
                 (now - activeOutcome.startedAt) / activeOutcome.durationMs,
               ),
             );
-      const rate = assisted * (1 - progress);
+      const rate = stage === "demo" ? baseRate : assisted * (1 - progress);
       if (activeOutcome !== null) {
         setOutcomeProgress(progress);
         if (progress >= 1) {
@@ -678,14 +736,21 @@ export function TrainingGround({
         capturePrediction(sourceSession, fuzzStartRef.current, tutorial);
       carry += ((Math.min(250, now - last) * 60) / 1000) * rate;
       last = now;
-      if (carry >= 1 && !simulating.current) {
-        carry -= 1;
+      if ((carry >= 1 || forceAdvanceRef.current) && !simulating.current) {
+        if (carry >= 1) carry -= 1;
+        forceAdvanceRef.current = false;
         const currentFrame = frameRef.current;
-        const current =
-          activeOutcome === null
-            ? buttonsFromKeyboard(keys.current, bindings)
-            : outcomeButtons.current;
-        const input = buttonsToInput(current, previousButtons.current);
+        let current =
+          stage === "demo" && candidatesRef.current[0] && tutorial
+            ? trainingReferenceButtons(
+                candidatesRef.current[0],
+                tutorial,
+                currentFrame - lessonStartFrameRef.current,
+              )
+            : activeOutcome === null
+              ? buttonsFromKeyboard(keys.current, bindings)
+              : outcomeButtons.current;
+        let input = buttonsToInput(current, previousButtons.current);
         const previous = previousButtons.current;
         previousButtons.current = current;
         simulating.current = true;
@@ -694,11 +759,42 @@ export function TrainingGround({
           let beforeSession = sessionRef.current;
           const activeModule = activeModuleRef.current;
           const activeTutorial = activeModule?.tutorial;
+          if (
+            stage === "demo" &&
+            activeModule &&
+            activeTutorial &&
+            candidatesRef.current.length === 0
+          ) {
+            const result = await client.fuzzSearch(
+              snapshotsRef.current[currentFrame]!,
+              JSON.stringify(activeTutorial.fuzz),
+              map,
+            );
+            if (!active || epoch !== simulationEpoch.current) return;
+            if (result.candidates.length === 0)
+              throw new Error(`${activeTutorial.title} 没有可演示的成功轨迹`);
+            referenceModuleIdRef.current = activeModule.id;
+            referenceCandidatesRef.current = result.candidates;
+            referenceEvaluationsRef.current = result.evaluations;
+            candidatesRef.current = result.candidates;
+            evaluationsRef.current = result.evaluations;
+            setCandidates(result.candidates);
+            setEvaluations(result.evaluations);
+            applySession(createTrainingSession(result.candidates, activeTutorial));
+            current = trainingReferenceButtons(
+              result.candidates[0],
+              activeTutorial,
+              currentFrame - lessonStartFrameRef.current,
+            );
+            input = buttonsToInput(current, previous);
+            previousButtons.current = current;
+          }
           const expectedInput = activeTutorial
             ? currentTrainingInput(beforeSession, activeTutorial)
             : undefined;
           const shouldVerify = activeTutorial
-            ? trainingVerificationTriggered(current, previous, expectedInput)
+            ? stage !== "demo" &&
+              trainingVerificationTriggered(current, previous, expectedInput)
             : false;
           if (
             shouldVerify &&
@@ -742,6 +838,25 @@ export function TrainingGround({
           setSnapshots(snapshotsRef.current);
           frameRef.current = nextFrame;
           setFrame(nextFrame);
+          if (
+            stage === "demo" &&
+            activeModule &&
+            activeTutorial &&
+            candidatesRef.current[0] &&
+            nextFrame - lessonStartFrameRef.current >=
+              trainingReferenceEndFrame(
+                candidatesRef.current[0],
+                activeTutorial,
+              )
+          ) {
+            resetTo(
+              lessonStartFrameRef.current,
+              activeModule,
+              "assisted",
+              true,
+            );
+            return;
+          }
           if (shouldVerify && activeTutorial && activeModule) {
             const localFrame =
               beforeSession.phase === "pre_fuzz"
@@ -816,6 +931,15 @@ export function TrainingGround({
               );
               beginFailure(nextFrame, evaluatedCandidate);
             } else if (nextSession.phase === "success") {
+              if (stage === "assisted") {
+                resetTo(
+                  lessonStartFrameRef.current,
+                  activeModule,
+                  "free",
+                  true,
+                );
+                return;
+              }
               const preview = predictionRef.current;
               const start = fuzzStartRef.current ?? currentFrame;
               const absoluteInputs = nextSession.actualInputs.map((actual) => ({
@@ -951,24 +1075,69 @@ export function TrainingGround({
     fuzzInputIndex === undefined
       ? undefined
       : nextTargetFrame(session.candidates, fuzzInputIndex);
-  const prompt = tutorial
-    ? session.phase === "pre_fuzz"
+  const demoFrame = Math.max(0, frame - lessonStartFrameRef.current);
+  const demoCandidate = candidates[0];
+  const demoNextInput =
+    lessonStage === "demo" && demoCandidate
+      ? [...demoCandidate.verified_inputs]
+          .sort((left, right) => left.frame - right.frame)
+          .find((input) => input.frame >= demoFrame)
+      : undefined;
+  const demoCue =
+    tutorial && demoCandidate && demoNextInput
+      ? ACTIONS.filter(
+          (action) =>
+            trainingReferenceButtons(
+              demoCandidate,
+              tutorial,
+              demoNextInput.frame,
+            )[action],
+        )
+          .map((action) => ACTION_LABELS[action])
+          .join(" + ")
+      : "";
+  const prompt = (() => {
+    if (!tutorial) return "";
+    if (lessonStage === "demo")
+      return demoNextInput
+        ? `演示 · ${demoNextInput.frame === demoFrame ? "现在" : `${demoNextInput.frame - demoFrame} 帧后`}：${demoCue}`
+        : "演示 · 观察这一步产生的结果。";
+    if (lessonStage === "free") return "自由练习：自己决定按法与时机。";
+    return session.phase === "pre_fuzz"
       ? tutorial.entry.hint
       : (tutorial.teaching.steps[session.nextVerifiedInput]?.prompt ??
-        "继续保持。")
-    : "";
-  const effective =
-    (tutorial && autoSlowdown
-      ? assistedRate(
-          baseRate,
-          fuzzStartFrame === null ? 0 : frame - fuzzStartFrame,
-          target,
-          tutorial.assist.auto_slowdown.radius_frames,
-          Math.max(
-            MAX_AUTO_SLOWDOWN_REDUCTION,
-            tutorial.assist.auto_slowdown.minimum_multiplier,
-          ),
+          "继续保持。");
+  })();
+  const renderFuzzFrame =
+    lessonStage === "demo"
+      ? Math.max(0, frame - lessonStartFrameRef.current)
+      : fuzzStartFrame === null
+        ? 0
+        : Math.max(0, frame - fuzzStartFrame);
+  const renderBrake =
+    lessonStage === "assisted" &&
+    tutorial &&
+    autoSlowdown &&
+    fuzzInputIndex !== undefined
+      ? assistedWindowBrake(
+          session.candidates,
+          fuzzInputIndex,
+          renderFuzzFrame,
         )
+      : undefined;
+  const displayedPrompt =
+    lessonStage === "assisted" && renderBrake?.stopped
+      ? `现在按：${(currentTrainingInput(session, tutorial!)?.keys ?? [])
+          .map((key) =>
+            ACTIONS.includes(key as (typeof ACTIONS)[number])
+              ? ACTION_LABELS[key as (typeof ACTIONS)[number]]
+              : key,
+          )
+          .join(" + ")}`
+      : prompt;
+  const effective =
+    (lessonStage === "assisted" && renderBrake
+      ? baseRate * renderBrake.multiplier
       : baseRate) *
     (1 - outcomeProgress);
   const actualInputs = session.actualInputs.map((input) => ({
@@ -1009,7 +1178,7 @@ export function TrainingGround({
 
   return (
     <main
-      className={`training-workspace ${timelineOpen ? "timeline-open" : ""} ${editorPreview ? "editor-training-preview" : ""}`}
+      className={`training-workspace ${timelineOpen ? "timeline-open" : ""} ${editorPreview ? "editor-training-preview" : ""} training-stage-${lessonStage} ${renderBrake?.stopped ? "training-cue-stopped" : renderBrake?.braking ? "training-cue-braking" : ""}`}
     >
       {!editorPreview && (
         <TrainingCatalogSidebar
@@ -1029,6 +1198,26 @@ export function TrainingGround({
                 模块完成
               </em>
             </h1>
+            {tutorial && (
+              <div className="training-lesson-stages" aria-label="训练三步">
+                {LESSON_STAGES.map((item, index) => (
+                  <span
+                    key={item.id}
+                    className={
+                      item.id === lessonStage
+                        ? "active"
+                        : LESSON_STAGES.findIndex(
+                              (stage) => stage.id === lessonStage,
+                            ) > index
+                          ? "complete"
+                          : ""
+                    }
+                  >
+                    <b>{index + 1}</b> {item.label}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <div className="cache-meter">
             <span>{tutorial ? "当前模块倍率" : "地图进度"}</span>
@@ -1053,8 +1242,10 @@ export function TrainingGround({
                 map={map}
                 state={state}
                 viewport={viewport}
-                text={prompt}
-                hidden={outcome !== null || settlement}
+                 text={displayedPrompt}
+                 hidden={
+                   outcome !== null || settlement || lessonStage === "free"
+                 }
               />
             )
           }
@@ -1292,7 +1483,7 @@ export function TrainingGround({
           </button>
           <select
             aria-label="R 重试位置"
-            title="选择按 R 时回到本段还是上一段的开始位置"
+            title="选择按 R 时回到本段开始还是整张训练从头开始"
             value={resetMode}
             onChange={(event) => {
               const mode = event.target.value as TrainingResetMode;
@@ -1303,14 +1494,14 @@ export function TrainingGround({
                 // Storage may be unavailable in a private or embedded context.
               }
               setNotice(
-                mode === "previous"
-                  ? "R 已设为回到上一段开始。"
+                mode === "start"
+                  ? "R 已设为整张训练从头开始。"
                   : "R 已设为回到本段开始。",
               );
             }}
           >
             <option value="current">R：本段开始</option>
-            <option value="previous">R：上一段开始</option>
+            <option value="start">R：整张从头</option>
           </select>
           <button aria-label="上一帧" onClick={() => seek(frame - 1)}>
             ◀
@@ -1362,7 +1553,9 @@ export function TrainingGround({
             failureFrame={failureFrame}
             resetFrame={resetFrame}
             objectives={prediction.objectives}
-            followTarget={followReference && !outcome}
+            followTarget={
+              followReference && !outcome && lessonStage !== "free"
+            }
             onSeek={(value, manual) => {
               if (manual && value < timelineFrame) setFollowReference(false);
               seek(value);

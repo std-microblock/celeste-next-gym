@@ -70,7 +70,7 @@ describe("training timeline checkpoint objectives", () => {
     ]);
   });
 
-  it("lets R retry the current or previous module start", () => {
+  it("lets R retry the current module or restart the whole map", () => {
     const completed = [
       { moduleId: "lesson-1", triggerFrame: 12 },
       { moduleId: "lesson-2", triggerFrame: 48 },
@@ -78,15 +78,9 @@ describe("training timeline checkpoint objectives", () => {
     expect(trainingRetryTarget("current", 80, "lesson-3", completed)).toEqual(
       { frame: 80, moduleId: "lesson-3" },
     );
-    expect(trainingRetryTarget("previous", 80, "lesson-3", completed)).toEqual(
-      { frame: 48, moduleId: "lesson-2" },
-    );
-    expect(trainingRetryTarget("previous", 48, "lesson-2", completed)).toEqual(
-      { frame: 12, moduleId: "lesson-1" },
-    );
-    expect(trainingRetryTarget("previous", 20, "lesson-1", [])).toEqual({
-      frame: 20,
-      moduleId: "lesson-1",
+    expect(trainingRetryTarget("start", 80, "lesson-3", completed)).toEqual({
+      frame: 0,
+      moduleId: null,
     });
   });
 });
