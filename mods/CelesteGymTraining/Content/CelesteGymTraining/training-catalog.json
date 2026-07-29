@@ -1,0 +1,1257 @@
+{
+  "version": 1,
+  "areaSid": "CelesteGymTraining/Training",
+  "skin": "strawberry-jam-2021-beginner-gym",
+  "sourceWorkspace": ".tmp/example-workfolder-tutorial",
+  "projects": [
+    {
+      "id": "untitled-room",
+      "title": "未命名房间",
+      "summary": "一张可实时测试的训练地图。",
+      "room": "untitled-room",
+      "difficulty": "入门",
+      "thumbnail": null,
+      "coordinateOffset": {
+        "x": 0,
+        "y": 0
+      },
+      "map": {
+        "name": "未命名房间",
+        "room": "untitled-room",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "width": 504,
+          "height": 184
+        },
+        "spawn": {
+          "x": 8,
+          "y": 56
+        },
+        "solids": [
+          {
+            "x": 0,
+            "y": 56,
+            "width": 48,
+            "height": 124
+          },
+          {
+            "x": 120,
+            "y": 80,
+            "width": 72,
+            "height": 24
+          },
+          {
+            "x": 240,
+            "y": 104,
+            "width": 64,
+            "height": 24
+          },
+          {
+            "x": 416,
+            "y": 104,
+            "width": 84,
+            "height": 76
+          }
+        ],
+        "entities": [],
+        "source_package": null
+      },
+      "training": {
+        "version": 2,
+        "id": "untitled-room",
+        "title": "未命名房间",
+        "summary": "一张可实时测试的训练地图。",
+        "modules": [
+          {
+            "id": "lesson-1",
+            "trigger": {
+              "id": "lesson-1-start",
+              "bounds": {
+                "x": 0,
+                "y": 16,
+                "width": 64,
+                "height": 48
+              }
+            },
+            "end_trigger": {
+              "id": "lesson-1-end",
+              "bounds": {
+                "x": 64,
+                "y": 32,
+                "width": 40,
+                "height": 80
+              }
+            },
+            "tutorial": {
+              "version": 2,
+              "id": "lesson-1-tutorial",
+              "title": "教程 1",
+              "summary": "依次完成 跳跃、冲刺、跳跃。",
+              "entry": {
+                "input_id": "jump",
+                "hint": "按 跳跃 开始。",
+                "check": [
+                  "!current.dead"
+                ],
+                "failure": {
+                  "title": "需要 跳跃",
+                  "body": "先按 跳跃。"
+                }
+              },
+              "teaching": {
+                "steps": [
+                  {
+                    "prompt": "按 跳跃并保持 10 帧。",
+                    "order_error": {
+                      "title": "动作顺序不正确",
+                      "body": "按 跳跃。"
+                    },
+                    "window_error": {
+                      "title": "错过输入窗口",
+                      "body": "稍早或稍晚按 跳跃。"
+                    }
+                  },
+                  {
+                    "prompt": "按 冲刺。",
+                    "order_error": {
+                      "title": "动作顺序不正确",
+                      "body": "按 冲刺。"
+                    },
+                    "window_error": {
+                      "title": "错过输入窗口",
+                      "body": "稍早或稍晚按 冲刺。"
+                    }
+                  },
+                  {
+                    "prompt": "按 跳跃并保持 6 帧；X 速度 325 px/s，剩余冲刺 1。",
+                    "order_error": {
+                      "title": "动作顺序不正确",
+                      "body": "按 跳跃。"
+                    },
+                    "window_error": {
+                      "title": "错过输入窗口",
+                      "body": "稍早或稍晚按 跳跃。"
+                    }
+                  }
+                ]
+              },
+              "assist": {
+                "result_sample_after_input_frames": 0,
+                "auto_slowdown": {
+                  "enabled_by_default": true,
+                  "radius_frames": 12,
+                  "minimum_multiplier": 0.85
+                }
+              },
+              "fuzz": {
+                "version": 1,
+                "inputs": [
+                  {
+                    "id": "hold-right",
+                    "keys": [
+                      "right"
+                    ],
+                    "at": "direction_change_1",
+                    "held_time": "dash_frame - direction_change_1",
+                    "verify": false
+                  },
+                  {
+                    "id": "hold-down-right",
+                    "keys": [
+                      "down",
+                      "right"
+                    ],
+                    "at": "dash_frame",
+                    "held_time": "hold::inf",
+                    "verify": false
+                  },
+                  {
+                    "id": "jump",
+                    "keys": [
+                      "jump"
+                    ],
+                    "at": 0,
+                    "verify": true,
+                    "held_time": 10
+                  },
+                  {
+                    "id": "dash",
+                    "keys": [
+                      "dash"
+                    ],
+                    "at": "dash_frame",
+                    "verify": true
+                  },
+                  {
+                    "id": "jump-2",
+                    "keys": [
+                      "jump"
+                    ],
+                    "at": "jump_frame",
+                    "verify": true,
+                    "held_time": 6
+                  }
+                ],
+                "variables": [
+                  {
+                    "name": "direction_change_1",
+                    "range": {
+                      "from": 0,
+                      "to": 6
+                    }
+                  },
+                  {
+                    "name": "dash_frame",
+                    "range": {
+                      "from": 7,
+                      "to": 13
+                    }
+                  },
+                  {
+                    "name": "jump_frame",
+                    "range": {
+                      "from": 14,
+                      "to": 25
+                    }
+                  }
+                ],
+                "observe_until": "max(25, jump_frame + 6)",
+                "success": [],
+                "objectives": [],
+                "search": {
+                  "bindings": {},
+                  "output": [
+                    "best",
+                    "windows",
+                    "coverage"
+                  ]
+                },
+                "checkpoints": [
+                  {
+                    "id": "recorded-node-19",
+                    "at": "jump_frame",
+                    "description": "X 速度 325 px/s，剩余冲刺 1",
+                    "success": [
+                      "after.speed.x >= 324.99",
+                      "after.speed.x <= 325.01",
+                      "after.dashes >= 0.99",
+                      "after.dashes <= 1.01"
+                    ],
+                    "objectives": [
+                      {
+                        "type": "maximize",
+                        "expression": "after.speed.x"
+                      },
+                      {
+                        "type": "approach",
+                        "expression": "after.dashes",
+                        "target": 1
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "validation": {
+              "initial_state": {
+                "pos": {
+                  "x": 12,
+                  "y": 56
+                },
+                "speed": {
+                  "x": -73.33329772949219,
+                  "y": 0
+                },
+                "state": "Normal",
+                "facing": false,
+                "dashes": 1,
+                "stamina": 110,
+                "on_ground": true,
+                "player_on_ground": true,
+                "player_on_ground_initialized": true,
+                "ducking": false,
+                "can_dream_dash": true,
+                "dead": false,
+                "death_freeze_pending": false,
+                "respawn_frames": 0,
+                "current_room_bounds": null,
+                "transition_room_bounds": null,
+                "transition_direction": {
+                  "x": 0,
+                  "y": 0
+                },
+                "transition_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "transition_timer": 0,
+                "post_transition_normal_updates": 0,
+                "camera": {
+                  "x": 0,
+                  "y": 0
+                },
+                "camera_initialized": true,
+                "core_mode": "none",
+                "just_respawned": false,
+                "dash_dir": {
+                  "x": 0,
+                  "y": 0
+                },
+                "last_aim": {
+                  "x": -1,
+                  "y": 0
+                },
+                "before_dash_speed": {
+                  "x": 0,
+                  "y": 0
+                },
+                "demo_dashed": false,
+                "dash_started_on_ground": false,
+                "dash_end_pending": false,
+                "dash_attack_timer": 0,
+                "dash_cooldown_timer": 0,
+                "dash_refill_cooldown_timer": 0,
+                "freeze_timer": 0,
+                "time_rate": 1,
+                "state_timer": 0,
+                "boost_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "boost_red": false,
+                "last_booster_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "booster_reuse_timer": 0,
+                "booster_boosting": false,
+                "wind": {
+                  "x": 0,
+                  "y": 0
+                },
+                "wind_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "no_wind_timer": 0,
+                "wall_slide_timer": 1.2000000476837158,
+                "wall_slide_dir": 0,
+                "jump_grace_timer": 0.10000000149011612,
+                "jump_buffer_timer": 0,
+                "dash_buffer_timer": 0,
+                "crouch_dash_buffer_timer": 0,
+                "auto_jump": false,
+                "auto_jump_timer": 0,
+                "var_jump_timer": 0,
+                "var_jump_speed": 0,
+                "max_fall": 160,
+                "move_x": 0,
+                "force_move_x": 0,
+                "force_move_x_timer": 0,
+                "neutral_wall_jump_friction_delay": 0,
+                "wall_speed_retention_timer": 0,
+                "wall_speed_retained": 0,
+                "wall_boost_timer": 0,
+                "wall_boost_dir": 0,
+                "hop_wait_x": 0,
+                "hop_wait_x_speed": 0,
+                "current_lift_speed": {
+                  "x": 0,
+                  "y": 0
+                },
+                "last_lift_speed": {
+                  "x": 0,
+                  "y": 0
+                },
+                "lift_speed_timer": 0,
+                "moving_solid_time": 0.2666671574115753,
+                "scene_time_active": 0.2666671574115753,
+                "cassette_manager": {
+                  "initialized": false,
+                  "startup_music_pending": false,
+                  "beat_timer": 0,
+                  "beat_index": 0,
+                  "current_index": 0,
+                  "max_beat": 0,
+                  "tempo_mult": 1
+                },
+                "cassette_blocks": [],
+                "spinners": [],
+                "bumpers": [],
+                "lookouts": [],
+                "zip_movers": [],
+                "bounce_blocks": [],
+                "move_blocks": [],
+                "theo_crystals": [],
+                "heart_gems": [],
+                "rising_lavas": [],
+                "sandwich_lavas": [],
+                "gliders": [],
+                "clouds": [],
+                "seekers": [],
+                "temple_gates": [],
+                "holding_theo": null,
+                "holding_glider": null,
+                "min_hold_timer": 0,
+                "pickup_old_speed": {
+                  "x": 0,
+                  "y": 0
+                },
+                "pickup_old_var_jump_timer": 0,
+                "pickup_timer": 0,
+                "climb_no_move_timer": 0,
+                "last_climb_move": 0,
+                "dream_dash_can_end_timer": 0,
+                "launch_approach_x": null,
+                "summit_launch_target_x": 0,
+                "summit_launch_particle_timer": 0,
+                "star_fly_timer": 0,
+                "star_fly_transforming": false,
+                "star_fly_transform_frames": 0,
+                "star_fly_speed_lerp": 0,
+                "star_fly_last_dir": {
+                  "x": 0,
+                  "y": 0
+                },
+                "last_feather_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "feather_reuse_timer": 0,
+                "last_bumper_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "bumper_reuse_timer": 0,
+                "strawberry_picked_mask": 0,
+                "carried_strawberries": 0,
+                "strawberry_follow_delay_timer": 0,
+                "strawberry_collect_timer": 0,
+                "strawberry_collect_index": 0,
+                "strawberry_collect_reset_timer": 0,
+                "star_fly_hitbox_preserved": false,
+                "last_bounce_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "bounce_reuse_timer": 0,
+                "pending_bounce_from_y": null,
+                "explode_launch_boost_timer": 0,
+                "explode_launch_boost_speed": 0,
+                "badeline_boost_active": false,
+                "badeline_boost_final": false,
+                "badeline_boost_phase": 0,
+                "badeline_boost_frame": 0,
+                "badeline_boost_start": {
+                  "x": 0,
+                  "y": 0
+                },
+                "badeline_boost_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "last_badeline_boost_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "badeline_boost_entity_origin": {
+                  "x": 0,
+                  "y": 0
+                },
+                "badeline_boost_current_position": {
+                  "x": 0,
+                  "y": 0
+                },
+                "badeline_boost_relocation_from": {
+                  "x": 0,
+                  "y": 0
+                },
+                "badeline_boost_relocation_to": {
+                  "x": 0,
+                  "y": 0
+                },
+                "badeline_boost_relocation_elapsed": 0,
+                "badeline_boost_relocation_duration": 0,
+                "badeline_boost_stage": 0,
+                "badeline_boost_relocating": false,
+                "badeline_boost_collidable": false,
+                "dummy_moving": false,
+                "dummy_gravity": true,
+                "dummy_friction": true,
+                "dummy_maxspeed": true,
+                "temple_fall_landed": false,
+                "temple_fall_wait_frames": 0,
+                "reflection_fall_phase": 0,
+                "reflection_fall_frames": 0,
+                "reflection_fall_wait_timer": 0,
+                "ignore_jump_thrus": false,
+                "launched": false,
+                "movement_remainder": {
+                  "x": -0.38893675804138184,
+                  "y": 0
+                }
+              }
+            }
+          },
+          {
+            "id": "lesson-2",
+            "trigger": {
+              "id": "lesson-2-start",
+              "bounds": {
+                "x": 96,
+                "y": 24,
+                "width": 96,
+                "height": 56
+              }
+            },
+            "end_trigger": {
+              "id": "lesson-2-end",
+              "bounds": {
+                "x": 192,
+                "y": 8,
+                "width": 16,
+                "height": 144
+              }
+            },
+            "tutorial": {
+              "version": 2,
+              "id": "lesson-2-tutorial",
+              "title": "教程 2",
+              "summary": "依次完成 跳跃 + 冲刺。",
+              "entry": {
+                "input_id": "jump-dash",
+                "hint": "按 跳跃 + 冲刺 开始。",
+                "check": [
+                  "!current.dead"
+                ],
+                "failure": {
+                  "title": "需要 跳跃 + 冲刺",
+                  "body": "先按 跳跃 + 冲刺。"
+                }
+              },
+              "teaching": {
+                "steps": [
+                  {
+                    "prompt": "按 跳跃 + 冲刺；X 速度 337.4 px/s，剩余冲刺。",
+                    "order_error": {
+                      "title": "动作顺序不正确",
+                      "body": "按 跳跃 + 冲刺。"
+                    },
+                    "window_error": {
+                      "title": "错过输入窗口",
+                      "body": "稍早或稍晚按 跳跃 + 冲刺。"
+                    }
+                  }
+                ]
+              },
+              "assist": {
+                "result_sample_after_input_frames": 0,
+                "auto_slowdown": {
+                  "enabled_by_default": true,
+                  "radius_frames": 12,
+                  "minimum_multiplier": 0.85
+                }
+              },
+              "fuzz": {
+                "version": 1,
+                "inputs": [
+                  {
+                    "id": "hold-down-right",
+                    "keys": [
+                      "down",
+                      "right"
+                    ],
+                    "at": 0,
+                    "held_time": "hold::inf",
+                    "verify": false
+                  },
+                  {
+                    "id": "jump-dash",
+                    "keys": [
+                      "jump",
+                      "dash"
+                    ],
+                    "at": 0,
+                    "verify": true
+                  }
+                ],
+                "variables": [],
+                "observe_until": 6,
+                "success": [],
+                "objectives": [],
+                "search": {
+                  "bindings": {},
+                  "output": [
+                    "best",
+                    "windows",
+                    "coverage"
+                  ]
+                },
+                "checkpoints": [
+                  {
+                    "id": "recorded-node-0",
+                    "at": 0,
+                    "description": "X 速度 337.4 px/s，剩余冲刺",
+                    "success": [
+                      "after.speed.x >= 337.39",
+                      "after.speed.x <= 337.41"
+                    ],
+                    "objectives": [
+                      {
+                        "type": "maximize",
+                        "expression": "after.speed.x"
+                      },
+                      {
+                        "type": "maximize",
+                        "expression": "after.dashes"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "validation": {
+              "initial_state": {
+                "pos": {
+                  "x": 160,
+                  "y": 80
+                },
+                "speed": {
+                  "x": 305.733154296875,
+                  "y": 0
+                },
+                "state": "Normal",
+                "facing": true,
+                "dashes": 1,
+                "stamina": 110,
+                "on_ground": true,
+                "player_on_ground": true,
+                "player_on_ground_initialized": true,
+                "ducking": true,
+                "can_dream_dash": true,
+                "dead": false,
+                "death_freeze_pending": false,
+                "respawn_frames": 0,
+                "current_room_bounds": null,
+                "transition_room_bounds": null,
+                "transition_direction": {
+                  "x": 0,
+                  "y": 0
+                },
+                "transition_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "transition_timer": 0,
+                "post_transition_normal_updates": 0,
+                "camera": {
+                  "x": 0,
+                  "y": 0
+                },
+                "camera_initialized": true,
+                "core_mode": "none",
+                "just_respawned": false,
+                "dash_dir": {
+                  "x": 1,
+                  "y": 0
+                },
+                "last_aim": {
+                  "x": 0.7071067690849304,
+                  "y": 0.7071067690849304
+                },
+                "before_dash_speed": {
+                  "x": 277.3332214355469,
+                  "y": -52.5
+                },
+                "demo_dashed": false,
+                "dash_started_on_ground": false,
+                "dash_end_pending": false,
+                "dash_attack_timer": 0.04999954625964165,
+                "dash_cooldown_timer": 0,
+                "dash_refill_cooldown_timer": 0,
+                "freeze_timer": 0,
+                "time_rate": 1,
+                "state_timer": 0,
+                "boost_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "boost_red": false,
+                "last_booster_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "booster_reuse_timer": 0,
+                "booster_boosting": false,
+                "wind": {
+                  "x": 0,
+                  "y": 0
+                },
+                "wind_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "no_wind_timer": 0,
+                "wall_slide_timer": 1.2000000476837158,
+                "wall_slide_dir": 0,
+                "jump_grace_timer": 0.10000000149011612,
+                "jump_buffer_timer": 0,
+                "dash_buffer_timer": 0,
+                "crouch_dash_buffer_timer": 0,
+                "auto_jump": false,
+                "auto_jump_timer": 0,
+                "var_jump_timer": 0,
+                "var_jump_speed": -52.5,
+                "max_fall": 160,
+                "move_x": 1,
+                "force_move_x": 0,
+                "force_move_x_timer": 0,
+                "neutral_wall_jump_friction_delay": 0,
+                "wall_speed_retention_timer": 0,
+                "wall_speed_retained": 0,
+                "wall_boost_timer": 0,
+                "wall_boost_dir": 0,
+                "hop_wait_x": 0,
+                "hop_wait_x_speed": 0,
+                "current_lift_speed": {
+                  "x": 0,
+                  "y": 0
+                },
+                "last_lift_speed": {
+                  "x": 0,
+                  "y": 0
+                },
+                "lift_speed_timer": 0,
+                "moving_solid_time": 1.000002384185791,
+                "scene_time_active": 1.000002384185791,
+                "cassette_manager": {
+                  "initialized": false,
+                  "startup_music_pending": false,
+                  "beat_timer": 0,
+                  "beat_index": 0,
+                  "current_index": 0,
+                  "max_beat": 0,
+                  "tempo_mult": 1
+                },
+                "cassette_blocks": [],
+                "spinners": [],
+                "bumpers": [],
+                "lookouts": [],
+                "zip_movers": [],
+                "bounce_blocks": [],
+                "move_blocks": [],
+                "theo_crystals": [],
+                "heart_gems": [],
+                "rising_lavas": [],
+                "sandwich_lavas": [],
+                "gliders": [],
+                "clouds": [],
+                "seekers": [],
+                "temple_gates": [],
+                "holding_theo": null,
+                "holding_glider": null,
+                "min_hold_timer": 0,
+                "pickup_old_speed": {
+                  "x": 0,
+                  "y": 0
+                },
+                "pickup_old_var_jump_timer": 0,
+                "pickup_timer": 0,
+                "climb_no_move_timer": 0,
+                "last_climb_move": 0,
+                "dream_dash_can_end_timer": 0,
+                "launch_approach_x": null,
+                "summit_launch_target_x": 0,
+                "summit_launch_particle_timer": 0,
+                "star_fly_timer": 0,
+                "star_fly_transforming": false,
+                "star_fly_transform_frames": 0,
+                "star_fly_speed_lerp": 0,
+                "star_fly_last_dir": {
+                  "x": 0,
+                  "y": 0
+                },
+                "last_feather_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "feather_reuse_timer": 0,
+                "last_bumper_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "bumper_reuse_timer": 0,
+                "strawberry_picked_mask": 0,
+                "carried_strawberries": 0,
+                "strawberry_follow_delay_timer": 0,
+                "strawberry_collect_timer": 0,
+                "strawberry_collect_index": 0,
+                "strawberry_collect_reset_timer": 0,
+                "star_fly_hitbox_preserved": false,
+                "last_bounce_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "bounce_reuse_timer": 0,
+                "pending_bounce_from_y": null,
+                "explode_launch_boost_timer": 0,
+                "explode_launch_boost_speed": 0,
+                "badeline_boost_active": false,
+                "badeline_boost_final": false,
+                "badeline_boost_phase": 0,
+                "badeline_boost_frame": 0,
+                "badeline_boost_start": {
+                  "x": 0,
+                  "y": 0
+                },
+                "badeline_boost_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "last_badeline_boost_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "badeline_boost_entity_origin": {
+                  "x": 0,
+                  "y": 0
+                },
+                "badeline_boost_current_position": {
+                  "x": 0,
+                  "y": 0
+                },
+                "badeline_boost_relocation_from": {
+                  "x": 0,
+                  "y": 0
+                },
+                "badeline_boost_relocation_to": {
+                  "x": 0,
+                  "y": 0
+                },
+                "badeline_boost_relocation_elapsed": 0,
+                "badeline_boost_relocation_duration": 0,
+                "badeline_boost_stage": 0,
+                "badeline_boost_relocating": false,
+                "badeline_boost_collidable": false,
+                "dummy_moving": false,
+                "dummy_gravity": true,
+                "dummy_friction": true,
+                "dummy_maxspeed": true,
+                "temple_fall_landed": false,
+                "temple_fall_wait_frames": 0,
+                "reflection_fall_phase": 0,
+                "reflection_fall_frames": 0,
+                "reflection_fall_wait_timer": 0,
+                "ignore_jump_thrus": false,
+                "launched": true,
+                "movement_remainder": {
+                  "x": -0.08843755722045898,
+                  "y": 0
+                }
+              }
+            }
+          },
+          {
+            "id": "lesson-3",
+            "trigger": {
+              "id": "lesson-3-start",
+              "bounds": {
+                "x": 216,
+                "y": 24,
+                "width": 128,
+                "height": 80
+              }
+            },
+            "end_trigger": {
+              "id": "lesson-3-end",
+              "bounds": {
+                "x": 344,
+                "y": 0,
+                "width": 16,
+                "height": 180
+              }
+            },
+            "tutorial": {
+              "version": 2,
+              "id": "lesson-3-tutorial",
+              "title": "教程 3",
+              "summary": "依次完成 跳跃 + 冲刺、跳跃。",
+              "entry": {
+                "input_id": "jump-dash",
+                "hint": "按 跳跃 + 冲刺 开始。",
+                "check": [
+                  "!current.dead"
+                ],
+                "failure": {
+                  "title": "需要 跳跃 + 冲刺",
+                  "body": "先按 跳跃 + 冲刺。"
+                }
+              },
+              "teaching": {
+                "steps": [
+                  {
+                    "prompt": "按 跳跃 + 冲刺。",
+                    "order_error": {
+                      "title": "动作顺序不正确",
+                      "body": "按 跳跃 + 冲刺。"
+                    },
+                    "window_error": {
+                      "title": "错过输入窗口",
+                      "body": "稍早或稍晚按 跳跃 + 冲刺。"
+                    }
+                  },
+                  {
+                    "prompt": "按 跳跃并保持 7 帧；X 速度 345.01 px/s，剩余冲刺。",
+                    "order_error": {
+                      "title": "动作顺序不正确",
+                      "body": "按 跳跃。"
+                    },
+                    "window_error": {
+                      "title": "错过输入窗口",
+                      "body": "稍早或稍晚按 跳跃。"
+                    }
+                  }
+                ]
+              },
+              "assist": {
+                "result_sample_after_input_frames": 0,
+                "auto_slowdown": {
+                  "enabled_by_default": true,
+                  "radius_frames": 12,
+                  "minimum_multiplier": 0.85
+                }
+              },
+              "fuzz": {
+                "version": 1,
+                "inputs": [
+                  {
+                    "id": "hold-down-right",
+                    "keys": [
+                      "down",
+                      "right"
+                    ],
+                    "at": 0,
+                    "held_time": "hold::inf",
+                    "verify": false
+                  },
+                  {
+                    "id": "jump-dash",
+                    "keys": [
+                      "jump",
+                      "dash"
+                    ],
+                    "at": 0,
+                    "verify": true
+                  },
+                  {
+                    "id": "jump",
+                    "keys": [
+                      "jump"
+                    ],
+                    "at": "jump_frame",
+                    "verify": true,
+                    "held_time": 7
+                  }
+                ],
+                "variables": [
+                  {
+                    "name": "jump_frame",
+                    "range": {
+                      "from": 15,
+                      "to": 27
+                    }
+                  }
+                ],
+                "observe_until": "max(28, jump_frame + 7)",
+                "success": [],
+                "objectives": [],
+                "search": {
+                  "bindings": {},
+                  "output": [
+                    "best",
+                    "windows",
+                    "coverage"
+                  ]
+                },
+                "checkpoints": [
+                  {
+                    "id": "recorded-node-21",
+                    "at": "jump_frame",
+                    "description": "X 速度 345.01 px/s，剩余冲刺",
+                    "success": [
+                      "after.speed.x >= 345",
+                      "after.speed.x <= 345.02"
+                    ],
+                    "objectives": [
+                      {
+                        "type": "maximize",
+                        "expression": "after.speed.x"
+                      },
+                      {
+                        "type": "maximize",
+                        "expression": "after.dashes"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "validation": {
+              "initial_state": {
+                "pos": {
+                  "x": 223,
+                  "y": 59
+                },
+                "speed": {
+                  "x": 289.7330322265625,
+                  "y": -105
+                },
+                "state": "Normal",
+                "facing": true,
+                "dashes": 1,
+                "stamina": 110,
+                "on_ground": false,
+                "player_on_ground": false,
+                "player_on_ground_initialized": true,
+                "ducking": true,
+                "can_dream_dash": true,
+                "dead": false,
+                "death_freeze_pending": false,
+                "respawn_frames": 0,
+                "current_room_bounds": null,
+                "transition_room_bounds": null,
+                "transition_direction": {
+                  "x": 0,
+                  "y": 0
+                },
+                "transition_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "transition_timer": 0,
+                "post_transition_normal_updates": 0,
+                "camera": {
+                  "x": 23.82909393310547,
+                  "y": 0
+                },
+                "camera_initialized": true,
+                "core_mode": "none",
+                "just_respawned": false,
+                "dash_dir": {
+                  "x": 1,
+                  "y": 0
+                },
+                "last_aim": {
+                  "x": 0.7071067690849304,
+                  "y": 0.7071067690849304
+                },
+                "before_dash_speed": {
+                  "x": 277.3332214355469,
+                  "y": -52.5
+                },
+                "demo_dashed": false,
+                "dash_started_on_ground": false,
+                "dash_end_pending": false,
+                "dash_attack_timer": 0,
+                "dash_cooldown_timer": 0,
+                "dash_refill_cooldown_timer": 0,
+                "freeze_timer": 0,
+                "time_rate": 1,
+                "state_timer": 0,
+                "boost_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "boost_red": false,
+                "last_booster_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "booster_reuse_timer": 0,
+                "booster_boosting": false,
+                "wind": {
+                  "x": 0,
+                  "y": 0
+                },
+                "wind_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "no_wind_timer": 0,
+                "wall_slide_timer": 1.2000000476837158,
+                "wall_slide_dir": 0,
+                "jump_grace_timer": 0,
+                "jump_buffer_timer": -0.18333366513252258,
+                "dash_buffer_timer": 0,
+                "crouch_dash_buffer_timer": 0,
+                "auto_jump": false,
+                "auto_jump_timer": 0,
+                "var_jump_timer": 0.016666341572999954,
+                "var_jump_speed": -105,
+                "max_fall": 160,
+                "move_x": 1,
+                "force_move_x": 0,
+                "force_move_x_timer": 0,
+                "neutral_wall_jump_friction_delay": 0,
+                "wall_speed_retention_timer": 0,
+                "wall_speed_retained": 0,
+                "wall_boost_timer": 0,
+                "wall_boost_dir": 0,
+                "hop_wait_x": 0,
+                "hop_wait_x_speed": 0,
+                "current_lift_speed": {
+                  "x": 0,
+                  "y": 0
+                },
+                "last_lift_speed": {
+                  "x": 0,
+                  "y": 0
+                },
+                "lift_speed_timer": 0,
+                "moving_solid_time": 1.2000021934509277,
+                "scene_time_active": 1.2000021934509277,
+                "cassette_manager": {
+                  "initialized": false,
+                  "startup_music_pending": false,
+                  "beat_timer": 0,
+                  "beat_index": 0,
+                  "current_index": 0,
+                  "max_beat": 0,
+                  "tempo_mult": 1
+                },
+                "cassette_blocks": [],
+                "spinners": [],
+                "bumpers": [],
+                "lookouts": [],
+                "zip_movers": [],
+                "bounce_blocks": [],
+                "move_blocks": [],
+                "theo_crystals": [],
+                "heart_gems": [],
+                "rising_lavas": [],
+                "sandwich_lavas": [],
+                "gliders": [],
+                "clouds": [],
+                "seekers": [],
+                "temple_gates": [],
+                "holding_theo": null,
+                "holding_glider": null,
+                "min_hold_timer": 0,
+                "pickup_old_speed": {
+                  "x": 0,
+                  "y": 0
+                },
+                "pickup_old_var_jump_timer": 0,
+                "pickup_timer": 0,
+                "climb_no_move_timer": 0,
+                "last_climb_move": 0,
+                "dream_dash_can_end_timer": 0,
+                "launch_approach_x": null,
+                "summit_launch_target_x": 0,
+                "summit_launch_particle_timer": 0,
+                "star_fly_timer": 0,
+                "star_fly_transforming": false,
+                "star_fly_transform_frames": 0,
+                "star_fly_speed_lerp": 0,
+                "star_fly_last_dir": {
+                  "x": 0,
+                  "y": 0
+                },
+                "last_feather_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "feather_reuse_timer": 0,
+                "last_bumper_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "bumper_reuse_timer": 0,
+                "strawberry_picked_mask": 0,
+                "carried_strawberries": 0,
+                "strawberry_follow_delay_timer": 0,
+                "strawberry_collect_timer": 0,
+                "strawberry_collect_index": 0,
+                "strawberry_collect_reset_timer": 0,
+                "star_fly_hitbox_preserved": false,
+                "last_bounce_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "bounce_reuse_timer": 0,
+                "pending_bounce_from_y": null,
+                "explode_launch_boost_timer": 0,
+                "explode_launch_boost_speed": 0,
+                "badeline_boost_active": false,
+                "badeline_boost_final": false,
+                "badeline_boost_phase": 0,
+                "badeline_boost_frame": 0,
+                "badeline_boost_start": {
+                  "x": 0,
+                  "y": 0
+                },
+                "badeline_boost_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "last_badeline_boost_target": {
+                  "x": 0,
+                  "y": 0
+                },
+                "badeline_boost_entity_origin": {
+                  "x": 0,
+                  "y": 0
+                },
+                "badeline_boost_current_position": {
+                  "x": 0,
+                  "y": 0
+                },
+                "badeline_boost_relocation_from": {
+                  "x": 0,
+                  "y": 0
+                },
+                "badeline_boost_relocation_to": {
+                  "x": 0,
+                  "y": 0
+                },
+                "badeline_boost_relocation_elapsed": 0,
+                "badeline_boost_relocation_duration": 0,
+                "badeline_boost_stage": 0,
+                "badeline_boost_relocating": false,
+                "badeline_boost_collidable": false,
+                "dummy_moving": false,
+                "dummy_gravity": true,
+                "dummy_friction": true,
+                "dummy_maxspeed": true,
+                "temple_fall_landed": false,
+                "temple_fall_wait_frames": 0,
+                "reflection_fall_phase": 0,
+                "reflection_fall_frames": 0,
+                "reflection_fall_wait_timer": 0,
+                "ignore_jump_thrus": false,
+                "launched": true,
+                "movement_remainder": {
+                  "x": -0.3750309944152832,
+                  "y": -0.000041484832763671875
+                }
+              }
+            }
+          }
+        ],
+        "finish": {
+          "trigger": {
+            "id": "untitled-room-finish",
+            "bounds": {
+              "x": 456,
+              "y": 0,
+              "width": 96,
+              "height": 180
+            }
+          },
+          "require_all_modules": true
+        }
+      }
+    }
+  ]
+}
