@@ -92,7 +92,6 @@ export interface OutcomeAnimation {
 
 const FAILURE_SLOWDOWN_MS = 1_000;
 const GUIDED_RESULT_HOLD_MS = 1_000;
-const MOUSE_ACTIVITY_VISIBLE_MS = 1_200;
 export type TrainingResetMode = "current" | "start";
 
 export type TrainingLessonStage = "demo" | "assisted" | "free";
@@ -264,15 +263,12 @@ export function TrainingGround({
   const guidedResultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
-  const [mouseActive, setMouseActive] = useState(false);
-  const mouseActivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
   const referenceCandidatesRef = useRef<TrainingCandidate[]>([]);
   const referenceEvaluationsRef = useRef<TrainingCandidate[]>([]);
   const referenceModuleIdRef = useRef<string | null>(null);
   const forceAdvanceRef = useRef(false);
   const [timelineOpen, setTimelineOpen] = useState(true);
+  const [resetMode, setResetMode] = useState<TrainingResetMode>("current");
   const [resetFrame, setResetFrame] = useState(0);
   const [triggerFrame, setTriggerFrame] = useState<number | null>(null);
   const triggerFrameRef = useRef<number | null>(null);
@@ -293,6 +289,8 @@ export function TrainingGround({
   const [outcomeProgress, setOutcomeProgress] = useState(0);
   const [completions, setCompletions] = useState<TrainingCompletion[]>([]);
   const completionsRef = useRef<TrainingCompletion[]>([]);
+  const [successResults, setSuccessResults] = useState<TrainingCompletion[]>([]);
+  const successResultsRef = useRef<TrainingCompletion[]>([]);
   const [settlement, setSettlement] = useState(false);
   const settlementRef = useRef(false);
   const occupiedTriggers = useRef(new Set<string>());
@@ -486,6 +484,8 @@ export function TrainingGround({
     setResetFrame(0);
     completionsRef.current = [];
     setCompletions([]);
+    successResultsRef.current = [];
+    setSuccessResults([]);
     referenceModuleIdRef.current = null;
     referenceCandidatesRef.current = [];
     referenceEvaluationsRef.current = [];
@@ -554,27 +554,13 @@ export function TrainingGround({
   };
 
   useEffect(() => () => client.dispose(), [client]);
-  useEffect(() => {
-    const revealTutorialButton = () => {
-      setMouseActive(true);
-      if (mouseActivityTimerRef.current !== null)
-        clearTimeout(mouseActivityTimerRef.current);
-      mouseActivityTimerRef.current = setTimeout(() => {
-        mouseActivityTimerRef.current = null;
-        setMouseActive(false);
-      }, MOUSE_ACTIVITY_VISIBLE_MS);
-    };
-    window.addEventListener("pointermove", revealTutorialButton, {
-      passive: true,
-    });
-    return () => {
-      window.removeEventListener("pointermove", revealTutorialButton);
-      if (mouseActivityTimerRef.current !== null)
-        clearTimeout(mouseActivityTimerRef.current);
+  useEffect(
+    () => () => {
       if (guidedResultTimerRef.current !== null)
         clearTimeout(guidedResultTimerRef.current);
-    };
-  }, []);
+    },
+    [],
+  );
   useEffect(() => {
     let active = true;
     void (async () => {
@@ -656,6 +642,12 @@ export function TrainingGround({
     );
     completionsRef.current = keptCompletions;
     setCompletions(keptCompletions);
+    const keptResults = successResultsRef.current.filter(
+      (result) =>
+        result.completedFrame <= target && result.moduleId !== module?.id,
+    );
+    successResultsRef.current = keptResults;
+    setSuccessResults(keptResults);
     setActiveModule(
       module,
       module ? target : null,
@@ -704,17 +696,24 @@ export function TrainingGround({
   const retry = () => {
     const resetModule = activeModuleRef.current ?? resetModuleRef.current;
     const target = trainingRetryTarget(
-      "current",
+      resetMode,
       resetFrame,
       resetModule?.id ?? null,
       completionsRef.current,
     );
-    const module = target.moduleId
-      ? (selectedVariant.training.modules.find(
-          (candidate) => candidate.id === target.moduleId,
-        ) ?? resetModule)
-      : resetModule;
-    resetTo(target.frame, module);
+    const module =
+      resetMode === "start"
+        ? (moduleAtPlayer(selectedVariant.training, initial!, new Set()) ?? null)
+        : target.moduleId
+          ? (selectedVariant.training.modules.find(
+              (candidate) => candidate.id === target.moduleId,
+            ) ?? resetModule)
+          : resetModule;
+    resetTo(
+      target.frame,
+      module,
+      resetMode === "start" ? "free" : lessonStageRef.current,
+    );
   };
 
   const selectLessonStage = (stage: TrainingLessonStage) => {
@@ -724,11 +723,26 @@ export function TrainingGround({
     resetTo(lessonStartFrameRef.current, module, stage);
   };
 
-  const startLesson = () => {
-    const module = activeModuleRef.current ?? resetModuleRef.current;
-    if (!module) return;
+  const startLesson = (module: TrainingModule) => {
+    const lessonState = structuredClone(module.validation.initial_state);
+    const target = frameRef.current;
+    simulationEpoch.current += 1;
+    setPlaying(false);
     keys.current.clear();
-    resetTo(lessonStartFrameRef.current, module, "demo");
+    previousButtons.current = makeEmptyButtons();
+    forceAdvanceRef.current = false;
+    clearOutcome();
+    settlementRef.current = false;
+    setSettlement(false);
+    snapshotsRef.current = [
+      ...snapshotsRef.current.slice(0, target),
+      lessonState,
+    ];
+    setSnapshots(snapshotsRef.current);
+    frameRef.current = target;
+    setFrame(target);
+    occupiedTriggers.current = idsInside(lessonState, selectedVariant);
+    setActiveModule(module, target, "demo");
   };
 
   const moveDemoStep = (direction: -1 | 1) => {
@@ -814,7 +828,7 @@ export function TrainingGround({
     };
     // resetTo intentionally reads current state through React's render closure.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resetFrame, initial, bindings, selectedVariant]);
+  }, [resetFrame, resetMode, initial, bindings, selectedVariant]);
 
   useEffect(() => {
     if (!playing || !map || !initial || settlement) return;
@@ -1122,18 +1136,32 @@ export function TrainingGround({
             );
             applySession(nextSession);
             if (nextSession.phase === "failed") {
-              setNotice(
-                nextSession.failure?.kind === "input_order_mismatch"
-                  ? (activeTutorial.teaching.steps[
-                      nextSession.nextVerifiedInput
-                    ]?.order_error.body ?? "输入顺序不正确。")
-                  : nextSession.failure?.kind === "timing_window_miss"
+              if (stage === "free") {
+                attempts.current = [];
+                fuzzStartRef.current = null;
+                setFuzzStartFrame(null);
+                applyPrediction({ windows: [], objectives: [] });
+                applySession(
+                  createTrainingSession(
+                    candidatesRef.current,
+                    activeTutorial,
+                  ),
+                );
+                setPlaying(true);
+              } else {
+                setNotice(
+                  nextSession.failure?.kind === "input_order_mismatch"
                     ? (activeTutorial.teaching.steps[
                         nextSession.nextVerifiedInput
-                      ]?.window_error.body ?? "错过输入窗口。")
-                    : activeTutorial.entry.failure.body,
-              );
-              beginFailure(nextFrame, evaluatedCandidate);
+                      ]?.order_error.body ?? "输入顺序不正确。")
+                    : nextSession.failure?.kind === "timing_window_miss"
+                      ? (activeTutorial.teaching.steps[
+                          nextSession.nextVerifiedInput
+                        ]?.window_error.body ?? "错过输入窗口。")
+                      : activeTutorial.entry.failure.body,
+                );
+                beginFailure(nextFrame, evaluatedCandidate);
+              }
             } else if (nextSession.phase === "success") {
               const preview = predictionRef.current;
               const start = fuzzStartRef.current ?? currentFrame;
@@ -1194,7 +1222,16 @@ export function TrainingGround({
                 actualInputs: absoluteInputs,
               };
               stageInputSuccessRef.current = true;
-              if (stage === "free") pendingCompletionRef.current = completion;
+              if (stage === "free") {
+                pendingCompletionRef.current = completion;
+                successResultsRef.current = [
+                  ...successResultsRef.current.filter(
+                    (result) => result.moduleId !== completion.moduleId,
+                  ),
+                  completion,
+                ];
+                setSuccessResults(successResultsRef.current);
+              }
               setPlaying(true);
               setNotice(
                 `${activeTutorial.title} 动作正确；继续前往本段结束触发区。`,
@@ -1240,36 +1277,9 @@ export function TrainingGround({
               completion,
             ];
             setCompletions(completionsRef.current);
-            const moduleIndex = selectedVariant.training.modules.findIndex(
-              (candidate) => candidate.id === activeModule.id,
-            );
-            const nextModule =
-              selectedVariant.training.modules[moduleIndex + 1];
-            if (nextModule) {
-              const nextState = structuredClone(
-                nextModule.validation.initial_state,
-              );
-              snapshotsRef.current = [
-                ...snapshotsRef.current.slice(0, nextFrame),
-                nextState,
-              ];
-              setSnapshots(snapshotsRef.current);
-              frameRef.current = nextFrame;
-              setFrame(nextFrame);
-              previousButtons.current = buttonsFromKeyboard(
-                keys.current,
-                bindings,
-              );
-              occupiedTriggers.current = idsInside(nextState, selectedVariant);
-              setActiveModule(nextModule, nextFrame, "free");
-              setNotice(
-                `${activeModule.tutorial.title} 完成；${nextModule.tutorial.title} 已进入自由练习。`,
-              );
-              return;
-            }
             setActiveModule(null, null);
             setNotice(
-              `${activeModule.tutorial.title} 完成；房间内训练已全部通过，继续前往终点。`,
+              `${activeModule.tutorial.title} 完成；继续自由练习。`,
             );
           }
           scanTriggers(after, nextFrame, completionsRef.current);
@@ -1507,9 +1517,9 @@ export function TrainingGround({
           stale={false}
           theme={theme}
         >
-          {(viewport) =>
-            tutorial && (
-              <>
+          {(viewport) => (
+            <>
+              {tutorial && (
                 <TrainingPrompt
                   map={map}
                   state={state}
@@ -1519,40 +1529,43 @@ export function TrainingGround({
                     outcome !== null || settlement || lessonStage === "free"
                   }
                 />
-                {activeModule &&
-                  lessonStage === "free" &&
-                  !lessonMode &&
-                  !outcome &&
-                  (() => {
+              )}
+              {lessonStage === "free" &&
+                !lessonMode &&
+                !outcome &&
+                selectedVariant.training.modules.map((module) => {
                     const anchor = mapPointTargetPercent(
                       map,
                       {
                         x:
-                          activeModule.trigger.bounds.x +
-                          activeModule.trigger.bounds.width / 2,
-                        y: activeModule.trigger.bounds.y,
+                          module.trigger.bounds.x +
+                          module.trigger.bounds.width / 2,
+                        y: module.trigger.bounds.y,
                       },
                       viewport,
                     );
                     return (
                       <button
                         type="button"
-                        className={`training-tutorial-launch ${mouseActive ? "mouse-active" : ""}`}
+                        key={module.id}
+                        className={`training-tutorial-launch ${completions.some((completion) => completion.moduleId === module.id) ? "complete" : ""}`}
+                        aria-label={`教学：${module.tutorial.title}，${module.tutorial.summary}`}
                         style={
                           {
                             "--tutorial-x": `${anchor.x}%`,
                             "--tutorial-y": `${anchor.y}%`,
                           } as CSSProperties
                         }
-                        onClick={startLesson}
+                        onClick={() => startLesson(module)}
                       >
-                        查看本段教学
+                        <strong>{module.tutorial.title}</strong>
+                        <span>{module.tutorial.summary}</span>
+                        <small>{module.tutorial.entry.hint}</small>
                       </button>
                     );
-                  })()}
-              </>
-            )
-          }
+                  })}
+            </>
+          )}
         </GameView>
 
         {tutorial &&
@@ -1592,7 +1605,7 @@ export function TrainingGround({
           className={`training-success-toasts ${settlement ? "settling" : ""}`}
           aria-live="polite"
         >
-          {completions.map((completion, index) => (
+          {successResults.map((completion, index) => (
             <article
               className="training-success-toast"
               key={completion.moduleId}
@@ -1818,6 +1831,16 @@ export function TrainingGround({
           <button aria-label="按 R 设置重试" onClick={retry}>
             R
           </button>
+          <select
+            aria-label="R 重置位置"
+            value={resetMode}
+            onChange={(event) =>
+              setResetMode(event.target.value as TrainingResetMode)
+            }
+          >
+            <option value="current">R：本段起点</option>
+            <option value="start">R：地图起点</option>
+          </select>
           <button aria-label="上一帧" onClick={() => seek(frame - 1)}>
             ◀
           </button>
