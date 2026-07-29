@@ -4241,6 +4241,20 @@ footer {
   stroke-width: 2;
   filter: drop-shadow(0 0 3px #ffd37a);
 }
+.training-trigger-overlay .training-trigger-resize-handles rect {
+  fill: #fff;
+  stroke: var(--gold);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.training-trigger-overlay .training-trigger-resize-handles rect[data-corner="nw"],
+.training-trigger-overlay .training-trigger-resize-handles rect[data-corner="se"] {
+  cursor: nwse-resize;
+}
+.training-trigger-overlay .training-trigger-resize-handles rect[data-corner="ne"],
+.training-trigger-overlay .training-trigger-resize-handles rect[data-corner="sw"] {
+  cursor: nesw-resize;
+}
 .training-trigger-overlay text {
   fill: #fff;
   stroke: #000;

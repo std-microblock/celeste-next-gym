@@ -22,6 +22,7 @@ import type { TrainingInput } from "../training/session";
 import { WasmClient } from "../simulator/wasmClient";
 import type { VisualTheme } from "../visualThemes";
 import { GameView } from "./GameView";
+import { resizeEditorBounds } from "./MapEditor";
 import { TrainingGround } from "./TrainingGround";
 import type { TrainingRecordingScope } from "./TrainingRecorder";
 
@@ -29,6 +30,7 @@ type Target =
   | { type: "module"; index: number; region: "start" | "end" }
   | { type: "finish" };
 type TestResult = { id: string; ok: boolean; detail: string };
+type ResizeCorner = "nw" | "ne" | "se" | "sw";
 
 const KEY_OPTIONS = [
   "up",
@@ -954,15 +956,23 @@ export function TrainingFlowEditor({
   const [testing, setTesting] = useState(false);
   const [testResults, setTestResults] = useState<TestResult[]>([]);
   const drag = useRef<{
+    mode: "move" | "resize";
     target: Target;
     point: { x: number; y: number };
     bounds: TrainingTrigger["bounds"];
+    corner?: ResizeCorner;
   } | null>(null);
   useEffect(() => () => client.dispose(), [client]);
 
   const issues = validateTrainingProject(project);
   const selectedModule =
     target.type === "module" ? project.training.modules[target.index] : null;
+  const selectedTriggerBounds =
+    target.type === "finish"
+      ? project.training.finish.trigger.bounds
+      : target.region === "start"
+        ? selectedModule?.trigger.bounds
+        : selectedModule?.end_trigger.bounds;
   const variant: TrainingVariant = useMemo(
     () => ({
       id: project.id,
@@ -1049,9 +1059,30 @@ export function TrainingFlowEditor({
     const svg = event.currentTarget.ownerSVGElement;
     if (!svg) return;
     drag.current = {
+      mode: "move",
       target: nextTarget,
       point: pointInMap(event.clientX, event.clientY, svg, project),
       bounds: { ...bounds },
+    };
+    setTarget(nextTarget);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const beginResize = (
+    event: ReactPointerEvent<SVGRectElement>,
+    nextTarget: Target,
+    bounds: TrainingTrigger["bounds"],
+    corner: ResizeCorner,
+  ) => {
+    event.stopPropagation();
+    const svg = event.currentTarget.ownerSVGElement;
+    if (!svg) return;
+    drag.current = {
+      mode: "resize",
+      target: nextTarget,
+      point: pointInMap(event.clientX, event.clientY, svg, project),
+      bounds: { ...bounds },
+      corner,
     };
     setTarget(nextTarget);
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -1065,13 +1096,23 @@ export function TrainingFlowEditor({
       event.currentTarget,
       project,
     );
-    const dx = Math.round((point.x - drag.current.point.x) / 8) * 8;
-    const dy = Math.round((point.y - drag.current.point.y) / 8) * 8;
-    const bounds = {
-      ...drag.current.bounds,
-      x: drag.current.bounds.x + dx,
-      y: drag.current.bounds.y + dy,
-    };
+    const bounds =
+      drag.current.mode === "resize" && drag.current.corner
+        ? resizeEditorBounds(
+            drag.current.bounds,
+            drag.current.corner,
+            point,
+            project.map,
+          )
+        : {
+            ...drag.current.bounds,
+            x:
+              drag.current.bounds.x +
+              Math.round((point.x - drag.current.point.x) / 8) * 8,
+            y:
+              drag.current.bounds.y +
+              Math.round((point.y - drag.current.point.y) / 8) * 8,
+          };
     updateTraining((draft) => {
       if (drag.current?.target.type === "finish")
         draft.training.finish.trigger.bounds = bounds;
@@ -1339,6 +1380,51 @@ export function TrainingFlowEditor({
                 FINISH
               </text>
             </g>
+            {selectedTriggerBounds && (
+              <g className="training-trigger-resize-handles">
+                {(
+                  [
+                    [
+                      "nw",
+                      selectedTriggerBounds.x,
+                      selectedTriggerBounds.y,
+                    ],
+                    [
+                      "ne",
+                      selectedTriggerBounds.x + selectedTriggerBounds.width,
+                      selectedTriggerBounds.y,
+                    ],
+                    [
+                      "se",
+                      selectedTriggerBounds.x + selectedTriggerBounds.width,
+                      selectedTriggerBounds.y + selectedTriggerBounds.height,
+                    ],
+                    [
+                      "sw",
+                      selectedTriggerBounds.x,
+                      selectedTriggerBounds.y + selectedTriggerBounds.height,
+                    ],
+                  ] as const
+                ).map(([corner, x, y]) => (
+                  <rect
+                    key={corner}
+                    data-corner={corner}
+                    x={x - 3}
+                    y={y - 3}
+                    width="6"
+                    height="6"
+                    onPointerDown={(event) =>
+                      beginResize(
+                        event,
+                        target,
+                        selectedTriggerBounds,
+                        corner,
+                      )
+                    }
+                  />
+                ))}
+              </g>
+            )}
           </svg>
         </GameView>
         <section className="training-test-results" aria-live="polite">
