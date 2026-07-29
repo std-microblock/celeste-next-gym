@@ -4635,6 +4635,19 @@ footer {
   fill: #ff6f9b18;
   stroke: var(--pink);
 }
+.training-recorder-regions .finish {
+  fill: #65ff9a18;
+  stroke: #65ff9a;
+}
+.training-recorder-regions .finish-region text {
+  fill: #b9ffcf;
+  font-size: 8px;
+  font-weight: 800;
+  paint-order: stroke;
+  stroke: #101822;
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+}
 .training-recorder-regions .active rect {
   stroke-width: 2;
   filter: drop-shadow(0 0 4px currentColor);

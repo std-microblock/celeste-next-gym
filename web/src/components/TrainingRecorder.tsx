@@ -199,6 +199,25 @@ export function TrainingRecorder({
     setFrame(pending.startGlobalFrame + node.frame + 1);
   };
 
+  const beginRecordAllReviewAtFinish = (state: SimState): boolean => {
+    if (
+      scope.type !== "all" ||
+      completedRef.current.size !==
+        projectRef.current.training.modules.length ||
+      !triggerContainsPlayer(projectRef.current.training.finish.trigger, state)
+    )
+      return false;
+    const firstReview = capturedReviewsRef.current[0];
+    if (!firstReview) return false;
+    setPlaying(false);
+    setPhase("reviewing");
+    setNotice(
+      `已到达终点；全部 ${completedRef.current.size} 个区域录制完成，现在开始编辑关键节点。`,
+    );
+    showReviewNode(firstReview, 0);
+    return true;
+  };
+
   const toggleReviewTarget = (kind: RecordingTargetKind) => {
     setReview((pending) => {
       if (!pending) return pending;
@@ -449,8 +468,8 @@ export function TrainingRecorder({
                 startGlobalFrame: recordingStartGlobalFrame.current,
                 after: structuredClone(after),
               };
-              setPlaying(false);
               if (scope.type === "module") {
+                setPlaying(false);
                 setPhase("reviewing");
                 setNotice(
                   `${title} 录制完成；请逐个关键节点选择一个或多个目标。`,
@@ -469,11 +488,12 @@ export function TrainingRecorder({
                   completedRef.current.size ===
                   projectRef.current.training.modules.length
                 ) {
-                  setPhase("reviewing");
-                  setNotice(
-                    `全部 ${completedRef.current.size} 个区域录制完成；现在开始编辑关键节点。`,
-                  );
-                  showReviewNode(capturedReviewsRef.current[0], 0);
+                  if (!beginRecordAllReviewAtFinish(after)) {
+                    setPhase("roaming");
+                    setNotice(
+                      `全部 ${completedRef.current.size} 个区域已录制；继续前往绿色终点区。`,
+                    );
+                  }
                 } else {
                   setPhase("roaming");
                   setNotice(
@@ -487,7 +507,11 @@ export function TrainingRecorder({
                 setPlaying(false);
                 setNotice("人物已死亡；按 R 重新开始本次录制。");
               }
-              if (scope.type === "all") armModuleAt(after);
+              if (
+                scope.type === "all" &&
+                !beginRecordAllReviewAtFinish(after)
+              )
+                armModuleAt(after);
             }
           })
           .catch((error: unknown) => {
@@ -598,6 +622,20 @@ export function TrainingRecorder({
                     </g>
                   );
                 })}
+                {scope.type === "all" && (
+                  <g className="finish-region">
+                    <rect
+                      className="finish"
+                      {...projectRef.current.training.finish.trigger.bounds}
+                    />
+                    <text
+                      x={projectRef.current.training.finish.trigger.bounds.x + 3}
+                      y={projectRef.current.training.finish.trigger.bounds.y + 10}
+                    >
+                      FINISH
+                    </text>
+                  </g>
+                )}
                 {review &&
                   review.nodes.map((node, index) => {
                     const snapshot =
@@ -734,7 +772,9 @@ export function TrainingRecorder({
             {phase === "loading"
               ? "载入中"
               : phase === "armed"
-                ? "已暂停待命"
+                ? playing
+                  ? "下一区域待命"
+                  : "已暂停待命"
                 : phase === "recording"
                   ? `REC · F${recordingFrames.current.length - 1}`
                   : phase === "reviewing"
@@ -747,9 +787,15 @@ export function TrainingRecorder({
             {phase === "armed"
               ? "按 Jump / Dash / Crouch Dash / Grab 中任一个动作开始；WASD 仅作为后台方向上下文。"
               : phase === "recording"
-                ? "粉色框是当前教程结束区；进入后自动生成并保存 JSON 数据。"
+                ? scope.type === "all"
+                  ? "粉色框是当前教程结束区；进入后结束本区域录制并继续游玩。"
+                  : "粉色框是当前教程结束区；进入后自动生成并保存 JSON 数据。"
                 : phase === "reviewing"
                   ? "点击卡片切换目标；可以不选，也可以删除不需要的关键点。"
+                  : scope.type === "all" &&
+                      completedCount ===
+                        projectRef.current.training.modules.length
+                    ? "继续游玩；进入绿色 FINISH 区后统一编辑全部录制结果。"
                   : "方向键可正常游玩；进入蓝色开始区后等待第一个教程动作。"}
           </span>
         </div>

@@ -26,15 +26,19 @@ vi.mock("./GameView", () => ({
 
 vi.mock("../simulator/wasmClient", () => ({
   WasmClient: class {
+    calls = 0;
     ready = async () => {};
     dispose = () => {};
-    simulate = async (state: Record<string, unknown>) => [
-      {
-        ...state,
-        pos: { x: 150, y: 152 },
-        dead: false,
-      },
-    ];
+    simulate = async (state: Record<string, unknown>) => {
+      this.calls += 1;
+      return [
+        {
+          ...state,
+          pos: this.calls >= 4 ? { x: 250, y: 152 } : { x: 150, y: 152 },
+          dead: false,
+        },
+      ];
+    };
   },
 }));
 
@@ -49,6 +53,12 @@ describe("training recorder runtime", () => {
       module.end_trigger.bounds = { x: 140, y: 140, width: 40, height: 30 };
       return module;
     });
+    project.training.finish.trigger.bounds = {
+      x: 240,
+      y: 140,
+      width: 40,
+      height: 30,
+    };
     const onChange = vi.fn();
     let nextAnimationId = 0;
     const animations = new Map<number, (time: number) => void>();
@@ -109,13 +119,24 @@ describe("training recorder runtime", () => {
       view.container.querySelector(".training-record-objective-window"),
     ).not.toBeInTheDocument();
     await recordModule("KeyK", 3);
+    expect(
+      view.container.querySelector(".training-record-objective-window"),
+    ).not.toBeInTheDocument();
+    expect(view.container.querySelector(".training-recorder-bar > span"))
+      .toHaveTextContent("全部 3 个区域已录制；继续前往绿色终点区。");
+    const finishAnimation = animations.values().next().value;
+    if (!finishAnimation) throw new Error("录制器在结束区后停止了游玩");
+    animations.clear();
+    finishAnimation(performance.now() + 1_000);
     await waitFor(() =>
       expect(
         view.container.querySelector(".training-record-objective-window"),
       ).toBeInTheDocument(),
     );
     expect(view.container.querySelector(".training-recorder-bar > span"))
-      .toHaveTextContent("全部 3 个区域录制完成；现在开始编辑关键节点。");
+      .toHaveTextContent(
+        "已到达终点；全部 3 个区域录制完成，现在开始编辑关键节点。",
+      );
 
     for (let count = 1; count <= 3; count += 1) {
       fireEvent.click(view.getByRole("button", { name: "删除关键点" }));
@@ -128,6 +149,12 @@ describe("training recorder runtime", () => {
   it("writes a module and resets the full record-all session with R", async () => {
     const project = createTrainingProject(PLAYGROUND);
     project.training.modules[0].end_trigger.bounds = {
+      x: 140,
+      y: 140,
+      width: 40,
+      height: 30,
+    };
+    project.training.finish.trigger.bounds = {
       x: 140,
       y: 140,
       width: 40,
