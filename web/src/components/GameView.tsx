@@ -3,6 +3,11 @@ import { atlasFrameKeys } from "../atlasFrames";
 import type { EntityKind, GymMap, MapEntity, SimState, Vec2 } from "../model";
 import { playerHairMetadata } from "../playerHair";
 import {
+  playerTrailColor,
+  playerTrailOpacity,
+  playerTrailSamples,
+} from "../playerEffects";
+import {
   spikeDirection,
   spikePlacement,
   spikeTexturePrefixes,
@@ -573,6 +578,57 @@ function drawPlayer(
   }
   drawEntry(context, assets, key, state.pos.x, state.pos.y, 16, 32, facing, 1);
   context.restore();
+}
+
+function drawPlayerTrail(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  states: readonly (SimState | undefined)[],
+  frame: number,
+): void {
+  for (const sample of playerTrailSamples(states, frame)) {
+    const state = states[sample.frame];
+    if (!state) continue;
+    const key = playerFrameKey(assets, state, sample.frame);
+    const facing = state.facing ? 1 : -1;
+    const color = playerTrailColor(state);
+    context.save();
+    context.globalAlpha = playerTrailOpacity(sample.age);
+    const nodes = computeHairNodes(assets, states, state, sample.frame);
+    const metadata = playerHairMetadata(key);
+    for (let index = 3; index >= 0; index -= 1) {
+      const texture =
+        index === 0
+          ? `characters/player/bangs0${metadata.frame}`
+          : "characters/player/hair00";
+      const scale = 0.25 + (1 - index / 4) * 0.75;
+      drawEntry(
+        context,
+        assets,
+        texture,
+        nodes[index].x,
+        nodes[index].y,
+        5,
+        5,
+        index === 0 ? facing : scale,
+        index === 0 ? 1 : scale,
+        color,
+      );
+    }
+    drawEntry(
+      context,
+      assets,
+      key,
+      state.pos.x,
+      state.pos.y,
+      16,
+      32,
+      facing,
+      1,
+      color,
+    );
+    context.restore();
+  }
 }
 
 function buildSolidGrid(map: GymMap): string[][] {
@@ -2435,6 +2491,7 @@ export function GameView({
       kindCounts.set(entity.kind, kindIndex + 1);
     }
     context.globalAlpha = stale ? 0.45 : 1;
+    drawPlayerTrail(context, assets, states, frame);
     drawPlayer(context, assets, states, state, frame);
     drawWind(context, assets, map, state, frame);
     context.restore();
