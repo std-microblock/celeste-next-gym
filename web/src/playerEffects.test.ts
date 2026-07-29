@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createInitialState, PLAYGROUND, type SimState } from "./model";
 import {
+  playerParticleSamples,
   playerTrailColor,
   playerTrailOpacity,
   playerTrailSamples,
@@ -38,5 +39,37 @@ describe("player effects", () => {
     expect(playerTrailOpacity(24)).toBe(0);
     expect(playerTrailColor(state("Dash", 0))).toBe("#44b7ff");
     expect(playerTrailColor(state("Dash", 2))).toBe("#ff6def");
+  });
+
+  it("emits slash and streaming particles throughout a dash", () => {
+    const normal = state("Normal");
+    const dash = {
+      ...state("Dash", 0),
+      speed: { x: 240, y: 0 },
+      dash_dir: { x: 1, y: 0 },
+    };
+    const particles = playerParticleSamples([normal, dash, dash], 2);
+    expect(particles.filter((particle) => particle.kind === "slash")).toHaveLength(1);
+    expect(
+      particles.filter((particle) => particle.kind === "dash-streak"),
+    ).toHaveLength(2);
+  });
+
+  it("matches Player.cs jump and hard-landing dust counts", () => {
+    const grounded = { ...state("Normal"), on_ground: true };
+    const jumping = {
+      ...state("Normal"),
+      on_ground: false,
+      speed: { x: 0, y: -105 },
+    };
+    expect(playerParticleSamples([grounded, jumping], 1)[0]?.count).toBe(4);
+
+    const falling = {
+      ...state("Normal"),
+      on_ground: false,
+      speed: { x: 0, y: 80 },
+    };
+    const landed = { ...state("Normal"), on_ground: true };
+    expect(playerParticleSamples([falling, landed], 1)[0]?.count).toBe(8);
   });
 });

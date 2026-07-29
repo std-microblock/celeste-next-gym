@@ -3,6 +3,7 @@ import { atlasFrameKeys } from "../atlasFrames";
 import type { EntityKind, GymMap, MapEntity, SimState, Vec2 } from "../model";
 import { playerHairMetadata } from "../playerHair";
 import {
+  playerParticleSamples,
   playerTrailColor,
   playerTrailOpacity,
   playerTrailSamples,
@@ -628,6 +629,87 @@ function drawPlayerTrail(
       color,
     );
     context.restore();
+  }
+}
+
+function drawPlayerParticles(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  states: readonly (SimState | undefined)[],
+  frame: number,
+): void {
+  for (const particle of playerParticleSamples(states, frame)) {
+    const directionAngle = Math.atan2(
+      particle.direction.y,
+      particle.direction.x,
+    );
+    if (particle.kind === "slash") {
+      const key = `effects/slash/0${Math.min(3, Math.floor(particle.age / 3))}`;
+      const entry = assets.entries[key];
+      if (!entry) continue;
+      context.save();
+      context.globalAlpha = Math.max(0, 1 - particle.age / 12);
+      drawEntry(
+        context,
+        assets,
+        key,
+        particle.origin.x,
+        particle.origin.y,
+        entry.frameWidth / 2,
+        entry.frameHeight / 2,
+        1,
+        1,
+        undefined,
+        directionAngle,
+      );
+      context.restore();
+      continue;
+    }
+
+    for (let index = 0; index < particle.count; index += 1) {
+      const seed = particle.frame * 97.13 + index * 19.71;
+      const spread =
+        (pseudo(seed) - 0.5) *
+        (particle.kind === "dust" ? 1.5 : 0.45);
+      const angle = directionAngle + spread;
+      const speed =
+        particle.kind === "dust"
+          ? 18 + pseudo(seed + 3.1) * 34
+          : 20 + pseudo(seed + 7.3) * 18;
+      const seconds = particle.age / 60;
+      const travel = speed * seconds;
+      const x = particle.origin.x + Math.cos(angle) * travel;
+      const y =
+        particle.origin.y +
+        Math.sin(angle) * travel +
+        (particle.kind === "dust" ? 45 * seconds * seconds : 0);
+      const lifetime = particle.kind === "dust" ? 24 : 14;
+      const alpha = Math.max(0, 1 - particle.age / lifetime);
+      const key =
+        particle.kind === "dust" ? "particles/cloud" : "particles/rect";
+      const entry = assets.entries[key];
+      if (!entry) continue;
+      const scale =
+        particle.kind === "dust"
+          ? 0.35 + pseudo(seed + 11.9) * 0.35
+          : 0.55;
+      context.save();
+      context.globalAlpha = alpha;
+      drawEntry(
+        context,
+        assets,
+        key,
+        x,
+        y,
+        entry.frameWidth / 2,
+        entry.frameHeight / 2,
+        scale,
+        scale,
+        particle.color,
+        particle.kind === "dash-streak" ? directionAngle : 0,
+      );
+      context.restore();
+    }
   }
 }
 
@@ -2491,6 +2573,7 @@ export function GameView({
       kindCounts.set(entity.kind, kindIndex + 1);
     }
     context.globalAlpha = stale ? 0.45 : 1;
+    drawPlayerParticles(context, assets, states, frame);
     drawPlayerTrail(context, assets, states, frame);
     drawPlayer(context, assets, states, state, frame);
     drawWind(context, assets, map, state, frame);
