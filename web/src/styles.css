@@ -1268,13 +1268,10 @@ select:focus-visible {
   outline: 0;
 }
 .training-objective-tooltip {
-  position: absolute;
-  z-index: 32;
-  top: 4px;
-  left: 50%;
-  display: none;
+  display: grid;
   width: max-content;
   min-width: 126px;
+  max-width: min(250px, calc(100vw - 16px));
   padding: 5px 6px;
   color: #e9e0ed;
   border: 1px solid #8e70a0;
@@ -1283,21 +1280,12 @@ select:focus-visible {
   font:
     normal 7px/1.25 Consolas,
     monospace;
-  transform: translateX(-50%);
-}
-.training-objective-hit.before .training-objective-tooltip {
-  left: 0;
-  transform: none;
-}
-.training-objective-hit.after .training-objective-tooltip {
-  right: 0;
-  left: auto;
-  transform: none;
-}
-.training-objective-hit:hover .training-objective-tooltip,
-.training-objective-hit:focus .training-objective-tooltip {
-  display: grid;
   gap: 3px;
+}
+.training-objective-tooltip-portal {
+  position: fixed;
+  z-index: 10000;
+  pointer-events: none;
 }
 .training-objective-tooltip b {
   color: #fff;
@@ -1318,7 +1306,7 @@ select:focus-visible {
   color: #b8a7c1;
   font-weight: 400;
 }
-.training-objective-hit.failed .training-objective-tooltip strong {
+.training-objective-tooltip.failed strong {
   color: var(--pink);
 }
 .training-window {

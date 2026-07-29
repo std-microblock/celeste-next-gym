@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   formatObjectiveOutput,
   objectiveOutputName,
@@ -106,6 +107,11 @@ function ObjectiveHoverLayer({
   actualInputs: readonly { frame: number }[];
   failureFrame?: number;
 }) {
+  const [tooltip, setTooltip] = useState<{
+    frame: number;
+    x: number;
+    y: number;
+  } | null>(null);
   const frames =
     series[0]?.points.filter(
       (point) => point.frame >= from && point.frame <= to,
@@ -113,54 +119,85 @@ function ObjectiveHoverLayer({
   if (frames.length === 0) return null;
   const span = Math.max(1, to - from);
   const frameWidth = 100 / span;
+  const tooltipFrame =
+    tooltip === null
+      ? undefined
+      : frames.find((frame) => frame.frame === tooltip.frame);
+  const tooltipPointTypes = tooltipFrame
+    ? pointTypesAt(
+        tooltipFrame.frame,
+        tooltipFrame.successful,
+        targetFrame,
+        windows,
+        actualInputs,
+        failureFrame,
+      )
+    : [];
+  const showTooltip = (frame: number, x: number, y: number) =>
+    setTooltip({ frame, x, y });
   return (
-    <div
-      className="training-objective-hover-layer"
-      aria-label="Fuzz objective 按操作帧输出"
-    >
-      {frames.map((frame) => {
-        const center = ((frame.frame - from) / span) * 100;
-        const left = Math.max(0, center - frameWidth / 2);
-        const right = Math.min(100, center + frameWidth / 2);
-        const edge = center < 12 ? "before" : center > 88 ? "after" : "";
-        const pointTypes = [
-          ...(targetFrame === frame.frame ? ["Fuzz 最佳点"] : []),
-          ...(actualInputs.some((input) => input.frame === frame.frame)
-            ? ["你的输入"]
-            : []),
-          ...(windows.some(
-            (window) => frame.frame >= window.from && frame.frame <= window.to,
-          )
-            ? ["成功窗口"]
-            : []),
-          ...(failureFrame === frame.frame ? ["失败点"] : []),
-        ];
-        if (pointTypes.length === 0)
-          pointTypes.push(frame.successful ? "可行候选" : "未通过候选");
-        const details = series.flatMap((objective) => {
-          const point = objective.points.find(
-            (candidate) => candidate.frame === frame.frame,
+    <>
+      <div
+        className="training-objective-hover-layer"
+        aria-label="Fuzz objective 按操作帧输出"
+      >
+        {frames.map((frame) => {
+          const center = ((frame.frame - from) / span) * 100;
+          const left = Math.max(0, center - frameWidth / 2);
+          const right = Math.min(100, center + frameWidth / 2);
+          const pointTypes = pointTypesAt(
+            frame.frame,
+            frame.successful,
+            targetFrame,
+            windows,
+            actualInputs,
+            failureFrame,
           );
-          return point === undefined
-            ? []
-            : [
-                `${objectiveOutputName(objective.expression)} ${formatObjectiveOutput(objective.expression, point.value)}`,
-              ];
-        });
-        return (
-          <i
-            key={frame.frame}
-            className={`training-objective-hit ${edge} ${frame.successful ? "successful" : "failed"}`}
-            style={{ left: `${left}%`, width: `${right - left}%` }}
-            tabIndex={0}
-            aria-label={`在 F${frame.frame} 操作：${pointTypes.join("、")}；${details.join("；")}`}
-          >
-            <span className="training-objective-tooltip">
-              <b>在 F{frame.frame} 操作</b>
-              <em>{pointTypes.join(" · ")}</em>
+          const details = series.flatMap((objective) => {
+            const point = objective.points.find(
+              (candidate) => candidate.frame === frame.frame,
+            );
+            return point === undefined
+              ? []
+              : [
+                  `${objectiveOutputName(objective.expression)} ${formatObjectiveOutput(objective.expression, point.value)}`,
+                ];
+          });
+          return (
+            <i
+              key={frame.frame}
+              className={`training-objective-hit ${frame.successful ? "successful" : "failed"}`}
+              style={{ left: `${left}%`, width: `${right - left}%` }}
+              tabIndex={0}
+              aria-label={`在 F${frame.frame} 操作：${pointTypes.join("、")}；${details.join("；")}`}
+              onMouseEnter={(event) =>
+                showTooltip(frame.frame, event.clientX, event.clientY)
+              }
+              onMouseMove={(event) =>
+                showTooltip(frame.frame, event.clientX, event.clientY)
+              }
+              onMouseLeave={() => setTooltip(null)}
+              onFocus={(event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                showTooltip(frame.frame, rect.left + rect.width / 2, rect.top);
+              }}
+              onBlur={() => setTooltip(null)}
+            />
+          );
+        })}
+      </div>
+      {tooltip && tooltipFrame && typeof document !== "undefined"
+        ? createPortal(
+            <span
+              className={`training-objective-tooltip training-objective-tooltip-portal ${tooltipFrame.successful ? "successful" : "failed"}`}
+              role="tooltip"
+              style={tooltipPosition(tooltip.x, tooltip.y)}
+            >
+              <b>在 F{tooltipFrame.frame} 操作</b>
+              <em>{tooltipPointTypes.join(" · ")}</em>
               {series.map((objective, index) => {
                 const point = objective.points.find(
-                  (candidate) => candidate.frame === frame.frame,
+                  (candidate) => candidate.frame === tooltipFrame.frame,
                 );
                 return point === undefined ? null : (
                   <strong key={`${objective.expression}-${index}`}>
@@ -169,12 +206,47 @@ function ObjectiveHoverLayer({
                   </strong>
                 );
               })}
-            </span>
-          </i>
-        );
-      })}
-    </div>
+            </span>,
+            document.body,
+          )
+        : null}
+    </>
   );
+}
+
+function pointTypesAt(
+  frame: number,
+  successful: boolean,
+  targetFrame: number | undefined,
+  windows: FrameWindow[],
+  actualInputs: readonly { frame: number }[],
+  failureFrame: number | undefined,
+): string[] {
+  const pointTypes = [
+    ...(targetFrame === frame ? ["Fuzz 最佳点"] : []),
+    ...(actualInputs.some((input) => input.frame === frame) ? ["你的输入"] : []),
+    ...(windows.some((window) => frame >= window.from && frame <= window.to)
+      ? ["成功窗口"]
+      : []),
+    ...(failureFrame === frame ? ["失败点"] : []),
+  ];
+  if (pointTypes.length === 0)
+    pointTypes.push(successful ? "可行候选" : "未通过候选");
+  return pointTypes;
+}
+
+function tooltipPosition(x: number, y: number) {
+  const gap = 12;
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  return {
+    ...(x < viewportWidth / 2
+      ? { left: Math.max(8, x + gap) }
+      : { right: Math.max(8, viewportWidth - x + gap) }),
+    ...(y < viewportHeight / 2
+      ? { top: Math.max(8, y + gap) }
+      : { bottom: Math.max(8, viewportHeight - y + gap) }),
+  };
 }
 
 export interface TrainingTimelineProps {
