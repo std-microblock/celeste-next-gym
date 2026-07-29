@@ -28,7 +28,7 @@ vi.mock("../simulator/wasmClient", () => ({
 import { TrainingRecorder } from "./TrainingRecorder";
 
 describe("training recorder runtime", () => {
-  it("starts on an action and writes the module when the end region is reached", async () => {
+  it("writes a module and resets the full record-all session with R", async () => {
     const project = createTrainingProject(PLAYGROUND);
     project.training.modules[0].end_trigger.bounds = {
       x: 140,
@@ -46,7 +46,7 @@ describe("training recorder runtime", () => {
     const view = render(
       <TrainingRecorder
         project={project}
-        scope={{ type: "module", index: 0 }}
+        scope={{ type: "all" }}
         bindings={{
           up: "KeyW",
           down: "KeyS",
@@ -70,5 +70,16 @@ describe("training recorder runtime", () => {
       onChange.mock.calls[0][0].training.modules[0].tutorial.fuzz.inputs,
     ).toEqual([{ id: "dash", keys: ["dash"], at: 0, verify: true }]);
     expect(view.getByText("录制完成")).toBeInTheDocument();
+    fireEvent.keyDown(window, { code: "KeyR" });
+    await waitFor(() => expect(onChange).toHaveBeenCalledTimes(2));
+    expect(view.getByText("已暂停待命")).toBeInTheDocument();
+    expect(view.getByText("录制全部 · 0/1")).toBeInTheDocument();
+    expect(
+      view.container.querySelector(".training-recorder-bar > span"),
+    ).toHaveTextContent("教程 1 已待命；首个非 WASD 动作记为 F0。");
+    expect(view.getByRole("button", { name: "导出教程 JSON" })).toBeDisabled();
+    expect(
+      onChange.mock.calls[1][0].training.modules[0].tutorial.fuzz.inputs[0].id,
+    ).toBe("dash-entry");
   });
 });

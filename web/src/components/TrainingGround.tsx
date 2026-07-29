@@ -196,6 +196,8 @@ export function TrainingGround({
   const outcomeButtons = useRef<FrameButtons>(makeEmptyButtons());
   const attempts = useRef<Attempt[]>([]);
   const simulating = useRef(false);
+  const simulationEpoch = useRef(0);
+  const resetModuleRef = useRef<TrainingModule | null>(null);
 
   const document = activeModuleRef.current?.tutorial ?? null;
 
@@ -247,6 +249,7 @@ export function TrainingGround({
     attempts.current = [];
     applyPrediction({ windows: [], objectives: [] });
     if (module) {
+      resetModuleRef.current = module;
       setResetFrame(atFrame ?? frameRef.current);
       setAutoSlowdown(module.tutorial.assist.auto_slowdown.enabled_by_default);
       setNotice(`${module.tutorial.title} 已触发；下一个动作将作为 F0。`);
@@ -316,6 +319,7 @@ export function TrainingGround({
   };
 
   const installVariant = async (variant: TrainingVariant) => {
+    simulationEpoch.current += 1;
     setPlaying(false);
     clearOutcome();
     settlementRef.current = false;
@@ -341,6 +345,7 @@ export function TrainingGround({
     setCompletions([]);
     previousButtons.current = makeEmptyButtons();
     keys.current.clear();
+    resetModuleRef.current = null;
     setActiveModule(null, null);
     occupiedTriggers.current = idsInside(variant.initial, variant);
     const initialModule = moduleAtPlayer(
@@ -409,6 +414,7 @@ export function TrainingGround({
   }, [client, selectedVariant]);
 
   const seek = (requested: number) => {
+    simulationEpoch.current += 1;
     const next = Math.max(
       0,
       Math.min(snapshotsRef.current.length - 1, Math.round(requested)),
@@ -438,6 +444,8 @@ export function TrainingGround({
   const resetTo = (target = resetFrame) => {
     const snapshot = snapshotsRef.current[target] ?? initial;
     if (!snapshot) return;
+    simulationEpoch.current += 1;
+    setPlaying(false);
     snapshotsRef.current = snapshotsRef.current.slice(0, target + 1);
     setSnapshots([...snapshotsRef.current]);
     frameRef.current = target;
@@ -445,13 +453,22 @@ export function TrainingGround({
     previousButtons.current = makeEmptyButtons();
     keys.current.clear();
     clearOutcome();
-    const module = activeModuleRef.current;
-    if (module) setActiveModule(module, target);
+    settlementRef.current = false;
+    setSettlement(false);
+    const module = activeModuleRef.current ?? resetModuleRef.current;
+    const keptCompletions = completionsRef.current.filter(
+      (completion) =>
+        completion.completedFrame <= target &&
+        completion.moduleId !== module?.id,
+    );
+    completionsRef.current = keptCompletions;
+    setCompletions(keptCompletions);
+    setActiveModule(module, module ? target : null);
     occupiedTriggers.current = idsInside(snapshot, selectedVariant);
     setNotice(
       module
-        ? `已回到 ${module.tutorial.title} 的 R 点 F${target}`
-        : `已回到 R 点 F${target}`,
+        ? `${module.tutorial.title} 已重置；${module.tutorial.entry.hint}`
+        : "训练地图已重置；前往不可见训练触发区。",
     );
   };
 
@@ -560,6 +577,7 @@ export function TrainingGround({
         const previous = previousButtons.current;
         previousButtons.current = current;
         simulating.current = true;
+        const epoch = simulationEpoch.current;
         void (async () => {
           let beforeSession = sessionRef.current;
           const activeModule = activeModuleRef.current;
@@ -581,6 +599,7 @@ export function TrainingGround({
               JSON.stringify(activeTutorial!.fuzz),
               map,
             );
+            if (!active || epoch !== simulationEpoch.current) return;
             if (result.candidates.length === 0)
               throw new Error(
                 `${activeTutorial!.title} 在当前触发状态下没有成功候选`,
@@ -600,7 +619,7 @@ export function TrainingGround({
             [input],
             map,
           );
-          if (!active) return;
+          if (!active || epoch !== simulationEpoch.current) return;
           const after = trace.at(-1);
           if (!after) throw new Error("训练模拟未返回状态");
           const nextFrame = currentFrame + 1;
@@ -621,11 +640,19 @@ export function TrainingGround({
               previous,
               expectedInput,
             );
-            const entryPassed =
-              beforeSession.phase === "pre_fuzz"
-                ? trainingEntryContextPassed(current, activeTutorial) &&
-                  (await client.entryCheck(after, activeTutorial.entry.check))
-                : true;
+            let entryPassed = true;
+            if (beforeSession.phase === "pre_fuzz") {
+              entryPassed = trainingEntryContextPassed(
+                current,
+                activeTutorial,
+              );
+              if (entryPassed)
+                entryPassed = await client.entryCheck(
+                  after,
+                  activeTutorial.entry.check,
+                );
+              if (!active || epoch !== simulationEpoch.current) return;
+            }
             const nextSession = verifyTrainingInput(
               beforeSession,
               activeTutorial,
@@ -730,7 +757,7 @@ export function TrainingGround({
           scanTriggers(after, nextFrame, completionsRef.current);
         })()
           .catch((error: unknown) => {
-            if (active) {
+            if (active && epoch === simulationEpoch.current) {
               setPlaying(false);
               setNotice(
                 error instanceof Error ? error.message : "训练模拟失败",

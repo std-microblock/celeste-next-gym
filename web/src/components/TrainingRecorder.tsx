@@ -100,6 +100,7 @@ export function TrainingRecorder({
   const previousButtons = useRef<FrameButtons>(makeEmptyButtons());
   const keys = useRef(new Set<string>());
   const simulating = useRef(false);
+  const simulationEpoch = useRef(0);
   const [notice, setNotice] = useState("正在启动录制器…");
 
   const setActive = (index: number | null) => {
@@ -128,6 +129,7 @@ export function TrainingRecorder({
   };
 
   const installInitial = (restoreProject: boolean) => {
+    simulationEpoch.current += 1;
     if (restoreProject) {
       projectRef.current = structuredClone(originalProject.current);
       onChangeRef.current(projectRef.current);
@@ -245,6 +247,7 @@ export function TrainingRecorder({
         }
         previousButtons.current = currentButtons;
         simulating.current = true;
+        const epoch = simulationEpoch.current;
         void client
           .simulate(
             before,
@@ -252,7 +255,7 @@ export function TrainingRecorder({
             projectRef.current.map,
           )
           .then((trace) => {
-            if (!active) return;
+            if (!active || epoch !== simulationEpoch.current) return;
             const after = trace.at(-1);
             if (!after) throw new Error("录制模拟未返回状态");
             const nextFrame = currentFrame + 1;
@@ -314,7 +317,7 @@ export function TrainingRecorder({
             }
           })
           .catch((error: unknown) => {
-            if (!active) return;
+            if (!active || epoch !== simulationEpoch.current) return;
             setPlaying(false);
             setNotice(error instanceof Error ? error.message : "录制模拟失败");
           })
