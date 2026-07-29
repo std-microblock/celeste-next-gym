@@ -915,8 +915,16 @@ export function TrainingGround({
   }));
   const actualActionFrame = actualInputs.at(-1)?.frame;
   const timing = timingAssessment(actualActionFrame, prediction.targetFrame);
+  const failureOriginFrame =
+    session.failure === undefined
+      ? undefined
+      : (fuzzStartFrame ??
+        Math.max(
+          0,
+          (outcome?.timelineFrame ?? frame) - 1 - session.failure.frame,
+        ));
   const failureFrame = session.failure
-    ? (fuzzStartFrame ?? 0) + session.failure.frame
+    ? (failureOriginFrame ?? 0) + session.failure.frame
     : undefined;
   const timelineFrame = outcome?.timelineFrame ?? frame;
   const timelineFrameCount =
@@ -1009,6 +1017,7 @@ export function TrainingGround({
                 <b>{completion.accuracy.toFixed(0)}%</b>
               </header>
               <TrainingResultTimeline
+                frameOrigin={completion.startedFrame}
                 targetFrame={completion.targetFrame}
                 windows={completion.windows}
                 actualInputs={completion.actualInputs}
@@ -1051,6 +1060,7 @@ export function TrainingGround({
                   <em>{timing}</em>
                 </div>
                 <TrainingResultTimeline
+                  frameOrigin={failureOriginFrame}
                   targetFrame={prediction.targetFrame}
                   windows={prediction.windows}
                   actualInputs={actualInputs}
@@ -1108,6 +1118,7 @@ export function TrainingGround({
                     <b>{completion.accuracy.toFixed(0)}%</b>
                   </header>
                   <TrainingResultTimeline
+                    frameOrigin={completion.startedFrame}
                     targetFrame={completion.targetFrame}
                     windows={completion.windows}
                     actualInputs={completion.actualInputs}

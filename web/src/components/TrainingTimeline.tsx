@@ -26,6 +26,7 @@ function steppedPolylinePoints(
   points: Array<{ frame: number; value: number }>,
   x: (frame: number) => number,
   y: (value: number) => number,
+  to: number,
 ): string {
   const first = points[0];
   if (!first) return "";
@@ -33,13 +34,13 @@ function steppedPolylinePoints(
   for (let index = 1; index < points.length; index += 1) {
     const previous = points[index - 1];
     const current = points[index];
-    const midpoint = (x(previous.frame) + x(current.frame)) / 2;
     coordinates.push(
-      `${midpoint},${y(previous.value)}`,
-      `${midpoint},${y(current.value)}`,
+      `${x(current.frame)},${y(previous.value)}`,
       `${x(current.frame)},${y(current.value)}`,
     );
   }
+  const last = points.at(-1)!;
+  coordinates.push(`${x(Math.min(to, last.frame + 1))},${y(last.value)}`);
   return coordinates.join(" ");
 }
 
@@ -80,7 +81,7 @@ function ObjectiveCurve({
             {contiguousSegments(visible).map((segment, segmentIndex) => (
               <polyline
                 key={segmentIndex}
-                points={steppedPolylinePoints(segment, x, y)}
+                points={steppedPolylinePoints(segment, x, y, to)}
               />
             ))}
           </g>
@@ -142,9 +143,11 @@ function ObjectiveHoverLayer({
         aria-label="Fuzz objective 按操作帧输出"
       >
         {frames.map((frame) => {
-          const center = ((frame.frame - from) / span) * 100;
-          const left = Math.max(0, center - frameWidth / 2);
-          const right = Math.min(100, center + frameWidth / 2);
+          const left = Math.max(
+            0,
+            ((frame.frame - from) / span) * 100,
+          );
+          const right = Math.min(100, left + frameWidth);
           const pointTypes = pointTypesAt(
             frame.frame,
             frame.successful,
@@ -512,6 +515,7 @@ export function TrainingTimeline({
 }
 
 export interface TrainingResultTimelineProps {
+  frameOrigin?: number;
   targetFrame?: number;
   windows: FrameWindow[];
   actualInputs: readonly { frame: number; keys: readonly string[] }[];
@@ -520,27 +524,50 @@ export interface TrainingResultTimelineProps {
 }
 
 export function TrainingResultTimeline({
+  frameOrigin = 0,
   targetFrame,
   windows,
   actualInputs,
   failureFrame,
   objectives,
 }: TrainingResultTimelineProps) {
-  const inputFrames = actualInputs.map((input) => input.frame);
+  const localTargetFrame =
+    targetFrame === undefined ? undefined : targetFrame - frameOrigin;
+  const localWindows = windows.map((window) => ({
+    from: window.from - frameOrigin,
+    to: window.to - frameOrigin,
+  }));
+  const localInputs = actualInputs.map((input) => ({
+    ...input,
+    frame: input.frame - frameOrigin,
+  }));
+  const localFailureFrame =
+    failureFrame === undefined ? undefined : failureFrame - frameOrigin;
+  const localObjectives = objectives.map((objective) => ({
+    ...objective,
+    points: objective.points.map((point) => ({
+      ...point,
+      frame: point.frame - frameOrigin,
+    })),
+  }));
+  const inputFrames = localInputs.map((input) => input.frame);
   const points = [
+    0,
     ...inputFrames,
-    ...windows.flatMap((window) => [window.from, window.to]),
-    ...(targetFrame === undefined ? [] : [targetFrame]),
-    ...(failureFrame === undefined ? [] : [failureFrame]),
+    ...localWindows.flatMap((window) => [window.from, window.to]),
+    ...localObjectives.flatMap((objective) =>
+      objective.points.map((point) => point.frame),
+    ),
+    ...(localTargetFrame === undefined ? [] : [localTargetFrame]),
+    ...(localFailureFrame === undefined ? [] : [localFailureFrame]),
   ];
-  const minimum = points.length === 0 ? 0 : Math.min(...points);
-  const maximum = Math.max(...points, minimum + 16);
+  const maximum = Math.max(...points, 0);
   const padding = 3;
-  const from = minimum - padding;
-  const span = Math.max(16, maximum - minimum + padding * 2);
+  const from = 0;
+  const span = Math.max(16, maximum + padding);
   const percent = (value: number) => `${((value - from) / span) * 100}%`;
   const outputAt = (value: number) => {
-    const objective = objectives[0];
+    const objective = localObjectives[0];
     const point = objective?.points.find(
       (candidate) => candidate.frame === value,
     );
@@ -550,17 +577,17 @@ export function TrainingResultTimeline({
   };
   return (
     <div className="training-result-timeline" aria-label="本次操作时间线">
-      <ObjectiveCurve series={objectives} from={from} to={from + span} />
+      <ObjectiveCurve series={localObjectives} from={from} to={from + span} />
       <ObjectiveHoverLayer
-        series={objectives}
+        series={localObjectives}
         from={from}
         to={from + span}
-        targetFrame={targetFrame}
-        windows={windows}
-        actualInputs={actualInputs}
-        failureFrame={failureFrame}
+        targetFrame={localTargetFrame}
+        windows={localWindows}
+        actualInputs={localInputs}
+        failureFrame={localFailureFrame}
       />
-      {windows.map((window, index) => (
+      {localWindows.map((window, index) => (
         <i
           key={`${window.from}-${window.to}-${index}`}
           className="training-window"
@@ -570,18 +597,20 @@ export function TrainingResultTimeline({
           }}
         />
       ))}
-      {targetFrame !== undefined && (
+      {localTargetFrame !== undefined && (
         <b
           className="training-result-target"
-          style={{ left: percent(targetFrame) }}
+          style={{ left: percent(localTargetFrame) }}
         >
           <span>
-            最佳操作 F{targetFrame}
-            {outputAt(targetFrame) ? ` · ${outputAt(targetFrame)}` : ""}
+            最佳操作 F{localTargetFrame}
+            {outputAt(localTargetFrame)
+              ? ` · ${outputAt(localTargetFrame)}`
+              : ""}
           </span>
         </b>
       )}
-      {actualInputs.map((input, index) => (
+      {localInputs.map((input, index) => (
         <b
           key={`${input.frame}-${index}`}
           className={`training-result-input label-row-${(index % 3) + 1}`}
@@ -593,12 +622,12 @@ export function TrainingResultTimeline({
           </span>
         </b>
       ))}
-      {failureFrame !== undefined && (
+      {localFailureFrame !== undefined && (
         <b
           className="training-result-failure"
-          style={{ left: percent(failureFrame) }}
+          style={{ left: percent(localFailureFrame) }}
         >
-          <span>失败 F{failureFrame}</span>
+          <span>失败 F{localFailureFrame}</span>
         </b>
       )}
     </div>

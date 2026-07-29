@@ -48,7 +48,7 @@ describe("training result timeline", () => {
     ).toBeInTheDocument();
   });
 
-  it("draws frame values as midpoint steps without interpolated slopes", () => {
+  it("holds each frame output until the following frame boundary", () => {
     const { container } = render(
       <TrainingResultTimeline
         windows={[]}
@@ -62,13 +62,14 @@ describe("training result timeline", () => {
       ?.getAttribute("points")
       ?.split(" ")
       .map((point) => point.split(",").map(Number));
-    expect(points).toHaveLength(7);
+    expect(points).toHaveLength(6);
     expect(points?.[1]?.[1]).toBe(points?.[0]?.[1]);
     expect(points?.[2]?.[0]).toBe(points?.[1]?.[0]);
     expect(points?.[3]?.[1]).toBe(points?.[2]?.[1]);
-    expect(points?.[4]?.[1]).toBe(points?.[3]?.[1]);
-    expect(points?.[5]?.[0]).toBe(points?.[4]?.[0]);
-    expect(points?.[6]?.[1]).toBe(points?.[5]?.[1]);
+    expect(points?.[4]?.[0]).toBe(points?.[3]?.[0]);
+    expect(points?.[5]?.[1]).toBe(points?.[4]?.[1]);
+    expect(points?.[1]?.[0]).toBeCloseTo(100 / 16);
+    expect(points?.[3]?.[0]).toBeCloseTo(200 / 16);
   });
 
   it("exposes per-frame Fuzzer speed and success explanation through custom hover details", () => {
@@ -101,7 +102,48 @@ describe("training result timeline", () => {
     expect(tooltip).toHaveStyle({ left: "252px", top: "192px" });
     expect(timeline.queryByText("终态未满足成功条件")).not.toBeInTheDocument();
 
-    const hit = container.querySelector<HTMLElement>(".training-objective-hit");
-    expect(Number.parseFloat(hit?.style.width ?? "")).toBeCloseTo(100 / 22);
+    const hits = container.querySelectorAll<HTMLElement>(
+      ".training-objective-hit",
+    );
+    expect(Number.parseFloat(hits[0]?.style.width ?? "")).toBeCloseTo(
+      100 / 16,
+    );
+    expect(Number.parseFloat(hits[0]?.style.left ?? "")).toBeCloseTo(0);
+    expect(Number.parseFloat(hits[1]?.style.left ?? "")).toBeCloseTo(
+      100 / 16,
+    );
+  });
+
+  it("normalizes result frames to a local F0 origin", () => {
+    const shiftedObjectives = objectives.map((objective) => ({
+      ...objective,
+      points: objective.points.map((point) => ({
+        ...point,
+        frame: point.frame + 40,
+      })),
+    }));
+    const { container } = render(
+      <TrainingResultTimeline
+        frameOrigin={40}
+        targetFrame={40}
+        windows={[{ from: 40, to: 41 }]}
+        actualInputs={[{ frame: 40, keys: ["dash"] }]}
+        failureFrame={42}
+        objectives={shiftedObjectives}
+      />,
+    );
+
+    const timeline = within(container);
+    expect(
+      timeline.getByText("最佳操作 F0 · 325 px/s"),
+    ).toBeInTheDocument();
+    expect(
+      timeline.getByText("实际 F0 DASH · 325 px/s"),
+    ).toBeInTheDocument();
+    expect(timeline.getByText("失败 F2")).toBeInTheDocument();
+    expect(
+      container.querySelector<HTMLElement>(".training-result-target")?.style
+        .left,
+    ).toBe("0%");
   });
 });
