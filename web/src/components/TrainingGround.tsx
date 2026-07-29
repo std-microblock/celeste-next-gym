@@ -1534,10 +1534,11 @@ export function TrainingGround({
           <label className="training-assist">
             <input
               type="checkbox"
-              checked={autoSlowdown}
+              checked={lessonStage === "assisted" && autoSlowdown}
+              disabled={lessonStage !== "assisted"}
               onChange={(event) => setAutoSlowdown(event.target.checked)}
             />
-            自动慢放
+            {lessonStage === "free" ? "自由阶段" : "自动慢放"}
           </label>
         </div>
       </section>
@@ -1547,12 +1548,20 @@ export function TrainingGround({
             frame={timelineFrame}
             frameCount={timelineFrameCount}
             fuzzStart={fuzzStartFrame}
-            targetFrame={prediction.targetFrame}
-            windows={prediction.windows}
+            targetFrame={
+              lessonStage === "free" && !outcome
+                ? undefined
+                : prediction.targetFrame
+            }
+            windows={
+              lessonStage === "free" && !outcome ? [] : prediction.windows
+            }
             actualInputs={actualInputs}
             failureFrame={failureFrame}
             resetFrame={resetFrame}
-            objectives={prediction.objectives}
+            objectives={
+              lessonStage === "free" && !outcome ? [] : prediction.objectives
+            }
             followTarget={
               followReference && !outcome && lessonStage !== "free"
             }
