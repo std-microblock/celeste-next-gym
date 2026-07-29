@@ -65,10 +65,27 @@ describe("training recorder runtime", () => {
     await waitFor(() => expect(view.getByText("已暂停待命")).toBeInTheDocument());
     fireEvent.keyDown(window, { code: "Semicolon" });
     callbacks.shift()?.(1_000_000);
+    await waitFor(() =>
+      expect(view.getByText("目标节点 1/1")).toBeInTheDocument(),
+    );
+    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.click(view.getByLabelText("水平速度"));
+    fireEvent.click(view.getByRole("button", { name: "生成教程" }));
     await waitFor(() => expect(onChange).toHaveBeenCalledTimes(1));
     expect(
       onChange.mock.calls[0][0].training.modules[0].tutorial.fuzz.inputs,
     ).toEqual([{ id: "dash", keys: ["dash"], at: 0, verify: true }]);
+    expect(
+      onChange.mock.calls[0][0].training.modules[0].tutorial.fuzz.checkpoints,
+    ).toEqual([
+      expect.objectContaining({
+        id: "recorded-node-0",
+        at: 0,
+        objectives: [
+          expect.objectContaining({ expression: "after.speed.x" }),
+        ],
+      }),
+    ]);
     expect(view.getByText("录制完成")).toBeInTheDocument();
     fireEvent.keyDown(window, { code: "KeyR" });
     await waitFor(() => expect(onChange).toHaveBeenCalledTimes(2));

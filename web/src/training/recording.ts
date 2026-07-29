@@ -7,14 +7,62 @@ import {
   type FrameButtons,
   type SimState,
 } from "../model";
-import type { TrainingInput } from "./session";
+import type {
+  TrainingCheckpoint,
+  TrainingInput,
+  TrainingObjective,
+} from "./session";
 import type { TrainingProject } from "./editorProject";
 import { triggerContainsPlayer } from "./course";
 
-const DIRECTION_ACTIONS = new Set<Action>(["up", "down", "left", "right"]);
+const DIRECTION_ACTIONS = ["up", "down", "left", "right"] as const;
+const DIRECTION_ACTION_SET = new Set<Action>(DIRECTION_ACTIONS);
 export const RECORDED_ACTIONS = ACTIONS.filter(
-  (action) => !DIRECTION_ACTIONS.has(action),
+  (action) => !DIRECTION_ACTION_SET.has(action),
 );
+
+export interface RecordedDirectionPlan {
+  inputs: TrainingInput[];
+  variables: Array<{
+    name: string;
+    range: { from: number; to: number };
+  }>;
+  /** Keeps the recorded tail length when the final direction change is fuzzed. */
+  observeUntil: number | string;
+  changes: Array<{ frame: number; at: string }>;
+}
+
+export type RecordingTargetKind =
+  | "speed_x"
+  | "speed_y"
+  | "speed_total"
+  | "dashes"
+  | "coordinate_crossing"
+  | "stamina";
+
+export const RECORDING_TARGET_OPTIONS: ReadonlyArray<{
+  id: RecordingTargetKind;
+  label: string;
+}> = [
+  { id: "speed_x", label: "水平速度" },
+  { id: "speed_y", label: "垂直速度" },
+  { id: "speed_total", label: "总速度" },
+  { id: "dashes", label: "冲刺次数" },
+  { id: "coordinate_crossing", label: "坐标越过" },
+  { id: "stamina", label: "体力" },
+];
+
+export interface RecordedCriticalNode {
+  id: string;
+  frame: number;
+  at: number | string;
+  label: string;
+}
+
+export type RecordingTargetSelections = Record<
+  string,
+  RecordingTargetKind[]
+>;
 
 function heldFrames(
   frames: readonly FrameButtons[],
@@ -63,26 +111,243 @@ export function recordedInputsFromFrames(
   return inputs;
 }
 
-function recordedDirectionInputsFromFrames(
+function directionKeys(frame: FrameButtons): Action[] {
+  return DIRECTION_ACTIONS.filter((action) => frame[action]);
+}
+
+function sameDirections(left: readonly Action[], right: readonly Action[]) {
+  return (
+    left.length === right.length &&
+    left.every((direction, index) => direction === right[index])
+  );
+}
+
+/**
+ * Records WASD as direction-combination segments. A segment that reaches the
+ * end region is infinite; every real transition/release gets one ordered Fuzz
+ * variable shared by the old segment end and the new segment start.
+ */
+export function recordedDirectionPlanFromFrames(
   frames: readonly FrameButtons[],
-): TrainingInput[] {
-  const inputs: TrainingInput[] = [];
-  for (const action of DIRECTION_ACTIONS) {
-    let occurrence = 0;
-    for (let frame = 0; frame < frames.length; frame += 1) {
-      if (!frames[frame][action] || (frame > 0 && frames[frame - 1][action]))
-        continue;
-      occurrence += 1;
-      inputs.push({
-        id: `hold-${action}${occurrence === 1 ? "" : `-${occurrence}`}`,
-        keys: [action],
-        at: frame,
-        held_time: heldFrames(frames, frame, action),
-        verify: false,
+): RecordedDirectionPlan {
+  if (!frames.length)
+    return { inputs: [], variables: [], observeUntil: 1, changes: [] };
+
+  const transitions: number[] = [];
+  const segments: Array<{
+    keys: Action[];
+    start: number;
+    end?: number;
+  }> = [];
+  let current = directionKeys(frames[0]);
+  let start = 0;
+  for (let frame = 1; frame < frames.length; frame += 1) {
+    const next = directionKeys(frames[frame]);
+    if (sameDirections(current, next)) continue;
+    transitions.push(frame);
+    if (current.length) segments.push({ keys: current, start, end: frame });
+    current = next;
+    start = frame;
+  }
+  if (current.length) segments.push({ keys: current, start });
+
+  const variables = transitions.map((frame, index) => {
+    const previous = transitions[index - 1];
+    const following = transitions[index + 1];
+    return {
+      name: `direction_change_${index + 1}`,
+      range: {
+        from:
+          previous === undefined
+            ? Math.max(1, frame - 6)
+            : Math.floor((previous + frame) / 2) + 1,
+        to:
+          following === undefined
+            ? frame + 6
+            : Math.floor((frame + following) / 2),
+      },
+    };
+  });
+  const variableAt = new Map(
+    transitions.map((frame, index) => [frame, variables[index].name]),
+  );
+  const occurrences = new Map<string, number>();
+  const inputs = segments.map((segment) => {
+    const base = segment.keys.join("-");
+    const occurrence = (occurrences.get(base) ?? 0) + 1;
+    occurrences.set(base, occurrence);
+    const startAt = segment.start === 0 ? 0 : variableAt.get(segment.start)!;
+    const endAt =
+      segment.end === undefined ? undefined : variableAt.get(segment.end)!;
+    return {
+      id: occurrence === 1 ? `hold-${base}` : `hold-${base}-${occurrence}`,
+      keys: segment.keys,
+      at: startAt,
+      held_time:
+        endAt === undefined
+          ? "hold::inf"
+          : startAt === 0
+            ? endAt
+            : `${endAt} - ${startAt}`,
+      verify: false,
+    } satisfies TrainingInput;
+  });
+  const lastTransition = transitions.at(-1);
+  const observeUntil =
+    lastTransition === undefined
+      ? Math.max(1, frames.length)
+      : `max(${Math.max(1, frames.length)}, ${variableAt.get(lastTransition)} + ${Math.max(1, frames.length - lastTransition)})`;
+  return {
+    inputs,
+    variables,
+    observeUntil,
+    changes: transitions.map((frame) => ({
+      frame,
+      at: variableAt.get(frame)!,
+    })),
+  };
+}
+
+/** Every action edge and direction transition becomes one editor review node. */
+export function recordedCriticalNodesFromFrames(
+  frames: readonly FrameButtons[],
+): RecordedCriticalNode[] {
+  const plan = recordedDirectionPlanFromFrames(frames);
+  const directionChanges = new Map(
+    plan.changes.map((change) => [change.frame, change.at]),
+  );
+  const nodes: RecordedCriticalNode[] = [];
+  let previous = makeEmptyButtons();
+  for (const [frame, current] of frames.entries()) {
+    const actions = RECORDED_ACTIONS.filter(
+      (action) => current[action] && !previous[action],
+    );
+    const changedAt = directionChanges.get(frame);
+    if (actions.length || changedAt) {
+      const labels: string[] = [];
+      if (actions.length) labels.push(`按 ${actionText(actions)}`);
+      if (changedAt) {
+        const directions = directionKeys(current);
+        labels.push(
+          directions.length
+            ? `方向切换为 ${actionText(directions)}`
+            : "松开方向",
+        );
+      } else if (frame === 0) {
+        const directions = directionKeys(current);
+        if (directions.length)
+          labels.push(`保持 ${actionText(directions)}`);
+      }
+      nodes.push({
+        id: `recorded-node-${frame}`,
+        frame,
+        at: actions.length ? frame : changedAt!,
+        label: `F${frame} · ${labels.join("；")}`,
       });
     }
+    previous = current;
   }
-  return inputs.sort((left, right) => Number(left.at) - Number(right.at));
+  return nodes;
+}
+
+function conciseNumber(value: number): string {
+  return Number(value.toFixed(2)).toString();
+}
+
+function targetObjective(
+  kind: RecordingTargetKind,
+  state: SimState,
+  initial: SimState,
+): { objective: TrainingObjective; description: string } {
+  switch (kind) {
+    case "speed_x":
+      return {
+        objective: {
+          type: "approach",
+          expression: "after.speed.x",
+          target: state.speed.x,
+        },
+        description: `水平速度接近 ${conciseNumber(state.speed.x)} px/s`,
+      };
+    case "speed_y":
+      return {
+        objective: {
+          type: "approach",
+          expression: "after.speed.y",
+          target: state.speed.y,
+        },
+        description: `垂直速度接近 ${conciseNumber(state.speed.y)} px/s`,
+      };
+    case "speed_total": {
+      const speed = Math.hypot(state.speed.x, state.speed.y);
+      return {
+        objective: {
+          type: "approach",
+          expression:
+            "sqrt(after.speed.x * after.speed.x + after.speed.y * after.speed.y)",
+          target: speed,
+        },
+        description: `总速度接近 ${conciseNumber(speed)} px/s`,
+      };
+    }
+    case "dashes":
+      return {
+        objective: {
+          type: "approach",
+          expression: "after.dashes",
+          target: state.dashes,
+        },
+        description: `剩余冲刺次数为 ${state.dashes}`,
+      };
+    case "coordinate_crossing": {
+      const useX =
+        Math.abs(state.pos.x - initial.pos.x) >=
+        Math.abs(state.pos.y - initial.pos.y);
+      const axis = useX ? "x" : "y";
+      const target = state.pos[axis];
+      return {
+        objective: {
+          type: "approach",
+          expression: `after.pos.${axis}`,
+          target,
+        },
+        description: `坐标越过 ${axis.toUpperCase()}=${conciseNumber(target)}`,
+      };
+    }
+    case "stamina":
+      return {
+        objective: {
+          type: "approach",
+          expression: "after.stamina",
+          target: state.stamina,
+        },
+        description: `体力接近 ${conciseNumber(state.stamina)}`,
+      };
+  }
+}
+
+export function recordingCheckpoints(
+  initial: SimState,
+  frames: readonly FrameButtons[],
+  snapshots: readonly SimState[],
+  selections: RecordingTargetSelections,
+): TrainingCheckpoint[] {
+  return recordedCriticalNodesFromFrames(frames).flatMap((node) => {
+    const selected = selections[node.id] ?? [];
+    if (!selected.length) return [];
+    const state = snapshots[node.frame + 1] ?? snapshots.at(-1) ?? initial;
+    const targets = selected.map((kind) =>
+      targetObjective(kind, state, initial),
+    );
+    return [
+      {
+        id: node.id,
+        at: node.at,
+        description: `${node.label}；${targets.map((target) => target.description).join("，")}`,
+        objectives: targets.map((target) => target.objective),
+      },
+    ];
+  });
 }
 
 function actionText(keys: readonly string[]): string {
@@ -109,6 +374,8 @@ export function applyTutorialRecording(
   moduleIndex: number,
   initialState: SimState,
   frames: readonly FrameButtons[],
+  snapshots: readonly SimState[] = [initialState],
+  targetSelections: RecordingTargetSelections = {},
 ): TrainingProject {
   const inputs = recordedInputsFromFrames(frames);
   if (!inputs.length) throw new Error("录制中没有检测到非方向动作");
@@ -117,6 +384,17 @@ export function applyTutorialRecording(
   if (!module) throw new Error(`教程模块 ${moduleIndex + 1} 不存在`);
   const entry = inputs[0];
   const entryText = actionText(entry.keys);
+  const checkpoints = recordingCheckpoints(
+    initialState,
+    frames,
+    snapshots,
+    targetSelections,
+  );
+  const descriptionAt = new Map(
+    checkpoints
+      .filter((checkpoint) => typeof checkpoint.at === "number")
+      .map((checkpoint) => [checkpoint.at, checkpoint.description]),
+  );
 
   module.tutorial.entry.input_id = entry.id;
   module.tutorial.entry.hint = `开始区已激活：按 ${entryText} 开始。`;
@@ -131,25 +409,31 @@ export function applyTutorialRecording(
       typeof input.held_time === "number" && input.held_time > 1
         ? `并保持 ${input.held_time} 帧`
         : "";
+    const target =
+      typeof input.at === "number" ? descriptionAt.get(input.at) : undefined;
     return {
-      prompt: `按 ${text}${hold}。`,
+      prompt: target ? `${target}。` : `按 ${text}${hold}。`,
       order_error: {
         title: "动作顺序不正确",
         body: `这里需要 ${text}。`,
       },
       window_error: {
         title: "错过输入窗口",
-        body: `请在录制的 F${input.at} 附近输入 ${text}。`,
+        body: target
+          ? `请在录制的 F${input.at} 附近输入 ${text}，并达到所选目标。`
+          : `请在录制的 F${input.at} 附近输入 ${text}。`,
       },
     };
   });
-  module.tutorial.fuzz.inputs = [
-    ...recordedDirectionInputsFromFrames(frames),
-    ...inputs,
-  ].sort((left, right) => Number(left.at) - Number(right.at));
-  module.tutorial.fuzz.variables = [];
-  module.tutorial.fuzz.observe_until = Math.max(1, frames.length);
+  module.tutorial.summary = checkpoints.length
+    ? `录制目标：${checkpoints.map((checkpoint) => checkpoint.description).join("；")}`
+    : `按录制顺序完成 ${inputs.map((input) => actionText(input.keys)).join("、")}。`;
+  const directionPlan = recordedDirectionPlanFromFrames(frames);
+  module.tutorial.fuzz.inputs = [...directionPlan.inputs, ...inputs];
+  module.tutorial.fuzz.variables = directionPlan.variables;
+  module.tutorial.fuzz.observe_until = directionPlan.observeUntil;
   module.tutorial.fuzz.success = endRegionSuccess(module.end_trigger.bounds);
+  module.tutorial.fuzz.checkpoints = checkpoints;
   module.tutorial.fuzz.objectives = [
     {
       type: "approach",

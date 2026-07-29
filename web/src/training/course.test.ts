@@ -36,6 +36,13 @@ describe("map-driven training helpers", () => {
     expect(outputAccuracy(0, 0)).toBe(100);
     expect(average([100, 80])).toBe(90);
     expect(objectiveOutputName("final.speed.x")).toBe("水平速度");
+    expect(objectiveOutputName("after.speed.x")).toBe("水平速度");
+    expect(
+      objectiveOutputName(
+        "sqrt(after.speed.x * after.speed.x + after.speed.y * after.speed.y)",
+      ),
+    ).toBe("总速度");
+    expect(objectiveOutputName("after.dashes")).toBe("冲刺次数");
     expect(formatObjectiveOutput("final.speed.x", 325)).toBe("325 px/s");
   });
 

@@ -9,7 +9,11 @@ import {
   hasRecordedAction,
   nextSequentialModuleAtPlayer,
   recordingStartState,
+  recordedCriticalNodesFromFrames,
+  recordedDirectionPlanFromFrames,
   recordedInputsFromFrames,
+  recordingCheckpoints,
+  type RecordingTargetSelections,
 } from "./recording";
 
 function buttons(...pressed: Array<keyof ReturnType<typeof makeEmptyButtons>>) {
@@ -53,29 +57,37 @@ describe("tutorial editor recording", () => {
     const module = next.training.modules[0];
     expect(module.tutorial.entry.input_id).toBe("dash");
     expect(module.tutorial.fuzz.inputs.map((input) => input.keys)).toEqual([
-      ["down"],
+      ["down", "right"],
       ["right"],
       ["dash"],
       ["jump"],
     ]);
     expect(module.tutorial.fuzz.inputs.slice(0, 2)).toEqual([
       {
-        id: "hold-down",
-        keys: ["down"],
+        id: "hold-down-right",
+        keys: ["down", "right"],
         at: 0,
-        held_time: 2,
+        held_time: "direction_change_1",
         verify: false,
       },
       {
         id: "hold-right",
         keys: ["right"],
-        at: 0,
-        held_time: 3,
+        at: "direction_change_1",
+        held_time: "hold::inf",
         verify: false,
       },
     ]);
+    expect(module.tutorial.fuzz.variables).toEqual([
+      {
+        name: "direction_change_1",
+        range: { from: 1, to: 8 },
+      },
+    ]);
     expect(module.tutorial.teaching.steps).toHaveLength(2);
-    expect(module.tutorial.fuzz.observe_until).toBe(3);
+    expect(module.tutorial.fuzz.observe_until).toBe(
+      "max(3, direction_change_1 + 1)",
+    );
     expect(module.tutorial.fuzz.success).toContain("!final.dead");
     expect(module.tutorial.fuzz.objectives).toEqual([
       {
@@ -95,6 +107,154 @@ describe("tutorial editor recording", () => {
     expect(validateTrainingProject(next)).toEqual([]);
     expect(project.training.modules[0].tutorial.fuzz.inputs).not.toEqual(
       module.tutorial.fuzz.inputs,
+    );
+  });
+
+  it("keeps unchanged WASD at F0 forever", () => {
+    expect(
+      recordedDirectionPlanFromFrames([
+        buttons("down", "right", "dash"),
+        buttons("down", "right"),
+        buttons("down", "right", "jump"),
+      ]),
+    ).toEqual({
+      inputs: [
+        {
+          id: "hold-down-right",
+          keys: ["down", "right"],
+          at: 0,
+          held_time: "hold::inf",
+          verify: false,
+        },
+      ],
+      variables: [],
+      observeUntil: 3,
+      changes: [],
+    });
+  });
+
+  it("shares one fuzzed time between direction release and replacement", () => {
+    const plan = recordedDirectionPlanFromFrames([
+      buttons("right", "dash"),
+      buttons("right"),
+      buttons(),
+      buttons("left"),
+      buttons("left"),
+    ]);
+    expect(plan.inputs).toEqual([
+      {
+        id: "hold-right",
+        keys: ["right"],
+        at: 0,
+        held_time: "direction_change_1",
+        verify: false,
+      },
+      {
+        id: "hold-left",
+        keys: ["left"],
+        at: "direction_change_2",
+        held_time: "hold::inf",
+        verify: false,
+      },
+    ]);
+    expect(plan.variables).toEqual([
+      {
+        name: "direction_change_1",
+        range: { from: 1, to: 2 },
+      },
+      {
+        name: "direction_change_2",
+        range: { from: 3, to: 9 },
+      },
+    ]);
+    expect(plan.changes).toEqual([
+      { frame: 2, at: "direction_change_1" },
+      { frame: 3, at: "direction_change_2" },
+    ]);
+  });
+
+  it("builds multi-select objectives and descriptions at every critical node", () => {
+    const project = createTrainingProject(PLAYGROUND);
+    const initial = structuredClone(
+      project.training.modules[0].validation.initial_state,
+    );
+    const frames = [
+      buttons("right", "dash"),
+      buttons("right"),
+      buttons("jump"),
+      buttons("left"),
+    ];
+    const snapshots = Array.from({ length: 5 }, () =>
+      structuredClone(initial),
+    );
+    snapshots[1].speed = { x: 240, y: -60 };
+    snapshots[1].pos = { x: initial.pos.x + 12, y: initial.pos.y };
+    snapshots[1].dashes = 0;
+    snapshots[1].stamina = 87.5;
+    snapshots[4].speed.y = 105;
+    const nodes = recordedCriticalNodesFromFrames(frames);
+    expect(nodes).toEqual([
+      {
+        id: "recorded-node-0",
+        frame: 0,
+        at: 0,
+        label: "F0 · 按 冲刺；保持 右",
+      },
+      {
+        id: "recorded-node-2",
+        frame: 2,
+        at: 2,
+        label: "F2 · 按 跳跃；松开方向",
+      },
+      {
+        id: "recorded-node-3",
+        frame: 3,
+        at: "direction_change_2",
+        label: "F3 · 方向切换为 左",
+      },
+    ]);
+    const selections: RecordingTargetSelections = {
+      "recorded-node-0": [
+        "speed_x",
+        "speed_total",
+        "dashes",
+        "coordinate_crossing",
+        "stamina",
+      ],
+      "recorded-node-3": ["speed_y"],
+    };
+    const checkpoints = recordingCheckpoints(
+      initial,
+      frames,
+      snapshots,
+      selections,
+    );
+    expect(checkpoints).toHaveLength(2);
+    expect(checkpoints[0].objectives.map((item) => item.expression)).toEqual([
+      "after.speed.x",
+      "sqrt(after.speed.x * after.speed.x + after.speed.y * after.speed.y)",
+      "after.dashes",
+      "after.pos.x",
+      "after.stamina",
+    ]);
+    expect(checkpoints[0].description).toContain("水平速度接近 240 px/s");
+    expect(checkpoints[0].description).toContain("坐标越过 X=");
+    expect(checkpoints[1].at).toBe("direction_change_2");
+
+    const next = applyTutorialRecording(
+      project,
+      0,
+      initial,
+      frames,
+      snapshots,
+      selections,
+    );
+    expect(next.training.modules[0].tutorial.fuzz.checkpoints).toEqual(
+      checkpoints,
+    );
+    expect(next.training.modules[0].tutorial.summary).toContain("录制目标");
+    expect(next.training.modules[0].tutorial.teaching.steps[0].prompt).toContain(
+      "水平速度接近 240 px/s",
     );
   });
 

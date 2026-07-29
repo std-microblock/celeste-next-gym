@@ -68,6 +68,9 @@ describe("training recording controls", () => {
     );
     expect(container.querySelectorAll("rect.module-start")).toHaveLength(1);
     expect(container.querySelectorAll("rect.module-end")).toHaveLength(1);
+    expect(
+      container.querySelectorAll(".training-trigger-resize-handles rect"),
+    ).toHaveLength(4);
     expect(within(container).getByText("END TRIGGER ID")).toBeInTheDocument();
   });
 
@@ -141,5 +144,66 @@ describe("training recording controls", () => {
     expect(
       onChange.mock.calls.at(-1)?.[0].training.modules[0].trigger.bounds.x,
     ).toBe(project.training.modules[0].trigger.bounds.x);
+  });
+
+  it("resizes the selected start, end, and finish trigger with corner handles", () => {
+    const project = createTrainingProject(PLAYGROUND);
+    const onChange = vi.fn();
+    const view = render(
+      <TrainingFlowEditor
+        project={project}
+        theme={VISUAL_THEMES[0]}
+        bindings={{
+          up: "KeyW",
+          down: "KeyS",
+          left: "KeyA",
+          right: "KeyD",
+          jump: "KeyL",
+          dash: "Semicolon",
+          crouch_dash: "KeyK",
+          grab: "Quote",
+        }}
+        ready
+        onChange={onChange}
+        onStartRecording={vi.fn()}
+      />,
+    );
+    const overlay = view.container.querySelector(
+      "svg.training-trigger-overlay",
+    )!;
+    const end = view.container.querySelector("rect.module-end")!;
+    const original = project.training.modules[0].end_trigger.bounds;
+    fireEvent.pointerDown(end, {
+      pointerId: 2,
+      clientX: original.x,
+      clientY: original.y,
+    });
+    fireEvent.pointerUp(overlay, { pointerId: 2 });
+    const southeast = view.container.querySelector(
+      '.training-trigger-resize-handles rect[data-corner="se"]',
+    )!;
+    fireEvent.pointerDown(southeast, {
+      pointerId: 3,
+      clientX: original.x + original.width,
+      clientY: original.y + original.height,
+    });
+    fireEvent.pointerMove(overlay, {
+      pointerId: 3,
+      clientX: original.x + original.width + 16,
+      clientY: original.y + original.height + 8,
+    });
+    const resized =
+      onChange.mock.calls.at(-1)?.[0].training.modules[0].end_trigger.bounds;
+    expect(resized.width).toBe(original.width + 16);
+    expect(resized.height).toBe(original.height + 8);
+
+    fireEvent.click(
+      within(view.container).getByRole("button", { name: /终点 Trigger/ }),
+    );
+    expect(
+      view.container.querySelectorAll(
+        ".training-trigger-resize-handles rect",
+      ),
+    ).toHaveLength(4);
   });
 });

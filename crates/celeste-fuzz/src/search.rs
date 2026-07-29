@@ -29,9 +29,11 @@ pub struct CompiledFuzz {
     spec: FuzzSpec,
     variables: Vec<CompiledVariable>,
     inputs: Vec<CompiledInput>,
+    checkpoints: Vec<CompiledCheckpoint>,
     observe_until: CompiledNumber,
     success: Vec<CompiledExpression>,
     objectives: Vec<CompiledObjective>,
+    global_objective_start: usize,
     estimated_candidates: u64,
 }
 
@@ -55,6 +57,12 @@ struct CompiledInput {
 }
 
 #[derive(Clone)]
+struct CompiledCheckpoint {
+    at: CompiledNumber,
+    objective_indices: Vec<usize>,
+}
+
+#[derive(Clone)]
 struct CompiledObjective {
     kind: ObjectiveKind,
     expression: CompiledExpression,
@@ -72,7 +80,8 @@ struct ResolvedCandidate {
     tuple: Vec<i64>,
     observe_until: u32,
     inputs: Vec<InputState>,
-    checkpoints: BTreeMap<u32, Vec<usize>>,
+    input_checkpoints: BTreeMap<u32, Vec<usize>>,
+    objective_checkpoints: BTreeMap<u32, Vec<usize>>,
     metadata: Vec<ResolvedInputMetadata>,
     verified_inputs: Vec<VerifiedInput>,
     rhai_evaluations: u64,
@@ -215,23 +224,46 @@ impl CompiledFuzz {
             .iter()
             .map(|source| compile_cached(source, &engine, &mut cache))
             .collect::<Result<Vec<_>, _>>()?;
-        let objectives = spec
-            .objectives
+        let mut objectives = Vec::new();
+        let checkpoints = spec
+            .checkpoints
             .iter()
-            .map(|objective| {
-                Ok(CompiledObjective {
-                    kind: objective.kind.clone(),
-                    expression: compile_cached(&objective.expression, &engine, &mut cache)?,
+            .map(|checkpoint| {
+                let mut objective_indices = Vec::new();
+                for objective in &checkpoint.objectives {
+                    objective_indices.push(objectives.len());
+                    objectives.push(CompiledObjective {
+                        kind: objective.kind.clone(),
+                        expression: compile_cached(&objective.expression, &engine, &mut cache)?,
+                    });
+                }
+                Ok(CompiledCheckpoint {
+                    at: compile_number(&checkpoint.at, &engine, &mut cache)?,
+                    objective_indices,
                 })
             })
             .collect::<Result<Vec<_>, FuzzError>>()?;
+        let global_objective_start = objectives.len();
+        objectives.extend(
+            spec.objectives
+                .iter()
+                .map(|objective| {
+                    Ok(CompiledObjective {
+                        kind: objective.kind.clone(),
+                        expression: compile_cached(&objective.expression, &engine, &mut cache)?,
+                    })
+                })
+                .collect::<Result<Vec<_>, FuzzError>>()?,
+        );
         let compiled = Self {
             spec,
             variables,
             inputs,
+            checkpoints,
             observe_until,
             success,
             objectives,
+            global_objective_start,
             estimated_candidates: 0,
         };
         compiled.validate_configured_binding_names()?;
@@ -681,7 +713,7 @@ impl CompiledFuzz {
         let mut right = vec![false; observe_until as usize];
         let mut up = vec![false; observe_until as usize];
         let mut down = vec![false; observe_until as usize];
-        let mut checkpoints = BTreeMap::<u32, Vec<usize>>::new();
+        let mut input_checkpoints = BTreeMap::<u32, Vec<usize>>::new();
         let mut metadata = Vec::with_capacity(self.inputs.len());
         let mut verified_inputs = Vec::new();
         for (index, declaration) in self.inputs.iter().enumerate() {
@@ -747,7 +779,7 @@ impl CompiledFuzz {
                 });
             }
             if !declaration.before_input.is_empty() || !declaration.after_input.is_empty() {
-                checkpoints.entry(at).or_default().push(index);
+                input_checkpoints.entry(at).or_default().push(index);
             }
             for key in &declaration.keys {
                 match key {
@@ -826,12 +858,33 @@ impl CompiledFuzz {
                 _ => 0,
             };
         }
+        let mut objective_checkpoints = BTreeMap::<u32, Vec<usize>>::new();
+        for (index, checkpoint) in self.checkpoints.iter().enumerate() {
+            let at = self.eval_frame(
+                engine,
+                &checkpoint.at,
+                &variables,
+                "checkpoint.at",
+                index,
+                &mut expression_evaluations,
+            )?;
+            if at >= observe_until {
+                return Err(FuzzError::Spec(format!(
+                    "checkpoint {index} occurs at frame {at}, outside observe_until {observe_until}"
+                )));
+            }
+            objective_checkpoints
+                .entry(at)
+                .or_default()
+                .extend(checkpoint.objective_indices.iter().copied());
+        }
         Ok(ResolvedCandidate {
             variables,
             tuple,
             observe_until,
             inputs,
-            checkpoints,
+            input_checkpoints,
+            objective_checkpoints,
             metadata,
             verified_inputs,
             rhai_evaluations: expression_evaluations,
@@ -849,7 +902,19 @@ impl CompiledFuzz {
     ) -> Result<Option<CandidateResult>, FuzzError> {
         let mut simulator = trie.root();
         let mut current = 0u32;
-        for (&frame, declarations) in &candidate.checkpoints {
+        let checkpoint_frames = candidate
+            .input_checkpoints
+            .keys()
+            .chain(candidate.objective_checkpoints.keys())
+            .copied()
+            .collect::<BTreeSet<_>>();
+        let mut objective_values = vec![f64::NAN; self.objectives.len()];
+        for frame in checkpoint_frames {
+            let declarations = candidate
+                .input_checkpoints
+                .get(&frame)
+                .map(Vec::as_slice)
+                .unwrap_or_default();
             self.advance_to(&mut simulator, trie, candidate, &mut current, frame, stats)?;
             for &input_index in declarations {
                 if !self.evaluate_conditions(
@@ -890,6 +955,40 @@ impl CompiledFuzz {
                     return Ok(None);
                 }
             }
+            if let Some(indices) = candidate.objective_checkpoints.get(&frame) {
+                for &objective_index in indices {
+                    let objective = &self.objectives[objective_index];
+                    stats.rhai_evaluations += 1;
+                    let dynamic = self.evaluate_dynamic(
+                        engine,
+                        &objective.expression,
+                        "checkpoint objective",
+                        None,
+                        &candidate.variables,
+                        ExpressionContext {
+                            variables: &candidate.variables,
+                            initial: Some(initial),
+                            current: Some(simulator.snapshot()),
+                            before: Some(&before_snapshot),
+                            after: Some(simulator.snapshot()),
+                            final_state: None,
+                            at: Some(frame.into()),
+                            held_time: None,
+                            input_index: None,
+                            verify: None,
+                        },
+                    )?;
+                    objective_values[objective_index] =
+                        dynamic_number(dynamic).ok_or_else(|| {
+                            self.expression_error(
+                                "checkpoint objective",
+                                None,
+                                &candidate.variables,
+                                "objective result must be a finite number".into(),
+                            )
+                        })?;
+                }
+            }
         }
         self.advance_to(
             &mut simulator,
@@ -928,8 +1027,12 @@ impl CompiledFuzz {
         if !successful && !include_failed_evaluations {
             return Ok(None);
         }
-        let mut objective_values = Vec::with_capacity(self.objectives.len());
-        for objective in &self.objectives {
+        for (objective_index, objective) in self
+            .objectives
+            .iter()
+            .enumerate()
+            .skip(self.global_objective_start)
+        {
             stats.rhai_evaluations += 1;
             let dynamic = self.evaluate_dynamic(
                 engine,
@@ -950,14 +1053,14 @@ impl CompiledFuzz {
                     verify: None,
                 },
             )?;
-            objective_values.push(dynamic_number(dynamic).ok_or_else(|| {
+            objective_values[objective_index] = dynamic_number(dynamic).ok_or_else(|| {
                 self.expression_error(
                     "objective",
                     None,
                     &candidate.variables,
                     "objective result must be a finite number".into(),
                 )
-            })?);
+            })?;
         }
         Ok(Some(CandidateResult {
             bindings: candidate.variables.clone(),

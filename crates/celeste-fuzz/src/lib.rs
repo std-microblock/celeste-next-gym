@@ -10,9 +10,9 @@ mod search;
 
 pub use engine::evaluate_current_checks;
 pub use model::{
-    CandidateResult, ConnectedRegion, CoverageEntry, CoverageReport, ExactWindow, FrameInterval,
-    FuzzError, FuzzResult, FuzzSpec, HoldTime, InputDeclaration, JumpHoldPolicy, Limits, Objective,
-    ObjectiveKind, OutputMode, Range, RegionSummary, SearchOptions, SearchSpec, SearchStats,
-    Variable, VerifiedInput,
+    CandidateResult, Checkpoint, ConnectedRegion, CoverageEntry, CoverageReport, ExactWindow,
+    FrameInterval, FuzzError, FuzzResult, FuzzSpec, HoldTime, InputDeclaration, JumpHoldPolicy,
+    Limits, Objective, ObjectiveKind, OutputMode, Range, RegionSummary, SearchOptions, SearchSpec,
+    SearchStats, Variable, VerifiedInput,
 };
 pub use search::{CompiledFuzz, compile, parse_spec};

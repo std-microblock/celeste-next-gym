@@ -4241,6 +4241,20 @@ footer {
   stroke-width: 2;
   filter: drop-shadow(0 0 3px #ffd37a);
 }
+.training-trigger-overlay .training-trigger-resize-handles rect {
+  fill: #fff;
+  stroke: var(--gold);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.training-trigger-overlay .training-trigger-resize-handles rect[data-corner="nw"],
+.training-trigger-overlay .training-trigger-resize-handles rect[data-corner="se"] {
+  cursor: nwse-resize;
+}
+.training-trigger-overlay .training-trigger-resize-handles rect[data-corner="ne"],
+.training-trigger-overlay .training-trigger-resize-handles rect[data-corner="sw"] {
+  cursor: nesw-resize;
+}
 .training-trigger-overlay text {
   fill: #fff;
   stroke: #000;
@@ -4594,10 +4608,14 @@ footer {
   height: 100%;
   pointer-events: none;
 }
+.training-recorder-regions.reviewing {
+  pointer-events: auto;
+}
 .training-recorder-regions rect {
   vector-effect: non-scaling-stroke;
   stroke-width: 1;
   stroke-dasharray: 4 2;
+  pointer-events: none;
 }
 .training-recorder-regions .start {
   fill: #65d9ff18;
@@ -4610,6 +4628,116 @@ footer {
 .training-recorder-regions .active rect {
   stroke-width: 2;
   filter: drop-shadow(0 0 4px currentColor);
+}
+.training-recorder-regions .recorded-node circle {
+  fill: #ffd37a;
+  stroke: #160b20;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+.training-recorder-regions .recorded-node.selected circle {
+  fill: #fff;
+  stroke: var(--pink);
+  filter: drop-shadow(0 0 4px var(--pink));
+}
+.training-recorder-regions .recorded-node text {
+  fill: #fff;
+  stroke: #160b20;
+  stroke-width: 2;
+  paint-order: stroke fill;
+  pointer-events: none;
+  font: 7px Consolas, monospace;
+}
+.training-record-objective-window {
+  overflow: visible;
+  pointer-events: all;
+}
+.training-record-objective-window > div {
+  box-sizing: border-box;
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  min-height: 100%;
+  padding: 8px;
+  color: #f9f3fb;
+  border: 1px solid #ff8db0;
+  border-radius: 5px;
+  background: #170d25f2;
+  box-shadow: 0 8px 24px #000b;
+  backdrop-filter: blur(6px);
+  font-family: system-ui, sans-serif;
+}
+.training-record-objective-window header {
+  display: grid;
+  gap: 2px;
+}
+.training-record-objective-window header small {
+  color: var(--pink);
+  font: 6px Consolas, monospace;
+  letter-spacing: 0.08em;
+}
+.training-record-objective-window header strong {
+  overflow: hidden;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.training-record-objective-window header span {
+  color: #c8b7cf;
+  font: 5.5px Consolas, monospace;
+}
+.training-record-objective-window fieldset {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin: 0;
+  padding: 5px;
+  border: 1px solid #654a76;
+}
+.training-record-objective-window legend {
+  padding: 0 3px;
+  color: #c8b7cf;
+  font-size: 5.5px;
+}
+.training-record-objective-window label {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  font-size: 6px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.training-record-objective-window input {
+  width: 8px;
+  height: 8px;
+  margin: 0;
+  accent-color: var(--pink);
+}
+.training-record-objective-window footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+}
+.training-record-objective-window button {
+  min-width: 48px;
+  height: 20px;
+  color: #f7edf9;
+  border: 1px solid #725784;
+  background: #2a1839;
+  cursor: pointer;
+  font-size: 6px;
+}
+.training-record-objective-window button.primary {
+  color: #190812;
+  border-color: var(--pink);
+  background: var(--pink);
+  font-weight: 700;
+}
+.training-record-objective-window button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 .training-recorder-hud {
   position: absolute;
@@ -4638,6 +4766,13 @@ footer {
 }
 .training-recorder-hud.recording {
   border-color: #ff6f9baa;
+}
+.training-recorder-hud.reviewing {
+  border-color: #ffd37aaa;
+}
+.training-recorder-hud.reviewing > i {
+  background: var(--gold);
+  box-shadow: 0 0 10px var(--gold);
 }
 .training-recorder-hud.recording > i {
   background: var(--pink);

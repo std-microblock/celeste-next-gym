@@ -185,6 +185,40 @@ if (!playgroundTrace.states || playgroundTrace.states.length !== 2)
   throw new Error(
     playgroundTrace.error ?? "Decoded playground simulation failed",
   );
+const checkpointFuzz = decode(
+  fuzz_search_cached_map_msgpack(
+    encode(playgroundState),
+    JSON.stringify({
+      version: 1,
+      variables: [{ name: "frame", range: { from: 0, to: 1 } }],
+      inputs: [],
+      observe_until: 2,
+      success: ["!final.dead"],
+      checkpoints: [
+        {
+          at: "frame",
+          objectives: [
+            { type: "maximize", expression: "at" },
+            {
+              type: "maximize",
+              expression:
+                "sqrt(after.speed.x * after.speed.x + after.speed.y * after.speed.y)",
+            },
+          ],
+        },
+      ],
+    }),
+  ),
+);
+if (
+  checkpointFuzz.error ||
+  checkpointFuzz.candidates?.length !== 2 ||
+  checkpointFuzz.candidates[0].objective_values?.length !== 2 ||
+  checkpointFuzz.candidates[0].bindings?.frame !== 1
+)
+  throw new Error(
+    checkpointFuzz.error ?? "WASM checkpoint objective smoke test failed",
+  );
 const runTrace = decode(
   simulate_msgpack(
     encode(playgroundState),

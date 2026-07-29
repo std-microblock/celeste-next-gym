@@ -15,7 +15,12 @@ import {
   applyTutorialRecording,
   hasRecordedAction,
   nextSequentialModuleAtPlayer,
+  RECORDING_TARGET_OPTIONS,
+  recordedCriticalNodesFromFrames,
   recordingStartState,
+  type RecordedCriticalNode,
+  type RecordingTargetKind,
+  type RecordingTargetSelections,
 } from "../training/recording";
 import type { VisualTheme } from "../visualThemes";
 import { GameView } from "./GameView";
@@ -24,7 +29,26 @@ export type TrainingRecordingScope =
   | { type: "module"; index: number }
   | { type: "all" };
 
-type RecorderPhase = "loading" | "armed" | "recording" | "roaming" | "done";
+type RecorderPhase =
+  | "loading"
+  | "armed"
+  | "recording"
+  | "reviewing"
+  | "roaming"
+  | "done";
+
+interface PendingReview {
+  moduleIndex: number;
+  title: string;
+  initial: SimState;
+  frames: FrameButtons[];
+  snapshots: SimState[];
+  nodes: RecordedCriticalNode[];
+  selections: RecordingTargetSelections;
+  currentNode: number;
+  startGlobalFrame: number;
+  after: SimState;
+}
 
 function downloadJson(name: string, value: unknown): void {
   const url = URL.createObjectURL(
@@ -97,6 +121,9 @@ export function TrainingRecorder({
   const [completedCount, setCompletedCount] = useState(0);
   const recordingInitial = useRef<SimState | null>(null);
   const recordingFrames = useRef<FrameButtons[]>([]);
+  const recordingSnapshots = useRef<SimState[]>([]);
+  const recordingStartGlobalFrame = useRef(0);
+  const [review, setReview] = useState<PendingReview | null>(null);
   const previousButtons = useRef<FrameButtons>(makeEmptyButtons());
   const keys = useRef(new Set<string>());
   const simulating = useRef(false);
@@ -108,6 +135,7 @@ export function TrainingRecorder({
     setActiveIndex(index);
     recordingInitial.current = null;
     recordingFrames.current = [];
+    recordingSnapshots.current = [];
     if (index === null) {
       setPhase("roaming");
       setNotice("继续游玩；进入下一个教程开始区后会自动待命。");
@@ -142,6 +170,7 @@ export function TrainingRecorder({
     setFrame(0);
     previousButtons.current = makeEmptyButtons();
     keys.current.clear();
+    setReview(null);
     completedRef.current.clear();
     setCompletedCount(0);
     setPlaying(false);
@@ -152,6 +181,67 @@ export function TrainingRecorder({
       setPhase("roaming");
       setNotice("录制全部已就绪；从出生点开始游玩并依次经过教程区域。");
       armModuleAt(initial);
+    }
+  };
+
+  const showReviewNode = (pending: PendingReview, index: number) => {
+    const node = pending.nodes[index];
+    if (!node) return;
+    setReview({ ...pending, currentNode: index });
+    setFrame(pending.startGlobalFrame + node.frame + 1);
+  };
+
+  const toggleReviewTarget = (kind: RecordingTargetKind) => {
+    setReview((pending) => {
+      if (!pending) return pending;
+      const node = pending.nodes[pending.currentNode];
+      const selected = pending.selections[node.id] ?? [];
+      const selections = {
+        ...pending.selections,
+        [node.id]: selected.includes(kind)
+          ? selected.filter((candidate) => candidate !== kind)
+          : [...selected, kind],
+      };
+      return { ...pending, selections };
+    });
+  };
+
+  const finishReview = () => {
+    if (!review) return;
+    const next = applyTutorialRecording(
+      projectRef.current,
+      review.moduleIndex,
+      review.initial,
+      review.frames,
+      review.snapshots,
+      review.selections,
+    );
+    projectRef.current = next;
+    onChangeRef.current(next);
+    completedRef.current.add(review.moduleIndex);
+    setCompletedCount(completedRef.current.size);
+    recordingInitial.current = null;
+    recordingFrames.current = [];
+    recordingSnapshots.current = [];
+    activeIndexRef.current = null;
+    setActiveIndex(null);
+    setReview(null);
+    setFrame(frameRef.current);
+    if (
+      scope.type === "module" ||
+      completedRef.current.size === next.training.modules.length
+    ) {
+      setPlaying(false);
+      setPhase("done");
+      setNotice(
+        scope.type === "module"
+          ? `${review.title} 已生成教程 JSON。`
+          : `全部 ${next.training.modules.length} 个教程均已生成 JSON。`,
+      );
+    } else {
+      setPhase("roaming");
+      setNotice(`${review.title} 已写入；继续前往下一个开始区。`);
+      armModuleAt(review.after);
     }
   };
 
@@ -194,7 +284,7 @@ export function TrainingRecorder({
         installInitial(true);
         return;
       }
-      if (!gameInput || phase === "done") return;
+      if (!gameInput || phase === "done" || phase === "reviewing") return;
       keys.current.add(event.code);
       setPlaying(true);
     };
@@ -215,7 +305,13 @@ export function TrainingRecorder({
   }, [bindings, phase]);
 
   useEffect(() => {
-    if (!playing || phase === "loading" || phase === "done") return;
+    if (
+      !playing ||
+      phase === "loading" ||
+      phase === "reviewing" ||
+      phase === "done"
+    )
+      return;
     let active = true;
     let animation = 0;
     let last = performance.now();
@@ -238,6 +334,8 @@ export function TrainingRecorder({
         ) {
           recordingInitial.current = structuredClone(before);
           recordingFrames.current = [structuredClone(currentButtons)];
+          recordingSnapshots.current = [structuredClone(before)];
+          recordingStartGlobalFrame.current = currentFrame;
           setPhase("recording");
           setNotice(
             `${projectRef.current.training.modules[moduleIndex].tutorial.title} 录制中；进入粉色结束区自动完成。`,
@@ -267,6 +365,9 @@ export function TrainingRecorder({
             frameRef.current = nextFrame;
             setFrame(nextFrame);
 
+            if (recordingInitial.current)
+              recordingSnapshots.current.push(structuredClone(after));
+
             const recordingIndex = activeIndexRef.current;
             const module =
               recordingIndex === null
@@ -277,37 +378,29 @@ export function TrainingRecorder({
               recordingInitial.current &&
               triggerContainsPlayer(module.end_trigger, after)
             ) {
-              const next = applyTutorialRecording(
-                projectRef.current,
-                recordingIndex!,
-                recordingInitial.current,
-                recordingFrames.current,
-              );
-              projectRef.current = next;
-              onChangeRef.current(next);
-              completedRef.current.add(recordingIndex!);
-              setCompletedCount(completedRef.current.size);
               const title = module.tutorial.title;
-              recordingInitial.current = null;
-              recordingFrames.current = [];
-              activeIndexRef.current = null;
-              setActiveIndex(null);
-              if (
-                scope.type === "module" ||
-                completedRef.current.size === next.training.modules.length
-              ) {
-                setPlaying(false);
-                setPhase("done");
-                setNotice(
-                  scope.type === "module"
-                    ? `${title} 已生成教程 JSON。`
-                    : `全部 ${next.training.modules.length} 个教程均已生成 JSON。`,
-                );
-              } else {
-                setPhase("roaming");
-                setNotice(`${title} 已写入；继续前往下一个开始区。`);
-                armModuleAt(after);
-              }
+              const frames = structuredClone(recordingFrames.current);
+              const nodes = recordedCriticalNodesFromFrames(frames);
+              const pending: PendingReview = {
+                moduleIndex: recordingIndex!,
+                title,
+                initial: structuredClone(recordingInitial.current),
+                frames,
+                snapshots: structuredClone(recordingSnapshots.current),
+                nodes,
+                selections: Object.fromEntries(
+                  nodes.map((node) => [node.id, []]),
+                ),
+                currentNode: 0,
+                startGlobalFrame: recordingStartGlobalFrame.current,
+                after: structuredClone(after),
+              };
+              setPlaying(false);
+              setPhase("reviewing");
+              setNotice(
+                `${title} 录制完成；请逐个关键节点选择一个或多个目标。`,
+              );
+              showReviewNode(pending, 0);
             } else {
               if (after.dead) {
                 setPlaying(false);
@@ -339,6 +432,28 @@ export function TrainingRecorder({
     activeIndex === null
       ? null
       : projectRef.current.training.modules[activeIndex];
+  const reviewNode = review?.nodes[review.currentNode];
+  const reviewTargets = reviewNode
+    ? (review?.selections[reviewNode.id] ?? [])
+    : [];
+  const reviewSnapshot =
+    review && reviewNode
+      ? (review.snapshots[reviewNode.frame + 1] ?? review.after)
+      : null;
+  const mapBounds = projectRef.current.map.bounds;
+  const reviewWindow =
+    reviewSnapshot === null
+      ? null
+      : {
+          x: Math.min(
+            Math.max(mapBounds.x + 6, reviewSnapshot.pos.x + 12),
+            mapBounds.x + mapBounds.width - 206,
+          ),
+          y: Math.min(
+            Math.max(mapBounds.y + 6, reviewSnapshot.pos.y - 88),
+            mapBounds.y + mapBounds.height - 184,
+          ),
+        };
   return (
     <main className="training-recorder">
       <div className="training-recorder-bar">
@@ -376,7 +491,7 @@ export function TrainingRecorder({
         theme={theme}
       >
         <svg
-          className="training-recorder-regions"
+          className={`training-recorder-regions ${phase === "reviewing" ? "reviewing" : ""}`}
           viewBox={`${projectRef.current.map.bounds.x} ${projectRef.current.map.bounds.y} ${projectRef.current.map.bounds.width} ${projectRef.current.map.bounds.height}`}
           preserveAspectRatio="xMidYMid meet"
         >
@@ -396,6 +511,82 @@ export function TrainingRecorder({
               </g>
             );
           })}
+          {review &&
+            review.nodes.map((node, index) => {
+              const snapshot = review.snapshots[node.frame + 1] ?? review.after;
+              return (
+                <g
+                  className={
+                    index === review.currentNode
+                      ? "recorded-node selected"
+                      : "recorded-node"
+                  }
+                  key={node.id}
+                >
+                  <circle cx={snapshot.pos.x} cy={snapshot.pos.y - 6} r="4" />
+                  <text x={snapshot.pos.x + 6} y={snapshot.pos.y - 7}>
+                    {index + 1}
+                  </text>
+                </g>
+              );
+            })}
+          {review && reviewNode && reviewSnapshot && reviewWindow && (
+            <foreignObject
+              className="training-record-objective-window"
+              x={reviewWindow.x}
+              y={reviewWindow.y}
+              width="200"
+              height="178"
+            >
+              <div>
+                <header>
+                  <small>
+                    关键节点 {review.currentNode + 1}/{review.nodes.length}
+                  </small>
+                  <strong>{reviewNode.label}</strong>
+                  <span>
+                    速度 {reviewSnapshot.speed.x.toFixed(1)}, {reviewSnapshot.speed.y.toFixed(1)} · 冲刺 {reviewSnapshot.dashes} · 体力 {reviewSnapshot.stamina.toFixed(1)}
+                  </span>
+                </header>
+                <fieldset>
+                  <legend>以什么为目标（可多选）</legend>
+                  {RECORDING_TARGET_OPTIONS.map((option) => (
+                    <label key={option.id}>
+                      <input
+                        type="checkbox"
+                        checked={reviewTargets.includes(option.id)}
+                        onChange={() => toggleReviewTarget(option.id)}
+                      />
+                      {option.label}
+                    </label>
+                  ))}
+                </fieldset>
+                <footer>
+                  <button
+                    disabled={review.currentNode === 0}
+                    onClick={() =>
+                      showReviewNode(review, review.currentNode - 1)
+                    }
+                  >
+                    上一步
+                  </button>
+                  <button
+                    className="primary"
+                    disabled={!reviewTargets.length}
+                    onClick={() => {
+                      if (review.currentNode === review.nodes.length - 1)
+                        finishReview();
+                      else showReviewNode(review, review.currentNode + 1);
+                    }}
+                  >
+                    {review.currentNode === review.nodes.length - 1
+                      ? "生成教程"
+                      : "下一步"}
+                  </button>
+                </footer>
+              </div>
+            </foreignObject>
+          )}
         </svg>
       </GameView>
       <div className={`training-recorder-hud ${phase}`}>
@@ -408,6 +599,8 @@ export function TrainingRecorder({
                 ? "已暂停待命"
                 : phase === "recording"
                   ? `REC · F${recordingFrames.current.length - 1}`
+                  : phase === "reviewing"
+                    ? `目标节点 ${review ? review.currentNode + 1 : 0}/${review?.nodes.length ?? 0}`
                   : phase === "done"
                     ? "录制完成"
                     : "寻找开始区"}
@@ -417,6 +610,8 @@ export function TrainingRecorder({
               ? "按 Jump / Dash / Crouch Dash / Grab 中任一个动作开始；WASD 仅作为后台方向上下文。"
               : phase === "recording"
                 ? "粉色框是当前教程结束区；进入后自动生成并保存 JSON 数据。"
+                : phase === "reviewing"
+                  ? "在节点旁的窗口选择目标；每个节点至少选择一项后才能继续。"
                 : "方向键可正常游玩；进入蓝色开始区后等待第一个教程动作。"}
           </span>
         </div>
