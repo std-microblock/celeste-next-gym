@@ -86,6 +86,19 @@ export interface OutcomeAnimation {
 
 const FAILURE_SLOWDOWN_MS = 1_000;
 const MAX_AUTO_SLOWDOWN_REDUCTION = 0.7;
+const TRAINING_RESET_MODE_KEY = "celeste-gym-training-reset-mode";
+
+export type TrainingResetMode = "current" | "previous";
+
+function storedTrainingResetMode(): TrainingResetMode {
+  try {
+    return localStorage.getItem(TRAINING_RESET_MODE_KEY) === "previous"
+      ? "previous"
+      : "current";
+  } catch {
+    return "current";
+  }
+}
 
 function completionOutputSummary(completion: TrainingCompletion): string {
   if (
@@ -151,6 +164,29 @@ export function trainingInputLocked(
   return outcome !== null || settlement;
 }
 
+export function trainingRetryTarget(
+  mode: TrainingResetMode,
+  resetFrame: number,
+  resetModuleId: string | null,
+  completed: readonly Pick<
+    TrainingCompletion,
+    "moduleId" | "triggerFrame"
+  >[],
+): { frame: number; moduleId: string | null } {
+  const current = { frame: resetFrame, moduleId: resetModuleId };
+  if (mode === "current") return current;
+  const completedCurrentIndex = completed.findIndex(
+    (completion) => completion.moduleId === resetModuleId,
+  );
+  const previous =
+    completedCurrentIndex >= 0
+      ? completed[completedCurrentIndex - 1]
+      : completed.at(-1);
+  return previous
+    ? { frame: previous.triggerFrame, moduleId: previous.moduleId }
+    : current;
+}
+
 /** Map-driven lesson runner: triggers arm tutorial modules; the next action is local F0. */
 export function TrainingGround({
   techniqueId,
@@ -202,6 +238,9 @@ export function TrainingGround({
   const [autoSlowdown, setAutoSlowdown] = useState(true);
   const [timelineOpen, setTimelineOpen] = useState(true);
   const [resetFrame, setResetFrame] = useState(0);
+  const [resetMode, setResetMode] = useState<TrainingResetMode>(
+    storedTrainingResetMode,
+  );
   const [triggerFrame, setTriggerFrame] = useState<number | null>(null);
   const triggerFrameRef = useRef<number | null>(null);
   const [fuzzStartFrame, setFuzzStartFrame] = useState<number | null>(null);
@@ -491,7 +530,10 @@ export function TrainingGround({
     );
   };
 
-  const resetTo = (target = resetFrame) => {
+  const resetTo = (
+    target = resetFrame,
+    moduleOverride?: TrainingModule | null,
+  ) => {
     const snapshot = snapshotsRef.current[target] ?? initial;
     if (!snapshot) return;
     simulationEpoch.current += 1;
@@ -505,7 +547,10 @@ export function TrainingGround({
     clearOutcome();
     settlementRef.current = false;
     setSettlement(false);
-    const module = activeModuleRef.current ?? resetModuleRef.current;
+    const module =
+      moduleOverride === undefined
+        ? (activeModuleRef.current ?? resetModuleRef.current)
+        : moduleOverride;
     const keptCompletions = completionsRef.current.filter(
       (completion) =>
         completion.completedFrame <= target &&
@@ -522,6 +567,22 @@ export function TrainingGround({
     );
   };
 
+  const retry = () => {
+    const resetModule = activeModuleRef.current ?? resetModuleRef.current;
+    const target = trainingRetryTarget(
+      resetMode,
+      resetFrame,
+      resetModule?.id ?? null,
+      completionsRef.current,
+    );
+    const module = target.moduleId
+      ? (selectedVariant.training.modules.find(
+          (candidate) => candidate.id === target.moduleId,
+        ) ?? resetModule)
+      : null;
+    resetTo(target.frame, module);
+  };
+
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
       if (
@@ -533,7 +594,7 @@ export function TrainingGround({
       const resetInput = event.code === "KeyR" && !gameInput;
       if (gameInput || resetInput) event.preventDefault();
       if (resetInput && !event.repeat) {
-        resetTo();
+        retry();
         return;
       }
       if (trainingInputLocked(outcomeRef.current, settlementRef.current))
@@ -560,7 +621,7 @@ export function TrainingGround({
     };
     // resetTo intentionally reads current state through React's render closure.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resetFrame, initial, bindings, selectedVariant]);
+  }, [resetFrame, resetMode, initial, bindings, selectedVariant]);
 
   useEffect(() => {
     if (!playing || !map || !initial || settlement) return;
@@ -821,6 +882,7 @@ export function TrainingGround({
               ];
               setCompletions(completionsRef.current);
               setActiveModule(null, null);
+              setPlaying(true);
               setNotice(`${activeTutorial.title} 成功；继续前往下一个触发区。`);
             }
           }
@@ -1085,7 +1147,7 @@ export function TrainingGround({
                 </div>
                 <p>{notice}</p>
                 <div className="training-result-actions">
-                  <button className="primary" onClick={() => resetTo()}>
+                  <button className="primary" onClick={retry}>
                     R 重试
                   </button>
                 </div>
@@ -1225,9 +1287,31 @@ export function TrainingGround({
           >
             {timelineOpen ? "收起时间线" : "时间线"}
           </button>
-          <button aria-label="回到 R 点" onClick={() => resetTo()}>
+          <button aria-label="按 R 设置重试" onClick={retry}>
             R
           </button>
+          <select
+            aria-label="R 重试位置"
+            title="选择按 R 时回到本段还是上一段的开始位置"
+            value={resetMode}
+            onChange={(event) => {
+              const mode = event.target.value as TrainingResetMode;
+              setResetMode(mode);
+              try {
+                localStorage.setItem(TRAINING_RESET_MODE_KEY, mode);
+              } catch {
+                // Storage may be unavailable in a private or embedded context.
+              }
+              setNotice(
+                mode === "previous"
+                  ? "R 已设为回到上一段开始。"
+                  : "R 已设为回到本段开始。",
+              );
+            }}
+          >
+            <option value="current">R：本段开始</option>
+            <option value="previous">R：上一段开始</option>
+          </select>
           <button aria-label="上一帧" onClick={() => seek(frame - 1)}>
             ◀
           </button>

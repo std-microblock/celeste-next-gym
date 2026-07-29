@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { PLAYGROUND } from "../model";
 import { createTrainingProject } from "../training/editorProject";
-import { tutorialObjectivesForInput } from "./TrainingGround";
+import {
+  trainingRetryTarget,
+  tutorialObjectivesForInput,
+} from "./TrainingGround";
 
 describe("training timeline checkpoint objectives", () => {
   it("uses only the current step objectives with their Rust result indices", () => {
@@ -65,5 +68,25 @@ describe("training timeline checkpoint objectives", () => {
         resultIndex: 3,
       },
     ]);
+  });
+
+  it("lets R retry the current or previous module start", () => {
+    const completed = [
+      { moduleId: "lesson-1", triggerFrame: 12 },
+      { moduleId: "lesson-2", triggerFrame: 48 },
+    ];
+    expect(trainingRetryTarget("current", 80, "lesson-3", completed)).toEqual(
+      { frame: 80, moduleId: "lesson-3" },
+    );
+    expect(trainingRetryTarget("previous", 80, "lesson-3", completed)).toEqual(
+      { frame: 48, moduleId: "lesson-2" },
+    );
+    expect(trainingRetryTarget("previous", 48, "lesson-2", completed)).toEqual(
+      { frame: 12, moduleId: "lesson-1" },
+    );
+    expect(trainingRetryTarget("previous", 20, "lesson-1", [])).toEqual({
+      frame: 20,
+      moduleId: "lesson-1",
+    });
   });
 });
