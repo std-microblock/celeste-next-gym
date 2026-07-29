@@ -3,6 +3,12 @@ import { atlasFrameKeys } from "../atlasFrames";
 import type { EntityKind, GymMap, MapEntity, SimState, Vec2 } from "../model";
 import { playerHairMetadata } from "../playerHair";
 import {
+  playerParticleSamples,
+  playerTrailColor,
+  playerTrailOpacity,
+  playerTrailSamples,
+} from "../playerEffects";
+import {
   spikeDirection,
   spikePlacement,
   spikeTexturePrefixes,
@@ -469,11 +475,13 @@ function computeHairNodes(
   states: readonly (SimState | undefined)[],
   state: SimState,
   frame: number,
+  frameOffset = 0,
 ): Vec2[] {
   const start = Math.max(0, frame - 180);
   let nodes: Vec2[] | undefined;
   for (let value = start; value <= frame; value += 1) {
-    const sample = states[value] ?? (value === frame ? state : undefined);
+    const sample =
+      states[value - frameOffset] ?? (value === frame ? state : undefined);
     if (!sample) continue;
     const key = playerFrameKey(assets, sample, value);
     const root = hairRoot(sample, key);
@@ -522,13 +530,14 @@ function drawPlayer(
   states: readonly (SimState | undefined)[],
   state: SimState,
   frame: number,
+  frameOffset = 0,
 ): void {
   const key = playerFrameKey(assets, state, frame);
   const facing = state.facing ? 1 : -1;
   context.save();
   context.globalAlpha = state.dead ? 0.75 : 1;
   if (!state.dead) {
-    const nodes = computeHairNodes(assets, states, state, frame);
+    const nodes = computeHairNodes(assets, states, state, frame, frameOffset);
     const metadata = playerHairMetadata(key);
     for (let index = 3; index >= 0; index -= 1) {
       const texture =
@@ -573,6 +582,203 @@ function drawPlayer(
   }
   drawEntry(context, assets, key, state.pos.x, state.pos.y, 16, 32, facing, 1);
   context.restore();
+}
+
+function drawPlayerTrail(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  states: readonly (SimState | undefined)[],
+  frame: number,
+  frameOffset = 0,
+): void {
+  for (const sample of playerTrailSamples(states, frame, frameOffset)) {
+    const state = states[sample.frame - frameOffset];
+    if (!state) continue;
+    const key = playerFrameKey(assets, state, sample.frame);
+    const facing = state.facing ? 1 : -1;
+    const color = playerTrailColor(state);
+    context.save();
+    context.globalAlpha = playerTrailOpacity(sample.age);
+    const nodes = computeHairNodes(
+      assets,
+      states,
+      state,
+      sample.frame,
+      frameOffset,
+    );
+    const metadata = playerHairMetadata(key);
+    for (let index = 3; index >= 0; index -= 1) {
+      const texture =
+        index === 0
+          ? `characters/player/bangs0${metadata.frame}`
+          : "characters/player/hair00";
+      const scale = 0.25 + (1 - index / 4) * 0.75;
+      drawEntry(
+        context,
+        assets,
+        texture,
+        nodes[index].x,
+        nodes[index].y,
+        5,
+        5,
+        index === 0 ? facing : scale,
+        index === 0 ? 1 : scale,
+        color,
+      );
+    }
+    drawEntry(
+      context,
+      assets,
+      key,
+      state.pos.x,
+      state.pos.y,
+      16,
+      32,
+      facing,
+      1,
+      color,
+    );
+    context.restore();
+  }
+}
+
+function drawPlayerParticles(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  states: readonly (SimState | undefined)[],
+  frame: number,
+  frameOffset = 0,
+): void {
+  for (const particle of playerParticleSamples(states, frame, frameOffset)) {
+    const directionAngle = Math.atan2(
+      particle.direction.y,
+      particle.direction.x,
+    );
+    if (particle.kind === "slash") {
+      const key = `effects/slash/0${Math.min(3, Math.floor(particle.age / 3))}`;
+      const entry = assets.entries[key];
+      if (!entry) continue;
+      context.save();
+      context.globalAlpha = Math.max(0, 1 - particle.age / 12);
+      drawEntry(
+        context,
+        assets,
+        key,
+        particle.origin.x,
+        particle.origin.y,
+        entry.frameWidth / 2,
+        entry.frameHeight / 2,
+        1,
+        1,
+        undefined,
+        directionAngle,
+      );
+      context.restore();
+      continue;
+    }
+
+    for (let index = 0; index < particle.count; index += 1) {
+      const seed = particle.frame * 97.13 + index * 19.71;
+      const radial =
+        particle.kind === "death-shard"
+          ? (index / particle.count) * Math.PI * 2
+          : directionAngle;
+      const spread = (pseudo(seed) - 0.5) *
+        (particle.kind === "dust"
+          ? 1.5
+          : particle.kind === "water-splash"
+            ? 2.2
+            : 0.45);
+      const angle = radial + spread;
+      const speed =
+        particle.kind === "dust"
+          ? 18 + pseudo(seed + 3.1) * 34
+          : particle.kind === "death-shard"
+            ? 28 + pseudo(seed + 7.3) * 38
+            : particle.kind === "water-splash"
+              ? 32 + pseudo(seed + 7.3) * 42
+              : 20 + pseudo(seed + 7.3) * 18;
+      const seconds = particle.age / 60;
+      const travel = speed * seconds;
+      const wobble =
+        particle.kind === "bubble" || particle.kind === "feather"
+          ? Math.sin(particle.age * 0.35 + seed) * 1.5
+          : 0;
+      const x = particle.origin.x + Math.cos(angle) * travel + wobble;
+      const y =
+        particle.origin.y +
+        Math.sin(angle) * travel +
+        (particle.kind === "dust"
+          ? 45 * seconds * seconds
+          : particle.kind === "death-shard"
+            ? 70 * seconds * seconds
+            : particle.kind === "water-splash"
+              ? 90 * seconds * seconds
+              : particle.kind === "bubble"
+                ? -12 * seconds
+                : 0);
+      const lifetime =
+        particle.kind === "death-shard"
+          ? 36
+          : particle.kind === "dash-streak"
+            ? 14
+            : 24;
+      const alpha = Math.max(0, 1 - particle.age / lifetime);
+      const key =
+        particle.kind === "dust"
+          ? "particles/cloud"
+          : particle.kind === "bubble"
+            ? "particles/bubble"
+            : particle.kind === "death-shard" ||
+                particle.kind === "dream-spark"
+              ? "particles/shard"
+              : particle.kind === "feather"
+                ? "particles/feather"
+                : particle.kind === "water-splash"
+                  ? index % 2 === 0
+                    ? "particles/circle"
+                    : "particles/cloud"
+                  : "particles/rect";
+      const entry = assets.entries[key];
+      if (!entry) continue;
+      const scale =
+        particle.kind === "dust"
+          ? 0.35 + pseudo(seed + 11.9) * 0.35
+          : particle.kind === "bubble"
+            ? 0.4 + pseudo(seed + 11.9) * 0.25
+            : particle.kind === "water-splash"
+              ? 0.35 + pseudo(seed + 11.9) * 0.35
+              : 0.55;
+      const tint =
+        particle.kind === "dream-spark"
+          ? ["#ff68d9", "#67e8ff", "#ffe36e"][index % 3]
+          : particle.kind === "death-shard" && index % 3 === 0
+            ? "#ffffff"
+            : particle.color;
+      context.save();
+      context.globalAlpha = alpha;
+      drawEntry(
+        context,
+        assets,
+        key,
+        x,
+        y,
+        entry.frameWidth / 2,
+        entry.frameHeight / 2,
+        scale,
+        scale,
+        tint,
+        particle.kind === "dash-streak"
+          ? directionAngle
+          : particle.kind === "death-shard" ||
+              particle.kind === "dream-spark" ||
+              particle.kind === "feather"
+            ? angle + particle.age * 0.12
+            : 0,
+      );
+      context.restore();
+    }
+  }
 }
 
 function buildSolidGrid(map: GymMap): string[][] {
@@ -897,6 +1103,7 @@ function waterSurfaceY(
 
 function drawWater(
   context: CanvasRenderingContext2D,
+  assets: GameAssets,
   entity: MapEntity,
   frame: number,
 ): void {
@@ -946,6 +1153,36 @@ function drawWater(
     context.fill();
   }
 
+  const bubble = assets.entries["particles/bubble"];
+  const bubbleCount = Math.min(36, Math.ceil((box.width * box.height) / 900));
+  if (bubble) {
+    for (let index = 0; index < bubbleCount; index += 1) {
+      const duration = 1.8 + pseudo(index * 5.13 + box.x) * 2.8;
+      const progress =
+        (frame / 60 / duration + pseudo(index * 9.73 + box.y)) % 1;
+      const x =
+        box.x + 3 + pseudo(index * 13.31 + box.x + box.y) * (box.width - 6);
+      const y = box.y + box.height - progress * Math.max(8, box.height - 4);
+      const surface = waterSurfaceY(box, x, frame);
+      if (y <= surface) continue;
+      context.save();
+      context.globalAlpha = Math.sin(progress * Math.PI) * 0.65;
+      drawEntry(
+        context,
+        assets,
+        "particles/bubble",
+        x + Math.sin(frame / 12 + index) * 1.2,
+        y,
+        bubble.frameWidth / 2,
+        bubble.frameHeight / 2,
+        0.35 + pseudo(index * 17.91) * 0.3,
+        0.35 + pseudo(index * 17.91) * 0.3,
+        "#bdefff",
+      );
+      context.restore();
+    }
+  }
+
   context.beginPath();
   context.moveTo(box.x, waterSurfaceY(box, box.x, frame) - 1);
   for (let x = box.x + 4; x <= box.x + box.width; x += 4)
@@ -960,6 +1197,45 @@ function drawWater(
   context.fillStyle = "rgba(135, 206, 250, .80)";
   context.fill();
   context.restore();
+}
+
+function drawEntityAura(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  center: Vec2,
+  frame: number,
+  key: string,
+  color: string,
+  count: number,
+  radius: number,
+  speed = 1,
+): void {
+  const entry = assets.entries[key];
+  if (!entry) return;
+  for (let index = 0; index < count; index += 1) {
+    const phase =
+      (index / count) * Math.PI * 2 + (frame / 60) * speed * Math.PI * 2;
+    const pulse = radius + Math.sin(frame / 8 + index * 2.1) * 2;
+    const x = center.x + Math.cos(phase) * pulse;
+    const y = center.y + Math.sin(phase) * pulse * 0.7;
+    const alpha = 0.35 + (Math.sin(frame / 6 + index * 1.7) + 1) * 0.2;
+    context.save();
+    context.globalAlpha = alpha;
+    drawEntry(
+      context,
+      assets,
+      key,
+      x,
+      y,
+      entry.frameWidth / 2,
+      entry.frameHeight / 2,
+      0.45,
+      0.45,
+      color,
+      phase,
+    );
+    context.restore();
+  }
 }
 
 function drawWind(
@@ -1302,6 +1578,17 @@ function drawBooster(
   const red = entity.kind === "red_booster";
   const prefix = red ? "objects/booster/boosterRed" : "objects/booster/booster";
   const activeCenter = activeBoosterCenter(entity, state);
+  drawEntityAura(
+    context,
+    assets,
+    activeCenter ?? center,
+    frame,
+    "particles/circle",
+    red ? "#ff557f" : "#67f5a6",
+    red ? 8 : 6,
+    red ? 13 : 11,
+    red ? 1.35 : 1,
+  );
   if (activeCenter) {
     if (state.state === "Dash" || state.state === "RedDash")
       drawEntry(
@@ -1365,6 +1652,17 @@ function drawFlyFeather(
     phase < 21 ? "objects/flyFeather/idle" : "objects/flyFeather/flash";
   const index = phase % 21;
   const y = center.y + Math.sin(frame / 12 + center.x) * 2;
+  drawEntityAura(
+    context,
+    assets,
+    { x: center.x, y },
+    frame,
+    "particles/feather",
+    "#ffe45e",
+    7,
+    11,
+    0.65,
+  );
   drawEntry(
     context,
     assets,
@@ -1403,6 +1701,17 @@ function drawBumper(
       box.y + box.height / 2,
     );
   const index = cooling ? 42 : Math.floor(frame / 4) % 34;
+  drawEntityAura(
+    context,
+    assets,
+    center,
+    frame,
+    "particles/shard",
+    cooling ? "#6ca4c9" : "#ffcf5a",
+    cooling ? 4 : 8,
+    17,
+    cooling ? -0.35 : 0.85,
+  );
   drawEntry(
     context,
     assets,
@@ -2287,7 +2596,7 @@ function drawEntity(
         Math.min(8, entry.height),
       );
   } else if (entity.kind === "water") {
-    drawWater(context, entity, frame);
+    drawWater(context, assets, entity, frame);
   } else if (entity.kind === "dream_block") {
     drawDreamBlock(context, assets, entity, frame, state.can_dream_dash);
   } else if (entity.kind === "booster" || entity.kind === "red_booster") {
@@ -2351,6 +2660,7 @@ export function GameView({
   map,
   state,
   states,
+  stateFrameOffset = 0,
   frame,
   stale,
   theme,
@@ -2359,6 +2669,7 @@ export function GameView({
   map: GymMap;
   state: SimState;
   states: readonly (SimState | undefined)[];
+  stateFrameOffset?: number;
   frame: number;
   stale: boolean;
   theme: VisualTheme;
@@ -2435,7 +2746,9 @@ export function GameView({
       kindCounts.set(entity.kind, kindIndex + 1);
     }
     context.globalAlpha = stale ? 0.45 : 1;
-    drawPlayer(context, assets, states, state, frame);
+    drawPlayerParticles(context, assets, states, frame, stateFrameOffset);
+    drawPlayerTrail(context, assets, states, frame, stateFrameOffset);
+    drawPlayer(context, assets, states, state, frame, stateFrameOffset);
     drawWind(context, assets, map, state, frame);
     context.restore();
   }, [
@@ -2445,6 +2758,7 @@ export function GameView({
     solidGrid,
     stale,
     state,
+    stateFrameOffset,
     states,
     theme,
     tileLayer,

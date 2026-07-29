@@ -200,6 +200,8 @@ export interface MapEditorProps {
   map: GymMap;
   state: SimState;
   frame: number;
+  states?: readonly SimState[];
+  stateFrameOffset?: number;
   theme: VisualTheme;
   experiencing: boolean;
   ready: boolean;
@@ -418,6 +420,8 @@ export function MapEditor({
   map,
   state,
   frame,
+  states = [],
+  stateFrameOffset = 0,
   theme,
   experiencing,
   ready,
@@ -817,7 +821,8 @@ export function MapEditor({
         <GameView
           map={map}
           state={state}
-          states={[]}
+          states={states}
+          stateFrameOffset={stateFrameOffset}
           frame={frame}
           stale={false}
           theme={theme}

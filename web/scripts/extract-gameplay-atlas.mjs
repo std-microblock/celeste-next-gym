@@ -192,6 +192,14 @@ const GAMEPLAY_PATHS = [
   "objects/zipmover/",
   "objects/BumpBlockNew/fire00",
   "objects/BumpBlockNew/fire_center",
+  "effects/slash/",
+  "particles/bubble",
+  "particles/circle",
+  "particles/cloud",
+  "particles/feather",
+  "particles/rect",
+  "particles/shard",
+  "particles/smoke",
   "particles/snow",
 ];
 
