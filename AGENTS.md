@@ -14,5 +14,3 @@
 - When using PowerShell to read or write files, account for encoding differences. Most repository text is UTF-8 while older PowerShell defaults can be UTF-16. Prefer `apply_patch` for text edits and avoid PowerShell text-writing commands.
 
 做完一个部分自己 Commit + Push，message 用 scope: detail 的格式
-
-同时可能有多个agent在工作，修改代码时先 checkout 出一个自己的 worktree，修改后测试前先确认主文件夹现在是不是主分支，如果不是则等待切换到主分支；如果是，则把主文件夹 checkout 到对应分支，进行测试，测试完成后自己合并到主分支，解决conflict，并删除 worktree 分支
