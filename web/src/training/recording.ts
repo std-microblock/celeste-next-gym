@@ -340,7 +340,7 @@ function targetObjective(
           type: "maximize",
           expression: "after.speed.x",
         },
-        description: `最大化 X 速度（录制值 ${conciseNumber(state.speed.x)} px/s）`,
+        description: "X 速度",
       };
     case "speed_y":
       return {
@@ -348,26 +348,24 @@ function targetObjective(
           type: "maximize",
           expression: "after.speed.y",
         },
-        description: `最大化 Y 速度（录制值 ${conciseNumber(state.speed.y)} px/s）`,
+        description: "Y 速度",
       };
-    case "speed_total": {
-      const speed = Math.hypot(state.speed.x, state.speed.y);
+    case "speed_total":
       return {
         objective: {
           type: "maximize",
           expression:
             "sqrt(after.speed.x * after.speed.x + after.speed.y * after.speed.y)",
         },
-        description: `最大化总速度（录制值 ${conciseNumber(speed)} px/s）`,
+        description: "总速度",
       };
-    }
     case "dashes":
       return {
         objective: {
           type: "maximize",
           expression: "after.dashes",
         },
-        description: `最大化剩余冲刺（录制值 ${state.dashes}）`,
+        description: "剩余冲刺",
       };
     case "coordinate_crossing": {
       const useX =
@@ -378,7 +376,7 @@ function targetObjective(
       const operator = target < initial.pos[axis] ? "<=" : ">=";
       return {
         success: `after.pos.${axis} ${operator} ${conciseNumber(target)}`,
-        description: `坐标越过 ${axis.toUpperCase()} ${operator === ">=" ? "≥" : "≤"} ${conciseNumber(target)}`,
+        description: `${axis.toUpperCase()} ${operator === ">=" ? "≥" : "≤"} ${conciseNumber(target)}`,
       };
     }
     case "stamina":
@@ -387,7 +385,7 @@ function targetObjective(
           type: "maximize",
           expression: "after.stamina",
         },
-        description: `最大化体力（录制值 ${conciseNumber(state.stamina)}）`,
+        description: "体力",
       };
   }
 }
@@ -439,7 +437,7 @@ export function recordingCheckpoints(
       {
         id: node.id,
         at: node.at,
-        description: `${node.label}；${targets.map((target) => target.description).join("，")}`,
+        description: targets.map((target) => target.description).join("，"),
         ...(success.length ? { success } : {}),
         objectives: targets.flatMap((target) =>
           target.objective === undefined ? [] : [target.objective],
@@ -483,14 +481,13 @@ export function applyTutorialRecording(
   const descriptionAt = new Map(
     checkpoints.map((checkpoint) => [checkpoint.at, checkpoint.description]),
   );
-  const recordedFrameAt = new Map(nodes.map((node) => [node.at, node.frame]));
 
   module.tutorial.entry.input_id = entry.id;
-  module.tutorial.entry.hint = `开始区已激活：按 ${entryText} 开始。`;
+  module.tutorial.entry.hint = `按 ${entryText} 开始。`;
   module.tutorial.entry.check = ["!current.dead"];
   module.tutorial.entry.failure = {
     title: `需要 ${entryText}`,
-    body: `进入开始区后，第一个教程动作应为 ${entryText}。`,
+    body: `先按 ${entryText}。`,
   };
   module.tutorial.teaching.steps = inputs.map((input) => {
     const text = actionText(input.keys);
@@ -499,24 +496,23 @@ export function applyTutorialRecording(
         ? `并保持 ${input.held_time} 帧`
         : "";
     const target = descriptionAt.get(input.at);
-    const recordedFrame = recordedFrameAt.get(input.at) ?? input.at;
     return {
-      prompt: target ? `${target}。` : `按 ${text}${hold}。`,
+      prompt: target
+        ? `按 ${text}${hold}；${target}。`
+        : `按 ${text}${hold}。`,
       order_error: {
         title: "动作顺序不正确",
-        body: `这里需要 ${text}。`,
+        body: `按 ${text}。`,
       },
       window_error: {
         title: "错过输入窗口",
-        body: target
-          ? `请在录制的 F${recordedFrame} 附近输入 ${text}，并达到所选目标。`
-          : `请在录制的 F${recordedFrame} 附近输入 ${text}。`,
+        body: `稍早或稍晚按 ${text}。`,
       },
     };
   });
-  module.tutorial.summary = checkpoints.length
-    ? `录制目标：${checkpoints.map((checkpoint) => checkpoint.description).join("；")}`
-    : `按录制顺序完成 ${inputs.map((input) => actionText(input.keys)).join("、")}。`;
+  module.tutorial.summary = `依次完成 ${inputs
+    .map((input) => actionText(input.keys))
+    .join("、")}。`;
   const directionPlan = recordedDirectionPlanFromFrames(frames);
   module.tutorial.fuzz.inputs = [...directionPlan.inputs, ...inputs];
   module.tutorial.fuzz.variables = directionPlan.variables;
