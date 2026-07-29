@@ -72,6 +72,7 @@ interface PredictionPreview {
   targetFrame?: number;
   windows: Array<{ from: number; to: number }>;
   objectives: TrainingObjectiveSeries[];
+  objectiveResultIndices?: number[];
   bestObjectiveValues?: number[];
 }
 export interface OutcomeAnimation {
@@ -86,18 +87,33 @@ const FAILURE_SLOWDOWN_MS = 1_000;
 const MAX_AUTO_SLOWDOWN_REDUCTION = 0.7;
 
 function completionOutputSummary(completion: TrainingCompletion): string {
+  if (completion.objectives.length === 0) return "已通过当前步骤条件";
   const expression = completion.objectives[0]?.expression ?? "objective";
   return `${objectiveOutputName(expression)}：实际 ${formatObjectiveOutput(expression, completion.objectiveValues[0])} / 最佳 ${formatObjectiveOutput(expression, completion.bestObjectiveValues[0])}`;
 }
 
 /** Rust returns checkpoint objectives first, followed by final objectives. */
-function tutorialObjectives(tutorial: TrainingDocument) {
-  return [
-    ...(tutorial.fuzz.checkpoints ?? []).flatMap(
-      (checkpoint) => checkpoint.objectives,
-    ),
-    ...tutorial.fuzz.objectives,
-  ];
+export function tutorialObjectivesForInput(
+  tutorial: TrainingDocument,
+  inputIndex: number,
+) {
+  const inputAt = tutorial.fuzz.inputs[inputIndex]?.at;
+  const indexed: Array<{
+    objective: TrainingDocument["fuzz"]["objectives"][number];
+    resultIndex: number;
+  }> = [];
+  let resultIndex = 0;
+  for (const checkpoint of tutorial.fuzz.checkpoints ?? []) {
+    for (const objective of checkpoint.objectives) {
+      if (checkpoint.at === inputAt) indexed.push({ objective, resultIndex });
+      resultIndex += 1;
+    }
+  }
+  for (const objective of tutorial.fuzz.objectives) {
+    indexed.push({ objective, resultIndex });
+    resultIndex += 1;
+  }
+  return indexed;
 }
 
 function buttonsFromKeyboard(
@@ -233,7 +249,9 @@ export function TrainingGround({
       phase: "failed",
       startedAt: performance.now(),
       durationMs: FAILURE_SLOWDOWN_MS,
-      objectiveValues: candidate?.objective_values ?? [],
+      objectiveValues: (predictionRef.current.objectiveResultIndices ?? []).map(
+        (index) => candidate?.objective_values[index] ?? Number.NaN,
+      ),
       timelineFrame,
     };
     outcomeRef.current = next;
@@ -379,6 +397,7 @@ export function TrainingGround({
   ) => {
     const inputIndex = currentTrainingInput(source, tutorial)?.fuzzInputIndex;
     if (inputIndex === undefined || start === null) return;
+    const indexedObjectives = tutorialObjectivesForInput(tutorial, inputIndex);
     applyPrediction({
       targetFrame: (() => {
         const target = nextTargetFrame(source.candidates, inputIndex);
@@ -388,17 +407,23 @@ export function TrainingGround({
         from: start + window.from,
         to: start + window.to,
       })),
-      objectives: tutorialObjectives(tutorial).map((objective, objectiveIndex) => ({
+      objectives: indexedObjectives.map(({ objective, resultIndex }) => ({
         expression: objective.expression,
         points: candidateObjectivePoints(sourceEvaluations, inputIndex)
           .map((point) => ({
             frame: start + point.frame,
-            value: point.values[objectiveIndex],
+            value: point.values[resultIndex],
             successful: point.successful,
           }))
           .filter((point) => Number.isFinite(point.value)),
       })),
-      bestObjectiveValues: source.candidates[0]?.objective_values,
+      objectiveResultIndices: indexedObjectives.map(
+        ({ resultIndex }) => resultIndex,
+      ),
+      bestObjectiveValues: indexedObjectives.map(
+        ({ resultIndex }) =>
+          source.candidates[0]?.objective_values[resultIndex] ?? Number.NaN,
+      ),
     });
   };
 
@@ -652,10 +677,7 @@ export function TrainingGround({
             );
             let entryPassed = true;
             if (beforeSession.phase === "pre_fuzz") {
-              entryPassed = trainingEntryContextPassed(
-                current,
-                activeTutorial,
-              );
+              entryPassed = trainingEntryContextPassed(current, activeTutorial);
               if (entryPassed)
                 entryPassed = await client.entryCheck(
                   after,
@@ -695,12 +717,13 @@ export function TrainingGround({
               fuzzStartRef.current = currentFrame;
               setFuzzStartFrame(currentFrame);
             }
-            if (nextSession.phase !== "success")
-              capturePrediction(
-                nextSession.phase === "failed" ? beforeSession : nextSession,
-                fuzzStartRef.current ?? currentFrame,
-                activeTutorial,
-              );
+            capturePrediction(
+              nextSession.phase === "failed" || nextSession.phase === "success"
+                ? beforeSession
+                : nextSession,
+              fuzzStartRef.current ?? currentFrame,
+              activeTutorial,
+            );
             applySession(nextSession);
             if (nextSession.phase === "failed") {
               setNotice(
@@ -723,14 +746,14 @@ export function TrainingGround({
                 frame: start + actual.frame,
               }));
               const actualActionFrame = absoluteInputs.at(-1)?.frame;
-              const objectiveValues =
+              const allObjectiveValues =
                 evaluatedCandidate?.objective_values ??
                 nextSession.candidates[0]?.objective_values ??
                 [];
-              const bestObjectiveValues =
-                candidatesRef.current[0]?.objective_values ??
-                preview.bestObjectiveValues ??
-                [];
+              const objectiveValues = (
+                preview.objectiveResultIndices ?? []
+              ).map((index) => allObjectiveValues[index] ?? Number.NaN);
+              const bestObjectiveValues = preview.bestObjectiveValues ?? [];
               const completion: TrainingCompletion = {
                 moduleId: activeModule.id,
                 title: activeTutorial.title,
@@ -739,10 +762,13 @@ export function TrainingGround({
                 completedFrame: nextFrame,
                 targetFrame: preview.targetFrame,
                 actualInputFrame: actualActionFrame,
-                accuracy: outputAccuracy(
-                  objectiveValues[0],
-                  bestObjectiveValues[0],
-                ),
+                accuracy:
+                  preview.objectives.length === 0
+                    ? 100
+                    : outputAccuracy(
+                        objectiveValues[0],
+                        bestObjectiveValues[0],
+                      ),
                 reactionFrames: Math.max(
                   0,
                   start - (triggerFrameRef.current ?? start),
@@ -994,7 +1020,7 @@ export function TrainingGround({
                   objectives={prediction.objectives}
                 />
                 <div className="training-result-stats">
-                  {tutorialObjectives(tutorial).map((objective, index) => (
+                  {prediction.objectives.map((objective, index) => (
                     <div key={`${objective.expression}-${index}`}>
                       <span>本次 OBJECTIVE · {objective.expression}</span>
                       <b>
