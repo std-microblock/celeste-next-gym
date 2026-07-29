@@ -4892,7 +4892,8 @@ footer {
 }
 .training-workspace.editor-training-preview .training-stage,
 .training-workspace.editor-training-preview .training-timeline,
-.training-workspace.editor-training-preview .training-loading {
+.training-workspace.editor-training-preview .training-loading,
+.training-workspace.editor-training-preview #training-timeline {
   grid-column: 1;
 }
 
