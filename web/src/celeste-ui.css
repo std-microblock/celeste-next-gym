@@ -515,8 +515,8 @@ textarea:focus-visible {
 .training-tutorial-launch {
   position: absolute;
   z-index: 8;
-  right: 18px;
-  bottom: 46px;
+  top: var(--tutorial-y);
+  left: var(--tutorial-x);
   min-width: 88px;
   height: 28px;
   padding: 0 10px;
@@ -528,6 +528,7 @@ textarea:focus-visible {
   opacity: 0;
   pointer-events: none;
   cursor: pointer;
+  transform: translate(-50%, calc(-100% - 8px));
   transition: opacity 160ms ease, background-color 160ms ease;
 }
 

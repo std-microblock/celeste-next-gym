@@ -12,9 +12,9 @@ function approach(current: number, target: number, amount: number): number {
     : Math.max(target, current - amount);
 }
 
-export function promptTargetPercent(
+export function mapPointTargetPercent(
   map: GymMap,
-  state: SimState,
+  point: Vec2,
   viewport: { width: number; height: number },
 ): Vec2 {
   if (viewport.width <= 0 || viewport.height <= 0) return { x: 50, y: 50 };
@@ -28,13 +28,25 @@ export function promptTargetPercent(
   const offsetY = (viewport.height - contentHeight) / 2;
   return {
     x:
-      ((offsetX + (state.pos.x - map.bounds.x) * scale) / viewport.width) * 100,
+      ((offsetX + (point.x - map.bounds.x) * scale) / viewport.width) * 100,
     y:
       ((offsetY +
-        (state.pos.y - map.bounds.y - PROMPT_ANCHOR_ABOVE_PLAYER) * scale) /
+        (point.y - map.bounds.y) * scale) /
         viewport.height) *
       100,
   };
+}
+
+export function promptTargetPercent(
+  map: GymMap,
+  state: SimState,
+  viewport: { width: number; height: number },
+): Vec2 {
+  return mapPointTargetPercent(
+    map,
+    { x: state.pos.x, y: state.pos.y - PROMPT_ANCHOR_ABOVE_PLAYER },
+    viewport,
+  );
 }
 
 export function TrainingPrompt({

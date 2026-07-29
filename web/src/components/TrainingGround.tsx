@@ -60,7 +60,7 @@ import {
   TrainingCatalogSidebar,
   TrainingVariantThumbnail,
 } from "./TrainingCatalogSidebar";
-import { TrainingPrompt } from "./TrainingPrompt";
+import { mapPointTargetPercent, TrainingPrompt } from "./TrainingPrompt";
 import {
   TrainingResultTimeline,
   TrainingTimeline,
@@ -697,7 +697,6 @@ export function TrainingGround({
         startFrame,
         module,
         stage === "demo" ? "assisted" : "free",
-        true,
       );
     }, GUIDED_RESULT_HOLD_MS);
   };
@@ -1510,28 +1509,51 @@ export function TrainingGround({
         >
           {(viewport) =>
             tutorial && (
-              <TrainingPrompt
-                map={map}
-                state={state}
-                viewport={viewport}
-                text={displayedPrompt}
-                hidden={
-                   outcome !== null || settlement || lessonStage === "free"
-                 }
-              />
+              <>
+                <TrainingPrompt
+                  map={map}
+                  state={state}
+                  viewport={viewport}
+                  text={displayedPrompt}
+                  hidden={
+                    outcome !== null || settlement || lessonStage === "free"
+                  }
+                />
+                {activeModule &&
+                  lessonStage === "free" &&
+                  !lessonMode &&
+                  !outcome &&
+                  (() => {
+                    const anchor = mapPointTargetPercent(
+                      map,
+                      {
+                        x:
+                          activeModule.trigger.bounds.x +
+                          activeModule.trigger.bounds.width / 2,
+                        y: activeModule.trigger.bounds.y,
+                      },
+                      viewport,
+                    );
+                    return (
+                      <button
+                        type="button"
+                        className={`training-tutorial-launch ${mouseActive ? "mouse-active" : ""}`}
+                        style={
+                          {
+                            "--tutorial-x": `${anchor.x}%`,
+                            "--tutorial-y": `${anchor.y}%`,
+                          } as CSSProperties
+                        }
+                        onClick={startLesson}
+                      >
+                        查看本段教学
+                      </button>
+                    );
+                  })()}
+              </>
             )
           }
         </GameView>
-
-        {tutorial && lessonStage === "free" && !lessonMode && !outcome && (
-          <button
-            type="button"
-            className={`training-tutorial-launch ${mouseActive ? "mouse-active" : ""}`}
-            onClick={startLesson}
-          >
-            查看本段教学
-          </button>
-        )}
 
         {tutorial &&
           lessonMode &&

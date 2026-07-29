@@ -39,11 +39,20 @@ vi.mock("./GameView", () => ({
     children?: ReactNode | ((viewport: unknown) => ReactNode);
   }) => (
     <div className="game-screen">
-      {typeof children === "function" ? children({}) : children}
+      {typeof children === "function"
+        ? children({ width: 320, height: 180 })
+        : children}
     </div>
   ),
 }));
 vi.mock("./TrainingPrompt", () => ({
+  mapPointTargetPercent: (
+    map: { bounds: { x: number; y: number; width: number; height: number } },
+    point: { x: number; y: number },
+  ) => ({
+    x: ((point.x - map.bounds.x) / map.bounds.width) * 100,
+    y: ((point.y - map.bounds.y) / map.bounds.height) * 100,
+  }),
   TrainingPrompt: ({ text, hidden }: { text: string; hidden?: boolean }) =>
     hidden ? null : <div data-testid="training-prompt">{text}</div>,
 }));
@@ -122,6 +131,13 @@ describe("training R reset", () => {
     const tutorialButton = view.getByRole("button", {
       name: "查看本段教学",
     });
+    expect(tutorialButton.parentElement).toHaveClass("game-screen");
+    expect(
+      tutorialButton.style.getPropertyValue("--tutorial-x"),
+    ).toMatch(/%$/);
+    expect(
+      tutorialButton.style.getPropertyValue("--tutorial-y"),
+    ).toMatch(/%$/);
     expect(tutorialButton).not.toHaveClass("mouse-active");
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     fireEvent.pointerMove(window);
@@ -167,7 +183,7 @@ describe("training R reset", () => {
     expect(
       view.container.querySelector(".training-lesson-stages .active"),
     ).toHaveTextContent("辅助实操");
-    expect(view.container.querySelector(".play-button")).toHaveTextContent("Ⅱ");
+    expect(view.container.querySelector(".play-button")).toHaveTextContent("▶");
 
     fireEvent.keyDown(window, { code: "Semicolon" });
     for (let frame = 0; frame < 4; frame += 1) await advance();
@@ -179,7 +195,7 @@ describe("training R reset", () => {
       view.container.querySelector(".training-lesson-stages"),
     ).not.toBeInTheDocument();
     expect(view.queryByTestId("training-prompt")).not.toBeInTheDocument();
-    expect(view.container.querySelector(".play-button")).toHaveTextContent("Ⅱ");
+    expect(view.container.querySelector(".play-button")).toHaveTextContent("▶");
     vi.useRealTimers();
 
     fireEvent.keyUp(window, { code: "Semicolon" });
