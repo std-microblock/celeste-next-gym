@@ -11,10 +11,22 @@ import type { TrainingInput } from "./session";
 import type { TrainingProject } from "./editorProject";
 import { triggerContainsPlayer } from "./course";
 
-const DIRECTION_ACTIONS = new Set<Action>(["up", "down", "left", "right"]);
+const DIRECTION_ACTIONS = ["up", "down", "left", "right"] as const;
+const DIRECTION_ACTION_SET = new Set<Action>(DIRECTION_ACTIONS);
 export const RECORDED_ACTIONS = ACTIONS.filter(
-  (action) => !DIRECTION_ACTIONS.has(action),
+  (action) => !DIRECTION_ACTION_SET.has(action),
 );
+
+export interface RecordedDirectionPlan {
+  inputs: TrainingInput[];
+  variables: Array<{
+    name: string;
+    range: { from: number; to: number };
+  }>;
+  /** Keeps the recorded tail length when the final direction change is fuzzed. */
+  observeUntil: number | string;
+  changes: Array<{ frame: number; at: string }>;
+}
 
 function heldFrames(
   frames: readonly FrameButtons[],
@@ -63,26 +75,101 @@ export function recordedInputsFromFrames(
   return inputs;
 }
 
-function recordedDirectionInputsFromFrames(
+function directionKeys(frame: FrameButtons): Action[] {
+  return DIRECTION_ACTIONS.filter((action) => frame[action]);
+}
+
+function sameDirections(left: readonly Action[], right: readonly Action[]) {
+  return (
+    left.length === right.length &&
+    left.every((direction, index) => direction === right[index])
+  );
+}
+
+/**
+ * Records WASD as direction-combination segments. A segment that reaches the
+ * end region is infinite; every real transition/release gets one ordered Fuzz
+ * variable shared by the old segment end and the new segment start.
+ */
+export function recordedDirectionPlanFromFrames(
   frames: readonly FrameButtons[],
-): TrainingInput[] {
-  const inputs: TrainingInput[] = [];
-  for (const action of DIRECTION_ACTIONS) {
-    let occurrence = 0;
-    for (let frame = 0; frame < frames.length; frame += 1) {
-      if (!frames[frame][action] || (frame > 0 && frames[frame - 1][action]))
-        continue;
-      occurrence += 1;
-      inputs.push({
-        id: `hold-${action}${occurrence === 1 ? "" : `-${occurrence}`}`,
-        keys: [action],
-        at: frame,
-        held_time: heldFrames(frames, frame, action),
-        verify: false,
-      });
-    }
+): RecordedDirectionPlan {
+  if (!frames.length)
+    return { inputs: [], variables: [], observeUntil: 1, changes: [] };
+
+  const transitions: number[] = [];
+  const segments: Array<{
+    keys: Action[];
+    start: number;
+    end?: number;
+  }> = [];
+  let current = directionKeys(frames[0]);
+  let start = 0;
+  for (let frame = 1; frame < frames.length; frame += 1) {
+    const next = directionKeys(frames[frame]);
+    if (sameDirections(current, next)) continue;
+    transitions.push(frame);
+    if (current.length) segments.push({ keys: current, start, end: frame });
+    current = next;
+    start = frame;
   }
-  return inputs.sort((left, right) => Number(left.at) - Number(right.at));
+  if (current.length) segments.push({ keys: current, start });
+
+  const variables = transitions.map((frame, index) => {
+    const previous = transitions[index - 1];
+    const following = transitions[index + 1];
+    return {
+      name: `direction_change_${index + 1}`,
+      range: {
+        from:
+          previous === undefined
+            ? Math.max(1, frame - 6)
+            : Math.floor((previous + frame) / 2) + 1,
+        to:
+          following === undefined
+            ? frame + 6
+            : Math.floor((frame + following) / 2),
+      },
+    };
+  });
+  const variableAt = new Map(
+    transitions.map((frame, index) => [frame, variables[index].name]),
+  );
+  const occurrences = new Map<string, number>();
+  const inputs = segments.map((segment) => {
+    const base = segment.keys.join("-");
+    const occurrence = (occurrences.get(base) ?? 0) + 1;
+    occurrences.set(base, occurrence);
+    const startAt = segment.start === 0 ? 0 : variableAt.get(segment.start)!;
+    const endAt =
+      segment.end === undefined ? undefined : variableAt.get(segment.end)!;
+    return {
+      id: occurrence === 1 ? `hold-${base}` : `hold-${base}-${occurrence}`,
+      keys: segment.keys,
+      at: startAt,
+      held_time:
+        endAt === undefined
+          ? "hold::inf"
+          : startAt === 0
+            ? endAt
+            : `${endAt} - ${startAt}`,
+      verify: false,
+    } satisfies TrainingInput;
+  });
+  const lastTransition = transitions.at(-1);
+  const observeUntil =
+    lastTransition === undefined
+      ? Math.max(1, frames.length)
+      : `max(${Math.max(1, frames.length)}, ${variableAt.get(lastTransition)} + ${Math.max(1, frames.length - lastTransition)})`;
+  return {
+    inputs,
+    variables,
+    observeUntil,
+    changes: transitions.map((frame) => ({
+      frame,
+      at: variableAt.get(frame)!,
+    })),
+  };
 }
 
 function actionText(keys: readonly string[]): string {
@@ -143,12 +230,10 @@ export function applyTutorialRecording(
       },
     };
   });
-  module.tutorial.fuzz.inputs = [
-    ...recordedDirectionInputsFromFrames(frames),
-    ...inputs,
-  ].sort((left, right) => Number(left.at) - Number(right.at));
-  module.tutorial.fuzz.variables = [];
-  module.tutorial.fuzz.observe_until = Math.max(1, frames.length);
+  const directionPlan = recordedDirectionPlanFromFrames(frames);
+  module.tutorial.fuzz.inputs = [...directionPlan.inputs, ...inputs];
+  module.tutorial.fuzz.variables = directionPlan.variables;
+  module.tutorial.fuzz.observe_until = directionPlan.observeUntil;
   module.tutorial.fuzz.success = endRegionSuccess(module.end_trigger.bounds);
   module.tutorial.fuzz.objectives = [
     {

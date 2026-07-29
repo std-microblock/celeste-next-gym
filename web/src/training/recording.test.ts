@@ -9,6 +9,7 @@ import {
   hasRecordedAction,
   nextSequentialModuleAtPlayer,
   recordingStartState,
+  recordedDirectionPlanFromFrames,
   recordedInputsFromFrames,
 } from "./recording";
 
@@ -53,29 +54,37 @@ describe("tutorial editor recording", () => {
     const module = next.training.modules[0];
     expect(module.tutorial.entry.input_id).toBe("dash");
     expect(module.tutorial.fuzz.inputs.map((input) => input.keys)).toEqual([
-      ["down"],
+      ["down", "right"],
       ["right"],
       ["dash"],
       ["jump"],
     ]);
     expect(module.tutorial.fuzz.inputs.slice(0, 2)).toEqual([
       {
-        id: "hold-down",
-        keys: ["down"],
+        id: "hold-down-right",
+        keys: ["down", "right"],
         at: 0,
-        held_time: 2,
+        held_time: "direction_change_1",
         verify: false,
       },
       {
         id: "hold-right",
         keys: ["right"],
-        at: 0,
-        held_time: 3,
+        at: "direction_change_1",
+        held_time: "hold::inf",
         verify: false,
       },
     ]);
+    expect(module.tutorial.fuzz.variables).toEqual([
+      {
+        name: "direction_change_1",
+        range: { from: 1, to: 8 },
+      },
+    ]);
     expect(module.tutorial.teaching.steps).toHaveLength(2);
-    expect(module.tutorial.fuzz.observe_until).toBe(3);
+    expect(module.tutorial.fuzz.observe_until).toBe(
+      "max(3, direction_change_1 + 1)",
+    );
     expect(module.tutorial.fuzz.success).toContain("!final.dead");
     expect(module.tutorial.fuzz.objectives).toEqual([
       {
@@ -96,6 +105,69 @@ describe("tutorial editor recording", () => {
     expect(project.training.modules[0].tutorial.fuzz.inputs).not.toEqual(
       module.tutorial.fuzz.inputs,
     );
+  });
+
+  it("keeps unchanged WASD at F0 forever", () => {
+    expect(
+      recordedDirectionPlanFromFrames([
+        buttons("down", "right", "dash"),
+        buttons("down", "right"),
+        buttons("down", "right", "jump"),
+      ]),
+    ).toEqual({
+      inputs: [
+        {
+          id: "hold-down-right",
+          keys: ["down", "right"],
+          at: 0,
+          held_time: "hold::inf",
+          verify: false,
+        },
+      ],
+      variables: [],
+      observeUntil: 3,
+      changes: [],
+    });
+  });
+
+  it("shares one fuzzed time between direction release and replacement", () => {
+    const plan = recordedDirectionPlanFromFrames([
+      buttons("right", "dash"),
+      buttons("right"),
+      buttons(),
+      buttons("left"),
+      buttons("left"),
+    ]);
+    expect(plan.inputs).toEqual([
+      {
+        id: "hold-right",
+        keys: ["right"],
+        at: 0,
+        held_time: "direction_change_1",
+        verify: false,
+      },
+      {
+        id: "hold-left",
+        keys: ["left"],
+        at: "direction_change_2",
+        held_time: "hold::inf",
+        verify: false,
+      },
+    ]);
+    expect(plan.variables).toEqual([
+      {
+        name: "direction_change_1",
+        range: { from: 1, to: 2 },
+      },
+      {
+        name: "direction_change_2",
+        range: { from: 3, to: 9 },
+      },
+    ]);
+    expect(plan.changes).toEqual([
+      { frame: 2, at: "direction_change_1" },
+      { frame: 3, at: "direction_change_2" },
+    ]);
   });
 
   it("arms record-all modules in document order", () => {
