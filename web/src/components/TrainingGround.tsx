@@ -57,7 +57,6 @@ import {
 import { TrainingPrompt } from "./TrainingPrompt";
 import {
   TrainingResultTimeline,
-  TrainingTimeline,
   type TrainingObjectiveSeries,
 } from "./TrainingTimeline";
 import type { VisualTheme } from "../visualThemes";
@@ -169,7 +168,6 @@ export function TrainingGround({
   const [playing, setPlaying] = useState(false);
   const [baseRate, setBaseRate] = useState(1);
   const [autoSlowdown, setAutoSlowdown] = useState(true);
-  const [timelineOpen, setTimelineOpen] = useState(false);
   const [resetFrame, setResetFrame] = useState(0);
   const [triggerFrame, setTriggerFrame] = useState<number | null>(null);
   const triggerFrameRef = useRef<number | null>(null);
@@ -184,7 +182,6 @@ export function TrainingGround({
     objectives: [],
   });
   const predictionDirty = useRef(false);
-  const [followReference, setFollowReference] = useState(true);
   const [outcome, setOutcome] = useState<OutcomeAnimation | null>(null);
   const outcomeRef = useRef<OutcomeAnimation | null>(null);
   const [outcomeProgress, setOutcomeProgress] = useState(0);
@@ -352,7 +349,6 @@ export function TrainingGround({
       new Set(),
     );
     if (initialModule) activateModule(initialModule, 0);
-    setFollowReference(true);
     setNotice(
       initialModule
         ? `${initialModule.tutorial.title} 已触发；下一个动作将作为 F0。`
@@ -477,7 +473,6 @@ export function TrainingGround({
         return;
       keys.current.add(event.code);
       if (gameInput) {
-        setFollowReference(true);
         if (predictionDirty.current) {
           predictionDirty.current = false;
           applyPrediction({ windows: [], objectives: [] });
@@ -826,10 +821,6 @@ export function TrainingGround({
   const failureFrame = session.failure
     ? (fuzzStartFrame ?? 0) + session.failure.frame
     : undefined;
-  const timelineFrame = outcome?.timelineFrame ?? frame;
-  const timelineFrameCount =
-    outcome?.timelineFrame ??
-    Math.max(40, snapshots.length - 1, (prediction.targetFrame ?? 0) + 24);
   const recommendations = editorPreview
     ? []
     : technique.variants
@@ -847,7 +838,7 @@ export function TrainingGround({
 
   return (
     <main
-      className={`training-workspace ${timelineOpen ? "timeline-open" : ""} ${editorPreview ? "editor-training-preview" : ""}`}
+      className={`training-workspace ${editorPreview ? "editor-training-preview" : ""}`}
     >
       {!editorPreview && (
         <TrainingCatalogSidebar
@@ -1113,15 +1104,6 @@ export function TrainingGround({
         )}
 
         <div className="transport">
-          <button
-            type="button"
-            className="timeline-toggle"
-            aria-expanded={timelineOpen}
-            aria-controls="training-timeline"
-            onClick={() => setTimelineOpen((open) => !open)}
-          >
-            {timelineOpen ? "收起时间线" : "时间线"}
-          </button>
           <button aria-label="回到 R 点" onClick={() => resetTo()}>
             R
           </button>
@@ -1163,30 +1145,6 @@ export function TrainingGround({
           </label>
         </div>
       </section>
-      {timelineOpen && (
-        <div id="training-timeline">
-          <TrainingTimeline
-            frame={timelineFrame}
-            frameCount={timelineFrameCount}
-            fuzzStart={fuzzStartFrame}
-            targetFrame={prediction.targetFrame}
-            windows={prediction.windows}
-            actualInputs={actualInputs}
-            failureFrame={failureFrame}
-            resetFrame={resetFrame}
-            objectives={prediction.objectives}
-            followTarget={followReference && !outcome}
-            onSeek={(value, manual) => {
-              if (manual && value < timelineFrame) setFollowReference(false);
-              seek(value);
-            }}
-            onSetReset={(value) => {
-              setResetFrame(value);
-              setNotice(`临时 R 点已设为 F${value}`);
-            }}
-          />
-        </div>
-      )}
     </main>
   );
 }

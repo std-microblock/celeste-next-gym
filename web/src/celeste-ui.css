@@ -241,20 +241,6 @@ textarea:focus-visible {
   background: #05030f;
 }
 
-.training-workspace.timeline-open {
-  grid-template-rows: minmax(0, 1fr) 104px;
-}
-
-#training-timeline {
-  grid-column: 2;
-  grid-row: 2;
-  min-height: 0;
-}
-
-#training-timeline > .training-timeline {
-  height: 100%;
-}
-
 .training-catalog {
   border-right: 1px solid #433655;
   background: #0e0923;
@@ -368,7 +354,6 @@ textarea:focus-visible {
 }
 
 .training-stage,
-.training-timeline,
 .panel-frame {
   border: 0;
   background: #070412;
@@ -452,18 +437,6 @@ textarea:focus-visible {
   font-size: 9px;
 }
 
-.training-stage .transport .timeline-toggle {
-  min-width: 50px;
-  margin-right: 3px;
-  color: #9edfff;
-}
-
-.training-stage .transport .timeline-toggle[aria-expanded="true"] {
-  color: #fff;
-  border-color: #65d9ff;
-  background: #15213a;
-}
-
 .training-stage .transport .play-button {
   border-color: #ff83a6;
   background: #bd315f;
@@ -471,53 +444,6 @@ textarea:focus-visible {
 
 .training-assist {
   font-size: 8px;
-}
-
-.training-timeline {
-  border-top: 1px solid #433655;
-}
-
-.training-timeline-head {
-  min-height: 25px;
-  padding: 3px 8px;
-  border: 0;
-  border-bottom: 1px solid #31283f;
-  background: #0e0923;
-}
-
-.training-timeline-head small {
-  font-size: 6px;
-}
-
-.training-timeline-head h2 {
-  display: none;
-}
-
-.training-timeline-head output {
-  font-size: 9px;
-}
-
-.training-track {
-  height: 48px;
-  margin: 4px 8px 2px;
-}
-
-.training-timeline-actions {
-  min-height: 23px;
-  padding: 2px 8px 4px;
-}
-
-.training-timeline-actions button {
-  min-height: 19px;
-  padding: 2px 6px;
-  border: 1px solid #51456a;
-  background: #18122e;
-  font-size: 7px;
-}
-
-.training-legend {
-  gap: 3px 6px;
-  font-size: 6px;
 }
 
 /* Other workspaces retain clear structure without decorative frames. */
@@ -672,10 +598,6 @@ textarea:focus-visible {
     grid-template-rows: minmax(0, 1fr);
   }
 
-  .training-workspace.timeline-open {
-    grid-template-rows: minmax(0, 1fr) 96px;
-  }
-
   .training-catalog-heading {
     padding: 7px 6px;
   }
@@ -726,16 +648,4 @@ textarea:focus-visible {
     padding: 4px;
   }
 
-  .training-timeline-head {
-    min-height: 22px;
-  }
-
-  .training-track {
-    height: 45px;
-    margin-inline: 5px;
-  }
-
-  .training-timeline-actions {
-    display: none;
-  }
 }
