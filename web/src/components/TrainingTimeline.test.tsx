@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import {
   TrainingResultTimeline,
@@ -58,13 +58,22 @@ describe("training result timeline", () => {
     );
 
     const timeline = within(container);
-    expect(timeline.getAllByText("F0")).toHaveLength(1);
+    expect(timeline.queryByText("F0")).not.toBeInTheDocument();
     expect(
       timeline.getByLabelText("F2 未通过候选；水平速度 191.67 px/s"),
     ).toBeInTheDocument();
-    expect(timeline.getByText("未通过候选")).toBeInTheDocument();
-    expect(timeline.getAllByText("水平速度")).toHaveLength(3);
-    expect(timeline.getByText("191.67 px/s")).toBeInTheDocument();
+    const failedHit = timeline.getByLabelText(
+      "F2 未通过候选；水平速度 191.67 px/s",
+    );
+    fireEvent.mouseMove(failedHit, { clientX: 240, clientY: 180 });
+
+    const tooltip = screen.getByRole("tooltip");
+    expect(tooltip).toHaveTextContent("F2");
+    expect(tooltip).toHaveTextContent("未通过候选");
+    expect(tooltip).toHaveTextContent("水平速度");
+    expect(tooltip).toHaveTextContent("191.67 px/s");
+    expect(tooltip.parentElement).toBe(document.body);
+    expect(tooltip).toHaveStyle({ left: "252px", top: "192px" });
     expect(timeline.queryByText("终态未满足成功条件")).not.toBeInTheDocument();
 
     const hit = container.querySelector<HTMLElement>(".training-objective-hit");
