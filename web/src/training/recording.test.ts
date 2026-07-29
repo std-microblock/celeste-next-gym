@@ -212,7 +212,7 @@ describe("tutorial editor recording", () => {
       buttons("left"),
     ];
     const snapshots = Array.from({ length: 5 }, () => structuredClone(initial));
-    snapshots[1].speed = { x: 240, y: -60 };
+    snapshots[1].speed = { x: 325, y: -60 };
     snapshots[1].pos = { x: initial.pos.x + 12, y: initial.pos.y };
     snapshots[1].dashes = 0;
     snapshots[1].stamina = 87.5;
@@ -239,14 +239,14 @@ describe("tutorial editor recording", () => {
       },
     ]);
     const selections: RecordingTargetSelections = {
-      "recorded-node-0": [
-        "speed_x",
-        "speed_total",
-        "dashes",
-        "coordinate_crossing",
-        "stamina",
-      ],
-      "recorded-node-3": ["speed_y"],
+      "recorded-node-0": {
+        speed_x: "match_and_maximize",
+        speed_total: "maximize",
+        dashes: "maximize",
+        coordinate_crossing: "match",
+        stamina: "maximize",
+      },
+      "recorded-node-3": { speed_y: "match" },
     };
     const checkpoints = recordingCheckpoints(
       initial,
@@ -261,17 +261,26 @@ describe("tutorial editor recording", () => {
       "after.dashes",
       "after.stamina",
     ]);
-    expect(
-      checkpoints[0].objectives.every((item) => item.type === "maximize"),
-    ).toBe(true);
+    expect(checkpoints[0].objectives.every((item) => item.type === "maximize")).toBe(
+      true,
+    );
     expect(checkpoints[0].success).toEqual([
+      "after.speed.x >= 324.99",
+      "after.speed.x <= 325.01",
       `after.pos.x >= ${initial.pos.x + 12}`,
     ]);
     expect(checkpoints[0].description).toContain(
-      "最大化 X 速度（录制值 240 px/s）",
+      "X 速度必须达到 325 px/s（误差 ≤ 0.01），并最大化",
     );
     expect(checkpoints[0].description).toContain("坐标越过 X ≥");
     expect(checkpoints[1].at).toBe("direction_change_1");
+    expect(checkpoints[1].success).toEqual([
+      "after.speed.y >= 104.99",
+      "after.speed.y <= 105.01",
+    ]);
+    expect(checkpoints[1].objectives).toEqual([
+      { type: "approach", expression: "after.speed.y", target: 105 },
+    ]);
 
     const next = applyTutorialRecording(
       project,
@@ -289,7 +298,7 @@ describe("tutorial editor recording", () => {
     expect(next.training.modules[0].tutorial.summary).toContain("录制目标");
     expect(
       next.training.modules[0].tutorial.teaching.steps[0].prompt,
-    ).toContain("最大化 X 速度（录制值 240 px/s）");
+    ).toContain("X 速度必须达到 325 px/s（误差 ≤ 0.01），并最大化");
   });
 
   it("arms record-all modules in document order", () => {

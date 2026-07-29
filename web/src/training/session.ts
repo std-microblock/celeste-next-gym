@@ -262,7 +262,7 @@ export function nextTargetFrame(
     : candidateInput(candidates[0], inputIndex)?.frame;
 }
 
-/** The Fuzz result is objective-sorted, so duplicate frames retain their best candidate. */
+/** Duplicate frames retain the first candidate supplied by the caller. */
 export function candidateObjectivePoints(
   candidates: readonly TrainingCandidate[],
   inputIndex: number,
@@ -284,16 +284,16 @@ export function candidateObjectivePoints(
     }));
 }
 
-export function matchingTrainingCandidate(
+function candidatesMatchingTrainingInputs(
   candidates: readonly TrainingCandidate[],
   definition: TrainingDefinition,
   actualInputs: readonly { frame: number; keys: readonly string[] }[],
-): TrainingCandidate | undefined {
+): TrainingCandidate[] {
   const inputs = verifiedInputs(definition);
   const entryIndex = inputs.findIndex(
     (input) => input.id === definition.entry.input_id,
   );
-  return candidates.find((candidate) =>
+  return candidates.filter((candidate) =>
     actualInputs.every((actual, index) => {
       const input = inputs[entryIndex + index];
       const expected =
@@ -306,6 +306,47 @@ export function matchingTrainingCandidate(
       );
     }),
   );
+}
+
+/**
+ * Returns the output of performing the current operation on each candidate
+ * frame, while holding every operation the player already performed fixed.
+ * Successful candidates are objective-ranked by Rust and therefore take
+ * precedence over failed evaluations that share the same operation frame.
+ */
+export function candidateOperationObjectivePoints(
+  candidates: readonly TrainingCandidate[],
+  evaluations: readonly TrainingCandidate[],
+  definition: TrainingDefinition,
+  inputIndex: number,
+  actualInputs: readonly { frame: number; keys: readonly string[] }[],
+): TrainingObjectivePoint[] {
+  const matchingCandidates = candidatesMatchingTrainingInputs(
+    candidates,
+    definition,
+    actualInputs,
+  );
+  const matchingEvaluations = candidatesMatchingTrainingInputs(
+    evaluations,
+    definition,
+    actualInputs,
+  );
+  return candidateObjectivePoints(
+    [...matchingCandidates, ...matchingEvaluations],
+    inputIndex,
+  );
+}
+
+export function matchingTrainingCandidate(
+  candidates: readonly TrainingCandidate[],
+  definition: TrainingDefinition,
+  actualInputs: readonly { frame: number; keys: readonly string[] }[],
+): TrainingCandidate | undefined {
+  return candidatesMatchingTrainingInputs(
+    candidates,
+    definition,
+    actualInputs,
+  )[0];
 }
 
 function failed(

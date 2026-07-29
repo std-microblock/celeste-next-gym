@@ -13,14 +13,17 @@ import { triggerContainsPlayer } from "../training/course";
 import type { TrainingProject } from "../training/editorProject";
 import {
   applyTutorialRecording,
+  defaultRecordingTargetMode,
   hasRecordedAction,
   nextSequentialModuleAtPlayer,
   RECORDING_TARGET_GROUPS,
+  RECORDING_TARGET_MODE_OPTIONS,
   recordedCriticalNodesFromFrames,
   recordingStartState,
   recordingTargetCondition,
   type RecordedCriticalNode,
   type RecordingTargetKind,
+  type RecordingTargetMode,
   type RecordingTargetSelections,
 } from "../training/recording";
 import type { VisualTheme } from "../visualThemes";
@@ -198,14 +201,35 @@ export function TrainingRecorder({
     setReview((pending) => {
       if (!pending) return pending;
       const node = pending.nodes[pending.currentNode];
-      const selected = pending.selections[node.id] ?? [];
+      const selected = { ...(pending.selections[node.id] ?? {}) };
+      if (selected[kind] === undefined)
+        selected[kind] = defaultRecordingTargetMode(kind);
+      else delete selected[kind];
       const selections = {
         ...pending.selections,
-        [node.id]: selected.includes(kind)
-          ? selected.filter((candidate) => candidate !== kind)
-          : [...selected, kind],
+        [node.id]: selected,
       };
       return { ...pending, selections };
+    });
+  };
+
+  const setReviewTargetMode = (
+    kind: RecordingTargetKind,
+    mode: RecordingTargetMode,
+  ) => {
+    setReview((pending) => {
+      if (!pending) return pending;
+      const node = pending.nodes[pending.currentNode];
+      return {
+        ...pending,
+        selections: {
+          ...pending.selections,
+          [node.id]: {
+            ...pending.selections[node.id],
+            [kind]: mode,
+          },
+        },
+      };
     });
   };
 
@@ -409,7 +433,7 @@ export function TrainingRecorder({
                 snapshots: structuredClone(recordingSnapshots.current),
                 nodes,
                 selections: Object.fromEntries(
-                  nodes.map((node) => [node.id, []]),
+                  nodes.map((node) => [node.id, {}]),
                 ),
                 currentNode: 0,
                 startGlobalFrame: recordingStartGlobalFrame.current,
@@ -454,8 +478,8 @@ export function TrainingRecorder({
       : projectRef.current.training.modules[activeIndex];
   const reviewNode = review?.nodes[review.currentNode];
   const reviewTargets = reviewNode
-    ? (review?.selections[reviewNode.id] ?? [])
-    : [];
+    ? (review?.selections[reviewNode.id] ?? {})
+    : {};
   const reviewSnapshot =
     review && reviewNode
       ? (review.snapshots[reviewNode.frame + 1] ?? review.after)
@@ -582,27 +606,54 @@ export function TrainingRecorder({
                         >
                           <strong>{group.label}</strong>
                           <div>
-                            {group.options.map((option) => (
-                              <button
-                                aria-pressed={reviewTargets.includes(option.id)}
-                                className={
-                                  reviewTargets.includes(option.id)
-                                    ? "selected"
-                                    : ""
-                                }
-                                key={option.id}
-                                onClick={() => toggleReviewTarget(option.id)}
-                              >
-                                <span>{option.label}</span>
-                                <b>
-                                  {recordingTargetCondition(
-                                    option.id,
-                                    reviewSnapshot,
-                                    review.initial,
-                                  )}
-                                </b>
-                              </button>
-                            ))}
+                            {group.options.map((option) => {
+                              const mode = reviewTargets[option.id];
+                              return (
+                                <div
+                                  className="training-record-target-option"
+                                  key={option.id}
+                                >
+                                  <button
+                                    aria-pressed={mode !== undefined}
+                                    className={mode !== undefined ? "selected" : ""}
+                                    onClick={() => toggleReviewTarget(option.id)}
+                                  >
+                                    <span>{option.label}</span>
+                                    <b>
+                                      {recordingTargetCondition(
+                                        option.id,
+                                        reviewSnapshot,
+                                        review.initial,
+                                      )}
+                                    </b>
+                                  </button>
+                                  {mode !== undefined &&
+                                    option.id !== "coordinate_crossing" && (
+                                      <select
+                                        aria-label={`${option.label}目标方式`}
+                                        value={mode}
+                                        onChange={(event) =>
+                                          setReviewTargetMode(
+                                            option.id,
+                                            event.target.value as RecordingTargetMode,
+                                          )
+                                        }
+                                      >
+                                        {RECORDING_TARGET_MODE_OPTIONS.map(
+                                          (candidate) => (
+                                            <option
+                                              key={candidate.id}
+                                              value={candidate.id}
+                                            >
+                                              {candidate.label}
+                                            </option>
+                                          ),
+                                        )}
+                                      </select>
+                                    )}
+                                </div>
+                              );
+                            })}
                           </div>
                         </article>
                       ))}

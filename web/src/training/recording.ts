@@ -40,6 +40,28 @@ export type RecordingTargetKind =
   | "coordinate_crossing"
   | "stamina";
 
+export type RecordingTargetMode =
+  | "match_and_maximize"
+  | "match"
+  | "maximize";
+
+export const RECORDING_TARGET_MODE_OPTIONS: ReadonlyArray<{
+  id: RecordingTargetMode;
+  label: string;
+}> = [
+  { id: "match_and_maximize", label: "达到并最大化" },
+  { id: "match", label: "必须达到" },
+  { id: "maximize", label: "仅最大化" },
+];
+
+export function defaultRecordingTargetMode(
+  kind: RecordingTargetKind,
+): RecordingTargetMode {
+  if (kind === "coordinate_crossing") return "match";
+  if (kind === "dashes" || kind === "stamina") return "maximize";
+  return "match_and_maximize";
+}
+
 export const RECORDING_TARGET_GROUPS: ReadonlyArray<{
   id: string;
   label: string;
@@ -85,7 +107,10 @@ interface RecordedEvent {
   label: string;
 }
 
-export type RecordingTargetSelections = Record<string, RecordingTargetKind[]>;
+export type RecordingTargetSelections = Record<
+  string,
+  Partial<Record<RecordingTargetKind, RecordingTargetMode>>
+>;
 
 function heldFrames(
   frames: readonly FrameButtons[],
@@ -324,51 +349,87 @@ function conciseNumber(value: number): string {
   return Number(value.toFixed(2)).toString();
 }
 
+function measuredTarget(
+  expression: string,
+  value: number,
+  name: string,
+  unit: string,
+  mode: RecordingTargetMode,
+): {
+  objective: TrainingObjective;
+  success?: string[];
+  description: string;
+} {
+  const target = Number(value.toFixed(2));
+  const recorded = `${conciseNumber(target)}${unit}`;
+  const objective: TrainingObjective =
+    mode === "match"
+      ? { type: "approach", expression, target }
+      : { type: "maximize", expression };
+  if (mode === "maximize") {
+    return {
+      objective,
+      description: `最大化${name}（录制值 ${recorded}）`,
+    };
+  }
+  return {
+    objective,
+    success: [
+      `${expression} >= ${conciseNumber(target - 0.01)}`,
+      `${expression} <= ${conciseNumber(target + 0.01)}`,
+    ],
+    description:
+      mode === "match_and_maximize"
+        ? `${name}必须达到 ${recorded}（误差 ≤ 0.01），并最大化`
+        : `${name}必须达到 ${recorded}（误差 ≤ 0.01）`,
+  };
+}
+
 function targetObjective(
   kind: RecordingTargetKind,
   state: SimState,
   initial: SimState,
+  mode: RecordingTargetMode,
 ): {
   objective?: TrainingObjective;
-  success?: string;
+  success?: string[];
   description: string;
 } {
   switch (kind) {
     case "speed_x":
-      return {
-        objective: {
-          type: "maximize",
-          expression: "after.speed.x",
-        },
-        description: `最大化 X 速度（录制值 ${conciseNumber(state.speed.x)} px/s）`,
-      };
+      return measuredTarget(
+        "after.speed.x",
+        state.speed.x,
+        "X 速度",
+        " px/s",
+        mode,
+      );
     case "speed_y":
-      return {
-        objective: {
-          type: "maximize",
-          expression: "after.speed.y",
-        },
-        description: `最大化 Y 速度（录制值 ${conciseNumber(state.speed.y)} px/s）`,
-      };
+      return measuredTarget(
+        "after.speed.y",
+        state.speed.y,
+        "Y 速度",
+        " px/s",
+        mode,
+      );
     case "speed_total": {
       const speed = Math.hypot(state.speed.x, state.speed.y);
-      return {
-        objective: {
-          type: "maximize",
-          expression:
-            "sqrt(after.speed.x * after.speed.x + after.speed.y * after.speed.y)",
-        },
-        description: `最大化总速度（录制值 ${conciseNumber(speed)} px/s）`,
-      };
+      return measuredTarget(
+        "sqrt(after.speed.x * after.speed.x + after.speed.y * after.speed.y)",
+        speed,
+        "总速度",
+        " px/s",
+        mode,
+      );
     }
     case "dashes":
-      return {
-        objective: {
-          type: "maximize",
-          expression: "after.dashes",
-        },
-        description: `最大化剩余冲刺（录制值 ${state.dashes}）`,
-      };
+      return measuredTarget(
+        "after.dashes",
+        state.dashes,
+        "剩余冲刺",
+        "",
+        mode,
+      );
     case "coordinate_crossing": {
       const useX =
         Math.abs(state.pos.x - initial.pos.x) >=
@@ -377,18 +438,20 @@ function targetObjective(
       const target = state.pos[axis];
       const operator = target < initial.pos[axis] ? "<=" : ">=";
       return {
-        success: `after.pos.${axis} ${operator} ${conciseNumber(target)}`,
+        success: [
+          `after.pos.${axis} ${operator} ${conciseNumber(target)}`,
+        ],
         description: `坐标越过 ${axis.toUpperCase()} ${operator === ">=" ? "≥" : "≤"} ${conciseNumber(target)}`,
       };
     }
     case "stamina":
-      return {
-        objective: {
-          type: "maximize",
-          expression: "after.stamina",
-        },
-        description: `最大化体力（录制值 ${conciseNumber(state.stamina)}）`,
-      };
+      return measuredTarget(
+        "after.stamina",
+        state.stamina,
+        "体力",
+        "",
+        mode,
+      );
   }
 }
 
@@ -426,14 +489,16 @@ export function recordingCheckpoints(
   selections: RecordingTargetSelections,
 ): TrainingCheckpoint[] {
   return recordedCriticalNodesFromFrames(frames).flatMap((node) => {
-    const selected = selections[node.id] ?? [];
+    const selected = Object.entries(selections[node.id] ?? {}) as Array<
+      [RecordingTargetKind, RecordingTargetMode]
+    >;
     if (!selected.length) return [];
     const state = snapshots[node.frame + 1] ?? snapshots.at(-1) ?? initial;
-    const targets = selected.map((kind) =>
-      targetObjective(kind, state, initial),
+    const targets = selected.map(([kind, mode]) =>
+      targetObjective(kind, state, initial, mode),
     );
     const success = targets.flatMap((target) =>
-      target.success === undefined ? [] : [target.success],
+      target.success === undefined ? [] : target.success,
     );
     return [
       {
