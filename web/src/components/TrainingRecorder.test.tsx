@@ -48,10 +48,13 @@ describe("training recorder runtime", () => {
     };
     const onChange = vi.fn();
     const callbacks: Array<(time: number) => void> = [];
-    vi.stubGlobal("requestAnimationFrame", (callback: (time: number) => void) => {
-      callbacks.push(callback);
-      return callbacks.length;
-    });
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      (callback: (time: number) => void) => {
+        callbacks.push(callback);
+        return callbacks.length;
+      },
+    );
     vi.stubGlobal("cancelAnimationFrame", vi.fn());
     const view = render(
       <TrainingRecorder
@@ -72,18 +75,28 @@ describe("training recorder runtime", () => {
         onExit={vi.fn()}
       />,
     );
-    await waitFor(() => expect(view.getByText("已暂停待命")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(view.getByText("已暂停待命")).toBeInTheDocument(),
+    );
     fireEvent.keyDown(window, { code: "Semicolon" });
     callbacks.shift()?.(1_000_000);
     await waitFor(() =>
       expect(view.getByText("目标节点 1/1")).toBeInTheDocument(),
     );
     expect(onChange).not.toHaveBeenCalled();
-    const speedTarget = view.getByRole("button", { name: /水平速度/ });
-    expect(speedTarget).toHaveTextContent("≈ 0 px/s");
+    expect(view.getByText("速度")).toBeInTheDocument();
+    expect(view.getByText("资源")).toBeInTheDocument();
+    expect(view.getByText("位置")).toBeInTheDocument();
+    const speedTarget = view.getByRole("button", { name: /X 速度/ });
+    const ySpeedTarget = view.getByRole("button", { name: /Y 速度/ });
+    expect(speedTarget).toHaveTextContent("0 px/s");
     expect(view.getByRole("button", { name: "生成教程" })).toBeEnabled();
     fireEvent.click(speedTarget);
     expect(speedTarget).toHaveAttribute("aria-pressed", "true");
+    expect(ySpeedTarget).toHaveAttribute("aria-pressed", "false");
+    expect(
+      view.container.querySelector(".training-record-objective-window"),
+    ).toHaveStyle({ left: "198px" });
     fireEvent.click(view.getByRole("button", { name: "删除关键点" }));
     await waitFor(() => expect(onChange).toHaveBeenCalledTimes(1));
     expect(
