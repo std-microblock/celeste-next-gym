@@ -257,6 +257,67 @@ fn checkpoint_objectives_sample_the_selected_frame_and_sort_candidates() {
 }
 
 #[test]
+fn checkpoint_success_filters_candidates_after_its_frame() {
+    let result = search(
+        r#"{
+          "version":1,
+          "variables":[{"name":"frame","range":{"from":0,"to":2}}],
+          "inputs":[], "observe_until":3,
+          "checkpoints":[{
+            "at":"frame",
+            "success":"at == 1"
+          }]
+        }"#,
+        vec![OutputMode::Candidates, OutputMode::Evaluations],
+    );
+    assert_eq!(result.candidates.len(), 1);
+    assert_eq!(result.candidates[0].bindings["frame"], 1);
+    assert_eq!(result.evaluations.len(), 3);
+    assert_eq!(
+        result
+            .evaluations
+            .iter()
+            .map(|candidate| (candidate.bindings["frame"], candidate.successful))
+            .collect::<Vec<_>>(),
+        [(0, false), (1, true), (2, false)]
+    );
+    assert!(
+        result
+            .evaluations
+            .iter()
+            .all(|candidate| candidate.objective_values.is_empty())
+    );
+}
+
+#[test]
+fn checkpoint_can_combine_success_and_objectives_without_globals() {
+    let result = search(
+        r#"{
+          "version":1,
+          "variables":[{"name":"frame","range":{"from":0,"to":1}}],
+          "inputs":[], "observe_until":2,
+          "success":[],
+          "checkpoints":[{
+            "at":"frame",
+            "success":["!after.dead"],
+            "objectives":[{"type":"maximize","expression":"at"}]
+          }],
+          "objectives":[]
+        }"#,
+        vec![OutputMode::Best, OutputMode::Evaluations],
+    );
+    assert_eq!(result.best.as_ref().unwrap().bindings["frame"], 1);
+    assert_eq!(
+        result
+            .evaluations
+            .iter()
+            .map(|candidate| candidate.objective_values[0])
+            .collect::<Vec<_>>(),
+        [0.0, 1.0]
+    );
+}
+
+#[test]
 fn prefix_cache_reuses_identical_input_paths() {
     let result = search(
         r#"{

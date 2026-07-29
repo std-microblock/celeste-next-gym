@@ -29,6 +29,7 @@ export interface TrainingCheckpoint {
   id: string;
   at: number | string;
   description: string;
+  success?: string[];
   objectives: TrainingObjective[];
 }
 

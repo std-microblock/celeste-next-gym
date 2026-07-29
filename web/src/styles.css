@@ -4247,12 +4247,20 @@ footer {
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
-.training-trigger-overlay .training-trigger-resize-handles rect[data-corner="nw"],
-.training-trigger-overlay .training-trigger-resize-handles rect[data-corner="se"] {
+.training-trigger-overlay
+  .training-trigger-resize-handles
+  rect[data-corner="nw"],
+.training-trigger-overlay
+  .training-trigger-resize-handles
+  rect[data-corner="se"] {
   cursor: nwse-resize;
 }
-.training-trigger-overlay .training-trigger-resize-handles rect[data-corner="ne"],
-.training-trigger-overlay .training-trigger-resize-handles rect[data-corner="sw"] {
+.training-trigger-overlay
+  .training-trigger-resize-handles
+  rect[data-corner="ne"],
+.training-trigger-overlay
+  .training-trigger-resize-handles
+  rect[data-corner="sw"] {
   cursor: nesw-resize;
 }
 .training-trigger-overlay text {
@@ -4560,7 +4568,9 @@ footer {
 }
 .training-recorder-bar small {
   color: var(--pink);
-  font: 7px Consolas, monospace;
+  font:
+    7px Consolas,
+    monospace;
   letter-spacing: 0.14em;
 }
 .training-recorder-bar strong {
@@ -4647,14 +4657,22 @@ footer {
   stroke-width: 2;
   paint-order: stroke fill;
   pointer-events: none;
-  font: 7px Consolas, monospace;
+  font:
+    7px Consolas,
+    monospace;
 }
 .training-record-objective-window {
   position: absolute;
   z-index: 10;
-  width: min(232px, calc(100% - 16px));
+  width: min(252px, calc(100% - 16px));
   overflow: visible;
+  opacity: 0.6;
   pointer-events: all;
+  transition: opacity 120ms ease;
+}
+.training-record-objective-window:hover,
+.training-record-objective-window:focus-within {
+  opacity: 1;
 }
 .training-record-objective-window > div {
   box-sizing: border-box;
@@ -4677,7 +4695,9 @@ footer {
 }
 .training-record-objective-window header small {
   color: var(--pink);
-  font: 8px Consolas, monospace;
+  font:
+    8px Consolas,
+    monospace;
   letter-spacing: 0.08em;
 }
 .training-record-objective-window header strong {
@@ -4686,41 +4706,62 @@ footer {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.training-record-target-cards {
+.training-record-target-groups {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
 }
-.training-record-target-cards button {
+.training-record-target-group {
   display: grid;
-  gap: 2px;
-  height: 42px;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 5px;
+  align-items: center;
   min-width: 0;
-  padding: 6px;
-  text-align: left;
+  padding: 5px;
+  border: 1px solid #4e3a5d;
+  border-radius: 4px;
+  background: #21142d;
+}
+.training-record-target-group > strong {
+  color: #d8c7e1;
+  font-size: 9px;
+}
+.training-record-target-group > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  min-width: 0;
+}
+.training-record-target-group button {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  min-height: 25px;
+  min-width: 0;
+  padding: 3px 5px;
   color: #8c7a96;
   border: 1px solid #4e3a5d;
-  border-radius: 3px;
-  background: #21142d;
+  border-radius: 999px;
+  background: #170d25;
   cursor: pointer;
 }
-.training-record-target-cards button span {
+.training-record-target-group button span {
   font-size: 8px;
-}
-.training-record-target-cards button b {
-  overflow: hidden;
-  color: #b9a9c1;
-  font: 9px Consolas, monospace;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
-.training-record-target-cards button.selected {
+.training-record-target-group button b {
+  color: #b9a9c1;
+  font:
+    8px Consolas,
+    monospace;
+  white-space: nowrap;
+}
+.training-record-target-group button.selected {
   color: #fff;
   border-color: var(--pink);
   background: #5a1f42;
   box-shadow: inset 0 0 7px #ff6f9b35;
 }
-.training-record-target-cards button.selected b {
+.training-record-target-group button.selected b {
   color: #ffd3e0;
 }
 .training-record-objective-window footer {
@@ -4805,7 +4846,9 @@ footer {
   gap: 3px;
 }
 .training-recorder-hud strong {
-  font: 10px Consolas, monospace;
+  font:
+    10px Consolas,
+    monospace;
   letter-spacing: 0.08em;
 }
 .training-recorder-hud span {
@@ -4814,7 +4857,9 @@ footer {
   line-height: 1.5;
 }
 @keyframes recorder-pulse {
-  50% { opacity: 0.25; }
+  50% {
+    opacity: 0.25;
+  }
 }
 .training-preview-bar {
   display: flex;
@@ -4847,7 +4892,8 @@ footer {
 }
 .training-workspace.editor-training-preview .training-stage,
 .training-workspace.editor-training-preview .training-timeline,
-.training-workspace.editor-training-preview .training-loading {
+.training-workspace.editor-training-preview .training-loading,
+.training-workspace.editor-training-preview #training-timeline {
   grid-column: 1;
 }
 

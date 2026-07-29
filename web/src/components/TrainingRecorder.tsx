@@ -15,7 +15,7 @@ import {
   applyTutorialRecording,
   hasRecordedAction,
   nextSequentialModuleAtPlayer,
-  RECORDING_TARGET_OPTIONS,
+  RECORDING_TARGET_GROUPS,
   recordedCriticalNodesFromFrames,
   recordingStartState,
   recordingTargetCondition,
@@ -143,7 +143,9 @@ export function TrainingRecorder({
     } else {
       const title = projectRef.current.training.modules[index]?.tutorial.title;
       setPhase("armed");
-      setNotice(`${title ?? `教程 ${index + 1}`} 已待命；首个非 WASD 动作记为 F0。`);
+      setNotice(
+        `${title ?? `教程 ${index + 1}`} 已待命；首个非 WASD 动作记为 F0。`,
+      );
     }
   };
 
@@ -505,118 +507,134 @@ export function TrainingRecorder({
           const anchorY = reviewSnapshot
             ? offsetY + (reviewSnapshot.pos.y - bounds.y) * scale
             : 0;
-          const windowLeft = Math.min(
-            Math.max(8, anchorX + 12),
-            Math.max(8, width - 244),
-          );
+          const windowWidth = Math.min(252, width - 16);
+          const preferredRight = anchorX + 48;
+          const windowLeft =
+            preferredRight + windowWidth <= width - 8
+              ? preferredRight
+              : Math.max(8, anchorX - windowWidth - 48);
           const windowTop = Math.min(
-            Math.max(8, anchorY - 116),
-            Math.max(8, height - 226),
+            Math.max(8, anchorY - 108),
+            Math.max(8, height - 244),
           );
           return (
             <>
               <svg
-          className={`training-recorder-regions ${phase === "reviewing" ? "reviewing" : ""}`}
-          viewBox={`${projectRef.current.map.bounds.x} ${projectRef.current.map.bounds.y} ${projectRef.current.map.bounds.width} ${projectRef.current.map.bounds.height}`}
-          preserveAspectRatio="xMidYMid meet"
+                className={`training-recorder-regions ${phase === "reviewing" ? "reviewing" : ""}`}
+                viewBox={`${projectRef.current.map.bounds.x} ${projectRef.current.map.bounds.y} ${projectRef.current.map.bounds.width} ${projectRef.current.map.bounds.height}`}
+                preserveAspectRatio="xMidYMid meet"
               >
-          {projectRef.current.training.modules.map((module, index) => {
-            if (
-              scope.type === "module" &&
-              index !== scope.index
-            )
-              return null;
-            return (
-              <g
-                className={index === activeIndex ? "active" : ""}
-                key={module.id}
-              >
-                <rect className="start" {...module.trigger.bounds} />
-                <rect className="end" {...module.end_trigger.bounds} />
-              </g>
-            );
-          })}
-          {review &&
-            review.nodes.map((node, index) => {
-              const snapshot = review.snapshots[node.frame + 1] ?? review.after;
-              return (
-                <g
-                  className={
-                    index === review.currentNode
-                      ? "recorded-node selected"
-                      : "recorded-node"
-                  }
-                  key={node.id}
-                >
-                  <circle cx={snapshot.pos.x} cy={snapshot.pos.y - 6} r="4" />
-                  <text x={snapshot.pos.x + 6} y={snapshot.pos.y - 7}>
-                    {index + 1}
-                  </text>
-                </g>
-              );
-            })}
-              </svg>
-          {review && reviewNode && reviewSnapshot && (
-            <div
-              className="training-record-objective-window"
-              style={{ left: windowLeft, top: windowTop }}
-            >
-              <div>
-                <header>
-                  <small>
-                    关键节点 {review.currentNode + 1}/{review.nodes.length}
-                  </small>
-                  <strong>{reviewNode.label}</strong>
-                </header>
-                <section className="training-record-target-cards">
-                  {RECORDING_TARGET_OPTIONS.map((option) => (
-                    <button
-                      aria-pressed={reviewTargets.includes(option.id)}
-                      className={
-                        reviewTargets.includes(option.id) ? "selected" : ""
-                      }
-                      key={option.id}
-                      onClick={() => toggleReviewTarget(option.id)}
+                {projectRef.current.training.modules.map((module, index) => {
+                  if (scope.type === "module" && index !== scope.index)
+                    return null;
+                  return (
+                    <g
+                      className={index === activeIndex ? "active" : ""}
+                      key={module.id}
                     >
-                      <span>{option.label}</span>
-                      <b>
-                        {recordingTargetCondition(
-                          option.id,
-                          reviewSnapshot,
-                          review.initial,
-                        )}
-                      </b>
-                    </button>
-                  ))}
-                </section>
-                <footer>
-                  <button
-                    disabled={review.currentNode === 0}
-                    onClick={() =>
-                      showReviewNode(review, review.currentNode - 1)
-                    }
-                  >
-                    上一步
-                  </button>
-                  <button className="danger" onClick={deleteReviewNode}>
-                    删除关键点
-                  </button>
-                  <button
-                    className="primary"
-                    onClick={() => {
-                      if (review.currentNode === review.nodes.length - 1)
-                        finishReview();
-                      else showReviewNode(review, review.currentNode + 1);
-                    }}
-                  >
-                    {review.currentNode === review.nodes.length - 1
-                      ? "生成教程"
-                      : "下一步"}
-                  </button>
-                </footer>
-              </div>
-            </div>
-          )}
+                      <rect className="start" {...module.trigger.bounds} />
+                      <rect className="end" {...module.end_trigger.bounds} />
+                    </g>
+                  );
+                })}
+                {review &&
+                  review.nodes.map((node, index) => {
+                    const snapshot =
+                      review.snapshots[node.frame + 1] ?? review.after;
+                    return (
+                      <g
+                        className={
+                          index === review.currentNode
+                            ? "recorded-node selected"
+                            : "recorded-node"
+                        }
+                        key={node.id}
+                      >
+                        <circle
+                          cx={snapshot.pos.x}
+                          cy={snapshot.pos.y - 6}
+                          r="4"
+                        />
+                        <text x={snapshot.pos.x + 6} y={snapshot.pos.y - 7}>
+                          {index + 1}
+                        </text>
+                      </g>
+                    );
+                  })}
+              </svg>
+              {review && reviewNode && reviewSnapshot && (
+                <div
+                  className="training-record-objective-window"
+                  style={{ left: windowLeft, top: windowTop }}
+                >
+                  <div>
+                    <header>
+                      <small>
+                        关键节点 {review.currentNode + 1}/{review.nodes.length}
+                      </small>
+                      <strong>{reviewNode.label}</strong>
+                    </header>
+                    <section className="training-record-target-groups">
+                      {RECORDING_TARGET_GROUPS.map((group) => (
+                        <article
+                          className="training-record-target-group"
+                          key={group.id}
+                        >
+                          <strong>{group.label}</strong>
+                          <div>
+                            {group.options.map((option) => (
+                              <button
+                                aria-pressed={reviewTargets.includes(option.id)}
+                                className={
+                                  reviewTargets.includes(option.id)
+                                    ? "selected"
+                                    : ""
+                                }
+                                key={option.id}
+                                onClick={() => toggleReviewTarget(option.id)}
+                              >
+                                <span>{option.label}</span>
+                                <b>
+                                  {recordingTargetCondition(
+                                    option.id,
+                                    reviewSnapshot,
+                                    review.initial,
+                                  )}
+                                </b>
+                              </button>
+                            ))}
+                          </div>
+                        </article>
+                      ))}
+                    </section>
+                    <footer>
+                      <button
+                        disabled={review.currentNode === 0}
+                        onClick={() =>
+                          showReviewNode(review, review.currentNode - 1)
+                        }
+                      >
+                        上一步
+                      </button>
+                      <button className="danger" onClick={deleteReviewNode}>
+                        删除关键点
+                      </button>
+                      <button
+                        className="primary"
+                        onClick={() => {
+                          if (review.currentNode === review.nodes.length - 1)
+                            finishReview();
+                          else showReviewNode(review, review.currentNode + 1);
+                        }}
+                      >
+                        {review.currentNode === review.nodes.length - 1
+                          ? "生成教程"
+                          : "下一步"}
+                      </button>
+                    </footer>
+                  </div>
+                </div>
+              )}
             </>
           );
         }}
@@ -633,9 +651,9 @@ export function TrainingRecorder({
                   ? `REC · F${recordingFrames.current.length - 1}`
                   : phase === "reviewing"
                     ? `目标节点 ${review ? review.currentNode + 1 : 0}/${review?.nodes.length ?? 0}`
-                  : phase === "done"
-                    ? "录制完成"
-                    : "寻找开始区"}
+                    : phase === "done"
+                      ? "录制完成"
+                      : "寻找开始区"}
           </strong>
           <span>
             {phase === "armed"
@@ -644,7 +662,7 @@ export function TrainingRecorder({
                 ? "粉色框是当前教程结束区；进入后自动生成并保存 JSON 数据。"
                 : phase === "reviewing"
                   ? "点击卡片切换目标；可以不选，也可以删除不需要的关键点。"
-                : "方向键可正常游玩；进入蓝色开始区后等待第一个教程动作。"}
+                  : "方向键可正常游玩；进入蓝色开始区后等待第一个教程动作。"}
           </span>
         </div>
       </div>

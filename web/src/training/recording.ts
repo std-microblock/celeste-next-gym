@@ -40,16 +40,33 @@ export type RecordingTargetKind =
   | "coordinate_crossing"
   | "stamina";
 
-export const RECORDING_TARGET_OPTIONS: ReadonlyArray<{
-  id: RecordingTargetKind;
+export const RECORDING_TARGET_GROUPS: ReadonlyArray<{
+  id: string;
   label: string;
+  options: ReadonlyArray<{ id: RecordingTargetKind; label: string }>;
 }> = [
-  { id: "speed_x", label: "水平速度" },
-  { id: "speed_y", label: "垂直速度" },
-  { id: "speed_total", label: "总速度" },
-  { id: "dashes", label: "冲刺次数" },
-  { id: "coordinate_crossing", label: "坐标越过" },
-  { id: "stamina", label: "体力" },
+  {
+    id: "speed",
+    label: "速度",
+    options: [
+      { id: "speed_x", label: "X 速度" },
+      { id: "speed_y", label: "Y 速度" },
+      { id: "speed_total", label: "总速度" },
+    ],
+  },
+  {
+    id: "resources",
+    label: "资源",
+    options: [
+      { id: "dashes", label: "冲刺" },
+      { id: "stamina", label: "体力" },
+    ],
+  },
+  {
+    id: "position",
+    label: "位置",
+    options: [{ id: "coordinate_crossing", label: "坐标越过" }],
+  },
 ];
 
 export interface RecordedCriticalNode {
@@ -68,10 +85,7 @@ interface RecordedEvent {
   label: string;
 }
 
-export type RecordingTargetSelections = Record<
-  string,
-  RecordingTargetKind[]
->;
+export type RecordingTargetSelections = Record<string, RecordingTargetKind[]>;
 
 function heldFrames(
   frames: readonly FrameButtons[],
@@ -314,46 +328,46 @@ function targetObjective(
   kind: RecordingTargetKind,
   state: SimState,
   initial: SimState,
-): { objective: TrainingObjective; description: string } {
+): {
+  objective?: TrainingObjective;
+  success?: string;
+  description: string;
+} {
   switch (kind) {
     case "speed_x":
       return {
         objective: {
-          type: "approach",
+          type: "maximize",
           expression: "after.speed.x",
-          target: state.speed.x,
         },
-        description: `水平速度接近 ${conciseNumber(state.speed.x)} px/s`,
+        description: `最大化 X 速度（录制值 ${conciseNumber(state.speed.x)} px/s）`,
       };
     case "speed_y":
       return {
         objective: {
-          type: "approach",
+          type: "maximize",
           expression: "after.speed.y",
-          target: state.speed.y,
         },
-        description: `垂直速度接近 ${conciseNumber(state.speed.y)} px/s`,
+        description: `最大化 Y 速度（录制值 ${conciseNumber(state.speed.y)} px/s）`,
       };
     case "speed_total": {
       const speed = Math.hypot(state.speed.x, state.speed.y);
       return {
         objective: {
-          type: "approach",
+          type: "maximize",
           expression:
             "sqrt(after.speed.x * after.speed.x + after.speed.y * after.speed.y)",
-          target: speed,
         },
-        description: `总速度接近 ${conciseNumber(speed)} px/s`,
+        description: `最大化总速度（录制值 ${conciseNumber(speed)} px/s）`,
       };
     }
     case "dashes":
       return {
         objective: {
-          type: "approach",
+          type: "maximize",
           expression: "after.dashes",
-          target: state.dashes,
         },
-        description: `剩余冲刺次数为 ${state.dashes}`,
+        description: `最大化剩余冲刺（录制值 ${state.dashes}）`,
       };
     case "coordinate_crossing": {
       const useX =
@@ -361,23 +375,19 @@ function targetObjective(
         Math.abs(state.pos.y - initial.pos.y);
       const axis = useX ? "x" : "y";
       const target = state.pos[axis];
+      const operator = target < initial.pos[axis] ? "<=" : ">=";
       return {
-        objective: {
-          type: "approach",
-          expression: `after.pos.${axis}`,
-          target,
-        },
-        description: `坐标越过 ${axis.toUpperCase()}=${conciseNumber(target)}`,
+        success: `after.pos.${axis} ${operator} ${conciseNumber(target)}`,
+        description: `坐标越过 ${axis.toUpperCase()} ${operator === ">=" ? "≥" : "≤"} ${conciseNumber(target)}`,
       };
     }
     case "stamina":
       return {
         objective: {
-          type: "approach",
+          type: "maximize",
           expression: "after.stamina",
-          target: state.stamina,
         },
-        description: `体力接近 ${conciseNumber(state.stamina)}`,
+        description: `最大化体力（录制值 ${conciseNumber(state.stamina)}）`,
       };
   }
 }
@@ -389,22 +399,23 @@ export function recordingTargetCondition(
 ): string {
   switch (kind) {
     case "speed_x":
-      return `≈ ${conciseNumber(state.speed.x)} px/s`;
+      return `${conciseNumber(state.speed.x)} px/s`;
     case "speed_y":
-      return `≈ ${conciseNumber(state.speed.y)} px/s`;
+      return `${conciseNumber(state.speed.y)} px/s`;
     case "speed_total":
-      return `≈ ${conciseNumber(Math.hypot(state.speed.x, state.speed.y))} px/s`;
+      return `${conciseNumber(Math.hypot(state.speed.x, state.speed.y))} px/s`;
     case "dashes":
-      return `= ${state.dashes}`;
+      return `${state.dashes}`;
     case "coordinate_crossing": {
       const useX =
         Math.abs(state.pos.x - initial.pos.x) >=
         Math.abs(state.pos.y - initial.pos.y);
       const axis = useX ? "x" : "y";
-      return `${axis.toUpperCase()} ≈ ${conciseNumber(state.pos[axis])}`;
+      const operator = state.pos[axis] < initial.pos[axis] ? "≤" : "≥";
+      return `${axis.toUpperCase()} ${operator} ${conciseNumber(state.pos[axis])}`;
     }
     case "stamina":
-      return `≈ ${conciseNumber(state.stamina)}`;
+      return conciseNumber(state.stamina);
   }
 }
 
@@ -421,33 +432,25 @@ export function recordingCheckpoints(
     const targets = selected.map((kind) =>
       targetObjective(kind, state, initial),
     );
+    const success = targets.flatMap((target) =>
+      target.success === undefined ? [] : [target.success],
+    );
     return [
       {
         id: node.id,
         at: node.at,
         description: `${node.label}；${targets.map((target) => target.description).join("，")}`,
-        objectives: targets.map((target) => target.objective),
+        ...(success.length ? { success } : {}),
+        objectives: targets.flatMap((target) =>
+          target.objective === undefined ? [] : [target.objective],
+        ),
       },
     ];
   });
 }
 
 function actionText(keys: readonly string[]): string {
-  return keys
-    .map((key) => ACTION_LABELS[key as Action] ?? key)
-    .join(" + ");
-}
-
-function endRegionSuccess(
-  bounds: TrainingProject["training"]["modules"][number]["end_trigger"]["bounds"],
-): string[] {
-  return [
-    "!final.dead",
-    `final.pos.x >= ${bounds.x - 4}`,
-    `final.pos.x <= ${bounds.x + bounds.width + 4}`,
-    `final.pos.y >= ${bounds.y}`,
-    `final.pos.y <= ${bounds.y + bounds.height + 11}`,
-  ];
+  return keys.map((key) => ACTION_LABELS[key as Action] ?? key).join(" + ");
 }
 
 /** Applies one completed play-through to the editable tutorial JSON document. */
@@ -460,9 +463,7 @@ export function applyTutorialRecording(
   targetSelections: RecordingTargetSelections = {},
 ): TrainingProject {
   const nodes = recordedCriticalNodesFromFrames(frames);
-  const atByRecordedFrame = new Map(
-    nodes.map((node) => [node.frame, node.at]),
-  );
+  const atByRecordedFrame = new Map(nodes.map((node) => [node.frame, node.at]));
   const inputs = recordedInputsFromFrames(frames).map((input) => ({
     ...input,
     at: atByRecordedFrame.get(Number(input.at)) ?? input.at,
@@ -520,20 +521,9 @@ export function applyTutorialRecording(
   module.tutorial.fuzz.inputs = [...directionPlan.inputs, ...inputs];
   module.tutorial.fuzz.variables = directionPlan.variables;
   module.tutorial.fuzz.observe_until = directionPlan.observeUntil;
-  module.tutorial.fuzz.success = endRegionSuccess(module.end_trigger.bounds);
+  module.tutorial.fuzz.success = [];
   module.tutorial.fuzz.checkpoints = checkpoints;
-  module.tutorial.fuzz.objectives = [
-    {
-      type: "approach",
-      expression: "final.pos.x",
-      target: module.end_trigger.bounds.x + module.end_trigger.bounds.width / 2,
-    },
-    {
-      type: "approach",
-      expression: "final.pos.y",
-      target: module.end_trigger.bounds.y + module.end_trigger.bounds.height,
-    },
-  ];
+  module.tutorial.fuzz.objectives = [];
   module.tutorial.fuzz.search.bindings = {};
   module.validation.initial_state = structuredClone(initialState);
   if (module.validation.fuzz)

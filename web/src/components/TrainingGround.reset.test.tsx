@@ -54,6 +54,7 @@ vi.mock("./TrainingCatalogSidebar", () => ({
 }));
 vi.mock("./TrainingTimeline", () => ({
   TrainingResultTimeline: () => null,
+  TrainingTimeline: () => <div data-testid="training-timeline" />,
 }));
 vi.mock("./GameplaySprite", () => ({
   GameplayStrawberry: () => null,
@@ -73,10 +74,13 @@ describe("training R reset", () => {
       initial: project.training.modules[0].validation.initial_state,
     };
     const callbacks: Array<(time: number) => void> = [];
-    vi.stubGlobal("requestAnimationFrame", (callback: (time: number) => void) => {
-      callbacks.push(callback);
-      return callbacks.length;
-    });
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      (callback: (time: number) => void) => {
+        callbacks.push(callback);
+        return callbacks.length;
+      },
+    );
     vi.stubGlobal("cancelAnimationFrame", vi.fn());
     const view = render(
       <TrainingGround
@@ -99,27 +103,28 @@ describe("training R reset", () => {
       />,
     );
     await waitFor(() =>
-      expect(view.container.querySelector(".stage-header h1")).toHaveTextContent(
-        "0/1 模块完成",
-      ),
+      expect(
+        view.container.querySelector(".stage-header h1"),
+      ).toHaveTextContent("0/1 模块完成"),
     );
     expect(view.getByTestId("training-prompt")).toHaveTextContent(
       project.training.modules[0].tutorial.entry.hint,
     );
+    expect(view.getByTestId("training-timeline")).toBeInTheDocument();
     fireEvent.keyDown(window, { code: "Semicolon" });
     callbacks.shift()?.(1_000_000);
     await waitFor(() =>
-      expect(view.container.querySelector(".stage-header h1")).toHaveTextContent(
-        "1/1 模块完成",
-      ),
+      expect(
+        view.container.querySelector(".stage-header h1"),
+      ).toHaveTextContent("1/1 模块完成"),
     );
     expect(view.queryByTestId("training-prompt")).not.toBeInTheDocument();
 
     fireEvent.keyDown(window, { code: "KeyR" });
     await waitFor(() =>
-      expect(view.container.querySelector(".stage-header h1")).toHaveTextContent(
-        "0/1 模块完成",
-      ),
+      expect(
+        view.container.querySelector(".stage-header h1"),
+      ).toHaveTextContent("0/1 模块完成"),
     );
     expect(view.getByTestId("training-prompt")).toHaveTextContent(
       project.training.modules[0].tutorial.entry.hint,

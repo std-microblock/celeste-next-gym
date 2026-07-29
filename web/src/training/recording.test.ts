@@ -45,9 +45,11 @@ describe("tutorial editor recording", () => {
     expect(hasRecordedAction(buttons("dash"), buttons())).toBe(true);
   });
 
-  it("writes inputs, teaching steps, success region and initial state", () => {
+  it("writes inputs and initial state without implicit global targets", () => {
     const project = createTrainingProject(PLAYGROUND);
-    const initial = structuredClone(project.training.modules[0].validation.initial_state);
+    const initial = structuredClone(
+      project.training.modules[0].validation.initial_state,
+    );
     initial.pos = { x: 111, y: 222 };
     const next = applyTutorialRecording(project, 0, initial, [
       buttons("down", "right", "dash"),
@@ -85,9 +87,7 @@ describe("tutorial editor recording", () => {
       },
     ]);
     expect(module.tutorial.teaching.steps).toHaveLength(2);
-    expect(module.tutorial.fuzz.observe_until).toBe(
-      "max(3, jump_frame + 1)",
-    );
+    expect(module.tutorial.fuzz.observe_until).toBe("max(3, jump_frame + 1)");
     expect(module.tutorial.fuzz.inputs.slice(2)).toEqual([
       { id: "dash", keys: ["dash"], at: 0, verify: true },
       {
@@ -97,21 +97,9 @@ describe("tutorial editor recording", () => {
         verify: true,
       },
     ]);
-    expect(module.tutorial.fuzz.success).toContain("!final.dead");
-    expect(module.tutorial.fuzz.objectives).toEqual([
-      {
-        type: "approach",
-        expression: "final.pos.x",
-        target:
-          module.end_trigger.bounds.x + module.end_trigger.bounds.width / 2,
-      },
-      {
-        type: "approach",
-        expression: "final.pos.y",
-        target:
-          module.end_trigger.bounds.y + module.end_trigger.bounds.height,
-      },
-    ]);
+    expect(module.tutorial.fuzz.success).toEqual([]);
+    expect(module.tutorial.fuzz.objectives).toEqual([]);
+    expect(module.tutorial.fuzz.checkpoints).toEqual([]);
     expect(module.validation.initial_state.pos).toEqual({ x: 111, y: 222 });
     expect(validateTrainingProject(next)).toEqual([]);
     expect(project.training.modules[0].tutorial.fuzz.inputs).not.toEqual(
@@ -136,9 +124,7 @@ describe("tutorial editor recording", () => {
           verify: false,
         },
       ],
-      variables: [
-        { name: "jump_frame", range: { from: 0, to: 8 } },
-      ],
+      variables: [{ name: "jump_frame", range: { from: 0, to: 8 } }],
       observeUntil: "max(3, jump_frame + 1)",
       changes: [],
     });
@@ -203,12 +189,12 @@ describe("tutorial editor recording", () => {
       at: 0,
       verify: true,
     });
-    expect(fuzz.inputs.slice(1).every((input) => typeof input.at === "string"))
-      .toBe(true);
+    expect(
+      fuzz.inputs.slice(1).every((input) => typeof input.at === "string"),
+    ).toBe(true);
     const candidateCount = fuzz.variables.reduce(
       (count, variable) =>
-        count *
-        (Number(variable.range.to) - Number(variable.range.from) + 1),
+        count * (Number(variable.range.to) - Number(variable.range.from) + 1),
       1,
     );
     expect(candidateCount).toBeLessThanOrEqual(750_000);
@@ -225,9 +211,7 @@ describe("tutorial editor recording", () => {
       buttons("jump"),
       buttons("left"),
     ];
-    const snapshots = Array.from({ length: 5 }, () =>
-      structuredClone(initial),
-    );
+    const snapshots = Array.from({ length: 5 }, () => structuredClone(initial));
     snapshots[1].speed = { x: 240, y: -60 };
     snapshots[1].pos = { x: initial.pos.x + 12, y: initial.pos.y };
     snapshots[1].dashes = 0;
@@ -275,11 +259,18 @@ describe("tutorial editor recording", () => {
       "after.speed.x",
       "sqrt(after.speed.x * after.speed.x + after.speed.y * after.speed.y)",
       "after.dashes",
-      "after.pos.x",
       "after.stamina",
     ]);
-    expect(checkpoints[0].description).toContain("水平速度接近 240 px/s");
-    expect(checkpoints[0].description).toContain("坐标越过 X=");
+    expect(
+      checkpoints[0].objectives.every((item) => item.type === "maximize"),
+    ).toBe(true);
+    expect(checkpoints[0].success).toEqual([
+      `after.pos.x >= ${initial.pos.x + 12}`,
+    ]);
+    expect(checkpoints[0].description).toContain(
+      "最大化 X 速度（录制值 240 px/s）",
+    );
+    expect(checkpoints[0].description).toContain("坐标越过 X ≥");
     expect(checkpoints[1].at).toBe("direction_change_1");
 
     const next = applyTutorialRecording(
@@ -293,10 +284,12 @@ describe("tutorial editor recording", () => {
     expect(next.training.modules[0].tutorial.fuzz.checkpoints).toEqual(
       checkpoints,
     );
+    expect(next.training.modules[0].tutorial.fuzz.success).toEqual([]);
+    expect(next.training.modules[0].tutorial.fuzz.objectives).toEqual([]);
     expect(next.training.modules[0].tutorial.summary).toContain("录制目标");
-    expect(next.training.modules[0].tutorial.teaching.steps[0].prompt).toContain(
-      "水平速度接近 240 px/s",
-    );
+    expect(
+      next.training.modules[0].tutorial.teaching.steps[0].prompt,
+    ).toContain("最大化 X 速度（录制值 240 px/s）");
   });
 
   it("arms record-all modules in document order", () => {
@@ -309,8 +302,12 @@ describe("tutorial editor recording", () => {
     project.training.modules.push(second);
     const atSecond = structuredClone(second.validation.initial_state);
     atSecond.pos = { x: 450, y: 496 };
-    expect(nextSequentialModuleAtPlayer(project, atSecond, new Set())).toBeNull();
-    expect(nextSequentialModuleAtPlayer(project, atSecond, new Set([0]))).toBe(1);
+    expect(
+      nextSequentialModuleAtPlayer(project, atSecond, new Set()),
+    ).toBeNull();
+    expect(nextSequentialModuleAtPlayer(project, atSecond, new Set([0]))).toBe(
+      1,
+    );
   });
 
   it("places current-region recording inside a moved start region", () => {
