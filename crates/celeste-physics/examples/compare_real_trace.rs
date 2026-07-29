@@ -1,13 +1,13 @@
 use std::{env, fs, process::ExitCode};
 
 use celeste_physics::{
-    decode_map_room, simulate_trace, BumperSnapshot, InputState, PlayerSnapshot, PlayerState, Vec2,
+    BumperSnapshot, InputState, PlayerSnapshot, PlayerState, Vec2, decode_map_room, simulate_trace,
 };
 use serde::Deserialize;
 use serde_json::Value;
 
 #[cfg(test)]
-use celeste_physics::{simulate, Map, Rect};
+use celeste_physics::{Map, Rect, simulate};
 
 #[derive(Deserialize)]
 struct TraceFile {
@@ -326,10 +326,12 @@ fn vector_list_field(fields: &serde_json::Map<String, Value>, name: &str) -> Vec
             values
                 .iter()
                 .filter_map(Value::as_array)
-                .map(|value| Vec2::new(
-                    value.first().and_then(Value::as_f64).unwrap_or(0.0) as f32,
-                    value.get(1).and_then(Value::as_f64).unwrap_or(0.0) as f32,
-                ))
+                .map(|value| {
+                    Vec2::new(
+                        value.first().and_then(Value::as_f64).unwrap_or(0.0) as f32,
+                        value.get(1).and_then(Value::as_f64).unwrap_or(0.0) as f32,
+                    )
+                })
                 .collect()
         })
         .unwrap_or_default()
@@ -339,7 +341,13 @@ fn float_list_field(fields: &serde_json::Map<String, Value>, name: &str) -> Vec<
     fields
         .get(name)
         .and_then(Value::as_array)
-        .map(|values| values.iter().filter_map(Value::as_f64).map(|value| value as f32).collect())
+        .map(|values| {
+            values
+                .iter()
+                .filter_map(Value::as_f64)
+                .map(|value| value as f32)
+                .collect()
+        })
         .unwrap_or_default()
 }
 

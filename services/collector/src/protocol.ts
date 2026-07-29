@@ -221,10 +221,14 @@ export function decodeSimulateRequest(
     validateSnapshot(initial, "initial_snapshot");
   }
 
-  const room = root.room === undefined ? undefined : requireNonEmptyString(root.room, "room");
-  const dreamDash = root.dream_dash === undefined
-    ? undefined
-    : requireBoolean(root.dream_dash, "dream_dash");
+  const room =
+    root.room === undefined
+      ? undefined
+      : requireNonEmptyString(root.room, "room");
+  const dreamDash =
+    root.dream_dash === undefined
+      ? undefined
+      : requireBoolean(root.dream_dash, "dream_dash");
   return {
     map,
     ...(room === undefined ? {} : { room }),
@@ -232,9 +236,10 @@ export function decodeSimulateRequest(
     inputs,
     initial_snapshot: initial == null ? null : (initial as PlayerSnapshot),
     frames,
-    skip_transitions: root.skip_transitions === undefined
-      ? false
-      : requireBoolean(root.skip_transitions, "skip_transitions"),
+    skip_transitions:
+      root.skip_transitions === undefined
+        ? false
+        : requireBoolean(root.skip_transitions, "skip_transitions"),
     ...(root.capture_token === undefined
       ? {}
       : { capture_token: requireCaptureToken(root.capture_token) }),
@@ -287,20 +292,25 @@ function validateInput(value: unknown, index: number): InputState {
       input.dash_pressed,
       `inputs[${index}].dash_pressed`,
     ),
-    crouch_dash_pressed: input.crouch_dash_pressed === undefined
-      ? false
-      : requireBoolean(
-        input.crouch_dash_pressed,
-        `inputs[${index}].crouch_dash_pressed`,
-      ),
+    crouch_dash_pressed:
+      input.crouch_dash_pressed === undefined
+        ? false
+        : requireBoolean(
+            input.crouch_dash_pressed,
+            `inputs[${index}].crouch_dash_pressed`,
+          ),
     grab_held: requireBoolean(input.grab_held, `inputs[${index}].grab_held`),
-    talk_pressed: input.talk_pressed === undefined
-      ? false
-      : requireBoolean(input.talk_pressed, `inputs[${index}].talk_pressed`),
+    talk_pressed:
+      input.talk_pressed === undefined
+        ? false
+        : requireBoolean(input.talk_pressed, `inputs[${index}].talk_pressed`),
   };
 }
 
-function validateSnapshot(value: unknown, path: string): asserts value is PlayerSnapshot {
+function validateSnapshot(
+  value: unknown,
+  path: string,
+): asserts value is PlayerSnapshot {
   const snapshot = requireRecord(value, path);
   requireVector(snapshot.pos, `${path}.pos`);
   requireVector(snapshot.speed, `${path}.speed`);
@@ -315,7 +325,9 @@ function validateSnapshot(value: unknown, path: string): asserts value is Player
         (PLAYER_STATES as readonly string[]).includes(snapshot.state))
     )
   ) {
-    throw new ProtocolValidationError(`${path}.state is not a valid player state`);
+    throw new ProtocolValidationError(
+      `${path}.state is not a valid player state`,
+    );
   }
 
   if (
@@ -391,10 +403,7 @@ function requireNonEmptyString(value: unknown, path: string): string {
 }
 
 function requireCaptureToken(value: unknown): string {
-  if (
-    typeof value !== "string" ||
-    !/^[A-Za-z0-9_-]{32,128}$/.test(value)
-  ) {
+  if (typeof value !== "string" || !/^[A-Za-z0-9_-]{32,128}$/.test(value)) {
     throw new ProtocolValidationError(
       "capture_token must be 32-128 URL-safe characters",
     );

@@ -8,6 +8,7 @@ mod engine;
 mod model;
 mod search;
 
+pub use engine::evaluate_current_checks;
 pub use model::{
     CandidateResult, ConnectedRegion, CoverageEntry, CoverageReport, ExactWindow, FrameInterval,
     FuzzError, FuzzResult, FuzzSpec, HoldTime, InputDeclaration, JumpHoldPolicy, Limits, Objective,
@@ -15,4 +16,3 @@ pub use model::{
     Variable, VerifiedInput,
 };
 pub use search::{CompiledFuzz, compile, parse_spec};
-pub use engine::evaluate_current_checks;

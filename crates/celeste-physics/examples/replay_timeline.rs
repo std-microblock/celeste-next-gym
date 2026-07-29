@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::error::Error;
 use std::io;
 
-use celeste_physics::{simulate_trace, InputState, Map, PlayerSnapshot};
+use celeste_physics::{InputState, Map, PlayerSnapshot, simulate_trace};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]

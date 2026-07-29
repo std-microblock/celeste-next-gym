@@ -2,12 +2,22 @@ import assert from "node:assert/strict";
 import net from "node:net";
 import { afterEach, describe, it } from "node:test";
 import { EverestTcpBackend } from "../src/everestBackend.js";
-import { createDefaultSnapshot, type SimulateRequest } from "../src/protocol.js";
+import {
+  createDefaultSnapshot,
+  type SimulateRequest,
+} from "../src/protocol.js";
 
 const servers: net.Server[] = [];
 
 afterEach(async () => {
-  await Promise.all(servers.splice(0).map((server) => new Promise<void>((resolve) => server.close(() => resolve()))));
+  await Promise.all(
+    servers
+      .splice(0)
+      .map(
+        (server) =>
+          new Promise<void>((resolve) => server.close(() => resolve())),
+      ),
+  );
 });
 
 describe("Everest TCP backend", () => {
@@ -54,7 +64,10 @@ describe("Everest TCP backend", () => {
   });
 
   it("reports a live mod through ping", async () => {
-    const { port } = await startFakeEverest(() => ({ success: true, version: "test" }));
+    const { port } = await startFakeEverest(() => ({
+      success: true,
+      version: "test",
+    }));
     const health = await new EverestTcpBackend({ port }).health();
     assert.equal(health.ready, true);
     assert.match(health.detail ?? "", /test/);
@@ -90,13 +103,16 @@ describe("Everest TCP backend", () => {
       runNonce: "run-nonce",
       processId: 4242,
     });
-    const status = await backend.recordingStart({
-      capture_token: token,
-      scenario_id: "scenario-1",
-      start_state_index: 0,
-      end_state_index: 1,
-      timeout_ms: 30_000,
-    }, new AbortController().signal);
+    const status = await backend.recordingStart(
+      {
+        capture_token: token,
+        scenario_id: "scenario-1",
+        start_state_index: 0,
+        end_state_index: 1,
+        timeout_ms: 30_000,
+      },
+      new AbortController().signal,
+    );
 
     assert.equal(status.state, "active");
   });
@@ -104,10 +120,11 @@ describe("Everest TCP backend", () => {
   it("refuses recording without an authenticated nonce and child pid", async () => {
     const backend = new EverestTcpBackend({ port: 1 });
     await assert.rejects(
-      () => backend.recordingStatus(
-        { capture_token: "c".repeat(32) },
-        new AbortController().signal,
-      ),
+      () =>
+        backend.recordingStatus(
+          { capture_token: "c".repeat(32) },
+          new AbortController().signal,
+        ),
       /authenticated runNonce and exact processId/,
     );
   });
@@ -118,13 +135,26 @@ function validRequest(): SimulateRequest {
     map: Uint8Array.of(1),
     room: "1",
     dream_dash: true,
-    inputs: [{ move_x: 1, move_y: 0, jump_pressed: false, jump_held: false, dash_pressed: false, crouch_dash_pressed: false, grab_held: false, talk_pressed: false }],
+    inputs: [
+      {
+        move_x: 1,
+        move_y: 0,
+        jump_pressed: false,
+        jump_held: false,
+        dash_pressed: false,
+        crouch_dash_pressed: false,
+        grab_held: false,
+        talk_pressed: false,
+      },
+    ],
     initial_snapshot: createDefaultSnapshot(),
     frames: 1,
   };
 }
 
-async function startFakeEverest(respond: (request: any) => unknown): Promise<{ port: number }> {
+async function startFakeEverest(
+  respond: (request: any) => unknown,
+): Promise<{ port: number }> {
   const server = net.createServer((socket) => {
     socket.setEncoding("utf8");
     let data = "";
@@ -132,12 +162,15 @@ async function startFakeEverest(respond: (request: any) => unknown): Promise<{ p
       data += chunk;
       const newline = data.indexOf("\n");
       if (newline < 0) return;
-      socket.end(`${JSON.stringify(respond(JSON.parse(data.slice(0, newline))))}\n`);
+      socket.end(
+        `${JSON.stringify(respond(JSON.parse(data.slice(0, newline))))}\n`,
+      );
     });
   });
   servers.push(server);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
-  if (address === null || typeof address === "string") throw new Error("fake server did not bind TCP");
+  if (address === null || typeof address === "string")
+    throw new Error("fake server did not bind TCP");
   return { port: address.port };
 }

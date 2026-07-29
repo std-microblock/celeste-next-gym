@@ -53,7 +53,10 @@ export interface EncodePresentationOptions {
   outputPath: string;
   ffmpegPath: string;
   ffprobePath: string;
-  stateWindow?: { readonly startStateIndex: number; readonly endStateIndex: number };
+  stateWindow?: {
+    readonly startStateIndex: number;
+    readonly endStateIndex: number;
+  };
   posterPath?: string;
   posterStateIndex?: number;
 }
@@ -62,10 +65,17 @@ export async function encodePresentationRecording(
   options: EncodePresentationOptions,
 ): Promise<EncodingResult> {
   const recordingRoot = await canonicalDirectory(options.recordingRoot);
-  const loaded = await loadPresentationManifest(recordingRoot, options.manifestPath);
+  const loaded = await loadPresentationManifest(
+    recordingRoot,
+    options.manifestPath,
+  );
   const selectedFrames = selectFrames(loaded, options.stateWindow);
-  if (selectedFrames.paths.length === 0) throw new Error("cannot encode an empty presentation recording window");
-  const outputPath = await validateNewOutputPath(recordingRoot, options.outputPath);
+  if (selectedFrames.paths.length === 0)
+    throw new Error("cannot encode an empty presentation recording window");
+  const outputPath = await validateNewOutputPath(
+    recordingRoot,
+    options.outputPath,
+  );
   const partialPath = partialMp4Path(outputPath);
   await assertMissing(outputPath, "output");
   await assertMissing(partialPath, "partial output");
@@ -127,8 +137,17 @@ export async function encodePresentationRecording(
   await rename(partialPath, outputPath);
   const bytes = await readFile(outputPath);
   const poster = options.posterPath
-    ? await createPoster(recordingRoot, ffmpeg, outputPath, options.posterPath, processes,
-      selectPosterFrameIndex(selectedFrames.stateIndices, options.posterStateIndex))
+    ? await createPoster(
+        recordingRoot,
+        ffmpeg,
+        outputPath,
+        options.posterPath,
+        processes,
+        selectPosterFrameIndex(
+          selectedFrames.stateIndices,
+          options.posterStateIndex,
+        ),
+      )
     : undefined;
   return {
     output_path: outputPath,
@@ -142,34 +161,52 @@ export async function encodePresentationRecording(
 
 function selectFrames(
   loaded: Awaited<ReturnType<typeof loadPresentationManifest>>,
-  window: EncodePresentationOptions['stateWindow'],
+  window: EncodePresentationOptions["stateWindow"],
 ): { paths: string[]; stateIndices: number[] } {
-  if (!window) return {
-    paths: loaded.framePaths,
-    stateIndices: loaded.manifest.frames.map((frame) => frame.state_index),
-  };
-  if (!Number.isSafeInteger(window.startStateIndex) || !Number.isSafeInteger(window.endStateIndex)
-    || window.startStateIndex < 0 || window.endStateIndex < window.startStateIndex) {
-    throw new Error('invalid recording state window');
+  if (!window)
+    return {
+      paths: loaded.framePaths,
+      stateIndices: loaded.manifest.frames.map((frame) => frame.state_index),
+    };
+  if (
+    !Number.isSafeInteger(window.startStateIndex) ||
+    !Number.isSafeInteger(window.endStateIndex) ||
+    window.startStateIndex < 0 ||
+    window.endStateIndex < window.startStateIndex
+  ) {
+    throw new Error("invalid recording state window");
   }
   const paths: string[] = [];
   const stateIndices: number[] = [];
   for (const [index, frame] of loaded.manifest.frames.entries()) {
-    if (frame.state_index < window.startStateIndex || frame.state_index > window.endStateIndex) continue;
+    if (
+      frame.state_index < window.startStateIndex ||
+      frame.state_index > window.endStateIndex
+    )
+      continue;
     paths.push(loaded.framePaths[index]!);
     stateIndices.push(frame.state_index);
   }
   return { paths, stateIndices };
 }
 
-export function selectPosterFrameIndex(stateIndices: readonly number[], requestedStateIndex?: number): number {
-  if (stateIndices.length === 0) throw new Error('cannot select a poster from an empty recording');
+export function selectPosterFrameIndex(
+  stateIndices: readonly number[],
+  requestedStateIndex?: number,
+): number {
+  if (stateIndices.length === 0)
+    throw new Error("cannot select a poster from an empty recording");
   if (requestedStateIndex === undefined) return 0;
   if (!Number.isSafeInteger(requestedStateIndex) || requestedStateIndex < 0) {
-    throw new Error('invalid poster state index');
+    throw new Error("invalid poster state index");
   }
-  const index = stateIndices.findIndex((stateIndex) => stateIndex >= requestedStateIndex);
-  if (index < 0) throw new Error(`poster state index ${requestedStateIndex} is outside the encoded recording`);
+  const index = stateIndices.findIndex(
+    (stateIndex) => stateIndex >= requestedStateIndex,
+  );
+  if (index < 0)
+    throw new Error(
+      `poster state index ${requestedStateIndex} is outside the encoded recording`,
+    );
   return index;
 }
 
@@ -181,20 +218,37 @@ async function createPoster(
   processes: ToolProcessIdentity[],
   frameIndex: number,
 ): Promise<{ output_path: string; sha256: string; bytes: number }> {
-  const posterPath = await validateNewArtifactPath(root, requestedPath, '.png', 'poster');
-  const partialPath = posterPath.slice(0, -4) + '.partial.png';
-  await assertMissing(posterPath, 'poster');
-  await assertMissing(partialPath, 'partial poster');
+  const posterPath = await validateNewArtifactPath(
+    root,
+    requestedPath,
+    ".png",
+    "poster",
+  );
+  const partialPath = posterPath.slice(0, -4) + ".partial.png";
+  await assertMissing(posterPath, "poster");
+  await assertMissing(partialPath, "partial poster");
   const run = startTool(ffmpeg, [
-    '-hide_banner', '-nostdin', '-loglevel', 'error', '-i', videoPath,
-    ...(frameIndex === 0 ? [] : ['-vf', `select=eq(n\\,${frameIndex})`]),
-    '-frames:v', '1', '-n', partialPath,
+    "-hide_banner",
+    "-nostdin",
+    "-loglevel",
+    "error",
+    "-i",
+    videoPath,
+    ...(frameIndex === 0 ? [] : ["-vf", `select=eq(n\\,${frameIndex})`]),
+    "-frames:v",
+    "1",
+    "-n",
+    partialPath,
   ]);
   run.child.stdin.end();
   processes.push(await run.completion);
   await rename(partialPath, posterPath);
   const bytes = await readFile(posterPath);
-  return { output_path: posterPath, sha256: createHash('sha256').update(bytes).digest('hex'), bytes: bytes.byteLength };
+  return {
+    output_path: posterPath,
+    sha256: createHash("sha256").update(bytes).digest("hex"),
+    bytes: bytes.byteLength,
+  };
 }
 
 export async function runLavfiSmokeTest(options: {
@@ -204,7 +258,10 @@ export async function runLavfiSmokeTest(options: {
   ffprobePath: string;
 }): Promise<EncodingResult> {
   const recordingRoot = await canonicalDirectory(options.recordingRoot);
-  const outputPath = await validateNewOutputPath(recordingRoot, options.outputPath);
+  const outputPath = await validateNewOutputPath(
+    recordingRoot,
+    options.outputPath,
+  );
   const partialPath = partialMp4Path(outputPath);
   await assertMissing(outputPath, "output");
   await assertMissing(partialPath, "partial output");
@@ -262,19 +319,26 @@ export async function cleanupPartialArtifact(
   await rm(partialPath, { force: true, recursive: false });
 }
 
-export async function resolveExecutable(executablePath: string, label: string): Promise<string> {
+export async function resolveExecutable(
+  executablePath: string,
+  label: string,
+): Promise<string> {
   if (!path.isAbsolute(executablePath)) {
     throw new Error(`${label} path must be explicit and absolute`);
   }
   const linkInfo = await lstat(executablePath);
-  if (linkInfo.isSymbolicLink()) throw new Error(`${label} path must not be a symbolic link`);
+  if (linkInfo.isSymbolicLink())
+    throw new Error(`${label} path must not be a symbolic link`);
   const canonical = await realpath(executablePath);
   const info = await stat(canonical);
   if (!info.isFile()) throw new Error(`${label} path is not a regular file`);
   return canonical;
 }
 
-function startTool(executable: string, args: string[]): {
+function startTool(
+  executable: string,
+  args: string[],
+): {
   child: ChildProcessWithoutNullStreams;
   completion: Promise<ToolProcessIdentity>;
 } {
@@ -353,9 +417,12 @@ async function probeVideo(
 }
 
 function validateProbe(probe: VideoProbe): void {
-  if (probe.codec !== "h264") throw new Error(`encoded codec is ${probe.codec}, expected h264`);
+  if (probe.codec !== "h264")
+    throw new Error(`encoded codec is ${probe.codec}, expected h264`);
   if (probe.pixel_format !== "yuv420p") {
-    throw new Error(`encoded pixel format is ${probe.pixel_format}, expected yuv420p`);
+    throw new Error(
+      `encoded pixel format is ${probe.pixel_format}, expected yuv420p`,
+    );
   }
   if (probe.width !== RAW_WIDTH || probe.height !== RAW_HEIGHT) {
     throw new Error(`encoded dimensions are ${probe.width}x${probe.height}`);
@@ -365,12 +432,23 @@ function validateProbe(probe: VideoProbe): void {
   }
 }
 
-async function validateNewOutputPath(root: string, outputPath: string): Promise<string> {
-  return await validateNewArtifactPath(root, outputPath, '.mp4', 'output');
+async function validateNewOutputPath(
+  root: string,
+  outputPath: string,
+): Promise<string> {
+  return await validateNewArtifactPath(root, outputPath, ".mp4", "output");
 }
 
-async function validateNewArtifactPath(root: string, outputPath: string, extension: string, label: string): Promise<string> {
-  if (!path.isAbsolute(outputPath) || path.extname(outputPath).toLowerCase() !== extension) {
+async function validateNewArtifactPath(
+  root: string,
+  outputPath: string,
+  extension: string,
+  label: string,
+): Promise<string> {
+  if (
+    !path.isAbsolute(outputPath) ||
+    path.extname(outputPath).toLowerCase() !== extension
+  ) {
     throw new Error(`${label} path must be an absolute ${extension} path`);
   }
   const resolved = path.resolve(outputPath);
@@ -401,7 +479,9 @@ export class ToolExitError extends Error {
     readonly identity: ToolProcessIdentity,
     readonly stderr: string,
   ) {
-    super(`${path.basename(executable)} exited with ${identity.exit_code}: ${stderr.trim()}`);
+    super(
+      `${path.basename(executable)} exited with ${identity.exit_code}: ${stderr.trim()}`,
+    );
     this.name = "ToolExitError";
   }
 }

@@ -70,7 +70,9 @@ const timeoutMs = readPositiveInteger("COLLECTOR_TIMEOUT_MS", 30_000);
 const server = createCollectorServer({ backend, timeoutMs, logger: console });
 const running = await listen(server, port, host, backend);
 
-console.info(`Celeste collector listening at ${running.url} (backend: ${backend.name})`);
+console.info(
+  `Celeste collector listening at ${running.url} (backend: ${backend.name})`,
+);
 
 async function shutdown(signal: string): Promise<void> {
   console.info(`Received ${signal}; shutting down collector`);

@@ -63,9 +63,10 @@ export function decodeRecordingRequest(
   const root = requireRecord(decoded, "request");
   const captureToken = requireCaptureToken(root.capture_token);
   if (action !== "start") {
-    const reason = root.reason === undefined
-      ? undefined
-      : requireBoundedString(root.reason, "reason", 256);
+    const reason =
+      root.reason === undefined
+        ? undefined
+        : requireBoundedString(root.reason, "reason", 256);
     return {
       capture_token: captureToken,
       ...(reason === undefined ? {} : { reason }),
@@ -78,14 +79,21 @@ export function decodeRecordingRequest(
       "scenario_id contains characters that are unsafe for artifact paths",
     );
   }
-  const start = requireUnsignedInteger(root.start_state_index, "start_state_index");
+  const start = requireUnsignedInteger(
+    root.start_state_index,
+    "start_state_index",
+  );
   const end = requireUnsignedInteger(root.end_state_index, "end_state_index");
   if (end < start) {
-    throw new ProtocolValidationError("end_state_index must not precede start_state_index");
+    throw new ProtocolValidationError(
+      "end_state_index must not precede start_state_index",
+    );
   }
   const timeout = requireUnsignedInteger(root.timeout_ms, "timeout_ms");
   if (timeout < 1_000 || timeout > 600_000) {
-    throw new ProtocolValidationError("timeout_ms must be between 1000 and 600000");
+    throw new ProtocolValidationError(
+      "timeout_ms must be between 1000 and 600000",
+    );
   }
   return {
     capture_token: captureToken,
@@ -119,7 +127,11 @@ function requireUnsignedInteger(value: unknown, path: string): number {
   return value as number;
 }
 
-function requireBoundedString(value: unknown, path: string, maximumLength: number): string {
+function requireBoundedString(
+  value: unknown,
+  path: string,
+  maximumLength: number,
+): string {
   if (
     typeof value !== "string" ||
     value.length === 0 ||

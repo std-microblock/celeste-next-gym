@@ -43,7 +43,9 @@ export interface CollectorBackend {
 export class BackendNotConfiguredError extends Error {
   readonly code = "NOT_CONFIGURED";
 
-  constructor(message = "A real Celeste/Everest collector backend is not configured") {
+  constructor(
+    message = "A real Celeste/Everest collector backend is not configured",
+  ) {
     super(message);
     this.name = "BackendNotConfiguredError";
   }
@@ -68,7 +70,8 @@ export class NotConfiguredBackend implements CollectorBackend {
   async health(): Promise<BackendHealth> {
     return {
       ready: false,
-      detail: "Set COLLECTOR_BACKEND=mock for protocol testing, or supply a real backend implementation",
+      detail:
+        "Set COLLECTOR_BACKEND=mock for protocol testing, or supply a real backend implementation",
     };
   }
 }
@@ -99,7 +102,8 @@ export class MockCollectorBackend implements CollectorBackend {
   async health(): Promise<BackendHealth> {
     return {
       ready: true,
-      detail: "Mock backend is active; no game process and no physics simulation",
+      detail:
+        "Mock backend is active; no game process and no physics simulation",
     };
   }
 }

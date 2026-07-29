@@ -1,66 +1,105 @@
-import { defineMapPart } from '../map-parts.js'
+import { defineMapPart } from "../map-parts.js";
 
-const PACKAGE = 'CelesteGymPlayground'
-const SID = 'CelesteGymPlayground/Playground'
-const ROOM = 'playground'
+const PACKAGE = "CelesteGymPlayground";
+const SID = "CelesteGymPlayground/Playground";
+const ROOM = "playground";
 
 export const TECH_ENTITY_4_11_HOLDABLE_CORE_HYPER = defineMapPart({
-  id: 'tech.entity-4.11-holdable-core-hyper',
-  dependencies: ['playground.base'],
+  id: "tech.entity-4.11-holdable-core-hyper",
+  dependencies: ["playground.base"],
   package: PACKAGE,
   sid: SID,
-  rooms: [{
-    name: ROOM,
-    entities: [
-      { id: 'tech-4.11-bounce-block', kind: 'bounce_block', bounds: [352, 360, 64, 16], name: 'bounceBlock' },
-      { id: 'tech-4.11-theo', kind: 'theo_crystal', bounds: [380, 350, 8, 10], name: 'theoCrystal' },
-    ],
-  }],
-})
+  rooms: [
+    {
+      name: ROOM,
+      entities: [
+        {
+          id: "tech-4.11-bounce-block",
+          kind: "bounce_block",
+          bounds: [352, 360, 64, 16],
+          name: "bounceBlock",
+        },
+        {
+          id: "tech-4.11-theo",
+          kind: "theo_crystal",
+          bounds: [380, 350, 8, 10],
+          name: "theoCrystal",
+        },
+      ],
+    },
+  ],
+});
 
 export const TECH_ENTITY_4_14_HEART_ULTRA = defineMapPart({
-  id: 'tech.entity-4.14-heart-ultra',
-  dependencies: ['playground.base'],
+  id: "tech.entity-4.14-heart-ultra",
+  dependencies: ["playground.base"],
   package: PACKAGE,
   sid: SID,
-  rooms: [{
-    name: ROOM,
-    entities: [
-      { id: 'tech-4.14-heart', kind: 'heart_gem', bounds: [488, 480, 16, 16], name: 'heartGem' },
-    ],
-  }],
-})
+  rooms: [
+    {
+      name: ROOM,
+      entities: [
+        {
+          id: "tech-4.14-heart",
+          kind: "heart_gem",
+          bounds: [488, 480, 16, 16],
+          name: "heartGem",
+        },
+      ],
+    },
+  ],
+});
 
 export const TECH_ENTITY_4_15_JUMPTHROUGH_CLIP = defineMapPart({
-  id: 'tech.entity-4.15-jumpthrough-clip',
-  dependencies: ['playground.base'],
+  id: "tech.entity-4.15-jumpthrough-clip",
+  dependencies: ["playground.base"],
   package: PACKAGE,
   sid: SID,
-  rooms: [{
-    name: ROOM,
-    entities: [
-      { id: 'tech-4.15-zip-mover', kind: 'zip_mover', bounds: [592, 400, 64, 16], nodes: [[592, 300]], name: 'zipMover' },
-      { id: 'tech-4.15-jump-thru', kind: 'jump_thru', bounds: [568, 416, 112, 8], name: 'jumpThru' },
-    ],
-  }],
-})
+  rooms: [
+    {
+      name: ROOM,
+      entities: [
+        {
+          id: "tech-4.15-zip-mover",
+          kind: "zip_mover",
+          bounds: [592, 400, 64, 16],
+          nodes: [[592, 300]],
+          name: "zipMover",
+        },
+        {
+          id: "tech-4.15-jump-thru",
+          kind: "jump_thru",
+          bounds: [568, 416, 112, 8],
+          name: "jumpThru",
+        },
+      ],
+    },
+  ],
+});
 
 export const TECH_ENTITY_4_16_LAVA_NEUTRAL = defineMapPart({
-  id: 'tech.entity-4.16-lava-neutral',
-  dependencies: ['playground.base'],
+  id: "tech.entity-4.16-lava-neutral",
+  dependencies: ["playground.base"],
   package: PACKAGE,
   sid: SID,
-  rooms: [{
-    name: ROOM,
-    entities: [
-      { id: 'tech-4.16-rising-lava', kind: 'rising_lava', bounds: [760, 0, 8, 8], name: 'risingLava' },
-    ],
-  }],
-})
+  rooms: [
+    {
+      name: ROOM,
+      entities: [
+        {
+          id: "tech-4.16-rising-lava",
+          kind: "rising_lava",
+          bounds: [760, 0, 8, 8],
+          name: "risingLava",
+        },
+      ],
+    },
+  ],
+});
 
 export const CORE_HEART_SQUISH_MAP_PARTS = [
   TECH_ENTITY_4_11_HOLDABLE_CORE_HYPER,
   TECH_ENTITY_4_14_HEART_ULTRA,
   TECH_ENTITY_4_15_JUMPTHROUGH_CLIP,
   TECH_ENTITY_4_16_LAVA_NEUTRAL,
-] as const
+] as const;

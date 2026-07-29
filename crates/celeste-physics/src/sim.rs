@@ -2525,15 +2525,20 @@ fn holding_slow_fall(p: &PlayerSnapshot) -> bool {
 
 fn try_pickup_theo(p: &mut PlayerSnapshot) -> bool {
     let player = current_player_rect(p, p.pos.x, p.pos.y);
-    let Some(index) = p.theo_crystals.iter().enumerate().position(|(index, theo)| {
-        // LaunchUpdate, unlike NormalUpdate and DashUpdate, does not guard
-        // its Holdable loop with `Holding == null`. Holdable.Pickup itself
-        // permits the current holder to pick up the same entity again, which
-        // restarts PickupCoroutine after a Bumper launch freeze.
-        (!theo.held || p.holding_theo == Some(index as u16))
-            && theo.cannot_hold_timer <= 0.0
-            && theo_pickup_rect(theo.position).intersects(player)
-    }) else {
+    let Some(index) = p
+        .theo_crystals
+        .iter()
+        .enumerate()
+        .position(|(index, theo)| {
+            // LaunchUpdate, unlike NormalUpdate and DashUpdate, does not guard
+            // its Holdable loop with `Holding == null`. Holdable.Pickup itself
+            // permits the current holder to pick up the same entity again, which
+            // restarts PickupCoroutine after a Bumper launch freeze.
+            (!theo.held || p.holding_theo == Some(index as u16))
+                && theo.cannot_hold_timer <= 0.0
+                && theo_pickup_rect(theo.position).intersects(player)
+        })
+    else {
         return false;
     };
     let theo = &mut p.theo_crystals[index];
@@ -2920,9 +2925,9 @@ fn lerp_vec(begin: Vec2, end: Vec2, percent: f32) -> Vec2 {
 
 fn lookout_camera_blocked(map: &Map, camera: Vec2) -> bool {
     let viewport = Rect::new(camera.x, camera.y, 320.0, 180.0);
-    map.entities.iter().any(|entity| {
-        entity.name == "lookoutBlocker" && entity.bounds.intersects(viewport)
-    })
+    map.entities
+        .iter()
+        .any(|entity| entity.name == "lookoutBlocker" && entity.bounds.intersects(viewport))
 }
 
 fn prepare_lookout_player(p: &mut PlayerSnapshot) {
@@ -3025,31 +3030,29 @@ fn advance_node_lookout_camera(
     let node = (state.node as usize).min(nodes.len() - 1);
     state.node = node as u16;
     let start_center = Vec2::new(state.cam_start.x + 160.0, state.cam_start.y + 90.0);
-    let begin = if node == 0 { start_center } else { nodes[node - 1] };
+    let begin = if node == 0 {
+        start_center
+    } else {
+        nodes[node - 1]
+    };
     let end = nodes[node];
     let percent = state.node_percent;
     let center = if percent < 0.25 && node > 0 {
         let curve_begin = lerp_vec(
-            if node <= 1 { start_center } else { nodes[node - 2] },
+            if node <= 1 {
+                start_center
+            } else {
+                nodes[node - 2]
+            },
             begin,
             0.75,
         );
         let curve_end = lerp_vec(begin, end, 0.25);
-        quadratic_curve(
-            curve_begin,
-            curve_end,
-            begin,
-            0.5 + percent / 0.25 * 0.5,
-        )
+        quadratic_curve(curve_begin, curve_end, begin, 0.5 + percent / 0.25 * 0.5)
     } else if percent > 0.75 && node + 1 < nodes.len() {
         let curve_begin = lerp_vec(begin, end, 0.75);
         let curve_end = lerp_vec(end, nodes[node + 1], 0.25);
-        quadratic_curve(
-            curve_begin,
-            curve_end,
-            end,
-            (percent - 0.75) / 0.25 * 0.5,
-        )
+        quadratic_curve(curve_begin, curve_end, end, (percent - 0.75) / 0.25 * 0.5)
     } else {
         lerp_vec(begin, end, percent)
     };
@@ -3112,10 +3115,8 @@ fn advance_lookouts(
     menu_cancel_pressed: bool,
 ) {
     let indices = lookout_entity_indices(map);
-    let Some((lookout_index, entity_index)) = indices
-        .into_iter()
-        .enumerate()
-        .find(|(lookout_index, _)| {
+    let Some((lookout_index, entity_index)) =
+        indices.into_iter().enumerate().find(|(lookout_index, _)| {
             p.lookouts
                 .get(*lookout_index)
                 .is_some_and(|state| state.interacting && !state.removed)
@@ -3164,11 +3165,7 @@ fn advance_lookouts(
                 state.timer += 1.0;
             } else {
                 let direction = (state.position.x - p.pos.x).signum();
-                p.speed.x = approach(
-                    p.speed.x,
-                    direction * 64.0,
-                    RUN_ACCEL * p.frame_delta_time,
-                );
+                p.speed.x = approach(p.speed.x, direction * 64.0, RUN_ACCEL * p.frame_delta_time);
             }
         }
         2 => {
@@ -3195,7 +3192,8 @@ fn advance_lookouts(
             // must remain a raw edge rather than Player's buffered Jump:
             // Player.Update can consume that buffer before LookRoutine reads
             // Input.MenuCancel.Pressed later in the same scene update.
-            let exit_pressed = menu_cancel_pressed || input.dash_pressed || input.crouch_dash_pressed;
+            let exit_pressed =
+                menu_cancel_pressed || input.dash_pressed || input.crouch_dash_pressed;
             if entity.nodes.is_empty() {
                 advance_free_lookout_camera(&mut state, entity, p, map, input);
             } else {
@@ -3205,7 +3203,10 @@ fn advance_lookouts(
             // endpoint. It exits only through MenuCancel or Dash; reaching a
             // final `summit` node is not a synthetic timeout.
             if exit_pressed {
-                let delta = Vec2::new(p.camera.x - state.cam_start.x, p.camera.y - state.cam_start.y);
+                let delta = Vec2::new(
+                    p.camera.x - state.cam_start.x,
+                    p.camera.y - state.cam_start.y,
+                );
                 if length(delta) > 600.0 {
                     // The source leaves its input loop straight into the
                     // long-distance FadeWipe branch; it does not wait for
@@ -3216,7 +3217,8 @@ fn advance_lookouts(
                     // even though its first rendered sample remains at
                     // progress zero. Store the next-frame progress here so
                     // its Wait resumes exactly sixty summit frames later.
-                    state.timer = (p.frame_delta_time / lookout_wipe_duration(&state, entity)).min(1.0);
+                    state.timer =
+                        (p.frame_delta_time / lookout_wipe_duration(&state, entity)).min(1.0);
                     state.wipe_start = p.camera;
                 } else {
                     state.phase = 5;
@@ -4147,12 +4149,7 @@ fn step(
         && (p.state != PlayerState::Climb || p.last_climb_move == -1)
         && touching_jump_thru(p, map)
     {
-        move_axis_amount(
-            p,
-            map,
-            false,
-            JUMP_THRU_ASSIST_SPEED * p.frame_delta_time,
-        );
+        move_axis_amount(p, map, false, JUMP_THRU_ASSIST_SPEED * p.frame_delta_time);
     }
 
     if p.state != PlayerState::DreamDash {
@@ -4314,7 +4311,7 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
                 let y_add = -(offset as f32);
                 (!map.solid_at(current_player_rect(p, p.pos.x, p.pos.y + y_add))
                     && climb_check(p, map, facing_dir, y_add))
-                    .then_some(y_add)
+                .then_some(y_add)
             })
         } else {
             None
@@ -4397,11 +4394,7 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
     }
 
     let target_max_fall = if holding_slow_fall(p) && p.force_move_x_timer <= 0.0 {
-        if input.move_y > 0 {
-            120.0
-        } else {
-            40.0
-        }
+        if input.move_y > 0 { 120.0 } else { 40.0 }
     } else if input.move_y > 0 && p.speed.y >= MAX_FALL {
         FAST_MAX_FALL
     } else {
@@ -4486,10 +4479,7 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
             if !holding_holdable(p) && input.grab_held && p.stamina > 0.0 && facing_dir == jump_wall
             {
                 climb_jump(p, jump_wall);
-            } else if p.dash_attack_timer > 0.0
-                && p.dash_dir.x == 0.0
-                && p.dash_dir.y == -1.0
-            {
+            } else if p.dash_attack_timer > 0.0 && p.dash_dir.x == 0.0 && p.dash_dir.y == -1.0 {
                 // Player.NormalUpdate still allows SuperWallJump after the
                 // Dash coroutine has returned to Normal. DashAttacking lasts
                 // 0.3 s, twice the ordinary Dash state's 0.15 s duration.
@@ -4802,11 +4792,7 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     }
     if input.move_y != 1
         && p.speed.y > 0.0
-        && !map.solid_at(current_player_rect(
-            p,
-            p.pos.x + wall as f32,
-            p.pos.y + 1.0,
-        ))
+        && !map.solid_at(current_player_rect(p, p.pos.x + wall as f32, p.pos.y + 1.0))
     {
         p.speed.y = 0.0;
     }
@@ -6489,7 +6475,10 @@ fn point_bounce(p: &mut PlayerSnapshot, from: Vec2) {
     // Player.PointBounce uses the regular actor center without an artificial
     // vertical-angle clamp. The horizontal multiplier and minimum are applied
     // after SafeNormalize, which matters for the nearly level Seeker contact.
-    p.speed = scale(normalize(Vec2::new(center.x - from.x, center.y - from.y)), 200.0);
+    p.speed = scale(
+        normalize(Vec2::new(center.x - from.x, center.y - from.y)),
+        200.0,
+    );
     p.speed.x *= 1.2;
     if p.speed.x.abs() < 120.0 {
         p.speed.x = if p.speed.x == 0.0 {
@@ -7652,15 +7641,29 @@ mod tests {
             ],
             ..Map::default()
         };
-        let inputs: Vec<_> = (0..260).map(|frame| InputState {
-            move_x: if frame < 10 { 1 } else if (20..30).contains(&frame) { -1 } else { 0 },
-            ..InputState::default()
-        }).collect();
-        let trace = simulate_trace(PlayerSnapshot {
-            pos: Vec2::new(652.0, 400.0),
-            on_ground: true,
-            ..PlayerSnapshot::default()
-        }, &inputs, &map, inputs.len() as u32).unwrap();
+        let inputs: Vec<_> = (0..260)
+            .map(|frame| InputState {
+                move_x: if frame < 10 {
+                    1
+                } else if (20..30).contains(&frame) {
+                    -1
+                } else {
+                    0
+                },
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(
+            PlayerSnapshot {
+                pos: Vec2::new(652.0, 400.0),
+                on_ground: true,
+                ..PlayerSnapshot::default()
+            },
+            &inputs,
+            &map,
+            inputs.len() as u32,
+        )
+        .unwrap();
         let landed = trace
             .states
             .iter()
@@ -7930,9 +7933,7 @@ mod tests {
         let moving = trace
             .states
             .iter()
-            .find(|state| {
-                state.move_blocks[0].phase == 2 && state.move_blocks[0].position.x < 64.0
-            })
+            .find(|state| state.move_blocks[0].phase == 2 && state.move_blocks[0].position.x < 64.0)
             .expect("side-grabbed MoveBlock should begin moving left");
         assert_eq!(moving.state, PlayerState::Climb);
         assert_eq!(moving.pos.x - moving.move_blocks[0].position.x, 36.0);
@@ -8092,10 +8093,7 @@ mod tests {
             reenabled.attached_spike_position,
             Vec2::new(reenabled.position.x, reenabled.position.y - 3.0)
         );
-        assert_ne!(
-            reenabled.attached_spike_position,
-            Vec2::new(32.0, 157.0)
-        );
+        assert_ne!(reenabled.attached_spike_position, Vec2::new(32.0, 157.0));
         assert_ne!(reenabled.position, Vec2::new(32.0, 160.0));
     }
 
@@ -8161,8 +8159,8 @@ mod tests {
                 // boundary as the physical CED trace.
                 frame_delta_time_bits: Some(0.0166667f32.to_bits()),
                 ..InputState::default()
-        })
-        .collect();
+            })
+            .collect();
         let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
         assert_eq!(trace.states[24].pos, Vec2::new(716.0, 477.0));
         assert_eq!(trace.states[24].speed, Vec2::default());
@@ -8231,15 +8229,20 @@ mod tests {
             "player must clear the source volume before reform: frame={body}, state={:?}",
             trace.states[body]
         );
-        assert!(spike > body, "the 0.35-second StaticMover alarm must follow body reform");
+        assert!(
+            spike > body,
+            "the 0.35-second StaticMover alarm must follow body reform"
+        );
         assert!(
             (21..=24).contains(&(spike - body)),
             "the 0.35-second alarm may include Celeste's transition freeze: body={body}, spike={spike}"
         );
         let reenabled = &trace.states[spike].bounce_blocks[0];
         let expected_spike = Vec2::new(
-            broken_block.attached_spike_position.x + body_block.position.x - broken_block.position.x,
-            broken_block.attached_spike_position.y + body_block.position.y - broken_block.position.y,
+            broken_block.attached_spike_position.x + body_block.position.x
+                - broken_block.position.x,
+            broken_block.attached_spike_position.y + body_block.position.y
+                - broken_block.position.y,
         );
         assert!(
             reenabled.static_movers_enabled && reenabled.attached_spike_position == expected_spike,
@@ -8750,7 +8753,11 @@ mod tests {
         };
         let inputs: Vec<_> = (0..150)
             .map(|frame| InputState {
-                move_y: if matches!(frame, 23 | 65 | 101) { 1 } else { -1 },
+                move_y: if matches!(frame, 23 | 65 | 101) {
+                    1
+                } else {
+                    -1
+                },
                 grab_held: !matches!(frame, 23 | 65 | 101),
                 ..InputState::default()
             })
@@ -8777,7 +8784,10 @@ mod tests {
 
         // The second jelly's 20x22 source PickupCollider starts the f25
         // tween while the first jelly remains under its own 0.3 s lockout.
-        assert_eq!(pickup_starts, vec![(1, Some(0)), (25, Some(1)), (67, Some(0))]);
+        assert_eq!(
+            pickup_starts,
+            vec![(1, Some(0)), (25, Some(1)), (67, Some(0))]
+        );
         // PickupCoroutine's StateMachine transition invokes NormalBegin.
         // Resetting maxFall there leaves the first post-tween slow-fall
         // sequence at the source f55 cap and speed, rather than retaining
@@ -10574,7 +10584,10 @@ mod tests {
     }
     #[test]
     fn initial_dash_frame_jump_uses_zero_dash_dir_for_instant_super_or_hyper() {
-        for (hold_down, expected_speed) in [(false, Vec2::new(260.0, -105.0)), (true, Vec2::new(325.0, -52.5))] {
+        for (hold_down, expected_speed) in [
+            (false, Vec2::new(260.0, -105.0)),
+            (true, Vec2::new(325.0, -52.5)),
+        ] {
             let mut inputs = [InputState::default(); 8];
             inputs[0] = InputState {
                 move_y: i8::from(hold_down),
@@ -10586,9 +10599,22 @@ mod tests {
                 input.jump_pressed = frame == 1;
                 input.jump_held = true;
             }
-            let trace = simulate_trace(grounded_player(), &inputs, &floor_map(), inputs.len() as u32).unwrap();
-            let launched = trace.states.iter().find(|state| state.speed == expected_speed);
-            assert!(launched.is_some(), "hold_down={hold_down}: {:#?}", trace.states);
+            let trace = simulate_trace(
+                grounded_player(),
+                &inputs,
+                &floor_map(),
+                inputs.len() as u32,
+            )
+            .unwrap();
+            let launched = trace
+                .states
+                .iter()
+                .find(|state| state.speed == expected_speed);
+            assert!(
+                launched.is_some(),
+                "hold_down={hold_down}: {:#?}",
+                trace.states
+            );
             assert_eq!(launched.unwrap().state, PlayerState::Normal);
         }
     }
@@ -12804,10 +12830,9 @@ mod tests {
         // DashCoroutine's initial `yield return null`. This needs to hold for
         // both pure vertical directions, not just horizontal dashes.
         for facing in [false, true] {
-            for (move_y, before_dash_speed) in [
-                (-1, Vec2::new(123.0, -80.0)),
-                (1, Vec2::new(-123.0, 80.0)),
-            ] {
+            for (move_y, before_dash_speed) in
+                [(-1, Vec2::new(123.0, -80.0)), (1, Vec2::new(-123.0, 80.0))]
+            {
                 let inputs = std::array::from_fn::<_, 5, _>(|frame| InputState {
                     move_y,
                     dash_pressed: frame == 0,
@@ -13628,7 +13653,11 @@ mod tests {
         };
         let inputs: Vec<_> = (0..240)
             .map(|frame| InputState {
-                move_x: if (43..54).contains(&frame) || frame >= 85 { -1 } else { 1 },
+                move_x: if (43..54).contains(&frame) || frame >= 85 {
+                    -1
+                } else {
+                    1
+                },
                 jump_pressed: frame == 62,
                 jump_held: frame == 62,
                 dash_pressed: frame == 0,
@@ -13650,8 +13679,14 @@ mod tests {
         // TheoCrystal.cs assigns this 16x22 pickup Hitbox.  Its right edge
         // now reaches 368, so the untouched source collider overlaps the
         // player's left edge (367) on the following NormalUpdate.
-        assert_eq!(theo_pickup_rect(before.theo_crystals[0].position).right(), 368.0);
-        assert_eq!(current_player_rect(before, before.pos.x, before.pos.y).x, 367.0);
+        assert_eq!(
+            theo_pickup_rect(before.theo_crystals[0].position).right(),
+            368.0
+        );
+        assert_eq!(
+            current_player_rect(before, before.pos.x, before.pos.y).x,
+            367.0
+        );
 
         let pickup = &trace.states[169];
         assert_eq!(pickup.state, PlayerState::Pickup);
@@ -15463,10 +15498,16 @@ mod tests {
             state: PlayerState::Dummy,
             ..PlayerSnapshot::default()
         };
-        let p = simulate(p, &[InputState {
-            move_x: -1,
-            ..InputState::default()
-        }], &Map::default(), 1).unwrap();
+        let p = simulate(
+            p,
+            &[InputState {
+                move_x: -1,
+                ..InputState::default()
+            }],
+            &Map::default(),
+            1,
+        )
+        .unwrap();
         assert!((p.speed.x - 141.666_58).abs() < 0.001);
         assert!((p.speed.y - -84.999_97).abs() < 0.001);
         assert!(p.facing);
@@ -15571,8 +15612,8 @@ mod tests {
         }
         inputs[110].jump_pressed = true;
         inputs[110].jump_held = true;
-        let trace = simulate_trace(player, &inputs, &lookout_map(vec![], false, false), 150)
-            .unwrap();
+        let trace =
+            simulate_trace(player, &inputs, &lookout_map(vec![], false, false), 150).unwrap();
 
         // `Interact` starts the entity coroutine; `LookRoutine` assigns Dummy
         // on its following update, matching the real Lookout lifecycle.
@@ -15603,8 +15644,7 @@ mod tests {
         };
         let mut inputs = vec![InputState::default(); 3];
         inputs[0].talk_pressed = true;
-        let trace = simulate_trace(player, &inputs, &lookout_map(vec![], false, false), 3)
-            .unwrap();
+        let trace = simulate_trace(player, &inputs, &lookout_map(vec![], false, false), 3).unwrap();
 
         // Collector captures state 0 before input.  Talk starts LookRoutine
         // on f1, and its first entity update sets StDummy on f2 even though
@@ -15631,8 +15671,8 @@ mod tests {
         for input in &mut inputs[50..260] {
             input.move_x = 1;
         }
-        let trace = simulate_trace(player, &inputs, &lookout_map(vec![], false, true), 260)
-            .unwrap();
+        let trace =
+            simulate_trace(player, &inputs, &lookout_map(vec![], false, true), 260).unwrap();
 
         assert!(trace.states.iter().any(|state| state.spinners[0].visible));
         assert!(trace.states[260].camera.x > 500.0);
@@ -15684,10 +15724,17 @@ mod tests {
         // next frame must therefore remain in Boost instead of being forced
         // back to Dummy by the still-running Lookout coroutine.
         assert_eq!(trace.states[first_boost + 1].state, PlayerState::Boost);
-        assert!(trace.states.iter().any(|state| state.state == PlayerState::Boost));
-        assert!(trace.states.iter().any(|state| {
-            state.state == PlayerState::Normal && state.lookouts[0].interacting
-        }));
+        assert!(
+            trace
+                .states
+                .iter()
+                .any(|state| state.state == PlayerState::Boost)
+        );
+        assert!(
+            trace.states.iter().any(|state| {
+                state.state == PlayerState::Normal && state.lookouts[0].interacting
+            })
+        );
         assert!(trace.states.windows(2).any(|states| {
             let (before, after) = (&states[0], &states[1]);
             after.state == PlayerState::Normal
@@ -15808,20 +15855,33 @@ mod tests {
             .collect();
         let trace = simulate_trace(player, &inputs, &map, inputs.len() as u32).unwrap();
 
-        assert!(trace.states.iter().any(|state| state.state == PlayerState::Boost));
-        assert!(trace.states.iter().any(|state| {
-            state.state == PlayerState::Dash && state.booster_boosting
-        }));
+        assert!(
+            trace
+                .states
+                .iter()
+                .any(|state| state.state == PlayerState::Boost)
+        );
+        assert!(
+            trace
+                .states
+                .iter()
+                .any(|state| { state.state == PlayerState::Dash && state.booster_boosting })
+        );
         let f39 = &trace.states[39];
         assert_eq!(f39.state, PlayerState::Dash);
-        assert!(f39.booster_boosting, "active Booster suppresses same-target re-entry");
+        assert!(
+            f39.booster_boosting,
+            "active Booster suppresses same-target re-entry"
+        );
         // The transition camera routine pauses Player.Update, but the source
         // capture's `Actor.OnGround()` remains a live floor collision query.
         assert!(trace.states[125].on_ground);
-        assert!(trace
-            .states
-            .iter()
-            .any(|state| state.current_room_bounds == Some(map.transition_rooms[0])));
+        assert!(
+            trace
+                .states
+                .iter()
+                .any(|state| state.current_room_bounds == Some(map.transition_rooms[0]))
+        );
     }
 
     #[test]
@@ -15861,7 +15921,12 @@ mod tests {
         assert_eq!(trace.states[519].lookouts[0].node_percent, 1.0);
         assert_eq!(trace.states[520].state, PlayerState::Dummy);
         assert!(trace.states[520].lookouts[0].interacting);
-        assert!(trace.states.iter().any(|state| state.lookouts[0].phase == 6));
+        assert!(
+            trace
+                .states
+                .iter()
+                .any(|state| state.lookouts[0].phase == 6)
+        );
         let exit = trace
             .states
             .iter()

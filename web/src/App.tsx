@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { GameView } from './components/GameView'
-import { InputTimeline } from './components/InputTimeline'
-import { KeyBindings } from './components/KeyBindings'
-import { EditorWorkspace } from './components/EditorWorkspace'
-import { StateInspector } from './components/StateInspector'
-import { TrainingGround } from './components/TrainingGround'
-import { trainingCatalog } from './training/catalog'
-import { StartSettings, type StartConfiguration } from './components/StartSettings'
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { GameView } from "./components/GameView";
+import { InputTimeline } from "./components/InputTimeline";
+import { KeyBindings } from "./components/KeyBindings";
+import { EditorWorkspace } from "./components/EditorWorkspace";
+import { StateInspector } from "./components/StateInspector";
+import { TrainingGround } from "./components/TrainingGround";
+import { trainingCatalog } from "./training/catalog";
+import {
+  StartSettings,
+  type StartConfiguration,
+} from "./components/StartSettings";
 import {
   ACTIONS,
   ACTION_GLYPHS,
@@ -22,10 +25,15 @@ import {
   type GymMap,
   type KeyBindings as Bindings,
   type SimState,
-} from './model'
-import { FrameCache } from './simulator/frameCache'
-import { WasmClient } from './simulator/wasmClient'
-import { compareTraces, createWebTrace, initialStateFromTrace, parseTrace } from './recording/trace'
+} from "./model";
+import { FrameCache } from "./simulator/frameCache";
+import { WasmClient } from "./simulator/wasmClient";
+import {
+  compareTraces,
+  createWebTrace,
+  initialStateFromTrace,
+  parseTrace,
+} from "./recording/trace";
 import {
   DEFAULT_GAMEPAD_DIRECTION_SOURCE,
   buttonsEqual,
@@ -34,7 +42,7 @@ import {
   latchNewButtons,
   mergeButtons,
   type GamepadDirectionSource,
-} from './input/gamepad'
+} from "./input/gamepad";
 import {
   DEFAULT_VISUAL_THEME_ID,
   VISUAL_THEME_COLLECTIONS,
@@ -42,403 +50,550 @@ import {
   isVisualThemeId,
   visualThemeById,
   type VisualThemeId,
-} from './visualThemes'
+} from "./visualThemes";
 
 interface RunDocument {
-  version: 2
-  map: GymMap
-  initial_state: SimState
-  inputs: FrameButtons[]
-  bindings: Bindings
+  version: 2;
+  map: GymMap;
+  initial_state: SimState;
+  inputs: FrameButtons[];
+  bindings: Bindings;
 }
 
-const PLAYGROUND_MAP_URL = '/assets/original/maps/CelesteGymPlayground-Playground.bin'
-const DEFAULT_ROOM = 'playground'
-const PLAYGROUND_ROOMS = ['playground', 'transition_0'] as const
-const MAX_ANIMATION_DELTA_MS = 250
-const VISUAL_THEME_STORAGE_KEY = 'celeste-gym-visual-theme'
+const PLAYGROUND_MAP_URL =
+  "/assets/original/maps/CelesteGymPlayground-Playground.bin";
+const DEFAULT_ROOM = "playground";
+const PLAYGROUND_ROOMS = ["playground", "transition_0"] as const;
+const MAX_ANIMATION_DELTA_MS = 250;
+const VISUAL_THEME_STORAGE_KEY = "celeste-gym-visual-theme";
 
-type AppMode = 'play' | 'training' | 'editor' | 'advanced'
+type AppMode = "play" | "training" | "editor" | "advanced";
 
 function loadBindings(): Bindings {
   try {
-    const saved = JSON.parse(localStorage.getItem('celeste-gym-bindings') ?? '') as Partial<Bindings>
-    return { ...DEFAULT_BINDINGS, ...saved }
+    const saved = JSON.parse(
+      localStorage.getItem("celeste-gym-bindings") ?? "",
+    ) as Partial<Bindings>;
+    return { ...DEFAULT_BINDINGS, ...saved };
   } catch {
-    return { ...DEFAULT_BINDINGS }
+    return { ...DEFAULT_BINDINGS };
   }
 }
 
 function loadGamepadDirectionSource(): GamepadDirectionSource {
-  const saved = localStorage.getItem('celeste-gym-gamepad-direction')
-  return isGamepadDirectionSource(saved) ? saved : DEFAULT_GAMEPAD_DIRECTION_SOURCE
+  const saved = localStorage.getItem("celeste-gym-gamepad-direction");
+  return isGamepadDirectionSource(saved)
+    ? saved
+    : DEFAULT_GAMEPAD_DIRECTION_SOURCE;
 }
 
 function loadVisualThemeId(): VisualThemeId {
-  const saved = localStorage.getItem(VISUAL_THEME_STORAGE_KEY)
-  return isVisualThemeId(saved) ? saved : DEFAULT_VISUAL_THEME_ID
+  const saved = localStorage.getItem(VISUAL_THEME_STORAGE_KEY);
+  return isVisualThemeId(saved) ? saved : DEFAULT_VISUAL_THEME_ID;
 }
 
 function download(name: string, contents: string): void {
-  const url = URL.createObjectURL(new Blob([contents], { type: 'application/json' }))
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = name
-  anchor.click()
-  URL.revokeObjectURL(url)
+  const url = URL.createObjectURL(
+    new Blob([contents], { type: "application/json" }),
+  );
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = name;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
-function buttonsFromKeys(keys: ReadonlySet<string>, bindings: Bindings, latched?: ReadonlySet<string>): FrameButtons {
-  const buttons = makeEmptyButtons()
+function buttonsFromKeys(
+  keys: ReadonlySet<string>,
+  bindings: Bindings,
+  latched?: ReadonlySet<string>,
+): FrameButtons {
+  const buttons = makeEmptyButtons();
   for (const action of ACTIONS) {
-    const code = bindings[action]
-    buttons[action] = keys.has(code) || Boolean(latched?.has(code))
+    const code = bindings[action];
+    buttons[action] = keys.has(code) || Boolean(latched?.has(code));
   }
-  return buttons
+  return buttons;
 }
 
 export default function App() {
-  const client = useMemo(() => new WasmClient(), [])
-  const [map, setMap] = useState<GymMap>(() => structuredClone(PLAYGROUND))
-  const [startMaps, setStartMaps] = useState<GymMap[]>(() => [structuredClone(PLAYGROUND)])
-  const cache = useMemo(() => new FrameCache(client, map, createInitialState(map), 360), [client])
-  const [mode, setMode] = useState<AppMode>('play')
-  const [editorExperiencing, setEditorExperiencing] = useState(false)
-  const [trainingTechniqueId, setTrainingTechniqueId] = useState(trainingCatalog[0].id)
-  const [trainingVariantId, setTrainingVariantId] = useState(trainingCatalog[0].variants[0].id)
-  const [liveState, setLiveState] = useState<SimState>(() => createInitialState(map))
-  const liveStateRef = useRef(liveState)
-  const [liveFrame, setLiveFrame] = useState(0)
-  const liveFrameRef = useRef(0)
-  const livePreviousButtons = useRef<FrameButtons>(makeEmptyButtons())
-  const [, redraw] = useState(0)
-  const [frame, setFrame] = useState(0)
-  const frameRef = useRef(frame)
-  const [playing, setPlaying] = useState(false)
-  const [recording, setRecording] = useState(false)
-  const [speed, setSpeed] = useState(1)
-  const [wasmStatus, setWasmStatus] = useState<'loading' | 'ready' | 'error'>('loading')
-  const [notice, setNotice] = useState('WASM 核心启动中…')
-  const [bindings, setBindings] = useState<Bindings>(loadBindings)
-  const [gamepadDirectionSource, setGamepadDirectionSource] = useState<GamepadDirectionSource>(loadGamepadDirectionSource)
-  const [gamepadName, setGamepadName] = useState<string | null>(null)
-  const [visualThemeId, setVisualThemeId] = useState<VisualThemeId>(loadVisualThemeId)
-  const [liveButtons, setLiveButtons] = useState<FrameButtons>(makeEmptyButtons)
-  const [bindingsOpen, setBindingsOpen] = useState(false)
-  const [startSettingsOpen, setStartSettingsOpen] = useState(false)
-  const [startSettingsBusy, setStartSettingsBusy] = useState(false)
-  const keys = useRef(new Set<string>())
-  const latched = useRef(new Set<string>())
-  const gamepadButtons = useRef<FrameButtons>(makeEmptyButtons())
-  const gamepadLatched = useRef<FrameButtons>(makeEmptyButtons())
-  const advancing = useRef(false)
-  const calculationRevision = useRef(0)
+  const client = useMemo(() => new WasmClient(), []);
+  const [map, setMap] = useState<GymMap>(() => structuredClone(PLAYGROUND));
+  const [startMaps, setStartMaps] = useState<GymMap[]>(() => [
+    structuredClone(PLAYGROUND),
+  ]);
+  const cache = useMemo(
+    () => new FrameCache(client, map, createInitialState(map), 360),
+    [client],
+  );
+  const [mode, setMode] = useState<AppMode>("play");
+  const [editorExperiencing, setEditorExperiencing] = useState(false);
+  const [trainingTechniqueId, setTrainingTechniqueId] = useState(
+    trainingCatalog[0].id,
+  );
+  const [trainingVariantId, setTrainingVariantId] = useState(
+    trainingCatalog[0].variants[0].id,
+  );
+  const [liveState, setLiveState] = useState<SimState>(() =>
+    createInitialState(map),
+  );
+  const liveStateRef = useRef(liveState);
+  const [liveFrame, setLiveFrame] = useState(0);
+  const liveFrameRef = useRef(0);
+  const livePreviousButtons = useRef<FrameButtons>(makeEmptyButtons());
+  const [, redraw] = useState(0);
+  const [frame, setFrame] = useState(0);
+  const frameRef = useRef(frame);
+  const [playing, setPlaying] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const [wasmStatus, setWasmStatus] = useState<"loading" | "ready" | "error">(
+    "loading",
+  );
+  const [notice, setNotice] = useState("WASM 核心启动中…");
+  const [bindings, setBindings] = useState<Bindings>(loadBindings);
+  const [gamepadDirectionSource, setGamepadDirectionSource] =
+    useState<GamepadDirectionSource>(loadGamepadDirectionSource);
+  const [gamepadName, setGamepadName] = useState<string | null>(null);
+  const [visualThemeId, setVisualThemeId] =
+    useState<VisualThemeId>(loadVisualThemeId);
+  const [liveButtons, setLiveButtons] =
+    useState<FrameButtons>(makeEmptyButtons);
+  const [bindingsOpen, setBindingsOpen] = useState(false);
+  const [startSettingsOpen, setStartSettingsOpen] = useState(false);
+  const [startSettingsBusy, setStartSettingsBusy] = useState(false);
+  const keys = useRef(new Set<string>());
+  const latched = useRef(new Set<string>());
+  const gamepadButtons = useRef<FrameButtons>(makeEmptyButtons());
+  const gamepadLatched = useRef<FrameButtons>(makeEmptyButtons());
+  const advancing = useRef(false);
+  const calculationRevision = useRef(0);
 
   const replaceLiveSession = useCallback((initial: SimState) => {
-    liveStateRef.current = initial
-    setLiveState(initial)
-    liveFrameRef.current = 0
-    setLiveFrame(0)
-    livePreviousButtons.current = makeEmptyButtons()
-  }, [])
+    liveStateRef.current = initial;
+    setLiveState(initial);
+    liveFrameRef.current = 0;
+    setLiveFrame(0);
+    livePreviousButtons.current = makeEmptyButtons();
+  }, []);
 
-  useEffect(() => cache.subscribe(() => redraw((value) => value + 1)), [cache])
-  useEffect(() => { frameRef.current = frame }, [frame])
-  useEffect(() => () => client.dispose(), [client])
+  useEffect(() => cache.subscribe(() => redraw((value) => value + 1)), [cache]);
+  useEffect(() => {
+    frameRef.current = frame;
+  }, [frame]);
+  useEffect(() => () => client.dispose(), [client]);
 
   useEffect(() => {
-    let active = true
-    client.ready().then(async () => {
-      if (!active) return
-      const loadedRooms = await Promise.all(PLAYGROUND_ROOMS.map(async (room) => ({
-        ...await client.loadMap(
-          PLAYGROUND_MAP_URL,
-          room,
-          `CelesteGymPlayground / ${room}`,
-        ),
-        room,
-      })))
-      if (!active) return
-      const loadedMap = loadedRooms.find((candidate) => candidate.room === DEFAULT_ROOM) ?? loadedRooms[0]
-      setStartMaps(loadedRooms)
-      setMap(loadedMap)
-      const initial = createInitialState(loadedMap)
-      cache.replace(loadedMap, initial, cache.getInputs().map((input) => ({ ...input })))
-      replaceLiveSession(initial)
-      frameRef.current = 0
-      setFrame(0)
-      setWasmStatus('ready')
-      setNotice('WASM 已从 CelesteGymPlayground/Playground.bin 解码可选房间')
-    }).catch((error: Error) => {
-      if (!active) return
-      setWasmStatus('error')
-      setNotice(`WASM 加载失败：${error.message}`)
-    })
-    return () => { active = false }
-  }, [cache, client, replaceLiveSession])
+    let active = true;
+    client
+      .ready()
+      .then(async () => {
+        if (!active) return;
+        const loadedRooms = await Promise.all(
+          PLAYGROUND_ROOMS.map(async (room) => ({
+            ...(await client.loadMap(
+              PLAYGROUND_MAP_URL,
+              room,
+              `CelesteGymPlayground / ${room}`,
+            )),
+            room,
+          })),
+        );
+        if (!active) return;
+        const loadedMap =
+          loadedRooms.find((candidate) => candidate.room === DEFAULT_ROOM) ??
+          loadedRooms[0];
+        setStartMaps(loadedRooms);
+        setMap(loadedMap);
+        const initial = createInitialState(loadedMap);
+        cache.replace(
+          loadedMap,
+          initial,
+          cache.getInputs().map((input) => ({ ...input })),
+        );
+        replaceLiveSession(initial);
+        frameRef.current = 0;
+        setFrame(0);
+        setWasmStatus("ready");
+        setNotice("WASM 已从 CelesteGymPlayground/Playground.bin 解码可选房间");
+      })
+      .catch((error: Error) => {
+        if (!active) return;
+        setWasmStatus("error");
+        setNotice(`WASM 加载失败：${error.message}`);
+      });
+    return () => {
+      active = false;
+    };
+  }, [cache, client, replaceLiveSession]);
 
   useEffect(() => {
-    if ((mode !== 'play' && !(mode === 'editor' && editorExperiencing)) || wasmStatus !== 'ready') return
-    let active = true
-    let animation = 0
-    let last = performance.now()
-    let carry = 0
-    let simulating = false
+    if (
+      (mode !== "play" && !(mode === "editor" && editorExperiencing)) ||
+      wasmStatus !== "ready"
+    )
+      return;
+    let active = true;
+    let animation = 0;
+    let last = performance.now();
+    let carry = 0;
+    let simulating = false;
 
     const resetClock = () => {
-      last = performance.now()
-      carry = 0
-    }
+      last = performance.now();
+      carry = 0;
+    };
 
     const tick = (now: number) => {
-      const elapsed = now - last
-      last = now
-      if (document.hidden || elapsed > MAX_ANIMATION_DELTA_MS) carry = 0
-      else carry += elapsed * 60 / 1000
-      const steps = Math.min(6, Math.floor(carry))
+      const elapsed = now - last;
+      last = now;
+      if (document.hidden || elapsed > MAX_ANIMATION_DELTA_MS) carry = 0;
+      else carry += (elapsed * 60) / 1000;
+      const steps = Math.min(6, Math.floor(carry));
       if (steps > 0 && !simulating) {
-        carry -= steps
-        let previous = livePreviousButtons.current
+        carry -= steps;
+        let previous = livePreviousButtons.current;
         const inputs = Array.from({ length: steps }, (_, offset) => {
-          const keyboard = buttonsFromKeys(keys.current, bindings, offset === 0 ? latched.current : undefined)
-          const gamepad = offset === 0 ? mergeButtons(gamepadButtons.current, gamepadLatched.current) : gamepadButtons.current
-          const current = mergeButtons(keyboard, gamepad)
-          const input = buttonsToInput(current, previous)
-          previous = current
-          return input
-        })
-        latched.current.clear()
-        gamepadLatched.current = makeEmptyButtons()
-        livePreviousButtons.current = previous
-        simulating = true
-        void client.simulate(liveStateRef.current, inputs, map).then((trace) => {
-          if (!active) return
-          const current = trace.at(-1)
-          if (!current) throw new Error('WASM 未返回游玩状态')
-          liveStateRef.current = current
-          setLiveState(current)
-          liveFrameRef.current += steps
-          setLiveFrame(liveFrameRef.current)
-        }).catch((error: Error) => {
-          if (active) setNotice(error.message)
-        }).finally(() => { simulating = false })
+          const keyboard = buttonsFromKeys(
+            keys.current,
+            bindings,
+            offset === 0 ? latched.current : undefined,
+          );
+          const gamepad =
+            offset === 0
+              ? mergeButtons(gamepadButtons.current, gamepadLatched.current)
+              : gamepadButtons.current;
+          const current = mergeButtons(keyboard, gamepad);
+          const input = buttonsToInput(current, previous);
+          previous = current;
+          return input;
+        });
+        latched.current.clear();
+        gamepadLatched.current = makeEmptyButtons();
+        livePreviousButtons.current = previous;
+        simulating = true;
+        void client
+          .simulate(liveStateRef.current, inputs, map)
+          .then((trace) => {
+            if (!active) return;
+            const current = trace.at(-1);
+            if (!current) throw new Error("WASM 未返回游玩状态");
+            liveStateRef.current = current;
+            setLiveState(current);
+            liveFrameRef.current += steps;
+            setLiveFrame(liveFrameRef.current);
+          })
+          .catch((error: Error) => {
+            if (active) setNotice(error.message);
+          })
+          .finally(() => {
+            simulating = false;
+          });
       }
-      if (active) animation = requestAnimationFrame(tick)
-    }
-    document.addEventListener('visibilitychange', resetClock)
-    animation = requestAnimationFrame(tick)
+      if (active) animation = requestAnimationFrame(tick);
+    };
+    document.addEventListener("visibilitychange", resetClock);
+    animation = requestAnimationFrame(tick);
     return () => {
-      active = false
-      cancelAnimationFrame(animation)
-      document.removeEventListener('visibilitychange', resetClock)
-    }
-  }, [bindings, client, editorExperiencing, map, mode, wasmStatus])
+      active = false;
+      cancelAnimationFrame(animation);
+      document.removeEventListener("visibilitychange", resetClock);
+    };
+  }, [bindings, client, editorExperiencing, map, mode, wasmStatus]);
 
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
-      if (event.target instanceof HTMLElement && event.target.matches('input, textarea, select, button')) return
+      if (
+        event.target instanceof HTMLElement &&
+        event.target.matches("input, textarea, select, button")
+      )
+        return;
       if (!keys.current.has(event.code)) {
-        latched.current.add(event.code)
-        keys.current.add(event.code)
-        setLiveButtons(mergeButtons(buttonsFromKeys(keys.current, bindings), gamepadButtons.current))
+        latched.current.add(event.code);
+        keys.current.add(event.code);
+        setLiveButtons(
+          mergeButtons(
+            buttonsFromKeys(keys.current, bindings),
+            gamepadButtons.current,
+          ),
+        );
       }
-      keys.current.add(event.code)
-      if (Object.values(bindings).includes(event.code)) event.preventDefault()
-    }
+      keys.current.add(event.code);
+      if (Object.values(bindings).includes(event.code)) event.preventDefault();
+    };
     const up = (event: KeyboardEvent) => {
-      if (keys.current.delete(event.code)) setLiveButtons(mergeButtons(buttonsFromKeys(keys.current, bindings), gamepadButtons.current))
-    }
+      if (keys.current.delete(event.code))
+        setLiveButtons(
+          mergeButtons(
+            buttonsFromKeys(keys.current, bindings),
+            gamepadButtons.current,
+          ),
+        );
+    };
     const blur = () => {
-      keys.current.clear()
-      latched.current.clear()
-      gamepadButtons.current = makeEmptyButtons()
-      gamepadLatched.current = makeEmptyButtons()
-      setLiveButtons(makeEmptyButtons())
-    }
-    window.addEventListener('keydown', down)
-    window.addEventListener('keyup', up)
-    window.addEventListener('blur', blur)
+      keys.current.clear();
+      latched.current.clear();
+      gamepadButtons.current = makeEmptyButtons();
+      gamepadLatched.current = makeEmptyButtons();
+      setLiveButtons(makeEmptyButtons());
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    window.addEventListener("blur", blur);
     return () => {
-      window.removeEventListener('keydown', down)
-      window.removeEventListener('keyup', up)
-      window.removeEventListener('blur', blur)
-    }
-  }, [bindings])
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", blur);
+    };
+  }, [bindings]);
 
-  const gamepadSupported = typeof navigator !== 'undefined' && typeof navigator.getGamepads === 'function'
+  const gamepadSupported =
+    typeof navigator !== "undefined" &&
+    typeof navigator.getGamepads === "function";
 
   useEffect(() => {
-    if (!gamepadSupported) return
-    let animation = 0
+    if (!gamepadSupported) return;
+    let animation = 0;
 
     const poll = () => {
-      const gamepad = Array.from(navigator.getGamepads()).find((candidate) => candidate?.connected) ?? null
-      const next = gamepad ? buttonsFromGamepad(gamepad, gamepadDirectionSource) : makeEmptyButtons()
-      gamepadLatched.current = latchNewButtons(gamepadButtons.current, next, gamepadLatched.current)
-      gamepadButtons.current = next
-      setGamepadName((current) => current === gamepad?.id ? current : gamepad?.id ?? null)
-      const combined = mergeButtons(buttonsFromKeys(keys.current, bindings), next)
-      setLiveButtons((current) => buttonsEqual(current, combined) ? current : combined)
-      animation = requestAnimationFrame(poll)
-    }
+      const gamepad =
+        Array.from(navigator.getGamepads()).find(
+          (candidate) => candidate?.connected,
+        ) ?? null;
+      const next = gamepad
+        ? buttonsFromGamepad(gamepad, gamepadDirectionSource)
+        : makeEmptyButtons();
+      gamepadLatched.current = latchNewButtons(
+        gamepadButtons.current,
+        next,
+        gamepadLatched.current,
+      );
+      gamepadButtons.current = next;
+      setGamepadName((current) =>
+        current === gamepad?.id ? current : (gamepad?.id ?? null),
+      );
+      const combined = mergeButtons(
+        buttonsFromKeys(keys.current, bindings),
+        next,
+      );
+      setLiveButtons((current) =>
+        buttonsEqual(current, combined) ? current : combined,
+      );
+      animation = requestAnimationFrame(poll);
+    };
 
-    animation = requestAnimationFrame(poll)
-    return () => cancelAnimationFrame(animation)
-  }, [bindings, gamepadDirectionSource, gamepadSupported])
+    animation = requestAnimationFrame(poll);
+    return () => cancelAnimationFrame(animation);
+  }, [bindings, gamepadDirectionSource, gamepadSupported]);
 
-  const seek = useCallback((target: number, pause = true) => {
-    const requested = Math.max(0, Math.round(target))
-    cache.ensureCapacity(requested)
-    const next = Math.min(cache.frameCount, requested)
-    if (pause) {
-      setPlaying(false)
-      setRecording(false)
-    }
-    frameRef.current = next
-    setFrame(next)
-    if (!cache.getState(next)) {
-      const requestRevision = ++calculationRevision.current
-      setNotice(`从最近检查点计算到 F${next}…`)
-      void cache.ensureFrame(next).then((state) => {
-        if (state && requestRevision === calculationRevision.current && frameRef.current === next) setNotice(`F${next} 已由 WASM 计算并缓存`)
-      }).catch((error: Error) => {
-        if (requestRevision === calculationRevision.current) setNotice(error.message)
-      })
-    }
-  }, [cache])
+  const seek = useCallback(
+    (target: number, pause = true) => {
+      const requested = Math.max(0, Math.round(target));
+      cache.ensureCapacity(requested);
+      const next = Math.min(cache.frameCount, requested);
+      if (pause) {
+        setPlaying(false);
+        setRecording(false);
+      }
+      frameRef.current = next;
+      setFrame(next);
+      if (!cache.getState(next)) {
+        const requestRevision = ++calculationRevision.current;
+        setNotice(`从最近检查点计算到 F${next}…`);
+        void cache
+          .ensureFrame(next)
+          .then((state) => {
+            if (
+              state &&
+              requestRevision === calculationRevision.current &&
+              frameRef.current === next
+            )
+              setNotice(`F${next} 已由 WASM 计算并缓存`);
+          })
+          .catch((error: Error) => {
+            if (requestRevision === calculationRevision.current)
+              setNotice(error.message);
+          });
+      }
+    },
+    [cache],
+  );
 
   useEffect(() => {
-    if ((!playing && !recording) || wasmStatus !== 'ready') return
-    let active = true
-    let animation = 0
-    let last = performance.now()
-    let carry = 0
+    if ((!playing && !recording) || wasmStatus !== "ready") return;
+    let active = true;
+    let animation = 0;
+    let last = performance.now();
+    let carry = 0;
 
     const resetClock = () => {
-      last = performance.now()
-      carry = 0
-    }
+      last = performance.now();
+      carry = 0;
+    };
 
     const sampleButtons = (includeLatched: boolean): FrameButtons => {
-      const keyboard = buttonsFromKeys(keys.current, bindings, includeLatched ? latched.current : undefined)
-      const gamepad = includeLatched ? mergeButtons(gamepadButtons.current, gamepadLatched.current) : gamepadButtons.current
-      return mergeButtons(keyboard, gamepad)
-    }
+      const keyboard = buttonsFromKeys(
+        keys.current,
+        bindings,
+        includeLatched ? latched.current : undefined,
+      );
+      const gamepad = includeLatched
+        ? mergeButtons(gamepadButtons.current, gamepadLatched.current)
+        : gamepadButtons.current;
+      return mergeButtons(keyboard, gamepad);
+    };
 
     const tick = (now: number) => {
-      const elapsed = now - last
-      last = now
-      if (document.hidden || elapsed > MAX_ANIMATION_DELTA_MS) carry = 0
-      else carry += elapsed * 60 / 1000 * speed
-      const steps = Math.min(6, Math.floor(carry))
+      const elapsed = now - last;
+      last = now;
+      if (document.hidden || elapsed > MAX_ANIMATION_DELTA_MS) carry = 0;
+      else carry += ((elapsed * 60) / 1000) * speed;
+      const steps = Math.min(6, Math.floor(carry));
       if (steps > 0 && !advancing.current) {
-        carry -= steps
-        const start = frameRef.current
-        const previousCapacity = cache.frameCount
-        const target = start + steps
-        cache.ensureCapacity(target)
-        if (cache.frameCount !== previousCapacity) setNotice(`时间线容量自动扩展到 ${cache.frameCount} 帧`)
+        carry -= steps;
+        const start = frameRef.current;
+        const previousCapacity = cache.frameCount;
+        const target = start + steps;
+        cache.ensureCapacity(target);
+        if (cache.frameCount !== previousCapacity)
+          setNotice(`时间线容量自动扩展到 ${cache.frameCount} 帧`);
         if (recording) {
-          cache.setButtonsRange(start, Array.from({ length: steps }, (_, offset) => sampleButtons(offset === 0)))
-          latched.current.clear()
-          gamepadLatched.current = makeEmptyButtons()
+          cache.setButtonsRange(
+            start,
+            Array.from({ length: steps }, (_, offset) =>
+              sampleButtons(offset === 0),
+            ),
+          );
+          latched.current.clear();
+          gamepadLatched.current = makeEmptyButtons();
         }
-        advancing.current = true
-        void cache.ensureFrame(target).then((state) => {
-          if (!active || !state) return
-          frameRef.current = target
-          setFrame(target)
-        }).catch((error: Error) => {
-          setPlaying(false)
-          setRecording(false)
-          setNotice(error.message)
-        }).finally(() => { advancing.current = false })
+        advancing.current = true;
+        void cache
+          .ensureFrame(target)
+          .then((state) => {
+            if (!active || !state) return;
+            frameRef.current = target;
+            setFrame(target);
+          })
+          .catch((error: Error) => {
+            setPlaying(false);
+            setRecording(false);
+            setNotice(error.message);
+          })
+          .finally(() => {
+            advancing.current = false;
+          });
       }
-      if (active) animation = requestAnimationFrame(tick)
-    }
-    document.addEventListener('visibilitychange', resetClock)
-    animation = requestAnimationFrame(tick)
+      if (active) animation = requestAnimationFrame(tick);
+    };
+    document.addEventListener("visibilitychange", resetClock);
+    animation = requestAnimationFrame(tick);
     return () => {
-      active = false
-      cancelAnimationFrame(animation)
-      document.removeEventListener('visibilitychange', resetClock)
-    }
-  }, [bindings, cache, playing, recording, speed, wasmStatus])
+      active = false;
+      cancelAnimationFrame(animation);
+      document.removeEventListener("visibilitychange", resetClock);
+    };
+  }, [bindings, cache, playing, recording, speed, wasmStatus]);
 
-  const inputs = cache.getInputs()
-  const states = cache.getStates()
-  const exactState = cache.getState(frame)
-  const visible = exactState ? { frame, state: exactState } : cache.getNearestState(frame)
-  const selectableStartMaps = useMemo(() => [
-    map,
-    ...startMaps.filter((candidate) => candidate.room !== map.room),
-  ], [map, startMaps])
+  const inputs = cache.getInputs();
+  const states = cache.getStates();
+  const exactState = cache.getState(frame);
+  const visible = exactState
+    ? { frame, state: exactState }
+    : cache.getNearestState(frame);
+  const selectableStartMaps = useMemo(
+    () => [
+      map,
+      ...startMaps.filter((candidate) => candidate.room !== map.room),
+    ],
+    [map, startMaps],
+  );
 
   const changeBinding = useCallback((action: Action, code: string) => {
     setBindings((current) => {
-      const next = { ...current }
-      const collision = ACTIONS.find((candidate) => candidate !== action && current[candidate] === code)
-      if (collision) next[collision] = current[action]
-      next[action] = code
-      localStorage.setItem('celeste-gym-bindings', JSON.stringify(next))
-      return next
-    })
-  }, [])
+      const next = { ...current };
+      const collision = ACTIONS.find(
+        (candidate) => candidate !== action && current[candidate] === code,
+      );
+      if (collision) next[collision] = current[action];
+      next[action] = code;
+      localStorage.setItem("celeste-gym-bindings", JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
-  const changeGamepadDirectionSource = useCallback((source: GamepadDirectionSource) => {
-    setGamepadDirectionSource(source)
-    localStorage.setItem('celeste-gym-gamepad-direction', source)
-  }, [])
+  const changeGamepadDirectionSource = useCallback(
+    (source: GamepadDirectionSource) => {
+      setGamepadDirectionSource(source);
+      localStorage.setItem("celeste-gym-gamepad-direction", source);
+    },
+    [],
+  );
 
   const toggleRecording = () => {
-    setPlaying(false)
+    setPlaying(false);
     setRecording((current) => {
-      const next = !current
+      const next = !current;
       if (next) {
-        latched.current.clear()
-        gamepadLatched.current = makeEmptyButtons()
+        latched.current.clear();
+        gamepadLatched.current = makeEmptyButtons();
       }
-      return next
-    })
-  }
+      return next;
+    });
+  };
 
   const reset = () => {
-    setPlaying(false)
-    setRecording(false)
-    cache.reset(createInitialState(map))
-    seek(0)
-    setNotice('输入和逐帧缓存已清空')
-  }
+    setPlaying(false);
+    setRecording(false);
+    cache.reset(createInitialState(map));
+    seek(0);
+    setNotice("输入和逐帧缓存已清空");
+  };
 
-  const applyStartConfiguration = async ({ room, position }: StartConfiguration) => {
-    setPlaying(false)
-    setRecording(false)
-    setStartSettingsBusy(true)
-    setNotice(`正在应用房间 ${room} 的新起点…`)
+  const applyStartConfiguration = async ({
+    room,
+    position,
+  }: StartConfiguration) => {
+    setPlaying(false);
+    setRecording(false);
+    setStartSettingsBusy(true);
+    setNotice(`正在应用房间 ${room} 的新起点…`);
     try {
-      const decodedMap = selectableStartMaps.find((candidate) => candidate.room === room)
-      if (!decodedMap) throw new Error(`房间 ${room} 不在可选地图中`)
+      const decodedMap = selectableStartMaps.find(
+        (candidate) => candidate.room === room,
+      );
+      if (!decodedMap) throw new Error(`房间 ${room} 不在可选地图中`);
       const configuredMap: GymMap = {
         ...structuredClone(decodedMap),
         room,
         spawn: { ...position },
-      }
-      calculationRevision.current += 1
-      setMap(configuredMap)
-      const initial = createInitialState(configuredMap)
-      cache.replace(configuredMap, initial, cache.getInputs().map((input) => ({ ...input })))
-      replaceLiveSession(initial)
-      frameRef.current = 0
-      setFrame(0)
-      setStartSettingsOpen(false)
-      setNotice(`已从房间 ${room} 的 (${position.x}, ${position.y}) 开始，时间线输入已保留`)
-      void cache.ensureFrame(1)
+      };
+      calculationRevision.current += 1;
+      setMap(configuredMap);
+      const initial = createInitialState(configuredMap);
+      cache.replace(
+        configuredMap,
+        initial,
+        cache.getInputs().map((input) => ({ ...input })),
+      );
+      replaceLiveSession(initial);
+      frameRef.current = 0;
+      setFrame(0);
+      setStartSettingsOpen(false);
+      setNotice(
+        `已从房间 ${room} 的 (${position.x}, ${position.y}) 开始，时间线输入已保留`,
+      );
+      void cache.ensureFrame(1);
     } catch (error) {
-      setNotice(error instanceof Error ? `起点设置失败：${error.message}` : '起点设置失败')
+      setNotice(
+        error instanceof Error
+          ? `起点设置失败：${error.message}`
+          : "起点设置失败",
+      );
     } finally {
-      setStartSettingsBusy(false)
+      setStartSettingsBusy(false);
     }
-  }
+  };
 
   const exportRun = () => {
     const document: RunDocument = {
@@ -447,240 +602,495 @@ export default function App() {
       initial_state: cache.getState(0) ?? createInitialState(map),
       inputs: inputs.map((input) => ({ ...input })),
       bindings,
-    }
-    download('celeste-gym-timeline.json', JSON.stringify(document, null, 2))
-    setNotice('时间线已导出')
-  }
+    };
+    download("celeste-gym-timeline.json", JSON.stringify(document, null, 2));
+    setNotice("时间线已导出");
+  };
 
   const exportTrace = async () => {
     try {
-      const endFrame = frameRef.current
-      await cache.ensureFrame(endFrame)
-      const trace = createWebTrace(map, cache.getInputs(), cache.getStates(), endFrame, undefined, cache.getSimulationInputs(endFrame))
-      download(`celeste-gym-web-${endFrame}-frames.trace.json`, JSON.stringify(trace, null, 2))
-      setNotice(`已导出 F0–F${endFrame} 的输入和 ${trace.states.length} 个逐帧状态`)
+      const endFrame = frameRef.current;
+      await cache.ensureFrame(endFrame);
+      const trace = createWebTrace(
+        map,
+        cache.getInputs(),
+        cache.getStates(),
+        endFrame,
+        undefined,
+        cache.getSimulationInputs(endFrame),
+      );
+      download(
+        `celeste-gym-web-${endFrame}-frames.trace.json`,
+        JSON.stringify(trace, null, 2),
+      );
+      setNotice(
+        `已导出 F0–F${endFrame} 的输入和 ${trace.states.length} 个逐帧状态`,
+      );
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : '逐帧数据导出失败')
+      setNotice(error instanceof Error ? error.message : "逐帧数据导出失败");
     }
-  }
+  };
 
   const compareTrace = async (file: File) => {
     try {
-      const expected = parseTrace(JSON.parse(await file.text()))
-      const endFrame = expected.inputs.length
-      const comparisonMap = expected.map.data ?? map
-      setPlaying(false)
-      setRecording(false)
-      const traceMap = { ...comparisonMap, room: expected.map.room }
-      setMap(traceMap)
-      const initial = initialStateFromTrace(expected.states[0], traceMap)
-      cache.replaceSimulationInputs(traceMap, initial, expected.inputs)
-      replaceLiveSession(initial)
-      await cache.ensureFrame(endFrame)
-      frameRef.current = endFrame
-      setFrame(endFrame)
-      const actual = createWebTrace(traceMap, cache.getInputs(), cache.getStates(), endFrame, undefined, cache.getSimulationInputs(endFrame))
-      const result = compareTraces(actual, expected)
-      setNotice(result.matched
-        ? `对比通过：${result.compared_frames} 帧，位置 ${result.max_position_error.toFixed(6)}，速度 ${result.max_speed_error.toFixed(6)}`
-        : `对比失败：${result.reason}；位置 ${result.max_position_error.toFixed(6)}，速度 ${result.max_speed_error.toFixed(6)}`)
+      const expected = parseTrace(JSON.parse(await file.text()));
+      const endFrame = expected.inputs.length;
+      const comparisonMap = expected.map.data ?? map;
+      setPlaying(false);
+      setRecording(false);
+      const traceMap = { ...comparisonMap, room: expected.map.room };
+      setMap(traceMap);
+      const initial = initialStateFromTrace(expected.states[0], traceMap);
+      cache.replaceSimulationInputs(traceMap, initial, expected.inputs);
+      replaceLiveSession(initial);
+      await cache.ensureFrame(endFrame);
+      frameRef.current = endFrame;
+      setFrame(endFrame);
+      const actual = createWebTrace(
+        traceMap,
+        cache.getInputs(),
+        cache.getStates(),
+        endFrame,
+        undefined,
+        cache.getSimulationInputs(endFrame),
+      );
+      const result = compareTraces(actual, expected);
+      setNotice(
+        result.matched
+          ? `对比通过：${result.compared_frames} 帧，位置 ${result.max_position_error.toFixed(6)}，速度 ${result.max_speed_error.toFixed(6)}`
+          : `对比失败：${result.reason}；位置 ${result.max_position_error.toFixed(6)}，速度 ${result.max_speed_error.toFixed(6)}`,
+      );
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : '逐帧数据对比失败')
+      setNotice(error instanceof Error ? error.message : "逐帧数据对比失败");
     }
-  }
+  };
 
   const importRun = async (file: File) => {
     try {
-      const document = JSON.parse(await file.text()) as RunDocument
-      if (document.version !== 2 || !document.map || !document.initial_state || !Array.isArray(document.inputs)) throw new Error('不是 Celeste Next Gym v2 时间线')
-      setPlaying(false)
-      setRecording(false)
-      setMap(document.map)
-      cache.replace(document.map, document.initial_state, document.inputs)
-      replaceLiveSession(document.initial_state)
-      if (document.bindings) setBindings({ ...DEFAULT_BINDINGS, ...document.bindings })
-      seek(0)
-      setNotice(`已导入 ${file.name} · 后续 state 将按需重算`)
+      const document = JSON.parse(await file.text()) as RunDocument;
+      if (
+        document.version !== 2 ||
+        !document.map ||
+        !document.initial_state ||
+        !Array.isArray(document.inputs)
+      )
+        throw new Error("不是 Celeste Next Gym v2 时间线");
+      setPlaying(false);
+      setRecording(false);
+      setMap(document.map);
+      cache.replace(document.map, document.initial_state, document.inputs);
+      replaceLiveSession(document.initial_state);
+      if (document.bindings)
+        setBindings({ ...DEFAULT_BINDINGS, ...document.bindings });
+      seek(0);
+      setNotice(`已导入 ${file.name} · 后续 state 将按需重算`);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : '导入失败')
+      setNotice(error instanceof Error ? error.message : "导入失败");
     }
-  }
+  };
 
-  const resetLiveMap = useCallback((nextMap: GymMap = map) => {
-    replaceLiveSession(createInitialState(nextMap))
-  }, [map, replaceLiveSession])
+  const resetLiveMap = useCallback(
+    (nextMap: GymMap = map) => {
+      replaceLiveSession(createInitialState(nextMap));
+    },
+    [map, replaceLiveSession],
+  );
 
-  const updateEditorMap = useCallback((nextMap: GymMap) => {
-    setMap(nextMap)
-    replaceLiveSession(createInitialState(nextMap))
-  }, [replaceLiveSession])
+  const updateEditorMap = useCallback(
+    (nextMap: GymMap) => {
+      setMap(nextMap);
+      replaceLiveSession(createInitialState(nextMap));
+    },
+    [replaceLiveSession],
+  );
 
-  const toggleEditorExperience = useCallback((next: boolean) => {
-    resetLiveMap()
-    setEditorExperiencing(next)
-    setNotice(next ? '实时体验已启动 · 输入直接送入 WASM，不记录 state' : '已返回地图编辑')
-  }, [resetLiveMap])
+  const toggleEditorExperience = useCallback(
+    (next: boolean) => {
+      resetLiveMap();
+      setEditorExperiencing(next);
+      setNotice(
+        next
+          ? "实时体验已启动 · 输入直接送入 WASM，不记录 state"
+          : "已返回地图编辑",
+      );
+    },
+    [resetLiveMap],
+  );
 
   const selectMode = (nextMode: AppMode) => {
-    if (nextMode === 'play' || nextMode === 'editor') {
-      setPlaying(false)
-      setRecording(false)
-      setBindingsOpen(false)
-      setStartSettingsOpen(false)
+    if (nextMode === "play" || nextMode === "editor") {
+      setPlaying(false);
+      setRecording(false);
+      setBindingsOpen(false);
+      setStartSettingsOpen(false);
     }
-    if (mode === 'editor' && nextMode !== 'editor') {
-      setEditorExperiencing(false)
-      const initial = createInitialState(map)
-      cache.replace(map, initial, cache.getInputs().map((input) => ({ ...input })))
-      replaceLiveSession(initial)
-      frameRef.current = 0
-      setFrame(0)
-    } else if (nextMode === 'editor') {
-      resetLiveMap()
+    if (mode === "editor" && nextMode !== "editor") {
+      setEditorExperiencing(false);
+      const initial = createInitialState(map);
+      cache.replace(
+        map,
+        initial,
+        cache.getInputs().map((input) => ({ ...input })),
+      );
+      replaceLiveSession(initial);
+      frameRef.current = 0;
+      setFrame(0);
+    } else if (nextMode === "editor") {
+      resetLiveMap();
     }
-    setMode(nextMode)
-  }
-  const selectedTrainingTechnique = trainingCatalog.find((item) => item.id === trainingTechniqueId) ?? trainingCatalog[0]
-  const selectedTrainingVariant = selectedTrainingTechnique.variants.find((item) => item.id === trainingVariantId) ?? selectedTrainingTechnique.variants[0]
-  const visualTheme = visualThemeById(visualThemeId)
+    setMode(nextMode);
+  };
+  const selectedTrainingTechnique =
+    trainingCatalog.find((item) => item.id === trainingTechniqueId) ??
+    trainingCatalog[0];
+  const selectedTrainingVariant =
+    selectedTrainingTechnique.variants.find(
+      (item) => item.id === trainingVariantId,
+    ) ?? selectedTrainingTechnique.variants[0];
+  const visualTheme = visualThemeById(visualThemeId);
 
   const selectVisualTheme = (id: VisualThemeId) => {
-    setVisualThemeId(id)
-    localStorage.setItem(VISUAL_THEME_STORAGE_KEY, id)
-  }
+    setVisualThemeId(id);
+    localStorage.setItem(VISUAL_THEME_STORAGE_KEY, id);
+  };
 
-  return <div className={`app-shell ${mode === 'play' ? 'play-mode' : mode === 'training' ? 'training-mode' : mode === 'editor' ? 'editor-mode' : 'advanced-mode'}`} data-visual-theme={visualTheme.id}>
-    {mode === 'advanced' && <div className="mountain-backdrop" />}
-    <header className="topbar">
-      <div className="brand-mark"><div><strong>CELESTE</strong><em>NEXT GYM</em></div></div>
-      <label className="mode-tabs">
-        <small>工作区</small>
-        <select aria-label="页面模式" value={mode} onChange={(event) => selectMode(event.target.value as AppMode)}>
-          <option value="play">游玩</option><option value="training">训练</option><option value="editor">编辑</option><option value="advanced">高级</option>
-        </select>
-      </label>
-      <label className="visual-theme-picker">
-        <small>场景主题</small>
-        <select aria-label="场景主题" value={visualThemeId} onChange={(event) => selectVisualTheme(event.target.value as VisualThemeId)}>
-          {VISUAL_THEME_COLLECTIONS.map((collection) => <optgroup label={collection.label} key={collection.id}>
-            {VISUAL_THEMES.filter((theme) => theme.collection === collection.id).map((theme) => <option value={theme.id} key={theme.id}>{theme.label} · {theme.chapter}</option>)}
-          </optgroup>)}
-        </select>
-      </label>
-      {mode === 'advanced' ? <div className="top-actions">
-        <button disabled={wasmStatus !== 'ready'} onClick={() => setStartSettingsOpen(true)}>起点</button>
-        <button onClick={() => setBindingsOpen(true)}>控制</button>
-        <label className="file-button">导入时间线<input type="file" accept="application/json,.json" onChange={(event) => event.target.files?.[0] && void importRun(event.target.files[0])} /></label>
-        <button onClick={exportRun}>导出时间线</button>
-        <button onClick={() => void exportTrace()}>导出逐帧</button>
-        <label className="file-button">对比逐帧<input type="file" accept="application/json,.json" onChange={(event) => event.target.files?.[0] && void compareTrace(event.target.files[0])} /></label>
-      </div> : mode === 'training' ? <div className="play-quick-actions training-context">
-        <div className="play-room"><small>TRAINING MAP</small><strong>{selectedTrainingTechnique.title} · {selectedTrainingVariant.title}</strong><span>{selectedTrainingVariant.training.modules.length} 个教程模块 · {selectedTrainingVariant.summary}</span></div>
-        <div className="top-actions"><button onClick={() => setBindingsOpen(true)}>控制</button></div>
-      </div> : mode === 'editor' ? <div className="play-quick-actions editor-context">
-        <div className="play-room"><small>{editorExperiencing ? 'LIVE EXPERIENCE' : 'MAP EDITOR'}</small><strong>{map.name}</strong><span>{map.room ?? DEFAULT_ROOM}</span></div>
-        <div className="top-actions"><button onClick={() => setBindingsOpen(true)}>控制</button></div>
-      </div> : <div className="play-quick-actions">
-        <div className="play-room">
-          <small>LIVE ROOM</small>
-          <strong>{map.name}</strong>
-          <span>{map.room ?? DEFAULT_ROOM}</span>
-        </div>
-        <div className="top-actions">
-          <button disabled={wasmStatus !== 'ready'} onClick={() => setStartSettingsOpen(true)}>起点</button>
-          <button onClick={() => setBindingsOpen(true)}>控制</button>
-        </div>
-      </div>}
-    </header>
-
-    {mode === 'play' ? <main className="play-workspace">
-      <GameView map={map} state={liveState} states={[]} frame={liveFrame} stale={false} theme={visualTheme} />
-    </main> : mode === 'training' ? <TrainingGround techniqueId={selectedTrainingTechnique.id} variantId={selectedTrainingVariant.id} bindings={bindings} theme={visualTheme} onSelectTraining={(techniqueId, variantId) => { setTrainingTechniqueId(techniqueId); setTrainingVariantId(variantId) }} /> : mode === 'editor' ? <EditorWorkspace
-      map={map}
-      state={liveState}
-      frame={liveFrame}
-      theme={visualTheme}
-      bindings={bindings}
-      experiencing={editorExperiencing}
-      ready={wasmStatus === 'ready'}
-      onMapChange={updateEditorMap}
-      onExperienceChange={toggleEditorExperience}
-      onResetExperience={resetLiveMap}
-    /> : <>
-
-      <main className="workspace">
-      <section className="stage panel-frame">
-        <div className="stage-header">
-          <div><small>CELESTE 1.4.0.0-FNA · ROOM {map.room ?? DEFAULT_ROOM} · START {map.spawn.x}, {map.spawn.y}</small><h1>{map.name}</h1></div>
-          <div className="cache-meter"><span>VALID THROUGH</span><strong>F{String(cache.computedThrough).padStart(4, '0')}</strong></div>
-        </div>
-        <GameView map={map} state={visible.state} states={states} frame={visible.frame} stale={!exactState || visible.frame !== frame} theme={visualTheme} />
-        <div className="transport">
-          <button aria-label="回到第一帧" onClick={() => seek(0)}>│◀</button>
-          <button aria-label="上一帧" onClick={() => seek(frame - 1)}>◀</button>
-          <button className="play-button" disabled={wasmStatus !== 'ready'} aria-label={playing ? '暂停' : '播放'} onClick={() => { setRecording(false); setPlaying((value) => !value) }}>{playing ? 'Ⅱ' : '▶'}</button>
-          <button aria-label="下一帧" onClick={() => seek(frame + 1)}>▶</button>
-          <button className={recording ? 'record-button active' : 'record-button'} disabled={wasmStatus !== 'ready'} onClick={toggleRecording}><i />{recording ? '录制中' : '录制输入'}</button>
-          <select aria-label="播放速度" value={speed} onChange={(event) => setSpeed(Number(event.target.value))}>
-            <option value={0.25}>0.25×</option><option value={0.5}>0.5×</option><option value={1}>1×</option><option value={2}>2×</option>
-          </select>
-          <button onClick={reset}>重置</button>
-        </div>
-      </section>
-
-      <aside className="right-rail">
-        <StateInspector frame={frame} state={visible.state} exact={Boolean(exactState)} />
-        <section className="current-input panel-frame">
-          <div className="panel-heading"><div><small>FRAME {String(Math.min(frame, inputs.length - 1)).padStart(4, '0')}</small><h2>当前输入</h2></div></div>
-          <div className="input-buttons">
-            {ACTIONS.map((action) => {
-              const inputFrame = Math.min(frame, inputs.length - 1)
-              const active = recording ? liveButtons[action] : inputs[inputFrame]?.[action] ?? false
-              return <button key={action} className={`${action} ${active ? 'active' : ''}`} onClick={() => {
-                cache.setFrame(inputFrame, action, !active)
-                seek(inputFrame, false)
-              }}><span>{ACTION_GLYPHS[action]}</span><strong>{ACTION_LABELS[action]}</strong><kbd>{bindingLabel(bindings[action])}</kbd></button>
-            })}
+  return (
+    <div
+      className={`app-shell ${mode === "play" ? "play-mode" : mode === "training" ? "training-mode" : mode === "editor" ? "editor-mode" : "advanced-mode"}`}
+      data-visual-theme={visualTheme.id}
+    >
+      {mode === "advanced" && <div className="mountain-backdrop" />}
+      <header className="topbar">
+        <div className="brand-mark">
+          <div>
+            <strong>CELESTE</strong>
+            <em>NEXT GYM</em>
           </div>
-        </section>
-        <div className="notice" role="status"><i className={wasmStatus} />{notice}</div>
-      </aside>
+        </div>
+        <label className="mode-tabs">
+          <small>工作区</small>
+          <select
+            aria-label="页面模式"
+            value={mode}
+            onChange={(event) => selectMode(event.target.value as AppMode)}
+          >
+            <option value="play">游玩</option>
+            <option value="training">训练</option>
+            <option value="editor">编辑</option>
+            <option value="advanced">高级</option>
+          </select>
+        </label>
+        <label className="visual-theme-picker">
+          <small>场景主题</small>
+          <select
+            aria-label="场景主题"
+            value={visualThemeId}
+            onChange={(event) =>
+              selectVisualTheme(event.target.value as VisualThemeId)
+            }
+          >
+            {VISUAL_THEME_COLLECTIONS.map((collection) => (
+              <optgroup label={collection.label} key={collection.id}>
+                {VISUAL_THEMES.filter(
+                  (theme) => theme.collection === collection.id,
+                ).map((theme) => (
+                  <option value={theme.id} key={theme.id}>
+                    {theme.label} · {theme.chapter}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </label>
+        {mode === "advanced" ? (
+          <div className="top-actions">
+            <button
+              disabled={wasmStatus !== "ready"}
+              onClick={() => setStartSettingsOpen(true)}
+            >
+              起点
+            </button>
+            <button onClick={() => setBindingsOpen(true)}>控制</button>
+            <label className="file-button">
+              导入时间线
+              <input
+                type="file"
+                accept="application/json,.json"
+                onChange={(event) =>
+                  event.target.files?.[0] &&
+                  void importRun(event.target.files[0])
+                }
+              />
+            </label>
+            <button onClick={exportRun}>导出时间线</button>
+            <button onClick={() => void exportTrace()}>导出逐帧</button>
+            <label className="file-button">
+              对比逐帧
+              <input
+                type="file"
+                accept="application/json,.json"
+                onChange={(event) =>
+                  event.target.files?.[0] &&
+                  void compareTrace(event.target.files[0])
+                }
+              />
+            </label>
+          </div>
+        ) : mode === "training" ? (
+          <div className="play-quick-actions training-context">
+            <div className="play-room">
+              <small>TRAINING MAP</small>
+              <strong>
+                {selectedTrainingTechnique.title} ·{" "}
+                {selectedTrainingVariant.title}
+              </strong>
+              <span>
+                {selectedTrainingVariant.training.modules.length} 个教程模块 ·{" "}
+                {selectedTrainingVariant.summary}
+              </span>
+            </div>
+            <div className="top-actions">
+              <button onClick={() => setBindingsOpen(true)}>控制</button>
+            </div>
+          </div>
+        ) : mode === "editor" ? (
+          <div className="play-quick-actions editor-context">
+            <div className="play-room">
+              <small>
+                {editorExperiencing ? "LIVE EXPERIENCE" : "MAP EDITOR"}
+              </small>
+              <strong>{map.name}</strong>
+              <span>{map.room ?? DEFAULT_ROOM}</span>
+            </div>
+            <div className="top-actions">
+              <button onClick={() => setBindingsOpen(true)}>控制</button>
+            </div>
+          </div>
+        ) : (
+          <div className="play-quick-actions">
+            <div className="play-room">
+              <small>LIVE ROOM</small>
+              <strong>{map.name}</strong>
+              <span>{map.room ?? DEFAULT_ROOM}</span>
+            </div>
+            <div className="top-actions">
+              <button
+                disabled={wasmStatus !== "ready"}
+                onClick={() => setStartSettingsOpen(true)}
+              >
+                起点
+              </button>
+              <button onClick={() => setBindingsOpen(true)}>控制</button>
+            </div>
+          </div>
+        )}
+      </header>
 
-      <InputTimeline
-        frame={frame}
-        inputs={inputs}
-        states={states}
-        onSeek={seek}
-        onPaint={(action, from, to, value) => cache.paint(action, from, to, value)}
-        onMove={(action, targetAction, start, end, delta) => cache.moveRun(action, targetAction, start, end, delta)}
-        onEditComplete={() => {
-          const current = frameRef.current
-          if (!cache.getState(current)) seek(current, false)
-        }}
-        onResize={(frames) => {
-          cache.resize(frames)
-          if (frameRef.current > cache.frameCount) seek(cache.frameCount)
-        }}
-      />
-      </main>
-      <footer>celeste-wasm 0.2.0 rebuilt · Celeste 1.4.0.0-fna Gameplay atlas · CelesteGymPlayground/Playground.bin · 60 FPS</footer>
-    </>}
-    {bindingsOpen && <KeyBindings
-      bindings={bindings}
-      gamepadDirectionSource={gamepadDirectionSource}
-      gamepadName={gamepadName}
-      gamepadSupported={gamepadSupported}
-      onChange={changeBinding}
-      onGamepadDirectionSourceChange={changeGamepadDirectionSource}
-      onClose={() => setBindingsOpen(false)}
-    />}
-    {startSettingsOpen && <StartSettings
-      rooms={selectableStartMaps}
-      room={map.room ?? DEFAULT_ROOM}
-      position={map.spawn}
-      busy={startSettingsBusy}
-      onApply={(configuration) => { void applyStartConfiguration(configuration) }}
-      onClose={() => setStartSettingsOpen(false)}
-    />}
-  </div>
+      {mode === "play" ? (
+        <main className="play-workspace">
+          <GameView
+            map={map}
+            state={liveState}
+            states={[]}
+            frame={liveFrame}
+            stale={false}
+            theme={visualTheme}
+          />
+        </main>
+      ) : mode === "training" ? (
+        <TrainingGround
+          techniqueId={selectedTrainingTechnique.id}
+          variantId={selectedTrainingVariant.id}
+          bindings={bindings}
+          theme={visualTheme}
+          onSelectTraining={(techniqueId, variantId) => {
+            setTrainingTechniqueId(techniqueId);
+            setTrainingVariantId(variantId);
+          }}
+        />
+      ) : mode === "editor" ? (
+        <EditorWorkspace
+          map={map}
+          state={liveState}
+          frame={liveFrame}
+          theme={visualTheme}
+          bindings={bindings}
+          experiencing={editorExperiencing}
+          ready={wasmStatus === "ready"}
+          onMapChange={updateEditorMap}
+          onExperienceChange={toggleEditorExperience}
+          onResetExperience={resetLiveMap}
+        />
+      ) : (
+        <>
+          <main className="workspace">
+            <section className="stage panel-frame">
+              <div className="stage-header">
+                <div>
+                  <small>
+                    CELESTE 1.4.0.0-FNA · ROOM {map.room ?? DEFAULT_ROOM} ·
+                    START {map.spawn.x}, {map.spawn.y}
+                  </small>
+                  <h1>{map.name}</h1>
+                </div>
+                <div className="cache-meter">
+                  <span>VALID THROUGH</span>
+                  <strong>
+                    F{String(cache.computedThrough).padStart(4, "0")}
+                  </strong>
+                </div>
+              </div>
+              <GameView
+                map={map}
+                state={visible.state}
+                states={states}
+                frame={visible.frame}
+                stale={!exactState || visible.frame !== frame}
+                theme={visualTheme}
+              />
+              <div className="transport">
+                <button aria-label="回到第一帧" onClick={() => seek(0)}>
+                  │◀
+                </button>
+                <button aria-label="上一帧" onClick={() => seek(frame - 1)}>
+                  ◀
+                </button>
+                <button
+                  className="play-button"
+                  disabled={wasmStatus !== "ready"}
+                  aria-label={playing ? "暂停" : "播放"}
+                  onClick={() => {
+                    setRecording(false);
+                    setPlaying((value) => !value);
+                  }}
+                >
+                  {playing ? "Ⅱ" : "▶"}
+                </button>
+                <button aria-label="下一帧" onClick={() => seek(frame + 1)}>
+                  ▶
+                </button>
+                <button
+                  className={
+                    recording ? "record-button active" : "record-button"
+                  }
+                  disabled={wasmStatus !== "ready"}
+                  onClick={toggleRecording}
+                >
+                  <i />
+                  {recording ? "录制中" : "录制输入"}
+                </button>
+                <select
+                  aria-label="播放速度"
+                  value={speed}
+                  onChange={(event) => setSpeed(Number(event.target.value))}
+                >
+                  <option value={0.25}>0.25×</option>
+                  <option value={0.5}>0.5×</option>
+                  <option value={1}>1×</option>
+                  <option value={2}>2×</option>
+                </select>
+                <button onClick={reset}>重置</button>
+              </div>
+            </section>
+
+            <aside className="right-rail">
+              <StateInspector
+                frame={frame}
+                state={visible.state}
+                exact={Boolean(exactState)}
+              />
+              <section className="current-input panel-frame">
+                <div className="panel-heading">
+                  <div>
+                    <small>
+                      FRAME{" "}
+                      {String(Math.min(frame, inputs.length - 1)).padStart(
+                        4,
+                        "0",
+                      )}
+                    </small>
+                    <h2>当前输入</h2>
+                  </div>
+                </div>
+                <div className="input-buttons">
+                  {ACTIONS.map((action) => {
+                    const inputFrame = Math.min(frame, inputs.length - 1);
+                    const active = recording
+                      ? liveButtons[action]
+                      : (inputs[inputFrame]?.[action] ?? false);
+                    return (
+                      <button
+                        key={action}
+                        className={`${action} ${active ? "active" : ""}`}
+                        onClick={() => {
+                          cache.setFrame(inputFrame, action, !active);
+                          seek(inputFrame, false);
+                        }}
+                      >
+                        <span>{ACTION_GLYPHS[action]}</span>
+                        <strong>{ACTION_LABELS[action]}</strong>
+                        <kbd>{bindingLabel(bindings[action])}</kbd>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+              <div className="notice" role="status">
+                <i className={wasmStatus} />
+                {notice}
+              </div>
+            </aside>
+
+            <InputTimeline
+              frame={frame}
+              inputs={inputs}
+              states={states}
+              onSeek={seek}
+              onPaint={(action, from, to, value) =>
+                cache.paint(action, from, to, value)
+              }
+              onMove={(action, targetAction, start, end, delta) =>
+                cache.moveRun(action, targetAction, start, end, delta)
+              }
+              onEditComplete={() => {
+                const current = frameRef.current;
+                if (!cache.getState(current)) seek(current, false);
+              }}
+              onResize={(frames) => {
+                cache.resize(frames);
+                if (frameRef.current > cache.frameCount) seek(cache.frameCount);
+              }}
+            />
+          </main>
+          <footer>
+            celeste-wasm 0.2.0 rebuilt · Celeste 1.4.0.0-fna Gameplay atlas ·
+            CelesteGymPlayground/Playground.bin · 60 FPS
+          </footer>
+        </>
+      )}
+      {bindingsOpen && (
+        <KeyBindings
+          bindings={bindings}
+          gamepadDirectionSource={gamepadDirectionSource}
+          gamepadName={gamepadName}
+          gamepadSupported={gamepadSupported}
+          onChange={changeBinding}
+          onGamepadDirectionSourceChange={changeGamepadDirectionSource}
+          onClose={() => setBindingsOpen(false)}
+        />
+      )}
+      {startSettingsOpen && (
+        <StartSettings
+          rooms={selectableStartMaps}
+          room={map.room ?? DEFAULT_ROOM}
+          position={map.spawn}
+          busy={startSettingsBusy}
+          onApply={(configuration) => {
+            void applyStartConfiguration(configuration);
+          }}
+          onClose={() => setStartSettingsOpen(false)}
+        />
+      )}
+    </div>
+  );
 }

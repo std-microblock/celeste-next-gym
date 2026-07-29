@@ -1,4 +1,9 @@
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import {
+  createServer,
+  type IncomingMessage,
+  type Server,
+  type ServerResponse,
+} from "node:http";
 import { once } from "node:events";
 import {
   BackendNotConfiguredError,
@@ -52,7 +57,12 @@ export function createCollectorServer(options: CollectorServerOptions): Server {
     } catch (error) {
       config.logger?.error(error);
       if (!response.headersSent) {
-        sendMessagePackError(response, 500, "INTERNAL_ERROR", "Internal server error");
+        sendMessagePackError(
+          response,
+          500,
+          "INTERNAL_ERROR",
+          "Internal server error",
+        );
       } else {
         response.destroy();
       }
@@ -108,9 +118,8 @@ async function route(
     return;
   }
 
-  const recordingMatch = /^\/api\/recording\/(start|status|stop|finalize)$/.exec(
-    url.pathname,
-  );
+  const recordingMatch =
+    /^\/api\/recording\/(start|status|stop|finalize)$/.exec(url.pathname);
   if (request.method === "POST" && recordingMatch) {
     await routeRecording(
       recordingMatch[1] as RecordingAction,
@@ -126,7 +135,10 @@ async function route(
     return;
   }
 
-  const mediaType = request.headers["content-type"]?.split(";", 1)[0]?.trim().toLowerCase();
+  const mediaType = request.headers["content-type"]
+    ?.split(";", 1)[0]
+    ?.trim()
+    .toLowerCase();
   if (mediaType !== CONTENT_TYPE) {
     sendMessagePackError(
       response,
@@ -193,9 +205,13 @@ async function routeRecording(
       CollectorServerOptions,
       "backend" | "timeoutMs" | "maxBodyBytes" | "maxMapBytes" | "maxFrames"
     >
-  > & Pick<CollectorServerOptions, "logger">,
+  > &
+    Pick<CollectorServerOptions, "logger">,
 ): Promise<void> {
-  const mediaType = request.headers["content-type"]?.split(";", 1)[0]?.trim().toLowerCase();
+  const mediaType = request.headers["content-type"]
+    ?.split(";", 1)[0]
+    ?.trim()
+    .toLowerCase();
   if (mediaType !== CONTENT_TYPE) {
     sendMessagePackError(
       response,
@@ -207,34 +223,41 @@ async function routeRecording(
   }
 
   try {
-    const body = await readBody(request, Math.min(config.maxBodyBytes, 64 * 1024));
+    const body = await readBody(
+      request,
+      Math.min(config.maxBodyBytes, 64 * 1024),
+    );
     const decoded = decodeRecordingRequest(body, action);
     const signal = AbortSignal.timeout(config.timeoutMs);
     let recording: RecordingStatus;
     switch (action) {
       case "start":
-        if (!config.backend.recordingStart) throw new RecordingNotConfiguredError();
+        if (!config.backend.recordingStart)
+          throw new RecordingNotConfiguredError();
         recording = await config.backend.recordingStart(
           decoded as RecordingStartRequest,
           signal,
         );
         break;
       case "status":
-        if (!config.backend.recordingStatus) throw new RecordingNotConfiguredError();
+        if (!config.backend.recordingStatus)
+          throw new RecordingNotConfiguredError();
         recording = await config.backend.recordingStatus(
           decoded as RecordingControlRequest,
           signal,
         );
         break;
       case "stop":
-        if (!config.backend.recordingStop) throw new RecordingNotConfiguredError();
+        if (!config.backend.recordingStop)
+          throw new RecordingNotConfiguredError();
         recording = await config.backend.recordingStop(
           decoded as RecordingControlRequest,
           signal,
         );
         break;
       case "finalize":
-        if (!config.backend.recordingFinalize) throw new RecordingNotConfiguredError();
+        if (!config.backend.recordingFinalize)
+          throw new RecordingNotConfiguredError();
         recording = await config.backend.recordingFinalize(
           decoded as RecordingControlRequest,
           signal,
@@ -301,7 +324,9 @@ class RecordingNotConfiguredError extends Error {
   readonly code = "RECORDING_NOT_CONFIGURED";
 
   constructor() {
-    super("Collector backend does not support authenticated presentation recording");
+    super(
+      "Collector backend does not support authenticated presentation recording",
+    );
     this.name = "RecordingNotConfiguredError";
   }
 }
@@ -329,7 +354,11 @@ function sendMessagePackError(
   sendMessagePack(response, status, { success: false, code, error });
 }
 
-function sendJson(response: ServerResponse, status: number, payload: unknown): void {
+function sendJson(
+  response: ServerResponse,
+  status: number,
+  payload: unknown,
+): void {
   const body = Buffer.from(JSON.stringify(payload));
   response.writeHead(status, {
     "content-type": "application/json; charset=utf-8",

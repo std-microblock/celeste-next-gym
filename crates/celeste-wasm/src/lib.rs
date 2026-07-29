@@ -1,10 +1,10 @@
+use celeste_fuzz::{OutputMode, SearchOptions, compile, evaluate_current_checks, parse_spec};
 use celeste_physics::{
     InputState, Map, PlayerSnapshot, decode_map, decode_map_room, simulate_trace,
 };
-use celeste_fuzz::{OutputMode, SearchOptions, compile, evaluate_current_checks, parse_spec};
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
+use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 
 thread_local! {
@@ -111,19 +111,31 @@ pub fn fuzz_search_cached_map_msgpack(snapshot_bytes: &[u8], fuzz_json: &str) ->
             let map = cached
                 .as_ref()
                 .ok_or_else(|| "simulation map is not cached".to_owned())?;
-            compiled.search(
-                snapshot,
-                map,
-                HashMap::new(),
-                vec![OutputMode::Best, OutputMode::Windows, OutputMode::Coverage, OutputMode::Candidates, OutputMode::Evaluations],
-                SearchOptions::default(),
-            ).map_err(|error| error.to_string())
+            compiled
+                .search(
+                    snapshot,
+                    map,
+                    HashMap::new(),
+                    vec![
+                        OutputMode::Best,
+                        OutputMode::Windows,
+                        OutputMode::Coverage,
+                        OutputMode::Candidates,
+                        OutputMode::Evaluations,
+                    ],
+                    SearchOptions::default(),
+                )
+                .map_err(|error| error.to_string())
         })?;
         rmp_serde::to_vec_named(&search).map_err(|error| error.to_string())
     })();
     match result {
         Ok(bytes) => bytes,
-        Err(message) => rmp_serde::to_vec_named(&WasmError { success: false, error: &message }).unwrap_or_default(),
+        Err(message) => rmp_serde::to_vec_named(&WasmError {
+            success: false,
+            error: &message,
+        })
+        .unwrap_or_default(),
     }
 }
 
@@ -136,12 +148,18 @@ pub fn training_entry_check_msgpack(snapshot_bytes: &[u8], checks_json: &str) ->
             .map_err(|error| format!("invalid snapshot: {error}"))?;
         let checks: Vec<String> = serde_json::from_str(checks_json)
             .map_err(|error| format!("invalid entry checks: {error}"))?;
-        rmp_serde::to_vec_named(&evaluate_current_checks(&snapshot, &checks)
-            .map_err(|error| error.to_string())?).map_err(|error| error.to_string())
+        rmp_serde::to_vec_named(
+            &evaluate_current_checks(&snapshot, &checks).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())
     })();
     match result {
         Ok(bytes) => bytes,
-        Err(message) => rmp_serde::to_vec_named(&WasmError { success: false, error: &message }).unwrap_or_default(),
+        Err(message) => rmp_serde::to_vec_named(&WasmError {
+            success: false,
+            error: &message,
+        })
+        .unwrap_or_default(),
     }
 }
 

@@ -127,7 +127,7 @@ pub struct Map {
     /// when decoding one room so Level.EnforceBounds can resolve transitions.
     #[serde(default)]
     pub transition_rooms: Vec<Rect>,
-/// Decoded room-local data for every room in the same map, including the
+    /// Decoded room-local data for every room in the same map, including the
     /// room initially loaded into `solids` and `entities`. Keeping the source
     /// room is necessary when a player transitions back into it, such as a
     /// Bubsdrop: `Level.LoadLevel` must restore its collision and choose from
@@ -695,10 +695,26 @@ pub(crate) fn encode_celeste_rooms(
                         ("onlyY", BinaryValue::Bool(entity.direction.x != 0.0)),
                         ("summit", BinaryValue::Bool(entity.direction.y != 0.0)),
                     ],
-                    entity.nodes.iter().map(|node| element("node", [
-                        ("x", BinaryValue::Int((node.x - map.bounds.x).round() as i32)),
-                        ("y", BinaryValue::Int((node.y - map.bounds.y).round() as i32)),
-                    ], vec![])).collect(),
+                    entity
+                        .nodes
+                        .iter()
+                        .map(|node| {
+                            element(
+                                "node",
+                                [
+                                    (
+                                        "x",
+                                        BinaryValue::Int((node.x - map.bounds.x).round() as i32),
+                                    ),
+                                    (
+                                        "y",
+                                        BinaryValue::Int((node.y - map.bounds.y).round() as i32),
+                                    ),
+                                ],
+                                vec![],
+                            )
+                        })
+                        .collect(),
                 )),
                 EntityKind::MovingSolid => Some(element(
                     "celesteGymMovingSolid",
@@ -1118,8 +1134,16 @@ fn map_from_binary_inner(
                 "towerviewer" | "lookout" => (
                     Rect::new(ex - 2.0, ey - 4.0, 4.0, 4.0),
                     Vec2::new(
-                        if attr_bool(el, "onlyY", false) { 1.0 } else { 0.0 },
-                        if attr_bool(el, "summit", false) { 1.0 } else { 0.0 },
+                        if attr_bool(el, "onlyY", false) {
+                            1.0
+                        } else {
+                            0.0
+                        },
+                        if attr_bool(el, "summit", false) {
+                            1.0
+                        } else {
+                            0.0
+                        },
                     ),
                 ),
                 "moveBlock" => {
@@ -1626,8 +1650,12 @@ mod tests {
         };
 
         let encoded = encode_celeste_map(&map, "CelesteGymTest", "lookout").unwrap();
-        assert!(encoded.windows(b"towerviewer".len()).any(|window| window == b"towerviewer"),
-            "Everest Level.LoadLevel dispatches Lookout as `towerviewer`, not fixture alias `lookout`");
+        assert!(
+            encoded
+                .windows(b"towerviewer".len())
+                .any(|window| window == b"towerviewer"),
+            "Everest Level.LoadLevel dispatches Lookout as `towerviewer`, not fixture alias `lookout`"
+        );
         let decoded = decode_map_room(&encoded, Some("lookout")).unwrap();
         assert_eq!(decoded.entities, vec![lookout]);
     }

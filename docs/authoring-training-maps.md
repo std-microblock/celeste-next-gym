@@ -68,8 +68,14 @@ Trigger 采用“进入边沿”语义：玩家从区域外进入时触发一次
           "steps": [
             {
               "prompt": "按 Dash。",
-              "order_error": { "title": "动作错误", "body": "第一个动作应为 Dash。" },
-              "window_error": { "title": "时机错误", "body": "请在可行窗口内输入。" }
+              "order_error": {
+                "title": "动作错误",
+                "body": "第一个动作应为 Dash。"
+              },
+              "window_error": {
+                "title": "时机错误",
+                "body": "请在可行窗口内输入。"
+              }
             }
           ]
         },
@@ -89,10 +95,11 @@ Trigger 采用“进入边沿”语义：玩家从区域外进入时触发一次
           "variables": [],
           "observe_until": 8,
           "success": ["!final.dead"],
-          "objectives": [
-            { "type": "maximize", "expression": "final.speed.x" }
-          ],
-          "search": { "bindings": {}, "output": ["best", "windows", "coverage"] }
+          "objectives": [{ "type": "maximize", "expression": "final.speed.x" }],
+          "search": {
+            "bindings": {},
+            "output": ["best", "windows", "coverage"]
+          }
         }
       },
       "validation": {
@@ -130,144 +137,144 @@ Trigger 采用“进入边沿”语义：玩家从区域外进入时触发一次
 
 ### 根对象 `TrainingMapDocument`
 
-| 字段 | 类型 | 含义 |
-| --- | --- | --- |
-| `version` | `2` | 地图训练脚本版本。不是 Fuzz 的版本。 |
-| `id` | string | 地图脚本稳定 ID。存档、日志和 UI 使用。 |
-| `title` | string | 地图标题。 |
-| `summary` | string | 地图简介。 |
-| `modules` | `TrainingModule[]` | 地图中的教程模块；允许多个。 |
-| `finish` | object | 终点配置。 |
-| `finish.trigger` | `TrainingTrigger` | 进入后尝试打开结算的不可见终点区域。 |
-| `finish.require_all_modules` | boolean | `true` 时必须完成 `modules` 中的全部模块。 |
+| 字段                         | 类型               | 含义                                       |
+| ---------------------------- | ------------------ | ------------------------------------------ |
+| `version`                    | `2`                | 地图训练脚本版本。不是 Fuzz 的版本。       |
+| `id`                         | string             | 地图脚本稳定 ID。存档、日志和 UI 使用。    |
+| `title`                      | string             | 地图标题。                                 |
+| `summary`                    | string             | 地图简介。                                 |
+| `modules`                    | `TrainingModule[]` | 地图中的教程模块；允许多个。               |
+| `finish`                     | object             | 终点配置。                                 |
+| `finish.trigger`             | `TrainingTrigger`  | 进入后尝试打开结算的不可见终点区域。       |
+| `finish.require_all_modules` | boolean            | `true` 时必须完成 `modules` 中的全部模块。 |
 
 ### `TrainingModule`
 
-| 字段 | 类型 | 含义 |
-| --- | --- | --- |
-| `id` | string | 地图内唯一、稳定的模块 ID。 |
-| `trigger` | `TrainingTrigger` | 武装本模块的不可见区域。 |
-| `tutorial` | `TrainingDocument` | 本模块的提示、错误文案、辅助选项和 Fuzz。 |
-| `validation` | object | 离线训练校验专用数据，不参与玩家实际尝试。 |
-| `validation.initial_state` | `SimState` | 校验此模块时的代表性起始快照，应放在 Trigger 附近并符合地图碰撞。 |
-| `validation.fuzz` | Fuzz object，可选 | 只用于离线校验的 Fuzz 覆盖；省略时使用 `tutorial.fuzz`。适合把实际技巧成功条件扩展为“最终越过障碍”。 |
+| 字段                       | 类型               | 含义                                                                                                 |
+| -------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------- |
+| `id`                       | string             | 地图内唯一、稳定的模块 ID。                                                                          |
+| `trigger`                  | `TrainingTrigger`  | 武装本模块的不可见区域。                                                                             |
+| `tutorial`                 | `TrainingDocument` | 本模块的提示、错误文案、辅助选项和 Fuzz。                                                            |
+| `validation`               | object             | 离线训练校验专用数据，不参与玩家实际尝试。                                                           |
+| `validation.initial_state` | `SimState`         | 校验此模块时的代表性起始快照，应放在 Trigger 附近并符合地图碰撞。                                    |
+| `validation.fuzz`          | Fuzz object，可选  | 只用于离线校验的 Fuzz 覆盖；省略时使用 `tutorial.fuzz`。适合把实际技巧成功条件扩展为“最终越过障碍”。 |
 
 ### `TrainingTrigger`
 
-| 字段 | 类型 | 含义 |
-| --- | --- | --- |
-| `id` | string | 全图唯一 Trigger ID。 |
-| `bounds.x` | number | 左边界地图坐标。 |
-| `bounds.y` | number | 上边界地图坐标。 |
-| `bounds.width` | number | 宽度，必须为正数。 |
-| `bounds.height` | number | 高度，必须为正数。 |
+| 字段            | 类型   | 含义                  |
+| --------------- | ------ | --------------------- |
+| `id`            | string | 全图唯一 Trigger ID。 |
+| `bounds.x`      | number | 左边界地图坐标。      |
+| `bounds.y`      | number | 上边界地图坐标。      |
+| `bounds.width`  | number | 宽度，必须为正数。    |
+| `bounds.height` | number | 高度，必须为正数。    |
 
 ### `TrainingDocument`
 
-| 字段 | 类型 | 含义 |
-| --- | --- | --- |
-| `version` | `2` | 教程模块格式版本。 |
-| `id` | string | 教程稳定 ID。可与模块 ID 不同。 |
-| `title` | string | Toast、失败面板和结算记录中显示的名称。 |
-| `summary` | string | 教程摘要。 |
-| `entry` | object | Trigger 后第一个动作的定义和前置检查。 |
-| `teaching` | object | 每个受验证输入的逐步提示与错误文案。 |
-| `assist` | object | 教学辅助设置。 |
-| `fuzz` | Fuzz object | 输入搜索、成功条件和排序目标。Fuzz 内部格式仍为 version 1。 |
+| 字段       | 类型        | 含义                                                        |
+| ---------- | ----------- | ----------------------------------------------------------- |
+| `version`  | `2`         | 教程模块格式版本。                                          |
+| `id`       | string      | 教程稳定 ID。可与模块 ID 不同。                             |
+| `title`    | string      | Toast、失败面板和结算记录中显示的名称。                     |
+| `summary`  | string      | 教程摘要。                                                  |
+| `entry`    | object      | Trigger 后第一个动作的定义和前置检查。                      |
+| `teaching` | object      | 每个受验证输入的逐步提示与错误文案。                        |
+| `assist`   | object      | 教学辅助设置。                                              |
+| `fuzz`     | Fuzz object | 输入搜索、成功条件和排序目标。Fuzz 内部格式仍为 version 1。 |
 
 ### `entry`
 
-| 字段 | 类型 | 含义 |
-| --- | --- | --- |
-| `input_id` | string | 必须指向 `fuzz.inputs` 中一个 `verify` 不为 `false`、且解析后位于 F0 的输入。它是 Trigger 后首个动作。 |
-| `hint` | string | 模块刚武装时跟随玩家显示的提示。 |
-| `check` | `string[]` | 首动作模拟后的 `current` 快照必须全部满足的 Rhai 布尔表达式。由 Rust 执行，不在 JS 中求值。 |
-| `failure.title` | string | 首动作按键或 `check` 错误时的失败标题。 |
-| `failure.body` | string | 对应失败说明。 |
+| 字段            | 类型       | 含义                                                                                                   |
+| --------------- | ---------- | ------------------------------------------------------------------------------------------------------ |
+| `input_id`      | string     | 必须指向 `fuzz.inputs` 中一个 `verify` 不为 `false`、且解析后位于 F0 的输入。它是 Trigger 后首个动作。 |
+| `hint`          | string     | 模块刚武装时跟随玩家显示的提示。                                                                       |
+| `check`         | `string[]` | 首动作模拟后的 `current` 快照必须全部满足的 Rhai 布尔表达式。由 Rust 执行，不在 JS 中求值。            |
+| `failure.title` | string     | 首动作按键或 `check` 错误时的失败标题。                                                                |
+| `failure.body`  | string     | 对应失败说明。                                                                                         |
 
 ### `teaching.steps[]`
 
 步骤顺序应与从 `entry.input_id` 开始的 `verify: true` 输入顺序一致。
 
-| 字段 | 类型 | 含义 |
-| --- | --- | --- |
-| `prompt` | string | 当前等待此输入时显示的跟随提示。 |
-| `order_error.title` | string | 玩家按了其他动作时的失败标题。 |
-| `order_error.body` | string | 输入顺序错误说明。 |
+| 字段                 | 类型   | 含义                                       |
+| -------------------- | ------ | ------------------------------------------ |
+| `prompt`             | string | 当前等待此输入时显示的跟随提示。           |
+| `order_error.title`  | string | 玩家按了其他动作时的失败标题。             |
+| `order_error.body`   | string | 输入顺序错误说明。                         |
 | `window_error.title` | string | 动作正确但不在任何可行候选帧时的失败标题。 |
-| `window_error.body` | string | 时机错误说明。 |
+| `window_error.body`  | string | 时机错误说明。                             |
 
 ### `assist`
 
-| 字段 | 类型 | 含义 |
-| --- | --- | --- |
-| `result_sample_after_input_frames` | number | 为后续采样预留的帧数；当前成功 Toast 使用 Fuzz 返回的最终候选数据，字段保留给需要延迟展示结果的模块。 |
-| `auto_slowdown.enabled_by_default` | boolean | 进入模块时是否默认启用自动慢放。 |
-| `auto_slowdown.radius_frames` | number | 距离下一个最佳输入多少帧时开始渐进慢放；`<= 0` 表示不渐变。 |
-| `auto_slowdown.minimum_multiplier` | number | 作者期望的最低倍率。产品层另有限制，当前最多自动降低 30%，即实际不会低于基础倍率的 `0.7`。 |
+| 字段                               | 类型    | 含义                                                                                                  |
+| ---------------------------------- | ------- | ----------------------------------------------------------------------------------------------------- |
+| `result_sample_after_input_frames` | number  | 为后续采样预留的帧数；当前成功 Toast 使用 Fuzz 返回的最终候选数据，字段保留给需要延迟展示结果的模块。 |
+| `auto_slowdown.enabled_by_default` | boolean | 进入模块时是否默认启用自动慢放。                                                                      |
+| `auto_slowdown.radius_frames`      | number  | 距离下一个最佳输入多少帧时开始渐进慢放；`<= 0` 表示不渐变。                                           |
+| `auto_slowdown.minimum_multiplier` | number  | 作者期望的最低倍率。产品层另有限制，当前最多自动降低 30%，即实际不会低于基础倍率的 `0.7`。            |
 
 ## 5. Fuzz 字段总表
 
 ### Fuzz 根对象
 
-| 字段 | 类型 | 必填 | 含义 |
-| --- | --- | --- | --- |
-| `version` | `1` | 是 | Celeste Fuzz 格式版本。 |
-| `variables` | array | 否 | 穷举变量；省略等价于空数组。 |
-| `inputs` | array | 否 | 输入声明；省略等价于空数组。教程至少需要一个受验证入口。 |
-| `observe_until` | integer 或表达式 string | 是 | 从本地 F0 起模拟到哪个后置快照帧。必须非负，且不能早于最后一个输入。 |
-| `success` | `string[]` | 否 | 最终快照需全部满足的表达式；省略为空。 |
-| `objectives` | array | 否 | 对成功候选的稳定排序目标；先比较前面的目标。 |
-| `search` | object | 否 | 变量固定值和输出模式。 |
-| `limits` | object | 否 | 搜索资源上限。所有设置值必须大于零。 |
+| 字段            | 类型                    | 必填 | 含义                                                                 |
+| --------------- | ----------------------- | ---- | -------------------------------------------------------------------- |
+| `version`       | `1`                     | 是   | Celeste Fuzz 格式版本。                                              |
+| `variables`     | array                   | 否   | 穷举变量；省略等价于空数组。                                         |
+| `inputs`        | array                   | 否   | 输入声明；省略等价于空数组。教程至少需要一个受验证入口。             |
+| `observe_until` | integer 或表达式 string | 是   | 从本地 F0 起模拟到哪个后置快照帧。必须非负，且不能早于最后一个输入。 |
+| `success`       | `string[]`              | 否   | 最终快照需全部满足的表达式；省略为空。                               |
+| `objectives`    | array                   | 否   | 对成功候选的稳定排序目标；先比较前面的目标。                         |
+| `search`        | object                  | 否   | 变量固定值和输出模式。                                               |
+| `limits`        | object                  | 否   | 搜索资源上限。所有设置值必须大于零。                                 |
 
 ### `variables[]`
 
-| 字段 | 类型 | 含义 |
-| --- | --- | --- |
-| `name` | string | 变量名；必须唯一，不能与保留上下文名冲突。 |
-| `range.from` | integer 或表达式 string | 闭区间起点。可引用更早声明的变量。 |
-| `range.to` | integer 或表达式 string | 闭区间终点。可引用更早声明的变量。 |
-| `range.step` | 正整数，可选 | 枚举步长，默认 `1`。 |
+| 字段         | 类型                    | 含义                                       |
+| ------------ | ----------------------- | ------------------------------------------ |
+| `name`       | string                  | 变量名；必须唯一，不能与保留上下文名冲突。 |
+| `range.from` | integer 或表达式 string | 闭区间起点。可引用更早声明的变量。         |
+| `range.to`   | integer 或表达式 string | 闭区间终点。可引用更早声明的变量。         |
+| `range.step` | 正整数，可选            | 枚举步长，默认 `1`。                       |
 
 ### `inputs[]`
 
-| 字段 | 类型 | 含义 |
-| --- | --- | --- |
-| `id` | string | 前端教程使用的稳定输入 ID。Fuzz 引擎忽略额外的 `id`，但教程运行时需要它。 |
-| `keys` | `string[]` | 同帧按键组合。合法值：`up`、`down`、`left`、`right`、`jump`、`dash`、`crouch_dash`、`grab`。不能为空或重复。 |
-| `at` | integer 或表达式 string | 按下帧。入口指向的输入解析后必须为 `0`。 |
-| `held_time` | integer、表达式 string 或 `"hold::inf"`，可选 | 方向保持帧数。任何含方向的输入都必须提供它；纯 `dash`/`crouch_dash` 不允许提供。方向+冲刺组合只对方向应用保持。 |
-| `verify` | boolean，可选 | 默认 `true`。`true` 表示玩家必须亲自命中；`false` 通常用于 F0 已保持方向，不占教学步骤。 |
-| `before_input` | string 或 `string[]`，可选 | 输入应用前的快照条件，全部满足才保留候选。 |
-| `after_input` | string 或 `string[]`，可选 | 输入应用后的快照条件，全部满足才保留候选。 |
+| 字段           | 类型                                          | 含义                                                                                                            |
+| -------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `id`           | string                                        | 前端教程使用的稳定输入 ID。Fuzz 引擎忽略额外的 `id`，但教程运行时需要它。                                       |
+| `keys`         | `string[]`                                    | 同帧按键组合。合法值：`up`、`down`、`left`、`right`、`jump`、`dash`、`crouch_dash`、`grab`。不能为空或重复。    |
+| `at`           | integer 或表达式 string                       | 按下帧。入口指向的输入解析后必须为 `0`。                                                                        |
+| `held_time`    | integer、表达式 string 或 `"hold::inf"`，可选 | 方向保持帧数。任何含方向的输入都必须提供它；纯 `dash`/`crouch_dash` 不允许提供。方向+冲刺组合只对方向应用保持。 |
+| `verify`       | boolean，可选                                 | 默认 `true`。`true` 表示玩家必须亲自命中；`false` 通常用于 F0 已保持方向，不占教学步骤。                        |
+| `before_input` | string 或 `string[]`，可选                    | 输入应用前的快照条件，全部满足才保留候选。                                                                      |
+| `after_input`  | string 或 `string[]`，可选                    | 输入应用后的快照条件，全部满足才保留候选。                                                                      |
 
 ### `objectives[]`
 
-| 字段 | 类型 | 含义 |
-| --- | --- | --- |
-| `type` | `maximize` | 让 `expression` 越大越优。 |
-| `type` | `minimize` | 让 `expression` 越小越优。 |
-| `type` | `approach` | 让 `expression` 尽量接近 `target`；此类型还必须提供有限数值 `target`。 |
-| `expression` | string | 返回数值的 Rhai 表达式。 |
-| `target` | number | 仅 `approach` 使用的目标值。 |
+| 字段         | 类型       | 含义                                                                   |
+| ------------ | ---------- | ---------------------------------------------------------------------- |
+| `type`       | `maximize` | 让 `expression` 越大越优。                                             |
+| `type`       | `minimize` | 让 `expression` 越小越优。                                             |
+| `type`       | `approach` | 让 `expression` 尽量接近 `target`；此类型还必须提供有限数值 `target`。 |
+| `expression` | string     | 返回数值的 Rhai 表达式。                                               |
+| `target`     | number     | 仅 `approach` 使用的目标值。                                           |
 
 ### `search`
 
-| 字段 | 类型 | 含义 |
-| --- | --- | --- |
-| `bindings` | `Record<string, integer>` | 固定指定变量值，其余变量继续穷举。默认 `{}`。 |
-| `output` | `string[]` | 可用值：`best`、`windows`、`coverage`、`candidates`、`evaluations`、`top_N`（如 `top_10`）。训练桥会额外取得其运行时所需的全部候选与评估。默认 `best + windows`。 |
+| 字段       | 类型                      | 含义                                                                                                                                                              |
+| ---------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bindings` | `Record<string, integer>` | 固定指定变量值，其余变量继续穷举。默认 `{}`。                                                                                                                     |
+| `output`   | `string[]`                | 可用值：`best`、`windows`、`coverage`、`candidates`、`evaluations`、`top_N`（如 `top_10`）。训练桥会额外取得其运行时所需的全部候选与评估。默认 `best + windows`。 |
 
 ### `limits`
 
-| 字段 | 默认值 | 含义 |
-| --- | ---: | --- |
-| `max_candidates` | 1,000,000 | 最大候选组合数。 |
-| `max_input_frames` | 600 | 单候选最大输入/观察帧跨度。 |
-| `max_trie_nodes` | 5,000,000 | 前缀模拟缓存最大节点数。 |
-| `max_cache_bytes` | 536,870,912 | 前缀缓存估算字节上限。 |
-| `max_expression_operations` | 10,000 | 单次 Rhai 表达式最大操作数。 |
+| 字段                        |      默认值 | 含义                         |
+| --------------------------- | ----------: | ---------------------------- |
+| `max_candidates`            |   1,000,000 | 最大候选组合数。             |
+| `max_input_frames`          |         600 | 单候选最大输入/观察帧跨度。  |
+| `max_trie_nodes`            |   5,000,000 | 前缀模拟缓存最大节点数。     |
+| `max_cache_bytes`           | 536,870,912 | 前缀缓存估算字节上限。       |
+| `max_expression_operations` |      10,000 | 单次 Rhai 表达式最大操作数。 |
 
 ## 6. 表达式可用字段
 
@@ -282,20 +289,20 @@ Trigger 采用“进入边沿”语义：玩家从区域外进入时触发一次
 
 快照公开字段：
 
-| 字段 | 类型 | 含义 |
-| --- | --- | --- |
-| `.pos.x` / `.pos.y` | number | 玩家位置。 |
-| `.speed.x` / `.speed.y` | number | 玩家速度。 |
-| `.state` | state enum | 玩家状态。 |
-| `.facing` | boolean | 面向右为 `true`。 |
-| `.dashes` | integer | 当前冲刺数。 |
-| `.stamina` | number | 体力。 |
-| `.on_ground` | boolean | 是否着地。 |
-| `.ducking` | boolean | 是否下蹲。 |
-| `.dead` | boolean | 是否死亡。 |
-| `.dash_dir.x` / `.dash_dir.y` | number | 最近冲刺方向。 |
-| `.last_aim.x` / `.last_aim.y` | number | 最近瞄准方向。 |
-| `.core_mode` | core-mode enum | Core 模式。 |
+| 字段                          | 类型           | 含义              |
+| ----------------------------- | -------------- | ----------------- |
+| `.pos.x` / `.pos.y`           | number         | 玩家位置。        |
+| `.speed.x` / `.speed.y`       | number         | 玩家速度。        |
+| `.state`                      | state enum     | 玩家状态。        |
+| `.facing`                     | boolean        | 面向右为 `true`。 |
+| `.dashes`                     | integer        | 当前冲刺数。      |
+| `.stamina`                    | number         | 体力。            |
+| `.on_ground`                  | boolean        | 是否着地。        |
+| `.ducking`                    | boolean        | 是否下蹲。        |
+| `.dead`                       | boolean        | 是否死亡。        |
+| `.dash_dir.x` / `.dash_dir.y` | number         | 最近冲刺方向。    |
+| `.last_aim.x` / `.last_aim.y` | number         | 最近瞄准方向。    |
+| `.core_mode`                  | core-mode enum | Core 模式。       |
 
 只注册了 `abs`、`min`、`max` 辅助函数；可以使用核心算术、比较和布尔运算，不能使用文件、网络、字符串/集合标准库。
 
@@ -305,19 +312,19 @@ Trigger 采用“进入边沿”语义：玩家从区域外进入时触发一次
 
 JSON 只拥有训练逻辑；可模拟地图仍是 `GymMap`：
 
-| 字段 | 含义 |
-| --- | --- |
-| `name` / `room` | 地图显示名与房间 ID。 |
-| `bounds` | 房间边界。 |
-| `spawn` | 默认出生点。 |
-| `solids[]` | 实体地形矩形。 |
-| `entities[]` | 物理实体；字段为 `kind`、`bounds`、`direction`、`name`，以及按实体需要提供的 `shielded`、`single_use`、`nodes`。 |
-| `source_package` | 来源包；手写图通常为 `null`。 |
+| 字段             | 含义                                                                                                             |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `name` / `room`  | 地图显示名与房间 ID。                                                                                            |
+| `bounds`         | 房间边界。                                                                                                       |
+| `spawn`          | 默认出生点。                                                                                                     |
+| `solids[]`       | 实体地形矩形。                                                                                                   |
+| `entities[]`     | 物理实体；字段为 `kind`、`bounds`、`direction`、`name`，以及按实体需要提供的 `shielded`、`single_use`、`nodes`。 |
+| `source_package` | 来源包；手写图通常为 `null`。                                                                                    |
 
 在 technique 文件中导入 JSON 时同时添加 Node 所需的 import attribute：
 
 ```ts
-import trainingJson from '../maps/my-map.training.json' with { type: 'json' }
+import trainingJson from "../maps/my-map.training.json" with { type: "json" };
 ```
 
 然后创建 `TrainingVariant`：`id`、`title`、`summary`、`map`、`initial`、`training`。目录展示的是地图；教程标题来自 `training.modules[].tutorial.title`。

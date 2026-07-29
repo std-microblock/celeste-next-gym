@@ -41,14 +41,8 @@
   "states": [
     {
       "frame": 0,
-      "pos": [
-        64,
-        496
-      ],
-      "speed": [
-        0,
-        0
-      ],
+      "pos": [64, 496],
+      "speed": [0, 0],
       "state": 15,
       "facing": 1,
       "dashes": 1,
@@ -59,34 +53,19 @@
       "dead": false,
       "freeze_timer": 0,
       "fields": {
-        "Speed": [
-          0,
-          0
-        ],
+        "Speed": [0, 0],
         "Facing": 1,
-        "CameraAnchor": [
-          0,
-          0
-        ],
+        "CameraAnchor": [0, 0],
         "CameraAnchorIgnoreX": false,
         "CameraAnchorIgnoreY": false,
-        "CameraAnchorLerp": [
-          0,
-          0
-        ],
+        "CameraAnchorLerp": [0, 0],
         "ForceCameraUpdate": false,
         "Dashes": 1,
         "Stamina": 110,
         "StrawberriesBlocked": false,
-        "PreviousPosition": [
-          64,
-          496
-        ],
+        "PreviousPosition": [64, 496],
         "DummyAutoAnimate": true,
-        "ForceStrongWindHair": [
-          0,
-          0
-        ],
+        "ForceStrongWindHair": [0, 0],
         "FlipInReflection": false,
         "JustRespawned": false,
         "<Dead>k__BackingField": false,
@@ -111,27 +90,15 @@
         "forceMoveXTimer": 0,
         "hopWaitX": 0,
         "hopWaitXSpeed": 0,
-        "lastAim": [
-          1,
-          0
-        ],
+        "lastAim": [1, 0],
         "dashCooldownTimer": 0,
         "dashRefillCooldownTimer": 0,
-        "DashDir": [
-          0,
-          0
-        ],
+        "DashDir": [0, 0],
         "wallSlideTimer": 1.2,
         "wallSlideDir": 0,
         "climbNoMoveTimer": 0,
-        "carryOffset": [
-          0,
-          0
-        ],
-        "deadOffset": [
-          0,
-          0
-        ],
+        "carryOffset": [0, 0],
+        "deadOffset": [0, 0],
         "introEase": 0,
         "wallSpeedRetentionTimer": 0,
         "wallSpeedRetained": 0,
@@ -147,10 +114,7 @@
         "lastClimbMove": 0,
         "noWindTimer": 0,
         "dreamDashCanEndTimer": 0,
-        "climbHopSolidPosition": [
-          0,
-          0
-        ],
+        "climbHopSolidPosition": [0, 0],
         "playFootstepOnLand": -1.8333349,
         "minHoldTimer": 0,
         "calledDashEvents": false,
@@ -164,43 +128,25 @@
         "lowFrictionStopTimer": 0,
         "hiccupTimer": 0,
         "MuffleLanding": false,
-        "gliderBoostDir": [
-          0,
-          0
-        ],
+        "gliderBoostDir": [0, 0],
         "explodeLaunchBoostTimer": 0,
         "explodeLaunchBoostSpeed": 0,
         "demoDashed": false,
-        "normalLightOffset": [
-          0,
-          -8
-        ],
-        "duckingLightOffset": [
-          0,
-          -3
-        ],
+        "normalLightOffset": [0, -8],
+        "duckingLightOffset": [0, -3],
         "hairFlashTimer": 0,
         "startHairCalled": true,
-        "windDirection": [
-          0,
-          0
-        ],
+        "windDirection": [0, 0],
         "windTimeout": 0,
         "windHairTimer": 0,
         "IntroType": 0,
         "DefaultSpriteMode": 0,
         "<OnSafeGround>k__BackingField": true,
         "wallBoosting": false,
-        "beforeDashSpeed": [
-          0,
-          0
-        ],
+        "beforeDashSpeed": [0, 0],
         "wasDashB": false,
         "<StartedDashing>k__BackingField": false,
-        "boostTarget": [
-          0,
-          0
-        ],
+        "boostTarget": [0, 0],
         "boostRed": false,
         "hitSquashNoMoveTimer": 0,
         "summitLaunchTargetX": 0,
@@ -209,15 +155,9 @@
         "starFlyTimer": 0,
         "starFlyTransforming": false,
         "starFlySpeedLerp": 0,
-        "starFlyLastDir": [
-          0,
-          0
-        ],
+        "starFlyLastDir": [0, 0],
         "cassetteFlyLerp": 0,
-        "attractTo": [
-          0,
-          0
-        ],
+        "attractTo": [0, 0],
         "DummyMoving": false,
         "DummyGravity": true,
         "DummyFriction": true,
@@ -225,60 +165,30 @@
         "IntroWalkDirection": 0,
         "framesAlive": 0,
         "TreatNaive": false,
-        "movementCounter": [
-          0,
-          0
-        ],
+        "movementCounter": [0, 0],
         "IgnoreJumpThrus": false,
         "AllowPushing": true,
         "LiftSpeedGraceTime": 0.16,
-        "currentLiftSpeed": [
-          0,
-          0
-        ],
-        "lastLiftSpeed": [
-          0,
-          0
-        ],
+        "currentLiftSpeed": [0, 0],
+        "lastLiftSpeed": [0, 0],
         "liftSpeedTimer": 0,
         "Active": true,
         "Visible": true,
         "Collidable": true,
-        "Position": [
-          64,
-          496
-        ],
+        "Position": [64, 496],
         "tag": 16,
         "depth": 0,
         "actualDepth": -0.00001499999996212864,
-        "levelWind": [
-          0,
-          0
-        ],
-        "zipMoverPosition": [
-          32,
-          440
-        ],
-        "zipMoverLiftSpeed": [
-          0,
-          0
-        ],
-        "zipMoverMovementCounter": [
-          0,
-          0
-        ]
+        "levelWind": [0, 0],
+        "zipMoverPosition": [32, 440],
+        "zipMoverLiftSpeed": [0, 0],
+        "zipMoverMovementCounter": [0, 0]
       }
     },
     {
       "frame": 1,
-      "pos": [
-        64,
-        496
-      ],
-      "speed": [
-        0,
-        0
-      ],
+      "pos": [64, 496],
+      "speed": [0, 0],
       "state": 15,
       "facing": 1,
       "dashes": 1,
@@ -289,34 +199,19 @@
       "dead": false,
       "freeze_timer": 0,
       "fields": {
-        "Speed": [
-          0,
-          0
-        ],
+        "Speed": [0, 0],
         "Facing": 1,
-        "CameraAnchor": [
-          0,
-          0
-        ],
+        "CameraAnchor": [0, 0],
         "CameraAnchorIgnoreX": false,
         "CameraAnchorIgnoreY": false,
-        "CameraAnchorLerp": [
-          0,
-          0
-        ],
+        "CameraAnchorLerp": [0, 0],
         "ForceCameraUpdate": false,
         "Dashes": 1,
         "Stamina": 110,
         "StrawberriesBlocked": false,
-        "PreviousPosition": [
-          64,
-          496
-        ],
+        "PreviousPosition": [64, 496],
         "DummyAutoAnimate": true,
-        "ForceStrongWindHair": [
-          0,
-          0
-        ],
+        "ForceStrongWindHair": [0, 0],
         "FlipInReflection": false,
         "JustRespawned": false,
         "<Dead>k__BackingField": false,
@@ -341,27 +236,15 @@
         "forceMoveXTimer": 0,
         "hopWaitX": 0,
         "hopWaitXSpeed": 0,
-        "lastAim": [
-          1,
-          0
-        ],
+        "lastAim": [1, 0],
         "dashCooldownTimer": 0,
         "dashRefillCooldownTimer": 0,
-        "DashDir": [
-          0,
-          0
-        ],
+        "DashDir": [0, 0],
         "wallSlideTimer": 1.2,
         "wallSlideDir": 0,
         "climbNoMoveTimer": 0,
-        "carryOffset": [
-          0,
-          0
-        ],
-        "deadOffset": [
-          0,
-          0
-        ],
+        "carryOffset": [0, 0],
+        "deadOffset": [0, 0],
         "introEase": 0,
         "wallSpeedRetentionTimer": 0,
         "wallSpeedRetained": 0,
@@ -377,10 +260,7 @@
         "lastClimbMove": 0,
         "noWindTimer": 0,
         "dreamDashCanEndTimer": 0,
-        "climbHopSolidPosition": [
-          0,
-          0
-        ],
+        "climbHopSolidPosition": [0, 0],
         "playFootstepOnLand": -1.8500016,
         "minHoldTimer": 0,
         "calledDashEvents": false,
@@ -394,43 +274,25 @@
         "lowFrictionStopTimer": 0,
         "hiccupTimer": 0,
         "MuffleLanding": false,
-        "gliderBoostDir": [
-          0,
-          0
-        ],
+        "gliderBoostDir": [0, 0],
         "explodeLaunchBoostTimer": 0,
         "explodeLaunchBoostSpeed": 0,
         "demoDashed": false,
-        "normalLightOffset": [
-          0,
-          -8
-        ],
-        "duckingLightOffset": [
-          0,
-          -3
-        ],
+        "normalLightOffset": [0, -8],
+        "duckingLightOffset": [0, -3],
         "hairFlashTimer": 0,
         "startHairCalled": true,
-        "windDirection": [
-          0,
-          0
-        ],
+        "windDirection": [0, 0],
         "windTimeout": 0,
         "windHairTimer": 0,
         "IntroType": 0,
         "DefaultSpriteMode": 0,
         "<OnSafeGround>k__BackingField": true,
         "wallBoosting": false,
-        "beforeDashSpeed": [
-          0,
-          0
-        ],
+        "beforeDashSpeed": [0, 0],
         "wasDashB": false,
         "<StartedDashing>k__BackingField": false,
-        "boostTarget": [
-          0,
-          0
-        ],
+        "boostTarget": [0, 0],
         "boostRed": false,
         "hitSquashNoMoveTimer": 0,
         "summitLaunchTargetX": 0,
@@ -439,15 +301,9 @@
         "starFlyTimer": 0,
         "starFlyTransforming": false,
         "starFlySpeedLerp": 0,
-        "starFlyLastDir": [
-          0,
-          0
-        ],
+        "starFlyLastDir": [0, 0],
         "cassetteFlyLerp": 0,
-        "attractTo": [
-          0,
-          0
-        ],
+        "attractTo": [0, 0],
         "DummyMoving": false,
         "DummyGravity": true,
         "DummyFriction": true,
@@ -455,60 +311,30 @@
         "IntroWalkDirection": 0,
         "framesAlive": 1,
         "TreatNaive": false,
-        "movementCounter": [
-          0,
-          0
-        ],
+        "movementCounter": [0, 0],
         "IgnoreJumpThrus": false,
         "AllowPushing": true,
         "LiftSpeedGraceTime": 0.16,
-        "currentLiftSpeed": [
-          0,
-          0
-        ],
-        "lastLiftSpeed": [
-          0,
-          0
-        ],
+        "currentLiftSpeed": [0, 0],
+        "lastLiftSpeed": [0, 0],
         "liftSpeedTimer": 0,
         "Active": true,
         "Visible": true,
         "Collidable": true,
-        "Position": [
-          64,
-          496
-        ],
+        "Position": [64, 496],
         "tag": 16,
         "depth": 0,
         "actualDepth": -0.00001499999996212864,
-        "levelWind": [
-          0,
-          0
-        ],
-        "zipMoverPosition": [
-          32,
-          440
-        ],
-        "zipMoverLiftSpeed": [
-          0,
-          0
-        ],
-        "zipMoverMovementCounter": [
-          0,
-          0
-        ]
+        "levelWind": [0, 0],
+        "zipMoverPosition": [32, 440],
+        "zipMoverLiftSpeed": [0, 0],
+        "zipMoverMovementCounter": [0, 0]
       }
     },
     {
       "frame": 2,
-      "pos": [
-        64,
-        496
-      ],
-      "speed": [
-        0,
-        0
-      ],
+      "pos": [64, 496],
+      "speed": [0, 0],
       "state": 15,
       "facing": 1,
       "dashes": 1,
@@ -519,34 +345,19 @@
       "dead": false,
       "freeze_timer": 0,
       "fields": {
-        "Speed": [
-          0,
-          0
-        ],
+        "Speed": [0, 0],
         "Facing": 1,
-        "CameraAnchor": [
-          0,
-          0
-        ],
+        "CameraAnchor": [0, 0],
         "CameraAnchorIgnoreX": false,
         "CameraAnchorIgnoreY": false,
-        "CameraAnchorLerp": [
-          0,
-          0
-        ],
+        "CameraAnchorLerp": [0, 0],
         "ForceCameraUpdate": false,
         "Dashes": 1,
         "Stamina": 110,
         "StrawberriesBlocked": false,
-        "PreviousPosition": [
-          64,
-          496
-        ],
+        "PreviousPosition": [64, 496],
         "DummyAutoAnimate": true,
-        "ForceStrongWindHair": [
-          0,
-          0
-        ],
+        "ForceStrongWindHair": [0, 0],
         "FlipInReflection": false,
         "JustRespawned": false,
         "<Dead>k__BackingField": false,
@@ -571,27 +382,15 @@
         "forceMoveXTimer": 0,
         "hopWaitX": 0,
         "hopWaitXSpeed": 0,
-        "lastAim": [
-          1,
-          0
-        ],
+        "lastAim": [1, 0],
         "dashCooldownTimer": 0,
         "dashRefillCooldownTimer": 0,
-        "DashDir": [
-          0,
-          0
-        ],
+        "DashDir": [0, 0],
         "wallSlideTimer": 1.2,
         "wallSlideDir": 0,
         "climbNoMoveTimer": 0,
-        "carryOffset": [
-          0,
-          0
-        ],
-        "deadOffset": [
-          0,
-          0
-        ],
+        "carryOffset": [0, 0],
+        "deadOffset": [0, 0],
         "introEase": 0,
         "wallSpeedRetentionTimer": 0,
         "wallSpeedRetained": 0,
@@ -607,10 +406,7 @@
         "lastClimbMove": 0,
         "noWindTimer": 0,
         "dreamDashCanEndTimer": 0,
-        "climbHopSolidPosition": [
-          0,
-          0
-        ],
+        "climbHopSolidPosition": [0, 0],
         "playFootstepOnLand": -1.8666682,
         "minHoldTimer": 0,
         "calledDashEvents": false,
@@ -624,43 +420,25 @@
         "lowFrictionStopTimer": 0,
         "hiccupTimer": 0,
         "MuffleLanding": false,
-        "gliderBoostDir": [
-          0,
-          0
-        ],
+        "gliderBoostDir": [0, 0],
         "explodeLaunchBoostTimer": 0,
         "explodeLaunchBoostSpeed": 0,
         "demoDashed": false,
-        "normalLightOffset": [
-          0,
-          -8
-        ],
-        "duckingLightOffset": [
-          0,
-          -3
-        ],
+        "normalLightOffset": [0, -8],
+        "duckingLightOffset": [0, -3],
         "hairFlashTimer": 0,
         "startHairCalled": true,
-        "windDirection": [
-          0,
-          0
-        ],
+        "windDirection": [0, 0],
         "windTimeout": 0,
         "windHairTimer": 0,
         "IntroType": 0,
         "DefaultSpriteMode": 0,
         "<OnSafeGround>k__BackingField": true,
         "wallBoosting": false,
-        "beforeDashSpeed": [
-          0,
-          0
-        ],
+        "beforeDashSpeed": [0, 0],
         "wasDashB": false,
         "<StartedDashing>k__BackingField": false,
-        "boostTarget": [
-          0,
-          0
-        ],
+        "boostTarget": [0, 0],
         "boostRed": false,
         "hitSquashNoMoveTimer": 0,
         "summitLaunchTargetX": 0,
@@ -669,15 +447,9 @@
         "starFlyTimer": 0,
         "starFlyTransforming": false,
         "starFlySpeedLerp": 0,
-        "starFlyLastDir": [
-          0,
-          0
-        ],
+        "starFlyLastDir": [0, 0],
         "cassetteFlyLerp": 0,
-        "attractTo": [
-          0,
-          0
-        ],
+        "attractTo": [0, 0],
         "DummyMoving": false,
         "DummyGravity": true,
         "DummyFriction": true,
@@ -685,60 +457,30 @@
         "IntroWalkDirection": 0,
         "framesAlive": 2,
         "TreatNaive": false,
-        "movementCounter": [
-          0,
-          0
-        ],
+        "movementCounter": [0, 0],
         "IgnoreJumpThrus": false,
         "AllowPushing": true,
         "LiftSpeedGraceTime": 0.16,
-        "currentLiftSpeed": [
-          0,
-          0
-        ],
-        "lastLiftSpeed": [
-          0,
-          0
-        ],
+        "currentLiftSpeed": [0, 0],
+        "lastLiftSpeed": [0, 0],
         "liftSpeedTimer": 0,
         "Active": true,
         "Visible": true,
         "Collidable": true,
-        "Position": [
-          64,
-          496
-        ],
+        "Position": [64, 496],
         "tag": 16,
         "depth": 0,
         "actualDepth": -0.00001499999996212864,
-        "levelWind": [
-          0,
-          0
-        ],
-        "zipMoverPosition": [
-          32,
-          440
-        ],
-        "zipMoverLiftSpeed": [
-          0,
-          0
-        ],
-        "zipMoverMovementCounter": [
-          0,
-          0
-        ]
+        "levelWind": [0, 0],
+        "zipMoverPosition": [32, 440],
+        "zipMoverLiftSpeed": [0, 0],
+        "zipMoverMovementCounter": [0, 0]
       }
     },
     {
       "frame": 3,
-      "pos": [
-        64,
-        496
-      ],
-      "speed": [
-        0,
-        0
-      ],
+      "pos": [64, 496],
+      "speed": [0, 0],
       "state": 15,
       "facing": 1,
       "dashes": 1,
@@ -749,34 +491,19 @@
       "dead": false,
       "freeze_timer": 0,
       "fields": {
-        "Speed": [
-          0,
-          0
-        ],
+        "Speed": [0, 0],
         "Facing": 1,
-        "CameraAnchor": [
-          0,
-          0
-        ],
+        "CameraAnchor": [0, 0],
         "CameraAnchorIgnoreX": false,
         "CameraAnchorIgnoreY": false,
-        "CameraAnchorLerp": [
-          0,
-          0
-        ],
+        "CameraAnchorLerp": [0, 0],
         "ForceCameraUpdate": false,
         "Dashes": 1,
         "Stamina": 110,
         "StrawberriesBlocked": false,
-        "PreviousPosition": [
-          64,
-          496
-        ],
+        "PreviousPosition": [64, 496],
         "DummyAutoAnimate": true,
-        "ForceStrongWindHair": [
-          0,
-          0
-        ],
+        "ForceStrongWindHair": [0, 0],
         "FlipInReflection": false,
         "JustRespawned": false,
         "<Dead>k__BackingField": false,
@@ -801,27 +528,15 @@
         "forceMoveXTimer": 0,
         "hopWaitX": 0,
         "hopWaitXSpeed": 0,
-        "lastAim": [
-          1,
-          0
-        ],
+        "lastAim": [1, 0],
         "dashCooldownTimer": 0,
         "dashRefillCooldownTimer": 0,
-        "DashDir": [
-          0,
-          0
-        ],
+        "DashDir": [0, 0],
         "wallSlideTimer": 1.2,
         "wallSlideDir": 0,
         "climbNoMoveTimer": 0,
-        "carryOffset": [
-          0,
-          0
-        ],
-        "deadOffset": [
-          0,
-          0
-        ],
+        "carryOffset": [0, 0],
+        "deadOffset": [0, 0],
         "introEase": 0,
         "wallSpeedRetentionTimer": 0,
         "wallSpeedRetained": 0,
@@ -837,10 +552,7 @@
         "lastClimbMove": 0,
         "noWindTimer": 0,
         "dreamDashCanEndTimer": 0,
-        "climbHopSolidPosition": [
-          0,
-          0
-        ],
+        "climbHopSolidPosition": [0, 0],
         "playFootstepOnLand": -1.8833349,
         "minHoldTimer": 0,
         "calledDashEvents": false,
@@ -854,43 +566,25 @@
         "lowFrictionStopTimer": 0,
         "hiccupTimer": 0,
         "MuffleLanding": false,
-        "gliderBoostDir": [
-          0,
-          0
-        ],
+        "gliderBoostDir": [0, 0],
         "explodeLaunchBoostTimer": 0,
         "explodeLaunchBoostSpeed": 0,
         "demoDashed": false,
-        "normalLightOffset": [
-          0,
-          -8
-        ],
-        "duckingLightOffset": [
-          0,
-          -3
-        ],
+        "normalLightOffset": [0, -8],
+        "duckingLightOffset": [0, -3],
         "hairFlashTimer": 0,
         "startHairCalled": true,
-        "windDirection": [
-          0,
-          0
-        ],
+        "windDirection": [0, 0],
         "windTimeout": 0,
         "windHairTimer": 0,
         "IntroType": 0,
         "DefaultSpriteMode": 0,
         "<OnSafeGround>k__BackingField": true,
         "wallBoosting": false,
-        "beforeDashSpeed": [
-          0,
-          0
-        ],
+        "beforeDashSpeed": [0, 0],
         "wasDashB": false,
         "<StartedDashing>k__BackingField": false,
-        "boostTarget": [
-          0,
-          0
-        ],
+        "boostTarget": [0, 0],
         "boostRed": false,
         "hitSquashNoMoveTimer": 0,
         "summitLaunchTargetX": 0,
@@ -899,15 +593,9 @@
         "starFlyTimer": 0,
         "starFlyTransforming": false,
         "starFlySpeedLerp": 0,
-        "starFlyLastDir": [
-          0,
-          0
-        ],
+        "starFlyLastDir": [0, 0],
         "cassetteFlyLerp": 0,
-        "attractTo": [
-          0,
-          0
-        ],
+        "attractTo": [0, 0],
         "DummyMoving": false,
         "DummyGravity": true,
         "DummyFriction": true,
@@ -915,48 +603,24 @@
         "IntroWalkDirection": 0,
         "framesAlive": 3,
         "TreatNaive": false,
-        "movementCounter": [
-          0,
-          0
-        ],
+        "movementCounter": [0, 0],
         "IgnoreJumpThrus": false,
         "AllowPushing": true,
         "LiftSpeedGraceTime": 0.16,
-        "currentLiftSpeed": [
-          0,
-          0
-        ],
-        "lastLiftSpeed": [
-          0,
-          0
-        ],
+        "currentLiftSpeed": [0, 0],
+        "lastLiftSpeed": [0, 0],
         "liftSpeedTimer": 0,
         "Active": true,
         "Visible": true,
         "Collidable": true,
-        "Position": [
-          64,
-          496
-        ],
+        "Position": [64, 496],
         "tag": 16,
         "depth": 0,
         "actualDepth": -0.00001499999996212864,
-        "levelWind": [
-          0,
-          0
-        ],
-        "zipMoverPosition": [
-          32,
-          440
-        ],
-        "zipMoverLiftSpeed": [
-          0,
-          0
-        ],
-        "zipMoverMovementCounter": [
-          0,
-          0
-        ]
+        "levelWind": [0, 0],
+        "zipMoverPosition": [32, 440],
+        "zipMoverLiftSpeed": [0, 0],
+        "zipMoverMovementCounter": [0, 0]
       }
     }
   ]

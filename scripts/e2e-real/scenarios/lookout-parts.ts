@@ -1,76 +1,147 @@
-import { defineMapPart } from '../map-parts.js'
-import type { MapPart } from '../types.js'
+import { defineMapPart } from "../map-parts.js";
+import type { MapPart } from "../types.js";
 
-const PACKAGE = 'CelesteGymPlayground'
-const SID = 'CelesteGymPlayground/Playground'
+const PACKAGE = "CelesteGymPlayground";
+const SID = "CelesteGymPlayground/Playground";
 
-function part(id: string, rooms: MapPart['rooms'], dependencies: readonly string[] = ['playground.base']): MapPart {
-  return defineMapPart({ id, dependencies, package: PACKAGE, sid: SID, rooms })
+function part(
+  id: string,
+  rooms: MapPart["rooms"],
+  dependencies: readonly string[] = ["playground.base"],
+): MapPart {
+  return defineMapPart({ id, dependencies, package: PACKAGE, sid: SID, rooms });
 }
 
-export const TECH_OTHER_5_1_BINO_TECH = part('tech.other-5.1-bino-tech', [{
-  name: 'playground',
-  entities: [{ id: 'tech-5.1-lookout', kind: 'lookout', bounds: [510, 493, 4, 4], name: 'lookout' }],
-}])
-
-export const TECH_OTHER_5_1_1_BINO_CLIP = part('tech.other-5.1.1-bino-clip', [{
-  name: 'playground',
-  entities: [
-    { id: 'tech-5.1.1-lookout', kind: 'lookout', bounds: [510, 493, 4, 4], name: 'lookout' },
-    { id: 'tech-5.1.1-spinner', kind: 'crystal_static_spinner', bounds: [628, 484, 16, 12], name: 'spinner' },
-  ],
-}])
-
-export const TECH_OTHER_5_1_2_BINO_CONTROL_STORAGE = part('tech.other-5.1.2-bino-control-storage', [{
-  name: 'playground',
-  entities: [
-    { id: 'tech-5.1.2-lookout', kind: 'lookout', bounds: [510, 493, 4, 4], name: 'lookout' },
-    // The vanilla PlayerCollider interrupts StDummy after Talk starts. This
-    // is deliberately co-located so the input trace cannot substitute an
-    // externally forced state for the real Booster callback.
-    { id: 'tech-5.1.2-interrupting-booster', kind: 'booster', bounds: [510, 489, 20, 20], name: 'booster' },
-  ],
-}])
-
-export const TECH_OTHER_5_1_3_BINO_INTERACTION_STORAGE = part('tech.other-5.1.3-bino-interaction-storage', [
+export const TECH_OTHER_5_1_BINO_TECH = part("tech.other-5.1-bino-tech", [
   {
-    name: 'playground',
-    // Dummy is outside Player.InControl, so DummyWalkToExact cannot itself
-    // initiate a room transition. LookRoutine walks to the telescope X=940,
-    // but the native Booster is centered at x=932 and interrupts it first.
-    // Player.Update checks its native Circle collider against the Player
-    // hurtbox, leaving the Lookout coroutine alive while Normal movement
-    // crosses the boundary.
-    // This room intentionally owns its floor rather than inheriting
-    // playground.base: that base has a solid right wall at x=936, which
-    // prevents a Normal player at x=932 from ever reaching the next room.
-    bounds: [0, 0, 960, 544],
-    spawn: [64, 496],
-    solids: [[0, 496, 960, 48], [0, 0, 24, 496]],
+    name: "playground",
     entities: [
-      { id: 'tech-5.1.3-lookout', kind: 'lookout', bounds: [938, 493, 4, 4], name: 'lookout' },
-      { id: 'tech-5.1.3-interrupting-booster', kind: 'booster', bounds: [924, 491, 16, 16], name: 'booster' },
+      {
+        id: "tech-5.1-lookout",
+        kind: "lookout",
+        bounds: [510, 493, 4, 4],
+        name: "lookout",
+      },
     ],
   },
-  {
-    name: 'transition_5_1_3',
-    bounds: [960, 0, 960, 544],
-    spawn: [984, 496],
-    solids: [[960, 496, 960, 48], [1896, 0, 24, 496]],
-  },
-], [])
+]);
 
-export const TECH_OTHER_5_1_4_BINO_EXTENSIONS = part('tech.other-5.1.4-bino-extensions', [{
-  name: 'playground',
-  entities: [{
-    id: 'tech-5.1.4-lookout',
-    kind: 'lookout',
-    bounds: [510, 493, 4, 4],
-    direction: [0, 1],
-    nodes: [[896, 400], [896, 72], [24, 24]],
-    name: 'lookout',
-  }],
-}])
+export const TECH_OTHER_5_1_1_BINO_CLIP = part("tech.other-5.1.1-bino-clip", [
+  {
+    name: "playground",
+    entities: [
+      {
+        id: "tech-5.1.1-lookout",
+        kind: "lookout",
+        bounds: [510, 493, 4, 4],
+        name: "lookout",
+      },
+      {
+        id: "tech-5.1.1-spinner",
+        kind: "crystal_static_spinner",
+        bounds: [628, 484, 16, 12],
+        name: "spinner",
+      },
+    ],
+  },
+]);
+
+export const TECH_OTHER_5_1_2_BINO_CONTROL_STORAGE = part(
+  "tech.other-5.1.2-bino-control-storage",
+  [
+    {
+      name: "playground",
+      entities: [
+        {
+          id: "tech-5.1.2-lookout",
+          kind: "lookout",
+          bounds: [510, 493, 4, 4],
+          name: "lookout",
+        },
+        // The vanilla PlayerCollider interrupts StDummy after Talk starts. This
+        // is deliberately co-located so the input trace cannot substitute an
+        // externally forced state for the real Booster callback.
+        {
+          id: "tech-5.1.2-interrupting-booster",
+          kind: "booster",
+          bounds: [510, 489, 20, 20],
+          name: "booster",
+        },
+      ],
+    },
+  ],
+);
+
+export const TECH_OTHER_5_1_3_BINO_INTERACTION_STORAGE = part(
+  "tech.other-5.1.3-bino-interaction-storage",
+  [
+    {
+      name: "playground",
+      // Dummy is outside Player.InControl, so DummyWalkToExact cannot itself
+      // initiate a room transition. LookRoutine walks to the telescope X=940,
+      // but the native Booster is centered at x=932 and interrupts it first.
+      // Player.Update checks its native Circle collider against the Player
+      // hurtbox, leaving the Lookout coroutine alive while Normal movement
+      // crosses the boundary.
+      // This room intentionally owns its floor rather than inheriting
+      // playground.base: that base has a solid right wall at x=936, which
+      // prevents a Normal player at x=932 from ever reaching the next room.
+      bounds: [0, 0, 960, 544],
+      spawn: [64, 496],
+      solids: [
+        [0, 496, 960, 48],
+        [0, 0, 24, 496],
+      ],
+      entities: [
+        {
+          id: "tech-5.1.3-lookout",
+          kind: "lookout",
+          bounds: [938, 493, 4, 4],
+          name: "lookout",
+        },
+        {
+          id: "tech-5.1.3-interrupting-booster",
+          kind: "booster",
+          bounds: [924, 491, 16, 16],
+          name: "booster",
+        },
+      ],
+    },
+    {
+      name: "transition_5_1_3",
+      bounds: [960, 0, 960, 544],
+      spawn: [984, 496],
+      solids: [
+        [960, 496, 960, 48],
+        [1896, 0, 24, 496],
+      ],
+    },
+  ],
+  [],
+);
+
+export const TECH_OTHER_5_1_4_BINO_EXTENSIONS = part(
+  "tech.other-5.1.4-bino-extensions",
+  [
+    {
+      name: "playground",
+      entities: [
+        {
+          id: "tech-5.1.4-lookout",
+          kind: "lookout",
+          bounds: [510, 493, 4, 4],
+          direction: [0, 1],
+          nodes: [
+            [896, 400],
+            [896, 72],
+            [24, 24],
+          ],
+          name: "lookout",
+        },
+      ],
+    },
+  ],
+);
 
 export const LOOKOUT_MAP_PARTS = [
   TECH_OTHER_5_1_BINO_TECH,
@@ -78,4 +149,4 @@ export const LOOKOUT_MAP_PARTS = [
   TECH_OTHER_5_1_2_BINO_CONTROL_STORAGE,
   TECH_OTHER_5_1_3_BINO_INTERACTION_STORAGE,
   TECH_OTHER_5_1_4_BINO_EXTENSIONS,
-] as const
+] as const;

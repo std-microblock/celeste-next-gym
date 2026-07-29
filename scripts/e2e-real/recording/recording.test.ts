@@ -31,10 +31,14 @@ const ffprobePath = process.env.FFPROBE_PATH;
 const hasMediaTools = Boolean(ffmpegPath && ffprobePath);
 
 afterEach(async () => {
-  await Promise.all(temporaryRoots.splice(0).map((root) => rm(root, {
-    recursive: true,
-    force: true,
-  })));
+  await Promise.all(
+    temporaryRoots.splice(0).map((root) =>
+      rm(root, {
+        recursive: true,
+        force: true,
+      }),
+    ),
+  );
 });
 
 describe("presentation recording artifacts", () => {
@@ -46,19 +50,26 @@ describe("presentation recording artifacts", () => {
 
   it("validates state gaps, duplicate presentations, hashes, and containment", async () => {
     const fixture = await createFixture();
-    const loaded = await loadPresentationManifest(fixture.root, fixture.manifestPath);
+    const loaded = await loadPresentationManifest(
+      fixture.root,
+      fixture.manifestPath,
+    );
 
     assert.equal(loaded.framePaths.length, 3);
     assert.equal(loaded.manifest.frames[1]?.repeated_state_presentation, true);
-    assert.deepEqual(loaded.manifest.unpresented_update_ranges, [{
-      start_state_index: 1,
-      end_state_index: 2,
-    }]);
+    assert.deepEqual(loaded.manifest.unpresented_update_ranges, [
+      {
+        start_state_index: 1,
+        end_state_index: 2,
+      },
+    ]);
   });
 
   it("rejects frame paths that escape the session directory", async () => {
     const fixture = await createFixture();
-    const manifest = JSON.parse(await readFile(fixture.manifestPath, "utf8")) as PresentationManifest;
+    const manifest = JSON.parse(
+      await readFile(fixture.manifestPath, "utf8"),
+    ) as PresentationManifest;
     manifest.frames[0]!.path = "../../outside.bgra";
     await writeFile(fixture.manifestPath, JSON.stringify(manifest));
 
@@ -69,80 +80,110 @@ describe("presentation recording artifacts", () => {
   });
 
   it("requires explicit absolute media tool paths", async () => {
-    await assert.rejects(() => resolveExecutable("ffmpeg", "ffmpeg"), /absolute/);
-  });
-
-  it("encodes BGRA presentation frames to probed H.264 CFR60", {
-    skip: !hasMediaTools,
-  }, async () => {
-    const fixture = await createFixture();
-    const outputPath = path.join(fixture.root, "videos", "scenario.mp4");
-    const posterPath = path.join(fixture.root, "videos", "scenario.poster.png");
-    const result = await encodePresentationRecording({
-      recordingRoot: fixture.root,
-      manifestPath: fixture.manifestPath,
-      outputPath,
-      posterPath,
-      posterStateIndex: 3,
-      ffmpegPath: ffmpegPath!,
-      ffprobePath: ffprobePath!,
-    });
-
-    assert.equal(result.probe.codec, "h264");
-    assert.equal(result.probe.pixel_format, "yuv420p");
-    assert.equal(result.probe.frame_rate, "60/1");
-    assert.equal(result.probe.frame_count, 3);
-    assert.equal(result.processes.length, 3);
-    assert.ok(result.processes.every((identity) => identity.pid > 0));
-    assert.ok((await stat(outputPath)).isFile());
-    assert.ok((await stat(posterPath)).isFile());
-    assert.equal(result.poster?.output_path, posterPath);
-    await assert.rejects(() => stat(outputPath.replace(/\.mp4$/, ".partial.mp4")));
-  });
-
-  it("runs a no-game lavfi encoder smoke test", {
-    skip: !hasMediaTools,
-  }, async () => {
-    const root = await createRoot();
-    const result = await runLavfiSmokeTest({
-      recordingRoot: root,
-      outputPath: path.join(root, "lavfi.mp4"),
-      ffmpegPath: ffmpegPath!,
-      ffprobePath: ffprobePath!,
-    });
-
-    assert.equal(result.probe.codec, "h264");
-    assert.equal(result.probe.width, 320);
-    assert.equal(result.probe.height, 180);
-  });
-
-  it("retains a failed partial until bounded explicit cleanup", {
-    skip: !hasMediaTools,
-  }, async () => {
-    const fixture = await createFixture();
-    const outputPath = path.join(fixture.root, "failed.mp4");
-    const partialPath = path.join(fixture.root, "failed.partial.mp4");
-    await assert.rejects(() => encodePresentationRecording({
-      recordingRoot: fixture.root,
-      manifestPath: fixture.manifestPath,
-      outputPath,
-      ffmpegPath: ffmpegPath!,
-      // ffmpeg is intentionally not ffprobe, so probing the valid partial fails.
-      ffprobePath: ffmpegPath!,
-    }));
-    assert.ok((await stat(partialPath)).isFile());
-    await assert.rejects(() => stat(outputPath));
-
-    await cleanupPartialArtifact(fixture.root, partialPath);
-    await assert.rejects(() => stat(partialPath));
     await assert.rejects(
-      () => cleanupPartialArtifact(fixture.root, path.join(fixture.root, "..", "escape.partial.mp4")),
-      /escapes/,
+      () => resolveExecutable("ffmpeg", "ffmpeg"),
+      /absolute/,
     );
   });
+
+  it(
+    "encodes BGRA presentation frames to probed H.264 CFR60",
+    {
+      skip: !hasMediaTools,
+    },
+    async () => {
+      const fixture = await createFixture();
+      const outputPath = path.join(fixture.root, "videos", "scenario.mp4");
+      const posterPath = path.join(
+        fixture.root,
+        "videos",
+        "scenario.poster.png",
+      );
+      const result = await encodePresentationRecording({
+        recordingRoot: fixture.root,
+        manifestPath: fixture.manifestPath,
+        outputPath,
+        posterPath,
+        posterStateIndex: 3,
+        ffmpegPath: ffmpegPath!,
+        ffprobePath: ffprobePath!,
+      });
+
+      assert.equal(result.probe.codec, "h264");
+      assert.equal(result.probe.pixel_format, "yuv420p");
+      assert.equal(result.probe.frame_rate, "60/1");
+      assert.equal(result.probe.frame_count, 3);
+      assert.equal(result.processes.length, 3);
+      assert.ok(result.processes.every((identity) => identity.pid > 0));
+      assert.ok((await stat(outputPath)).isFile());
+      assert.ok((await stat(posterPath)).isFile());
+      assert.equal(result.poster?.output_path, posterPath);
+      await assert.rejects(() =>
+        stat(outputPath.replace(/\.mp4$/, ".partial.mp4")),
+      );
+    },
+  );
+
+  it(
+    "runs a no-game lavfi encoder smoke test",
+    {
+      skip: !hasMediaTools,
+    },
+    async () => {
+      const root = await createRoot();
+      const result = await runLavfiSmokeTest({
+        recordingRoot: root,
+        outputPath: path.join(root, "lavfi.mp4"),
+        ffmpegPath: ffmpegPath!,
+        ffprobePath: ffprobePath!,
+      });
+
+      assert.equal(result.probe.codec, "h264");
+      assert.equal(result.probe.width, 320);
+      assert.equal(result.probe.height, 180);
+    },
+  );
+
+  it(
+    "retains a failed partial until bounded explicit cleanup",
+    {
+      skip: !hasMediaTools,
+    },
+    async () => {
+      const fixture = await createFixture();
+      const outputPath = path.join(fixture.root, "failed.mp4");
+      const partialPath = path.join(fixture.root, "failed.partial.mp4");
+      await assert.rejects(() =>
+        encodePresentationRecording({
+          recordingRoot: fixture.root,
+          manifestPath: fixture.manifestPath,
+          outputPath,
+          ffmpegPath: ffmpegPath!,
+          // ffmpeg is intentionally not ffprobe, so probing the valid partial fails.
+          ffprobePath: ffmpegPath!,
+        }),
+      );
+      assert.ok((await stat(partialPath)).isFile());
+      await assert.rejects(() => stat(outputPath));
+
+      await cleanupPartialArtifact(fixture.root, partialPath);
+      await assert.rejects(() => stat(partialPath));
+      await assert.rejects(
+        () =>
+          cleanupPartialArtifact(
+            fixture.root,
+            path.join(fixture.root, "..", "escape.partial.mp4"),
+          ),
+        /escapes/,
+      );
+    },
+  );
 });
 
-async function createFixture(): Promise<{ root: string; manifestPath: string }> {
+async function createFixture(): Promise<{
+  root: string;
+  manifestPath: string;
+}> {
   const root = await createRoot();
   const session = path.join(root, "scenarios", "scenario-1", "token");
   const framesDirectory = path.join(session, "frames");
@@ -157,7 +198,10 @@ async function createFixture(): Promise<{ root: string; manifestPath: string }> 
       bytes[offset + 2] = 40;
       bytes[offset + 3] = 255;
     }
-    const framePath = path.join(framesDirectory, `${renderIndex.toString().padStart(6, "0")}.bgra`);
+    const framePath = path.join(
+      framesDirectory,
+      `${renderIndex.toString().padStart(6, "0")}.bgra`,
+    );
     await writeFile(framePath, bytes);
     frames.push({
       render_index: renderIndex,
@@ -168,7 +212,12 @@ async function createFixture(): Promise<{ root: string; manifestPath: string }> 
       bytes: bytes.byteLength,
       repeated_state_presentation: renderIndex === 1,
       ...(renderIndex === 2
-        ? { unpresented_updates_before: { start_state_index: 1, end_state_index: 2 } }
+        ? {
+            unpresented_updates_before: {
+              start_state_index: 1,
+              end_state_index: 2,
+            },
+          }
         : {}),
     });
   }

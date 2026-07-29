@@ -23,8 +23,8 @@ pub use binary_packer::{
     BinaryElement, BinaryPackerWriteError, BinaryValue, encode_celeste_bin, parse_celeste_bin,
 };
 pub use map::{
-    Entity, EntityKind, Map, MapEncodeError, Rect, RoomRuntime, decode_map, decode_map_room, encode_celeste_map,
-    encode_map,
+    Entity, EntityKind, Map, MapEncodeError, Rect, RoomRuntime, decode_map, decode_map_room,
+    encode_celeste_map, encode_map,
 };
 pub use map_fixture::{
     CelesteMapFixture, FixtureEntity, FixtureEntityKind, FixtureRect, FixtureRoom, FixtureVec2,
@@ -37,8 +37,9 @@ pub use sim::{
     fidelity, simulate, simulate_trace,
 };
 pub use types::{
-    BounceBlockSnapshot, BumperSnapshot, CassetteBlockSnapshot, CassetteManagerSnapshot, CloudSnapshot, CoreMode,
-    GliderSnapshot, HeartGemSnapshot, InputState, LookoutSnapshot, MoveBlockSnapshot, PlayerSnapshot, PlayerState,
-    RisingLavaSnapshot, SandwichLavaSnapshot, SeekerSnapshot, SpinnerSnapshot, TempleGateSnapshot,
-    TheoCrystalSnapshot, Vec2, ZipMoverSnapshot,
+    BounceBlockSnapshot, BumperSnapshot, CassetteBlockSnapshot, CassetteManagerSnapshot,
+    CloudSnapshot, CoreMode, GliderSnapshot, HeartGemSnapshot, InputState, LookoutSnapshot,
+    MoveBlockSnapshot, PlayerSnapshot, PlayerState, RisingLavaSnapshot, SandwichLavaSnapshot,
+    SeekerSnapshot, SpinnerSnapshot, TempleGateSnapshot, TheoCrystalSnapshot, Vec2,
+    ZipMoverSnapshot,
 };

@@ -729,7 +729,10 @@ mod tests {
 
         let left = decode_map_room(&first, Some("left")).unwrap();
         assert_eq!(left.spawn, Vec2::new(24.0, 160.0));
-        assert_eq!(left.room_spawns, vec![Vec2::new(24.0, 160.0), Vec2::new(280.0, 160.0)]);
+        assert_eq!(
+            left.room_spawns,
+            vec![Vec2::new(24.0, 160.0), Vec2::new(280.0, 160.0)]
+        );
         assert_eq!(left.entities.len(), 1);
         assert_eq!(left.entities[0].kind, EntityKind::Booster);
         let right = decode_map_room(&first, Some("right")).unwrap();

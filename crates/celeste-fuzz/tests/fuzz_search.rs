@@ -47,7 +47,10 @@ fn directional_dash_can_hold_its_direction() {
         vec![OutputMode::Candidates],
     );
     assert_eq!(result.candidates.len(), 1);
-    assert_eq!(result.candidates[0].verified_inputs[0].keys, ["right", "down", "dash"]);
+    assert_eq!(
+        result.candidates[0].verified_inputs[0].keys,
+        ["right", "down", "dash"]
+    );
 }
 
 #[test]
@@ -59,11 +62,17 @@ fn current_entry_checks_can_read_aim_and_dash_direction() {
         last_aim: celeste_physics::Vec2 { x: 1.0, y: 1.0 },
         ..PlayerSnapshot::default()
     };
-    assert!(evaluate_current_checks(&snapshot, &[
-        "current.state == state::dash".into(),
-        "current.dash_dir.x > 0".into(),
-        "current.last_aim.y > 0".into(),
-    ]).unwrap());
+    assert!(
+        evaluate_current_checks(
+            &snapshot,
+            &[
+                "current.state == state::dash".into(),
+                "current.dash_dir.x > 0".into(),
+                "current.last_aim.y > 0".into(),
+            ]
+        )
+        .unwrap()
+    );
 }
 
 #[test]

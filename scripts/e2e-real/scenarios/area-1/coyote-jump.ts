@@ -1,21 +1,23 @@
-import { input } from '../../inputs.js'
-import { defineScenario } from '../../scenario.js'
-import { AREA_1_TARGET } from '../../targets.js'
+import { input } from "../../inputs.js";
+import { defineScenario } from "../../scenario.js";
+import { AREA_1_TARGET } from "../../targets.js";
 
-export const mapParts = [] as const
+export const mapParts = [] as const;
 
 export const scenario = defineScenario({
   target: AREA_1_TARGET,
-  status: 'active',
+  status: "active",
   tags: [],
-  techniqueIds: ['1.4'],
-  recording: { primaryFor: ['1.4'], startFrame: 0, endFrame: 12 },
+  techniqueIds: ["1.4"],
+  recording: { primaryFor: ["1.4"], startFrame: 0, endFrame: 12 },
   mapParts,
-  name: 'coyote-jump',
-    initial: { pos: [42, 144], speed: [0, 0] },
-    inputs: Array.from({ length: 12 }, (_, frame) => input({
+  name: "coyote-jump",
+  initial: { pos: [42, 144], speed: [0, 0] },
+  inputs: Array.from({ length: 12 }, (_, frame) =>
+    input({
       move_x: 1,
       jump_pressed: frame === 3,
       jump_held: frame >= 3 && frame < 9,
-    })),
-})
+    }),
+  ),
+});

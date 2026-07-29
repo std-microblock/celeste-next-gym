@@ -295,7 +295,9 @@ impl CompiledFuzz {
         };
         let mut successful = Vec::new();
         let mut evaluations = Vec::new();
-        let wants_evaluations = output.iter().any(|mode| matches!(mode, OutputMode::Evaluations));
+        let wants_evaluations = output
+            .iter()
+            .any(|mode| matches!(mode, OutputMode::Evaluations));
         let mut all_tuples = Vec::with_capacity(all_bindings.len());
         for candidate_bindings in all_bindings {
             let tuple = self.tuple(&candidate_bindings);
@@ -308,9 +310,13 @@ impl CompiledFuzz {
                 .naive_frame_count
                 .saturating_add(candidate.observe_until as u64);
             if let Some(result) = self.simulate_candidate(
-                &engine, &initial, &candidate, &mut trie, &mut stats, wants_evaluations,
-            )?
-            {
+                &engine,
+                &initial,
+                &candidate,
+                &mut trie,
+                &mut stats,
+                wants_evaluations,
+            )? {
                 if result.successful {
                     stats.successful_count += 1;
                     successful.push(result.clone());
@@ -369,7 +375,9 @@ impl CompiledFuzz {
         };
         let coverage_report =
             wants_coverage.then(|| self.coverage_report(&all_tuples, &successful));
-        let candidates = wants_candidates.then(|| successful.clone()).unwrap_or_default();
+        let candidates = wants_candidates
+            .then(|| successful.clone())
+            .unwrap_or_default();
         FuzzResult {
             best: wants_best.then(|| successful.first().cloned()).flatten(),
             top: successful.into_iter().take(top_count).collect(),
@@ -421,14 +429,18 @@ impl CompiledFuzz {
         let results = pool.install(|| {
             shards
                 .into_par_iter()
-                .map(|shard| self.simulate_shard(
-                    &initial,
-                    map,
-                    shard,
-                    max_nodes,
-                    max_cache_bytes,
-                    output.iter().any(|mode| matches!(mode, OutputMode::Evaluations)),
-                ))
+                .map(|shard| {
+                    self.simulate_shard(
+                        &initial,
+                        map,
+                        shard,
+                        max_nodes,
+                        max_cache_bytes,
+                        output
+                            .iter()
+                            .any(|mode| matches!(mode, OutputMode::Evaluations)),
+                    )
+                })
                 .collect::<Result<Vec<_>, _>>()
         })?;
         let mut successful = Vec::new();
@@ -500,9 +512,13 @@ impl CompiledFuzz {
                 .naive_frame_count
                 .saturating_add(candidate.observe_until as u64);
             if let Some(result) = self.simulate_candidate(
-                &engine, initial, &candidate, &mut trie, &mut stats, wants_evaluations,
-            )?
-            {
+                &engine,
+                initial,
+                &candidate,
+                &mut trie,
+                &mut stats,
+                wants_evaluations,
+            )? {
                 if result.successful {
                     stats.successful_count += 1;
                     successful.push(result.clone());

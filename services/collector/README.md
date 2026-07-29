@@ -16,16 +16,16 @@ npm start
 
 默认监听 `127.0.0.1:4318`。支持的环境变量：
 
-| 变量 | 默认值 | 说明 |
-| --- | --- | --- |
-| `COLLECTOR_HOST` | `127.0.0.1` | 监听地址 |
-| `COLLECTOR_PORT` | `4318` | 监听端口 |
-| `COLLECTOR_TIMEOUT_MS` | `30000` | 单次后端采集超时 |
-| `COLLECTOR_BACKEND` | `none` | `none` 或 `mock` |
-| `EVEREST_COLLECTOR_HOST` | `127.0.0.1` | Mod TCP 地址 |
-| `EVEREST_COLLECTOR_PORT` | `32270` | Mod TCP 端口 |
-| `EVEREST_AREA_ID` | `1` | 当前真实采集使用的原版区域 ID |
-| `EVEREST_AREA_SID` | 未设置 | 自定义地图 SID；设置后优先按 SID 解析动态 Area ID |
+| 变量                     | 默认值      | 说明                                              |
+| ------------------------ | ----------- | ------------------------------------------------- |
+| `COLLECTOR_HOST`         | `127.0.0.1` | 监听地址                                          |
+| `COLLECTOR_PORT`         | `4318`      | 监听端口                                          |
+| `COLLECTOR_TIMEOUT_MS`   | `30000`     | 单次后端采集超时                                  |
+| `COLLECTOR_BACKEND`      | `none`      | `none` 或 `mock`                                  |
+| `EVEREST_COLLECTOR_HOST` | `127.0.0.1` | Mod TCP 地址                                      |
+| `EVEREST_COLLECTOR_PORT` | `32270`     | Mod TCP 端口                                      |
+| `EVEREST_AREA_ID`        | `1`         | 当前真实采集使用的原版区域 ID                     |
+| `EVEREST_AREA_SID`       | 未设置      | 自定义地图 SID；设置后优先按 SID 解析动态 Area ID |
 
 仅测试协议时可显式使用：
 
@@ -123,7 +123,10 @@ node scripts/e2e-real-collector.mjs
 ```ts
 interface CollectorBackend {
   readonly name: string;
-  collect(request: SimulateRequest, signal: AbortSignal): Promise<PlayerSnapshot[]>;
+  collect(
+    request: SimulateRequest,
+    signal: AbortSignal,
+  ): Promise<PlayerSnapshot[]>;
   health?(): Promise<{ ready: boolean; detail?: string }>;
   close?(): Promise<void>;
 }

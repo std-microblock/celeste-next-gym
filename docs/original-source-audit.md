@@ -22,14 +22,14 @@
 
 `Celeste` 构造器明确声明版本 `1.4.0.0` 并启用固定时间步，见 `Celeste/Celeste.cs:62-68`。文件行号以当前工作区副本为准。为防止后续替换源码导致行号静默漂移，主要文件 SHA-256 如下：
 
-| 文件 | SHA-256 |
-|---|---|
-| `Player.cs` | `2f8e5c7151ad6046a581810dbaa638f7b7b6756da0567538de2d2c2ff6d3a589` |
-| `BinaryPacker.cs` | `1520ef04f8460b7629f549357d6e01468f05938da6feb5c938e50383b5d5c244` |
+| 文件                   | SHA-256                                                            |
+| ---------------------- | ------------------------------------------------------------------ |
+| `Player.cs`            | `2f8e5c7151ad6046a581810dbaa638f7b7b6756da0567538de2d2c2ff6d3a589` |
+| `BinaryPacker.cs`      | `1520ef04f8460b7629f549357d6e01468f05938da6feb5c938e50383b5d5c244` |
 | `RunLengthEncoding.cs` | `82b86a974450138adb9e5980c80713004e995b778b288046236f50b4c2cd9b4c` |
-| `MapData.cs` | `24dbb90c298fccdbe1b0be29ff305fd34d77d12e5929fa6509c97b640820cfd3` |
-| `LevelData.cs` | `7ea4a9c89bd511655d7ae2d24e67d45dcb1074f154b059ca81d4436225837278` |
-| `EntityData.cs` | `7a7a3fb4bea0935baa1e333940ac067126edc2220e4e9ea1b542c89d8ffa8a5b` |
+| `MapData.cs`           | `24dbb90c298fccdbe1b0be29ff305fd34d77d12e5929fa6509c97b640820cfd3` |
+| `LevelData.cs`         | `7ea4a9c89bd511655d7ae2d24e67d45dcb1074f154b059ca81d4436225837278` |
+| `EntityData.cs`        | `7a7a3fb4bea0935baa1e333940ac067126edc2220e4e9ea1b542c89d8ffa8a5b` |
 
 ## 2. 首要结论
 
@@ -64,81 +64,81 @@
 
 ### 4.1 Normal / 跑跳 / 下落
 
-| 常数 | 值 | 原码位置 | 用途 |
-|---|---:|---|---|
-| `MaxFall` | `160` | `Player.cs:125` | 普通最大下落速度 |
-| `Gravity` | `900` | `Player.cs:127` | 垂直加速度 |
-| `HalfGravThreshold` | `40` | `Player.cs:129` | 跳键按住且 `abs(speedY) < 40` 时重力乘 0.5 |
-| `FastMaxFall` | `240` | `Player.cs:131` | 按下时快速下落上限 |
-| `FastMaxAccel` | `300` | `Player.cs:133` | `maxFall` 接近目标的速率 |
-| `MaxRun` | `90` | `Player.cs:135` | 普通水平目标速度 |
-| `RunAccel` | `1000` | `Player.cs:137` | 向输入目标加速 |
-| `RunReduce` | `400` | `Player.cs:139` | 已超速且同向输入时的减速 |
-| `AirMult` | `0.65` | `Player.cs:141` | 空中水平加/减速倍率 |
-| `HoldingMaxRun` | `70` | `Player.cs:143` | 携带慢跑物体时目标速度 |
-| `DuckFriction` | `500` | `Player.cs:149` | 地面蹲伏水平摩擦 |
-| `JumpGraceTime` | `0.1 s` | `Player.cs:161` | 土狼时间 |
-| `JumpSpeed` | `-105` | `Player.cs:163` | 普通跳跃纵向速度 |
-| `JumpHBoost` | `40` | `Player.cs:165` | 跳跃时按输入方向追加水平速度 |
-| `VarJumpTime` | `0.2 s` | `Player.cs:167` | 可变跳窗口 |
-| `CeilingVarJumpGrace` | `0.05 s` | `Player.cs:169` | 撞顶后仅在剩余窗口 `< 0.15` 时清零；等价保留前 0.05 s |
-| `UpwardCornerCorrection` | `4 px` | `Player.cs:171` | 普通向上撞角水平修正范围 |
-| `DashingUpwardCornerCorrection` | `5 px` | `Player.cs:173` | 竖直 dash 向上撞角修正范围 |
-| `WallSpeedRetentionTime` | `0.06 s` | `Player.cs:175` | 撞墙水平速度保留窗口 |
-| `WallJumpCheckDist` | `3 px` | `Player.cs:177` | 普通墙跳探测距离 |
-| `SuperWallJumpCheckDist` | `5 px` | `Player.cs:179` | 向上 dash 时的墙跳探测距离 |
-| `WallJumpForceTime` | `0.16 s` | `Player.cs:181` | 墙跳强制水平输入时间 |
-| `WallJumpHSpeed` | `130` | `Player.cs:183` | 墙跳水平速度 |
-| `WallSlideStartMax` | `20` | `Player.cs:185` | wall slide 初始下落目标 |
-| `WallSlideTime` | `1.2 s` | `Player.cs:187` | wall slide 由 20 插值回 160 的总时长 |
+| 常数                            |       值 | 原码位置        | 用途                                                  |
+| ------------------------------- | -------: | --------------- | ----------------------------------------------------- |
+| `MaxFall`                       |    `160` | `Player.cs:125` | 普通最大下落速度                                      |
+| `Gravity`                       |    `900` | `Player.cs:127` | 垂直加速度                                            |
+| `HalfGravThreshold`             |     `40` | `Player.cs:129` | 跳键按住且 `abs(speedY) < 40` 时重力乘 0.5            |
+| `FastMaxFall`                   |    `240` | `Player.cs:131` | 按下时快速下落上限                                    |
+| `FastMaxAccel`                  |    `300` | `Player.cs:133` | `maxFall` 接近目标的速率                              |
+| `MaxRun`                        |     `90` | `Player.cs:135` | 普通水平目标速度                                      |
+| `RunAccel`                      |   `1000` | `Player.cs:137` | 向输入目标加速                                        |
+| `RunReduce`                     |    `400` | `Player.cs:139` | 已超速且同向输入时的减速                              |
+| `AirMult`                       |   `0.65` | `Player.cs:141` | 空中水平加/减速倍率                                   |
+| `HoldingMaxRun`                 |     `70` | `Player.cs:143` | 携带慢跑物体时目标速度                                |
+| `DuckFriction`                  |    `500` | `Player.cs:149` | 地面蹲伏水平摩擦                                      |
+| `JumpGraceTime`                 |  `0.1 s` | `Player.cs:161` | 土狼时间                                              |
+| `JumpSpeed`                     |   `-105` | `Player.cs:163` | 普通跳跃纵向速度                                      |
+| `JumpHBoost`                    |     `40` | `Player.cs:165` | 跳跃时按输入方向追加水平速度                          |
+| `VarJumpTime`                   |  `0.2 s` | `Player.cs:167` | 可变跳窗口                                            |
+| `CeilingVarJumpGrace`           | `0.05 s` | `Player.cs:169` | 撞顶后仅在剩余窗口 `< 0.15` 时清零；等价保留前 0.05 s |
+| `UpwardCornerCorrection`        |   `4 px` | `Player.cs:171` | 普通向上撞角水平修正范围                              |
+| `DashingUpwardCornerCorrection` |   `5 px` | `Player.cs:173` | 竖直 dash 向上撞角修正范围                            |
+| `WallSpeedRetentionTime`        | `0.06 s` | `Player.cs:175` | 撞墙水平速度保留窗口                                  |
+| `WallJumpCheckDist`             |   `3 px` | `Player.cs:177` | 普通墙跳探测距离                                      |
+| `SuperWallJumpCheckDist`        |   `5 px` | `Player.cs:179` | 向上 dash 时的墙跳探测距离                            |
+| `WallJumpForceTime`             | `0.16 s` | `Player.cs:181` | 墙跳强制水平输入时间                                  |
+| `WallJumpHSpeed`                |    `130` | `Player.cs:183` | 墙跳水平速度                                          |
+| `WallSlideStartMax`             |     `20` | `Player.cs:185` | wall slide 初始下落目标                               |
+| `WallSlideTime`                 |  `1.2 s` | `Player.cs:187` | wall slide 由 20 插值回 160 的总时长                  |
 
 ### 4.2 Super / Dash
 
-| 常数 | 值 | 原码位置 | 用途 |
-|---|---:|---|---|
-| `SuperJumpSpeed` | `-105` | `Player.cs:197` | super 纵向速度 |
-| `SuperJumpH` | `260` | `Player.cs:199` | super 水平速度 |
-| `DuckSuperJumpXMult` | `1.25` | `Player.cs:157` | crouched super/hyper 水平倍率 |
-| `DuckSuperJumpYMult` | `0.5` | `Player.cs:159` | crouched super/hyper 纵向倍率 |
-| `SuperWallJumpSpeed` | `-160` | `Player.cs:201` | wallbounce 纵向速度 |
-| `SuperWallJumpVarTime` | `0.25 s` | `Player.cs:203` | wallbounce 可变跳窗口 |
-| `SuperWallJumpForceTime` | `0.2 s` | `Player.cs:205` | 常数存在，但当前 `SuperWallJump` 实现没有设置 `forceMoveXTimer` |
-| `SuperWallJumpH` | `170` | `Player.cs:207` | wallbounce 水平速度 |
-| `DashSpeed` | `240` | `Player.cs:209` | dash 初速度标量 |
-| `EndDashSpeed` | `160` | `Player.cs:211` | dash 正常结束速度标量 |
-| `EndDashUpMult` | `0.75` | `Player.cs:213` | dash 结束时上升速度倍率 |
-| `DashTime` | `0.15 s` | `Player.cs:215` | 普通 dash 协程等待时间 |
-| `SuperDashTime` | `0.3 s` | `Player.cs:217` | SuperDashing assist 的持续时间 |
-| `DashCooldown` | `0.2 s` | `Player.cs:219` | 再次开始 dash 的冷却 |
-| `DashRefillCooldown` | `0.1 s` | `Player.cs:221` | 接地/水中补 dash 前的冷却 |
-| `DashHJumpThruNudge` | `6 px` | `Player.cs:223` | 水平 dash 与 JumpThru 垂直贴合范围 |
-| `DashCornerCorrection` | `4 px` | `Player.cs:225` | dash 水平/落地边角修正范围 |
-| `DashVFloorSnapDist` | `3 px` | `Player.cs:227` | 水平 dash 向下贴地距离 |
-| `DashAttackTime` | `0.3 s` | `Player.cs:229` | 攻击判定可延续到 dash 状态结束后 |
-| `DodgeSlideSpeedMult` | `1.2` | `Player.cs:155` | 斜下 dash 落地转水平后的速度倍率 |
+| 常数                     |       值 | 原码位置        | 用途                                                            |
+| ------------------------ | -------: | --------------- | --------------------------------------------------------------- |
+| `SuperJumpSpeed`         |   `-105` | `Player.cs:197` | super 纵向速度                                                  |
+| `SuperJumpH`             |    `260` | `Player.cs:199` | super 水平速度                                                  |
+| `DuckSuperJumpXMult`     |   `1.25` | `Player.cs:157` | crouched super/hyper 水平倍率                                   |
+| `DuckSuperJumpYMult`     |    `0.5` | `Player.cs:159` | crouched super/hyper 纵向倍率                                   |
+| `SuperWallJumpSpeed`     |   `-160` | `Player.cs:201` | wallbounce 纵向速度                                             |
+| `SuperWallJumpVarTime`   | `0.25 s` | `Player.cs:203` | wallbounce 可变跳窗口                                           |
+| `SuperWallJumpForceTime` |  `0.2 s` | `Player.cs:205` | 常数存在，但当前 `SuperWallJump` 实现没有设置 `forceMoveXTimer` |
+| `SuperWallJumpH`         |    `170` | `Player.cs:207` | wallbounce 水平速度                                             |
+| `DashSpeed`              |    `240` | `Player.cs:209` | dash 初速度标量                                                 |
+| `EndDashSpeed`           |    `160` | `Player.cs:211` | dash 正常结束速度标量                                           |
+| `EndDashUpMult`          |   `0.75` | `Player.cs:213` | dash 结束时上升速度倍率                                         |
+| `DashTime`               | `0.15 s` | `Player.cs:215` | 普通 dash 协程等待时间                                          |
+| `SuperDashTime`          |  `0.3 s` | `Player.cs:217` | SuperDashing assist 的持续时间                                  |
+| `DashCooldown`           |  `0.2 s` | `Player.cs:219` | 再次开始 dash 的冷却                                            |
+| `DashRefillCooldown`     |  `0.1 s` | `Player.cs:221` | 接地/水中补 dash 前的冷却                                       |
+| `DashHJumpThruNudge`     |   `6 px` | `Player.cs:223` | 水平 dash 与 JumpThru 垂直贴合范围                              |
+| `DashCornerCorrection`   |   `4 px` | `Player.cs:225` | dash 水平/落地边角修正范围                                      |
+| `DashVFloorSnapDist`     |   `3 px` | `Player.cs:227` | 水平 dash 向下贴地距离                                          |
+| `DashAttackTime`         |  `0.3 s` | `Player.cs:229` | 攻击判定可延续到 dash 状态结束后                                |
+| `DodgeSlideSpeedMult`    |    `1.2` | `Player.cs:155` | 斜下 dash 落地转水平后的速度倍率                                |
 
 ### 4.3 Climb
 
-| 常数 | 值 | 原码位置 | 用途 |
-|---|---:|---|---|
-| `ClimbMaxStamina` | `110` | `Player.cs:253` | 最大体力/落地恢复值 |
-| `ClimbUpCost` | `45.4545441 /s` | `Player.cs:255` | 向上攀爬消耗 |
-| `ClimbStillCost` | `10 /s` | `Player.cs:257` | 空中静止抓墙消耗 |
-| `ClimbJumpCost` | `27.5` | `Player.cs:259` | 离地 climb jump 即时消耗；wall boost 可返还 |
-| `ClimbCheckDist` | `2 px` | `Player.cs:261` | 抓墙探测距离 |
-| `ClimbUpCheckDist` | `2 px` | `Player.cs:263` | 抓墙向上修正范围 |
-| `ClimbNoMoveTime` | `0.1 s` | `Player.cs:265` | 刚抓墙时禁止主动上下移动/体力消耗 |
-| `ClimbTiredThreshold` | `20` | `Player.cs:267` | tired 判定阈值为严格 `< 20`，UI danger 常用 `<= 20` |
-| `ClimbUpSpeed` | `-45` | `Player.cs:269` | 上爬目标速度 |
-| `ClimbDownSpeed` | `80` | `Player.cs:271` | 下爬目标速度 |
-| `ClimbSlipSpeed` | `30` | `Player.cs:273` | 顶缘滑落目标速度 |
-| `ClimbAccel` | `900` | `Player.cs:275` | 攀爬纵向接近速率 |
-| `ClimbGrabYMult` | `0.2` | `Player.cs:277` | 进入攀爬时保留纵速比例 |
-| `ClimbHopY` | `-120` | `Player.cs:279` | 爬上边缘纵向速度上限 |
-| `ClimbHopX` | `100` | `Player.cs:281` | 爬上边缘水平速度 |
-| `ClimbHopForceTime` | `0.2 s` | `Player.cs:283` | climb hop 强制 `moveX = 0` 时间 |
-| `ClimbJumpBoostTime` | `0.2 s` | `Player.cs:285` | climb jump 的 wall boost 返还窗口 |
-| `ClimbHopNoWindTime` | `0.3 s` | `Player.cs:287` | climb hop 后无风窗口 |
+| 常数                  |              值 | 原码位置        | 用途                                                |
+| --------------------- | --------------: | --------------- | --------------------------------------------------- |
+| `ClimbMaxStamina`     |           `110` | `Player.cs:253` | 最大体力/落地恢复值                                 |
+| `ClimbUpCost`         | `45.4545441 /s` | `Player.cs:255` | 向上攀爬消耗                                        |
+| `ClimbStillCost`      |         `10 /s` | `Player.cs:257` | 空中静止抓墙消耗                                    |
+| `ClimbJumpCost`       |          `27.5` | `Player.cs:259` | 离地 climb jump 即时消耗；wall boost 可返还         |
+| `ClimbCheckDist`      |          `2 px` | `Player.cs:261` | 抓墙探测距离                                        |
+| `ClimbUpCheckDist`    |          `2 px` | `Player.cs:263` | 抓墙向上修正范围                                    |
+| `ClimbNoMoveTime`     |         `0.1 s` | `Player.cs:265` | 刚抓墙时禁止主动上下移动/体力消耗                   |
+| `ClimbTiredThreshold` |            `20` | `Player.cs:267` | tired 判定阈值为严格 `< 20`，UI danger 常用 `<= 20` |
+| `ClimbUpSpeed`        |           `-45` | `Player.cs:269` | 上爬目标速度                                        |
+| `ClimbDownSpeed`      |            `80` | `Player.cs:271` | 下爬目标速度                                        |
+| `ClimbSlipSpeed`      |            `30` | `Player.cs:273` | 顶缘滑落目标速度                                    |
+| `ClimbAccel`          |           `900` | `Player.cs:275` | 攀爬纵向接近速率                                    |
+| `ClimbGrabYMult`      |           `0.2` | `Player.cs:277` | 进入攀爬时保留纵速比例                              |
+| `ClimbHopY`           |          `-120` | `Player.cs:279` | 爬上边缘纵向速度上限                                |
+| `ClimbHopX`           |           `100` | `Player.cs:281` | 爬上边缘水平速度                                    |
+| `ClimbHopForceTime`   |         `0.2 s` | `Player.cs:283` | climb hop 强制 `moveX = 0` 时间                     |
+| `ClimbJumpBoostTime`  |         `0.2 s` | `Player.cs:285` | climb jump 的 wall boost 返还窗口                   |
+| `ClimbHopNoWindTime`  |         `0.3 s` | `Player.cs:287` | climb hop 后无风窗口                                |
 
 ### 4.4 碰撞体与必须进入快照的隐状态
 
@@ -150,34 +150,34 @@
 
 构造器创建 26 状态的 `StateMachine`，映射见 `Player.cs:1145-1171`。参数顺序是 update、coroutine、begin、end，定义见 `StateMachine.cs:152-158`。
 
-| ID | 常量 | Update | Coroutine | Begin | End |
-|---:|---|---|---|---|---|
-| 0 | `StNormal` | `NormalUpdate` | — | `NormalBegin` | `NormalEnd` |
-| 1 | `StClimb` | `ClimbUpdate` | — | `ClimbBegin` | `ClimbEnd` |
-| 2 | `StDash` | `DashUpdate` | `DashCoroutine` | `DashBegin` | `DashEnd` |
-| 3 | `StSwim` | `SwimUpdate` | — | `SwimBegin` | — |
-| 4 | `StBoost` | `BoostUpdate` | `BoostCoroutine` | `BoostBegin` | `BoostEnd` |
-| 5 | `StRedDash` | `RedDashUpdate` | `RedDashCoroutine` | `RedDashBegin` | `RedDashEnd` |
-| 6 | `StHitSquash` | `HitSquashUpdate` | — | `HitSquashBegin` | — |
-| 7 | `StLaunch` | `LaunchUpdate` | — | `LaunchBegin` | — |
-| 8 | `StPickup` | — | `PickupCoroutine` | — | — |
-| 9 | `StDreamDash` | `DreamDashUpdate` | — | `DreamDashBegin` | `DreamDashEnd` |
-| 10 | `StSummitLaunch` | `SummitLaunchUpdate` | — | `SummitLaunchBegin` | — |
-| 11 | `StDummy` | `DummyUpdate` | — | `DummyBegin` | — |
-| 12 | `StIntroWalk` | — | `IntroWalkCoroutine` | — | — |
-| 13 | `StIntroJump` | — | `IntroJumpCoroutine` | — | — |
-| 14 | `StIntroRespawn` | — | — | `IntroRespawnBegin` | `IntroRespawnEnd` |
-| 15 | `StIntroWakeUp` | — | `IntroWakeUpCoroutine` | — | — |
-| 16 | `StBirdDashTutorial` | `BirdDashTutorialUpdate` | `BirdDashTutorialCoroutine` | `BirdDashTutorialBegin` | — |
-| 17 | `StFrozen` | `FrozenUpdate` | — | — | — |
-| 18 | `StReflectionFall` | `ReflectionFallUpdate` | `ReflectionFallCoroutine` | `ReflectionFallBegin` | `ReflectionFallEnd` |
-| 19 | `StStarFly` | `StarFlyUpdate` | `StarFlyCoroutine` | `StarFlyBegin` | `StarFlyEnd` |
-| 20 | `StTempleFall` | `TempleFallUpdate` | `TempleFallCoroutine` | — | — |
-| 21 | `StCassetteFly` | `CassetteFlyUpdate` | `CassetteFlyCoroutine` | `CassetteFlyBegin` | `CassetteFlyEnd` |
-| 22 | `StAttract` | `AttractUpdate` | — | `AttractBegin` | `AttractEnd` |
-| 23 | `StIntroMoonJump` | — | `IntroMoonJumpCoroutine` | — | — |
-| 24 | `StFlingBird` | `FlingBirdUpdate` | `FlingBirdCoroutine` | `FlingBirdBegin` | `FlingBirdEnd` |
-| 25 | `StIntroThinkForABit` | — | `IntroThinkForABitCoroutine` | — | — |
+|  ID | 常量                  | Update                   | Coroutine                    | Begin                   | End                 |
+| --: | --------------------- | ------------------------ | ---------------------------- | ----------------------- | ------------------- |
+|   0 | `StNormal`            | `NormalUpdate`           | —                            | `NormalBegin`           | `NormalEnd`         |
+|   1 | `StClimb`             | `ClimbUpdate`            | —                            | `ClimbBegin`            | `ClimbEnd`          |
+|   2 | `StDash`              | `DashUpdate`             | `DashCoroutine`              | `DashBegin`             | `DashEnd`           |
+|   3 | `StSwim`              | `SwimUpdate`             | —                            | `SwimBegin`             | —                   |
+|   4 | `StBoost`             | `BoostUpdate`            | `BoostCoroutine`             | `BoostBegin`            | `BoostEnd`          |
+|   5 | `StRedDash`           | `RedDashUpdate`          | `RedDashCoroutine`           | `RedDashBegin`          | `RedDashEnd`        |
+|   6 | `StHitSquash`         | `HitSquashUpdate`        | —                            | `HitSquashBegin`        | —                   |
+|   7 | `StLaunch`            | `LaunchUpdate`           | —                            | `LaunchBegin`           | —                   |
+|   8 | `StPickup`            | —                        | `PickupCoroutine`            | —                       | —                   |
+|   9 | `StDreamDash`         | `DreamDashUpdate`        | —                            | `DreamDashBegin`        | `DreamDashEnd`      |
+|  10 | `StSummitLaunch`      | `SummitLaunchUpdate`     | —                            | `SummitLaunchBegin`     | —                   |
+|  11 | `StDummy`             | `DummyUpdate`            | —                            | `DummyBegin`            | —                   |
+|  12 | `StIntroWalk`         | —                        | `IntroWalkCoroutine`         | —                       | —                   |
+|  13 | `StIntroJump`         | —                        | `IntroJumpCoroutine`         | —                       | —                   |
+|  14 | `StIntroRespawn`      | —                        | —                            | `IntroRespawnBegin`     | `IntroRespawnEnd`   |
+|  15 | `StIntroWakeUp`       | —                        | `IntroWakeUpCoroutine`       | —                       | —                   |
+|  16 | `StBirdDashTutorial`  | `BirdDashTutorialUpdate` | `BirdDashTutorialCoroutine`  | `BirdDashTutorialBegin` | —                   |
+|  17 | `StFrozen`            | `FrozenUpdate`           | —                            | —                       | —                   |
+|  18 | `StReflectionFall`    | `ReflectionFallUpdate`   | `ReflectionFallCoroutine`    | `ReflectionFallBegin`   | `ReflectionFallEnd` |
+|  19 | `StStarFly`           | `StarFlyUpdate`          | `StarFlyCoroutine`           | `StarFlyBegin`          | `StarFlyEnd`        |
+|  20 | `StTempleFall`        | `TempleFallUpdate`       | `TempleFallCoroutine`        | —                       | —                   |
+|  21 | `StCassetteFly`       | `CassetteFlyUpdate`      | `CassetteFlyCoroutine`       | `CassetteFlyBegin`      | `CassetteFlyEnd`    |
+|  22 | `StAttract`           | `AttractUpdate`          | —                            | `AttractBegin`          | `AttractEnd`        |
+|  23 | `StIntroMoonJump`     | —                        | `IntroMoonJumpCoroutine`     | —                       | —                   |
+|  24 | `StFlingBird`         | `FlingBirdUpdate`        | `FlingBirdCoroutine`         | `FlingBirdBegin`        | `FlingBirdEnd`      |
+|  25 | `StIntroThinkForABit` | —                        | `IntroThinkForABitCoroutine` | —                       | —                   |
 
 状态切换不是单纯改整数：setter 依次记录 `PreviousState`、调用旧 end、新 begin、替换或取消协程，见 `StateMachine.cs:28-75`。Rust 快照恢复时若直接从字段构造而错误触发 begin/end，会与原版的“恢复当前运行态”语义不同；需要区分初始化状态与状态迁移。
 
@@ -290,19 +290,19 @@
 
 ## 10. 关键计时器的设置与递减
 
-| 计时器 | 典型设置点 | 递减/消费点 | 语义 |
-|---|---|---|---|
-| `jumpGraceTimer` | 接地设 0.1：`Player.cs:1581-1589` | 全局 Update；Jump 清零：`2438-2440` | 土狼时间 |
-| `varJumpTimer` | Jump 0.2：`2436-2449`；wallbounce 0.25：`2607-2622` | 全局 `1613-1616`；Normal held/release：`3784-3793` | 可变跳 |
-| `dashCooldownTimer` | DashBegin 0.2：`4286` | 全局 `1590-1593` | 禁止立即再次开始 dash |
-| `dashRefillCooldownTimer` | DashBegin 0.1：`4287` | 全局 `1594-1612` | 延迟接地/水中补 dash |
-| `dashAttackTimer` | DashBegin 0.3：`4296` | 全局 `1577-1580`；碰撞/跳跃清零 | Dash 攻击判定，可跨越状态结束 |
-| `wallSlideTimer` | 默认/落地/跳跃重置 1.2 | 仅上一帧 `wallSlideDir != 0` 时在 `1555-1559` 递减 | wall slide 下落目标插值 |
-| `forceMoveXTimer` | WallJump 0.16：`2565-2569`；ClimbHop 0.2：`4139-4141` | 全局 `1632-1641` | 覆盖实际水平输入 |
-| `wallSpeedRetentionTimer` | 水平碰撞 0.06：`3210-3214` | 全局 `1667-1681` | 离墙后恢复撞前水平速度 |
-| `wallBoostTimer` | ClimbJump 0.2：`2654-2658` | 全局 `1560-1569` | 延迟输入返还体力并给墙跳水平速度 |
-| `climbNoMoveTimer` | ClimbBegin 0.1：`3887-3889` | ClimbUpdate 首句：`3926-3929` | 抓墙初期锁纵向并免耗体力 |
-| `noWindTimer` | ClimbHop 0.3：`4140-4143` | 全局 `1653-1656` | 暂停风影响 |
+| 计时器                    | 典型设置点                                            | 递减/消费点                                        | 语义                             |
+| ------------------------- | ----------------------------------------------------- | -------------------------------------------------- | -------------------------------- |
+| `jumpGraceTimer`          | 接地设 0.1：`Player.cs:1581-1589`                     | 全局 Update；Jump 清零：`2438-2440`                | 土狼时间                         |
+| `varJumpTimer`            | Jump 0.2：`2436-2449`；wallbounce 0.25：`2607-2622`   | 全局 `1613-1616`；Normal held/release：`3784-3793` | 可变跳                           |
+| `dashCooldownTimer`       | DashBegin 0.2：`4286`                                 | 全局 `1590-1593`                                   | 禁止立即再次开始 dash            |
+| `dashRefillCooldownTimer` | DashBegin 0.1：`4287`                                 | 全局 `1594-1612`                                   | 延迟接地/水中补 dash             |
+| `dashAttackTimer`         | DashBegin 0.3：`4296`                                 | 全局 `1577-1580`；碰撞/跳跃清零                    | Dash 攻击判定，可跨越状态结束    |
+| `wallSlideTimer`          | 默认/落地/跳跃重置 1.2                                | 仅上一帧 `wallSlideDir != 0` 时在 `1555-1559` 递减 | wall slide 下落目标插值          |
+| `forceMoveXTimer`         | WallJump 0.16：`2565-2569`；ClimbHop 0.2：`4139-4141` | 全局 `1632-1641`                                   | 覆盖实际水平输入                 |
+| `wallSpeedRetentionTimer` | 水平碰撞 0.06：`3210-3214`                            | 全局 `1667-1681`                                   | 离墙后恢复撞前水平速度           |
+| `wallBoostTimer`          | ClimbJump 0.2：`2654-2658`                            | 全局 `1560-1569`                                   | 延迟输入返还体力并给墙跳水平速度 |
+| `climbNoMoveTimer`        | ClimbBegin 0.1：`3887-3889`                           | ClimbUpdate 首句：`3926-3929`                      | 抓墙初期锁纵向并免耗体力         |
+| `noWindTimer`             | ClimbHop 0.3：`4140-4143`                             | 全局 `1653-1656`                                   | 暂停风影响                       |
 
 计时器应允许变成略小于 0 的 `f32`，不要一律 clamp 到 0；原码只有部分计时器使用 `Math.Max`。
 
@@ -343,16 +343,16 @@ element children[child_count]
 
 属性类型：
 
-| tag | 写入值 | 读取后的 C# object | 依据 |
-|---:|---|---|---|
-| 0 | `bool` 1 byte | `bool` | `BinaryPacker.cs:184-186,303-305` |
-| 1 | `u8` | 转成 `int` | `187-189,306-308` |
-| 2 | `i16` | 转成 `int` | `190-192,309-311` |
-| 3 | `i32` | `int` | `193-195,312-314` |
-| 4 | IEEE-754 `f32` | `float` | `196-198,315-317` |
-| 5 | `i16` string table index | `string` | `199-201,318-320` |
-| 6 | dotnet string | `string` | `217-219,321-323` |
-| 7 | `i16 byte_len` + RLE bytes | 解码为 `string` | `208-214,324-328` |
+| tag | 写入值                     | 读取后的 C# object | 依据                              |
+| --: | -------------------------- | ------------------ | --------------------------------- |
+|   0 | `bool` 1 byte              | `bool`             | `BinaryPacker.cs:184-186,303-305` |
+|   1 | `u8`                       | 转成 `int`         | `187-189,306-308`                 |
+|   2 | `i16`                      | 转成 `int`         | `190-192,309-311`                 |
+|   3 | `i32`                      | `int`              | `193-195,312-314`                 |
+|   4 | IEEE-754 `f32`             | `float`            | `196-198,315-317`                 |
+|   5 | `i16` string table index   | `string`           | `199-201,318-320`                 |
+|   6 | dotnet string              | `string`           | `217-219,321-323`                 |
+|   7 | `i16 byte_len` + RLE bytes | 解码为 `string`    | `208-214,324-328`                 |
 
 普通 XML 属性写入前按 `bool -> byte -> short -> int -> float -> interned string` 的顺序推断类型，见 `BinaryPacker.cs:231-267`。float parser 允许整数/小数形式但不接受指数形式；无法解析的内容进入字符串表。
 

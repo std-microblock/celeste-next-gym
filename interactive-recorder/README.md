@@ -62,7 +62,11 @@ npm run samples
   "format": "celeste-next-gym-trace",
   "version": 1,
   "source": "web",
-  "map": { "sid": "CelesteGymPlayground/Playground", "room": "playground", "binary": "maps/CelesteGymPlayground/Playground.bin" },
+  "map": {
+    "sid": "CelesteGymPlayground/Playground",
+    "room": "playground",
+    "binary": "maps/CelesteGymPlayground/Playground.bin"
+  },
   "inputs": [],
   "states": []
 }

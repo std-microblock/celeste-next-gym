@@ -95,7 +95,10 @@ describe("collector HTTP service", () => {
   it("validates axes, booleans, and the frames/input count", async () => {
     const running = await start(new MockCollectorBackend());
     const request = validRequest(1);
-    const invalidInput = request.inputs[0] as unknown as Record<string, unknown>;
+    const invalidInput = request.inputs[0] as unknown as Record<
+      string,
+      unknown
+    >;
     invalidInput.move_x = 2;
     const response = await post(running, request);
     const body = (await decodeResponse(response)) as SimulateFailure;
@@ -276,5 +279,7 @@ async function postRecording(
 }
 
 async function decodeResponse(response: Response): Promise<SimulateResponse> {
-  return decode(new Uint8Array(await response.arrayBuffer())) as SimulateResponse;
+  return decode(
+    new Uint8Array(await response.arrayBuffer()),
+  ) as SimulateResponse;
 }

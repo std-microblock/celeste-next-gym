@@ -167,23 +167,31 @@ pub(crate) fn evaluate(
         .map_err(|error| format!("{} ({})", error, expression.source))
 }
 
-pub fn evaluate_current_checks(current: &PlayerSnapshot, expressions: &[String]) -> Result<bool, FuzzError> {
+pub fn evaluate_current_checks(
+    current: &PlayerSnapshot,
+    expressions: &[String],
+) -> Result<bool, FuzzError> {
     let engine = build_engine(10_000);
     let variables = BTreeMap::new();
     for source in expressions {
         let expression = compile_expression(&engine, source)?;
-        let result = evaluate(&engine, &expression, ExpressionContext {
-            variables: &variables,
-            initial: None,
-            current: Some(current),
-            before: None,
-            after: None,
-            final_state: None,
-            at: None,
-            held_time: None,
-            input_index: None,
-            verify: None,
-        }).map_err(FuzzError::Spec)?;
+        let result = evaluate(
+            &engine,
+            &expression,
+            ExpressionContext {
+                variables: &variables,
+                initial: None,
+                current: Some(current),
+                before: None,
+                after: None,
+                final_state: None,
+                at: None,
+                held_time: None,
+                input_index: None,
+                verify: None,
+            },
+        )
+        .map_err(FuzzError::Spec)?;
         if result.try_cast::<bool>() != Some(true) {
             return Ok(false);
         }

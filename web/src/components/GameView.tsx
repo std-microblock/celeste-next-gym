@@ -1,182 +1,278 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { atlasFrameKeys } from '../atlasFrames'
-import type { EntityKind, GymMap, MapEntity, SimState, Vec2 } from '../model'
-import { playerHairMetadata } from '../playerHair'
-import { spikeDirection, spikePlacement, spikeTexturePrefixes } from '../spikeRendering'
-import { resolveSpinnerStyle, spinnerCenter, spinnerHue, spinnersConnect } from '../spinnerRendering'
-import type { VisualTheme, VisualThemeLayer } from '../visualThemes'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { atlasFrameKeys } from "../atlasFrames";
+import type { EntityKind, GymMap, MapEntity, SimState, Vec2 } from "../model";
+import { playerHairMetadata } from "../playerHair";
+import {
+  spikeDirection,
+  spikePlacement,
+  spikeTexturePrefixes,
+} from "../spikeRendering";
+import {
+  resolveSpinnerStyle,
+  spinnerCenter,
+  spinnerHue,
+  spinnersConnect,
+} from "../spinnerRendering";
+import type { VisualTheme, VisualThemeLayer } from "../visualThemes";
 
 interface AtlasEntry {
-  x: number
-  y: number
-  width: number
-  height: number
-  drawOffsetX: number
-  drawOffsetY: number
-  frameWidth: number
-  frameHeight: number
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  drawOffsetX: number;
+  drawOffsetY: number;
+  frameWidth: number;
+  frameHeight: number;
 }
 
 interface GameAssets {
-  image: HTMLCanvasElement
-  entries: Record<string, AtlasEntry>
-  keys: string[]
-  frameLists: Map<string, string[]>
-  tinted: Map<string, HTMLCanvasElement>
+  image: HTMLCanvasElement;
+  entries: Record<string, AtlasEntry>;
+  keys: string[];
+  frameLists: Map<string, string[]>;
+  tinted: Map<string, HTMLCanvasElement>;
 }
 
 interface AnimationChoice {
-  prefix: string
-  delay: number
-  indices?: number[]
+  prefix: string;
+  delay: number;
+  indices?: number[];
 }
 
-let assetsPromise: Promise<GameAssets> | null = null
+let assetsPromise: Promise<GameAssets> | null = null;
 
-function loadAssetImage(source: string, errorMessage: string): Promise<HTMLImageElement> {
+function loadAssetImage(
+  source: string,
+  errorMessage: string,
+): Promise<HTMLImageElement> {
   return new Promise<HTMLImageElement>((resolve, reject) => {
-    const image = new Image()
-    image.src = source
-    image.onload = () => resolve(image)
-    image.onerror = () => reject(new Error(errorMessage))
-  })
+    const image = new Image();
+    image.src = source;
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error(errorMessage));
+  });
 }
 
 function loadAssets(): Promise<GameAssets> {
   if (!assetsPromise) {
     assetsPromise = Promise.all([
-      fetch('/assets/original/gameplay/gameplay-selected.json').then((response) => response.json()) as Promise<{ entries: Record<string, AtlasEntry> }>,
-      loadAssetImage('/assets/original/gameplay/gameplay-selected.png', '原版 Gameplay 图集加载失败'),
-      fetch('/assets/strawberry-jam/gameplay/theme-selected.json').then((response) => response.json()) as Promise<{ entries: Record<string, AtlasEntry> }>,
-      loadAssetImage('/assets/strawberry-jam/gameplay/theme-selected.png', 'Strawberry Jam 主题图集加载失败'),
+      fetch("/assets/original/gameplay/gameplay-selected.json").then(
+        (response) => response.json(),
+      ) as Promise<{ entries: Record<string, AtlasEntry> }>,
+      loadAssetImage(
+        "/assets/original/gameplay/gameplay-selected.png",
+        "原版 Gameplay 图集加载失败",
+      ),
+      fetch("/assets/strawberry-jam/gameplay/theme-selected.json").then(
+        (response) => response.json(),
+      ) as Promise<{ entries: Record<string, AtlasEntry> }>,
+      loadAssetImage(
+        "/assets/strawberry-jam/gameplay/theme-selected.png",
+        "Strawberry Jam 主题图集加载失败",
+      ),
     ]).then(([originalManifest, originalImage, jamManifest, jamImage]) => {
-      const image = document.createElement('canvas')
-      image.width = Math.max(originalImage.naturalWidth, jamImage.naturalWidth)
-      image.height = originalImage.naturalHeight + jamImage.naturalHeight
-      const context = image.getContext('2d')
-      if (!context) throw new Error('主题图集 Canvas 创建失败')
-      context.imageSmoothingEnabled = false
-      context.drawImage(originalImage, 0, 0)
-      context.drawImage(jamImage, 0, originalImage.naturalHeight)
-      const jamEntries = Object.fromEntries(Object.entries(jamManifest.entries).map(([key, entry]) => [key, {
-        ...entry,
-        y: entry.y + originalImage.naturalHeight,
-      }]))
-      const entries = { ...originalManifest.entries, ...jamEntries }
+      const image = document.createElement("canvas");
+      image.width = Math.max(originalImage.naturalWidth, jamImage.naturalWidth);
+      image.height = originalImage.naturalHeight + jamImage.naturalHeight;
+      const context = image.getContext("2d");
+      if (!context) throw new Error("主题图集 Canvas 创建失败");
+      context.imageSmoothingEnabled = false;
+      context.drawImage(originalImage, 0, 0);
+      context.drawImage(jamImage, 0, originalImage.naturalHeight);
+      const jamEntries = Object.fromEntries(
+        Object.entries(jamManifest.entries).map(([key, entry]) => [
+          key,
+          {
+            ...entry,
+            y: entry.y + originalImage.naturalHeight,
+          },
+        ]),
+      );
+      const entries = { ...originalManifest.entries, ...jamEntries };
       return {
         image,
         entries,
         keys: Object.keys(entries),
         frameLists: new Map(),
         tinted: new Map(),
-      }
-    })
+      };
+    });
   }
-  return assetsPromise
+  return assetsPromise;
 }
 
 function frames(assets: GameAssets, prefix: string): string[] {
-  const cached = assets.frameLists.get(prefix)
-  if (cached) return cached
-  const found = atlasFrameKeys(assets.keys, prefix)
-  assets.frameLists.set(prefix, found)
-  return found
+  const cached = assets.frameLists.get(prefix);
+  if (cached) return cached;
+  const found = atlasFrameKeys(assets.keys, prefix);
+  assets.frameLists.set(prefix, found);
+  return found;
 }
 
 function choosePlayerAnimation(state: SimState): AnimationChoice {
-  if (state.dead) return { prefix: 'characters/player/death_h', delay: 1 }
-  if (state.state === 'StarFly') {
-    return state.star_fly_transforming || (state.star_fly_transform_frames ?? 0) > 0
-      ? { prefix: 'characters/player/startStarFly', delay: 5 }
-      : { prefix: 'characters/player/starFly', delay: 5 }
+  if (state.dead) return { prefix: "characters/player/death_h", delay: 1 };
+  if (state.state === "StarFly") {
+    return state.star_fly_transforming ||
+      (state.star_fly_transform_frames ?? 0) > 0
+      ? { prefix: "characters/player/startStarFly", delay: 5 }
+      : { prefix: "characters/player/starFly", delay: 5 };
   }
-  if (state.state === 'DreamDash') return { prefix: 'characters/player/dreamDash', delay: 2, indices: Array.from({ length: 13 }, (_, index) => index + 4) }
-  if (state.state === 'Dash' || state.state === 'RedDash') return { prefix: 'characters/player/dash', delay: 5 }
-  if (state.state === 'Swim') return { prefix: 'characters/player/swim', delay: 5, indices: [0, 1, 2, 3, 4, 5] }
-  if (state.state === 'SummitLaunch' || state.state === 'Launch') return { prefix: 'characters/player/launch', delay: 4 }
-  if (state.state === 'Climb') return { prefix: 'characters/player/climb', delay: Math.abs(state.speed.y) > 5 ? 3 : 99, indices: Math.abs(state.speed.y) > 5 ? [0, 1, 2, 3, 4, 5] : [0] }
-  if (state.ducking) return { prefix: 'characters/player/duck', delay: 99 }
+  if (state.state === "DreamDash")
+    return {
+      prefix: "characters/player/dreamDash",
+      delay: 2,
+      indices: Array.from({ length: 13 }, (_, index) => index + 4),
+    };
+  if (state.state === "Dash" || state.state === "RedDash")
+    return { prefix: "characters/player/dash", delay: 5 };
+  if (state.state === "Swim")
+    return {
+      prefix: "characters/player/swim",
+      delay: 5,
+      indices: [0, 1, 2, 3, 4, 5],
+    };
+  if (state.state === "SummitLaunch" || state.state === "Launch")
+    return { prefix: "characters/player/launch", delay: 4 };
+  if (state.state === "Climb")
+    return {
+      prefix: "characters/player/climb",
+      delay: Math.abs(state.speed.y) > 5 ? 3 : 99,
+      indices: Math.abs(state.speed.y) > 5 ? [0, 1, 2, 3, 4, 5] : [0],
+    };
+  if (state.ducking) return { prefix: "characters/player/duck", delay: 99 };
   if (!state.on_ground) {
-    const prefix = Math.abs(state.speed.x) > 90 ? 'characters/player/jumpFast' : 'characters/player/jumpSlow'
-    return { prefix, delay: 6, indices: state.speed.y < 0 ? [0, 1] : [2, 3] }
+    const prefix =
+      Math.abs(state.speed.x) > 90
+        ? "characters/player/jumpFast"
+        : "characters/player/jumpSlow";
+    return { prefix, delay: 6, indices: state.speed.y < 0 ? [0, 1] : [2, 3] };
   }
-  if (Math.abs(state.speed.x) > 20) return { prefix: Math.abs(state.speed.x) > 70 ? 'characters/player/runFast' : 'characters/player/runSlow', delay: Math.abs(state.speed.x) > 70 ? 3 : 4 }
-  return { prefix: 'characters/player/idle', delay: 6 }
+  if (Math.abs(state.speed.x) > 20)
+    return {
+      prefix:
+        Math.abs(state.speed.x) > 70
+          ? "characters/player/runFast"
+          : "characters/player/runSlow",
+      delay: Math.abs(state.speed.x) > 70 ? 3 : 4,
+    };
+  return { prefix: "characters/player/idle", delay: 6 };
 }
 
-function playerFrameKey(assets: GameAssets, state: SimState, frame: number): string | undefined {
-  const animation = choosePlayerAnimation(state)
-  const available = frames(assets, animation.prefix)
-  const indices = animation.indices ?? available.map((_, index) => index)
-  const animationIndex = indices[Math.floor(frame / animation.delay) % Math.max(1, indices.length)] ?? 0
-  return available[animationIndex] ?? available[0]
+function playerFrameKey(
+  assets: GameAssets,
+  state: SimState,
+  frame: number,
+): string | undefined {
+  const animation = choosePlayerAnimation(state);
+  const available = frames(assets, animation.prefix);
+  const indices = animation.indices ?? available.map((_, index) => index);
+  const animationIndex =
+    indices[
+      Math.floor(frame / animation.delay) % Math.max(1, indices.length)
+    ] ?? 0;
+  return available[animationIndex] ?? available[0];
 }
 
-function tintedEntry(assets: GameAssets, key: string, color: string): HTMLCanvasElement | undefined {
-  const entry = assets.entries[key]
-  if (!entry) return undefined
-  const cacheKey = `${key}:${color}`
-  const cached = assets.tinted.get(cacheKey)
-  if (cached) return cached
-  const canvas = document.createElement('canvas')
-  canvas.width = entry.width
-  canvas.height = entry.height
-  const context = canvas.getContext('2d')
-  if (!context) return undefined
-  context.drawImage(assets.image, entry.x, entry.y, entry.width, entry.height, 0, 0, entry.width, entry.height)
-  context.globalCompositeOperation = 'source-in'
-  context.fillStyle = color
-  context.fillRect(0, 0, entry.width, entry.height)
-  assets.tinted.set(cacheKey, canvas)
-  return canvas
-}
-
-function framedEntry(assets: GameAssets, key: string, tint?: string): HTMLCanvasElement | undefined {
-  const entry = assets.entries[key]
-  if (!entry) return undefined
-  const cacheKey = `frame:${key}:${tint ?? 'original'}`
-  const cached = assets.tinted.get(cacheKey)
-  if (cached) return cached
-  const canvas = document.createElement('canvas')
-  canvas.width = entry.frameWidth
-  canvas.height = entry.frameHeight
-  const context = canvas.getContext('2d')
-  if (!context) return undefined
+function tintedEntry(
+  assets: GameAssets,
+  key: string,
+  color: string,
+): HTMLCanvasElement | undefined {
+  const entry = assets.entries[key];
+  if (!entry) return undefined;
+  const cacheKey = `${key}:${color}`;
+  const cached = assets.tinted.get(cacheKey);
+  if (cached) return cached;
+  const canvas = document.createElement("canvas");
+  canvas.width = entry.width;
+  canvas.height = entry.height;
+  const context = canvas.getContext("2d");
+  if (!context) return undefined;
   context.drawImage(
     assets.image,
-    entry.x, entry.y, entry.width, entry.height,
-    entry.drawOffsetX, entry.drawOffsetY, entry.width, entry.height,
-  )
+    entry.x,
+    entry.y,
+    entry.width,
+    entry.height,
+    0,
+    0,
+    entry.width,
+    entry.height,
+  );
+  context.globalCompositeOperation = "source-in";
+  context.fillStyle = color;
+  context.fillRect(0, 0, entry.width, entry.height);
+  assets.tinted.set(cacheKey, canvas);
+  return canvas;
+}
+
+function framedEntry(
+  assets: GameAssets,
+  key: string,
+  tint?: string,
+): HTMLCanvasElement | undefined {
+  const entry = assets.entries[key];
+  if (!entry) return undefined;
+  const cacheKey = `frame:${key}:${tint ?? "original"}`;
+  const cached = assets.tinted.get(cacheKey);
+  if (cached) return cached;
+  const canvas = document.createElement("canvas");
+  canvas.width = entry.frameWidth;
+  canvas.height = entry.frameHeight;
+  const context = canvas.getContext("2d");
+  if (!context) return undefined;
+  context.drawImage(
+    assets.image,
+    entry.x,
+    entry.y,
+    entry.width,
+    entry.height,
+    entry.drawOffsetX,
+    entry.drawOffsetY,
+    entry.width,
+    entry.height,
+  );
   if (tint) {
-    context.globalCompositeOperation = 'source-in'
-    context.fillStyle = tint
-    context.fillRect(0, 0, canvas.width, canvas.height)
+    context.globalCompositeOperation = "source-in";
+    context.fillStyle = tint;
+    context.fillRect(0, 0, canvas.width, canvas.height);
   }
-  assets.tinted.set(cacheKey, canvas)
-  return canvas
+  assets.tinted.set(cacheKey, canvas);
+  return canvas;
 }
 
-function dreamParticleTexture(assets: GameAssets, sourceX: number, color: string): HTMLCanvasElement | undefined {
-  const entry = assets.entries['objects/dreamblock/particles']
-  if (!entry) return undefined
-  const cacheKey = `dream-particle:${sourceX}:${color}`
-  const cached = assets.tinted.get(cacheKey)
-  if (cached) return cached
-  const canvas = document.createElement('canvas')
-  canvas.width = 7
-  canvas.height = 7
-  const context = canvas.getContext('2d')
-  if (!context) return undefined
+function dreamParticleTexture(
+  assets: GameAssets,
+  sourceX: number,
+  color: string,
+): HTMLCanvasElement | undefined {
+  const entry = assets.entries["objects/dreamblock/particles"];
+  if (!entry) return undefined;
+  const cacheKey = `dream-particle:${sourceX}:${color}`;
+  const cached = assets.tinted.get(cacheKey);
+  if (cached) return cached;
+  const canvas = document.createElement("canvas");
+  canvas.width = 7;
+  canvas.height = 7;
+  const context = canvas.getContext("2d");
+  if (!context) return undefined;
   context.drawImage(
     assets.image,
-    entry.x, entry.y, entry.width, entry.height,
-    entry.drawOffsetX - sourceX, entry.drawOffsetY, entry.width, entry.height,
-  )
-  context.globalCompositeOperation = 'source-in'
-  context.fillStyle = color
-  context.fillRect(0, 0, 7, 7)
-  assets.tinted.set(cacheKey, canvas)
-  return canvas
+    entry.x,
+    entry.y,
+    entry.width,
+    entry.height,
+    entry.drawOffsetX - sourceX,
+    entry.drawOffsetY,
+    entry.width,
+    entry.height,
+  );
+  context.globalCompositeOperation = "source-in";
+  context.fillStyle = color;
+  context.fillRect(0, 0, 7, 7);
+  assets.tinted.set(cacheKey, canvas);
+  return canvas;
 }
 
 function drawEntry(
@@ -192,24 +288,34 @@ function drawEntry(
   tint?: string,
   rotation = 0,
 ): void {
-  if (!key) return
-  const entry = assets.entries[key]
-  if (!entry) return
-  context.save()
-  context.translate(Math.round(x), Math.round(y))
-  context.rotate(rotation)
-  context.scale(scaleX, scaleY)
-  const source = tint ? tintedEntry(assets, key, tint) : undefined
+  if (!key) return;
+  const entry = assets.entries[key];
+  if (!entry) return;
+  context.save();
+  context.translate(Math.round(x), Math.round(y));
+  context.rotate(rotation);
+  context.scale(scaleX, scaleY);
+  const source = tint ? tintedEntry(assets, key, tint) : undefined;
   if (source) {
-    context.drawImage(source, -originX + entry.drawOffsetX, -originY + entry.drawOffsetY)
+    context.drawImage(
+      source,
+      -originX + entry.drawOffsetX,
+      -originY + entry.drawOffsetY,
+    );
   } else {
     context.drawImage(
       assets.image,
-      entry.x, entry.y, entry.width, entry.height,
-      -originX + entry.drawOffsetX, -originY + entry.drawOffsetY, entry.width, entry.height,
-    )
+      entry.x,
+      entry.y,
+      entry.width,
+      entry.height,
+      -originX + entry.drawOffsetX,
+      -originY + entry.drawOffsetY,
+      entry.width,
+      entry.height,
+    );
   }
-  context.restore()
+  context.restore();
 }
 
 function drawOutlinedEntry(
@@ -224,10 +330,39 @@ function drawOutlinedEntry(
   scaleY = 1,
   rotation = 0,
 ): void {
-  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
-    drawEntry(context, assets, key, x + dx, y + dy, originX, originY, scaleX, scaleY, '#000000', rotation)
+  for (const [dx, dy] of [
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1],
+  ] as const) {
+    drawEntry(
+      context,
+      assets,
+      key,
+      x + dx,
+      y + dy,
+      originX,
+      originY,
+      scaleX,
+      scaleY,
+      "#000000",
+      rotation,
+    );
   }
-  drawEntry(context, assets, key, x, y, originX, originY, scaleX, scaleY, undefined, rotation)
+  drawEntry(
+    context,
+    assets,
+    key,
+    x,
+    y,
+    originX,
+    originY,
+    scaleX,
+    scaleY,
+    undefined,
+    rotation,
+  );
 }
 
 function drawOutlinedTintedEntry(
@@ -241,10 +376,27 @@ function drawOutlinedTintedEntry(
   tint: string | undefined,
   rotation = 0,
 ): void {
-  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
-    drawEntry(context, assets, key, x + dx, y + dy, originX, originY, 1, 1, '#000000', rotation)
+  for (const [dx, dy] of [
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1],
+  ] as const) {
+    drawEntry(
+      context,
+      assets,
+      key,
+      x + dx,
+      y + dy,
+      originX,
+      originY,
+      1,
+      1,
+      "#000000",
+      rotation,
+    );
   }
-  drawEntry(context, assets, key, x, y, originX, originY, 1, 1, tint, rotation)
+  drawEntry(context, assets, key, x, y, originX, originY, 1, 1, tint, rotation);
 }
 
 function drawCenteredEntry(
@@ -258,637 +410,1313 @@ function drawCenteredEntry(
   scaleY = 1,
   rotation = 0,
 ): void {
-  if (!key) return
-  const entry = assets.entries[key]
-  if (!entry) return
-  const originX = entry.frameWidth / 2
-  const originY = entry.frameHeight / 2
-  if (outlined) drawOutlinedEntry(context, assets, key, x, y, originX, originY, scaleX, scaleY, rotation)
-  else drawEntry(context, assets, key, x, y, originX, originY, scaleX, scaleY, undefined, rotation)
+  if (!key) return;
+  const entry = assets.entries[key];
+  if (!entry) return;
+  const originX = entry.frameWidth / 2;
+  const originY = entry.frameHeight / 2;
+  if (outlined)
+    drawOutlinedEntry(
+      context,
+      assets,
+      key,
+      x,
+      y,
+      originX,
+      originY,
+      scaleX,
+      scaleY,
+      rotation,
+    );
+  else
+    drawEntry(
+      context,
+      assets,
+      key,
+      x,
+      y,
+      originX,
+      originY,
+      scaleX,
+      scaleY,
+      undefined,
+      rotation,
+    );
 }
 
 function approach(from: Vec2, to: Vec2, amount: number): Vec2 {
-  const dx = to.x - from.x
-  const dy = to.y - from.y
-  const distance = Math.hypot(dx, dy)
-  if (distance <= amount || distance === 0) return { ...to }
-  return { x: from.x + dx / distance * amount, y: from.y + dy / distance * amount }
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const distance = Math.hypot(dx, dy);
+  if (distance <= amount || distance === 0) return { ...to };
+  return {
+    x: from.x + (dx / distance) * amount,
+    y: from.y + (dy / distance) * amount,
+  };
 }
 
 function hairRoot(state: SimState, key: string | undefined): Vec2 {
-  const metadata = playerHairMetadata(key)
-  const facing = state.facing ? 1 : -1
-  return { x: state.pos.x + metadata.offset.x * facing, y: state.pos.y - 9 + metadata.offset.y }
+  const metadata = playerHairMetadata(key);
+  const facing = state.facing ? 1 : -1;
+  return {
+    x: state.pos.x + metadata.offset.x * facing,
+    y: state.pos.y - 9 + metadata.offset.y,
+  };
 }
 
-function computeHairNodes(assets: GameAssets, states: readonly (SimState | undefined)[], state: SimState, frame: number): Vec2[] {
-  const start = Math.max(0, frame - 180)
-  let nodes: Vec2[] | undefined
+function computeHairNodes(
+  assets: GameAssets,
+  states: readonly (SimState | undefined)[],
+  state: SimState,
+  frame: number,
+): Vec2[] {
+  const start = Math.max(0, frame - 180);
+  let nodes: Vec2[] | undefined;
   for (let value = start; value <= frame; value += 1) {
-    const sample = states[value] ?? (value === frame ? state : undefined)
-    if (!sample) continue
-    const key = playerFrameKey(assets, sample, value)
-    const root = hairRoot(sample, key)
-    const facing = sample.facing ? 1 : -1
-    if (!nodes) nodes = Array.from({ length: 4 }, (_, index) => ({ x: root.x - facing * index * .5, y: root.y + index * 2 }))
-    nodes[0] = root
-    let target = { x: root.x - facing, y: root.y + 2 }
-    let previous = root
+    const sample = states[value] ?? (value === frame ? state : undefined);
+    if (!sample) continue;
+    const key = playerFrameKey(assets, sample, value);
+    const root = hairRoot(sample, key);
+    const facing = sample.facing ? 1 : -1;
+    if (!nodes)
+      nodes = Array.from({ length: 4 }, (_, index) => ({
+        x: root.x - facing * index * 0.5,
+        y: root.y + index * 2,
+      }));
+    nodes[0] = root;
+    let target = { x: root.x - facing, y: root.y + 2 };
+    let previous = root;
     for (let index = 1; index < 4; index += 1) {
-      if (sample.state !== 'StarFly') {
-        const amount = (1 - index / 4 * .5) * 64 / 60
-        nodes[index] = approach(nodes[index], target, amount)
+      if (sample.state !== "StarFly") {
+        const amount = ((1 - (index / 4) * 0.5) * 64) / 60;
+        nodes[index] = approach(nodes[index], target, amount);
       }
-      const distance = Math.hypot(nodes[index].x - previous.x, nodes[index].y - previous.y)
-      if (distance > 3) nodes[index] = approach(previous, nodes[index], 3)
-      target = { x: nodes[index].x - facing * .5, y: nodes[index].y + 2 }
-      previous = nodes[index]
+      const distance = Math.hypot(
+        nodes[index].x - previous.x,
+        nodes[index].y - previous.y,
+      );
+      if (distance > 3) nodes[index] = approach(previous, nodes[index], 3);
+      target = { x: nodes[index].x - facing * 0.5, y: nodes[index].y + 2 };
+      previous = nodes[index];
     }
   }
-  return nodes ?? Array.from({ length: 4 }, (_, index) => ({ x: state.pos.x, y: state.pos.y - 11 + index * 2 }))
+  return (
+    nodes ??
+    Array.from({ length: 4 }, (_, index) => ({
+      x: state.pos.x,
+      y: state.pos.y - 11 + index * 2,
+    }))
+  );
 }
 
 function hairColor(state: SimState): string {
-  if (state.state === 'StarFly') return '#ffd65c'
-  if (state.dashes === 0) return '#44b7ff'
-  if (state.dashes >= 2) return '#ff6def'
-  return '#ac3232'
+  if (state.state === "StarFly") return "#ffd65c";
+  if (state.dashes === 0) return "#44b7ff";
+  if (state.dashes >= 2) return "#ff6def";
+  return "#ac3232";
 }
 
-function drawPlayer(context: CanvasRenderingContext2D, assets: GameAssets, states: readonly (SimState | undefined)[], state: SimState, frame: number): void {
-  const key = playerFrameKey(assets, state, frame)
-  const facing = state.facing ? 1 : -1
-  context.save()
-  context.globalAlpha = state.dead ? .75 : 1
+function drawPlayer(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  states: readonly (SimState | undefined)[],
+  state: SimState,
+  frame: number,
+): void {
+  const key = playerFrameKey(assets, state, frame);
+  const facing = state.facing ? 1 : -1;
+  context.save();
+  context.globalAlpha = state.dead ? 0.75 : 1;
   if (!state.dead) {
-    const nodes = computeHairNodes(assets, states, state, frame)
-    const metadata = playerHairMetadata(key)
+    const nodes = computeHairNodes(assets, states, state, frame);
+    const metadata = playerHairMetadata(key);
     for (let index = 3; index >= 0; index -= 1) {
-      const texture = index === 0 ? `characters/player/bangs0${metadata.frame}` : 'characters/player/hair00'
-      const scale = .25 + (1 - index / 4) * .75
-      const scaleX = index === 0 ? facing : scale
-      const scaleY = index === 0 ? 1 : scale
-      for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
-        drawEntry(context, assets, texture, nodes[index].x + dx, nodes[index].y + dy, 5, 5, scaleX, scaleY, '#000000')
+      const texture =
+        index === 0
+          ? `characters/player/bangs0${metadata.frame}`
+          : "characters/player/hair00";
+      const scale = 0.25 + (1 - index / 4) * 0.75;
+      const scaleX = index === 0 ? facing : scale;
+      const scaleY = index === 0 ? 1 : scale;
+      for (const [dx, dy] of [
+        [-1, 0],
+        [1, 0],
+        [0, -1],
+        [0, 1],
+      ] as const) {
+        drawEntry(
+          context,
+          assets,
+          texture,
+          nodes[index].x + dx,
+          nodes[index].y + dy,
+          5,
+          5,
+          scaleX,
+          scaleY,
+          "#000000",
+        );
       }
-      drawEntry(context, assets, texture, nodes[index].x, nodes[index].y, 5, 5, scaleX, scaleY, hairColor(state))
+      drawEntry(
+        context,
+        assets,
+        texture,
+        nodes[index].x,
+        nodes[index].y,
+        5,
+        5,
+        scaleX,
+        scaleY,
+        hairColor(state),
+      );
     }
   }
-  drawEntry(context, assets, key, state.pos.x, state.pos.y, 16, 32, facing, 1)
-  context.restore()
+  drawEntry(context, assets, key, state.pos.x, state.pos.y, 16, 32, facing, 1);
+  context.restore();
 }
 
 function buildSolidGrid(map: GymMap): string[][] {
-  const columns = Math.ceil(map.bounds.width / 8)
-  const rows = Math.ceil(map.bounds.height / 8)
-  const grid = Array.from({ length: rows }, () => Array.from({ length: columns }, () => '0'))
+  const columns = Math.ceil(map.bounds.width / 8);
+  const rows = Math.ceil(map.bounds.height / 8);
+  const grid = Array.from({ length: rows }, () =>
+    Array.from({ length: columns }, () => "0"),
+  );
   for (const solid of map.solids) {
-    const left = Math.max(0, Math.floor((solid.x - map.bounds.x) / 8))
-    const top = Math.max(0, Math.floor((solid.y - map.bounds.y) / 8))
-    const right = Math.min(columns, Math.ceil((solid.x + solid.width - map.bounds.x) / 8))
-    const bottom = Math.min(rows, Math.ceil((solid.y + solid.height - map.bounds.y) / 8))
-    for (let y = top; y < bottom; y += 1) for (let x = left; x < right; x += 1) grid[y][x] = '1'
+    const left = Math.max(0, Math.floor((solid.x - map.bounds.x) / 8));
+    const top = Math.max(0, Math.floor((solid.y - map.bounds.y) / 8));
+    const right = Math.min(
+      columns,
+      Math.ceil((solid.x + solid.width - map.bounds.x) / 8),
+    );
+    const bottom = Math.min(
+      rows,
+      Math.ceil((solid.y + solid.height - map.bounds.y) / 8),
+    );
+    for (let y = top; y < bottom; y += 1)
+      for (let x = left; x < right; x += 1) grid[y][x] = "1";
   }
-  return grid
+  return grid;
 }
 
-function tileCoordinate(grid: string[][], x: number, y: number): [number, number] {
-  const filled = (dx: number, dy: number) => grid[y + dy]?.[x + dx] !== undefined && grid[y + dy][x + dx] !== '0'
-  const top = filled(0, -1); const bottom = filled(0, 1); const left = filled(-1, 0); const right = filled(1, 0)
-  const variant = Math.abs(x * 17 + y * 31) % 4
-  if (!top && bottom && left && right) return [variant, 0]
-  if (top && !bottom && left && right) return [variant, 1]
-  if (top && bottom && !left && right) return [variant, 2]
-  if (top && bottom && left && !right) return [variant, 3]
-  if (!top && !bottom && left && right) return [variant, 4]
-  if (top && bottom && !left && !right) return [variant, 5]
-  if (!top && bottom && !left && right) return [variant, 6]
-  if (!top && bottom && left && !right) return [variant, 7]
-  if (!top && !bottom && !left && right) return [variant, 8]
-  if (!top && !bottom && left && !right) return [variant, 9]
-  if (!top && !bottom && !left && !right) return [variant, 10]
-  return [5, 12]
+function tileCoordinate(
+  grid: string[][],
+  x: number,
+  y: number,
+): [number, number] {
+  const filled = (dx: number, dy: number) =>
+    grid[y + dy]?.[x + dx] !== undefined && grid[y + dy][x + dx] !== "0";
+  const top = filled(0, -1);
+  const bottom = filled(0, 1);
+  const left = filled(-1, 0);
+  const right = filled(1, 0);
+  const variant = Math.abs(x * 17 + y * 31) % 4;
+  if (!top && bottom && left && right) return [variant, 0];
+  if (top && !bottom && left && right) return [variant, 1];
+  if (top && bottom && !left && right) return [variant, 2];
+  if (top && bottom && left && !right) return [variant, 3];
+  if (!top && !bottom && left && right) return [variant, 4];
+  if (top && bottom && !left && !right) return [variant, 5];
+  if (!top && bottom && !left && right) return [variant, 6];
+  if (!top && bottom && left && !right) return [variant, 7];
+  if (!top && !bottom && !left && right) return [variant, 8];
+  if (!top && !bottom && left && !right) return [variant, 9];
+  if (!top && !bottom && !left && !right) return [variant, 10];
+  return [5, 12];
 }
 
-function strawberryJamGymTileCoordinate(grid: string[][], x: number, y: number): [number, number] {
-  const filled = (dx: number, dy: number) => grid[y + dy]?.[x + dx] !== undefined && grid[y + dy][x + dx] !== '0'
-  const top = filled(0, -1); const bottom = filled(0, 1); const left = filled(-1, 0); const right = filled(1, 0)
-  if (!top && bottom && left && right) return [1, 2]
-  if (top && !bottom && left && right) return [1, 4]
-  if (top && bottom && !left && right) return [0, 3]
-  if (top && bottom && left && !right) return [2, 3]
-  if (!top && bottom && !left && right) return [0, 2]
-  if (!top && bottom && left && !right) return [2, 2]
-  if (top && !bottom && !left && right) return [0, 4]
-  if (top && !bottom && left && !right) return [2, 4]
-  if (!top && !bottom && left && right) return [1, 14]
-  if (top && bottom && !left && !right) return [2, 12]
-  if (!top && !bottom && !left && right) return [0, 14]
-  if (!top && !bottom && left && !right) return [2, 14]
-  if (!top && bottom && !left && !right) return [2, 11]
-  if (top && !bottom && !left && !right) return [2, 13]
-  if (!top && !bottom && !left && !right) return [1, 13]
-  return [2, 15]
+function strawberryJamGymTileCoordinate(
+  grid: string[][],
+  x: number,
+  y: number,
+): [number, number] {
+  const filled = (dx: number, dy: number) =>
+    grid[y + dy]?.[x + dx] !== undefined && grid[y + dy][x + dx] !== "0";
+  const top = filled(0, -1);
+  const bottom = filled(0, 1);
+  const left = filled(-1, 0);
+  const right = filled(1, 0);
+  if (!top && bottom && left && right) return [1, 2];
+  if (top && !bottom && left && right) return [1, 4];
+  if (top && bottom && !left && right) return [0, 3];
+  if (top && bottom && left && !right) return [2, 3];
+  if (!top && bottom && !left && right) return [0, 2];
+  if (!top && bottom && left && !right) return [2, 2];
+  if (top && !bottom && !left && right) return [0, 4];
+  if (top && !bottom && left && !right) return [2, 4];
+  if (!top && !bottom && left && right) return [1, 14];
+  if (top && bottom && !left && !right) return [2, 12];
+  if (!top && !bottom && !left && right) return [0, 14];
+  if (!top && !bottom && left && !right) return [2, 14];
+  if (!top && bottom && !left && !right) return [2, 11];
+  if (top && !bottom && !left && !right) return [2, 13];
+  if (!top && !bottom && !left && !right) return [1, 13];
+  return [2, 15];
 }
 
-function drawBackdropLayer(context: CanvasRenderingContext2D, assets: GameAssets, map: GymMap, layer: VisualThemeLayer): void {
-  const entry = assets.entries[layer.key]
-  if (!entry) return
+function drawBackdropLayer(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  map: GymMap,
+  layer: VisualThemeLayer,
+): void {
+  const entry = assets.entries[layer.key];
+  if (!entry) return;
   if (layer.repeat) {
-    context.save()
-    context.globalAlpha = layer.opacity ?? 1
-    context.beginPath()
-    context.rect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height)
-    context.clip()
-    for (let y = map.bounds.y; y < map.bounds.y + map.bounds.height; y += entry.height) {
-      for (let x = map.bounds.x; x < map.bounds.x + map.bounds.width; x += entry.width) {
-        context.drawImage(assets.image, entry.x, entry.y, entry.width, entry.height, x, y, entry.width, entry.height)
+    context.save();
+    context.globalAlpha = layer.opacity ?? 1;
+    context.beginPath();
+    context.rect(
+      map.bounds.x,
+      map.bounds.y,
+      map.bounds.width,
+      map.bounds.height,
+    );
+    context.clip();
+    for (
+      let y = map.bounds.y;
+      y < map.bounds.y + map.bounds.height;
+      y += entry.height
+    ) {
+      for (
+        let x = map.bounds.x;
+        x < map.bounds.x + map.bounds.width;
+        x += entry.width
+      ) {
+        context.drawImage(
+          assets.image,
+          entry.x,
+          entry.y,
+          entry.width,
+          entry.height,
+          x,
+          y,
+          entry.width,
+          entry.height,
+        );
       }
     }
-    context.restore()
-    return
+    context.restore();
+    return;
   }
-  const scale = Math.max(map.bounds.width / 320, map.bounds.height / 180)
-  const frameX = map.bounds.x + (map.bounds.width - entry.frameWidth * scale) / 2
-  const frameY = layer.y === undefined
-    ? map.bounds.y + map.bounds.height - entry.frameHeight * scale
-    : map.bounds.y + layer.y * scale
-  context.save()
-  context.globalAlpha = layer.opacity ?? 1
+  const scale = Math.max(map.bounds.width / 320, map.bounds.height / 180);
+  const frameX =
+    map.bounds.x + (map.bounds.width - entry.frameWidth * scale) / 2;
+  const frameY =
+    layer.y === undefined
+      ? map.bounds.y + map.bounds.height - entry.frameHeight * scale
+      : map.bounds.y + layer.y * scale;
+  context.save();
+  context.globalAlpha = layer.opacity ?? 1;
   context.drawImage(
     assets.image,
-    entry.x, entry.y, entry.width, entry.height,
+    entry.x,
+    entry.y,
+    entry.width,
+    entry.height,
     frameX + entry.drawOffsetX * scale,
     frameY + entry.drawOffsetY * scale,
     entry.width * scale,
     entry.height * scale,
-  )
-  context.restore()
+  );
+  context.restore();
 }
 
-function drawOldSiteStars(context: CanvasRenderingContext2D, assets: GameAssets, map: GymMap, frame: number): void {
+function drawOldSiteStars(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  map: GymMap,
+  frame: number,
+): void {
   const starKeys = [
-    'bgs/02/stars/a00', 'bgs/02/stars/a01', 'bgs/02/stars/a02', 'bgs/02/stars/a03',
-    'bgs/02/stars/b00', 'bgs/02/stars/b01', 'bgs/02/stars/b02', 'bgs/02/stars/b03',
-    'bgs/02/stars/c00', 'bgs/02/stars/c01', 'bgs/02/stars/c02', 'bgs/02/stars/c03',
-  ].filter((key) => assets.entries[key])
-  if (starKeys.length === 0) return
-  const count = Math.max(90, Math.round(map.bounds.width * map.bounds.height / 2_800))
+    "bgs/02/stars/a00",
+    "bgs/02/stars/a01",
+    "bgs/02/stars/a02",
+    "bgs/02/stars/a03",
+    "bgs/02/stars/b00",
+    "bgs/02/stars/b01",
+    "bgs/02/stars/b02",
+    "bgs/02/stars/b03",
+    "bgs/02/stars/c00",
+    "bgs/02/stars/c01",
+    "bgs/02/stars/c02",
+    "bgs/02/stars/c03",
+  ].filter((key) => assets.entries[key]);
+  if (starKeys.length === 0) return;
+  const count = Math.max(
+    90,
+    Math.round((map.bounds.width * map.bounds.height) / 2_800),
+  );
   for (let index = 0; index < count; index += 1) {
-    const key = starKeys[Math.floor(pseudo(index * 11.9) * starKeys.length)]
-    const x = map.bounds.x + pseudo(index * 5.71 + 2) * map.bounds.width
-    const y = map.bounds.y + pseudo(index * 8.37 + 7) * map.bounds.height
-    const size = .45 + pseudo(index * 3.11 + 5) * .75
-    context.save()
-    context.globalAlpha = .35 + (.5 + Math.sin(frame / 24 + index * 1.7) * .5) * .55
-    drawCenteredEntry(context, assets, key, x, y, false, size, size)
-    context.restore()
+    const key = starKeys[Math.floor(pseudo(index * 11.9) * starKeys.length)];
+    const x = map.bounds.x + pseudo(index * 5.71 + 2) * map.bounds.width;
+    const y = map.bounds.y + pseudo(index * 8.37 + 7) * map.bounds.height;
+    const size = 0.45 + pseudo(index * 3.11 + 5) * 0.75;
+    context.save();
+    context.globalAlpha =
+      0.35 + (0.5 + Math.sin(frame / 24 + index * 1.7) * 0.5) * 0.55;
+    drawCenteredEntry(context, assets, key, x, y, false, size, size);
+    context.restore();
   }
 }
 
-function drawThemeBackground(context: CanvasRenderingContext2D, assets: GameAssets, map: GymMap, theme: VisualTheme, frame: number): void {
-  context.fillStyle = theme.background
-  context.fillRect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height)
+function drawThemeBackground(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  map: GymMap,
+  theme: VisualTheme,
+  frame: number,
+): void {
+  context.fillStyle = theme.background;
+  context.fillRect(
+    map.bounds.x,
+    map.bounds.y,
+    map.bounds.width,
+    map.bounds.height,
+  );
   if (theme.stars) {
-    const gradient = context.createLinearGradient(map.bounds.x, map.bounds.y, map.bounds.x, map.bounds.y + map.bounds.height)
-    gradient.addColorStop(0, '#080725')
-    gradient.addColorStop(.62, '#1a1244')
-    gradient.addColorStop(1, '#3a1e51')
-    context.fillStyle = gradient
-    context.fillRect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height)
-    drawOldSiteStars(context, assets, map, frame)
+    const gradient = context.createLinearGradient(
+      map.bounds.x,
+      map.bounds.y,
+      map.bounds.x,
+      map.bounds.y + map.bounds.height,
+    );
+    gradient.addColorStop(0, "#080725");
+    gradient.addColorStop(0.62, "#1a1244");
+    gradient.addColorStop(1, "#3a1e51");
+    context.fillStyle = gradient;
+    context.fillRect(
+      map.bounds.x,
+      map.bounds.y,
+      map.bounds.width,
+      map.bounds.height,
+    );
+    drawOldSiteStars(context, assets, map, frame);
   }
-  for (const layer of theme.layers) drawBackdropLayer(context, assets, map, layer)
-  context.fillStyle = 'rgba(5, 7, 20, .13)'
-  context.fillRect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height)
+  for (const layer of theme.layers)
+    drawBackdropLayer(context, assets, map, layer);
+  context.fillStyle = "rgba(5, 7, 20, .13)";
+  context.fillRect(
+    map.bounds.x,
+    map.bounds.y,
+    map.bounds.width,
+    map.bounds.height,
+  );
 }
 
-function buildTileLayer(assets: GameAssets, map: GymMap, grid: string[][], theme: VisualTheme): HTMLCanvasElement | undefined {
-  const tilesetKey = theme.tileset
-  const tileset = assets.entries[tilesetKey]
-  if (!tileset) return undefined
-  const layer = document.createElement('canvas')
-  layer.width = Math.max(1, Math.ceil(map.bounds.width))
-  layer.height = Math.max(1, Math.ceil(map.bounds.height))
-  const context = layer.getContext('2d')
-  if (!context) return undefined
-  context.imageSmoothingEnabled = false
+function buildTileLayer(
+  assets: GameAssets,
+  map: GymMap,
+  grid: string[][],
+  theme: VisualTheme,
+): HTMLCanvasElement | undefined {
+  const tilesetKey = theme.tileset;
+  const tileset = assets.entries[tilesetKey];
+  if (!tileset) return undefined;
+  const layer = document.createElement("canvas");
+  layer.width = Math.max(1, Math.ceil(map.bounds.width));
+  layer.height = Math.max(1, Math.ceil(map.bounds.height));
+  const context = layer.getContext("2d");
+  if (!context) return undefined;
+  context.imageSmoothingEnabled = false;
   for (let y = 0; y < grid.length; y += 1) {
     for (let x = 0; x < grid[y].length; x += 1) {
-      if (grid[y][x] === '0') continue
-      const [tileX, tileY] = theme.tileLayout === 'sj-gym'
-        ? strawberryJamGymTileCoordinate(grid, x, y)
-        : tileCoordinate(grid, x, y)
-      context.drawImage(assets.image, tileset.x + tileX * 8, tileset.y + tileY * 8, 8, 8, x * 8, y * 8, 8, 8)
+      if (grid[y][x] === "0") continue;
+      const [tileX, tileY] =
+        theme.tileLayout === "sj-gym"
+          ? strawberryJamGymTileCoordinate(grid, x, y)
+          : tileCoordinate(grid, x, y);
+      context.drawImage(
+        assets.image,
+        tileset.x + tileX * 8,
+        tileset.y + tileY * 8,
+        8,
+        8,
+        x * 8,
+        y * 8,
+        8,
+        8,
+      );
     }
   }
-  return layer
+  return layer;
 }
 
-function drawSpikes(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, style: VisualTheme['spike']): void {
-  const box = entity.bounds
-  const direction = spikeDirection(entity.direction)
-  const available = spikeTexturePrefixes(style, direction)
-    .map((prefix) => frames(assets, prefix))
-    .find((candidate) => candidate.length > 0) ?? []
-  if (available.length === 0) return
-  const length = direction === 'up' || direction === 'down' ? box.width : box.height
+function drawSpikes(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  entity: MapEntity,
+  style: VisualTheme["spike"],
+): void {
+  const box = entity.bounds;
+  const direction = spikeDirection(entity.direction);
+  const available =
+    spikeTexturePrefixes(style, direction)
+      .map((prefix) => frames(assets, prefix))
+      .find((candidate) => candidate.length > 0) ?? [];
+  if (available.length === 0) return;
+  const length =
+    direction === "up" || direction === "down" ? box.width : box.height;
   for (let index = 0; index < Math.floor(length / 8); index += 1) {
-    const variant = Math.floor(pseudo(box.x * .13 + box.y * .17 + index * 7.11) * available.length)
-    const key = available[variant]
-    const entry = assets.entries[key]
-    if (!entry) continue
-    const placement = spikePlacement(box, direction, index, entry.frameWidth, entry.frameHeight)
-    drawEntry(context, assets, key, placement.x, placement.y, placement.originX, placement.originY)
+    const variant = Math.floor(
+      pseudo(box.x * 0.13 + box.y * 0.17 + index * 7.11) * available.length,
+    );
+    const key = available[variant];
+    const entry = assets.entries[key];
+    if (!entry) continue;
+    const placement = spikePlacement(
+      box,
+      direction,
+      index,
+      entry.frameWidth,
+      entry.frameHeight,
+    );
+    drawEntry(
+      context,
+      assets,
+      key,
+      placement.x,
+      placement.y,
+      placement.originX,
+      placement.originY,
+    );
   }
 }
 
 function pseudo(seed: number): number {
-  const value = Math.sin(seed * 12.9898 + 78.233) * 43758.5453
-  return value - Math.floor(value)
+  const value = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
+  return value - Math.floor(value);
 }
 
-function waterSurfaceY(box: MapEntity['bounds'], x: number, frame: number): number {
-  return box.y + 8 - (6 + Math.sin(frame / 60 + (x - box.x) * .1))
+function waterSurfaceY(
+  box: MapEntity["bounds"],
+  x: number,
+  frame: number,
+): number {
+  return box.y + 8 - (6 + Math.sin(frame / 60 + (x - box.x) * 0.1));
 }
 
-function drawWater(context: CanvasRenderingContext2D, entity: MapEntity, frame: number): void {
-  const box = entity.bounds
-  context.save()
-  context.beginPath()
-  context.rect(box.x, box.y, box.width, box.height)
-  context.clip()
-  context.beginPath()
-  context.moveTo(box.x, waterSurfaceY(box, box.x, frame))
-  for (let x = box.x + 4; x <= box.x + box.width; x += 4) context.lineTo(x, waterSurfaceY(box, x, frame))
-  context.lineTo(box.x + box.width, box.y + box.height)
-  context.lineTo(box.x, box.y + box.height)
-  context.closePath()
-  context.fillStyle = 'rgba(135, 206, 250, .30)'
-  context.fill()
+function drawWater(
+  context: CanvasRenderingContext2D,
+  entity: MapEntity,
+  frame: number,
+): void {
+  const box = entity.bounds;
+  context.save();
+  context.beginPath();
+  context.rect(box.x, box.y, box.width, box.height);
+  context.clip();
+  context.beginPath();
+  context.moveTo(box.x, waterSurfaceY(box, box.x, frame));
+  for (let x = box.x + 4; x <= box.x + box.width; x += 4)
+    context.lineTo(x, waterSurfaceY(box, x, frame));
+  context.lineTo(box.x + box.width, box.y + box.height);
+  context.lineTo(box.x, box.y + box.height);
+  context.closePath();
+  context.fillStyle = "rgba(135, 206, 250, .30)";
+  context.fill();
 
-  const rayCount = Math.floor(box.width * .2)
+  const rayCount = Math.floor(box.width * 0.2);
   for (let index = 0; index < rayCount; index += 1) {
-    const duration = 2 + pseudo(index + box.x * .01) * 6
-    const percent = (frame / 60 / duration + pseudo(index * 3.7 + box.y)) % 1
-    const alpha = percent < .1 ? percent / .1 : percent > .9 ? (1 - percent) / .1 : 1
-    const center = pseudo(index * 7.1 + box.x) * box.width
-    const width = 2 + Math.floor(pseudo(index * 11.3 + box.y) * 14)
-    const length = 8 + pseudo(index * 13.7 + box.x + box.y) * 120
-    const left = Math.max(0, center - width / 2)
-    const right = Math.min(box.width, center + width / 2)
-    const depth = Math.min(box.height, length * .7)
-    const slant = length * .3
-    context.beginPath()
-    context.moveTo(box.x + left, waterSurfaceY(box, box.x + left, frame))
-    context.lineTo(box.x + right, waterSurfaceY(box, box.x + right, frame))
-    context.lineTo(box.x + right - slant, box.y + 8 + depth)
-    context.lineTo(box.x + left - slant, box.y + 8 + depth)
-    context.closePath()
-    const topY = (waterSurfaceY(box, box.x + left, frame) + waterSurfaceY(box, box.x + right, frame)) * .5
-    const bottomY = box.y + 8 + depth
-    const ray = context.createLinearGradient(0, topY, 0, bottomY)
-    ray.addColorStop(0, `rgba(135, 206, 250, ${Math.max(0, alpha) * .6})`)
-    ray.addColorStop(1, 'rgba(135, 206, 250, 0)')
-    context.fillStyle = ray
-    context.fill()
+    const duration = 2 + pseudo(index + box.x * 0.01) * 6;
+    const percent = (frame / 60 / duration + pseudo(index * 3.7 + box.y)) % 1;
+    const alpha =
+      percent < 0.1 ? percent / 0.1 : percent > 0.9 ? (1 - percent) / 0.1 : 1;
+    const center = pseudo(index * 7.1 + box.x) * box.width;
+    const width = 2 + Math.floor(pseudo(index * 11.3 + box.y) * 14);
+    const length = 8 + pseudo(index * 13.7 + box.x + box.y) * 120;
+    const left = Math.max(0, center - width / 2);
+    const right = Math.min(box.width, center + width / 2);
+    const depth = Math.min(box.height, length * 0.7);
+    const slant = length * 0.3;
+    context.beginPath();
+    context.moveTo(box.x + left, waterSurfaceY(box, box.x + left, frame));
+    context.lineTo(box.x + right, waterSurfaceY(box, box.x + right, frame));
+    context.lineTo(box.x + right - slant, box.y + 8 + depth);
+    context.lineTo(box.x + left - slant, box.y + 8 + depth);
+    context.closePath();
+    const topY =
+      (waterSurfaceY(box, box.x + left, frame) +
+        waterSurfaceY(box, box.x + right, frame)) *
+      0.5;
+    const bottomY = box.y + 8 + depth;
+    const ray = context.createLinearGradient(0, topY, 0, bottomY);
+    ray.addColorStop(0, `rgba(135, 206, 250, ${Math.max(0, alpha) * 0.6})`);
+    ray.addColorStop(1, "rgba(135, 206, 250, 0)");
+    context.fillStyle = ray;
+    context.fill();
   }
 
-  context.beginPath()
-  context.moveTo(box.x, waterSurfaceY(box, box.x, frame) - 1)
-  for (let x = box.x + 4; x <= box.x + box.width; x += 4) context.lineTo(x, waterSurfaceY(box, x, frame) - 1)
-  context.lineTo(box.x + box.width, waterSurfaceY(box, box.x + box.width, frame))
-  for (let x = box.x + box.width; x >= box.x; x -= 4) context.lineTo(x, waterSurfaceY(box, x, frame))
-  context.closePath()
-  context.fillStyle = 'rgba(135, 206, 250, .80)'
-  context.fill()
-  context.restore()
+  context.beginPath();
+  context.moveTo(box.x, waterSurfaceY(box, box.x, frame) - 1);
+  for (let x = box.x + 4; x <= box.x + box.width; x += 4)
+    context.lineTo(x, waterSurfaceY(box, x, frame) - 1);
+  context.lineTo(
+    box.x + box.width,
+    waterSurfaceY(box, box.x + box.width, frame),
+  );
+  for (let x = box.x + box.width; x >= box.x; x -= 4)
+    context.lineTo(x, waterSurfaceY(box, x, frame));
+  context.closePath();
+  context.fillStyle = "rgba(135, 206, 250, .80)";
+  context.fill();
+  context.restore();
 }
 
-function drawWind(context: CanvasRenderingContext2D, assets: GameAssets, map: GymMap, state: SimState, frame: number): void {
-  const wind = state.wind
-  const texture = assets.entries['particles/snow']
-  if (!wind || !texture || Math.hypot(wind.x, wind.y) < 1) return
-  const horizontal = wind.y === 0
-  const scaleX = Math.max(1, Math.abs(horizontal ? wind.x : wind.y) / (horizontal ? 100 : 40))
-  const scaleY = 1 / Math.max(1, scaleX * .25)
-  const rotation = horizontal ? 0 : -Math.PI / 2
-  const areaScale = map.bounds.width * map.bounds.height / (640 * 360)
-  const count = Math.min(600, Math.ceil(240 * areaScale * (horizontal ? 1 : .6)))
-  const elapsed = frame / 60
+function drawWind(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  map: GymMap,
+  state: SimState,
+  frame: number,
+): void {
+  const wind = state.wind;
+  const texture = assets.entries["particles/snow"];
+  if (!wind || !texture || Math.hypot(wind.x, wind.y) < 1) return;
+  const horizontal = wind.y === 0;
+  const scaleX = Math.max(
+    1,
+    Math.abs(horizontal ? wind.x : wind.y) / (horizontal ? 100 : 40),
+  );
+  const scaleY = 1 / Math.max(1, scaleX * 0.25);
+  const rotation = horizontal ? 0 : -Math.PI / 2;
+  const areaScale = (map.bounds.width * map.bounds.height) / (640 * 360);
+  const count = Math.min(
+    600,
+    Math.ceil(240 * areaScale * (horizontal ? 1 : 0.6)),
+  );
+  const elapsed = frame / 60;
   for (let index = 0; index < count; index += 1) {
-    const frequency = .8 + pseudo(index * 3.17) * .4
-    const wave = Math.sin(elapsed * frequency * Math.PI * 2 + pseudo(index * 7.91) * Math.PI * 2)
-    const velocity = horizontal ? { x: wind.x + wave * 10, y: 20 } : { x: 0, y: wind.y * 3 + wave * 10 }
-    const baseX = pseudo(index * 11.73 + 2) * map.bounds.width
-    const baseY = pseudo(index * 17.37 + 5) * map.bounds.height
-    const x = map.bounds.x + ((baseX + velocity.x * elapsed) % map.bounds.width + map.bounds.width) % map.bounds.width
-    const y = map.bounds.y + ((baseY + velocity.y * elapsed) % map.bounds.height + map.bounds.height) % map.bounds.height
-    context.save()
-    context.globalAlpha = .85
-    context.translate(Math.round(x), Math.round(y))
-    context.rotate(rotation)
-    context.scale(scaleX, scaleY)
+    const frequency = 0.8 + pseudo(index * 3.17) * 0.4;
+    const wave = Math.sin(
+      elapsed * frequency * Math.PI * 2 + pseudo(index * 7.91) * Math.PI * 2,
+    );
+    const velocity = horizontal
+      ? { x: wind.x + wave * 10, y: 20 }
+      : { x: 0, y: wind.y * 3 + wave * 10 };
+    const baseX = pseudo(index * 11.73 + 2) * map.bounds.width;
+    const baseY = pseudo(index * 17.37 + 5) * map.bounds.height;
+    const x =
+      map.bounds.x +
+      ((((baseX + velocity.x * elapsed) % map.bounds.width) +
+        map.bounds.width) %
+        map.bounds.width);
+    const y =
+      map.bounds.y +
+      ((((baseY + velocity.y * elapsed) % map.bounds.height) +
+        map.bounds.height) %
+        map.bounds.height);
+    context.save();
+    context.globalAlpha = 0.85;
+    context.translate(Math.round(x), Math.round(y));
+    context.rotate(rotation);
+    context.scale(scaleX, scaleY);
     context.drawImage(
       assets.image,
-      texture.x, texture.y, texture.width, texture.height,
+      texture.x,
+      texture.y,
+      texture.width,
+      texture.height,
       -texture.frameWidth / 2 + texture.drawOffsetX,
       -texture.frameHeight / 2 + texture.drawOffsetY,
-      texture.width, texture.height,
-    )
-    context.restore()
+      texture.width,
+      texture.height,
+    );
+    context.restore();
   }
 }
 
 function lineAmplitude(seed: number, index: number): number {
-  return (Math.sin(seed + index / 16 + Math.sin(seed * 2 + index / 32) * Math.PI * 2) + 1) * 1.5
+  return (
+    (Math.sin(
+      seed + index / 16 + Math.sin(seed * 2 + index / 32) * Math.PI * 2,
+    ) +
+      1) *
+    1.5
+  );
 }
 
-function drawWobbleLine(context: CanvasRenderingContext2D, from: Vec2, to: Vec2, offset: number, frame: number, color: string, background: string): void {
-  const length = Math.hypot(to.x - from.x, to.y - from.y)
-  const along = { x: (to.x - from.x) / length, y: (to.y - from.y) / length }
-  const normal = { x: along.y, y: -along.x }
-  const cycle = frame / 30
-  const ease = cycle - Math.floor(cycle)
-  const seedA = Math.floor(cycle) * 1.873 + offset
-  const seedB = seedA + 1.873
-  let previousAmplitude = 0
+function drawWobbleLine(
+  context: CanvasRenderingContext2D,
+  from: Vec2,
+  to: Vec2,
+  offset: number,
+  frame: number,
+  color: string,
+  background: string,
+): void {
+  const length = Math.hypot(to.x - from.x, to.y - from.y);
+  const along = { x: (to.x - from.x) / length, y: (to.y - from.y) / length };
+  const normal = { x: along.y, y: -along.x };
+  const cycle = frame / 30;
+  const ease = cycle - Math.floor(cycle);
+  const seedA = Math.floor(cycle) * 1.873 + offset;
+  const seedB = seedA + 1.873;
+  let previousAmplitude = 0;
   for (let distance = 2; distance < length - 2; distance += 16) {
-    const nextDistance = Math.min(16, length - 2 - distance)
-    const nextAmplitude = distance + 16 >= length ? 0 : lineAmplitude(seedA, distance) * (1 - ease) + lineAmplitude(seedB, distance) * ease
-    const start = { x: from.x + along.x * distance + normal.x * previousAmplitude, y: from.y + along.y * distance + normal.y * previousAmplitude }
-    const end = { x: from.x + along.x * (distance + nextDistance) + normal.x * nextAmplitude, y: from.y + along.y * (distance + nextDistance) + normal.y * nextAmplitude }
-    context.strokeStyle = background
-    context.lineWidth = 3
-    context.beginPath(); context.moveTo(start.x - normal.x * 1.5, start.y - normal.y * 1.5); context.lineTo(end.x - normal.x * 1.5, end.y - normal.y * 1.5); context.stroke()
-    context.strokeStyle = color
-    context.lineWidth = 1
-    context.beginPath(); context.moveTo(start.x, start.y); context.lineTo(end.x, end.y); context.stroke()
-    previousAmplitude = nextAmplitude
+    const nextDistance = Math.min(16, length - 2 - distance);
+    const nextAmplitude =
+      distance + 16 >= length
+        ? 0
+        : lineAmplitude(seedA, distance) * (1 - ease) +
+          lineAmplitude(seedB, distance) * ease;
+    const start = {
+      x: from.x + along.x * distance + normal.x * previousAmplitude,
+      y: from.y + along.y * distance + normal.y * previousAmplitude,
+    };
+    const end = {
+      x:
+        from.x + along.x * (distance + nextDistance) + normal.x * nextAmplitude,
+      y:
+        from.y + along.y * (distance + nextDistance) + normal.y * nextAmplitude,
+    };
+    context.strokeStyle = background;
+    context.lineWidth = 3;
+    context.beginPath();
+    context.moveTo(start.x - normal.x * 1.5, start.y - normal.y * 1.5);
+    context.lineTo(end.x - normal.x * 1.5, end.y - normal.y * 1.5);
+    context.stroke();
+    context.strokeStyle = color;
+    context.lineWidth = 1;
+    context.beginPath();
+    context.moveTo(start.x, start.y);
+    context.lineTo(end.x, end.y);
+    context.stroke();
+    previousAmplitude = nextAmplitude;
   }
 }
 
-function drawDreamBlock(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, active: boolean): void {
-  const box = entity.bounds
-  const background = active ? '#000000' : '#1f2e2d'
-  const line = active ? '#ffffff' : '#6a8480'
-  context.fillStyle = background
-  context.fillRect(box.x, box.y, box.width, box.height)
-  const particle = assets.entries['objects/dreamblock/particles']
+function drawDreamBlock(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  entity: MapEntity,
+  frame: number,
+  active: boolean,
+): void {
+  const box = entity.bounds;
+  const background = active ? "#000000" : "#1f2e2d";
+  const line = active ? "#ffffff" : "#6a8480";
+  context.fillStyle = background;
+  context.fillRect(box.x, box.y, box.width, box.height);
+  const particle = assets.entries["objects/dreamblock/particles"];
   const colors = active
-    ? [['#ffef11', '#ff00d0', '#08a310'], ['#5fcde4', '#7fb25e', '#e0564c'], ['#5b6ee1', '#cc3b3b', '#7daa64']]
-    : [['#8a8a8a'], ['#aaaaaa'], ['#d0d0d0']]
-  const count = Math.floor(box.width / 8 * (box.height / 8) * .7)
+    ? [
+        ["#ffef11", "#ff00d0", "#08a310"],
+        ["#5fcde4", "#7fb25e", "#e0564c"],
+        ["#5b6ee1", "#cc3b3b", "#7daa64"],
+      ]
+    : [["#8a8a8a"], ["#aaaaaa"], ["#d0d0d0"]];
+  const count = Math.floor((box.width / 8) * (box.height / 8) * 0.7);
   if (particle) {
     for (let index = 0; index < count; index += 1) {
-      const layerRoll = pseudo(index * 5.31 + box.x)
-      const layer = layerRoll < 1 / 6 ? 0 : layerRoll < .5 ? 1 : 2
-      const px = box.x + 2 + pseudo(index * 7.17 + box.y) * Math.max(1, box.width - 4)
-      const py = box.y + 2 + pseudo(index * 9.73 + box.x + box.y) * Math.max(1, box.height - 4)
-      const timeOffset = pseudo(index * 13.11)
-      const animation = layer === 0 ? 3 - Math.floor((timeOffset * 4 + frame / 10) % 4) : layer === 1 ? 1 + Math.floor((timeOffset * 2 + frame / 10) % 2) : 2
-      const sourceX = [14, 7, 0, 7][animation]
-      const palette = colors[layer]
-      const color = palette[Math.floor(pseudo(index * 17.41) * palette.length)]
-      const tile = dreamParticleTexture(assets, sourceX, color)
-      if (tile) context.drawImage(tile, Math.round(px - 3.5), Math.round(py - 3.5))
+      const layerRoll = pseudo(index * 5.31 + box.x);
+      const layer = layerRoll < 1 / 6 ? 0 : layerRoll < 0.5 ? 1 : 2;
+      const px =
+        box.x + 2 + pseudo(index * 7.17 + box.y) * Math.max(1, box.width - 4);
+      const py =
+        box.y +
+        2 +
+        pseudo(index * 9.73 + box.x + box.y) * Math.max(1, box.height - 4);
+      const timeOffset = pseudo(index * 13.11);
+      const animation =
+        layer === 0
+          ? 3 - Math.floor((timeOffset * 4 + frame / 10) % 4)
+          : layer === 1
+            ? 1 + Math.floor((timeOffset * 2 + frame / 10) % 2)
+            : 2;
+      const sourceX = [14, 7, 0, 7][animation];
+      const palette = colors[layer];
+      const color = palette[Math.floor(pseudo(index * 17.41) * palette.length)];
+      const tile = dreamParticleTexture(assets, sourceX, color);
+      if (tile)
+        context.drawImage(tile, Math.round(px - 3.5), Math.round(py - 3.5));
     }
   }
-  drawWobbleLine(context, { x: box.x, y: box.y }, { x: box.x + box.width, y: box.y }, 0, frame, line, background)
-  drawWobbleLine(context, { x: box.x + box.width, y: box.y }, { x: box.x + box.width, y: box.y + box.height }, .7, frame, line, background)
-  drawWobbleLine(context, { x: box.x + box.width, y: box.y + box.height }, { x: box.x, y: box.y + box.height }, 1.5, frame, line, background)
-  drawWobbleLine(context, { x: box.x, y: box.y + box.height }, { x: box.x, y: box.y }, 2.5, frame, line, background)
-  context.fillStyle = line
-  for (const [x, y] of [[box.x, box.y], [box.x + box.width - 2, box.y], [box.x, box.y + box.height - 2], [box.x + box.width - 2, box.y + box.height - 2]]) context.fillRect(x, y, 2, 2)
+  drawWobbleLine(
+    context,
+    { x: box.x, y: box.y },
+    { x: box.x + box.width, y: box.y },
+    0,
+    frame,
+    line,
+    background,
+  );
+  drawWobbleLine(
+    context,
+    { x: box.x + box.width, y: box.y },
+    { x: box.x + box.width, y: box.y + box.height },
+    0.7,
+    frame,
+    line,
+    background,
+  );
+  drawWobbleLine(
+    context,
+    { x: box.x + box.width, y: box.y + box.height },
+    { x: box.x, y: box.y + box.height },
+    1.5,
+    frame,
+    line,
+    background,
+  );
+  drawWobbleLine(
+    context,
+    { x: box.x, y: box.y + box.height },
+    { x: box.x, y: box.y },
+    2.5,
+    frame,
+    line,
+    background,
+  );
+  context.fillStyle = line;
+  for (const [x, y] of [
+    [box.x, box.y],
+    [box.x + box.width - 2, box.y],
+    [box.x, box.y + box.height - 2],
+    [box.x + box.width - 2, box.y + box.height - 2],
+  ])
+    context.fillRect(x, y, 2, 2);
 }
 
-function targetMatches(target: Vec2 | undefined, x: number, y: number, tolerance = 1): boolean {
-  return Boolean(target && Math.abs(target.x - x) <= tolerance && Math.abs(target.y - y) <= tolerance)
+function targetMatches(
+  target: Vec2 | undefined,
+  x: number,
+  y: number,
+  tolerance = 1,
+): boolean {
+  return Boolean(
+    target &&
+    Math.abs(target.x - x) <= tolerance &&
+    Math.abs(target.y - y) <= tolerance,
+  );
 }
 
 function roundTiesEven(value: number): number {
-  const lower = Math.floor(value)
-  const fraction = value - lower
-  if (fraction < .5) return lower
-  if (fraction > .5) return lower + 1
-  return lower % 2 === 0 ? lower : lower + 1
+  const lower = Math.floor(value);
+  const fraction = value - lower;
+  if (fraction < 0.5) return lower;
+  if (fraction > 0.5) return lower + 1;
+  return lower % 2 === 0 ? lower : lower + 1;
 }
 
-export function runtimeEntityBounds(entity: MapEntity, state: SimState, kindIndex: number): MapEntity['bounds'] {
-  const box = entity.bounds
-  if (entity.kind === 'zip_mover') {
-    const position = state.zip_movers?.[kindIndex]?.position
-    if (position) return { ...box, x: position.x, y: position.y }
-  } else if (entity.kind === 'bounce_block') {
-    const position = state.bounce_blocks?.[kindIndex]?.position
-    if (position) return { ...box, x: position.x, y: position.y }
-  } else if (entity.kind === 'theo_crystal') {
-    const position = state.theo_crystals?.[kindIndex]?.position
-    if (position) return { ...box, x: position.x - 4, y: position.y - 10, width: 8, height: 10 }
-  } else if (entity.kind === 'glider') {
-    const position = state.gliders?.[kindIndex]?.position
-    if (position) return { ...box, x: position.x - 4, y: position.y - 10, width: 8, height: 10 }
-  } else if (entity.kind === 'cloud') {
-    const position = state.clouds?.[kindIndex]?.position
-    if (position) return { ...box, x: position.x, y: position.y }
-  } else if (entity.kind === 'move_block') {
-    const position = state.move_blocks?.[kindIndex]?.position
-    if (position) return { ...box, x: position.x, y: position.y }
-  } else if (entity.kind === 'cassette_block') {
-    const position = state.cassette_blocks?.[kindIndex]?.position
-    if (position) return { ...box, x: position.x, y: position.y }
-  } else if (entity.kind === 'crystal_static_spinner') {
-    const position = state.spinners?.[kindIndex]?.position
-    if (position) return { ...box, x: position.x - box.width / 2, y: position.y - box.height / 2 }
-  } else if (entity.kind === 'moving_solid') {
-    const time = state.moving_solid_time ?? 0
+export function runtimeEntityBounds(
+  entity: MapEntity,
+  state: SimState,
+  kindIndex: number,
+): MapEntity["bounds"] {
+  const box = entity.bounds;
+  if (entity.kind === "zip_mover") {
+    const position = state.zip_movers?.[kindIndex]?.position;
+    if (position) return { ...box, x: position.x, y: position.y };
+  } else if (entity.kind === "bounce_block") {
+    const position = state.bounce_blocks?.[kindIndex]?.position;
+    if (position) return { ...box, x: position.x, y: position.y };
+  } else if (entity.kind === "theo_crystal") {
+    const position = state.theo_crystals?.[kindIndex]?.position;
+    if (position)
+      return {
+        ...box,
+        x: position.x - 4,
+        y: position.y - 10,
+        width: 8,
+        height: 10,
+      };
+  } else if (entity.kind === "glider") {
+    const position = state.gliders?.[kindIndex]?.position;
+    if (position)
+      return {
+        ...box,
+        x: position.x - 4,
+        y: position.y - 10,
+        width: 8,
+        height: 10,
+      };
+  } else if (entity.kind === "cloud") {
+    const position = state.clouds?.[kindIndex]?.position;
+    if (position) return { ...box, x: position.x, y: position.y };
+  } else if (entity.kind === "move_block") {
+    const position = state.move_blocks?.[kindIndex]?.position;
+    if (position) return { ...box, x: position.x, y: position.y };
+  } else if (entity.kind === "cassette_block") {
+    const position = state.cassette_blocks?.[kindIndex]?.position;
+    if (position) return { ...box, x: position.x, y: position.y };
+  } else if (entity.kind === "crystal_static_spinner") {
+    const position = state.spinners?.[kindIndex]?.position;
+    if (position)
+      return {
+        ...box,
+        x: position.x - box.width / 2,
+        y: position.y - box.height / 2,
+      };
+  } else if (entity.kind === "moving_solid") {
+    const time = state.moving_solid_time ?? 0;
     return {
       ...box,
       x: box.x + roundTiesEven(entity.direction.x * time),
       y: box.y + roundTiesEven(entity.direction.y * time),
-    }
+    };
   }
-  return { ...box }
+  return { ...box };
 }
 
-export function strawberryIsPicked(state: SimState, entityIndex: number): boolean {
-  const picked = state.strawberry_picked_mask ?? 0
-  const mask = 1n << BigInt(entityIndex)
-  return ((typeof picked === 'bigint' ? picked : BigInt(picked)) & mask) !== 0n
+export function strawberryIsPicked(
+  state: SimState,
+  entityIndex: number,
+): boolean {
+  const picked = state.strawberry_picked_mask ?? 0;
+  const mask = 1n << BigInt(entityIndex);
+  return ((typeof picked === "bigint" ? picked : BigInt(picked)) & mask) !== 0n;
 }
 
 function bounceTargetActive(entity: MapEntity, state: SimState): boolean {
-  const centerX = entity.bounds.x + entity.bounds.width / 2
-  const centerY = entity.bounds.y + entity.bounds.height / 2
-  return (state.bounce_reuse_timer ?? 0) > 0 && targetMatches(state.last_bounce_target, centerX, centerY)
+  const centerX = entity.bounds.x + entity.bounds.width / 2;
+  const centerY = entity.bounds.y + entity.bounds.height / 2;
+  return (
+    (state.bounce_reuse_timer ?? 0) > 0 &&
+    targetMatches(state.last_bounce_target, centerX, centerY)
+  );
 }
 
-export function activeBoosterCenter(entity: MapEntity, state: SimState): Vec2 | undefined {
-  const center = { x: entity.bounds.x + entity.bounds.width / 2, y: entity.bounds.y + entity.bounds.height / 2 }
-  const active = (state.booster_reuse_timer ?? 0) > 0 && targetMatches(state.last_booster_target, center.x, center.y + 2)
-  return active ? { x: state.pos.x, y: state.pos.y - 7.5 } : undefined
+export function activeBoosterCenter(
+  entity: MapEntity,
+  state: SimState,
+): Vec2 | undefined {
+  const center = {
+    x: entity.bounds.x + entity.bounds.width / 2,
+    y: entity.bounds.y + entity.bounds.height / 2,
+  };
+  const active =
+    (state.booster_reuse_timer ?? 0) > 0 &&
+    targetMatches(state.last_booster_target, center.x, center.y + 2);
+  return active ? { x: state.pos.x, y: state.pos.y - 7.5 } : undefined;
 }
 
-function drawBooster(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState): void {
-  const box = entity.bounds
-  const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
-  const red = entity.kind === 'red_booster'
-  const prefix = red ? 'objects/booster/boosterRed' : 'objects/booster/booster'
-  const activeCenter = activeBoosterCenter(entity, state)
+function drawBooster(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  entity: MapEntity,
+  frame: number,
+  state: SimState,
+): void {
+  const box = entity.bounds;
+  const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const red = entity.kind === "red_booster";
+  const prefix = red ? "objects/booster/boosterRed" : "objects/booster/booster";
+  const activeCenter = activeBoosterCenter(entity, state);
   if (activeCenter) {
-    if (state.state === 'Dash' || state.state === 'RedDash') drawEntry(context, assets, 'objects/booster/outline', center.x, center.y, 16, 16)
-    const indices = state.state === 'Boost' ? [5, 6, 7, 8] : [18, 19, 20, 21, 22, 23, 24, 25]
-    const index = indices[Math.floor(frame / (state.state === 'Boost' ? 6 : 4)) % indices.length]
-    const key = `${prefix}${String(index).padStart(2, '0')}`
-    drawEntry(context, assets, key, activeCenter.x, activeCenter.y, 16, 16)
-    return
+    if (state.state === "Dash" || state.state === "RedDash")
+      drawEntry(
+        context,
+        assets,
+        "objects/booster/outline",
+        center.x,
+        center.y,
+        16,
+        16,
+      );
+    const indices =
+      state.state === "Boost" ? [5, 6, 7, 8] : [18, 19, 20, 21, 22, 23, 24, 25];
+    const index =
+      indices[
+        Math.floor(frame / (state.state === "Boost" ? 6 : 4)) % indices.length
+      ];
+    const key = `${prefix}${String(index).padStart(2, "0")}`;
+    drawEntry(context, assets, key, activeCenter.x, activeCenter.y, 16, 16);
+    return;
   }
-  const index = Math.floor(frame / 6) % 5
-  drawEntry(context, assets, `${prefix}${String(index).padStart(2, '0')}`, center.x, center.y, 16, 16)
+  const index = Math.floor(frame / 6) % 5;
+  drawEntry(
+    context,
+    assets,
+    `${prefix}${String(index).padStart(2, "0")}`,
+    center.x,
+    center.y,
+    16,
+    16,
+  );
 }
 
-function drawFlyFeather(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState): void {
-  const box = entity.bounds
-  const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
-  const consumed = (state.feather_reuse_timer ?? 0) > 0 && targetMatches(state.last_feather_target, center.x, center.y)
+function drawFlyFeather(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  entity: MapEntity,
+  frame: number,
+  state: SimState,
+): void {
+  const box = entity.bounds;
+  const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const consumed =
+    (state.feather_reuse_timer ?? 0) > 0 &&
+    targetMatches(state.last_feather_target, center.x, center.y);
   if (consumed) {
-    if (!entity.single_use) drawEntry(context, assets, 'objects/flyFeather/outline', center.x, center.y, 16, 16)
-    return
+    if (!entity.single_use)
+      drawEntry(
+        context,
+        assets,
+        "objects/flyFeather/outline",
+        center.x,
+        center.y,
+        16,
+        16,
+      );
+    return;
   }
-  const phase = Math.floor(frame / 4) % 42
-  const prefix = phase < 21 ? 'objects/flyFeather/idle' : 'objects/flyFeather/flash'
-  const index = phase % 21
-  const y = center.y + Math.sin(frame / 12 + center.x) * 2
-  drawEntry(context, assets, `${prefix}${String(index).padStart(2, '0')}`, center.x, y, 16, 16)
+  const phase = Math.floor(frame / 4) % 42;
+  const prefix =
+    phase < 21 ? "objects/flyFeather/idle" : "objects/flyFeather/flash";
+  const index = phase % 21;
+  const y = center.y + Math.sin(frame / 12 + center.x) * 2;
+  drawEntry(
+    context,
+    assets,
+    `${prefix}${String(index).padStart(2, "0")}`,
+    center.x,
+    y,
+    16,
+    16,
+  );
   if (entity.shielded) {
-    context.strokeStyle = '#ffffff'
-    context.lineWidth = 3
-    context.beginPath(); context.arc(center.x, y, 10, 0, Math.PI * 2); context.stroke()
+    context.strokeStyle = "#ffffff";
+    context.lineWidth = 3;
+    context.beginPath();
+    context.arc(center.x, y, 10, 0, Math.PI * 2);
+    context.stroke();
   }
 }
 
-function drawBumper(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState): void {
-  const box = entity.bounds
-  const center = { x: box.x + box.width / 2 + Math.sin(frame / 20) * 3, y: box.y + box.height / 2 + Math.sin(frame / 40) * 2 }
-  const cooling = (state.bumper_reuse_timer ?? 0) > 0 && targetMatches(state.last_bumper_target, box.x + box.width / 2, box.y + box.height / 2)
-  const index = cooling ? 42 : Math.floor(frame / 4) % 34
-  drawEntry(context, assets, `objects/Bumper/Idle${String(index).padStart(2, '0')}`, center.x, center.y, 32, 32)
+function drawBumper(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  entity: MapEntity,
+  frame: number,
+  state: SimState,
+): void {
+  const box = entity.bounds;
+  const center = {
+    x: box.x + box.width / 2 + Math.sin(frame / 20) * 3,
+    y: box.y + box.height / 2 + Math.sin(frame / 40) * 2,
+  };
+  const cooling =
+    (state.bumper_reuse_timer ?? 0) > 0 &&
+    targetMatches(
+      state.last_bumper_target,
+      box.x + box.width / 2,
+      box.y + box.height / 2,
+    );
+  const index = cooling ? 42 : Math.floor(frame / 4) % 34;
+  drawEntry(
+    context,
+    assets,
+    `objects/Bumper/Idle${String(index).padStart(2, "0")}`,
+    center.x,
+    center.y,
+    32,
+    32,
+  );
 }
 
-function drawBadelineBoost(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState): void {
-  const box = entity.bounds
-  const origin = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
-  const selected = targetMatches(state.badeline_boost_entity_origin, origin.x, origin.y)
-  const position = selected && state.badeline_boost_current_position ? state.badeline_boost_current_position : origin
-  if (selected && state.badeline_boost_active) return
-  const index = Math.floor(frame / 5) % 6
-  drawEntry(context, assets, `objects/badelineboost/idle${String(index).padStart(2, '0')}`, position.x, position.y, 12, 12)
+function drawBadelineBoost(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  entity: MapEntity,
+  frame: number,
+  state: SimState,
+): void {
+  const box = entity.bounds;
+  const origin = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const selected = targetMatches(
+    state.badeline_boost_entity_origin,
+    origin.x,
+    origin.y,
+  );
+  const position =
+    selected && state.badeline_boost_current_position
+      ? state.badeline_boost_current_position
+      : origin;
+  if (selected && state.badeline_boost_active) return;
+  const index = Math.floor(frame / 5) % 6;
+  drawEntry(
+    context,
+    assets,
+    `objects/badelineboost/idle${String(index).padStart(2, "0")}`,
+    position.x,
+    position.y,
+    12,
+    12,
+  );
 }
 
-function drawSpring(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity): void {
-  const box = entity.bounds
-  let position = { x: box.x + 8, y: box.y + 6 }
-  let rotation = 0
+function drawSpring(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  entity: MapEntity,
+): void {
+  const box = entity.bounds;
+  let position = { x: box.x + 8, y: box.y + 6 };
+  let rotation = 0;
   if (entity.direction.x > 0) {
-    position = { x: box.x, y: box.y + 8 }
-    rotation = Math.PI / 2
+    position = { x: box.x, y: box.y + 8 };
+    rotation = Math.PI / 2;
   } else if (entity.direction.x < 0) {
-    position = { x: box.x + 6, y: box.y + 8 }
-    rotation = -Math.PI / 2
+    position = { x: box.x + 6, y: box.y + 8 };
+    rotation = -Math.PI / 2;
   }
-  const key = 'objects/spring/00'
-  const entry = assets.entries[key]
-  if (!entry) return
-  drawOutlinedEntry(context, assets, key, position.x, position.y, entry.frameWidth / 2, entry.frameHeight, 1, 1, rotation)
+  const key = "objects/spring/00";
+  const entry = assets.entries[key];
+  if (!entry) return;
+  drawOutlinedEntry(
+    context,
+    assets,
+    key,
+    position.x,
+    position.y,
+    entry.frameWidth / 2,
+    entry.frameHeight,
+    1,
+    1,
+    rotation,
+  );
 }
 
-function drawStrawberry(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number): void {
-  const box = entity.bounds
-  const centerX = box.x + box.width / 2
-  const centerY = box.y + box.height / 2 + Math.sin(frame / 24 + centerX * .05) * 2
-  const index = Math.floor(frame / 6) % 7
-  drawCenteredEntry(context, assets, `collectables/strawberry/normal${String(index).padStart(2, '0')}`, centerX, centerY)
+function drawStrawberry(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  entity: MapEntity,
+  frame: number,
+): void {
+  const box = entity.bounds;
+  const centerX = box.x + box.width / 2;
+  const centerY =
+    box.y + box.height / 2 + Math.sin(frame / 24 + centerX * 0.05) * 2;
+  const index = Math.floor(frame / 6) % 7;
+  drawCenteredEntry(
+    context,
+    assets,
+    `collectables/strawberry/normal${String(index).padStart(2, "0")}`,
+    centerX,
+    centerY,
+  );
 }
 
-function drawIceBall(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState): void {
-  const box = entity.bounds
-  const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
-  const broken = (state.bounce_reuse_timer ?? 0) > 0 && targetMatches(state.last_bounce_target, center.x, center.y)
-  if (broken) return
-  const sequence = [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
-  const index = sequence[Math.floor(frame / 5) % sequence.length]
-  drawCenteredEntry(context, assets, `objects/fireball/fireball${String(index).padStart(2, '0')}`, center.x, center.y, true)
+function drawIceBall(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  entity: MapEntity,
+  frame: number,
+  state: SimState,
+): void {
+  const box = entity.bounds;
+  const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const broken =
+    (state.bounce_reuse_timer ?? 0) > 0 &&
+    targetMatches(state.last_bounce_target, center.x, center.y);
+  if (broken) return;
+  const sequence = [
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
+  ];
+  const index = sequence[Math.floor(frame / 5) % sequence.length];
+  drawCenteredEntry(
+    context,
+    assets,
+    `objects/fireball/fireball${String(index).padStart(2, "0")}`,
+    center.x,
+    center.y,
+    true,
+  );
 }
 
-function drawPuffer(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState): void {
-  const center = { x: entity.bounds.x + entity.bounds.width / 2, y: entity.bounds.y + entity.bounds.height / 2 }
-  const active = bounceTargetActive(entity, state)
-  const timer = state.bounce_reuse_timer ?? 0
-  let prefix = 'objects/puffer/idle'
-  let index = Math.floor(frame / 5) % 12
+function drawPuffer(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  entity: MapEntity,
+  frame: number,
+  state: SimState,
+): void {
+  const center = {
+    x: entity.bounds.x + entity.bounds.width / 2,
+    y: entity.bounds.y + entity.bounds.height / 2,
+  };
+  const active = bounceTargetActive(entity, state);
+  const timer = state.bounce_reuse_timer ?? 0;
+  let prefix = "objects/puffer/idle";
+  let index = Math.floor(frame / 5) % 12;
   if (active && timer > 1.7) {
-    prefix = 'objects/puffer/explode'
-    index = Math.min(9, Math.max(0, Math.floor((2.5 - timer) / .08)))
+    prefix = "objects/puffer/explode";
+    index = Math.min(9, Math.max(0, Math.floor((2.5 - timer) / 0.08)));
   } else if (active) {
-    prefix = 'objects/puffer/hidden'
-    index = Math.floor(frame / 5) % 4
+    prefix = "objects/puffer/hidden";
+    index = Math.floor(frame / 5) % 4;
   }
-  drawCenteredEntry(context, assets, `${prefix}${String(index).padStart(2, '0')}`, center.x, center.y, true)
+  drawCenteredEntry(
+    context,
+    assets,
+    `${prefix}${String(index).padStart(2, "0")}`,
+    center.x,
+    center.y,
+    true,
+  );
 }
 
-function drawAngryOshiro(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState): void {
-  const center = { x: entity.bounds.x + entity.bounds.width / 2, y: entity.bounds.y + entity.bounds.height / 2 }
-  const hit = bounceTargetActive(entity, state)
-  const sequence = hit ? [68, 69, 70, 71, 72] : [34, 35, 36, 37]
-  const index = sequence[Math.floor(frame / (hit ? 2 : 4)) % sequence.length]
-  drawCenteredEntry(context, assets, `characters/oshiro/boss${String(index).padStart(2, '0')}`, center.x, center.y, true, -1)
+function drawAngryOshiro(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  entity: MapEntity,
+  frame: number,
+  state: SimState,
+): void {
+  const center = {
+    x: entity.bounds.x + entity.bounds.width / 2,
+    y: entity.bounds.y + entity.bounds.height / 2,
+  };
+  const hit = bounceTargetActive(entity, state);
+  const sequence = hit ? [68, 69, 70, 71, 72] : [34, 35, 36, 37];
+  const index = sequence[Math.floor(frame / (hit ? 2 : 4)) % sequence.length];
+  drawCenteredEntry(
+    context,
+    assets,
+    `characters/oshiro/boss${String(index).padStart(2, "0")}`,
+    center.x,
+    center.y,
+    true,
+    -1,
+  );
 }
 
-function drawSeeker(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState): void {
-  const center = { x: entity.bounds.x + entity.bounds.width / 2, y: entity.bounds.y + entity.bounds.height / 2 }
-  const hit = bounceTargetActive(entity, state)
-  const sequence = hit ? [134, 135, 136, 137, 138, 139, 140, 141, 142, 143] : Array.from({ length: 20 }, (_, index) => index)
-  const index = sequence[Math.floor(frame / (hit ? 4 : 5)) % sequence.length]
-  drawCenteredEntry(context, assets, `characters/monsters/predator${String(index).padStart(2, '0')}`, center.x, center.y, true)
+function drawSeeker(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  entity: MapEntity,
+  frame: number,
+  state: SimState,
+): void {
+  const center = {
+    x: entity.bounds.x + entity.bounds.width / 2,
+    y: entity.bounds.y + entity.bounds.height / 2,
+  };
+  const hit = bounceTargetActive(entity, state);
+  const sequence = hit
+    ? [134, 135, 136, 137, 138, 139, 140, 141, 142, 143]
+    : Array.from({ length: 20 }, (_, index) => index);
+  const index = sequence[Math.floor(frame / (hit ? 4 : 5)) % sequence.length];
+  drawCenteredEntry(
+    context,
+    assets,
+    `characters/monsters/predator${String(index).padStart(2, "0")}`,
+    center.x,
+    center.y,
+    true,
+  );
 }
 
-function drawSnowball(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState): void {
-  const center = { x: entity.bounds.x + entity.bounds.width / 2, y: entity.bounds.y + entity.bounds.height / 2 }
-  const hit = bounceTargetActive(entity, state)
-  const index = hit ? 12 + Math.min(4, Math.floor(frame / 2) % 5) : Math.floor(frame / 5) % 12
-  drawCenteredEntry(context, assets, `danger/snowball${String(index).padStart(2, '0')}`, center.x, center.y, true)
+function drawSnowball(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  entity: MapEntity,
+  frame: number,
+  state: SimState,
+): void {
+  const center = {
+    x: entity.bounds.x + entity.bounds.width / 2,
+    y: entity.bounds.y + entity.bounds.height / 2,
+  };
+  const hit = bounceTargetActive(entity, state);
+  const index = hit
+    ? 12 + Math.min(4, Math.floor(frame / 2) % 5)
+    : Math.floor(frame / 5) % 12;
+  drawCenteredEntry(
+    context,
+    assets,
+    `danger/snowball${String(index).padStart(2, "0")}`,
+    center.x,
+    center.y,
+    true,
+  );
 }
 
-function drawCloud(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, state: SimState, kindIndex: number): void {
-  const box = runtimeEntityBounds(entity, state, kindIndex)
-  drawCenteredEntry(context, assets, 'objects/clouds/cloud00', box.x + box.width / 2, box.y + 2, true)
+function drawCloud(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  entity: MapEntity,
+  state: SimState,
+  kindIndex: number,
+): void {
+  const box = runtimeEntityBounds(entity, state, kindIndex);
+  drawCenteredEntry(
+    context,
+    assets,
+    "objects/clouds/cloud00",
+    box.x + box.width / 2,
+    box.y + 2,
+    true,
+  );
 }
 
-function drawHeartGem(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState, kindIndex: number): void {
-  if (state.heart_gems?.[kindIndex]?.collected) return
-  const center = { x: entity.bounds.x + entity.bounds.width / 2, y: entity.bounds.y + entity.bounds.height / 2 }
-  drawCenteredEntry(context, assets, 'collectables/heartGem/orb', center.x, center.y + Math.sin(frame / 18) * 2, true)
+function drawHeartGem(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  entity: MapEntity,
+  frame: number,
+  state: SimState,
+  kindIndex: number,
+): void {
+  if (state.heart_gems?.[kindIndex]?.collected) return;
+  const center = {
+    x: entity.bounds.x + entity.bounds.width / 2,
+    y: entity.bounds.y + entity.bounds.height / 2,
+  };
+  drawCenteredEntry(
+    context,
+    assets,
+    "collectables/heartGem/orb",
+    center.x,
+    center.y + Math.sin(frame / 18) * 2,
+    true,
+  );
 }
 
-function drawCassetteBlock(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, state: SimState, kindIndex: number): void {
-  const runtime = state.cassette_blocks?.[kindIndex]
-  if (runtime && !runtime.collidable && !runtime.activated) return
-  const box = runtimeEntityBounds(entity, state, kindIndex)
-  const index = runtime?.index ?? Math.max(0, Math.min(3, Math.round(entity.direction.x)))
-  const key = runtime?.activated ? `objects/cassetteblock/pressed${String(index).padStart(2, '0')}` : 'objects/cassetteblock/solid'
-  const source = assets.entries[key]
-  if (!source) return
+function drawCassetteBlock(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  entity: MapEntity,
+  state: SimState,
+  kindIndex: number,
+): void {
+  const runtime = state.cassette_blocks?.[kindIndex];
+  if (runtime && !runtime.collidable && !runtime.activated) return;
+  const box = runtimeEntityBounds(entity, state, kindIndex);
+  const index =
+    runtime?.index ?? Math.max(0, Math.min(3, Math.round(entity.direction.x)));
+  const key = runtime?.activated
+    ? `objects/cassetteblock/pressed${String(index).padStart(2, "0")}`
+    : "objects/cassetteblock/solid";
+  const source = assets.entries[key];
+  if (!source) return;
   for (let y = box.y; y < box.y + box.height; y += source.frameHeight) {
     for (let x = box.x; x < box.x + box.width; x += source.frameWidth) {
-      const width = Math.min(source.frameWidth, box.x + box.width - x)
-      const height = Math.min(source.frameHeight, box.y + box.height - y)
-      context.drawImage(assets.image, source.x, source.y, width, height, x, y, width, height)
+      const width = Math.min(source.frameWidth, box.x + box.width - x);
+      const height = Math.min(source.frameHeight, box.y + box.height - y);
+      context.drawImage(
+        assets.image,
+        source.x,
+        source.y,
+        width,
+        height,
+        x,
+        y,
+        width,
+        height,
+      );
     }
   }
 }
 
 function pointInSolid(map: GymMap, x: number, y: number): boolean {
-  return map.solids.some((solid) => x >= solid.x && y >= solid.y && x < solid.x + solid.width && y < solid.y + solid.height)
+  return map.solids.some(
+    (solid) =>
+      x >= solid.x &&
+      y >= solid.y &&
+      x < solid.x + solid.width &&
+      y < solid.y + solid.height,
+  );
 }
 
 function drawSpinnerSlice(
@@ -902,9 +1730,19 @@ function drawSpinnerSlice(
   originY: number,
   tint?: string,
 ): void {
-  const original = framedEntry(assets, key, tint)
-  if (!original) return
-  context.drawImage(original, sourceX, sourceY, 14, 14, Math.round(position.x) - originX, Math.round(position.y) - originY, 14, 14)
+  const original = framedEntry(assets, key, tint);
+  if (!original) return;
+  context.drawImage(
+    original,
+    sourceX,
+    sourceY,
+    14,
+    14,
+    Math.round(position.x) - originX,
+    Math.round(position.y) - originY,
+    14,
+    14,
+  );
 }
 
 function drawOutlinedSpinnerSlice(
@@ -918,82 +1756,203 @@ function drawOutlinedSpinnerSlice(
   originY: number,
   tint?: string,
 ): void {
-  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
-    drawSpinnerSlice(context, assets, key, { x: position.x + dx, y: position.y + dy }, sourceX, sourceY, originX, originY, '#000000')
+  for (const [dx, dy] of [
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1],
+  ] as const) {
+    drawSpinnerSlice(
+      context,
+      assets,
+      key,
+      { x: position.x + dx, y: position.y + dy },
+      sourceX,
+      sourceY,
+      originX,
+      originY,
+      "#000000",
+    );
   }
-  drawSpinnerSlice(context, assets, key, position, sourceX, sourceY, originX, originY, tint)
+  drawSpinnerSlice(
+    context,
+    assets,
+    key,
+    position,
+    sourceX,
+    sourceY,
+    originX,
+    originY,
+    tint,
+  );
 }
 
-function drawSpinnerConnections(context: CanvasRenderingContext2D, assets: GameAssets, map: GymMap, frame: number, state: SimState, theme: VisualTheme): void {
-  const records: { entity: MapEntity; position: Vec2; style: VisualTheme['spinner'] }[] = []
-  let spinnerIndex = 0
+function drawSpinnerConnections(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  map: GymMap,
+  frame: number,
+  state: SimState,
+  theme: VisualTheme,
+): void {
+  const records: {
+    entity: MapEntity;
+    position: Vec2;
+    style: VisualTheme["spinner"];
+  }[] = [];
+  let spinnerIndex = 0;
   for (const entity of map.entities) {
-    if (entity.kind !== 'crystal_static_spinner') continue
-    const runtime = state.spinners?.[spinnerIndex]
-    spinnerIndex += 1
-    if (runtime && !runtime.visible) continue
+    if (entity.kind !== "crystal_static_spinner") continue;
+    const runtime = state.spinners?.[spinnerIndex];
+    spinnerIndex += 1;
+    if (runtime && !runtime.visible) continue;
     records.push({
       entity,
       position: runtime?.position ?? spinnerCenter(entity),
       style: resolveSpinnerStyle(theme, entity.variant),
-    })
+    });
   }
   for (let left = 0; left < records.length; left += 1) {
     for (let right = left + 1; right < records.length; right += 1) {
-      const a = records[left]
-      const b = records[right]
-      if (a.style.background !== b.style.background || !spinnersConnect(a.entity, b.entity)) continue
-      const available = frames(assets, a.style.background)
-      if (available.length === 0) continue
-      const midpoint = { x: (a.position.x + b.position.x) * .5, y: (a.position.y + b.position.y) * .5 }
-      const seed = pseudo(midpoint.x * .23 + midpoint.y * .37)
-      const key = available[Math.floor(seed * available.length) % available.length]
-      const entry = assets.entries[key]
-      if (!entry) continue
-      const tint = a.style.rainbow ? spinnerHue(midpoint, frame) : undefined
-      drawOutlinedTintedEntry(context, assets, key, midpoint.x, midpoint.y, entry.frameWidth * .5, entry.frameHeight * .5, tint, Math.floor(seed * 4) * Math.PI * .5)
+      const a = records[left];
+      const b = records[right];
+      if (
+        a.style.background !== b.style.background ||
+        !spinnersConnect(a.entity, b.entity)
+      )
+        continue;
+      const available = frames(assets, a.style.background);
+      if (available.length === 0) continue;
+      const midpoint = {
+        x: (a.position.x + b.position.x) * 0.5,
+        y: (a.position.y + b.position.y) * 0.5,
+      };
+      const seed = pseudo(midpoint.x * 0.23 + midpoint.y * 0.37);
+      const key =
+        available[Math.floor(seed * available.length) % available.length];
+      const entry = assets.entries[key];
+      if (!entry) continue;
+      const tint = a.style.rainbow ? spinnerHue(midpoint, frame) : undefined;
+      drawOutlinedTintedEntry(
+        context,
+        assets,
+        key,
+        midpoint.x,
+        midpoint.y,
+        entry.frameWidth * 0.5,
+        entry.frameHeight * 0.5,
+        tint,
+        Math.floor(seed * 4) * Math.PI * 0.5,
+      );
     }
   }
 }
 
-function drawCrystalSpinner(context: CanvasRenderingContext2D, assets: GameAssets, map: GymMap, entity: MapEntity, frame: number, state: SimState, kindIndex: number, theme: VisualTheme): void {
-  const runtime = state.spinners?.[kindIndex]
-  if (runtime && !runtime.visible) return
-  const position = runtime?.position ?? spinnerCenter(entity)
-  const style = resolveSpinnerStyle(theme, entity.variant)
-  const available = frames(assets, style.foreground)
-  if (available.length === 0) return
+function drawCrystalSpinner(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  map: GymMap,
+  entity: MapEntity,
+  frame: number,
+  state: SimState,
+  kindIndex: number,
+  theme: VisualTheme,
+): void {
+  const runtime = state.spinners?.[kindIndex];
+  if (runtime && !runtime.visible) return;
+  const position = runtime?.position ?? spinnerCenter(entity);
+  const style = resolveSpinnerStyle(theme, entity.variant);
+  const available = frames(assets, style.foreground);
+  if (available.length === 0) return;
   // CrystalStaticSpinner chooses one foreground sheet when its sprites are
   // instantiated. It is static; the four files are variants, not animation.
-  const seed = pseudo(position.x * .17 + position.y * .31 + kindIndex * 7.13)
-  const key = available[Math.floor(seed * available.length) % available.length]
-  const tint = style.rainbow ? spinnerHue(position, frame) : undefined
+  const seed = pseudo(position.x * 0.17 + position.y * 0.31 + kindIndex * 7.13);
+  const key = available[Math.floor(seed * available.length) % available.length];
+  const tint = style.rainbow ? spinnerHue(position, frame) : undefined;
   const slices = [
-    { checkX: -4, checkY: -4, sourceX: 0, sourceY: 0, originX: 12, originY: 12 },
+    {
+      checkX: -4,
+      checkY: -4,
+      sourceX: 0,
+      sourceY: 0,
+      originX: 12,
+      originY: 12,
+    },
     { checkX: 4, checkY: -4, sourceX: 10, sourceY: 0, originX: 2, originY: 12 },
     { checkX: 4, checkY: 4, sourceX: 10, sourceY: 10, originX: 2, originY: 2 },
     { checkX: -4, checkY: 4, sourceX: 0, sourceY: 10, originX: 12, originY: 2 },
-  ]
+  ];
   for (const slice of slices) {
-    if (pointInSolid(map, position.x + slice.checkX, position.y + slice.checkY)) continue
-    drawOutlinedSpinnerSlice(context, assets, key, position, slice.sourceX, slice.sourceY, slice.originX, slice.originY, tint)
+    if (pointInSolid(map, position.x + slice.checkX, position.y + slice.checkY))
+      continue;
+    drawOutlinedSpinnerSlice(
+      context,
+      assets,
+      key,
+      position,
+      slice.sourceX,
+      slice.sourceY,
+      slice.originX,
+      slice.originY,
+      tint,
+    );
   }
 }
 
-function drawTheoCrystal(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, state: SimState, kindIndex: number): void {
-  const runtime = state.theo_crystals?.[kindIndex]
-  const position = runtime?.position ?? { x: entity.bounds.x + 4, y: entity.bounds.y + 10 }
-  drawOutlinedEntry(context, assets, 'characters/theoCrystal/idle00', position.x, position.y, 32, 42, -1)
+function drawTheoCrystal(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  entity: MapEntity,
+  state: SimState,
+  kindIndex: number,
+): void {
+  const runtime = state.theo_crystals?.[kindIndex];
+  const position = runtime?.position ?? {
+    x: entity.bounds.x + 4,
+    y: entity.bounds.y + 10,
+  };
+  drawOutlinedEntry(
+    context,
+    assets,
+    "characters/theoCrystal/idle00",
+    position.x,
+    position.y,
+    32,
+    42,
+    -1,
+  );
 }
 
-function drawGlider(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState, kindIndex: number): void {
-  const runtime = state.gliders?.[kindIndex]
-  const position = runtime?.position ?? { x: entity.bounds.x + 4, y: entity.bounds.y + 10 }
-  const prefix = runtime?.held ? 'objects/glider/held' : Math.abs(runtime?.speed.y ?? 0) > 20 ? 'objects/glider/fallLoop' : 'objects/glider/idle'
-  const available = frames(assets, prefix)
-  const key = available[Math.floor(frame / 5) % Math.max(1, available.length)]
-  const scaleX = (runtime?.speed.x ?? 0) < 0 ? -1 : 1
-  drawCenteredEntry(context, assets, key, position.x, position.y - 5, true, scaleX)
+function drawGlider(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  entity: MapEntity,
+  frame: number,
+  state: SimState,
+  kindIndex: number,
+): void {
+  const runtime = state.gliders?.[kindIndex];
+  const position = runtime?.position ?? {
+    x: entity.bounds.x + 4,
+    y: entity.bounds.y + 10,
+  };
+  const prefix = runtime?.held
+    ? "objects/glider/held"
+    : Math.abs(runtime?.speed.y ?? 0) > 20
+      ? "objects/glider/fallLoop"
+      : "objects/glider/idle";
+  const available = frames(assets, prefix);
+  const key = available[Math.floor(frame / 5) % Math.max(1, available.length)];
+  const scaleX = (runtime?.speed.x ?? 0) < 0 ? -1 : 1;
+  drawCenteredEntry(
+    context,
+    assets,
+    key,
+    position.x,
+    position.y - 5,
+    true,
+    scaleX,
+  );
 }
 
 function drawAtlasTile(
@@ -1007,259 +1966,517 @@ function drawAtlasTile(
   x: number,
   y: number,
 ): void {
-  const entry = assets.entries[key]
-  if (!entry || width <= 0 || height <= 0) return
-  context.drawImage(assets.image, entry.x + sourceX, entry.y + sourceY, width, height, x, y, width, height)
+  const entry = assets.entries[key];
+  if (!entry || width <= 0 || height <= 0) return;
+  context.drawImage(
+    assets.image,
+    entry.x + sourceX,
+    entry.y + sourceY,
+    width,
+    height,
+    x,
+    y,
+    width,
+    height,
+  );
 }
 
-function drawZipMover(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState, kindIndex: number): void {
-  const runtime = state.zip_movers?.[kindIndex]
-  const box = runtimeEntityBounds(entity, state, kindIndex)
-  const start = runtime?.start ?? { x: entity.bounds.x, y: entity.bounds.y }
-  const target = entity.nodes?.[0] ?? start
-  const from = { x: start.x + box.width / 2, y: start.y + box.height / 2 }
-  const to = { x: target.x + box.width / 2, y: target.y + box.height / 2 }
-  const dx = to.x - from.x
-  const dy = to.y - from.y
-  const length = Math.hypot(dx, dy)
+function drawZipMover(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  entity: MapEntity,
+  frame: number,
+  state: SimState,
+  kindIndex: number,
+): void {
+  const runtime = state.zip_movers?.[kindIndex];
+  const box = runtimeEntityBounds(entity, state, kindIndex);
+  const start = runtime?.start ?? { x: entity.bounds.x, y: entity.bounds.y };
+  const target = entity.nodes?.[0] ?? start;
+  const from = { x: start.x + box.width / 2, y: start.y + box.height / 2 };
+  const to = { x: target.x + box.width / 2, y: target.y + box.height / 2 };
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = Math.hypot(dx, dy);
   if (length > 0) {
-    const normal = { x: -dy / length, y: dx / length }
-    for (const [offsetY, color] of [[1, '#000000'], [0, '#663931']] as const) {
-      context.strokeStyle = color
-      context.lineWidth = 1
-      context.beginPath()
-      context.moveTo(from.x + normal.x * 3, from.y + normal.y * 3 + offsetY)
-      context.lineTo(to.x + normal.x * 3, to.y + normal.y * 3 + offsetY)
-      context.moveTo(from.x - normal.x * 4, from.y - normal.y * 4 + offsetY)
-      context.lineTo(to.x - normal.x * 4, to.y - normal.y * 4 + offsetY)
-      context.stroke()
+    const normal = { x: -dy / length, y: dx / length };
+    for (const [offsetY, color] of [
+      [1, "#000000"],
+      [0, "#663931"],
+    ] as const) {
+      context.strokeStyle = color;
+      context.lineWidth = 1;
+      context.beginPath();
+      context.moveTo(from.x + normal.x * 3, from.y + normal.y * 3 + offsetY);
+      context.lineTo(to.x + normal.x * 3, to.y + normal.y * 3 + offsetY);
+      context.moveTo(from.x - normal.x * 4, from.y - normal.y * 4 + offsetY);
+      context.lineTo(to.x - normal.x * 4, to.y - normal.y * 4 + offsetY);
+      context.stroke();
     }
-    drawCenteredEntry(context, assets, 'objects/zipmover/cog', from.x, from.y, true)
-    drawCenteredEntry(context, assets, 'objects/zipmover/cog', to.x, to.y, true)
+    drawCenteredEntry(
+      context,
+      assets,
+      "objects/zipmover/cog",
+      from.x,
+      from.y,
+      true,
+    );
+    drawCenteredEntry(
+      context,
+      assets,
+      "objects/zipmover/cog",
+      to.x,
+      to.y,
+      true,
+    );
   }
 
-  context.fillStyle = '#000000'
-  context.fillRect(box.x + 1, box.y + 1, Math.max(0, box.width - 2), Math.max(0, box.height - 2))
-  const cogFrames = frames(assets, 'objects/zipmover/innercog')
+  context.fillStyle = "#000000";
+  context.fillRect(
+    box.x + 1,
+    box.y + 1,
+    Math.max(0, box.width - 2),
+    Math.max(0, box.height - 2),
+  );
+  const cogFrames = frames(assets, "objects/zipmover/innercog");
   for (let y = 4; y <= box.height - 4; y += 8) {
     for (let x = 4; x <= box.width - 4; x += 8) {
-      const key = cogFrames[(Math.floor(frame / 4) + Math.floor(x / 8) + Math.floor(y / 8)) % Math.max(1, cogFrames.length)]
-      drawCenteredEntry(context, assets, key, box.x + x, box.y + y)
+      const key =
+        cogFrames[
+          (Math.floor(frame / 4) + Math.floor(x / 8) + Math.floor(y / 8)) %
+            Math.max(1, cogFrames.length)
+        ];
+      drawCenteredEntry(context, assets, key, box.x + x, box.y + y);
     }
   }
   for (let y = 0; y < box.height; y += 8) {
     for (let x = 0; x < box.width; x += 8) {
-      if (x > 0 && x + 8 < box.width && y > 0 && y + 8 < box.height) continue
-      const width = Math.min(8, box.width - x)
-      const height = Math.min(8, box.height - y)
-      const sourceX = x === 0 ? 0 : x + 8 >= box.width ? 16 : 8
-      const sourceY = y === 0 ? 0 : y + 8 >= box.height ? 16 : 8
-      drawAtlasTile(context, assets, 'objects/zipmover/block', sourceX, sourceY, width, height, box.x + x, box.y + y)
+      if (x > 0 && x + 8 < box.width && y > 0 && y + 8 < box.height) continue;
+      const width = Math.min(8, box.width - x);
+      const height = Math.min(8, box.height - y);
+      const sourceX = x === 0 ? 0 : x + 8 >= box.width ? 16 : 8;
+      const sourceY = y === 0 ? 0 : y + 8 >= box.height ? 16 : 8;
+      drawAtlasTile(
+        context,
+        assets,
+        "objects/zipmover/block",
+        sourceX,
+        sourceY,
+        width,
+        height,
+        box.x + x,
+        box.y + y,
+      );
     }
   }
-  const lightIndex = runtime?.phase === 0 ? 1 : Math.floor(frame / 4) % 4
-  const lightKey = `objects/zipmover/light${String(lightIndex).padStart(2, '0')}`
-  const light = assets.entries[lightKey]
-  if (light) drawEntry(context, assets, lightKey, box.x + box.width / 2, box.y, light.frameWidth / 2, 0)
+  const lightIndex = runtime?.phase === 0 ? 1 : Math.floor(frame / 4) % 4;
+  const lightKey = `objects/zipmover/light${String(lightIndex).padStart(2, "0")}`;
+  const light = assets.entries[lightKey];
+  if (light)
+    drawEntry(
+      context,
+      assets,
+      lightKey,
+      box.x + box.width / 2,
+      box.y,
+      light.frameWidth / 2,
+      0,
+    );
 }
 
-function drawBounceBlock(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, frame: number, state: SimState, kindIndex: number): void {
-  const runtime = state.bounce_blocks?.[kindIndex]
-  if (runtime?.phase === 4) return
-  const box = runtimeEntityBounds(entity, state, kindIndex)
-  const source = assets.entries['objects/BumpBlockNew/fire00']
+function drawBounceBlock(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  entity: MapEntity,
+  frame: number,
+  state: SimState,
+  kindIndex: number,
+): void {
+  const runtime = state.bounce_blocks?.[kindIndex];
+  if (runtime?.phase === 4) return;
+  const box = runtimeEntityBounds(entity, state, kindIndex);
+  const source = assets.entries["objects/BumpBlockNew/fire00"];
   if (source) {
-    const columns = Math.max(1, Math.floor(source.width / 8))
-    const rows = Math.max(1, Math.floor(source.height / 8))
+    const columns = Math.max(1, Math.floor(source.width / 8));
+    const rows = Math.max(1, Math.floor(source.height / 8));
     for (let y = 0; y < box.height; y += 8) {
       for (let x = 0; x < box.width; x += 8) {
-        const width = Math.min(8, box.width - x)
-        const height = Math.min(8, box.height - y)
-        const column = x === 0 ? 0 : x + 8 >= box.width ? columns - 1 : 1 + Math.abs(Math.floor(x / 8 + y / 8)) % Math.max(1, columns - 2)
-        const row = y === 0 ? 0 : y + 8 >= box.height ? rows - 1 : 1 + Math.abs(Math.floor(x / 8 * 3 + y / 8)) % Math.max(1, rows - 2)
-        drawAtlasTile(context, assets, 'objects/BumpBlockNew/fire00', column * 8, row * 8, width, height, box.x + x, box.y + y)
+        const width = Math.min(8, box.width - x);
+        const height = Math.min(8, box.height - y);
+        const column =
+          x === 0
+            ? 0
+            : x + 8 >= box.width
+              ? columns - 1
+              : 1 +
+                (Math.abs(Math.floor(x / 8 + y / 8)) %
+                  Math.max(1, columns - 2));
+        const row =
+          y === 0
+            ? 0
+            : y + 8 >= box.height
+              ? rows - 1
+              : 1 +
+                (Math.abs(Math.floor((x / 8) * 3 + y / 8)) %
+                  Math.max(1, rows - 2));
+        drawAtlasTile(
+          context,
+          assets,
+          "objects/BumpBlockNew/fire00",
+          column * 8,
+          row * 8,
+          width,
+          height,
+          box.x + x,
+          box.y + y,
+        );
       }
     }
   }
-  const centerFrames = frames(assets, 'objects/BumpBlockNew/fire_center')
-  const key = centerFrames[Math.floor(frame / 5) % Math.max(1, centerFrames.length)]
-  drawCenteredEntry(context, assets, key, box.x + box.width / 2, box.y + box.height / 2, true)
+  const centerFrames = frames(assets, "objects/BumpBlockNew/fire_center");
+  const key =
+    centerFrames[Math.floor(frame / 5) % Math.max(1, centerFrames.length)];
+  drawCenteredEntry(
+    context,
+    assets,
+    key,
+    box.x + box.width / 2,
+    box.y + box.height / 2,
+    true,
+  );
 }
 
-function drawMoveBlock(context: CanvasRenderingContext2D, assets: GameAssets, entity: MapEntity, state: SimState, kindIndex: number): void {
-  const runtime = state.move_blocks?.[kindIndex]
-  if (runtime && !runtime.visible) return
-  const box = runtimeEntityBounds(entity, state, kindIndex)
-  const baseKey = entity.direction.x !== 0 ? 'objects/moveBlock/base_h' : entity.direction.y !== 0 ? 'objects/moveBlock/base_v' : 'objects/moveBlock/base'
-  const source = assets.entries[baseKey]
+function drawMoveBlock(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  entity: MapEntity,
+  state: SimState,
+  kindIndex: number,
+): void {
+  const runtime = state.move_blocks?.[kindIndex];
+  if (runtime && !runtime.visible) return;
+  const box = runtimeEntityBounds(entity, state, kindIndex);
+  const baseKey =
+    entity.direction.x !== 0
+      ? "objects/moveBlock/base_h"
+      : entity.direction.y !== 0
+        ? "objects/moveBlock/base_v"
+        : "objects/moveBlock/base";
+  const source = assets.entries[baseKey];
   if (source) {
     for (let y = 0; y < box.height; y += 8) {
       for (let x = 0; x < box.width; x += 8) {
-        const width = Math.min(8, box.width - x)
-        const height = Math.min(8, box.height - y)
-        const sourceX = x === 0 ? 0 : x + 8 >= box.width ? 16 : 8
-        const sourceY = y === 0 ? 0 : y + 8 >= box.height ? 16 : 8
-        drawAtlasTile(context, assets, baseKey, sourceX, sourceY, width, height, box.x + x, box.y + y)
+        const width = Math.min(8, box.width - x);
+        const height = Math.min(8, box.height - y);
+        const sourceX = x === 0 ? 0 : x + 8 >= box.width ? 16 : 8;
+        const sourceY = y === 0 ? 0 : y + 8 >= box.height ? 16 : 8;
+        drawAtlasTile(
+          context,
+          assets,
+          baseKey,
+          sourceX,
+          sourceY,
+          width,
+          height,
+          box.x + x,
+          box.y + y,
+        );
       }
     }
   }
-  const breaking = runtime?.phase === 3
-  const angle = runtime?.angle ?? Math.atan2(entity.direction.y, entity.direction.x)
-  const normalized = ((-angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)
-  const arrowIndex = Math.min(7, Math.floor(normalized / (Math.PI * 2) * 8 + .5))
-  const key = breaking ? 'objects/moveBlock/x' : `objects/moveBlock/arrow${String(arrowIndex).padStart(2, '0')}`
-  drawCenteredEntry(context, assets, key, box.x + box.width / 2, box.y + box.height / 2, true)
+  const breaking = runtime?.phase === 3;
+  const angle =
+    runtime?.angle ?? Math.atan2(entity.direction.y, entity.direction.x);
+  const normalized = ((-angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+  const arrowIndex = Math.min(
+    7,
+    Math.floor((normalized / (Math.PI * 2)) * 8 + 0.5),
+  );
+  const key = breaking
+    ? "objects/moveBlock/x"
+    : `objects/moveBlock/arrow${String(arrowIndex).padStart(2, "0")}`;
+  drawCenteredEntry(
+    context,
+    assets,
+    key,
+    box.x + box.width / 2,
+    box.y + box.height / 2,
+    true,
+  );
 }
 
-function drawMovingSolid(context: CanvasRenderingContext2D, entity: MapEntity, state: SimState, kindIndex: number): void {
-  const box = runtimeEntityBounds(entity, state, kindIndex)
-  context.fillStyle = '#183b57'
-  context.fillRect(box.x, box.y, box.width, box.height)
-  context.strokeStyle = '#67d9ff'
-  context.lineWidth = 1
-  context.strokeRect(box.x + .5, box.y + .5, Math.max(0, box.width - 1), Math.max(0, box.height - 1))
-  context.strokeStyle = 'rgba(103, 217, 255, .45)'
+function drawMovingSolid(
+  context: CanvasRenderingContext2D,
+  entity: MapEntity,
+  state: SimState,
+  kindIndex: number,
+): void {
+  const box = runtimeEntityBounds(entity, state, kindIndex);
+  context.fillStyle = "#183b57";
+  context.fillRect(box.x, box.y, box.width, box.height);
+  context.strokeStyle = "#67d9ff";
+  context.lineWidth = 1;
+  context.strokeRect(
+    box.x + 0.5,
+    box.y + 0.5,
+    Math.max(0, box.width - 1),
+    Math.max(0, box.height - 1),
+  );
+  context.strokeStyle = "rgba(103, 217, 255, .45)";
   for (let offset = -box.height; offset < box.width; offset += 8) {
-    context.beginPath()
-    context.moveTo(box.x + offset, box.y + box.height)
-    context.lineTo(box.x + offset + box.height, box.y)
-    context.stroke()
+    context.beginPath();
+    context.moveTo(box.x + offset, box.y + box.height);
+    context.lineTo(box.x + offset + box.height, box.y);
+    context.stroke();
   }
 }
 
-function drawUnknownEntity(context: CanvasRenderingContext2D, entity: MapEntity): void {
-  const box = entity.bounds
-  context.fillStyle = 'rgba(255, 0, 180, .18)'
-  context.fillRect(box.x, box.y, Math.max(8, box.width), Math.max(8, box.height))
-  context.strokeStyle = '#ff4fc3'
-  context.lineWidth = 1
-  context.strokeRect(box.x + .5, box.y + .5, Math.max(7, box.width - 1), Math.max(7, box.height - 1))
-  context.fillStyle = '#ffffff'
-  context.font = '6px monospace'
-  context.textBaseline = 'bottom'
-  context.fillText(entity.name || entity.kind, box.x + 1, box.y - 1)
+function drawUnknownEntity(
+  context: CanvasRenderingContext2D,
+  entity: MapEntity,
+): void {
+  const box = entity.bounds;
+  context.fillStyle = "rgba(255, 0, 180, .18)";
+  context.fillRect(
+    box.x,
+    box.y,
+    Math.max(8, box.width),
+    Math.max(8, box.height),
+  );
+  context.strokeStyle = "#ff4fc3";
+  context.lineWidth = 1;
+  context.strokeRect(
+    box.x + 0.5,
+    box.y + 0.5,
+    Math.max(7, box.width - 1),
+    Math.max(7, box.height - 1),
+  );
+  context.fillStyle = "#ffffff";
+  context.font = "6px monospace";
+  context.textBaseline = "bottom";
+  context.fillText(entity.name || entity.kind, box.x + 1, box.y - 1);
 }
 
-function drawEntity(context: CanvasRenderingContext2D, assets: GameAssets, map: GymMap, entity: MapEntity, frame: number, state: SimState, kindIndex: number, entityIndex: number, theme: VisualTheme): void {
-  const box = entity.bounds
-  if (entity.kind === 'spikes') {
-    drawSpikes(context, assets, entity, theme.spike)
-  } else if (entity.kind === 'jump_thru') {
-    const entry = assets.entries['objects/jumpthru/wood']
-    if (!entry) return
-    for (let x = box.x; x < box.x + box.width; x += 8) context.drawImage(assets.image, entry.x + 8, entry.y, 8, Math.min(8, entry.height), x, box.y, 8, Math.min(8, entry.height))
-  } else if (entity.kind === 'water') {
-    drawWater(context, entity, frame)
-  } else if (entity.kind === 'dream_block') {
-    drawDreamBlock(context, assets, entity, frame, state.can_dream_dash)
-  } else if (entity.kind === 'booster' || entity.kind === 'red_booster') {
-    drawBooster(context, assets, entity, frame, state)
-  } else if (entity.kind === 'fly_feather') {
-    drawFlyFeather(context, assets, entity, frame, state)
-  } else if (entity.kind === 'bumper') {
-    drawBumper(context, assets, entity, frame, state)
-  } else if (entity.kind === 'ice_ball') {
-    drawIceBall(context, assets, entity, frame, state)
-  } else if (entity.kind === 'puffer') {
-    drawPuffer(context, assets, entity, frame, state)
-  } else if (entity.kind === 'angry_oshiro') {
-    drawAngryOshiro(context, assets, entity, frame, state)
-  } else if (entity.kind === 'seeker') {
-    drawSeeker(context, assets, entity, frame, state)
-  } else if (entity.kind === 'snowball') {
-    drawSnowball(context, assets, entity, frame, state)
-  } else if (entity.kind === 'cloud') {
-    drawCloud(context, assets, entity, state, kindIndex)
-  } else if (entity.kind === 'badeline_boost') {
-    drawBadelineBoost(context, assets, entity, frame, state)
-  } else if (entity.kind === 'spring') {
-    drawSpring(context, assets, entity)
-  } else if (entity.kind === 'strawberry') {
-    if (!strawberryIsPicked(state, entityIndex)) drawStrawberry(context, assets, entity, frame)
-  } else if (entity.kind === 'bounce_block') {
-    drawBounceBlock(context, assets, entity, frame, state, kindIndex)
-  } else if (entity.kind === 'theo_crystal') {
-    drawTheoCrystal(context, assets, entity, state, kindIndex)
-  } else if (entity.kind === 'glider') {
-    drawGlider(context, assets, entity, frame, state, kindIndex)
-  } else if (entity.kind === 'heart_gem') {
-    drawHeartGem(context, assets, entity, frame, state, kindIndex)
-  } else if (entity.kind === 'zip_mover') {
-    drawZipMover(context, assets, entity, frame, state, kindIndex)
-  } else if (entity.kind === 'move_block') {
-    drawMoveBlock(context, assets, entity, state, kindIndex)
-  } else if (entity.kind === 'cassette_block') {
-    drawCassetteBlock(context, assets, entity, state, kindIndex)
-  } else if (entity.kind === 'crystal_static_spinner') {
-    drawCrystalSpinner(context, assets, map, entity, frame, state, kindIndex, theme)
-  } else if (entity.kind === 'moving_solid') {
-    drawMovingSolid(context, entity, state, kindIndex)
-  } else if (entity.kind !== 'wind') {
-    drawUnknownEntity(context, entity)
+function drawEntity(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  map: GymMap,
+  entity: MapEntity,
+  frame: number,
+  state: SimState,
+  kindIndex: number,
+  entityIndex: number,
+  theme: VisualTheme,
+): void {
+  const box = entity.bounds;
+  if (entity.kind === "spikes") {
+    drawSpikes(context, assets, entity, theme.spike);
+  } else if (entity.kind === "jump_thru") {
+    const entry = assets.entries["objects/jumpthru/wood"];
+    if (!entry) return;
+    for (let x = box.x; x < box.x + box.width; x += 8)
+      context.drawImage(
+        assets.image,
+        entry.x + 8,
+        entry.y,
+        8,
+        Math.min(8, entry.height),
+        x,
+        box.y,
+        8,
+        Math.min(8, entry.height),
+      );
+  } else if (entity.kind === "water") {
+    drawWater(context, entity, frame);
+  } else if (entity.kind === "dream_block") {
+    drawDreamBlock(context, assets, entity, frame, state.can_dream_dash);
+  } else if (entity.kind === "booster" || entity.kind === "red_booster") {
+    drawBooster(context, assets, entity, frame, state);
+  } else if (entity.kind === "fly_feather") {
+    drawFlyFeather(context, assets, entity, frame, state);
+  } else if (entity.kind === "bumper") {
+    drawBumper(context, assets, entity, frame, state);
+  } else if (entity.kind === "ice_ball") {
+    drawIceBall(context, assets, entity, frame, state);
+  } else if (entity.kind === "puffer") {
+    drawPuffer(context, assets, entity, frame, state);
+  } else if (entity.kind === "angry_oshiro") {
+    drawAngryOshiro(context, assets, entity, frame, state);
+  } else if (entity.kind === "seeker") {
+    drawSeeker(context, assets, entity, frame, state);
+  } else if (entity.kind === "snowball") {
+    drawSnowball(context, assets, entity, frame, state);
+  } else if (entity.kind === "cloud") {
+    drawCloud(context, assets, entity, state, kindIndex);
+  } else if (entity.kind === "badeline_boost") {
+    drawBadelineBoost(context, assets, entity, frame, state);
+  } else if (entity.kind === "spring") {
+    drawSpring(context, assets, entity);
+  } else if (entity.kind === "strawberry") {
+    if (!strawberryIsPicked(state, entityIndex))
+      drawStrawberry(context, assets, entity, frame);
+  } else if (entity.kind === "bounce_block") {
+    drawBounceBlock(context, assets, entity, frame, state, kindIndex);
+  } else if (entity.kind === "theo_crystal") {
+    drawTheoCrystal(context, assets, entity, state, kindIndex);
+  } else if (entity.kind === "glider") {
+    drawGlider(context, assets, entity, frame, state, kindIndex);
+  } else if (entity.kind === "heart_gem") {
+    drawHeartGem(context, assets, entity, frame, state, kindIndex);
+  } else if (entity.kind === "zip_mover") {
+    drawZipMover(context, assets, entity, frame, state, kindIndex);
+  } else if (entity.kind === "move_block") {
+    drawMoveBlock(context, assets, entity, state, kindIndex);
+  } else if (entity.kind === "cassette_block") {
+    drawCassetteBlock(context, assets, entity, state, kindIndex);
+  } else if (entity.kind === "crystal_static_spinner") {
+    drawCrystalSpinner(
+      context,
+      assets,
+      map,
+      entity,
+      frame,
+      state,
+      kindIndex,
+      theme,
+    );
+  } else if (entity.kind === "moving_solid") {
+    drawMovingSolid(context, entity, state, kindIndex);
+  } else if (entity.kind !== "wind") {
+    drawUnknownEntity(context, entity);
   }
 }
 
-export function GameView({ map, state, states, frame, stale, theme, children }: { map: GymMap; state: SimState; states: readonly (SimState | undefined)[]; frame: number; stale: boolean; theme: VisualTheme; children?: ReactNode | ((viewport: { width: number; height: number }) => ReactNode) }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [assets, setAssets] = useState<GameAssets | null>(null)
-  const [viewportRevision, setViewportRevision] = useState(0)
-  const solidGrid = useMemo(() => buildSolidGrid(map), [map])
+export function GameView({
+  map,
+  state,
+  states,
+  frame,
+  stale,
+  theme,
+  children,
+}: {
+  map: GymMap;
+  state: SimState;
+  states: readonly (SimState | undefined)[];
+  frame: number;
+  stale: boolean;
+  theme: VisualTheme;
+  children?:
+    | ReactNode
+    | ((viewport: { width: number; height: number }) => ReactNode);
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [assets, setAssets] = useState<GameAssets | null>(null);
+  const [viewportRevision, setViewportRevision] = useState(0);
+  const solidGrid = useMemo(() => buildSolidGrid(map), [map]);
   const tileLayer = useMemo(
-    () => assets ? buildTileLayer(assets, map, solidGrid, theme) : undefined,
+    () => (assets ? buildTileLayer(assets, map, solidGrid, theme) : undefined),
     [assets, map, solidGrid, theme],
-  )
-
-  useEffect(() => { void loadAssets().then(setAssets) }, [])
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const observer = new ResizeObserver(() => setViewportRevision((value) => value + 1))
-    observer.observe(canvas)
-    return () => observer.disconnect()
-  }, [])
+  );
 
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas || !assets) return
-    const context = canvas.getContext('2d')
-    if (!context) return
-    const dpr = window.devicePixelRatio || 1
-    const rect = canvas.getBoundingClientRect()
-    canvas.width = Math.round(rect.width * dpr)
-    canvas.height = Math.round(rect.height * dpr)
-    context.setTransform(dpr, 0, 0, dpr, 0, 0)
-    context.imageSmoothingEnabled = false
+    void loadAssets().then(setAssets);
+  }, []);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const observer = new ResizeObserver(() =>
+      setViewportRevision((value) => value + 1),
+    );
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, []);
 
-    const scale = Math.min(rect.width / map.bounds.width, rect.height / map.bounds.height)
-    const offsetX = (rect.width - map.bounds.width * scale) / 2
-    const offsetY = (rect.height - map.bounds.height * scale) / 2
-    context.fillStyle = '#000000'
-    context.fillRect(0, 0, rect.width, rect.height)
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !assets) return;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
+    context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    context.imageSmoothingEnabled = false;
 
-    context.save()
-    context.translate(offsetX - map.bounds.x * scale, offsetY - map.bounds.y * scale)
-    context.scale(scale, scale)
-    drawThemeBackground(context, assets, map, theme, frame)
-    if (tileLayer) context.drawImage(tileLayer, map.bounds.x, map.bounds.y)
-    drawSpinnerConnections(context, assets, map, frame, state, theme)
-    const kindCounts = new Map<EntityKind, number>()
+    const scale = Math.min(
+      rect.width / map.bounds.width,
+      rect.height / map.bounds.height,
+    );
+    const offsetX = (rect.width - map.bounds.width * scale) / 2;
+    const offsetY = (rect.height - map.bounds.height * scale) / 2;
+    context.fillStyle = "#000000";
+    context.fillRect(0, 0, rect.width, rect.height);
+
+    context.save();
+    context.translate(
+      offsetX - map.bounds.x * scale,
+      offsetY - map.bounds.y * scale,
+    );
+    context.scale(scale, scale);
+    drawThemeBackground(context, assets, map, theme, frame);
+    if (tileLayer) context.drawImage(tileLayer, map.bounds.x, map.bounds.y);
+    drawSpinnerConnections(context, assets, map, frame, state, theme);
+    const kindCounts = new Map<EntityKind, number>();
     for (const [entityIndex, entity] of map.entities.entries()) {
-      const kindIndex = kindCounts.get(entity.kind) ?? 0
-      drawEntity(context, assets, map, entity, frame, state, kindIndex, entityIndex, theme)
-      kindCounts.set(entity.kind, kindIndex + 1)
+      const kindIndex = kindCounts.get(entity.kind) ?? 0;
+      drawEntity(
+        context,
+        assets,
+        map,
+        entity,
+        frame,
+        state,
+        kindIndex,
+        entityIndex,
+        theme,
+      );
+      kindCounts.set(entity.kind, kindIndex + 1);
     }
-    context.globalAlpha = stale ? .45 : 1
-    drawPlayer(context, assets, states, state, frame)
-    drawWind(context, assets, map, state, frame)
-    context.restore()
-  }, [assets, frame, map, solidGrid, stale, state, states, theme, tileLayer, viewportRevision])
+    context.globalAlpha = stale ? 0.45 : 1;
+    drawPlayer(context, assets, states, state, frame);
+    drawWind(context, assets, map, state, frame);
+    context.restore();
+  }, [
+    assets,
+    frame,
+    map,
+    solidGrid,
+    stale,
+    state,
+    states,
+    theme,
+    tileLayer,
+    viewportRevision,
+  ]);
 
-  return <div className="game-screen">
-    <canvas ref={canvasRef} aria-label={`CelesteGymPlayground 原版资源渲染画面 · ${theme.label}`} />
-    {typeof children === 'function' ? children({ width: canvasRef.current?.clientWidth ?? 0, height: canvasRef.current?.clientHeight ?? 0 }) : children}
-    <div className="screen-vignette" />
-    <div className="screen-noise" />
-    {!assets && <div className="recompute-flag"><span />加载 Gameplay atlas</div>}
-    {assets && stale && <div className="recompute-flag"><span />等待重算</div>}
-  </div>
+  return (
+    <div className="game-screen">
+      <canvas
+        ref={canvasRef}
+        aria-label={`CelesteGymPlayground 原版资源渲染画面 · ${theme.label}`}
+      />
+      {typeof children === "function"
+        ? children({
+            width: canvasRef.current?.clientWidth ?? 0,
+            height: canvasRef.current?.clientHeight ?? 0,
+          })
+        : children}
+      <div className="screen-vignette" />
+      <div className="screen-noise" />
+      {!assets && (
+        <div className="recompute-flag">
+          <span />
+          加载 Gameplay atlas
+        </div>
+      )}
+      {assets && stale && (
+        <div className="recompute-flag">
+          <span />
+          等待重算
+        </div>
+      )}
+    </div>
+  );
 }
