@@ -512,6 +512,36 @@ textarea:focus-visible {
   text-align: center;
 }
 
+.training-tutorial-launch {
+  position: absolute;
+  z-index: 8;
+  right: 18px;
+  bottom: 46px;
+  min-width: 88px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #ffd166;
+  color: #fff4cc;
+  background: #241936d9;
+  box-shadow: 0 8px 22px #08041588;
+  font-size: 8px;
+  opacity: 0;
+  pointer-events: none;
+  cursor: pointer;
+  transition: opacity 160ms ease, background-color 160ms ease;
+}
+
+.training-tutorial-launch.mouse-active {
+  opacity: 0.45;
+  pointer-events: auto;
+}
+
+.training-tutorial-launch.mouse-active:hover,
+.training-tutorial-launch:focus-visible {
+  background: #3a2948;
+  opacity: 1;
+}
+
 .training-stage .cache-meter {
   display: flex;
   align-items: baseline;

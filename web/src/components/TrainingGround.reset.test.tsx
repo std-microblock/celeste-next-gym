@@ -62,7 +62,7 @@ vi.mock("./GameplaySprite", () => ({
 import { TrainingGround } from "./TrainingGround";
 
 describe("training R reset", () => {
-  it("keeps stage transitions playing and can restart the whole map", async () => {
+  it("starts free, opens one guided segment, and keeps R in free practice", async () => {
     const project = createTrainingProject(createBlankGymMap());
     project.training.modules[0].end_trigger.bounds = {
       x: 0,
@@ -114,8 +114,25 @@ describe("training R reset", () => {
         view.container.querySelector(".stage-header h1"),
       ).toHaveTextContent("0/1 模块完成"),
     );
-    expect(view.getByTestId("training-prompt")).toHaveTextContent("演示");
+    expect(view.queryByTestId("training-prompt")).not.toBeInTheDocument();
+    expect(
+      view.container.querySelector(".training-lesson-stages"),
+    ).not.toBeInTheDocument();
     expect(view.getByTestId("training-timeline")).toBeInTheDocument();
+    const tutorialButton = view.getByRole("button", {
+      name: "查看本段教学",
+    });
+    expect(tutorialButton).not.toHaveClass("mouse-active");
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    fireEvent.pointerMove(window);
+    expect(tutorialButton).toHaveClass("mouse-active");
+    await act(async () => vi.advanceTimersByTime(1_199));
+    expect(tutorialButton).toHaveClass("mouse-active");
+    await act(async () => vi.advanceTimersByTime(1));
+    expect(tutorialButton).not.toHaveClass("mouse-active");
+    vi.useRealTimers();
+    fireEvent.click(tutorialButton);
+    expect(view.getByTestId("training-prompt")).toHaveTextContent("正在准备");
 
     let time = performance.now();
     const advance = async () => {
@@ -134,27 +151,36 @@ describe("training R reset", () => {
       await advance();
       if (view.queryByRole("button", { name: "下一步" })) break;
     }
-    await waitFor(() =>
-      expect(view.getByRole("button", { name: "下一步" })).toBeInTheDocument(),
-    );
-    fireEvent.click(view.getByRole("button", { name: "下一步" }));
-    for (let frame = 0; frame < 32; frame += 1) await advance();
-    await waitFor(() =>
-      expect(
-        view.container.querySelector(".training-lesson-stages .active"),
-      ).toHaveTextContent("辅助实操"),
-    );
+    expect(view.getByTestId("training-prompt")).toHaveTextContent("演示 1/1");
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    fireEvent.click(view.getByRole("button", { name: "完成演示" }));
+    for (let frame = 0; frame < 4; frame += 1) await advance();
+    expect(
+      view.container.querySelector(".training-lesson-stages .active"),
+    ).toHaveTextContent("演示");
+    expect(view.getByTestId("training-prompt")).toHaveTextContent("演示完成");
+    await act(async () => vi.advanceTimersByTime(999));
+    expect(
+      view.container.querySelector(".training-lesson-stages .active"),
+    ).toHaveTextContent("演示");
+    await act(async () => vi.advanceTimersByTime(1));
+    expect(
+      view.container.querySelector(".training-lesson-stages .active"),
+    ).toHaveTextContent("辅助实操");
     expect(view.container.querySelector(".play-button")).toHaveTextContent("▶");
 
     fireEvent.keyDown(window, { code: "Semicolon" });
-    for (let frame = 0; frame < 12; frame += 1) await advance();
-    await waitFor(() =>
-      expect(
-        view.container.querySelector(".training-lesson-stages .active"),
-      ).toHaveTextContent("自由练习"),
+    for (let frame = 0; frame < 4; frame += 1) await advance();
+    expect(view.getByTestId("training-prompt")).toHaveTextContent(
+      "辅助实操完成",
     );
+    await act(async () => vi.advanceTimersByTime(1_000));
+    expect(
+      view.container.querySelector(".training-lesson-stages"),
+    ).not.toBeInTheDocument();
     expect(view.queryByTestId("training-prompt")).not.toBeInTheDocument();
     expect(view.container.querySelector(".play-button")).toHaveTextContent("▶");
+    vi.useRealTimers();
 
     fireEvent.keyUp(window, { code: "Semicolon" });
     await advance();
@@ -177,20 +203,17 @@ describe("training R reset", () => {
     );
     expect(view.queryByTestId("training-prompt")).not.toBeInTheDocument();
     expect(
-      view.container.querySelector(".training-lesson-stages .active"),
-    ).toHaveTextContent("自由练习");
+      view.container.querySelector(".training-lesson-stages"),
+    ).not.toBeInTheDocument();
     expect(
       view.container.querySelectorAll(".training-success-toast"),
     ).toHaveLength(0);
-    fireEvent.click(view.getByRole("button", { name: /1 演示/ }));
-    await waitFor(() =>
-      expect(
-        view.container.querySelector(".training-lesson-stages .active"),
-      ).toHaveTextContent("演示"),
-    );
-    fireEvent.click(view.getByRole("button", { name: /3 自由练习/ }));
-    expect(
-      view.container.querySelector(".training-lesson-stages .active"),
-    ).toHaveTextContent("自由练习");
+    const reopenedTutorial = view.getByRole("button", {
+      name: "查看本段教学",
+    });
+    fireEvent.click(reopenedTutorial);
+    expect(view.getByTestId("training-prompt")).toHaveTextContent("演示 1/1");
+    expect(view.getByRole("button", { name: "完成演示" })).toBeEnabled();
+    expect(view.container).not.toHaveTextContent("观察这一步产生的结果");
   });
 });
