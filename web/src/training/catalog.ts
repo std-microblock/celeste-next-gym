@@ -1,5 +1,5 @@
 import type { GymMap, SimState } from "../model";
-import type { TrainingDefinition } from "./session";
+import type { TrainingDefinition, TrainingObjective } from "./session";
 import { hyper } from "./techniques/hyper.ts";
 
 export interface TrainingDocument extends TrainingDefinition {
@@ -34,10 +34,8 @@ export interface TrainingDocument extends TrainingDefinition {
     }>;
     observe_until: number | string;
     success: string[];
-    objectives: Array<
-      | { type: "maximize" | "minimize"; expression: string }
-      | { type: "approach"; expression: string; target: number }
-    >;
+    checkpoints?: NonNullable<TrainingDefinition["fuzz"]["checkpoints"]>;
+    objectives: TrainingObjective[];
     search: { bindings: Record<string, number>; output: string[] };
     limits?: {
       max_candidates?: number;

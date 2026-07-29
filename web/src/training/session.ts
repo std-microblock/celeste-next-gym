@@ -21,6 +21,17 @@ export interface TrainingInput {
   after_input?: string | string[];
 }
 
+export type TrainingObjective =
+  | { type: "maximize" | "minimize"; expression: string }
+  | { type: "approach"; expression: string; target: number };
+
+export interface TrainingCheckpoint {
+  id: string;
+  at: number | string;
+  description: string;
+  objectives: TrainingObjective[];
+}
+
 export interface TrainingCandidateInput {
   input_index: number;
   frame: number;
@@ -45,7 +56,7 @@ export interface TrainingDefinition {
   id: string;
   title: string;
   entry: { input_id: string; hint: string };
-  fuzz: { inputs: TrainingInput[] };
+  fuzz: { inputs: TrainingInput[]; checkpoints?: TrainingCheckpoint[] };
 }
 
 export interface TrainingSession {
