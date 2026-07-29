@@ -517,27 +517,53 @@ textarea:focus-visible {
   z-index: 8;
   top: var(--tutorial-y);
   left: var(--tutorial-x);
-  min-width: 88px;
-  height: 28px;
-  padding: 0 10px;
+  display: grid;
+  width: min(160px, 28%);
+  min-width: 104px;
+  gap: 2px;
+  padding: 6px 8px;
   border: 1px solid #ffd166;
   color: #fff4cc;
   background: #241936d9;
   box-shadow: 0 8px 22px #08041588;
   font-size: 8px;
-  opacity: 0;
-  pointer-events: none;
+  text-align: left;
+  opacity: 0.55;
+  pointer-events: auto;
   cursor: pointer;
   transform: translate(-50%, calc(-100% - 8px));
   transition: opacity 160ms ease, background-color 160ms ease;
 }
 
-.training-tutorial-launch.mouse-active {
-  opacity: 0.45;
-  pointer-events: auto;
+.training-tutorial-launch strong,
+.training-tutorial-launch span,
+.training-tutorial-launch small {
+  display: block;
 }
 
-.training-tutorial-launch.mouse-active:hover,
+.training-tutorial-launch strong {
+  color: #fff4cc;
+  font-size: 9px;
+}
+
+.training-tutorial-launch span {
+  color: #e2d7ec;
+  line-height: 1.35;
+}
+
+.training-tutorial-launch small {
+  overflow: hidden;
+  color: #b7a8c4;
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.training-tutorial-launch.complete {
+  border-color: #7de8bd;
+}
+
+.training-tutorial-launch:hover,
 .training-tutorial-launch:focus-visible {
   background: #3a2948;
   opacity: 1;
