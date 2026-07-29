@@ -105,7 +105,6 @@ public static class ChineseText {
             Glyph glyph = GetGlyph(character, scale);
             Vector2 drawAt = position + cursor + glyph.Offset - origin;
             if (glyph.Texture is not null) {
-                if (stroke > 0f) DrawShadow(glyph.Texture, drawAt, stroke);
                 Monocle.Draw.SpriteBatch.Draw(glyph.Texture, drawAt, null, color, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
             }
             cursor.X += glyph.Advance;
@@ -168,16 +167,21 @@ public static class ChineseText {
         using DrawingBitmap bitmap = new(width, height, PixelFormat.Format32bppArgb);
         bitmap.SetResolution(96f, 96f);
         using (DrawingGraphics graphics = DrawingGraphics.FromImage(bitmap)) {
-            graphics.Clear(System.Drawing.Color.Transparent);
+            // GDI+ disables its best hinted text path on a transparent target.
+            // Render ClearType onto opaque black, then convert luminance to a
+            // clean alpha mask below. This keeps Noto's hinting without RGB
+            // fringes or the soft halo produced by transparent DrawString.
+            graphics.Clear(System.Drawing.Color.Black);
             graphics.PageUnit = DrawingGraphicsUnit.Pixel;
-            graphics.CompositingMode = CompositingMode.SourceCopy;
+            graphics.CompositingMode = CompositingMode.SourceOver;
             graphics.CompositingQuality = CompositingQuality.HighQuality;
             graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
             graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
             graphics.SmoothingMode = SmoothingMode.HighQuality;
-            graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+            graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
             graphics.DrawString(text, font, DrawingBrushes.White, new DrawingPointF(padding, padding), stringFormat);
         }
+        ConvertLuminanceToAlpha(bitmap);
 
         using MemoryStream png = new();
         bitmap.Save(png, ImageFormat.Png);
@@ -198,22 +202,28 @@ public static class ChineseText {
 
     private static float ScaledLineHeight(float scale) => Math.Max(1f, LineHeight * scale);
 
-    private static void DrawShadow(Texture2D texture, Vector2 position, float strength) {
-        // Noto is already antialiased. The old eight-direction opaque outline
-        // was intended for Celeste's pixel font and turns these glyphs into
-        // heavy black blobs. Keep only one soft, sub-pixel drop shadow.
-        float offset = Math.Min(1.4f, 0.55f + strength * 0.18f);
-        Monocle.Draw.SpriteBatch.Draw(
-            texture,
-            position + new Vector2(offset),
-            null,
-            Color.Black * 0.32f,
-            0f,
-            Vector2.Zero,
-            1f,
-            SpriteEffects.None,
-            0f
-        );
+    private static void ConvertLuminanceToAlpha(DrawingBitmap bitmap) {
+        System.Drawing.Rectangle bounds = new(0, 0, bitmap.Width, bitmap.Height);
+        BitmapData data = bitmap.LockBits(bounds, ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
+        try {
+            int stride = Math.Abs(data.Stride);
+            byte[] pixels = new byte[stride * bitmap.Height];
+            Marshal.Copy(data.Scan0, pixels, 0, pixels.Length);
+            for (int y = 0; y < bitmap.Height; y++) {
+                int row = y * stride;
+                for (int x = 0; x < bitmap.Width; x++) {
+                    int index = row + x * 4;
+                    int alpha = (pixels[index] + pixels[index + 1] + pixels[index + 2] + 1) / 3;
+                    pixels[index] = 255;
+                    pixels[index + 1] = 255;
+                    pixels[index + 2] = 255;
+                    pixels[index + 3] = (byte) alpha;
+                }
+            }
+            Marshal.Copy(pixels, 0, data.Scan0, pixels.Length);
+        } finally {
+            bitmap.UnlockBits(data);
+        }
     }
 
     private sealed record Glyph(Texture2D? Texture, float Advance, Vector2 Offset);

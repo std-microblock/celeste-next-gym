@@ -163,6 +163,11 @@ public sealed class TrainingRuntimeController : Entity {
         if (successToastTimer > 0f) successToastTimer -= Engine.RawDeltaTime;
         UpdateHudPlacement();
 
+        if (lesson is not null && MInput.Keyboard.Pressed(Keys.R)) {
+            RetryCurrentStage();
+            return;
+        }
+
         if (stageTransitionTimer > 0f) {
             stageTransitionTimer -= Engine.RawDeltaTime;
             if (stageTransitionTimer <= 0f) BeginStage(pendingStage);
@@ -503,6 +508,7 @@ public sealed class TrainingRuntimeController : Entity {
                     else {
                         panel = TrainingPanel.None;
                         RestoreTimeRate();
+                        ApplyInitialSnapshot();
                         ResetPassiveAttempt();
                     }
                 } else CloseLesson();
@@ -525,6 +531,31 @@ public sealed class TrainingRuntimeController : Entity {
                 DismissPanel();
                 break;
         }
+    }
+
+    private void RetryCurrentStage() {
+        if (lesson is null || fuzz is null) return;
+        outcomeKind = TrainingOutcomeKind.None;
+        pendingOutcomePanel = TrainingPanel.None;
+        outcomeTimer = 0f;
+        stageTransitionTimer = 0f;
+        panel = TrainingPanel.None;
+        panelFocus = 0;
+        successToastTimer = 0f;
+        toastTimer = 0f;
+        failureTitle = "";
+        failureBody = "";
+        failureFrame = null;
+        RestoreDemoInput();
+        RestoreTimeRate();
+        if (guidedMode) {
+            BeginStage(stage == TrainingLessonStage.None ? TrainingLessonStage.Demo : stage);
+        } else {
+            ApplyInitialSnapshot();
+            ResetPassiveAttempt();
+        }
+        toast = "已恢复到本段起点";
+        toastTimer = 1.8f;
     }
 
     private void CloseLesson() {
@@ -702,6 +733,7 @@ public sealed class TrainingRuntimeController : Entity {
 
     private void RenderBottomTimeline() {
         RenderTimeline(new Rectangle(24, 808, 1872, 248), guidedMode);
+        ChineseText.Draw("R  恢复本段起点", new Vector2(1874, 1034), new Vector2(1f, 1f), 0.22f, Yellow, 0f);
     }
 
     private void RenderSuccessToast() {
