@@ -34,6 +34,17 @@ describe("player effects", () => {
     ]);
   });
 
+  it("supports bounded live-state windows with an absolute frame offset", () => {
+    const window = [
+      state("Normal"),
+      ...Array.from({ length: 9 }, () => state("Dash", 0)),
+      state("Normal", 0),
+    ];
+    expect(
+      playerTrailSamples(window, 250, 240).map((sample) => sample.frame),
+    ).toEqual([241, 246, 249]);
+  });
+
   it("fades old trails and follows the hair dash palette", () => {
     expect(playerTrailOpacity(0)).toBeCloseTo(0.55);
     expect(playerTrailOpacity(24)).toBe(0);

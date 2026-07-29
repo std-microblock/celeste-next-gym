@@ -35,10 +35,11 @@ function continuousStateAge(
   states: readonly (SimState | undefined)[],
   frame: number,
   name: string,
+  frameOffset = 0,
 ): number {
   let age = 0;
   for (let index = frame - 1; index >= 0; index -= 1) {
-    if (states[index]?.state !== name) break;
+    if (states[index - frameOffset]?.state !== name) break;
     age += 1;
   }
   return age;
@@ -52,23 +53,26 @@ function continuousStateAge(
 export function playerTrailSamples(
   states: readonly (SimState | undefined)[],
   frame: number,
+  frameOffset = 0,
 ): PlayerTrailSample[] {
   const first = Math.max(0, frame - TRAIL_LIFETIME_FRAMES);
   const samples: PlayerTrailSample[] = [];
   for (let index = first; index <= frame; index += 1) {
-    const state = states[index];
+    const state = states[index - frameOffset];
     if (!state || state.dead) continue;
-    const previous = states[index - 1];
+    const previous = states[index - 1 - frameOffset];
     const dashStarted = isDash(state) && !isDash(previous);
     const dashMiddle =
-      isDash(state) && isDash(previous) && continuousStateAge(states, index, state.state) === 5;
+      isDash(state) &&
+      isDash(previous) &&
+      continuousStateAge(states, index, state.state, frameOffset) === 5;
     const dashEnded = !isDash(state) && isDash(previous);
     const dreamDashInterval =
       state.state === "DreamDash" &&
-      continuousStateAge(states, index, "DreamDash") % 6 === 0;
+      continuousStateAge(states, index, "DreamDash", frameOffset) % 6 === 0;
     const starFlyInterval =
       state.state === "StarFly" &&
-      continuousStateAge(states, index, "StarFly") % 3 === 0;
+      continuousStateAge(states, index, "StarFly", frameOffset) % 3 === 0;
     if (
       dashStarted ||
       dashMiddle ||
@@ -110,6 +114,7 @@ function particleLifetime(kind: PlayerParticleKind): number {
 export function playerParticleSamples(
   states: readonly (SimState | undefined)[],
   frame: number,
+  frameOffset = 0,
 ): PlayerParticleSample[] {
   const samples: PlayerParticleSample[] = [];
   const emit = (
@@ -135,9 +140,9 @@ export function playerParticleSamples(
   };
 
   for (let index = Math.max(0, frame - 35); index <= frame; index += 1) {
-    const state = states[index];
+    const state = states[index - frameOffset];
     if (!state) continue;
-    const previous = states[index - 1];
+    const previous = states[index - 1 - frameOffset];
     const center = { x: state.pos.x, y: state.pos.y - 6 };
     const bottom = { x: state.pos.x, y: state.pos.y - 1 };
     if (state.dead && !previous?.dead) {
@@ -199,7 +204,12 @@ export function playerParticleSamples(
       emit("dust", index, state, bottom, { x: 0, y: -1 }, 8);
     }
 
-    const dreamAge = continuousStateAge(states, index, "DreamDash");
+    const dreamAge = continuousStateAge(
+      states,
+      index,
+      "DreamDash",
+      frameOffset,
+    );
     if (state.state === "DreamDash" && dreamAge % 2 === 0) {
       emit(
         "dream-spark",
@@ -211,7 +221,12 @@ export function playerParticleSamples(
         "#ff68d9",
       );
     }
-    const featherAge = continuousStateAge(states, index, "StarFly");
+    const featherAge = continuousStateAge(
+      states,
+      index,
+      "StarFly",
+      frameOffset,
+    );
     if (state.state === "StarFly" && featherAge % 2 === 0) {
       emit(
         "feather",
@@ -223,7 +238,7 @@ export function playerParticleSamples(
         "#ffd65c",
       );
     }
-    const swimAge = continuousStateAge(states, index, "Swim");
+    const swimAge = continuousStateAge(states, index, "Swim", frameOffset);
     if (state.state === "Swim" && swimAge % 8 === 0) {
       emit(
         "bubble",

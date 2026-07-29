@@ -65,6 +65,7 @@ const PLAYGROUND_MAP_URL =
 const DEFAULT_ROOM = "playground";
 const PLAYGROUND_ROOMS = ["playground", "transition_0"] as const;
 const MAX_ANIMATION_DELTA_MS = 250;
+const LIVE_RENDER_HISTORY_FRAMES = 240;
 const VISUAL_THEME_STORAGE_KEY = "celeste-gym-visual-theme";
 
 type AppMode = "play" | "training" | "editor" | "advanced";
@@ -140,6 +141,10 @@ export default function App() {
   const liveStateRef = useRef(liveState);
   const [liveFrame, setLiveFrame] = useState(0);
   const liveFrameRef = useRef(0);
+  const liveHistoryRef = useRef<{
+    startFrame: number;
+    states: SimState[];
+  }>({ startFrame: 0, states: [liveState] });
   const livePreviousButtons = useRef<FrameButtons>(makeEmptyButtons());
   const [, redraw] = useState(0);
   const [frame, setFrame] = useState(0);
@@ -174,6 +179,7 @@ export default function App() {
     setLiveState(initial);
     liveFrameRef.current = 0;
     setLiveFrame(0);
+    liveHistoryRef.current = { startFrame: 0, states: [initial] };
     livePreviousButtons.current = makeEmptyButtons();
   }, []);
 
@@ -278,6 +284,15 @@ export default function App() {
             if (!active) return;
             const current = trace.at(-1);
             if (!current) throw new Error("WASM 未返回游玩状态");
+            const history = liveHistoryRef.current;
+            let states = [...history.states, ...trace.slice(1)];
+            let startFrame = history.startFrame;
+            if (states.length > LIVE_RENDER_HISTORY_FRAMES) {
+              const removed = states.length - LIVE_RENDER_HISTORY_FRAMES;
+              states = states.slice(removed);
+              startFrame += removed;
+            }
+            liveHistoryRef.current = { startFrame, states };
             liveStateRef.current = current;
             setLiveState(current);
             liveFrameRef.current += steps;
@@ -891,7 +906,8 @@ export default function App() {
           <GameView
             map={map}
             state={liveState}
-            states={[]}
+            states={liveHistoryRef.current.states}
+            stateFrameOffset={liveHistoryRef.current.startFrame}
             frame={liveFrame}
             stale={false}
             theme={visualTheme}
@@ -913,6 +929,8 @@ export default function App() {
           map={map}
           state={liveState}
           frame={liveFrame}
+          states={liveHistoryRef.current.states}
+          stateFrameOffset={liveHistoryRef.current.startFrame}
           theme={visualTheme}
           bindings={bindings}
           experiencing={editorExperiencing}

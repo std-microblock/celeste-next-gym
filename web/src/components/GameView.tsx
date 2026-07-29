@@ -475,11 +475,13 @@ function computeHairNodes(
   states: readonly (SimState | undefined)[],
   state: SimState,
   frame: number,
+  frameOffset = 0,
 ): Vec2[] {
   const start = Math.max(0, frame - 180);
   let nodes: Vec2[] | undefined;
   for (let value = start; value <= frame; value += 1) {
-    const sample = states[value] ?? (value === frame ? state : undefined);
+    const sample =
+      states[value - frameOffset] ?? (value === frame ? state : undefined);
     if (!sample) continue;
     const key = playerFrameKey(assets, sample, value);
     const root = hairRoot(sample, key);
@@ -528,13 +530,14 @@ function drawPlayer(
   states: readonly (SimState | undefined)[],
   state: SimState,
   frame: number,
+  frameOffset = 0,
 ): void {
   const key = playerFrameKey(assets, state, frame);
   const facing = state.facing ? 1 : -1;
   context.save();
   context.globalAlpha = state.dead ? 0.75 : 1;
   if (!state.dead) {
-    const nodes = computeHairNodes(assets, states, state, frame);
+    const nodes = computeHairNodes(assets, states, state, frame, frameOffset);
     const metadata = playerHairMetadata(key);
     for (let index = 3; index >= 0; index -= 1) {
       const texture =
@@ -586,16 +589,23 @@ function drawPlayerTrail(
   assets: GameAssets,
   states: readonly (SimState | undefined)[],
   frame: number,
+  frameOffset = 0,
 ): void {
-  for (const sample of playerTrailSamples(states, frame)) {
-    const state = states[sample.frame];
+  for (const sample of playerTrailSamples(states, frame, frameOffset)) {
+    const state = states[sample.frame - frameOffset];
     if (!state) continue;
     const key = playerFrameKey(assets, state, sample.frame);
     const facing = state.facing ? 1 : -1;
     const color = playerTrailColor(state);
     context.save();
     context.globalAlpha = playerTrailOpacity(sample.age);
-    const nodes = computeHairNodes(assets, states, state, sample.frame);
+    const nodes = computeHairNodes(
+      assets,
+      states,
+      state,
+      sample.frame,
+      frameOffset,
+    );
     const metadata = playerHairMetadata(key);
     for (let index = 3; index >= 0; index -= 1) {
       const texture =
@@ -637,8 +647,9 @@ function drawPlayerParticles(
   assets: GameAssets,
   states: readonly (SimState | undefined)[],
   frame: number,
+  frameOffset = 0,
 ): void {
-  for (const particle of playerParticleSamples(states, frame)) {
+  for (const particle of playerParticleSamples(states, frame, frameOffset)) {
     const directionAngle = Math.atan2(
       particle.direction.y,
       particle.direction.x,
@@ -2649,6 +2660,7 @@ export function GameView({
   map,
   state,
   states,
+  stateFrameOffset = 0,
   frame,
   stale,
   theme,
@@ -2657,6 +2669,7 @@ export function GameView({
   map: GymMap;
   state: SimState;
   states: readonly (SimState | undefined)[];
+  stateFrameOffset?: number;
   frame: number;
   stale: boolean;
   theme: VisualTheme;
@@ -2733,9 +2746,9 @@ export function GameView({
       kindCounts.set(entity.kind, kindIndex + 1);
     }
     context.globalAlpha = stale ? 0.45 : 1;
-    drawPlayerParticles(context, assets, states, frame);
-    drawPlayerTrail(context, assets, states, frame);
-    drawPlayer(context, assets, states, state, frame);
+    drawPlayerParticles(context, assets, states, frame, stateFrameOffset);
+    drawPlayerTrail(context, assets, states, frame, stateFrameOffset);
+    drawPlayer(context, assets, states, state, frame, stateFrameOffset);
     drawWind(context, assets, map, state, frame);
     context.restore();
   }, [
@@ -2745,6 +2758,7 @@ export function GameView({
     solidGrid,
     stale,
     state,
+    stateFrameOffset,
     states,
     theme,
     tileLayer,

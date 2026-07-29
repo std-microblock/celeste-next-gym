@@ -28,6 +28,8 @@ export interface EditorWorkspaceProps {
   map: GymMap;
   state: SimState;
   frame: number;
+  states: readonly SimState[];
+  stateFrameOffset: number;
   theme: VisualTheme;
   bindings: KeyBindings;
   experiencing: boolean;
@@ -275,6 +277,8 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
           map={current.map}
           state={props.state}
           frame={props.frame}
+          states={props.states}
+          stateFrameOffset={props.stateFrameOffset}
           theme={props.theme}
           experiencing={props.experiencing}
           ready={props.ready}
