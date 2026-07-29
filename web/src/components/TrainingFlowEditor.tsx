@@ -5,11 +5,14 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { createInitialState, type KeyBindings } from "../model";
+import {
+  createInitialState,
+  type KeyBindings,
+  type MapEntity,
+} from "../model";
 import type {
   TrainingDocument,
   TrainingModule,
-  TrainingTrigger,
   TrainingVariant,
 } from "../training/catalog";
 import {
@@ -18,6 +21,10 @@ import {
   type ProjectValidationIssue,
   type TrainingProject,
 } from "../training/editorProject";
+import {
+  createTrainingTriggerEntity,
+  trainingTriggerEntity,
+} from "../training/course";
 import type { TrainingInput } from "../training/session";
 import { WasmClient } from "../simulator/wasmClient";
 import type { VisualTheme } from "../visualThemes";
@@ -138,8 +145,8 @@ function BoundsFields({
   value,
   onChange,
 }: {
-  value: TrainingTrigger["bounds"];
-  onChange: (value: TrainingTrigger["bounds"]) => void;
+  value: MapEntity["bounds"];
+  onChange: (value: MapEntity["bounds"]) => void;
 }) {
   return (
     <div className="training-bounds-fields">
@@ -660,10 +667,16 @@ function FuzzFields({
 
 function ModuleInspector({
   module,
+  trigger,
   onChange,
+  onTriggerIdChange,
+  onTriggerBoundsChange,
 }: {
   module: TrainingModule;
+  trigger: MapEntity | undefined;
   onChange: (module: TrainingModule) => void;
+  onTriggerIdChange: (id: string) => void;
+  onTriggerBoundsChange: (bounds: MapEntity["bounds"]) => void;
 }) {
   const change = (mutator: (module: TrainingModule) => void) => {
     const next = structuredClone(module);
@@ -690,22 +703,16 @@ function ModuleInspector({
             <small>TRIGGER ID</small>
             <input
               value={module.trigger.id}
-              onChange={(event) =>
-                change((draft) => {
-                  draft.trigger.id = event.target.value;
-                })
-              }
+              onChange={(event) => onTriggerIdChange(event.target.value)}
             />
           </label>
         </div>
-        <BoundsFields
-          value={module.trigger.bounds}
-          onChange={(value) =>
-            change((draft) => {
-              draft.trigger.bounds = value;
-            })
-          }
-        />
+        {trigger && (
+          <BoundsFields
+            value={trigger.bounds}
+            onChange={onTriggerBoundsChange}
+          />
+        )}
       </fieldset>
       <fieldset>
         <legend>教程</legend>
@@ -928,7 +935,7 @@ export function TrainingFlowEditor({
   const drag = useRef<{
     target: Target;
     point: { x: number; y: number };
-    bounds: TrainingTrigger["bounds"];
+    bounds: MapEntity["bounds"];
   } | null>(null);
   useEffect(() => () => client.dispose(), [client]);
 
@@ -937,8 +944,10 @@ export function TrainingFlowEditor({
     target.type === "module" ? project.training.modules[target.index] : null;
   const selectedTrigger =
     target.type === "module"
-      ? selectedModule?.trigger
-      : project.training.finish.trigger;
+      ? selectedModule
+        ? trainingTriggerEntity(project.map, selectedModule.trigger)
+        : undefined
+      : trainingTriggerEntity(project.map, project.training.finish.trigger);
   const variant: TrainingVariant = useMemo(
     () => ({
       id: project.id,
@@ -1019,7 +1028,7 @@ export function TrainingFlowEditor({
   const beginDrag = (
     event: ReactPointerEvent<SVGRectElement>,
     nextTarget: Target,
-    bounds: TrainingTrigger["bounds"],
+    bounds: MapEntity["bounds"],
   ) => {
     event.stopPropagation();
     const svg = event.currentTarget.ownerSVGElement;
@@ -1049,11 +1058,16 @@ export function TrainingFlowEditor({
       y: drag.current.bounds.y + dy,
     };
     updateTraining((draft) => {
-      if (drag.current?.target.type === "finish")
-        draft.training.finish.trigger.bounds = bounds;
-      else if (drag.current?.target.type === "module")
-        draft.training.modules[drag.current.target.index].trigger.bounds =
-          bounds;
+      const triggerRef =
+        drag.current?.target.type === "finish"
+          ? draft.training.finish.trigger
+          : drag.current?.target.type === "module"
+            ? draft.training.modules[drag.current.target.index].trigger
+            : undefined;
+      const entity = triggerRef
+        ? trainingTriggerEntity(draft.map, triggerRef)
+        : undefined;
+      if (entity) entity.bounds = bounds;
     });
   };
 
@@ -1081,7 +1095,7 @@ export function TrainingFlowEditor({
     <main className="training-flow-editor">
       <aside className="training-project-tree">
         <header>
-          <small>TRAINING MAP V2</small>
+          <small>TRAINING MAP V3</small>
           <h1>{project.training.title}</h1>
           <span>{project.training.modules.length} 个模块</span>
         </header>
@@ -1121,8 +1135,15 @@ export function TrainingFlowEditor({
           onClick={() =>
             updateTraining((draft) => {
               const index = draft.training.modules.length;
-              draft.training.modules.push(
-                createTrainingModule(draft.map, index),
+              const module = createTrainingModule(draft.map, index);
+              draft.training.modules.push(module);
+              draft.map.entities.push(
+                createTrainingTriggerEntity(module.trigger.id, {
+                  x: draft.map.spawn.x - 24 + index * 80,
+                  y: draft.map.spawn.y - 40,
+                  width: 64,
+                  height: 48,
+                }),
               );
               setTarget({ type: "module", index });
             })
@@ -1138,9 +1159,23 @@ export function TrainingFlowEditor({
                   const copy = structuredClone(
                     draft.training.modules[target.index],
                   );
+                  const sourceTrigger = trainingTriggerEntity(
+                    draft.map,
+                    copy.trigger,
+                  );
                   copy.id = `${copy.id}-copy`;
                   copy.trigger.id = `${copy.trigger.id}-copy`;
                   copy.tutorial.id = `${copy.tutorial.id}-copy`;
+                  if (sourceTrigger)
+                    draft.map.entities.push({
+                      ...structuredClone(sourceTrigger),
+                      name: copy.trigger.id,
+                      bounds: {
+                        ...sourceTrigger.bounds,
+                        x: sourceTrigger.bounds.x + 8,
+                        y: sourceTrigger.bounds.y + 8,
+                      },
+                    });
                   draft.training.modules.splice(target.index + 1, 0, copy);
                   setTarget({ type: "module", index: target.index + 1 });
                 })
@@ -1151,7 +1186,16 @@ export function TrainingFlowEditor({
             <button
               onClick={() =>
                 updateTraining((draft) => {
-                  draft.training.modules.splice(target.index, 1);
+                  const [removed] = draft.training.modules.splice(
+                    target.index,
+                    1,
+                  );
+                  if (removed)
+                    draft.map.entities = draft.map.entities.filter(
+                      (entity) =>
+                        entity.kind !== "training_trigger" ||
+                        entity.name !== removed.trigger.id,
+                    );
                   setTarget({
                     type: "module",
                     index: Math.max(0, target.index - 1),
@@ -1212,7 +1256,10 @@ export function TrainingFlowEditor({
               drag.current = null;
             }}
           >
-            {project.training.modules.map((module, index) => (
+            {project.training.modules.map((module, index) => {
+              const entity = trainingTriggerEntity(project.map, module.trigger);
+              if (!entity) return null;
+              return (
               <g key={module.id}>
                 <rect
                   className={
@@ -1220,44 +1267,50 @@ export function TrainingFlowEditor({
                       ? "module selected"
                       : "module"
                   }
-                  {...module.trigger.bounds}
+                  {...entity.bounds}
                   onPointerDown={(event) =>
                     beginDrag(
                       event,
                       { type: "module", index },
-                      module.trigger.bounds,
+                      entity.bounds,
                     )
                   }
                 />
                 <text
-                  x={module.trigger.bounds.x + 3}
-                  y={module.trigger.bounds.y + 10}
+                  x={entity.bounds.x + 3}
+                  y={entity.bounds.y + 10}
                 >
                   {index + 1} · {module.tutorial.title}
                 </text>
               </g>
-            ))}
-            <g>
-              <rect
-                className={
-                  target.type === "finish" ? "finish selected" : "finish"
-                }
-                {...project.training.finish.trigger.bounds}
-                onPointerDown={(event) =>
-                  beginDrag(
-                    event,
-                    { type: "finish" },
-                    project.training.finish.trigger.bounds,
-                  )
-                }
-              />
-              <text
-                x={project.training.finish.trigger.bounds.x + 3}
-                y={project.training.finish.trigger.bounds.y + 10}
-              >
-                FINISH
-              </text>
-            </g>
+              );
+            })}
+            {(() => {
+              const entity = trainingTriggerEntity(
+                project.map,
+                project.training.finish.trigger,
+              );
+              if (!entity) return null;
+              return (
+                <g>
+                  <rect
+                    className={
+                      target.type === "finish" ? "finish selected" : "finish"
+                    }
+                    {...entity.bounds}
+                    onPointerDown={(event) =>
+                      beginDrag(event, { type: "finish" }, entity.bounds)
+                    }
+                  />
+                  <text
+                    x={entity.bounds.x + 3}
+                    y={entity.bounds.y + 10}
+                  >
+                    FINISH
+                  </text>
+                </g>
+              );
+            })()}
           </svg>
         </GameView>
         <section className="training-test-results" aria-live="polite">
@@ -1301,8 +1354,33 @@ export function TrainingFlowEditor({
         ) : selectedModule ? (
           <ModuleInspector
             module={selectedModule}
+            trigger={selectedTrigger}
             onChange={(module) =>
               updateModule(target.type === "module" ? target.index : 0, module)
+            }
+            onTriggerIdChange={(id) =>
+              updateTraining((draft) => {
+                const module =
+                  draft.training.modules[
+                    target.type === "module" ? target.index : 0
+                  ];
+                if (!module) return;
+                const entity = trainingTriggerEntity(draft.map, module.trigger);
+                if (entity) entity.name = id;
+                module.trigger.id = id;
+              })
+            }
+            onTriggerBoundsChange={(bounds) =>
+              updateTraining((draft) => {
+                const module =
+                  draft.training.modules[
+                    target.type === "module" ? target.index : 0
+                  ];
+                const entity = module
+                  ? trainingTriggerEntity(draft.map, module.trigger)
+                  : undefined;
+                if (entity) entity.bounds = bounds;
+              })
             }
           />
         ) : (
@@ -1351,19 +1429,30 @@ export function TrainingFlowEditor({
                   value={project.training.finish.trigger.id}
                   onChange={(event) =>
                     updateTraining((draft) => {
+                      const entity = trainingTriggerEntity(
+                        draft.map,
+                        draft.training.finish.trigger,
+                      );
+                      if (entity) entity.name = event.target.value;
                       draft.training.finish.trigger.id = event.target.value;
                     })
                   }
                 />
               </label>
-              <BoundsFields
-                value={project.training.finish.trigger.bounds}
-                onChange={(value) =>
-                  updateTraining((draft) => {
-                    draft.training.finish.trigger.bounds = value;
-                  })
-                }
-              />
+              {selectedTrigger && (
+                <BoundsFields
+                  value={selectedTrigger.bounds}
+                  onChange={(value) =>
+                    updateTraining((draft) => {
+                      const entity = trainingTriggerEntity(
+                        draft.map,
+                        draft.training.finish.trigger,
+                      );
+                      if (entity) entity.bounds = value;
+                    })
+                  }
+                />
+              )}
               <label className="training-check">
                 <input
                   type="checkbox"

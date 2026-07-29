@@ -20,6 +20,24 @@ const routeMap = room("Hyper · 山路训练", "hyper-route", {
       direction: { x: 0, y: -1 },
       name: "spikesUp",
     },
+    {
+      kind: "training_trigger",
+      bounds: { x: 64, y: 190, width: 96, height: 50 },
+      direction: { x: 0, y: 0 },
+      name: "gap-start",
+    },
+    {
+      kind: "training_trigger",
+      bounds: { x: 360, y: 190, width: 120, height: 50 },
+      direction: { x: 0, y: 0 },
+      name: "charged-start",
+    },
+    {
+      kind: "training_trigger",
+      bounds: { x: 820, y: 180, width: 100, height: 60 },
+      direction: { x: 0, y: 0 },
+      name: "route-finish",
+    },
   ],
 });
 
@@ -33,6 +51,18 @@ const spikeMap = room("Hyper · 越过尖刺", "hyper-spikes", {
       direction: { x: 0, y: -1 },
       name: "spikesUp",
     },
+    {
+      kind: "training_trigger",
+      bounds: { x: 56, y: 190, width: 104, height: 50 },
+      direction: { x: 0, y: 0 },
+      name: "spike-gap-start",
+    },
+    {
+      kind: "training_trigger",
+      bounds: { x: 320, y: 180, width: 96, height: 60 },
+      direction: { x: 0, y: 0 },
+      name: "spike-gap-finish",
+    },
   ],
 });
 
@@ -45,6 +75,18 @@ const bubbleMap = room("Hyper · 泡泡起手", "hyper-bubble", {
       bounds: { x: 104, y: 216, width: 16, height: 16 },
       direction: { x: 0, y: 0 },
       name: "booster",
+    },
+    {
+      kind: "training_trigger",
+      bounds: { x: 88, y: 180, width: 72, height: 60 },
+      direction: { x: 0, y: 0 },
+      name: "bubble-exit-start",
+    },
+    {
+      kind: "training_trigger",
+      bounds: { x: 352, y: 180, width: 80, height: 60 },
+      direction: { x: 0, y: 0 },
+      name: "bubble-exit-finish",
     },
   ],
 });
@@ -67,25 +109,23 @@ function singleModuleTraining(options: {
   id: string;
   title: string;
   summary: string;
-  trigger: { x: number; y: number; width: number; height: number };
-  finish: { x: number; y: number; width: number; height: number };
   initial: ReturnType<typeof snapshot>;
 }): TrainingMapDocument {
   const module = structuredClone(routeTraining.modules[0]);
   module.id = options.id;
-  module.trigger = { id: `${options.id}-start`, bounds: options.trigger };
+  module.trigger = { id: `${options.id}-start` };
   module.tutorial.id = `${options.id}-tutorial`;
   module.tutorial.title = options.title;
   module.tutorial.summary = options.summary;
   module.validation.initial_state = options.initial;
   return {
-    version: 2,
+    version: 3,
     id: options.id,
     title: options.title,
     summary: options.summary,
     modules: [module],
     finish: {
-      trigger: { id: `${options.id}-finish`, bounds: options.finish },
+      trigger: { id: `${options.id}-finish` },
       require_all_modules: true,
     },
   };
@@ -95,16 +135,12 @@ const spikeTraining = singleModuleTraining({
   id: "spike-gap",
   title: "越过尖刺",
   summary: "控制起跳窗口，越过地面的尖刺带。",
-  trigger: { x: 56, y: 190, width: 104, height: 50 },
-  finish: { x: 320, y: 180, width: 96, height: 60 },
   initial: snapshot({ x: 100, y: 240 }),
 });
 const bubbleTraining = singleModuleTraining({
   id: "bubble-exit",
   title: "泡泡起手",
   summary: "从泡泡状态离开后建立 Hyper 节奏。",
-  trigger: { x: 88, y: 180, width: 72, height: 60 },
-  finish: { x: 352, y: 180, width: 80, height: 60 },
   initial: bubbleInitial,
 });
 

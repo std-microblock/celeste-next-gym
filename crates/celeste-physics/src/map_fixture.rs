@@ -49,6 +49,7 @@ pub enum FixtureEntityKind {
     CrystalStaticSpinner,
     Lookout,
     MovingSolid,
+    TrainingTrigger,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -453,6 +454,12 @@ fn validate_entity_fields(entity: &FixtureEntity, room: &str) -> Result<(), MapF
                 entity.id
             ));
         }
+        FixtureEntityKind::TrainingTrigger if entity.name.as_deref().is_none_or(str::is_empty) => {
+            return validation(format!(
+                "room {room:?} entity {:?} requires a stable trigger name",
+                entity.id
+            ));
+        }
         _ => {}
     }
     if direction != [0, 0]
@@ -639,6 +646,7 @@ fn entity(value: &FixtureEntity) -> Entity {
             FixtureEntityKind::CrystalStaticSpinner => EntityKind::CrystalStaticSpinner,
             FixtureEntityKind::Lookout => EntityKind::Lookout,
             FixtureEntityKind::MovingSolid => EntityKind::MovingSolid,
+            FixtureEntityKind::TrainingTrigger => EntityKind::TrainingTrigger,
         },
         bounds: rect(value.bounds),
         direction: vec2(value.direction),

@@ -22,6 +22,7 @@ import {
   moduleAtPlayer,
   objectiveOutputName,
   outputAccuracy,
+  trainingTriggerEntity,
   triggerContainsPlayer,
   type TrainingCompletion,
 } from "../training/course";
@@ -268,11 +269,20 @@ export function TrainingGround({
   const idsInside = (state: SimState, variant: TrainingVariant) =>
     new Set([
       ...variant.training.modules
-        .filter((module) => triggerContainsPlayer(module.trigger, state))
+        .filter((module) => {
+          const entity = trainingTriggerEntity(variant.map, module.trigger);
+          return entity ? triggerContainsPlayer(entity, state) : false;
+        })
         .map((module) => module.trigger.id),
-      ...(triggerContainsPlayer(variant.training.finish.trigger, state)
-        ? [variant.training.finish.trigger.id]
-        : []),
+      ...(() => {
+        const entity = trainingTriggerEntity(
+          variant.map,
+          variant.training.finish.trigger,
+        );
+        return entity && triggerContainsPlayer(entity, state)
+          ? [variant.training.finish.trigger.id]
+          : [];
+      })(),
     ]);
 
   const scanTriggers = (
@@ -347,6 +357,7 @@ export function TrainingGround({
     occupiedTriggers.current = idsInside(variant.initial, variant);
     const initialModule = moduleAtPlayer(
       variant.training,
+      variant.map,
       variant.initial,
       new Set(),
     );

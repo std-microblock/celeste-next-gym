@@ -179,6 +179,14 @@ const ENTITY_TEMPLATES: readonly EntityTemplate[] = [
     height: 16,
     nodes: [{ x: 64, y: 0 }],
   },
+  {
+    id: "training-trigger",
+    kind: "training_trigger",
+    label: "训练 Trigger",
+    name: "training-trigger",
+    width: 64,
+    height: 48,
+  },
 ] as const;
 
 const SPIKE_DIRECTIONS = [

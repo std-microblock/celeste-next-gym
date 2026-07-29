@@ -89,7 +89,8 @@ export type FixtureEntity =
         | "strawberry"
         | "booster"
         | "red_booster"
-        | "temple_gate";
+        | "temple_gate"
+        | "training_trigger";
     })
   | (FixtureEntityBase & {
       readonly kind: "rising_lava";

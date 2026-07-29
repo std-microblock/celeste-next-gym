@@ -164,7 +164,12 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
           value.spawn
         )
           map = value as GymMap;
-        if (value.version === 2 && Array.isArray(value.modules) && value.finish)
+        const trainingVersion = (value as { version?: number }).version;
+        if (
+          (trainingVersion === 2 || trainingVersion === 3) &&
+          Array.isArray(value.modules) &&
+          value.finish
+        )
           training = value as TrainingProject["training"];
       }
       const project = createTrainingProject(

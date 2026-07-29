@@ -1,15 +1,12 @@
 {
-  "version": 2,
+  "version": 3,
   "id": "hyper-route",
   "title": "山路训练",
   "summary": "一张地图中连续完成普通 Hyper 和充能 Hyper，再抵达终点。",
   "modules": [
     {
       "id": "gap-hyper",
-      "trigger": {
-        "id": "gap-start",
-        "bounds": { "x": 64, "y": 190, "width": 96, "height": 50 }
-      },
+      "trigger": { "id": "gap-start" },
       "tutorial": {
         "version": 2,
         "id": "gap-hyper-tutorial",
@@ -113,10 +110,7 @@
     },
     {
       "id": "charged-hyper",
-      "trigger": {
-        "id": "charged-start",
-        "bounds": { "x": 360, "y": 190, "width": 120, "height": 50 }
-      },
+      "trigger": { "id": "charged-start" },
       "tutorial": {
         "version": 2,
         "id": "charged-hyper-tutorial",
@@ -224,10 +218,7 @@
     }
   ],
   "finish": {
-    "trigger": {
-      "id": "route-finish",
-      "bounds": { "x": 820, "y": 180, "width": 100, "height": 60 }
-    },
+    "trigger": { "id": "route-finish" },
     "require_all_modules": true
   }
 }

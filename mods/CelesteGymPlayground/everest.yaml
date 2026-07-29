@@ -1,5 +1,6 @@
 - Name: CelesteGymPlayground
   Version: 0.1.0
+  DLL: Code/CelesteGymPlayground.dll
   Dependencies:
     - Name: EverestCore
       Version: 1.0.0

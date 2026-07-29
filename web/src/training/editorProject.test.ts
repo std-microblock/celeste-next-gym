@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PLAYGROUND } from "../model";
+import type { TrainingMapDocument } from "./catalog";
 import {
   createBlankGymMap,
   createTrainingProject,
@@ -56,8 +57,63 @@ describe("training editor projects", () => {
 
   it("creates a valid map-owned training project", () => {
     const project = createTrainingProject(PLAYGROUND);
-    expect(project.training.version).toBe(2);
+    expect(project.training.version).toBe(3);
     expect(project.training.modules).toHaveLength(1);
+    expect(
+      project.map.entities.filter((entity) => entity.kind === "training_trigger"),
+    ).toHaveLength(2);
+    expect(validateTrainingProject(project)).toEqual([]);
+  });
+
+  it("migrates v2 trigger bounds into map entities", () => {
+    const current = createTrainingProject(PLAYGROUND);
+    const legacy = structuredClone(current.training) as unknown as {
+      version: 2;
+      modules: Array<{
+        trigger: { id: string; bounds: typeof PLAYGROUND.bounds };
+      }>;
+      finish: {
+        trigger: { id: string; bounds: typeof PLAYGROUND.bounds };
+      };
+    };
+    legacy.version = 2;
+    const moduleTriggerId = legacy.modules[0].trigger.id;
+    legacy.modules[0].trigger.bounds = {
+      x: 12,
+      y: 34,
+      width: 56,
+      height: 78,
+    };
+    legacy.finish.trigger.bounds = {
+      x: 210,
+      y: 20,
+      width: 40,
+      height: 120,
+    };
+
+    const project = createTrainingProject(
+      PLAYGROUND,
+      legacy as unknown as TrainingMapDocument,
+    );
+
+    expect(project.training.version).toBe(3);
+    expect(project.training.modules[0].trigger).toEqual({
+      id: moduleTriggerId,
+    });
+    expect(
+      project.map.entities.find(
+        (entity) =>
+          entity.kind === "training_trigger" &&
+          entity.name === moduleTriggerId,
+      )?.bounds,
+    ).toEqual({ x: 12, y: 34, width: 56, height: 78 });
+    expect(
+      project.map.entities.find(
+        (entity) =>
+          entity.kind === "training_trigger" &&
+          entity.name === project.training.finish.trigger.id,
+      )?.bounds,
+    ).toEqual({ x: 210, y: 20, width: 40, height: 120 });
     expect(validateTrainingProject(project)).toEqual([]);
   });
 

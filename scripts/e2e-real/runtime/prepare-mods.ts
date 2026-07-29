@@ -12,6 +12,29 @@ import type { GameInstall } from "../types.js";
 import { comparablePath } from "../isolation/game-install.js";
 import { runCommand } from "./commands.js";
 
+export function playgroundAssemblyPath(playgroundModRoot: string): string {
+  return resolve(
+    playgroundModRoot,
+    "Source",
+    "bin",
+    "Release",
+    "net8.0",
+    "CelesteGymPlayground.dll",
+  );
+}
+
+export function stagePlaygroundAssembly(
+  sourceModRoot: string,
+  stagedModRoot: string,
+): void {
+  const codeRoot = resolve(stagedModRoot, "Code");
+  mkdirSync(codeRoot, { recursive: true });
+  copyFileSync(
+    playgroundAssemblyPath(sourceModRoot),
+    resolve(codeRoot, "CelesteGymPlayground.dll"),
+  );
+}
+
 export interface HarnessPaths {
   readonly repoRoot: string;
   readonly gameRoot: string;
@@ -35,6 +58,22 @@ export function prepareMods(
   gameInstall: GameInstall,
   playgroundModRoot: string = paths.playgroundModRoot,
 ): void {
+  runCommand(
+    "dotnet",
+    [
+      "build",
+      resolve(
+        paths.playgroundModRoot,
+        "Source",
+        "CelesteGymPlayground.csproj",
+      ),
+      "-c",
+      "Release",
+      `-p:CelesteRoot=${paths.gameRoot}`,
+    ],
+    paths.repoRoot,
+  );
+  stagePlaygroundAssembly(paths.playgroundModRoot, playgroundModRoot);
   runCommand(
     "dotnet",
     [
@@ -96,7 +135,15 @@ export function prepareMods(
   removeValidatedTarget(installedPlaygroundZip, gameModsRoot);
   runCommand(
     "7z",
-    ["a", "-tzip", "-mx=0", installedPlaygroundZip, "everest.yaml", "Maps"],
+    [
+      "a",
+      "-tzip",
+      "-mx=0",
+      installedPlaygroundZip,
+      "everest.yaml",
+      "Maps",
+      "Code",
+    ],
     playgroundModRoot,
   );
   runCommand(

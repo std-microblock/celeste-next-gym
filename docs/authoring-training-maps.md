@@ -8,7 +8,7 @@
 
 - `map`：可模拟的房间碰撞、实体和出生点；
 - `initial`：玩家进入地图时的状态；
-- `training`：一个 version 2 地图脚本；
+- `training`：一个 version 3 地图脚本；
 - `training.modules[]`：任意数量的教程模块，每个模块各自绑定一个不可见 Trigger、一个教程和一个 Fuzz；
 - `training.finish.trigger`：终点 Trigger。
 
@@ -24,9 +24,9 @@
 
 ## 2. Trigger 原理
 
-Trigger 不加入 `GymMap.entities`，因此不会被物理层绘制、碰撞或序列化成 Celeste 实体。它只存在于 `training` JSON 中。
+Trigger 是 `GymMap.entities` 中 `kind: "training_trigger"` 的地图实体。它会被 Rust 编解码为 `CelesteGym/trainingTrigger`，由 `CelesteGymPlayground` Mod 的自定义 `Trigger` 类加载；Web 物理模拟不会把它当作实体碰撞或绘制。`training` JSON 只用稳定 `id` 引用地图实体，不再复制坐标。
 
-坐标与地图坐标一致：X 向右、Y 向下。`bounds` 是轴对齐矩形。运行时使用玩家底部中心 `SimState.pos` 构造碰撞框：站立时宽 8、高 11；下蹲时宽 8、高 6。矩形接触边界也算触发。
+实体 `bounds` 使用地图坐标：X 向右、Y 向下。运行时使用玩家底部中心 `SimState.pos` 构造碰撞框：站立时宽 8、高 11；下蹲时宽 8、高 6。矩形接触边界也算触发。
 
 Trigger 采用“进入边沿”语义：玩家从区域外进入时触发一次；留在区域中不会每帧重复触发；离开后再次进入可重新触发尚未完成的模块。完成的模块本局不会再次武装。模块 Trigger 应使用全图唯一 `id`，也不能与终点 Trigger 的 `id` 重复。
 
@@ -42,17 +42,14 @@ Trigger 采用“进入边沿”语义：玩家从区域外进入时触发一次
 
 ```json
 {
-  "version": 2,
+  "version": 3,
   "id": "my-training-map",
   "title": "我的训练图",
   "summary": "地图目录与结算推荐中显示的简介。",
   "modules": [
     {
       "id": "first-lesson",
-      "trigger": {
-        "id": "first-lesson-start",
-        "bounds": { "x": 64, "y": 190, "width": 96, "height": 50 }
-      },
+      "trigger": { "id": "first-lesson-start" },
       "tutorial": {
         "version": 2,
         "id": "first-lesson-tutorial",
@@ -122,13 +119,29 @@ Trigger 采用“进入边沿”语义：玩家从区域外进入时触发一次
     }
   ],
   "finish": {
-    "trigger": {
-      "id": "map-finish",
-      "bounds": { "x": 820, "y": 180, "width": 100, "height": 60 }
-    },
+    "trigger": { "id": "map-finish" },
     "require_all_modules": true
   }
 }
+```
+
+对应的 `GymMap.entities` 至少包含：
+
+```json
+[
+  {
+    "kind": "training_trigger",
+    "name": "first-lesson-start",
+    "bounds": { "x": 64, "y": 190, "width": 96, "height": 50 },
+    "direction": { "x": 0, "y": 0 }
+  },
+  {
+    "kind": "training_trigger",
+    "name": "map-finish",
+    "bounds": { "x": 820, "y": 180, "width": 100, "height": 60 },
+    "direction": { "x": 0, "y": 0 }
+  }
+]
 ```
 
 ## 4. 地图脚本字段总表
@@ -139,7 +152,7 @@ Trigger 采用“进入边沿”语义：玩家从区域外进入时触发一次
 
 | 字段                         | 类型               | 含义                                       |
 | ---------------------------- | ------------------ | ------------------------------------------ |
-| `version`                    | `2`                | 地图训练脚本版本。不是 Fuzz 的版本。       |
+| `version`                    | `3`                | 地图训练脚本版本。不是 Fuzz 的版本。       |
 | `id`                         | string             | 地图脚本稳定 ID。存档、日志和 UI 使用。    |
 | `title`                      | string             | 地图标题。                                 |
 | `summary`                    | string             | 地图简介。                                 |
@@ -164,10 +177,8 @@ Trigger 采用“进入边沿”语义：玩家从区域外进入时触发一次
 | 字段            | 类型   | 含义                  |
 | --------------- | ------ | --------------------- |
 | `id`            | string | 全图唯一 Trigger ID。 |
-| `bounds.x`      | number | 左边界地图坐标。      |
-| `bounds.y`      | number | 上边界地图坐标。      |
-| `bounds.width`  | number | 宽度，必须为正数。    |
-| `bounds.height` | number | 高度，必须为正数。    |
+
+该 ID 必须匹配 `GymMap.entities` 中一个 `kind: "training_trigger"` 实体的 `name`。区域的坐标和尺寸只存放在该实体的 `bounds` 中。
 
 ### `TrainingDocument`
 
@@ -318,7 +329,7 @@ JSON 只拥有训练逻辑；可模拟地图仍是 `GymMap`：
 | `bounds`         | 房间边界。                                                                                                       |
 | `spawn`          | 默认出生点。                                                                                                     |
 | `solids[]`       | 实体地形矩形。                                                                                                   |
-| `entities[]`     | 物理实体；字段为 `kind`、`bounds`、`direction`、`name`，以及按实体需要提供的 `shielded`、`single_use`、`nodes`。 |
+| `entities[]`     | 地图实体；除物理实体外也包含 `training_trigger`。字段为 `kind`、`bounds`、`direction`、`name`，以及按实体需要提供的 `shielded`、`single_use`、`nodes`。 |
 | `source_package` | 来源包；手写图通常为 `null`。                                                                                    |
 
 在 technique 文件中导入 JSON 时同时添加 Node 所需的 import attribute：
@@ -352,4 +363,4 @@ import trainingJson from "../maps/my-map.training.json" with { type: "json" };
 7. 运行 `npm run build` 做 TypeScript 与生产构建检查。
 8. 手动从 Trigger 外走入，分别确认：错误首动作会失败、正确成功后不停止、多个模块均可触发、未完成时终点不结算、全部完成后结算三栏布局正常。
 
-常见错误包括：把 Trigger 放进 `entities` 导致它参与物理层；入口 `at` 不是 0；方向输入遗漏 `held_time`；步骤数量/顺序和受验证输入不一致；`observe_until` 早于最后输入；校验快照与 Trigger 附近的真实状态差异过大；多个 Trigger 复用同一个 ID。
+常见错误包括：脚本引用的 Trigger ID 在 `entities` 中不存在；把区域坐标重复写回训练脚本；入口 `at` 不是 0；方向输入遗漏 `held_time`；步骤数量/顺序和受验证输入不一致；`observe_until` 早于最后输入；校验快照与 Trigger 附近的真实状态差异过大；多个 Trigger 复用同一个 ID。

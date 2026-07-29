@@ -88,6 +88,9 @@ pub enum EntityKind {
     /// carrying, pushing, and Player LiftSpeed inheritance independently of a
     /// specific vanilla entity state machine.
     MovingSolid,
+    /// CelesteGym's invisible map-owned training activation region. `name`
+    /// stores the stable trigger ID referenced by the training script.
+    TrainingTrigger,
     Unknown,
 }
 
@@ -731,6 +734,21 @@ pub(crate) fn encode_celeste_rooms(
                     ],
                     vec![],
                 )),
+                EntityKind::TrainingTrigger => {
+                    triggers.push(element(
+                        "CelesteGym/trainingTrigger",
+                        [
+                            ("height", BinaryValue::Int(height)),
+                            ("id", BinaryValue::Int(id)),
+                            ("triggerId", BinaryValue::String(entity.name.clone())),
+                            ("width", BinaryValue::Int(width)),
+                            ("x", BinaryValue::Int(x)),
+                            ("y", BinaryValue::Int(y)),
+                        ],
+                        vec![],
+                    ));
+                    None
+                }
                 EntityKind::Unknown => None,
             };
             if let Some(encoded) = encoded {
@@ -1193,23 +1211,33 @@ fn map_from_binary_inner(
 
     if let Some(triggers) = level.children.iter().find(|e| e.name == "triggers") {
         for trigger in &triggers.children {
-            if trigger.name != "windTrigger" {
-                continue;
-            }
-            let pattern = attr_text(trigger, "pattern").unwrap_or("None");
-            let direction = match pattern {
-                "Left" => Vec2::new(-400.0, 0.0),
-                "Right" => Vec2::new(400.0, 0.0),
-                "LeftStrong" => Vec2::new(-800.0, 0.0),
-                "RightStrong" => Vec2::new(800.0, 0.0),
-                "RightCrazy" => Vec2::new(1200.0, 0.0),
-                "Up" => Vec2::new(0.0, -400.0),
-                "Down" => Vec2::new(0.0, 300.0),
-                "Space" => Vec2::new(0.0, -600.0),
-                _ => Vec2::default(),
+            let (kind, direction, name) = match trigger.name.as_str() {
+                "windTrigger" => {
+                    let pattern = attr_text(trigger, "pattern").unwrap_or("None");
+                    let direction = match pattern {
+                        "Left" => Vec2::new(-400.0, 0.0),
+                        "Right" => Vec2::new(400.0, 0.0),
+                        "LeftStrong" => Vec2::new(-800.0, 0.0),
+                        "RightStrong" => Vec2::new(800.0, 0.0),
+                        "RightCrazy" => Vec2::new(1200.0, 0.0),
+                        "Up" => Vec2::new(0.0, -400.0),
+                        "Down" => Vec2::new(0.0, 300.0),
+                        "Space" => Vec2::new(0.0, -600.0),
+                        _ => Vec2::default(),
+                    };
+                    (EntityKind::Wind, direction, trigger.name.clone())
+                }
+                "CelesteGym/trainingTrigger" => (
+                    EntityKind::TrainingTrigger,
+                    Vec2::default(),
+                    attr_text(trigger, "triggerId")
+                        .unwrap_or_default()
+                        .to_owned(),
+                ),
+                _ => continue,
             };
             map.entities.push(Entity {
-                kind: EntityKind::Wind,
+                kind,
                 bounds: Rect::new(
                     x + attr_f32(trigger, "x", 0.0),
                     y + attr_f32(trigger, "y", 0.0),
@@ -1220,7 +1248,7 @@ fn map_from_binary_inner(
                 shielded: false,
                 single_use: false,
                 nodes: vec![],
-                name: trigger.name.clone(),
+                name,
             });
         }
     }
@@ -1404,6 +1432,55 @@ mod tests {
         let bytes = encode_celeste_map(&map, "CelesteGymPlayground", "springs").unwrap();
         let decoded = decode_map_room(&bytes, Some("springs")).unwrap();
         assert_eq!(decoded.entities, springs);
+    }
+
+    #[test]
+    fn training_trigger_round_trips_as_custom_map_entity() {
+        let trigger = Entity {
+            kind: EntityKind::TrainingTrigger,
+            bounds: Rect::new(48.0, 96.0, 80.0, 40.0),
+            direction: Vec2::default(),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "hyper-start".to_owned(),
+        };
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            entities: vec![trigger.clone()],
+            ..Map::default()
+        };
+        let bytes = encode_celeste_map(&map, "CelesteGymTest", "training").unwrap();
+        let root = parse_celeste_bin(&bytes).unwrap();
+        let level = &root
+            .children
+            .iter()
+            .find(|child| child.name == "levels")
+            .unwrap()
+            .children[0];
+        let custom_name = "CelesteGym/trainingTrigger";
+        assert!(
+            level
+                .children
+                .iter()
+                .find(|child| child.name == "triggers")
+                .unwrap()
+                .children
+                .iter()
+                .any(|child| child.name == custom_name)
+        );
+        assert!(
+            level
+                .children
+                .iter()
+                .find(|child| child.name == "entities")
+                .unwrap()
+                .children
+                .iter()
+                .all(|child| child.name != custom_name)
+        );
+        let decoded = decode_map(&bytes).unwrap();
+        assert_eq!(decoded.entities, vec![trigger]);
     }
 
     #[test]

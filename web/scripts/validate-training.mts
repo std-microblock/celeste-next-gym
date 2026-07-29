@@ -6,6 +6,7 @@ import init, {
 } from "../src/wasm/celeste_wasm.js";
 import { trainingCatalog } from "../src/training/catalog.ts";
 import { trainingEntryInput } from "../src/training/session.ts";
+import { trainingTriggerEntity } from "../src/training/course.ts";
 
 await init({
   module_or_path: await readFile(
@@ -19,7 +20,12 @@ for (const technique of trainingCatalog) {
     cache_simulation_map_msgpack(encode(variant.map));
     const triggerIds = new Set<string>();
     for (const module of variant.training.modules) {
-      if (module.trigger.bounds.width <= 0 || module.trigger.bounds.height <= 0)
+      const trigger = trainingTriggerEntity(variant.map, module.trigger);
+      if (!trigger)
+        throw new Error(
+          `${technique.id}/${variant.id}/${module.id} 地图中缺少 training_trigger ${module.trigger.id}`,
+        );
+      if (trigger.bounds.width <= 0 || trigger.bounds.height <= 0)
         throw new Error(
           `${technique.id}/${variant.id}/${module.id} trigger 尺寸必须为正数`,
         );
@@ -66,10 +72,15 @@ for (const technique of trainingCatalog) {
       );
       validated += 1;
     }
-    if (
-      variant.training.finish.trigger.bounds.width <= 0 ||
-      variant.training.finish.trigger.bounds.height <= 0
-    )
+    const finish = trainingTriggerEntity(
+      variant.map,
+      variant.training.finish.trigger,
+    );
+    if (!finish)
+      throw new Error(
+        `${technique.id}/${variant.id} 地图中缺少终点 training_trigger ${variant.training.finish.trigger.id}`,
+      );
+    if (finish.bounds.width <= 0 || finish.bounds.height <= 0)
       throw new Error(
         `${technique.id}/${variant.id} 终点 trigger 尺寸必须为正数`,
       );

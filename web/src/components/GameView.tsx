@@ -2342,7 +2342,7 @@ function drawEntity(
     );
   } else if (entity.kind === "moving_solid") {
     drawMovingSolid(context, entity, state, kindIndex);
-  } else if (entity.kind !== "wind") {
+  } else if (entity.kind !== "wind" && entity.kind !== "training_trigger") {
     drawUnknownEntity(context, entity);
   }
 }

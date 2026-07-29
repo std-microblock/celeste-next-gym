@@ -200,6 +200,7 @@ export type EntityKind =
   | "cassette_block"
   | "crystal_static_spinner"
   | "moving_solid"
+  | "training_trigger"
   | "unknown";
 
 export interface MapEntity {
@@ -211,6 +212,7 @@ export interface MapEntity {
   /** Web editor visual override for entities such as crystal spinners. */
   variant?: string;
   nodes?: Vec2[];
+  /** Source entity name; for training_trigger this is its stable script ID. */
   name: string;
 }
 

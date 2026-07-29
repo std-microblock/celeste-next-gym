@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Celeste.Mod.CelesteGymPlayground</RootNamespace>
+    <AssemblyName>CelesteGymPlayground</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <CelesteRoot Condition="'$(CelesteRoot)' == ''">$(MSBuildThisFileDirectory)..\..\..\vendor\celeste-game</CelesteRoot>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="Celeste"><HintPath>$(CelesteRoot)\Celeste.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="FNA"><HintPath>$(CelesteRoot)\FNA.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>

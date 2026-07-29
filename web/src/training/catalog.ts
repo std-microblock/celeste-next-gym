@@ -50,8 +50,8 @@ export interface TrainingDocument extends TrainingDefinition {
 }
 
 export interface TrainingTrigger {
+  /** Stable ID of a training_trigger entity in GymMap.entities. */
   id: string;
-  bounds: { x: number; y: number; width: number; height: number };
 }
 
 export interface TrainingModule {
@@ -66,7 +66,7 @@ export interface TrainingModule {
 
 /** Map-owned training script. Tutorials are modules activated by its triggers. */
 export interface TrainingMapDocument {
-  version: 2;
+  version: 3;
   id: string;
   title: string;
   summary: string;

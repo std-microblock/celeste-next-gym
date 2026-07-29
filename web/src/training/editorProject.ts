@@ -9,6 +9,10 @@ import type {
   TrainingMapDocument,
   TrainingModule,
 } from "./catalog";
+import {
+  createTrainingTriggerEntity,
+  trainingTriggerEntity,
+} from "./course";
 import { trainingEntryInput, verifiedInputs } from "./session";
 
 export interface TrainingProject {
@@ -73,15 +77,7 @@ export function createTrainingModule(map: GymMap, index = 0): TrainingModule {
   initial.on_ground = true;
   return {
     id,
-    trigger: {
-      id: `${id}-start`,
-      bounds: {
-        x: map.spawn.x - 24,
-        y: map.spawn.y - 40,
-        width: 64,
-        height: 48,
-      },
-    },
+    trigger: { id: `${id}-start` },
     tutorial: {
       version: 2,
       id: `${id}-tutorial`,
@@ -127,7 +123,7 @@ export function createTrainingDocument(
   id = slug(map.room ?? map.name),
 ): TrainingMapDocument {
   return {
-    version: 2,
+    version: 3,
     id,
     title: map.name,
     summary: "一张可实时测试的训练地图。",
@@ -135,12 +131,6 @@ export function createTrainingDocument(
     finish: {
       trigger: {
         id: `${id}-finish`,
-        bounds: {
-          x: map.bounds.x + Math.max(0, map.bounds.width - 96),
-          y: map.bounds.y,
-          width: 96,
-          height: map.bounds.height,
-        },
       },
       require_all_modules: true,
     },
@@ -152,12 +142,65 @@ export function createTrainingProject(
   training = createTrainingDocument(map),
 ): TrainingProject {
   const id = slug(training.id);
+  const projectMap = structuredClone(map);
+  const projectTraining = structuredClone(training) as TrainingMapDocument & {
+    version: 2 | 3;
+  };
+  projectTraining.version = 3;
+  for (const [index, module] of projectTraining.modules.entries()) {
+    const legacyBounds = (
+      module.trigger as TrainingModule["trigger"] & {
+        bounds?: GymMap["bounds"];
+      }
+    ).bounds;
+    delete (
+      module.trigger as TrainingModule["trigger"] & {
+        bounds?: GymMap["bounds"];
+      }
+    ).bounds;
+    if (!trainingTriggerEntity(projectMap, module.trigger)) {
+      projectMap.entities.push(
+        createTrainingTriggerEntity(
+          module.trigger.id,
+          legacyBounds ?? {
+            x: map.spawn.x - 24 + index * 80,
+            y: map.spawn.y - 40,
+            width: 64,
+            height: 48,
+          },
+        ),
+      );
+    }
+  }
+  const legacyFinishBounds = (
+    projectTraining.finish.trigger as TrainingMapDocument["finish"]["trigger"] & {
+      bounds?: GymMap["bounds"];
+    }
+  ).bounds;
+  delete (
+    projectTraining.finish.trigger as TrainingMapDocument["finish"]["trigger"] & {
+      bounds?: GymMap["bounds"];
+    }
+  ).bounds;
+  if (!trainingTriggerEntity(projectMap, projectTraining.finish.trigger)) {
+    projectMap.entities.push(
+      createTrainingTriggerEntity(
+        projectTraining.finish.trigger.id,
+        legacyFinishBounds ?? {
+          x: map.bounds.x + Math.max(0, map.bounds.width - 96),
+          y: map.bounds.y,
+          width: 96,
+          height: map.bounds.height,
+        },
+      ),
+    );
+  }
   return {
     id,
     mapFileName: `${id}.map.json`,
     trainingFileName: `${id}.training.json`,
-    map: structuredClone(map),
-    training: structuredClone(training),
+    map: projectMap,
+    training: projectTraining,
   };
 }
 
@@ -174,8 +217,8 @@ export function validateTrainingProject(
 ): ProjectValidationIssue[] {
   const result: ProjectValidationIssue[] = [];
   const { map, training } = project;
-  if (training.version !== 2)
-    result.push(issue("version", "训练地图版本必须为 2"));
+  if (training.version !== 3)
+    result.push(issue("version", "训练地图版本必须为 3"));
   if (!training.id.trim()) result.push(issue("id", "地图脚本 ID 不能为空"));
   if (!training.modules.length)
     result.push(issue("modules", "至少需要一个教程模块"));
@@ -197,8 +240,16 @@ export function validateTrainingProject(
         issue(`${base}.trigger.id`, `Trigger ID ${module.trigger.id} 重复`),
       );
     triggerIds.add(module.trigger.id);
-    if (module.trigger.bounds.width <= 0 || module.trigger.bounds.height <= 0)
-      result.push(issue(`${base}.trigger.bounds`, "Trigger 尺寸必须为正数"));
+    const entity = trainingTriggerEntity(map, module.trigger);
+    if (!entity)
+      result.push(
+        issue(
+          `${base}.trigger.id`,
+          `地图 entities 中不存在 training_trigger ${module.trigger.id}`,
+        ),
+      );
+    else if (entity.bounds.width <= 0 || entity.bounds.height <= 0)
+      result.push(issue(`map.entities`, `Trigger ${module.trigger.id} 尺寸必须为正数`));
 
     const entry = trainingEntryInput(module.tutorial);
     if (!entry)
@@ -280,8 +331,28 @@ export function validateTrainingProject(
     result.push(
       issue("finish.trigger.id", "终点 Trigger ID 与模块 Trigger 重复"),
     );
-  if (finish.bounds.width <= 0 || finish.bounds.height <= 0)
-    result.push(issue("finish.trigger.bounds", "终点 Trigger 尺寸必须为正数"));
+  const finishEntity = trainingTriggerEntity(map, finish);
+  if (!finishEntity)
+    result.push(
+      issue(
+        "finish.trigger.id",
+        `地图 entities 中不存在 training_trigger ${finish.id}`,
+      ),
+    );
+  else if (finishEntity.bounds.width <= 0 || finishEntity.bounds.height <= 0)
+    result.push(issue("map.entities", `终点 Trigger ${finish.id} 尺寸必须为正数`));
+
+  const entityIds = new Set<string>();
+  for (const [index, entity] of map.entities.entries()) {
+    if (entity.kind !== "training_trigger") continue;
+    if (!entity.name.trim())
+      result.push(issue(`map.entities[${index}].name`, "Trigger ID 不能为空"));
+    else if (entityIds.has(entity.name))
+      result.push(
+        issue(`map.entities[${index}].name`, `Trigger ID ${entity.name} 重复`),
+      );
+    entityIds.add(entity.name);
+  }
   return result;
 }
 
@@ -319,16 +390,19 @@ export async function openTrainingWorkspace(
   }
   if (manifest?.version === 1) {
     return Promise.all(
-      manifest.projects.map(async (entry) => ({
-        id: entry.id,
-        mapFileName: entry.map,
-        trainingFileName: entry.training,
-        map: await readJson<GymMap>(directory, entry.map),
-        training: await readJson<TrainingMapDocument>(
+      manifest.projects.map(async (entry) => {
+        const map = await readJson<GymMap>(directory, entry.map);
+        const training = await readJson<TrainingMapDocument>(
           directory,
           entry.training,
-        ),
-      })),
+        );
+        return {
+          ...createTrainingProject(map, training),
+          id: entry.id,
+          mapFileName: entry.map,
+          trainingFileName: entry.training,
+        };
+      }),
     );
   }
 
@@ -353,11 +427,10 @@ export async function openTrainingWorkspace(
         trainingFileName,
       );
       return {
+        ...createTrainingProject(map, training),
         id: slug(training.id || base),
         mapFileName,
         trainingFileName,
-        map,
-        training,
       };
     }),
   );

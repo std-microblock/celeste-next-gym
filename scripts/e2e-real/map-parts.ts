@@ -206,6 +206,7 @@ const ENTITY_KINDS = new Set<FixtureEntity["kind"]>([
   "rising_lava",
   "sandwich_lava",
   "temple_gate",
+  "training_trigger",
 ]);
 
 export function validateFixturePackage(fixture: FixturePackage): void {
@@ -257,6 +258,8 @@ function validateAuthoringEntity(
 ): void {
   if (!entity.id)
     throw new Error(`room ${roomName} has an entity with an empty id`);
+  if (entity.kind === "training_trigger" && !entity.name)
+    throw new Error(`entity ${entity.id} training_trigger requires name`);
   if (!ENTITY_KINDS.has(entity.kind))
     throw new Error(
       `entity ${entity.id} has unknown kind ${String(entity.kind)}`,
@@ -389,6 +392,8 @@ function validateCanonicalEntity(
   }
   if (entity.name !== null && !entity.name)
     throw new Error(`entity ${entity.id} name must be null or non-empty`);
+  if (entity.kind === "training_trigger" && entity.name === null)
+    throw new Error(`entity ${entity.id} training_trigger requires name`);
 
   const [x, y] = entity.direction;
   if (entity.kind === "spikes" || entity.kind === "spring") {

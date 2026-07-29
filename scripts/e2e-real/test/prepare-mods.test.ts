@@ -1,8 +1,19 @@
 import assert from "node:assert/strict";
-import { resolve } from "node:path";
+import {
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { join, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { describe, it } from "node:test";
 
-import { removeValidatedTarget } from "../runtime/prepare-mods.js";
+import {
+  removeValidatedTarget,
+  stagePlaygroundAssembly,
+} from "../runtime/prepare-mods.js";
 
 describe("validated Mod replacement", () => {
   it("bounds transient Windows handle retries to the exact validated target", () => {
@@ -22,5 +33,29 @@ describe("validated Mod replacement", () => {
     });
     assert.equal(attempts, 3);
     assert.equal(waits, 200);
+  });
+
+  it("stages the Playground custom entity assembly into Code", () => {
+    const root = mkdtempSync(join(tmpdir(), "celeste-gym-trigger-mod-"));
+    try {
+      const source = resolve(root, "source");
+      const built = resolve(
+        source,
+        "Source",
+        "bin",
+        "Release",
+        "net8.0",
+      );
+      mkdirSync(built, { recursive: true });
+      writeFileSync(resolve(built, "CelesteGymPlayground.dll"), "assembly");
+      const staged = resolve(root, "staged");
+      stagePlaygroundAssembly(source, staged);
+      assert.equal(
+        readFileSync(resolve(staged, "Code", "CelesteGymPlayground.dll"), "utf8"),
+        "assembly",
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

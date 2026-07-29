@@ -1,4 +1,4 @@
-import type { SimState } from "../model.ts";
+import type { GymMap, MapEntity, SimState } from "../model.ts";
 import type {
   TrainingMapDocument,
   TrainingModule,
@@ -31,9 +31,31 @@ const PLAYER_HALF_WIDTH = 4;
 const STANDING_HEIGHT = 11;
 const DUCKING_HEIGHT = 6;
 
+export function trainingTriggerEntity(
+  map: GymMap,
+  trigger: TrainingTrigger | string,
+): MapEntity | undefined {
+  const id = typeof trigger === "string" ? trigger : trigger.id;
+  return map.entities.find(
+    (entity) => entity.kind === "training_trigger" && entity.name === id,
+  );
+}
+
+export function createTrainingTriggerEntity(
+  id: string,
+  bounds: MapEntity["bounds"],
+): MapEntity {
+  return {
+    kind: "training_trigger",
+    bounds: { ...bounds },
+    direction: { x: 0, y: 0 },
+    name: id,
+  };
+}
+
 /** Training triggers use the same bottom-centred player position as SimState. */
 export function triggerContainsPlayer(
-  trigger: TrainingTrigger,
+  trigger: MapEntity,
   state: SimState,
 ): boolean {
   const player = {
@@ -53,14 +75,15 @@ export function triggerContainsPlayer(
 
 export function moduleAtPlayer(
   document: TrainingMapDocument,
+  map: GymMap,
   state: SimState,
   completedIds: ReadonlySet<string>,
 ): TrainingModule | undefined {
-  return document.modules.find(
-    (module) =>
-      !completedIds.has(module.id) &&
-      triggerContainsPlayer(module.trigger, state),
-  );
+  return document.modules.find((module) => {
+    if (completedIds.has(module.id)) return false;
+    const trigger = trainingTriggerEntity(map, module.trigger);
+    return trigger ? triggerContainsPlayer(trigger, state) : false;
+  });
 }
 
 export function allModulesCompleted(
