@@ -90,6 +90,16 @@ function completionOutputSummary(completion: TrainingCompletion): string {
   return `${objectiveOutputName(expression)}：实际 ${formatObjectiveOutput(expression, completion.objectiveValues[0])} / 最佳 ${formatObjectiveOutput(expression, completion.bestObjectiveValues[0])}`;
 }
 
+/** Rust returns checkpoint objectives first, followed by final objectives. */
+function tutorialObjectives(tutorial: TrainingDocument) {
+  return [
+    ...(tutorial.fuzz.checkpoints ?? []).flatMap(
+      (checkpoint) => checkpoint.objectives,
+    ),
+    ...tutorial.fuzz.objectives,
+  ];
+}
+
 function buttonsFromKeyboard(
   keys: ReadonlySet<string>,
   bindings: KeyBindings,
@@ -378,7 +388,7 @@ export function TrainingGround({
         from: start + window.from,
         to: start + window.to,
       })),
-      objectives: tutorial.fuzz.objectives.map((objective, objectiveIndex) => ({
+      objectives: tutorialObjectives(tutorial).map((objective, objectiveIndex) => ({
         expression: objective.expression,
         points: candidateObjectivePoints(sourceEvaluations, inputIndex)
           .map((point) => ({
@@ -984,7 +994,7 @@ export function TrainingGround({
                   objectives={prediction.objectives}
                 />
                 <div className="training-result-stats">
-                  {tutorial.fuzz.objectives.map((objective, index) => (
+                  {tutorialObjectives(tutorial).map((objective, index) => (
                     <div key={`${objective.expression}-${index}`}>
                       <span>本次 OBJECTIVE · {objective.expression}</span>
                       <b>

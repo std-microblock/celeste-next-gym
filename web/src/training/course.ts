@@ -90,8 +90,17 @@ export function outputAccuracy(
 }
 
 export function objectiveOutputName(expression: string): string {
-  if (expression === "final.speed.x") return "水平速度";
-  if (expression === "final.speed.y") return "垂直速度";
+  if (/^(final|after)\.speed\.x$/.test(expression)) return "水平速度";
+  if (/^(final|after)\.speed\.y$/.test(expression)) return "垂直速度";
+  if (
+    expression ===
+    "sqrt(after.speed.x * after.speed.x + after.speed.y * after.speed.y)"
+  )
+    return "总速度";
+  if (expression === "after.dashes") return "冲刺次数";
+  if (expression === "after.pos.x") return "X 坐标";
+  if (expression === "after.pos.y") return "Y 坐标";
+  if (expression === "after.stamina") return "体力";
   if (
     expression === "final.speed.x.abs()" ||
     expression === "abs(final.speed.x)"
