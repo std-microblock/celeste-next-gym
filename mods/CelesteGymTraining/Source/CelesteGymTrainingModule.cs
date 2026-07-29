@@ -14,6 +14,7 @@ public sealed class CelesteGymTrainingModule : EverestModule {
 
     private static void OnLoadLevel(Level level, Player.IntroTypes playerIntro, bool isFromLoader) {
         if (!string.Equals(level.Session.Area.SID, AreaSid, StringComparison.Ordinal)) return;
+        TrainingBindings.ApplyDefaultsIfVanilla();
         if (level.Session.GetFlag(TrainingActiveFlag)) return;
         if (level.Tracker.GetEntity<TrainingProjectMenu>() is not null) return;
         level.Add(new TrainingProjectMenu(level, TrainingCatalog.Projects));
