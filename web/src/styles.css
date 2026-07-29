@@ -4440,7 +4440,8 @@ footer {
   accent-color: var(--pink);
 }
 .training-step-editor,
-.fuzz-input-editor {
+.fuzz-input-editor,
+.fuzz-checkpoint-editor {
   display: grid;
   gap: 7px;
   padding: 8px;
@@ -4448,13 +4449,15 @@ footer {
   background: #0a0615;
 }
 .training-step-editor header,
-.fuzz-input-editor header {
+.fuzz-input-editor header,
+.fuzz-checkpoint-editor header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 .training-step-editor header strong,
 .fuzz-input-editor header strong,
+.fuzz-checkpoint-editor header strong,
 .fuzz-fields h4 {
   margin: 0;
   color: var(--cyan);
@@ -4465,12 +4468,21 @@ footer {
 }
 .training-step-editor header button,
 .fuzz-input-editor header button,
+.fuzz-checkpoint-editor header button,
 .training-row button {
   color: #ff9bb7;
   border: 0;
   background: transparent;
   cursor: pointer;
   font-size: 8px;
+}
+.fuzz-checkpoint-editor h5 {
+  margin: 2px 0 0;
+  color: #b59ac3;
+  font:
+    7px Consolas,
+    monospace;
+  letter-spacing: 0.08em;
 }
 .training-add-row {
   min-height: 29px;

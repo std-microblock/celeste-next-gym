@@ -18,7 +18,11 @@ import {
   type ProjectValidationIssue,
   type TrainingProject,
 } from "../training/editorProject";
-import type { TrainingInput } from "../training/session";
+import type {
+  TrainingCheckpoint,
+  TrainingInput,
+  TrainingObjective,
+} from "../training/session";
 import { WasmClient } from "../simulator/wasmClient";
 import type { VisualTheme } from "../visualThemes";
 import { GameView } from "./GameView";
@@ -136,6 +140,100 @@ function TextList({
         }
       />
     </label>
+  );
+}
+
+function ObjectiveRows({
+  objectives,
+  onChange,
+  defaultExpression,
+}: {
+  objectives: TrainingObjective[];
+  onChange: (objectives: TrainingObjective[]) => void;
+  defaultExpression: string;
+}) {
+  const update = (mutator: (draft: TrainingObjective[]) => void) => {
+    const next = structuredClone(objectives);
+    mutator(next);
+    onChange(next);
+  };
+  return (
+    <>
+      {objectives.map((objective, index) => (
+        <div className="training-row objective" key={index}>
+          <select
+            aria-label={`目标 ${index + 1} 类型`}
+            value={objective.type}
+            onChange={(event) =>
+              update((draft) => {
+                const current = draft[index];
+                draft[index] =
+                  event.target.value === "approach"
+                    ? {
+                        type: "approach",
+                        expression: current.expression,
+                        target: 0,
+                      }
+                    : {
+                        type: event.target.value as "maximize" | "minimize",
+                        expression: current.expression,
+                      };
+              })
+            }
+          >
+            <option value="maximize">maximize</option>
+            <option value="minimize">minimize</option>
+            <option value="approach">approach</option>
+          </select>
+          <input
+            aria-label={`目标 ${index + 1} 表达式`}
+            value={objective.expression}
+            onChange={(event) =>
+              update((draft) => {
+                draft[index].expression = event.target.value;
+              })
+            }
+          />
+          {objective.type === "approach" && (
+            <input
+              aria-label={`目标 ${index + 1} 目标值`}
+              type="number"
+              value={objective.target}
+              onChange={(event) =>
+                update((draft) => {
+                  const item = draft[index];
+                  if (item.type === "approach")
+                    item.target = Number(event.target.value);
+                })
+              }
+            />
+          )}
+          <button
+            aria-label={`删除目标 ${index + 1}`}
+            onClick={() =>
+              update((draft) => {
+                draft.splice(index, 1);
+              })
+            }
+          >
+            ×
+          </button>
+        </div>
+      ))}
+      <button
+        className="training-add-row"
+        onClick={() =>
+          update((draft) => {
+            draft.push({
+              type: "maximize",
+              expression: defaultExpression,
+            });
+          })
+        }
+      >
+        ＋ 添加目标
+      </button>
+    </>
   );
 }
 
@@ -537,79 +635,111 @@ function FuzzFields({
       >
         ＋ 添加输入
       </button>
-      <h4>排序目标</h4>
-      {fuzz.objectives.map((objective, index) => (
-        <div className="training-row objective" key={index}>
-          <select
-            value={objective.type}
-            onChange={(event) =>
-              change((draft) => {
-                const current = draft.tutorial.fuzz.objectives[index];
-                draft.tutorial.fuzz.objectives[index] =
-                  event.target.value === "approach"
-                    ? {
-                        type: "approach",
-                        expression: current.expression,
-                        target: 0,
-                      }
-                    : {
-                        type: event.target.value as "maximize" | "minimize",
-                        expression: current.expression,
-                      };
-              })
-            }
-          >
-            <option value="maximize">maximize</option>
-            <option value="minimize">minimize</option>
-            <option value="approach">approach</option>
-          </select>
-          <input
-            value={objective.expression}
-            onChange={(event) =>
-              change((draft) => {
-                draft.tutorial.fuzz.objectives[index].expression =
-                  event.target.value;
-              })
-            }
-          />
-          {objective.type === "approach" && (
+      <h4>步骤检查点</h4>
+      {(fuzz.checkpoints ?? []).map((checkpoint, checkpointIndex) => (
+        <article className="fuzz-checkpoint-editor" key={checkpoint.id}>
+          <header>
+            <strong>CHECKPOINT {checkpointIndex + 1}</strong>
+            <button
+              onClick={() =>
+                change((draft) => {
+                  draft.tutorial.fuzz.checkpoints?.splice(checkpointIndex, 1);
+                })
+              }
+            >
+              删除
+            </button>
+          </header>
+          <div className="training-paired-fields">
+            <label>
+              <small>ID</small>
+              <input
+                value={checkpoint.id}
+                onChange={(event) =>
+                  change((draft) => {
+                    draft.tutorial.fuzz.checkpoints![checkpointIndex].id =
+                      event.target.value;
+                  })
+                }
+              />
+            </label>
+            <label>
+              <small>AT</small>
+              <input
+                value={String(checkpoint.at)}
+                onChange={(event) =>
+                  change((draft) => {
+                    draft.tutorial.fuzz.checkpoints![checkpointIndex].at =
+                      scalar(event.target.value);
+                  })
+                }
+              />
+            </label>
+          </div>
+          <label>
+            <small>DESCRIPTION</small>
             <input
-              aria-label="目标值"
-              type="number"
-              value={objective.target}
+              value={checkpoint.description}
               onChange={(event) =>
                 change((draft) => {
-                  const item = draft.tutorial.fuzz.objectives[index];
-                  if (item.type === "approach")
-                    item.target = Number(event.target.value);
+                  draft.tutorial.fuzz.checkpoints![
+                    checkpointIndex
+                  ].description = event.target.value;
                 })
               }
             />
-          )}
-          <button
-            onClick={() =>
+          </label>
+          <TextList
+            label="CHECKPOINT SUCCESS · 每行一个 Rhai 条件"
+            value={checkpoint.success ?? []}
+            onChange={(value) =>
               change((draft) => {
-                draft.tutorial.fuzz.objectives.splice(index, 1);
+                const item = draft.tutorial.fuzz.checkpoints![checkpointIndex];
+                if (value.length) item.success = value;
+                else delete item.success;
               })
             }
-          >
-            ×
-          </button>
-        </div>
+          />
+          <h5>该步骤的排序目标</h5>
+          <ObjectiveRows
+            objectives={checkpoint.objectives}
+            defaultExpression="after.speed.x"
+            onChange={(objectives) =>
+              change((draft) => {
+                draft.tutorial.fuzz.checkpoints![checkpointIndex].objectives =
+                  objectives;
+              })
+            }
+          />
+        </article>
       ))}
       <button
         className="training-add-row"
         onClick={() =>
           change((draft) => {
-            draft.tutorial.fuzz.objectives.push({
-              type: "maximize",
-              expression: "final.speed.x",
-            });
+            const checkpoints = (draft.tutorial.fuzz.checkpoints ??= []);
+            const checkpoint: TrainingCheckpoint = {
+              id: `checkpoint-${checkpoints.length + 1}`,
+              at: 0,
+              description: "步骤完成后的目标",
+              objectives: [{ type: "maximize", expression: "after.speed.x" }],
+            };
+            checkpoints.push(checkpoint);
           })
         }
       >
-        ＋ 添加目标
+        ＋ 添加检查点
       </button>
+      <h4>全局排序目标</h4>
+      <ObjectiveRows
+        objectives={fuzz.objectives}
+        defaultExpression="final.speed.x"
+        onChange={(objectives) =>
+          change((draft) => {
+            draft.tutorial.fuzz.objectives = objectives;
+          })
+        }
+      />
       <div className="training-paired-fields">
         <JsonField
           label="SEARCH BINDINGS"
@@ -1384,11 +1514,7 @@ export function TrainingFlowEditor({
               <g className="training-trigger-resize-handles">
                 {(
                   [
-                    [
-                      "nw",
-                      selectedTriggerBounds.x,
-                      selectedTriggerBounds.y,
-                    ],
+                    ["nw", selectedTriggerBounds.x, selectedTriggerBounds.y],
                     [
                       "ne",
                       selectedTriggerBounds.x + selectedTriggerBounds.width,
@@ -1414,12 +1540,7 @@ export function TrainingFlowEditor({
                     width="6"
                     height="6"
                     onPointerDown={(event) =>
-                      beginResize(
-                        event,
-                        target,
-                        selectedTriggerBounds,
-                        corner,
-                      )
+                      beginResize(event, target, selectedTriggerBounds, corner)
                     }
                   />
                 ))}

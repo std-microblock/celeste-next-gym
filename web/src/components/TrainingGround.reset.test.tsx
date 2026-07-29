@@ -15,7 +15,7 @@ vi.mock("../simulator/wasmClient", () => ({
       const candidate = {
         bindings: {},
         verified_inputs: [{ input_index: 0, frame: 0, keys: ["dash"] }],
-        objective_values: [240],
+        objective_values: [Number.NaN],
         successful: true,
         final_state: { speed: { x: 240, y: 0 } },
       };
@@ -119,6 +119,8 @@ describe("training R reset", () => {
       ).toHaveTextContent("1/1 模块完成"),
     );
     expect(view.queryByTestId("training-prompt")).not.toBeInTheDocument();
+    expect(view.container).not.toHaveTextContent("NaN");
+    expect(view.container).toHaveTextContent("已通过当前步骤条件");
 
     fireEvent.keyDown(window, { code: "KeyR" });
     await waitFor(() =>

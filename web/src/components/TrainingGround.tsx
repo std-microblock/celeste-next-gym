@@ -88,7 +88,12 @@ const FAILURE_SLOWDOWN_MS = 1_000;
 const MAX_AUTO_SLOWDOWN_REDUCTION = 0.7;
 
 function completionOutputSummary(completion: TrainingCompletion): string {
-  if (completion.objectives.length === 0) return "已通过当前步骤条件";
+  if (
+    completion.objectives.length === 0 ||
+    !Number.isFinite(completion.objectiveValues[0]) ||
+    !Number.isFinite(completion.bestObjectiveValues[0])
+  )
+    return "已通过当前步骤条件";
   const expression = completion.objectives[0]?.expression ?? "objective";
   return `${objectiveOutputName(expression)}：实际 ${formatObjectiveOutput(expression, completion.objectiveValues[0])} / 最佳 ${formatObjectiveOutput(expression, completion.bestObjectiveValues[0])}`;
 }
@@ -755,10 +760,28 @@ export function TrainingGround({
                 evaluatedCandidate?.objective_values ??
                 nextSession.candidates[0]?.objective_values ??
                 [];
-              const objectiveValues = (
+              const projectedObjectiveValues = (
                 preview.objectiveResultIndices ?? []
               ).map((index) => allObjectiveValues[index] ?? Number.NaN);
-              const bestObjectiveValues = preview.bestObjectiveValues ?? [];
+              const projectedBestValues = preview.bestObjectiveValues ?? [];
+              const finiteObjectiveResults = preview.objectives.flatMap(
+                (objective, index) => {
+                  const actual = projectedObjectiveValues[index];
+                  const best = projectedBestValues[index];
+                  return Number.isFinite(actual) && Number.isFinite(best)
+                    ? [{ objective, actual, best }]
+                    : [];
+                },
+              );
+              const objectiveValues = finiteObjectiveResults.map(
+                ({ actual }) => actual,
+              );
+              const bestObjectiveValues = finiteObjectiveResults.map(
+                ({ best }) => best,
+              );
+              const completionObjectives = finiteObjectiveResults.map(
+                ({ objective }) => objective,
+              );
               const completion: TrainingCompletion = {
                 moduleId: activeModule.id,
                 title: activeTutorial.title,
@@ -768,7 +791,7 @@ export function TrainingGround({
                 targetFrame: preview.targetFrame,
                 actualInputFrame: actualActionFrame,
                 accuracy:
-                  preview.objectives.length === 0
+                  completionObjectives.length === 0
                     ? 100
                     : outputAccuracy(
                         objectiveValues[0],
@@ -780,7 +803,7 @@ export function TrainingGround({
                 ),
                 objectiveValues,
                 bestObjectiveValues,
-                objectives: preview.objectives,
+                objectives: completionObjectives,
                 windows: preview.windows,
                 actualInputs: absoluteInputs,
               };
@@ -1033,7 +1056,7 @@ export function TrainingGround({
                     <div key={`${objective.expression}-${index}`}>
                       <span>本次 OBJECTIVE · {objective.expression}</span>
                       <b>
-                        {outcome.objectiveValues[index] === undefined
+                        {!Number.isFinite(outcome.objectiveValues[index])
                           ? "—"
                           : outcome.objectiveValues[index].toFixed(2)}
                       </b>
