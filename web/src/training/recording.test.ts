@@ -269,10 +269,10 @@ describe("tutorial editor recording", () => {
       "after.speed.x <= 325.01",
       `after.pos.x >= ${initial.pos.x + 12}`,
     ]);
-    expect(checkpoints[0].description).toContain(
-      "X 速度必须达到 325 px/s（误差 ≤ 0.01），并最大化",
+    expect(checkpoints[0].description).toBe(
+      `X 速度 325 px/s，总速度，剩余冲刺，X ≥ ${initial.pos.x + 12}，体力`,
     );
-    expect(checkpoints[0].description).toContain("坐标越过 X ≥");
+    expect(checkpoints[1].description).toBe("Y 速度 105 px/s");
     expect(checkpoints[1].at).toBe("direction_change_1");
     expect(checkpoints[1].success).toEqual([
       "after.speed.y >= 104.99",
@@ -295,10 +295,29 @@ describe("tutorial editor recording", () => {
     );
     expect(next.training.modules[0].tutorial.fuzz.success).toEqual([]);
     expect(next.training.modules[0].tutorial.fuzz.objectives).toEqual([]);
-    expect(next.training.modules[0].tutorial.summary).toContain("录制目标");
-    expect(
-      next.training.modules[0].tutorial.teaching.steps[0].prompt,
-    ).toContain("X 速度必须达到 325 px/s（误差 ≤ 0.01），并最大化");
+    const tutorial = next.training.modules[0].tutorial;
+    expect(tutorial.summary).toBe("依次完成 冲刺、跳跃。");
+    expect(tutorial.teaching.steps[0].prompt).toBe(
+      `按 冲刺；X 速度 325 px/s，总速度，剩余冲刺，X ≥ ${initial.pos.x + 12}，体力。`,
+    );
+    const generatedDescriptions = [
+      tutorial.summary,
+      tutorial.entry.hint,
+      tutorial.entry.failure.title,
+      tutorial.entry.failure.body,
+      ...tutorial.teaching.steps.flatMap((step) => [
+        step.prompt,
+        step.order_error.title,
+        step.order_error.body,
+        step.window_error.title,
+        step.window_error.body,
+      ]),
+      ...(tutorial.fuzz.checkpoints ?? []).map(
+        (checkpoint) => checkpoint.description,
+      ),
+    ].join("\n");
+    expect(generatedDescriptions).not.toContain("录制");
+    expect(generatedDescriptions).not.toContain("最大化");
   });
 
   it("arms record-all modules in document order", () => {
