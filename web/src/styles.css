@@ -4102,6 +4102,29 @@ footer {
   cursor: pointer;
   font-size: 8px;
 }
+.training-record-actions {
+  display: grid;
+  gap: 6px;
+  padding: 0 10px 10px;
+}
+.training-record-actions button {
+  min-height: 33px;
+  color: #ffdbe6;
+  border: 1px solid #ff6f9b88;
+  background: linear-gradient(90deg, #371329, #21112f);
+  cursor: pointer;
+  font-size: 8px;
+}
+.training-record-actions button:last-child {
+  color: #0b1510;
+  border-color: #72f0b0;
+  background: linear-gradient(#8bffc7, #48c98e);
+  font-weight: 700;
+}
+.training-record-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 .training-validation-summary {
   display: grid;
   gap: 4px;
@@ -4194,9 +4217,15 @@ footer {
   vector-effect: non-scaling-stroke;
   cursor: move;
 }
-.training-trigger-overlay rect.module {
+.training-trigger-overlay rect.module-start {
   fill: #65d9ff24;
   stroke: var(--cyan);
+  stroke-width: 1;
+  stroke-dasharray: 4 2;
+}
+.training-trigger-overlay rect.module-end {
+  fill: #ff6f9b24;
+  stroke: var(--pink);
   stroke-width: 1;
   stroke-dasharray: 4 2;
 }
@@ -4491,6 +4520,152 @@ footer {
   grid-template-rows: 42px minmax(0, 1fr);
   min-height: 0;
   height: 100%;
+}
+.training-recorder {
+  position: relative;
+  display: grid;
+  grid-template-rows: 54px minmax(0, 1fr);
+  height: calc(100vh - var(--chrome-height));
+  min-height: 0;
+  overflow: hidden;
+  background: #030207;
+}
+.training-recorder-bar {
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 10px;
+  border-bottom: 1px solid #ff6f9b66;
+  background: linear-gradient(90deg, #281020, #100a25);
+}
+.training-recorder-bar > div {
+  min-width: 185px;
+  display: grid;
+  gap: 2px;
+}
+.training-recorder-bar small {
+  color: var(--pink);
+  font: 7px Consolas, monospace;
+  letter-spacing: 0.14em;
+}
+.training-recorder-bar strong {
+  font-size: 11px;
+}
+.training-recorder-bar > span {
+  min-width: 0;
+  margin-right: auto;
+  overflow: hidden;
+  color: #cbb9d1;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.training-recorder-bar button {
+  height: 31px;
+  padding: 0 10px;
+  color: #eee4f0;
+  border: 1px solid #685078;
+  background: #241532;
+  cursor: pointer;
+  font-size: 8px;
+}
+.training-recorder-bar button.primary {
+  color: #08140e;
+  border-color: var(--green);
+  background: var(--green);
+  font-weight: 700;
+}
+.training-recorder-bar button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.training-recorder .game-screen {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  aspect-ratio: auto;
+}
+.training-recorder-regions {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.training-recorder-regions rect {
+  vector-effect: non-scaling-stroke;
+  stroke-width: 1;
+  stroke-dasharray: 4 2;
+}
+.training-recorder-regions .start {
+  fill: #65d9ff18;
+  stroke: var(--cyan);
+}
+.training-recorder-regions .end {
+  fill: #ff6f9b18;
+  stroke: var(--pink);
+}
+.training-recorder-regions .active rect {
+  stroke-width: 2;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+.training-recorder-hud {
+  position: absolute;
+  z-index: 9;
+  left: 50%;
+  bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(560px, calc(100% - 32px));
+  padding: 11px 14px;
+  transform: translateX(-50%);
+  color: #fff;
+  border: 1px solid #65d9ff88;
+  background: #0b0922e8;
+  box-shadow: 0 8px 30px #000a;
+  backdrop-filter: blur(8px);
+}
+.training-recorder-hud > i {
+  width: 11px;
+  height: 11px;
+  flex: 0 0 11px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 9px var(--cyan);
+}
+.training-recorder-hud.recording {
+  border-color: #ff6f9baa;
+}
+.training-recorder-hud.recording > i {
+  background: var(--pink);
+  box-shadow: 0 0 10px var(--pink);
+  animation: recorder-pulse 0.8s steps(2) infinite;
+}
+.training-recorder-hud.done {
+  border-color: #72f0b0aa;
+}
+.training-recorder-hud.done > i {
+  background: var(--green);
+  box-shadow: 0 0 10px var(--green);
+}
+.training-recorder-hud > div {
+  display: grid;
+  gap: 3px;
+}
+.training-recorder-hud strong {
+  font: 10px Consolas, monospace;
+  letter-spacing: 0.08em;
+}
+.training-recorder-hud span {
+  color: #bbaac5;
+  font-size: 8px;
+  line-height: 1.5;
+}
+@keyframes recorder-pulse {
+  50% { opacity: 0.25; }
 }
 .training-preview-bar {
   display: flex;

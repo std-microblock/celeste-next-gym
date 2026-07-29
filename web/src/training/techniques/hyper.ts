@@ -74,6 +74,7 @@ function singleModuleTraining(options: {
   const module = structuredClone(routeTraining.modules[0]);
   module.id = options.id;
   module.trigger = { id: `${options.id}-start`, bounds: options.trigger };
+  module.end_trigger = { id: `${options.id}-end`, bounds: options.finish };
   module.tutorial.id = `${options.id}-tutorial`;
   module.tutorial.title = options.title;
   module.tutorial.summary = options.summary;

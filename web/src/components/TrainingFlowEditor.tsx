@@ -23,8 +23,11 @@ import { WasmClient } from "../simulator/wasmClient";
 import type { VisualTheme } from "../visualThemes";
 import { GameView } from "./GameView";
 import { TrainingGround } from "./TrainingGround";
+import type { TrainingRecordingScope } from "./TrainingRecorder";
 
-type Target = { type: "module"; index: number } | { type: "finish" };
+type Target =
+  | { type: "module"; index: number; region: "start" | "end" }
+  | { type: "finish" };
 type TestResult = { id: string; ok: boolean; detail: string };
 
 const KEY_OPTIONS = [
@@ -673,7 +676,7 @@ function ModuleInspector({
   return (
     <div className="training-inspector-fields">
       <fieldset>
-        <legend>模块与 Trigger</legend>
+        <legend>模块与录制区域</legend>
         <div className="training-paired-fields">
           <label>
             <small>MODULE ID</small>
@@ -687,7 +690,7 @@ function ModuleInspector({
             />
           </label>
           <label>
-            <small>TRIGGER ID</small>
+            <small>START TRIGGER ID</small>
             <input
               value={module.trigger.id}
               onChange={(event) =>
@@ -703,6 +706,25 @@ function ModuleInspector({
           onChange={(value) =>
             change((draft) => {
               draft.trigger.bounds = value;
+            })
+          }
+        />
+        <label>
+          <small>END TRIGGER ID</small>
+          <input
+            value={module.end_trigger.id}
+            onChange={(event) =>
+              change((draft) => {
+                draft.end_trigger.id = event.target.value;
+              })
+            }
+          />
+        </label>
+        <BoundsFields
+          value={module.end_trigger.bounds}
+          onChange={(value) =>
+            change((draft) => {
+              draft.end_trigger.bounds = value;
             })
           }
         />
@@ -912,15 +934,21 @@ export function TrainingFlowEditor({
   bindings,
   ready,
   onChange,
+  onStartRecording,
 }: {
   project: TrainingProject;
   theme: VisualTheme;
   bindings: KeyBindings;
   ready: boolean;
   onChange: (project: TrainingProject) => void;
+  onStartRecording: (scope: TrainingRecordingScope) => void;
 }) {
   const client = useMemo(() => new WasmClient(), []);
-  const [target, setTarget] = useState<Target>({ type: "module", index: 0 });
+  const [target, setTarget] = useState<Target>({
+    type: "module",
+    index: 0,
+    region: "start",
+  });
   const [raw, setRaw] = useState(false);
   const [preview, setPreview] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -935,10 +963,6 @@ export function TrainingFlowEditor({
   const issues = validateTrainingProject(project);
   const selectedModule =
     target.type === "module" ? project.training.modules[target.index] : null;
-  const selectedTrigger =
-    target.type === "module"
-      ? selectedModule?.trigger
-      : project.training.finish.trigger;
   const variant: TrainingVariant = useMemo(
     () => ({
       id: project.id,
@@ -1051,9 +1075,12 @@ export function TrainingFlowEditor({
     updateTraining((draft) => {
       if (drag.current?.target.type === "finish")
         draft.training.finish.trigger.bounds = bounds;
-      else if (drag.current?.target.type === "module")
-        draft.training.modules[drag.current.target.index].trigger.bounds =
-          bounds;
+      else if (drag.current?.target.type === "module") {
+        const module = draft.training.modules[drag.current.target.index];
+        if (drag.current.target.region === "start")
+          module.trigger.bounds = bounds;
+        else module.end_trigger.bounds = bounds;
+      }
     });
   };
 
@@ -1104,13 +1131,15 @@ export function TrainingFlowEditor({
                   : ""
               }
               key={`${module.id}-${index}`}
-              onClick={() => setTarget({ type: "module", index })}
+              onClick={() =>
+                setTarget({ type: "module", index, region: "start" })
+              }
             >
               <b>{String(index + 1).padStart(2, "0")}</b>
               <span>
                 <strong>{module.tutorial.title}</strong>
                 <small>
-                  {module.id} · {module.trigger.id}
+                  {module.id} · {module.trigger.id} → {module.end_trigger.id}
                 </small>
               </span>
             </button>
@@ -1124,12 +1153,29 @@ export function TrainingFlowEditor({
               draft.training.modules.push(
                 createTrainingModule(draft.map, index),
               );
-              setTarget({ type: "module", index });
+              setTarget({ type: "module", index, region: "start" });
             })
           }
         >
           ＋ 新建教程模块
         </button>
+        <div className="training-record-actions">
+          <button
+            onClick={() => {
+              if (target.type === "module")
+                onStartRecording({ type: "module", index: target.index });
+            }}
+            disabled={target.type !== "module"}
+          >
+            ● 录制当前区域
+          </button>
+          <button
+            disabled={!project.training.modules.length}
+            onClick={() => onStartRecording({ type: "all" })}
+          >
+            ● 录制全部区域
+          </button>
+        </div>
         {target.type === "module" && (
           <div className="training-tree-actions">
             <button
@@ -1140,9 +1186,14 @@ export function TrainingFlowEditor({
                   );
                   copy.id = `${copy.id}-copy`;
                   copy.trigger.id = `${copy.trigger.id}-copy`;
+                  copy.end_trigger.id = `${copy.end_trigger.id}-copy`;
                   copy.tutorial.id = `${copy.tutorial.id}-copy`;
                   draft.training.modules.splice(target.index + 1, 0, copy);
-                  setTarget({ type: "module", index: target.index + 1 });
+                  setTarget({
+                    type: "module",
+                    index: target.index + 1,
+                    region: "start",
+                  });
                 })
               }
             >
@@ -1155,6 +1206,7 @@ export function TrainingFlowEditor({
                   setTarget({
                     type: "module",
                     index: Math.max(0, target.index - 1),
+                    region: "start",
                   });
                 })
               }
@@ -1177,7 +1229,11 @@ export function TrainingFlowEditor({
         <div className="training-editor-toolbar">
           <div>
             <small>TRIGGER LAYOUT</small>
-            <strong>{selectedModule?.tutorial.title ?? "终点区域"}</strong>
+            <strong>
+              {selectedModule
+                ? `${selectedModule.tutorial.title} · ${target.type === "module" && target.region === "end" ? "结束区" : "开始区"}`
+                : "地图终点区域"}
+            </strong>
           </div>
           <button disabled={!ready || testing} onClick={() => void runTests()}>
             {testing ? "测试中…" : "运行全部 Fuzz 测试"}
@@ -1216,15 +1272,17 @@ export function TrainingFlowEditor({
               <g key={module.id}>
                 <rect
                   className={
-                    target.type === "module" && target.index === index
-                      ? "module selected"
-                      : "module"
+                    target.type === "module" &&
+                    target.index === index &&
+                    target.region === "start"
+                      ? "module-start selected"
+                      : "module-start"
                   }
                   {...module.trigger.bounds}
                   onPointerDown={(event) =>
                     beginDrag(
                       event,
-                      { type: "module", index },
+                      { type: "module", index, region: "start" },
                       module.trigger.bounds,
                     )
                   }
@@ -1233,7 +1291,30 @@ export function TrainingFlowEditor({
                   x={module.trigger.bounds.x + 3}
                   y={module.trigger.bounds.y + 10}
                 >
-                  {index + 1} · {module.tutorial.title}
+                  {index + 1} START · {module.tutorial.title}
+                </text>
+                <rect
+                  className={
+                    target.type === "module" &&
+                    target.index === index &&
+                    target.region === "end"
+                      ? "module-end selected"
+                      : "module-end"
+                  }
+                  {...module.end_trigger.bounds}
+                  onPointerDown={(event) =>
+                    beginDrag(
+                      event,
+                      { type: "module", index, region: "end" },
+                      module.end_trigger.bounds,
+                    )
+                  }
+                />
+                <text
+                  x={module.end_trigger.bounds.x + 3}
+                  y={module.end_trigger.bounds.y + 10}
+                >
+                  {index + 1} END
                 </text>
               </g>
             ))}

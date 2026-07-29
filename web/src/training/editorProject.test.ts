@@ -61,6 +61,18 @@ describe("training editor projects", () => {
     expect(validateTrainingProject(project)).toEqual([]);
   });
 
+  it("migrates older modules to a per-tutorial end region", () => {
+    const project = createTrainingProject(PLAYGROUND);
+    const legacy = structuredClone(project.training);
+    delete (legacy.modules[0] as Partial<typeof legacy.modules[0]>).end_trigger;
+    const migrated = createTrainingProject(PLAYGROUND, legacy);
+    expect(migrated.training.modules[0].end_trigger).toEqual({
+      id: "lesson-1-end",
+      bounds: migrated.training.finish.trigger.bounds,
+    });
+    expect(validateTrainingProject(migrated)).toEqual([]);
+  });
+
   it("reports trigger and entry mistakes before invoking WASM", () => {
     const project = createTrainingProject(PLAYGROUND);
     project.training.finish.trigger.id = project.training.modules[0].trigger.id;

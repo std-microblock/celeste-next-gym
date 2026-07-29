@@ -56,7 +56,10 @@ export interface TrainingTrigger {
 
 export interface TrainingModule {
   id: string;
+  /** Entering this region arms the tutorial. */
   trigger: TrainingTrigger;
+  /** Reaching this region completes an editor recording for this tutorial. */
+  end_trigger: TrainingTrigger;
   tutorial: TrainingDocument;
   validation: {
     initial_state: SimState;
