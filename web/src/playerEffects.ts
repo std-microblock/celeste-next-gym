@@ -5,7 +5,15 @@ export interface PlayerTrailSample {
   age: number;
 }
 
-export type PlayerParticleKind = "dash-streak" | "dust" | "slash";
+export type PlayerParticleKind =
+  | "bubble"
+  | "dash-streak"
+  | "death-shard"
+  | "dream-spark"
+  | "dust"
+  | "feather"
+  | "slash"
+  | "water-splash";
 
 export interface PlayerParticleSample {
   kind: PlayerParticleKind;
@@ -64,11 +72,13 @@ export function playerTrailSamples(
     if (
       dashStarted ||
       dashMiddle ||
-      dashEnded ||
       dreamDashInterval ||
       starFlyInterval
     ) {
       samples.push({ frame: index, age: frame - index });
+    }
+    if (dashEnded && index > 0) {
+      samples.push({ frame: index - 1, age: frame - index });
     }
   }
   return samples;
@@ -92,6 +102,7 @@ function normalizedDirection(x: number, y: number): { x: number; y: number } {
 function particleLifetime(kind: PlayerParticleKind): number {
   if (kind === "slash") return 12;
   if (kind === "dash-streak") return 14;
+  if (kind === "death-shard") return 36;
   return 24;
 }
 
@@ -123,12 +134,24 @@ export function playerParticleSamples(
     });
   };
 
-  for (let index = Math.max(0, frame - 23); index <= frame; index += 1) {
+  for (let index = Math.max(0, frame - 35); index <= frame; index += 1) {
     const state = states[index];
-    if (!state || state.dead) continue;
+    if (!state) continue;
     const previous = states[index - 1];
     const center = { x: state.pos.x, y: state.pos.y - 6 };
     const bottom = { x: state.pos.x, y: state.pos.y - 1 };
+    if (state.dead && !previous?.dead) {
+      emit(
+        "death-shard",
+        index,
+        state,
+        center,
+        { x: 1, y: 0 },
+        12,
+        previous ? playerTrailColor(previous) : "#ac3232",
+      );
+    }
+    if (state.dead) continue;
     const dashStarted = isDash(state) && !isDash(previous);
 
     if (isDash(state) && Math.hypot(state.speed.x, state.speed.y) > 0) {
@@ -174,6 +197,57 @@ export function playerParticleSamples(
       previous.speed.y >= 80
     ) {
       emit("dust", index, state, bottom, { x: 0, y: -1 }, 8);
+    }
+
+    const dreamAge = continuousStateAge(states, index, "DreamDash");
+    if (state.state === "DreamDash" && dreamAge % 2 === 0) {
+      emit(
+        "dream-spark",
+        index,
+        state,
+        center,
+        { x: -state.speed.x, y: -state.speed.y },
+        1,
+        "#ff68d9",
+      );
+    }
+    const featherAge = continuousStateAge(states, index, "StarFly");
+    if (state.state === "StarFly" && featherAge % 2 === 0) {
+      emit(
+        "feather",
+        index,
+        state,
+        center,
+        { x: -state.speed.x, y: -state.speed.y },
+        1,
+        "#ffd65c",
+      );
+    }
+    const swimAge = continuousStateAge(states, index, "Swim");
+    if (state.state === "Swim" && swimAge % 8 === 0) {
+      emit(
+        "bubble",
+        index,
+        state,
+        center,
+        { x: 0, y: -1 },
+        1,
+        "#bdefff",
+      );
+    }
+    if (
+      (state.state === "Swim") !== (previous?.state === "Swim") &&
+      previous
+    ) {
+      emit(
+        "water-splash",
+        index,
+        state,
+        bottom,
+        { x: 0, y: -1 },
+        8,
+        "#8bdcff",
+      );
     }
   }
   return samples;

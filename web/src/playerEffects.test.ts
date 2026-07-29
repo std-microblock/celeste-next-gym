@@ -19,7 +19,7 @@ describe("player effects", () => {
       state("Normal", 0),
     ];
     expect(playerTrailSamples(states, 10).map((sample) => sample.frame)).toEqual([
-      1, 6, 10,
+      1, 6, 9,
     ]);
   });
 
@@ -71,5 +71,37 @@ describe("player effects", () => {
     };
     const landed = { ...state("Normal"), on_ground: true };
     expect(playerParticleSamples([falling, landed], 1)[0]?.count).toBe(8);
+  });
+
+  it("replays sustained special-state particles and water splashes", () => {
+    const normal = state("Normal");
+    const dream = state("DreamDash");
+    const starFly = state("StarFly");
+    const swim = state("Swim");
+    expect(
+      playerParticleSamples([normal, dream, dream], 2).filter(
+        (particle) => particle.kind === "dream-spark",
+      ),
+    ).toHaveLength(1);
+    expect(
+      playerParticleSamples([normal, starFly], 1).some(
+        (particle) => particle.kind === "feather",
+      ),
+    ).toBe(true);
+    expect(
+      playerParticleSamples([normal, swim], 1).find(
+        (particle) => particle.kind === "water-splash",
+      )?.count,
+    ).toBe(8);
+  });
+
+  it("emits one long-lived shard burst when the player dies", () => {
+    const alive = state("Normal", 0);
+    const dead = { ...state("Normal", 0), dead: true };
+    const burst = playerParticleSamples([alive, dead, dead], 2).find(
+      (particle) => particle.kind === "death-shard",
+    );
+    expect(burst?.count).toBe(12);
+    expect(burst?.age).toBe(1);
   });
 });
