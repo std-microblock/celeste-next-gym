@@ -4,6 +4,7 @@ using Monocle;
 
 namespace Celeste.Mod.CelesteGymTraining;
 
+[Tracked]
 public sealed class TrainingProjectMenu : Entity {
     private const float UiWidth = 320f;
     private const float UiHeight = 180f;
