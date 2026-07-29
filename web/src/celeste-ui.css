@@ -430,14 +430,20 @@ textarea:focus-visible {
   text-transform: uppercase;
 }
 
-.training-lesson-stages span {
+.training-lesson-stages button {
   display: inline-flex;
   align-items: center;
   gap: 2px;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
   white-space: nowrap;
 }
 
-.training-lesson-stages span + span::before {
+.training-lesson-stages button + button::before {
   content: "→";
   margin-right: 1px;
   color: #4d406a;
@@ -466,6 +472,44 @@ textarea:focus-visible {
 
 .training-lesson-stages .complete {
   color: #7de8bd;
+}
+
+.training-demo-controls {
+  position: absolute;
+  z-index: 8;
+  bottom: 46px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 7px;
+  border: 1px solid #5e5278;
+  background: #100b28e8;
+  box-shadow: 0 8px 22px #080415aa;
+  transform: translateX(-50%);
+}
+
+.training-demo-controls button {
+  min-width: 54px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid #ffd166;
+  color: #fff4cc;
+  background: #3a2948;
+  font-size: 8px;
+  cursor: pointer;
+}
+
+.training-demo-controls button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.training-demo-controls span {
+  min-width: 28px;
+  color: #ffd166;
+  font-size: 8px;
+  text-align: center;
 }
 
 .training-stage .cache-meter {

@@ -64,6 +64,12 @@ import { TrainingGround } from "./TrainingGround";
 describe("training R reset", () => {
   it("keeps stage transitions playing and can restart the whole map", async () => {
     const project = createTrainingProject(createBlankGymMap());
+    project.training.modules[0].end_trigger.bounds = {
+      x: 0,
+      y: 0,
+      width: 320,
+      height: 180,
+    };
     const variant = {
       id: project.id,
       title: project.training.title,
@@ -124,13 +130,21 @@ describe("training R reset", () => {
         await Promise.resolve();
       });
     };
+    for (let frame = 0; frame < 4; frame += 1) {
+      await advance();
+      if (view.queryByRole("button", { name: "下一步" })) break;
+    }
+    await waitFor(() =>
+      expect(view.getByRole("button", { name: "下一步" })).toBeInTheDocument(),
+    );
+    fireEvent.click(view.getByRole("button", { name: "下一步" }));
     for (let frame = 0; frame < 32; frame += 1) await advance();
     await waitFor(() =>
       expect(
         view.container.querySelector(".training-lesson-stages .active"),
       ).toHaveTextContent("辅助实操"),
     );
-    expect(view.getByRole("button", { name: "Ⅱ" })).toBeInTheDocument();
+    expect(view.container.querySelector(".play-button")).toHaveTextContent("▶");
 
     fireEvent.keyDown(window, { code: "Semicolon" });
     for (let frame = 0; frame < 12; frame += 1) await advance();
@@ -140,7 +154,7 @@ describe("training R reset", () => {
       ).toHaveTextContent("自由练习"),
     );
     expect(view.queryByTestId("training-prompt")).not.toBeInTheDocument();
-    expect(view.getByRole("button", { name: "Ⅱ" })).toBeInTheDocument();
+    expect(view.container.querySelector(".play-button")).toHaveTextContent("▶");
 
     fireEvent.keyUp(window, { code: "Semicolon" });
     await advance();
@@ -155,18 +169,28 @@ describe("training R reset", () => {
     expect(view.container).not.toHaveTextContent("NaN");
     expect(view.container).toHaveTextContent("已通过当前步骤条件");
 
-    fireEvent.change(view.getByRole("combobox", { name: "R 重试位置" }), {
-      target: { value: "start" },
-    });
     fireEvent.keyDown(window, { code: "KeyR" });
     await waitFor(() =>
       expect(
         view.container.querySelector(".stage-header h1"),
       ).toHaveTextContent("0/1 模块完成"),
     );
-    expect(view.getByTestId("training-prompt")).toHaveTextContent("演示");
+    expect(view.queryByTestId("training-prompt")).not.toBeInTheDocument();
+    expect(
+      view.container.querySelector(".training-lesson-stages .active"),
+    ).toHaveTextContent("自由练习");
     expect(
       view.container.querySelectorAll(".training-success-toast"),
     ).toHaveLength(0);
+    fireEvent.click(view.getByRole("button", { name: /1 演示/ }));
+    await waitFor(() =>
+      expect(
+        view.container.querySelector(".training-lesson-stages .active"),
+      ).toHaveTextContent("演示"),
+    );
+    fireEvent.click(view.getByRole("button", { name: /3 自由练习/ }));
+    expect(
+      view.container.querySelector(".training-lesson-stages .active"),
+    ).toHaveTextContent("自由练习");
   });
 });

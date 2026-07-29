@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { PLAYGROUND } from "../model";
 import { createTrainingProject } from "../training/editorProject";
 import {
+  timingAssessmentToWindow,
   trainingRetryTarget,
   tutorialObjectivesForInput,
 } from "./TrainingGround";
@@ -82,5 +83,16 @@ describe("training timeline checkpoint objectives", () => {
       frame: 0,
       moduleId: null,
     });
+  });
+
+  it("reports a miss from the nearest feasible window instead of the best point", () => {
+    const windows = [
+      { from: 10, to: 14 },
+      { from: 20, to: 24 },
+    ];
+    expect(timingAssessmentToWindow(7, windows)).toBe("早于最近窗口 3 帧");
+    expect(timingAssessmentToWindow(17, windows)).toBe("晚于最近窗口 3 帧");
+    expect(timingAssessmentToWindow(22, windows)).toBe("命中可行窗口");
+    expect(timingAssessmentToWindow(28, windows)).toBe("晚于最近窗口 4 帧");
   });
 });

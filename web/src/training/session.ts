@@ -263,6 +263,21 @@ export function nextTargetFrame(
     : candidateInput(candidates[0], inputIndex)?.frame;
 }
 
+/** True only when the currently requested input has just become active. */
+export function expectedTrainingInputTriggered(
+  current: FrameButtons,
+  previous: FrameButtons,
+  input: TrainingInput | undefined,
+): boolean {
+  if (!input) return false;
+  const expected = input.keys.filter(isAction);
+  return (
+    expected.length > 0 &&
+    expected.every((key) => current[key]) &&
+    expected.some((key) => !previous[key])
+  );
+}
+
 function resolvedCandidateInputFrame(
   candidate: TrainingCandidate,
   input: TrainingInput,
@@ -326,11 +341,86 @@ export function trainingReferenceEndFrame(
   return lastInput + Math.max(1, tailFrames);
 }
 
+export interface TrainingReferenceStep {
+  inputIndex: number;
+  inputId: string;
+  frame: number;
+  keys: string[];
+}
+
+/** Ordered tutorial checkpoints, beginning at the declared entry input. */
+export function trainingReferenceSteps(
+  candidate: TrainingCandidate,
+  definition: TrainingDefinition,
+): TrainingReferenceStep[] {
+  const inputs = verifiedInputs(definition);
+  const entryIndex = inputs.findIndex(
+    (input) => input.id === definition.entry.input_id,
+  );
+  const included = new Map(
+    inputs
+      .slice(Math.max(0, entryIndex))
+      .map((input) => [input.fuzzInputIndex, input]),
+  );
+  return candidate.verified_inputs
+    .flatMap((candidateInput) => {
+      const input = included.get(candidateInput.input_index);
+      return input
+        ? [
+            {
+              inputIndex: candidateInput.input_index,
+              inputId: input.id,
+              frame: candidateInput.frame,
+              keys: [...candidateInput.keys],
+            },
+          ]
+        : [];
+    })
+    .sort(
+      (left, right) =>
+        left.frame - right.frame || left.inputIndex - right.inputIndex,
+    );
+}
+
 export interface AssistedBrake {
   multiplier: number;
   braking: boolean;
   stopped: boolean;
   stopFrame?: number;
+}
+
+/** Smoothly reaches a full stop on a reference input frame. */
+export function referenceStepBrake(
+  frame: number,
+  targetFrame: number | undefined,
+  radiusFrames = 10,
+): AssistedBrake {
+  if (targetFrame === undefined)
+    return { multiplier: 1, braking: false, stopped: false };
+  const brakeStart = Math.max(0, targetFrame - Math.max(1, radiusFrames));
+  if (frame < brakeStart)
+    return {
+      multiplier: 1,
+      braking: false,
+      stopped: false,
+      stopFrame: targetFrame,
+    };
+  if (frame >= targetFrame)
+    return {
+      multiplier: 0,
+      braking: true,
+      stopped: true,
+      stopFrame: targetFrame,
+    };
+  const span = Math.max(1, targetFrame - brakeStart);
+  const progress = Math.max(0, Math.min(1, (frame - brakeStart) / span));
+  const smooth = progress * progress * (3 - 2 * progress);
+  return {
+    multiplier: 1 - smooth,
+    braking: true,
+    stopped: false,
+    stopFrame: targetFrame,
+  };
 }
 
 /**

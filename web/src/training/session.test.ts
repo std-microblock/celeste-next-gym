@@ -6,11 +6,14 @@ import {
   candidateObjectivePoints,
   createTrainingSession,
   currentTrainingInput,
+  expectedTrainingInputTriggered,
   matchingTrainingCandidate,
   trainingEntryContextPassed,
   trainingEntryInput,
   trainingReferenceButtons,
   trainingReferenceEndFrame,
+  trainingReferenceSteps,
+  referenceStepBrake,
   trainingVerificationTriggered,
   verificationKeys,
   verifyTrainingInput,
@@ -194,6 +197,25 @@ describe("training-defined entry input", () => {
     ]);
   });
 
+  it("does not release an assisted pause for an unrelated action", () => {
+    const empty = makeEmptyButtons();
+    const expected = trainingEntryInput(definition);
+    expect(
+      expectedTrainingInputTriggered(
+        { ...empty, dash: true },
+        empty,
+        expected,
+      ),
+    ).toBe(false);
+    expect(
+      expectedTrainingInputTriggered(
+        { ...empty, jump: true },
+        empty,
+        expected,
+      ),
+    ).toBe(true);
+  });
+
   it("replays the best candidate with its held and momentary controls", () => {
     expect(trainingReferenceButtons(candidates[0], definition, 0)).toMatchObject({
       right: true,
@@ -211,6 +233,25 @@ describe("training-defined entry input", () => {
       grab: true,
     });
     expect(trainingReferenceEndFrame(candidates[0], definition)).toBe(28);
+    expect(trainingReferenceSteps(candidates[0], definition)).toEqual([
+      { inputIndex: 2, inputId: "jump_entry", frame: 0, keys: ["jump"] },
+      { inputIndex: 3, inputId: "grab_later", frame: 4, keys: ["grab"] },
+    ]);
+  });
+
+  it("smoothly stops a demonstration on its next input frame", () => {
+    expect(referenceStepBrake(9, 20).multiplier).toBe(1);
+    expect(referenceStepBrake(10, 20)).toMatchObject({
+      multiplier: 1,
+      braking: true,
+      stopped: false,
+    });
+    expect(referenceStepBrake(15, 20).multiplier).toBeCloseTo(0.5);
+    expect(referenceStepBrake(20, 20)).toMatchObject({
+      multiplier: 0,
+      braking: true,
+      stopped: true,
+    });
   });
 
   it("smoothly brakes without pausing at frame 17 of a 20-frame window", () => {

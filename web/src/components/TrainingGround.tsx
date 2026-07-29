@@ -32,6 +32,7 @@ import {
   candidateWindow,
   createTrainingSession,
   currentTrainingInput,
+  expectedTrainingInputTriggered,
   matchingTrainingCandidate,
   nextTargetFrame,
   rebuildTrainingSession,
@@ -39,11 +40,13 @@ import {
   trainingEntryInput,
   trainingVerificationTriggered,
   trainingReferenceButtons,
-  trainingReferenceEndFrame,
+  trainingReferenceSteps,
+  referenceStepBrake,
   verificationKeys,
   verifyTrainingInput,
   type TrainingCandidate,
   type TrainingSession,
+  type TrainingReferenceStep,
 } from "../training/session";
 import {
   trainingCatalog,
@@ -88,20 +91,7 @@ export interface OutcomeAnimation {
 }
 
 const FAILURE_SLOWDOWN_MS = 1_000;
-const TRAINING_RESET_MODE_KEY = "celeste-gym-training-reset-mode";
-
 export type TrainingResetMode = "current" | "start";
-
-function storedTrainingResetMode(): TrainingResetMode {
-  try {
-    const stored = localStorage.getItem(TRAINING_RESET_MODE_KEY);
-    return stored === "start" || stored === "previous"
-      ? "start"
-      : "current";
-  } catch {
-    return "current";
-  }
-}
 
 export type TrainingLessonStage = "demo" | "assisted" | "free";
 
@@ -175,6 +165,24 @@ export function trainingInputLocked(
   return outcome !== null || settlement;
 }
 
+export function timingAssessmentToWindow(
+  actualFrame: number | undefined,
+  windows: readonly { from: number; to: number }[],
+): string {
+  if (actualFrame === undefined || windows.length === 0)
+    return "无可比较的可行窗口";
+  const nearest = windows
+    .map((window) => {
+      const frame = Math.max(window.from, Math.min(window.to, actualFrame));
+      return { frame, distance: Math.abs(actualFrame - frame) };
+    })
+    .sort((left, right) => left.distance - right.distance)[0];
+  if (!nearest || nearest.distance === 0) return "命中可行窗口";
+  return actualFrame < nearest.frame
+    ? `早于最近窗口 ${nearest.distance} 帧`
+    : `晚于最近窗口 ${nearest.distance} 帧`;
+}
+
 export function trainingRetryTarget(
   mode: TrainingResetMode,
   resetFrame: number,
@@ -242,15 +250,18 @@ export function TrainingGround({
   const [lessonStage, setLessonStage] = useState<TrainingLessonStage>("demo");
   const lessonStageRef = useRef<TrainingLessonStage>("demo");
   const lessonStartFrameRef = useRef(0);
+  const [demoStepIndex, setDemoStepIndex] = useState(0);
+  const demoStepIndexRef = useRef(0);
+  const demoAdvanceRef = useRef(false);
+  const demoInputsFinishedRef = useRef(false);
+  const stageInputSuccessRef = useRef(false);
+  const pendingCompletionRef = useRef<TrainingCompletion | null>(null);
   const referenceCandidatesRef = useRef<TrainingCandidate[]>([]);
   const referenceEvaluationsRef = useRef<TrainingCandidate[]>([]);
   const referenceModuleIdRef = useRef<string | null>(null);
   const forceAdvanceRef = useRef(false);
   const [timelineOpen, setTimelineOpen] = useState(true);
   const [resetFrame, setResetFrame] = useState(0);
-  const [resetMode, setResetMode] = useState<TrainingResetMode>(
-    storedTrainingResetMode,
-  );
   const [triggerFrame, setTriggerFrame] = useState<number | null>(null);
   const triggerFrameRef = useRef<number | null>(null);
   const [fuzzStartFrame, setFuzzStartFrame] = useState<number | null>(null);
@@ -325,6 +336,12 @@ export function TrainingGround({
     lessonStageRef.current = stage;
     setLessonStage(stage);
     lessonStartFrameRef.current = atFrame ?? frameRef.current;
+    demoStepIndexRef.current = 0;
+    setDemoStepIndex(0);
+    demoAdvanceRef.current = false;
+    demoInputsFinishedRef.current = false;
+    stageInputSuccessRef.current = false;
+    pendingCompletionRef.current = null;
     setActiveModuleId(module?.id ?? null);
     triggerFrameRef.current = atFrame;
     setTriggerFrame(atFrame);
@@ -614,24 +631,56 @@ export function TrainingGround({
   const retry = () => {
     const resetModule = activeModuleRef.current ?? resetModuleRef.current;
     const target = trainingRetryTarget(
-      resetMode,
+      "current",
       resetFrame,
       resetModule?.id ?? null,
       completionsRef.current,
     );
-    const module =
-      resetMode === "start"
-        ? (moduleAtPlayer(selectedVariant.training, initial!, new Set()) ?? null)
-        : target.moduleId
-          ? (selectedVariant.training.modules.find(
-              (candidate) => candidate.id === target.moduleId,
-            ) ?? resetModule)
-          : null;
-    resetTo(
-      target.frame,
-      module,
-      resetMode === "start" && module ? "demo" : undefined,
-    );
+    const module = target.moduleId
+      ? (selectedVariant.training.modules.find(
+          (candidate) => candidate.id === target.moduleId,
+        ) ?? resetModule)
+      : resetModule;
+    resetTo(target.frame, module);
+  };
+
+  const selectLessonStage = (stage: TrainingLessonStage) => {
+    const module = activeModuleRef.current ?? resetModuleRef.current;
+    if (!module) return;
+    keys.current.clear();
+    resetTo(lessonStartFrameRef.current, module, stage, stage !== "free");
+  };
+
+  const moveDemoStep = (direction: -1 | 1) => {
+    const module = activeModuleRef.current;
+    const candidate = candidatesRef.current[0];
+    if (!module || !candidate || lessonStageRef.current !== "demo") return;
+    const steps = trainingReferenceSteps(candidate, module.tutorial);
+    if (direction > 0) {
+      demoAdvanceRef.current = true;
+      setPlaying(true);
+      return;
+    }
+    const nextIndex = Math.max(0, demoStepIndexRef.current - 1);
+    const step = steps[nextIndex];
+    const target = lessonStartFrameRef.current + (step?.frame ?? 0);
+    simulationEpoch.current += 1;
+    clearOutcome();
+    frameRef.current = target;
+    setFrame(target);
+    demoStepIndexRef.current = nextIndex;
+    setDemoStepIndex(nextIndex);
+    demoAdvanceRef.current = false;
+    demoInputsFinishedRef.current = false;
+    previousButtons.current =
+      (step?.frame ?? 0) > 0
+        ? trainingReferenceButtons(
+            candidate,
+            module.tutorial,
+            step!.frame - 1,
+          )
+        : makeEmptyButtons();
+    setPlaying(false);
   };
 
   useEffect(() => {
@@ -651,9 +700,20 @@ export function TrainingGround({
       if (lessonStageRef.current === "demo") return;
       if (trainingInputLocked(outcomeRef.current, settlementRef.current))
         return;
+      const previous = buttonsFromKeyboard(keys.current, bindings);
       keys.current.add(event.code);
       if (gameInput) {
-        forceAdvanceRef.current = true;
+        const current = buttonsFromKeyboard(keys.current, bindings);
+        const expected = activeModuleRef.current
+          ? currentTrainingInput(
+              sessionRef.current,
+              activeModuleRef.current.tutorial,
+            )
+          : undefined;
+        forceAdvanceRef.current =
+          lessonStageRef.current === "assisted"
+            ? expectedTrainingInputTriggered(current, previous, expected)
+            : true;
         setFollowReference(true);
         if (predictionDirty.current) {
           predictionDirty.current = false;
@@ -674,7 +734,7 @@ export function TrainingGround({
     };
     // resetTo intentionally reads current state through React's render closure.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resetFrame, resetMode, initial, bindings, selectedVariant]);
+  }, [resetFrame, initial, bindings, selectedVariant]);
 
   useEffect(() => {
     if (!playing || !map || !initial || settlement) return;
@@ -689,16 +749,21 @@ export function TrainingGround({
       const fuzzInputIndex = tutorial
         ? currentTrainingInput(sourceSession, tutorial)?.fuzzInputIndex
         : undefined;
-      const target =
-        fuzzInputIndex === undefined
-          ? undefined
-          : nextTargetFrame(sourceSession.candidates, fuzzInputIndex);
       const fuzzFrame =
         stage === "demo"
           ? Math.max(0, frameRef.current - lessonStartFrameRef.current)
           : fuzzStartRef.current === null
             ? 0
             : Math.max(0, frameRef.current - fuzzStartRef.current);
+      const demoSteps =
+        stage === "demo" && tutorial && sourceSession.candidates[0]
+          ? trainingReferenceSteps(sourceSession.candidates[0], tutorial)
+          : [];
+      const demoStep = demoSteps[demoStepIndexRef.current];
+      const demoBrake =
+        stage === "demo" && !demoAdvanceRef.current
+          ? referenceStepBrake(fuzzFrame, demoStep?.frame)
+          : undefined;
       const brake =
         stage === "assisted" &&
         tutorial &&
@@ -725,7 +790,10 @@ export function TrainingGround({
                 (now - activeOutcome.startedAt) / activeOutcome.durationMs,
               ),
             );
-      const rate = stage === "demo" ? baseRate : assisted * (1 - progress);
+      const rate =
+        stage === "demo"
+          ? baseRate * (demoBrake?.multiplier ?? 1)
+          : assisted * (1 - progress);
       if (activeOutcome !== null) {
         setOutcomeProgress(progress);
         if (progress >= 1) {
@@ -736,7 +804,13 @@ export function TrainingGround({
         capturePrediction(sourceSession, fuzzStartRef.current, tutorial);
       carry += ((Math.min(250, now - last) * 60) / 1000) * rate;
       last = now;
-      if ((carry >= 1 || forceAdvanceRef.current) && !simulating.current) {
+      const needsReferenceSearch =
+        (stage === "demo" || stage === "assisted") &&
+        candidatesRef.current.length === 0;
+      if (
+        (carry >= 1 || forceAdvanceRef.current || needsReferenceSearch) &&
+        !simulating.current
+      ) {
         if (carry >= 1) carry -= 1;
         forceAdvanceRef.current = false;
         const currentFrame = frameRef.current;
@@ -760,7 +834,7 @@ export function TrainingGround({
           const activeModule = activeModuleRef.current;
           const activeTutorial = activeModule?.tutorial;
           if (
-            stage === "demo" &&
+            (stage === "demo" || stage === "assisted") &&
             activeModule &&
             activeTutorial &&
             candidatesRef.current.length === 0
@@ -781,6 +855,14 @@ export function TrainingGround({
             setCandidates(result.candidates);
             setEvaluations(result.evaluations);
             applySession(createTrainingSession(result.candidates, activeTutorial));
+            if (stage === "assisted") {
+              previousButtons.current = buttonsFromKeyboard(
+                keys.current,
+                bindings,
+              );
+              setPlaying(false);
+              return;
+            }
             current = trainingReferenceButtons(
               result.candidates[0],
               activeTutorial,
@@ -788,6 +870,27 @@ export function TrainingGround({
             );
             input = buttonsToInput(current, previous);
             previousButtons.current = current;
+            const steps = trainingReferenceSteps(
+              result.candidates[0],
+              activeTutorial,
+            );
+            demoStepIndexRef.current = 0;
+            setDemoStepIndex(0);
+            if (
+              steps[0] &&
+              currentFrame - lessonStartFrameRef.current >= steps[0].frame
+            ) {
+              previousButtons.current =
+                steps[0].frame > 0
+                  ? trainingReferenceButtons(
+                      result.candidates[0],
+                      activeTutorial,
+                      steps[0].frame - 1,
+                    )
+                  : makeEmptyButtons();
+              setPlaying(false);
+              return;
+            }
           }
           const expectedInput = activeTutorial
             ? currentTrainingInput(beforeSession, activeTutorial)
@@ -840,22 +943,43 @@ export function TrainingGround({
           setFrame(nextFrame);
           if (
             stage === "demo" &&
-            activeModule &&
             activeTutorial &&
-            candidatesRef.current[0] &&
-            nextFrame - lessonStartFrameRef.current >=
-              trainingReferenceEndFrame(
-                candidatesRef.current[0],
-                activeTutorial,
-              )
+            candidatesRef.current[0]
           ) {
-            resetTo(
-              lessonStartFrameRef.current,
-              activeModule,
-              "assisted",
-              true,
+            const steps = trainingReferenceSteps(
+              candidatesRef.current[0],
+              activeTutorial,
             );
-            return;
+            const step = steps[demoStepIndexRef.current];
+            const localFrame = currentFrame - lessonStartFrameRef.current;
+            if (
+              demoAdvanceRef.current &&
+              step &&
+              localFrame >= step.frame
+            ) {
+              demoAdvanceRef.current = false;
+              const nextIndex = demoStepIndexRef.current + 1;
+              demoStepIndexRef.current = nextIndex;
+              setDemoStepIndex(nextIndex);
+              if (nextIndex >= steps.length)
+                demoInputsFinishedRef.current = true;
+            }
+            const nextStep = steps[demoStepIndexRef.current];
+            if (
+              nextStep &&
+              nextFrame - lessonStartFrameRef.current >= nextStep.frame
+            ) {
+              previousButtons.current =
+                nextStep.frame > 0
+                  ? trainingReferenceButtons(
+                      candidatesRef.current[0],
+                      activeTutorial,
+                      nextStep.frame - 1,
+                    )
+                  : makeEmptyButtons();
+              setPlaying(false);
+              return;
+            }
           }
           if (shouldVerify && activeTutorial && activeModule) {
             const localFrame =
@@ -931,15 +1055,6 @@ export function TrainingGround({
               );
               beginFailure(nextFrame, evaluatedCandidate);
             } else if (nextSession.phase === "success") {
-              if (stage === "assisted") {
-                resetTo(
-                  lessonStartFrameRef.current,
-                  activeModule,
-                  "free",
-                  true,
-                );
-                return;
-              }
               const preview = predictionRef.current;
               const start = fuzzStartRef.current ?? currentFrame;
               const absoluteInputs = nextSession.actualInputs.map((actual) => ({
@@ -998,17 +1113,85 @@ export function TrainingGround({
                 windows: preview.windows,
                 actualInputs: absoluteInputs,
               };
-              completionsRef.current = [
-                ...completionsRef.current.filter(
-                  (item) => item.moduleId !== completion.moduleId,
-                ),
-                completion,
-              ];
-              setCompletions(completionsRef.current);
-              setActiveModule(null, null);
+              stageInputSuccessRef.current = true;
+              if (stage === "free") pendingCompletionRef.current = completion;
               setPlaying(true);
-              setNotice(`${activeTutorial.title} 成功；继续前往下一个触发区。`);
+              setNotice(
+                `${activeTutorial.title} 动作正确；继续前往本段结束触发区。`,
+              );
             }
+          }
+          const reachedModuleEnd =
+            activeModule !== null &&
+            triggerContainsPlayer(activeModule.end_trigger, after);
+          if (
+            reachedModuleEnd &&
+            activeModule &&
+            stage === "demo" &&
+            demoInputsFinishedRef.current
+          ) {
+            resetTo(
+              lessonStartFrameRef.current,
+              activeModule,
+              "assisted",
+            );
+            return;
+          }
+          if (
+            reachedModuleEnd &&
+            activeModule &&
+            stage === "assisted" &&
+            stageInputSuccessRef.current
+          ) {
+            resetTo(lessonStartFrameRef.current, activeModule, "free");
+            return;
+          }
+          if (
+            reachedModuleEnd &&
+            activeModule &&
+            stage === "free" &&
+            pendingCompletionRef.current
+          ) {
+            const completion = {
+              ...pendingCompletionRef.current,
+              completedFrame: nextFrame,
+            };
+            pendingCompletionRef.current = null;
+            completionsRef.current = [
+              ...completionsRef.current.filter(
+                (item) => item.moduleId !== completion.moduleId,
+              ),
+              completion,
+            ];
+            setCompletions(completionsRef.current);
+            const moduleIndex = selectedVariant.training.modules.findIndex(
+              (candidate) => candidate.id === activeModule.id,
+            );
+            const nextModule =
+              selectedVariant.training.modules[moduleIndex + 1];
+            if (nextModule) {
+              const nextState = structuredClone(
+                nextModule.validation.initial_state,
+              );
+              snapshotsRef.current = [
+                ...snapshotsRef.current.slice(0, nextFrame),
+                nextState,
+              ];
+              setSnapshots(snapshotsRef.current);
+              frameRef.current = nextFrame;
+              setFrame(nextFrame);
+              previousButtons.current = makeEmptyButtons();
+              keys.current.clear();
+              occupiedTriggers.current = idsInside(nextState, selectedVariant);
+              setActiveModule(nextModule, nextFrame, "demo");
+              setNotice(
+                `${activeModule.tutorial.title} 完成；接续 ${nextModule.tutorial.title}。`,
+              );
+              return;
+            }
+            setActiveModule(null, null);
+            setPlaying(false);
+            setNotice(`${activeModule.tutorial.title} 完成；房间内训练已全部通过。`);
           }
           scanTriggers(after, nextFrame, completionsRef.current);
         })()
@@ -1077,6 +1260,12 @@ export function TrainingGround({
       : nextTargetFrame(session.candidates, fuzzInputIndex);
   const demoFrame = Math.max(0, frame - lessonStartFrameRef.current);
   const demoCandidate = candidates[0];
+  const demoSteps =
+    tutorial && demoCandidate
+      ? trainingReferenceSteps(demoCandidate, tutorial)
+      : [];
+  const activeDemoStep =
+    lessonStage === "demo" ? demoSteps[demoStepIndex] : undefined;
   const demoNextInput =
     lessonStage === "demo" && demoCandidate
       ? [...demoCandidate.verified_inputs]
@@ -1125,6 +1314,10 @@ export function TrainingGround({
           renderFuzzFrame,
         )
       : undefined;
+  const renderDemoBrake =
+    lessonStage === "demo" && !demoAdvanceRef.current
+      ? referenceStepBrake(renderFuzzFrame, activeDemoStep?.frame)
+      : undefined;
   const displayedPrompt =
     lessonStage === "assisted" && renderBrake?.stopped
       ? `现在按：${(currentTrainingInput(session, tutorial!)?.keys ?? [])
@@ -1136,16 +1329,17 @@ export function TrainingGround({
           .join(" + ")}`
       : prompt;
   const effective =
-    (lessonStage === "assisted" && renderBrake
-      ? baseRate * renderBrake.multiplier
-      : baseRate) *
+    (lessonStage === "demo" && renderDemoBrake
+      ? baseRate * renderDemoBrake.multiplier
+      : lessonStage === "assisted" && renderBrake
+        ? baseRate * renderBrake.multiplier
+        : baseRate) *
     (1 - outcomeProgress);
   const actualInputs = session.actualInputs.map((input) => ({
     ...input,
     frame: (fuzzStartFrame ?? 0) + input.frame,
   }));
   const actualActionFrame = actualInputs.at(-1)?.frame;
-  const timing = timingAssessment(actualActionFrame, prediction.targetFrame);
   const failureOriginFrame =
     session.failure === undefined
       ? undefined
@@ -1157,6 +1351,10 @@ export function TrainingGround({
   const failureFrame = session.failure
     ? (failureOriginFrame ?? 0) + session.failure.frame
     : undefined;
+  const failureTiming = timingAssessmentToWindow(
+    failureFrame,
+    prediction.windows,
+  );
   const timelineFrame = outcome?.timelineFrame ?? frame;
   const timelineFrameCount =
     outcome?.timelineFrame ??
@@ -1178,7 +1376,7 @@ export function TrainingGround({
 
   return (
     <main
-      className={`training-workspace ${timelineOpen ? "timeline-open" : ""} ${editorPreview ? "editor-training-preview" : ""} training-stage-${lessonStage} ${renderBrake?.stopped ? "training-cue-stopped" : renderBrake?.braking ? "training-cue-braking" : ""}`}
+      className={`training-workspace ${timelineOpen ? "timeline-open" : ""} ${editorPreview ? "editor-training-preview" : ""} training-stage-${lessonStage} ${(renderBrake?.stopped || renderDemoBrake?.stopped) ? "training-cue-stopped" : (renderBrake?.braking || renderDemoBrake?.braking) ? "training-cue-braking" : ""}`}
     >
       {!editorPreview && (
         <TrainingCatalogSidebar
@@ -1201,7 +1399,8 @@ export function TrainingGround({
             {tutorial && (
               <div className="training-lesson-stages" aria-label="训练三步">
                 {LESSON_STAGES.map((item, index) => (
-                  <span
+                  <button
+                    type="button"
                     key={item.id}
                     className={
                       item.id === lessonStage
@@ -1212,9 +1411,10 @@ export function TrainingGround({
                           ? "complete"
                           : ""
                     }
+                    onClick={() => selectLessonStage(item.id)}
                   >
                     <b>{index + 1}</b> {item.label}
-                  </span>
+                  </button>
                 ))}
               </div>
             )}
@@ -1250,6 +1450,25 @@ export function TrainingGround({
             )
           }
         </GameView>
+
+        {tutorial && lessonStage === "demo" && demoCandidate && (
+          <div className="training-demo-controls" aria-label="演示步骤">
+            <button
+              type="button"
+              disabled={demoStepIndex <= 0}
+              onClick={() => moveDemoStep(-1)}
+            >
+              上一步
+            </button>
+            <span>
+              {Math.min(demoStepIndex + 1, Math.max(1, demoSteps.length))}/
+              {Math.max(1, demoSteps.length)}
+            </span>
+            <button type="button" onClick={() => moveDemoStep(1)}>
+              {demoStepIndex >= demoSteps.length ? "继续到结束区" : "下一步"}
+            </button>
+          </div>
+        )}
 
         <div
           className={`training-success-toasts ${settlement ? "settling" : ""}`}
@@ -1310,7 +1529,7 @@ export function TrainingGround({
                               ?.window_error.title}
                     </strong>
                   </div>
-                  <em>{timing}</em>
+                  <em>{failureTiming}</em>
                 </div>
                 <TrainingResultTimeline
                   frameOrigin={failureOriginFrame}
@@ -1333,7 +1552,7 @@ export function TrainingGround({
                   ))}
                   <div>
                     <span>输入时机</span>
-                    <b>{timing}</b>
+                    <b>{failureTiming}</b>
                   </div>
                 </div>
                 <p>{notice}</p>
@@ -1481,28 +1700,6 @@ export function TrainingGround({
           <button aria-label="按 R 设置重试" onClick={retry}>
             R
           </button>
-          <select
-            aria-label="R 重试位置"
-            title="选择按 R 时回到本段开始还是整张训练从头开始"
-            value={resetMode}
-            onChange={(event) => {
-              const mode = event.target.value as TrainingResetMode;
-              setResetMode(mode);
-              try {
-                localStorage.setItem(TRAINING_RESET_MODE_KEY, mode);
-              } catch {
-                // Storage may be unavailable in a private or embedded context.
-              }
-              setNotice(
-                mode === "start"
-                  ? "R 已设为整张训练从头开始。"
-                  : "R 已设为回到本段开始。",
-              );
-            }}
-          >
-            <option value="current">R：本段开始</option>
-            <option value="start">R：整张从头</option>
-          </select>
           <button aria-label="上一帧" onClick={() => seek(frame - 1)}>
             ◀
           </button>
