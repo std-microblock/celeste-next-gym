@@ -167,7 +167,7 @@ describe("training R reset", () => {
     expect(
       view.container.querySelector(".training-lesson-stages .active"),
     ).toHaveTextContent("辅助实操");
-    expect(view.container.querySelector(".play-button")).toHaveTextContent("▶");
+    expect(view.container.querySelector(".play-button")).toHaveTextContent("Ⅱ");
 
     fireEvent.keyDown(window, { code: "Semicolon" });
     for (let frame = 0; frame < 4; frame += 1) await advance();
@@ -179,7 +179,7 @@ describe("training R reset", () => {
       view.container.querySelector(".training-lesson-stages"),
     ).not.toBeInTheDocument();
     expect(view.queryByTestId("training-prompt")).not.toBeInTheDocument();
-    expect(view.container.querySelector(".play-button")).toHaveTextContent("▶");
+    expect(view.container.querySelector(".play-button")).toHaveTextContent("Ⅱ");
     vi.useRealTimers();
 
     fireEvent.keyUp(window, { code: "Semicolon" });
@@ -194,6 +194,7 @@ describe("training R reset", () => {
     expect(view.queryByTestId("training-prompt")).not.toBeInTheDocument();
     expect(view.container).not.toHaveTextContent("NaN");
     expect(view.container).toHaveTextContent("已通过当前步骤条件");
+    expect(view.container.querySelector(".play-button")).toHaveTextContent("Ⅱ");
 
     fireEvent.keyDown(window, { code: "KeyR" });
     await waitFor(() =>
