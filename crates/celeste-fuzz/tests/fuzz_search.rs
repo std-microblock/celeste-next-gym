@@ -220,6 +220,43 @@ fn evaluations_include_objectives_for_failed_candidates() {
 }
 
 #[test]
+fn checkpoint_objectives_sample_the_selected_frame_and_sort_candidates() {
+    let result = search(
+        r#"{
+          "version":1,
+          "variables":[{"name":"frame","range":{"from":0,"to":1}}],
+          "inputs":[], "observe_until":2,
+          "success":"!final.dead",
+          "checkpoints":[{
+            "at":"frame",
+            "objectives":[
+              {"type":"maximize","expression":"at"},
+              {"type":"maximize","expression":"sqrt(after.speed.x * after.speed.x + after.speed.y * after.speed.y)"}
+            ]
+          }],
+          "objectives":[{"type":"maximize","expression":"final.stamina"}]
+        }"#,
+        vec![OutputMode::Best, OutputMode::Evaluations],
+    );
+    assert_eq!(result.best.as_ref().unwrap().bindings["frame"], 1);
+    assert_eq!(result.best.as_ref().unwrap().objective_values.len(), 3);
+    assert_eq!(
+        result
+            .evaluations
+            .iter()
+            .map(|candidate| candidate.objective_values[0])
+            .collect::<Vec<_>>(),
+        [0.0, 1.0]
+    );
+    assert!(result.evaluations.iter().all(|candidate| {
+        candidate
+            .objective_values
+            .iter()
+            .all(|value| value.is_finite())
+    }));
+}
+
+#[test]
 fn prefix_cache_reuses_identical_input_paths() {
     let result = search(
         r#"{

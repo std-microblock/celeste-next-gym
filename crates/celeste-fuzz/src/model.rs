@@ -133,6 +133,13 @@ pub struct Objective {
     pub expression: String,
 }
 
+/// An objective sampled immediately after the input frame at `at`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Checkpoint {
+    pub(crate) at: NumberExpression,
+    pub objectives: Vec<Objective>,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OutputMode {
     Best,
@@ -191,6 +198,7 @@ pub struct FuzzSpec {
     pub inputs: Vec<InputDeclaration>,
     pub(crate) observe_until: NumberExpression,
     pub(crate) success: Vec<String>,
+    pub checkpoints: Vec<Checkpoint>,
     pub objectives: Vec<Objective>,
     pub search: SearchSpec,
     pub limits: Limits,
@@ -323,6 +331,14 @@ impl FuzzSpec {
             Some(value) => expressions(value, "success")?,
             None => Vec::new(),
         };
+        let checkpoints = match root.get("checkpoints") {
+            Some(value) => array(value, "checkpoints")?
+                .iter()
+                .enumerate()
+                .map(|(index, value)| parse_checkpoint(value, index))
+                .collect::<Result<Vec<_>, _>>()?,
+            None => Vec::new(),
+        };
         let objectives = match root.get("objectives") {
             Some(value) => array(value, "objectives")?
                 .iter()
@@ -357,6 +373,7 @@ impl FuzzSpec {
             inputs,
             observe_until,
             success,
+            checkpoints,
             objectives,
             search,
             limits,
@@ -477,6 +494,25 @@ fn parse_objective(value: &Value, index: usize) -> Result<Objective, FuzzError> 
         other => return Err(FuzzError::Spec(format!("unknown objective type `{other}`"))),
     };
     Ok(Objective { kind, expression })
+}
+
+fn parse_checkpoint(value: &Value, index: usize) -> Result<Checkpoint, FuzzError> {
+    let fields = object(value, &format!("checkpoints[{index}]"))?;
+    let at = parse_number_expression(required(fields, "at")?, &format!("checkpoints[{index}].at"))?;
+    let objectives = array(
+        required(fields, "objectives")?,
+        &format!("checkpoints[{index}].objectives"),
+    )?
+    .iter()
+    .enumerate()
+    .map(|(objective_index, value)| parse_objective(value, objective_index))
+    .collect::<Result<Vec<_>, _>>()?;
+    if objectives.is_empty() {
+        return Err(FuzzError::Spec(format!(
+            "checkpoints[{index}] has no objectives"
+        )));
+    }
+    Ok(Checkpoint { at, objectives })
 }
 
 fn parse_search(value: &Value) -> Result<SearchSpec, FuzzError> {

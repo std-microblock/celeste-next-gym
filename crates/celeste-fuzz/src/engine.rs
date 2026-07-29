@@ -31,7 +31,7 @@ pub(crate) fn build_engine(max_operations: u64) -> Engine {
     // `new_raw` leaves out Rhai's standard-library collection, string, file,
     // and package helpers.  The operators needed by expressions are core
     // language functionality; the only additional callable helpers below are
-    // abs/min/max.
+    // abs/min/max/sqrt.
     let mut engine = Engine::new_raw();
     engine.set_max_operations(max_operations);
     engine.register_fn("abs", |value: i64| value.abs());
@@ -40,6 +40,7 @@ pub(crate) fn build_engine(max_operations: u64) -> Engine {
     engine.register_fn("max", |left: i64, right: i64| left.max(right));
     engine.register_fn("min", |left: f64, right: f64| left.min(right));
     engine.register_fn("max", |left: f64, right: f64| left.max(right));
+    engine.register_fn("sqrt", |value: f64| value.sqrt());
 
     engine.register_type_with_name::<Vec2>("Vec2");
     engine.register_get("x", |value: &mut Vec2| value.x as f64);
@@ -248,7 +249,7 @@ fn validate_expression_surface(source: &str) -> Result<(), FuzzError> {
             }
             if after < bytes.len()
                 && bytes[after] == b'('
-                && !matches!(identifier, "abs" | "min" | "max")
+                && !matches!(identifier, "abs" | "min" | "max" | "sqrt")
             {
                 return Err(FuzzError::Spec(format!(
                     "function `{identifier}` is not allowed in expression `{source}`"
