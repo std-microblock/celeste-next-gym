@@ -4581,7 +4581,18 @@ fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
             p.speed.x *= SWIM_DASH_SPEED_MULT;
             p.speed.y *= SWIM_DASH_SPEED_MULT;
         }
-        if p.on_ground && p.dash_dir.x != 0.0 && p.dash_dir.y > 0.0 && p.speed.y > 0.0 {
+        // Player.cs keeps a grounded down-diagonal dash diagonal when the
+        // current duck collider has an enterable DreamBlock one pixel below.
+        // Ordinary ground still converts the dash into the 1.2x horizontal
+        // grounded-ultra launch.
+        let dream_block_below =
+            p.can_dream_dash && map.dream_block_at(current_player_rect(p, p.pos.x, p.pos.y + 1.0));
+        if p.on_ground
+            && p.dash_dir.x != 0.0
+            && p.dash_dir.y > 0.0
+            && p.speed.y > 0.0
+            && !dream_block_below
+        {
             p.dash_dir.x = p.dash_dir.x.signum();
             p.dash_dir.y = 0.0;
             p.speed.y = 0.0;
@@ -13277,6 +13288,40 @@ mod tests {
         let p = simulate(p, &inputs, &map, inputs.len() as u32).unwrap();
         assert_eq!(p.state, PlayerState::DreamDash);
         assert_eq!(p.speed, Vec2::new(240.0, 0.0));
+    }
+
+    #[test]
+    fn grounded_down_diagonal_dash_enters_the_dream_block_below() {
+        let map = Map {
+            entities: vec![crate::Entity {
+                kind: EntityKind::DreamBlock,
+                bounds: Rect::new(40.0, 40.0, 32.0, 40.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "dreamBlock".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(56.0, 40.0),
+            dashes: 1,
+            can_dream_dash: true,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = [InputState {
+            move_x: 1,
+            move_y: 1,
+            ..InputState::default()
+        }; 6];
+        inputs[0].dash_pressed = true;
+        let p = simulate(p, &inputs, &map, inputs.len() as u32).unwrap();
+        let diagonal_speed = DASH_SPEED * std::f32::consts::FRAC_1_SQRT_2;
+
+        assert_eq!(p.state, PlayerState::DreamDash);
+        assert!((p.speed.x - diagonal_speed).abs() < 0.000_1);
+        assert!((p.speed.y - diagonal_speed).abs() < 0.000_1);
     }
 
     #[test]
