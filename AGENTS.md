@@ -12,4 +12,5 @@
 - Never find or terminate Celeste by process name, by an arbitrary observed PID, or by Steam ownership guesses. Cleanup may target only the child PID returned by the runner's own `spawn`, after its executable path and process creation time still match the recorded manifest. If ownership cannot be proven, warn and leave the process untouched.
 - When using PowerShell to read or write files, account for encoding differences. Most repository text is UTF-8 while older PowerShell defaults can be UTF-16. Prefer `apply_patch` for text edits and avoid PowerShell text-writing commands.
 
-做完一个部分自己 Commit + Push，message 用 scope: detail 的格式
+所有修改都直接在 `master` 主分支完成；不要创建、切换或推送功能分支，除非用户明确要求。
+做完一个部分就在 `master` 上 Commit + Push，message 用 `scope: detail` 的格式。
