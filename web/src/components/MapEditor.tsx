@@ -4,13 +4,17 @@ import {
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
+  type WheelEvent as ReactWheelEvent,
 } from "react";
 import {
   cameraBounds,
   cameraViewBox,
-  clampCameraPosition,
+  clampCameraViewport,
   defaultCameraPosition,
+  fitCameraViewport,
   pointInCameraViewport,
+  zoomCameraViewport,
+  type CameraBounds,
 } from "../camera";
 import type { EntityKind, GymMap, MapEntity, SimState } from "../model";
 import type { VisualTheme } from "../visualThemes";
@@ -35,9 +39,15 @@ interface EntityTemplate {
 }
 
 interface DragState {
-  kind: "create-solid" | "move-selection" | "resize-selection" | "move-node";
+  kind:
+    | "create-solid"
+    | "move-selection"
+    | "resize-selection"
+    | "move-node"
+    | "pan-camera";
   start: { x: number; y: number };
   originalMap: GymMap;
+  originalCamera?: CameraBounds;
   selection?: EditorSelection;
   corner?: ResizeCorner;
   nodeIndex?: number;
@@ -368,14 +378,14 @@ function pointInMap(
   clientY: number,
   svg: SVGSVGElement,
   map: GymMap,
-  cameraPosition: { x: number; y: number },
+  camera: CameraBounds,
 ): { x: number; y: number } {
   const rect = svg.getBoundingClientRect();
   const point = pointInCameraViewport(
     clientX,
     clientY,
     rect,
-    cameraBounds(clampCameraPosition(map, cameraPosition)),
+    clampCameraViewport(map, camera),
   );
   return {
     x: Math.max(
@@ -434,8 +444,8 @@ export function MapEditor({
   const [tool, setTool] = useState<EditorTool>("select");
   const [selection, setSelection] = useState<EditorSelection | null>(null);
   const [draft, setDraft] = useState<EditableBounds | null>(null);
-  const [cameraPosition, setCameraPosition] = useState(() =>
-    defaultCameraPosition(map),
+  const [cameraViewport, setCameraViewport] = useState<CameraBounds>(() =>
+    cameraBounds(defaultCameraPosition(map)),
   );
   const [historyRevision, setHistoryRevision] = useState(0);
   const drag = useRef<DragState | null>(null);
@@ -450,15 +460,29 @@ export function MapEditor({
   );
 
   useEffect(() => {
-    setCameraPosition((position) => clampCameraPosition(map, position));
+    setCameraViewport((viewport) => clampCameraViewport(map, viewport));
   }, [map.bounds.height, map.bounds.width, map.bounds.x, map.bounds.y, map.room]);
 
   const moveCamera = (x: number, y: number) =>
-    setCameraPosition((position) =>
-      clampCameraPosition(map, {
-        x: position.x + x,
-        y: position.y + y,
+    setCameraViewport((viewport) =>
+      clampCameraViewport(map, {
+        ...viewport,
+        x: viewport.x + x,
+        y: viewport.y + y,
       }),
+    );
+
+  const zoomCamera = (factor: number, focus?: { x: number; y: number }) =>
+    setCameraViewport((viewport) =>
+      zoomCameraViewport(map, viewport, factor, focus),
+    );
+
+  const resetCamera = () =>
+    setCameraViewport(cameraBounds(defaultCameraPosition(map)));
+
+  const fitCamera = () =>
+    setCameraViewport(
+      fitCameraViewport(map, cameraViewport.width / cameraViewport.height),
     );
 
   const rememberAndChange = (next: GymMap) => {
@@ -517,7 +541,7 @@ export function MapEditor({
         event.clientY,
         svg,
         map,
-        cameraPosition,
+        cameraViewport,
       ),
       originalMap: structuredClone(map),
       selection: nextSelection,
@@ -542,7 +566,7 @@ export function MapEditor({
         event.clientY,
         svg,
         map,
-        cameraPosition,
+        cameraViewport,
       ),
       originalMap: structuredClone(map),
       selection,
@@ -566,7 +590,7 @@ export function MapEditor({
         event.clientY,
         svg,
         map,
-        cameraPosition,
+        cameraViewport,
       ),
       originalMap: structuredClone(map),
       selection,
@@ -577,9 +601,8 @@ export function MapEditor({
   const pointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
     if (
       event.target !== event.currentTarget &&
-      !(
-        event.target instanceof SVGRectElement &&
-        event.target.dataset.editorBackground === "true"
+      !(event.target as SVGElement).matches?.(
+        '[data-editor-background="true"]',
       )
     )
       return;
@@ -588,10 +611,17 @@ export function MapEditor({
       event.clientY,
       event.currentTarget,
       map,
-      cameraPosition,
+      cameraViewport,
     );
     if (tool === "select") {
       setSelection(null);
+      drag.current = {
+        kind: "pan-camera",
+        start: { x: event.clientX, y: event.clientY },
+        originalMap: structuredClone(map),
+        originalCamera: cameraViewport,
+      };
+      event.currentTarget.setPointerCapture(event.pointerId);
     } else if (tool === "solid") {
       drag.current = {
         kind: "create-solid",
@@ -624,12 +654,33 @@ export function MapEditor({
   const pointerMove = (event: ReactPointerEvent<SVGSVGElement>) => {
     const currentDrag = drag.current;
     if (!currentDrag) return;
+    if (currentDrag.kind === "pan-camera" && currentDrag.originalCamera) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      const scale = Math.min(
+        rect.width / currentDrag.originalCamera.width,
+        rect.height / currentDrag.originalCamera.height,
+      );
+      if (scale > 0) {
+        setCameraViewport(
+          clampCameraViewport(map, {
+            ...currentDrag.originalCamera,
+            x:
+              currentDrag.originalCamera.x -
+              (event.clientX - currentDrag.start.x) / scale,
+            y:
+              currentDrag.originalCamera.y -
+              (event.clientY - currentDrag.start.y) / scale,
+          }),
+        );
+      }
+      return;
+    }
     const point = pointInMap(
       event.clientX,
       event.clientY,
       event.currentTarget,
       map,
-      cameraPosition,
+      cameraViewport,
     );
     if (currentDrag.kind === "create-solid") {
       setDraft(normalizedRect(currentDrag.start, point, map));
@@ -711,6 +762,18 @@ export function MapEditor({
     }
     drag.current = null;
     setDraft(null);
+  };
+
+  const zoomAtPointer = (event: ReactWheelEvent<SVGSVGElement>) => {
+    event.preventDefault();
+    const rect = event.currentTarget.getBoundingClientRect();
+    const focus = pointInCameraViewport(
+      event.clientX,
+      event.clientY,
+      rect,
+      cameraViewport,
+    );
+    zoomCamera(event.deltaY < 0 ? 0.8 : 1.25, focus);
   };
 
   const updateBounds = (field: keyof EditableBounds, value: number) => {
@@ -827,9 +890,9 @@ export function MapEditor({
           </button>
         </div>
         <p className="editor-hint">
-          8 px 网格 · 拖动画实心块
+          8 px 网格 · 空白处拖拽平移 · 滚轮缩放
           <br />
-          选择对象后可拖动或精确修改
+          选择对象后可拖动或精确修改 · “适配”显示整张地图
         </p>
       </aside>
 
@@ -845,27 +908,48 @@ export function MapEditor({
           <div className="editor-stage-actions">
             {!experiencing && (
               <div className="editor-camera-controls" aria-label="编辑相机">
-                <button aria-label="相机向左" onClick={() => moveCamera(-160, 0)}>
+                <button
+                  aria-label="相机向左"
+                  onClick={() => moveCamera(-cameraViewport.width / 2, 0)}
+                >
                   ←
                 </button>
-                <button aria-label="相机向上" onClick={() => moveCamera(0, -90)}>
+                <button
+                  aria-label="相机向上"
+                  onClick={() => moveCamera(0, -cameraViewport.height / 2)}
+                >
                   ↑
                 </button>
                 <button
                   aria-label="相机回到出生点"
-                  onClick={() => setCameraPosition(defaultCameraPosition(map))}
+                  onClick={resetCamera}
                 >
                   出生点
                 </button>
-                <button aria-label="相机向下" onClick={() => moveCamera(0, 90)}>
+                <button
+                  aria-label="相机向下"
+                  onClick={() => moveCamera(0, cameraViewport.height / 2)}
+                >
                   ↓
                 </button>
-                <button aria-label="相机向右" onClick={() => moveCamera(160, 0)}>
+                <button
+                  aria-label="相机向右"
+                  onClick={() => moveCamera(cameraViewport.width / 2, 0)}
+                >
                   →
                 </button>
+                <button aria-label="缩小地图" onClick={() => zoomCamera(1.25)}>
+                  −
+                </button>
                 <span>
-                  CAM {Math.round(cameraPosition.x)}, {Math.round(cameraPosition.y)}
+                  {Math.round((320 / cameraViewport.width) * 100)}%
                 </span>
+                <button aria-label="放大地图" onClick={() => zoomCamera(0.8)}>
+                  +
+                </button>
+                <button aria-label="地图适配屏幕" onClick={fitCamera}>
+                  适配
+                </button>
               </div>
             )}
             {experiencing && (
@@ -888,7 +972,7 @@ export function MapEditor({
           frame={frame}
           stale={false}
           theme={theme}
-          cameraPosition={experiencing ? undefined : cameraPosition}
+          cameraViewport={experiencing ? undefined : cameraViewport}
         >
           {(viewport) =>
             !experiencing && (
@@ -901,6 +985,7 @@ export function MapEditor({
               onPointerMove={pointerMove}
               onPointerUp={pointerUp}
               onPointerCancel={pointerUp}
+              onWheel={zoomAtPointer}
             >
               <defs>
                 <pattern

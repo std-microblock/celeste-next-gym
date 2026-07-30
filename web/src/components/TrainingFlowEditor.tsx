@@ -4,13 +4,17 @@ import {
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
+  type WheelEvent as ReactWheelEvent,
 } from "react";
 import {
   cameraBounds,
   cameraViewBox,
-  clampCameraPosition,
+  clampCameraViewport,
   defaultCameraPosition,
+  fitCameraViewport,
   pointInCameraViewport,
+  zoomCameraViewport,
+  type CameraBounds,
 } from "../camera";
 import { createInitialState, type KeyBindings } from "../model";
 import type {
@@ -75,14 +79,14 @@ function pointInMap(
   clientY: number,
   svg: SVGSVGElement,
   project: TrainingProject,
-  cameraPosition: { x: number; y: number },
+  camera: CameraBounds,
 ) {
   const rect = svg.getBoundingClientRect();
   return pointInCameraViewport(
     clientX,
     clientY,
     rect,
-    cameraBounds(clampCameraPosition(project.map, cameraPosition)),
+    clampCameraViewport(project.map, camera),
   );
 }
 
@@ -1088,9 +1092,13 @@ export function TrainingFlowEditor({
   const [preview, setPreview] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResults, setTestResults] = useState<TestResult[]>([]);
-  const [cameraPosition, setCameraPosition] = useState(() =>
-    defaultCameraPosition(project.map),
+  const [cameraViewport, setCameraViewport] = useState<CameraBounds>(() =>
+    cameraBounds(defaultCameraPosition(project.map)),
   );
+  const cameraDrag = useRef<{
+    start: { x: number; y: number };
+    viewport: CameraBounds;
+  } | null>(null);
   const drag = useRef<{
     mode: "move" | "resize";
     target: Target;
@@ -1100,8 +1108,8 @@ export function TrainingFlowEditor({
   } | null>(null);
   useEffect(() => () => client.dispose(), [client]);
   useEffect(() => {
-    setCameraPosition((position) =>
-      clampCameraPosition(project.map, position),
+    setCameraViewport((viewport) =>
+      clampCameraViewport(project.map, viewport),
     );
   }, [
     project.id,
@@ -1135,11 +1143,25 @@ export function TrainingFlowEditor({
     [project],
   );
   const moveCamera = (x: number, y: number) =>
-    setCameraPosition((position) =>
-      clampCameraPosition(project.map, {
-        x: position.x + x,
-        y: position.y + y,
+    setCameraViewport((viewport) =>
+      clampCameraViewport(project.map, {
+        ...viewport,
+        x: viewport.x + x,
+        y: viewport.y + y,
       }),
+    );
+  const zoomCamera = (factor: number, focus?: { x: number; y: number }) =>
+    setCameraViewport((viewport) =>
+      zoomCameraViewport(project.map, viewport, factor, focus),
+    );
+  const resetCamera = () =>
+    setCameraViewport(cameraBounds(defaultCameraPosition(project.map)));
+  const fitCamera = () =>
+    setCameraViewport(
+      fitCameraViewport(
+        project.map,
+        cameraViewport.width / cameraViewport.height,
+      ),
     );
 
   const updateTraining = (mutator: (project: TrainingProject) => void) => {
@@ -1223,7 +1245,7 @@ export function TrainingFlowEditor({
         event.clientY,
         svg,
         project,
-        cameraPosition,
+        cameraViewport,
       ),
       bounds: { ...bounds },
     };
@@ -1248,7 +1270,7 @@ export function TrainingFlowEditor({
         event.clientY,
         svg,
         project,
-        cameraPosition,
+        cameraViewport,
       ),
       bounds: { ...bounds },
       corner,
@@ -1258,13 +1280,34 @@ export function TrainingFlowEditor({
   };
 
   const moveDrag = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (cameraDrag.current) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      const scale = Math.min(
+        rect.width / cameraDrag.current.viewport.width,
+        rect.height / cameraDrag.current.viewport.height,
+      );
+      if (scale > 0) {
+        setCameraViewport(
+          clampCameraViewport(project.map, {
+            ...cameraDrag.current.viewport,
+            x:
+              cameraDrag.current.viewport.x -
+              (event.clientX - cameraDrag.current.start.x) / scale,
+            y:
+              cameraDrag.current.viewport.y -
+              (event.clientY - cameraDrag.current.start.y) / scale,
+          }),
+        );
+      }
+      return;
+    }
     if (!drag.current) return;
     const point = pointInMap(
       event.clientX,
       event.clientY,
       event.currentTarget,
       project,
-      cameraPosition,
+      cameraViewport,
     );
     const bounds =
       drag.current.mode === "resize" && drag.current.corner
@@ -1293,6 +1336,31 @@ export function TrainingFlowEditor({
         else module.end_trigger.bounds = bounds;
       }
     });
+  };
+
+  const beginCameraDrag = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (event.target !== event.currentTarget) return;
+    cameraDrag.current = {
+      start: { x: event.clientX, y: event.clientY },
+      viewport: cameraViewport,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const endDrag = () => {
+    drag.current = null;
+    cameraDrag.current = null;
+  };
+
+  const zoomAtPointer = (event: ReactWheelEvent<SVGSVGElement>) => {
+    event.preventDefault();
+    const focus = pointInCameraViewport(
+      event.clientX,
+      event.clientY,
+      event.currentTarget.getBoundingClientRect(),
+      cameraViewport,
+    );
+    zoomCamera(event.deltaY < 0 ? 0.8 : 1.25, focus);
   };
 
   if (preview)
@@ -1447,29 +1515,54 @@ export function TrainingFlowEditor({
             </strong>
           </div>
           <div className="training-camera-controls" aria-label="训练编辑相机">
-            <button aria-label="训练相机向左" onClick={() => moveCamera(-160, 0)}>
+            <button
+              aria-label="训练相机向左"
+              onClick={() => moveCamera(-cameraViewport.width / 2, 0)}
+            >
               ←
             </button>
-            <button aria-label="训练相机向上" onClick={() => moveCamera(0, -90)}>
+            <button
+              aria-label="训练相机向上"
+              onClick={() => moveCamera(0, -cameraViewport.height / 2)}
+            >
               ↑
             </button>
             <button
               aria-label="训练相机回到出生点"
-              onClick={() =>
-                setCameraPosition(defaultCameraPosition(project.map))
-              }
+              onClick={resetCamera}
             >
               出生点
             </button>
-            <button aria-label="训练相机向下" onClick={() => moveCamera(0, 90)}>
+            <button
+              aria-label="训练相机向下"
+              onClick={() => moveCamera(0, cameraViewport.height / 2)}
+            >
               ↓
             </button>
-            <button aria-label="训练相机向右" onClick={() => moveCamera(160, 0)}>
+            <button
+              aria-label="训练相机向右"
+              onClick={() => moveCamera(cameraViewport.width / 2, 0)}
+            >
               →
             </button>
+            <button
+              aria-label="训练地图缩小"
+              onClick={() => zoomCamera(1.25)}
+            >
+              −
+            </button>
             <span>
-              CAM {Math.round(cameraPosition.x)}, {Math.round(cameraPosition.y)}
+              {Math.round((320 / cameraViewport.width) * 100)}%
             </span>
+            <button
+              aria-label="训练地图放大"
+              onClick={() => zoomCamera(0.8)}
+            >
+              +
+            </button>
+            <button aria-label="训练地图适配屏幕" onClick={fitCamera}>
+              适配
+            </button>
           </div>
           <button disabled={!ready || testing} onClick={() => void runTests()}>
             {testing ? "测试中…" : "运行全部 Fuzz 测试"}
@@ -1491,20 +1584,18 @@ export function TrainingFlowEditor({
           frame={0}
           stale={false}
           theme={theme}
-          cameraPosition={cameraPosition}
+          cameraViewport={cameraViewport}
         >
           {(viewport) => (
             <svg
             className="training-trigger-overlay"
             viewBox={cameraViewBox(viewport.camera)}
             preserveAspectRatio="xMidYMid meet"
+            onPointerDown={beginCameraDrag}
             onPointerMove={moveDrag}
-            onPointerUp={() => {
-              drag.current = null;
-            }}
-            onPointerCancel={() => {
-              drag.current = null;
-            }}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
+            onWheel={zoomAtPointer}
           >
             {project.training.modules.map((module, index) => (
               <g key={module.id}>

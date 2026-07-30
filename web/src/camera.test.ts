@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { cameraBounds, defaultCameraPosition, stateCameraPosition } from "./camera";
+import {
+  cameraBounds,
+  defaultCameraPosition,
+  fitCameraViewport,
+  stateCameraPosition,
+  zoomCameraViewport,
+} from "./camera";
 import { createInitialState, type GymMap } from "./model";
 
 const wideMap = {
@@ -36,6 +42,24 @@ describe("Celeste camera viewport", () => {
     expect(stateCameraPosition(wideMap, uninitialized)).toEqual({
       x: 640,
       y: 30,
+    });
+  });
+
+  it("fits the entire map and zooms around the requested focus point", () => {
+    const fitted = fitCameraViewport(wideMap);
+    expect(fitted).toEqual({
+      x: 0,
+      y: -135,
+      width: 960,
+      height: 540,
+    });
+    expect(
+      zoomCameraViewport(wideMap, fitted, 0.5, { x: 480, y: 135 }),
+    ).toEqual({
+      x: 240,
+      y: 0,
+      width: 480,
+      height: 270,
     });
   });
 });

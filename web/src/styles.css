@@ -3072,7 +3072,9 @@ footer {
 .editor-camera-controls,
 .training-camera-controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 3px;
   padding: 3px;
   border: 1px solid #49375d;
@@ -3115,7 +3117,7 @@ footer {
   user-select: none;
 }
 .map-editor-overlay.tool-select {
-  cursor: default;
+  cursor: grab;
 }
 .map-editor-overlay.tool-solid {
   cursor: crosshair;
@@ -4229,6 +4231,7 @@ footer {
   width: 100%;
   height: 100%;
   touch-action: none;
+  cursor: grab;
 }
 .training-trigger-overlay rect {
   vector-effect: non-scaling-stroke;

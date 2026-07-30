@@ -10,14 +10,16 @@ vi.mock("./GameView", () => ({
   GameView: ({
     children,
     cameraPosition,
+    cameraViewport,
   }: {
     children?: ReactNode | ((viewport: GameViewViewport) => ReactNode);
     cameraPosition?: { x: number; y: number };
+    cameraViewport?: GameViewViewport["camera"];
   }) => {
-    const viewport = {
+    const viewport: GameViewViewport = {
       width: 320,
       height: 180,
-      camera: {
+      camera: cameraViewport ?? {
         x: cameraPosition?.x ?? 0,
         y: cameraPosition?.y ?? 0,
         width: 320,
@@ -25,7 +27,13 @@ vi.mock("./GameView", () => ({
       },
     };
     return (
-      <div className="game-screen">
+      <div
+        className="game-screen"
+        data-camera-x={viewport.camera.x}
+        data-camera-y={viewport.camera.y}
+        data-camera-width={viewport.camera.width}
+        data-camera-height={viewport.camera.height}
+      >
         {typeof children === "function" ? children(viewport) : children}
       </div>
     );
@@ -108,6 +116,51 @@ describe("training recording controls", () => {
       "viewBox",
       "160 364 320 180",
     );
+    fireEvent.click(
+      within(container).getByRole("button", { name: "训练地图适配屏幕" }),
+    );
+    expect(container.querySelector(".game-screen")).toHaveAttribute(
+      "data-camera-height",
+      "544",
+    );
+  });
+
+  it("pans the training trigger canvas by dragging empty map space", () => {
+    const project = createTrainingProject(PLAYGROUND);
+    const view = render(
+      <TrainingFlowEditor
+        project={project}
+        theme={VISUAL_THEMES[0]}
+        bindings={{
+          up: "KeyW",
+          down: "KeyS",
+          left: "KeyA",
+          right: "KeyD",
+          jump: "KeyL",
+          dash: "Semicolon",
+          crouch_dash: "KeyK",
+          grab: "Quote",
+        }}
+        ready
+        onChange={vi.fn()}
+        onStartRecording={vi.fn()}
+      />,
+    );
+    const overlay = view.container.querySelector(
+      "svg.training-trigger-overlay",
+    )!;
+    fireEvent.pointerDown(overlay, {
+      pointerId: 9,
+      clientX: 300,
+      clientY: 180,
+    });
+    fireEvent.pointerMove(overlay, {
+      pointerId: 9,
+      clientX: 150,
+      clientY: 180,
+    });
+    fireEvent.pointerUp(overlay, { pointerId: 9 });
+    expect(overlay).toHaveAttribute("viewBox", "50 364 320 180");
   });
 
   it("edits recorded checkpoint conditions and objectives in form mode", () => {

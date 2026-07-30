@@ -167,8 +167,8 @@ describe("training R reset", () => {
           callbacks.delete(next[0]);
           next[1](time);
         }
-        await Promise.resolve();
-        await Promise.resolve();
+        for (let microtask = 0; microtask < 8; microtask += 1)
+          await Promise.resolve();
       });
     };
     expect(view.queryByTestId("training-prompt")).not.toBeInTheDocument();
@@ -394,8 +394,8 @@ describe("training R reset", () => {
           callbacks.delete(next[0]);
           next[1](time);
         }
-        await Promise.resolve();
-        await Promise.resolve();
+        for (let microtask = 0; microtask < 8; microtask += 1)
+          await Promise.resolve();
       });
     };
 

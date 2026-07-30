@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { atlasFrameKeys } from "../atlasFrames";
 import {
   cameraBounds,
+  clampCameraViewport,
   clampCameraPosition,
   stateCameraPosition,
+  type CameraBounds,
   type GameViewViewport,
 } from "../camera";
 import type { EntityKind, GymMap, MapEntity, SimState, Vec2 } from "../model";
@@ -2671,6 +2673,7 @@ export function GameView({
   stale,
   theme,
   cameraPosition,
+  cameraViewport,
   children,
 }: {
   map: GymMap;
@@ -2682,6 +2685,8 @@ export function GameView({
   theme: VisualTheme;
   /** Manual top-left camera position. Omit to render SimState.camera. */
   cameraPosition?: Vec2;
+  /** Editor-only viewport override that may zoom beyond Celeste's 320x180 camera. */
+  cameraViewport?: CameraBounds;
   children?:
     | ReactNode
     | ((viewport: GameViewViewport) => ReactNode);
@@ -2694,10 +2699,13 @@ export function GameView({
     () => (assets ? buildTileLayer(assets, map, solidGrid, theme) : undefined),
     [assets, map, solidGrid, theme],
   );
-  const position = cameraPosition
-    ? clampCameraPosition(map, cameraPosition)
-    : stateCameraPosition(map, state);
-  const camera = cameraBounds(position);
+  const camera = cameraViewport
+    ? clampCameraViewport(map, cameraViewport)
+    : cameraBounds(
+        cameraPosition
+          ? clampCameraPosition(map, cameraPosition)
+          : stateCameraPosition(map, state),
+      );
 
   useEffect(() => {
     void loadAssets().then(setAssets);
@@ -2766,6 +2774,8 @@ export function GameView({
     context.restore();
   }, [
     assets,
+    camera.height,
+    camera.width,
     camera.x,
     camera.y,
     frame,

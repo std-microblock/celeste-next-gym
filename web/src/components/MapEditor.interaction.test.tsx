@@ -10,14 +10,16 @@ vi.mock("./GameView", () => ({
   GameView: ({
     children,
     cameraPosition,
+    cameraViewport,
   }: {
     children?: ReactNode | ((viewport: GameViewViewport) => ReactNode);
     cameraPosition?: { x: number; y: number };
+    cameraViewport?: GameViewViewport["camera"];
   }) => {
-    const viewport = {
+    const viewport: GameViewViewport = {
       width: 320,
       height: 180,
-      camera: {
+      camera: cameraViewport ?? {
         x: cameraPosition?.x ?? 0,
         y: cameraPosition?.y ?? 0,
         width: 320,
@@ -29,6 +31,8 @@ vi.mock("./GameView", () => ({
         className="game-screen"
         data-camera-x={viewport.camera.x}
         data-camera-y={viewport.camera.y}
+        data-camera-width={viewport.camera.width}
+        data-camera-height={viewport.camera.height}
       >
         {typeof children === "function" ? children(viewport) : children}
       </div>
@@ -42,6 +46,20 @@ beforeAll(() => {
   Object.defineProperty(Element.prototype, "setPointerCapture", {
     configurable: true,
     value: vi.fn(),
+  });
+  Object.defineProperty(SVGSVGElement.prototype, "getBoundingClientRect", {
+    configurable: true,
+    value: () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 640,
+      bottom: 360,
+      width: 640,
+      height: 360,
+      toJSON: () => ({}),
+    }),
   });
 });
 
@@ -120,6 +138,50 @@ describe("MapEditor interactions", () => {
       "viewBox",
       "160 0 320 180",
     );
+  });
+
+  it("drags, zooms, and fits the editor camera to the whole map", () => {
+    const map = createBlankGymMap();
+    map.bounds.width = 960;
+    map.bounds.height = 270;
+    const { container } = editor(map);
+    const overlay = container.querySelector(".map-editor-overlay")!;
+    const background = container.querySelector(".editor-map-hitarea")!;
+
+    fireEvent.pointerDown(background, {
+      clientX: 240,
+      clientY: 120,
+      pointerId: 4,
+    });
+    fireEvent.pointerMove(overlay, {
+      clientX: 140,
+      clientY: 120,
+      pointerId: 4,
+    });
+    fireEvent.pointerUp(overlay, { pointerId: 4 });
+    expect(container.querySelector(".game-screen")).toHaveAttribute(
+      "data-camera-x",
+      "50",
+    );
+
+    fireEvent.click(within(container).getByRole("button", { name: "放大地图" }));
+    expect(container.querySelector(".game-screen")).toHaveAttribute(
+      "data-camera-width",
+      "256",
+    );
+
+    fireEvent.click(
+      within(container).getByRole("button", { name: "地图适配屏幕" }),
+    );
+    expect(container.querySelector(".game-screen")).toHaveAttribute(
+      "data-camera-width",
+      "960",
+    );
+    expect(container.querySelector(".game-screen")).toHaveAttribute(
+      "data-camera-height",
+      "540",
+    );
+    expect(overlay).toHaveAttribute("viewBox", "0 -135 960 540");
   });
 
   it("edits room and entity properties from the inspector", () => {
