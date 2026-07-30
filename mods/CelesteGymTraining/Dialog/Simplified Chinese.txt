@@ -1,0 +1,2 @@
+CelesteGymTraining_Training=Celeste 训练场
+CelesteGymTraining=Celeste 训练场

@@ -10,7 +10,8 @@ export type TrainingPhase = "pre_fuzz" | "fuzz" | "failed" | "success";
 export type TrainingFailure =
   | "entry_check_failed"
   | "input_order_mismatch"
-  | "timing_window_miss";
+  | "timing_window_miss"
+  | "completion_missed";
 
 export interface TrainingInput {
   id: string;
@@ -557,6 +558,74 @@ function failed(
       expectedWindow: candidateWindow(session.candidates, fuzzInputIndex),
     },
   };
+}
+
+/**
+ * Fails the operation currently awaited by the training session. This covers
+ * an empty Fuzz search, where verifyTrainingInput has no candidate to inspect.
+ */
+export function failTrainingAttempt(
+  session: TrainingSession,
+  definition: TrainingDefinition,
+  frame: number,
+): TrainingSession {
+  if (session.phase === "failed" || session.phase === "success") return session;
+  const input = currentTrainingInput(session, definition);
+  if (!input) return { ...session, phase: "success" };
+  return failed(
+    session,
+    session.phase === "pre_fuzz"
+      ? "entry_check_failed"
+      : "timing_window_miss",
+    frame,
+    input.fuzzInputIndex,
+  );
+}
+
+/**
+ * Fails a map-level attempt even if all verified inputs were already entered.
+ */
+export function failTrainingCompletion(
+  session: TrainingSession,
+  definition: TrainingDefinition,
+  frame: number,
+): TrainingSession {
+  if (session.phase === "failed") return session;
+  const inputs = verifiedInputs(definition);
+  const input = currentTrainingInput(session, definition) ?? inputs.at(-1);
+  if (!input) return session;
+  const inputPosition = inputs.findIndex(
+    (candidate) => candidate.fuzzInputIndex === input.fuzzInputIndex,
+  );
+  return failed(
+    session.phase === "success"
+      ? { ...session, nextVerifiedInput: Math.max(0, inputPosition) }
+      : session,
+    "completion_missed",
+    frame,
+    input.fuzzInputIndex,
+  );
+}
+
+/** Fails once every remaining candidate window for the awaited input has passed. */
+export function expireTrainingInput(
+  session: TrainingSession,
+  definition: TrainingDefinition,
+  frame: number,
+): TrainingSession {
+  if (session.phase !== "fuzz") return session;
+  const input = currentTrainingInput(session, definition);
+  if (!input) return { ...session, phase: "success" };
+  const windows = candidateWindow(session.candidates, input.fuzzInputIndex);
+  const lastWindow = windows.at(-1);
+  return lastWindow && frame > lastWindow.to
+    ? failed(
+        session,
+        "timing_window_miss",
+        frame,
+        input.fuzzInputIndex,
+      )
+    : session;
 }
 
 /**

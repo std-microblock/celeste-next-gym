@@ -3039,6 +3039,7 @@ footer {
 }
 .editor-stage-actions {
   display: flex;
+  align-items: center;
   gap: 7px;
 }
 .editor-stage-actions button {
@@ -3067,6 +3068,31 @@ footer {
 .editor-stage-actions button:disabled {
   opacity: 0.4;
   cursor: wait;
+}
+.editor-camera-controls,
+.training-camera-controls {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid #49375d;
+  background: #10091f;
+}
+.editor-stage-actions .editor-camera-controls button,
+.training-editor-toolbar .training-camera-controls button {
+  min-width: 28px;
+  height: 26px;
+  padding: 0 6px;
+  font-size: 9px;
+}
+.editor-stage-actions .editor-camera-controls span,
+.training-editor-toolbar .training-camera-controls span {
+  padding: 0 5px;
+  color: #8f7b9b;
+  font:
+    8px Consolas,
+    monospace;
+  white-space: nowrap;
 }
 .editor-stage .game-screen {
   width: 100%;
@@ -4144,11 +4170,14 @@ footer {
   border-bottom: 1px solid #513869;
   background: linear-gradient(90deg, #211331, #0e091c);
 }
-.training-editor-toolbar > div {
+.training-editor-toolbar > div:first-child {
   min-width: 0;
   display: grid;
   gap: 2px;
   margin-right: auto;
+}
+.training-editor-toolbar .training-camera-controls {
+  flex: 0 0 auto;
 }
 .training-editor-toolbar small {
   color: var(--cyan);

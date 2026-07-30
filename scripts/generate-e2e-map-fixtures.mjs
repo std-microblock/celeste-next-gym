@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { copyFileSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -54,6 +54,7 @@ const args = [
   "compile_map_fixture",
   "--",
   ...(check ? ["--check"] : []),
+  ...(check ? [] : ["--canonicalize"]),
   "--legacy-playground",
   fixture,
   ...outputs,
@@ -66,6 +67,7 @@ const result = spawnSync("cargo", args, {
 });
 if (result.error) throw result.error;
 if (result.status !== 0) process.exit(result.status ?? 1);
+copyFileSync(fixture, bundledFixture);
 
 const hashes = outputs.map((path) =>
   createHash("sha256").update(readFileSync(path)).digest("hex"),

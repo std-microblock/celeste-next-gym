@@ -1,8 +1,8 @@
 use std::{env, fs, path::Path, process::ExitCode};
 
 use celeste_physics::{
-    PLAYGROUND_PACKAGE, PLAYGROUND_ROOM, encode_celeste_map, encode_map_fixture,
-    mechanics_playground, parse_map_fixture,
+    PLAYGROUND_PACKAGE, PLAYGROUND_ROOM, canonical_map_fixture_json, encode_celeste_map,
+    encode_map_fixture, mechanics_playground, parse_map_fixture,
 };
 
 fn main() -> ExitCode {
@@ -20,11 +20,13 @@ fn main() -> ExitCode {
 
 fn run() -> Result<String, String> {
     let mut check = false;
+    let mut canonicalize = false;
     let mut legacy_playground = false;
     let mut paths = Vec::new();
     for argument in env::args_os().skip(1) {
         match argument.to_str() {
             Some("--check") => check = true,
+            Some("--canonicalize") => canonicalize = true,
             Some("--legacy-playground") => legacy_playground = true,
             Some(value) if value.starts_with('-') => {
                 return Err(format!("unknown option {value:?}\n{}", usage()));
@@ -40,6 +42,12 @@ fn run() -> Result<String, String> {
     let fixture_json = fs::read(fixture_path)
         .map_err(|error| format!("failed to read {}: {error}", fixture_path.display()))?;
     let fixture = parse_map_fixture(&fixture_json).map_err(|error| error.to_string())?;
+    if canonicalize {
+        let canonical = canonical_map_fixture_json(fixture.clone())
+            .map_err(|error| error.to_string())?;
+        fs::write(fixture_path, canonical)
+            .map_err(|error| format!("failed to write {}: {error}", fixture_path.display()))?;
+    }
     let bytes = encode_map_fixture(&fixture).map_err(|error| error.to_string())?;
     let repeated = encode_map_fixture(&fixture).map_err(|error| error.to_string())?;
     if bytes != repeated {
@@ -99,5 +107,5 @@ fn run() -> Result<String, String> {
 }
 
 fn usage() -> &'static str {
-    "usage: compile_map_fixture [--check] [--legacy-playground] <fixture.json> <output.bin> [mirror.bin ...]"
+    "usage: compile_map_fixture [--check] [--canonicalize] [--legacy-playground] <fixture.json> <output.bin> [mirror.bin ...]"
 }

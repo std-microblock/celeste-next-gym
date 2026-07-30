@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { atlasFrameKeys } from "../atlasFrames";
+import {
+  cameraBounds,
+  clampCameraPosition,
+  stateCameraPosition,
+  type GameViewViewport,
+} from "../camera";
 import type { EntityKind, GymMap, MapEntity, SimState, Vec2 } from "../model";
 import { playerHairMetadata } from "../playerHair";
 import {
@@ -2664,6 +2670,7 @@ export function GameView({
   frame,
   stale,
   theme,
+  cameraPosition,
   children,
 }: {
   map: GymMap;
@@ -2673,9 +2680,11 @@ export function GameView({
   frame: number;
   stale: boolean;
   theme: VisualTheme;
+  /** Manual top-left camera position. Omit to render SimState.camera. */
+  cameraPosition?: Vec2;
   children?:
     | ReactNode
-    | ((viewport: { width: number; height: number }) => ReactNode);
+    | ((viewport: GameViewViewport) => ReactNode);
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [assets, setAssets] = useState<GameAssets | null>(null);
@@ -2685,6 +2694,10 @@ export function GameView({
     () => (assets ? buildTileLayer(assets, map, solidGrid, theme) : undefined),
     [assets, map, solidGrid, theme],
   );
+  const position = cameraPosition
+    ? clampCameraPosition(map, cameraPosition)
+    : stateCameraPosition(map, state);
+  const camera = cameraBounds(position);
 
   useEffect(() => {
     void loadAssets().then(setAssets);
@@ -2712,18 +2725,18 @@ export function GameView({
     context.imageSmoothingEnabled = false;
 
     const scale = Math.min(
-      rect.width / map.bounds.width,
-      rect.height / map.bounds.height,
+      rect.width / camera.width,
+      rect.height / camera.height,
     );
-    const offsetX = (rect.width - map.bounds.width * scale) / 2;
-    const offsetY = (rect.height - map.bounds.height * scale) / 2;
+    const offsetX = (rect.width - camera.width * scale) / 2;
+    const offsetY = (rect.height - camera.height * scale) / 2;
     context.fillStyle = "#000000";
     context.fillRect(0, 0, rect.width, rect.height);
 
     context.save();
     context.translate(
-      offsetX - map.bounds.x * scale,
-      offsetY - map.bounds.y * scale,
+      offsetX - camera.x * scale,
+      offsetY - camera.y * scale,
     );
     context.scale(scale, scale);
     drawThemeBackground(context, assets, map, theme, frame);
@@ -2753,6 +2766,8 @@ export function GameView({
     context.restore();
   }, [
     assets,
+    camera.x,
+    camera.y,
     frame,
     map,
     solidGrid,
@@ -2775,6 +2790,7 @@ export function GameView({
         ? children({
             width: canvasRef.current?.clientWidth ?? 0,
             height: canvasRef.current?.clientHeight ?? 0,
+            camera,
           })
         : children}
       <div className="screen-vignette" />

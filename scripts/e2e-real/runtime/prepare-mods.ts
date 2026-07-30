@@ -1,4 +1,5 @@
 import {
+  cpSync,
   copyFileSync,
   existsSync,
   lstatSync,
@@ -17,6 +18,7 @@ export interface HarnessPaths {
   readonly gameRoot: string;
   readonly modRoot: string;
   readonly playgroundModRoot: string;
+  readonly trainingModRoot?: string;
   readonly serviceRoot: string;
 }
 
@@ -26,8 +28,78 @@ export function createHarnessPaths(repoRoot: string): HarnessPaths {
     gameRoot: resolve(repoRoot, "vendor", "celeste-game"),
     modRoot: resolve(repoRoot, "mods", "CelesteGymCollector"),
     playgroundModRoot: resolve(repoRoot, "mods", "CelesteGymPlayground"),
+    trainingModRoot: resolve(repoRoot, "mods", "CelesteGymTraining"),
     serviceRoot: resolve(repoRoot, "services", "collector"),
   });
+}
+
+export function prepareTrainingMod(
+  paths: HarnessPaths,
+  gameInstall: GameInstall,
+): void {
+  const trainingModRoot = paths.trainingModRoot ?? resolve(paths.repoRoot, "mods", "CelesteGymTraining");
+  runCommand(
+    "dotnet",
+    [
+      "build",
+      resolve(trainingModRoot, "Source", "CelesteGymTraining.csproj"),
+      "-c",
+      "Release",
+    ],
+    paths.repoRoot,
+  );
+  runCommand(
+    "cargo",
+    ["build", "-q", "-p", "celeste-gym-native", "--release"],
+    paths.repoRoot,
+  );
+  const gameModsRoot = resolve(gameInstall.gameRoot, "Mods");
+  mkdirSync(gameModsRoot, { recursive: true });
+  if (
+    lstatSync(gameModsRoot).isSymbolicLink() ||
+    comparablePath(realpathSync(gameModsRoot)) !== comparablePath(gameModsRoot)
+  ) {
+    throw new Error(`refusing to use a linked game Mods directory: ${gameModsRoot}`);
+  }
+  const installed = resolve(gameModsRoot, "CelesteGymTraining");
+  const installedZip = resolve(gameModsRoot, "CelesteGymTraining.zip");
+  assertUnlinkedTarget(installed, gameModsRoot);
+  assertUnlinkedTarget(installedZip, gameModsRoot);
+  removeValidatedTarget(installed, gameModsRoot);
+  removeValidatedTarget(installedZip, gameModsRoot);
+  mkdirSync(resolve(installed, "Code"), { recursive: true });
+  copyFileSync(
+    resolve(trainingModRoot, "everest.yaml"),
+    resolve(installed, "everest.yaml"),
+  );
+  copyFileSync(
+    resolve(
+      trainingModRoot,
+      "Source",
+      "bin",
+      "Release",
+      "net8.0",
+      "CelesteGymTraining.dll",
+    ),
+    resolve(installed, "Code", "CelesteGymTraining.dll"),
+  );
+  copyFileSync(
+    resolve(
+      paths.repoRoot,
+      "target",
+      "release",
+      process.platform === "win32" ? "celeste_gym_native.dll" : "libceleste_gym_native.so",
+    ),
+    resolve(
+      installed,
+      "Code",
+      process.platform === "win32" ? "celeste_gym_native.dll" : "libceleste_gym_native.so",
+    ),
+  );
+  for (const directory of ["Dialog", "Maps", "Graphics", "Content"]) {
+    const source = resolve(trainingModRoot, directory);
+    if (existsSync(source)) cpSync(source, resolve(installed, directory), { recursive: true });
+  }
 }
 
 export function prepareMods(

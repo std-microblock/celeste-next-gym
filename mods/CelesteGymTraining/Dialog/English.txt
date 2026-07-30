@@ -1,0 +1,2 @@
+CelesteGymTraining_Training=Celeste Gym Training
+CelesteGymTraining=Celeste Gym Training

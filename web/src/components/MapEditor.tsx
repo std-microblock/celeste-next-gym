@@ -5,6 +5,13 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import {
+  cameraBounds,
+  cameraViewBox,
+  clampCameraPosition,
+  defaultCameraPosition,
+  pointInCameraViewport,
+} from "../camera";
 import type { EntityKind, GymMap, MapEntity, SimState } from "../model";
 import type { VisualTheme } from "../visualThemes";
 import { GameView } from "./GameView";
@@ -361,28 +368,23 @@ function pointInMap(
   clientY: number,
   svg: SVGSVGElement,
   map: GymMap,
+  cameraPosition: { x: number; y: number },
 ): { x: number; y: number } {
   const rect = svg.getBoundingClientRect();
-  const scale = Math.min(
-    rect.width / map.bounds.width,
-    rect.height / map.bounds.height,
+  const point = pointInCameraViewport(
+    clientX,
+    clientY,
+    rect,
+    cameraBounds(clampCameraPosition(map, cameraPosition)),
   );
-  const offsetX = (rect.width - map.bounds.width * scale) / 2;
-  const offsetY = (rect.height - map.bounds.height * scale) / 2;
   return {
     x: Math.max(
       map.bounds.x,
-      Math.min(
-        map.bounds.x + map.bounds.width,
-        map.bounds.x + (clientX - rect.left - offsetX) / scale,
-      ),
+      Math.min(map.bounds.x + map.bounds.width, point.x),
     ),
     y: Math.max(
       map.bounds.y,
-      Math.min(
-        map.bounds.y + map.bounds.height,
-        map.bounds.y + (clientY - rect.top - offsetY) / scale,
-      ),
+      Math.min(map.bounds.y + map.bounds.height, point.y),
     ),
   };
 }
@@ -432,6 +434,9 @@ export function MapEditor({
   const [tool, setTool] = useState<EditorTool>("select");
   const [selection, setSelection] = useState<EditorSelection | null>(null);
   const [draft, setDraft] = useState<EditableBounds | null>(null);
+  const [cameraPosition, setCameraPosition] = useState(() =>
+    defaultCameraPosition(map),
+  );
   const [historyRevision, setHistoryRevision] = useState(0);
   const drag = useRef<DragState | null>(null);
   const undoStack = useRef<GymMap[]>([]);
@@ -443,6 +448,18 @@ export function MapEditor({
     () => ({ solids: map.solids.length, entities: map.entities.length }),
     [map.entities.length, map.solids.length],
   );
+
+  useEffect(() => {
+    setCameraPosition((position) => clampCameraPosition(map, position));
+  }, [map.bounds.height, map.bounds.width, map.bounds.x, map.bounds.y, map.room]);
+
+  const moveCamera = (x: number, y: number) =>
+    setCameraPosition((position) =>
+      clampCameraPosition(map, {
+        x: position.x + x,
+        y: position.y + y,
+      }),
+    );
 
   const rememberAndChange = (next: GymMap) => {
     undoStack.current.push(structuredClone(map));
@@ -495,7 +512,13 @@ export function MapEditor({
     if (!svg) return;
     drag.current = {
       kind: "move-selection",
-      start: pointInMap(event.clientX, event.clientY, svg, map),
+      start: pointInMap(
+        event.clientX,
+        event.clientY,
+        svg,
+        map,
+        cameraPosition,
+      ),
       originalMap: structuredClone(map),
       selection: nextSelection,
     };
@@ -514,7 +537,13 @@ export function MapEditor({
     drag.current = {
       kind: "resize-selection",
       corner,
-      start: pointInMap(event.clientX, event.clientY, svg, map),
+      start: pointInMap(
+        event.clientX,
+        event.clientY,
+        svg,
+        map,
+        cameraPosition,
+      ),
       originalMap: structuredClone(map),
       selection,
     };
@@ -532,7 +561,13 @@ export function MapEditor({
     drag.current = {
       kind: "move-node",
       nodeIndex,
-      start: pointInMap(event.clientX, event.clientY, svg, map),
+      start: pointInMap(
+        event.clientX,
+        event.clientY,
+        svg,
+        map,
+        cameraPosition,
+      ),
       originalMap: structuredClone(map),
       selection,
     };
@@ -553,6 +588,7 @@ export function MapEditor({
       event.clientY,
       event.currentTarget,
       map,
+      cameraPosition,
     );
     if (tool === "select") {
       setSelection(null);
@@ -593,6 +629,7 @@ export function MapEditor({
       event.clientY,
       event.currentTarget,
       map,
+      cameraPosition,
     );
     if (currentDrag.kind === "create-solid") {
       setDraft(normalizedRect(currentDrag.start, point, map));
@@ -806,6 +843,31 @@ export function MapEditor({
             </span>
           </div>
           <div className="editor-stage-actions">
+            {!experiencing && (
+              <div className="editor-camera-controls" aria-label="编辑相机">
+                <button aria-label="相机向左" onClick={() => moveCamera(-160, 0)}>
+                  ←
+                </button>
+                <button aria-label="相机向上" onClick={() => moveCamera(0, -90)}>
+                  ↑
+                </button>
+                <button
+                  aria-label="相机回到出生点"
+                  onClick={() => setCameraPosition(defaultCameraPosition(map))}
+                >
+                  出生点
+                </button>
+                <button aria-label="相机向下" onClick={() => moveCamera(0, 90)}>
+                  ↓
+                </button>
+                <button aria-label="相机向右" onClick={() => moveCamera(160, 0)}>
+                  →
+                </button>
+                <span>
+                  CAM {Math.round(cameraPosition.x)}, {Math.round(cameraPosition.y)}
+                </span>
+              </div>
+            )}
             {experiencing && (
               <button onClick={() => onResetExperience()}>重生</button>
             )}
@@ -826,11 +888,13 @@ export function MapEditor({
           frame={frame}
           stale={false}
           theme={theme}
+          cameraPosition={experiencing ? undefined : cameraPosition}
         >
-          {!experiencing && (
+          {(viewport) =>
+            !experiencing && (
             <svg
               className={`map-editor-overlay tool-${tool.replace(":", "-")}`}
-              viewBox={`${map.bounds.x} ${map.bounds.y} ${map.bounds.width} ${map.bounds.height}`}
+              viewBox={cameraViewBox(viewport.camera)}
               preserveAspectRatio="xMidYMid meet"
               aria-label="地图编辑画布"
               onPointerDown={pointerDown}

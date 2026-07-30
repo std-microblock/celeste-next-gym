@@ -10,6 +10,7 @@ import { VISUAL_THEMES } from "../visualThemes";
 const wasmBehavior = vi.hoisted(() => ({
   entryCheckPassed: true,
   entryChecks: 0,
+  candidateMode: "single" as "single" | "multi" | "empty",
 }));
 
 vi.mock("../simulator/wasmClient", () => ({
@@ -17,9 +18,16 @@ vi.mock("../simulator/wasmClient", () => ({
     ready = async () => {};
     dispose = () => {};
     fuzzSearch = async () => {
+      if (wasmBehavior.candidateMode === "empty")
+        return { candidates: [], evaluations: [] };
       const candidate = {
         bindings: {},
-        verified_inputs: [{ input_index: 0, frame: 0, keys: ["dash"] }],
+        verified_inputs: [
+          { input_index: 0, frame: 0, keys: ["dash"] },
+          ...(wasmBehavior.candidateMode === "multi"
+            ? [{ input_index: 1, frame: 2, keys: ["jump"] }]
+            : []),
+        ],
         objective_values: [Number.NaN],
         successful: true,
         final_state: { speed: { x: 240, y: 0 } },
@@ -86,6 +94,7 @@ import { TrainingGround } from "./TrainingGround";
 
 describe("training R reset", () => {
   it("starts free, opens one guided segment, and keeps R in free practice", async () => {
+    wasmBehavior.candidateMode = "single";
     const project = createTrainingProject(createBlankGymMap());
     project.training.modules[0].end_trigger.bounds = {
       x: 0,
@@ -192,13 +201,23 @@ describe("training R reset", () => {
     expect(wasmBehavior.entryChecks).toBeGreaterThan(0);
     expect(
       view.container.querySelector(".training-failure"),
-    ).not.toBeInTheDocument();
-    expect(view.container.querySelector(".play-button")).toHaveTextContent("Ⅱ");
+    ).toBeInTheDocument();
+    expect(view.getByRole("dialog", { name: "训练失败" })).toBeInTheDocument();
+    expect(view.getByRole("button", { name: "R 重试" })).toBeInTheDocument();
     expect(
       view.container.querySelectorAll(".training-success-toast"),
     ).toHaveLength(0);
 
-    fireEvent.click(tutorialButton);
+    fireEvent.click(view.getByRole("button", { name: "R 重试" }));
+    expect(
+      view.container.querySelector(".training-failure"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      view.getByRole("button", {
+        name: /教学：教程 1/,
+      }),
+    );
     expect(view.getByTestId("training-prompt")).toHaveTextContent("正在准备");
     for (let frame = 0; frame < 4; frame += 1) {
       await advance();
@@ -206,7 +225,8 @@ describe("training R reset", () => {
     }
     expect(view.getByTestId("training-prompt")).toHaveTextContent("演示 1/1");
     expect(view.getByRole("button", { name: "完成演示" })).toBeEnabled();
-    fireEvent.click(view.getByRole("button", { name: /3 自由练习/ }));
+    expect(view.getByRole("button", { name: "退出教学" })).toBeInTheDocument();
+    fireEvent.click(view.getByRole("button", { name: "退出教学" }));
     expect(
       view.container.querySelector(".training-lesson-stages"),
     ).not.toBeInTheDocument();
@@ -272,5 +292,105 @@ describe("training R reset", () => {
     expect(view.getByTestId("training-prompt")).toHaveTextContent("演示 1/1");
     expect(view.getByRole("button", { name: "完成演示" })).toBeEnabled();
     expect(view.container).not.toHaveTextContent("观察这一步产生的结果");
+  });
+
+  it("opens the failure dialog when free practice stops before the next input", async () => {
+    wasmBehavior.candidateMode = "multi";
+    wasmBehavior.entryCheckPassed = true;
+    wasmBehavior.entryChecks = 0;
+    const project = createTrainingProject(createBlankGymMap());
+    const module = project.training.modules[0];
+    module.end_trigger.bounds.x = 10_000;
+    module.tutorial.fuzz.inputs.push({
+      id: "jump-later",
+      keys: ["jump"],
+      at: 2,
+      verify: true,
+    });
+    module.tutorial.teaching.steps.push({
+      prompt: "按 Jump。",
+      order_error: {
+        title: "这里需要 Jump",
+        body: "Dash 后的下一关键输入是 Jump。",
+      },
+      window_error: {
+        title: "跳跃错过窗口",
+        body: "请在绿色可行区间内按 Jump。",
+      },
+    });
+    const variant = {
+      id: project.id,
+      title: project.training.title,
+      summary: project.training.summary,
+      map: project.map,
+      training: project.training,
+      initial: module.validation.initial_state,
+    };
+    const callbacks = new Map<number, (time: number) => void>();
+    let nextAnimation = 0;
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      (callback: (time: number) => void) => {
+        nextAnimation += 1;
+        callbacks.set(nextAnimation, callback);
+        return nextAnimation;
+      },
+    );
+    vi.stubGlobal("cancelAnimationFrame", (id: number) => callbacks.delete(id));
+    const view = render(
+      <TrainingGround
+        techniqueId="hyper"
+        variantId={project.id}
+        bindings={{
+          up: "KeyW",
+          down: "KeyS",
+          left: "KeyA",
+          right: "KeyD",
+          jump: "KeyL",
+          dash: "Semicolon",
+          crouch_dash: "KeyK",
+          grab: "Quote",
+        }}
+        theme={VISUAL_THEMES[0]}
+        onSelectTraining={vi.fn()}
+        variantOverride={variant}
+        editorPreview
+      />,
+    );
+    await waitFor(() =>
+      expect(view.getByRole("button", { name: /教学：教程 1/ })).toBeEnabled(),
+    );
+    let time = performance.now();
+    const advance = async () => {
+      time += 17;
+      await act(async () => {
+        const next = callbacks.entries().next().value;
+        if (next) {
+          callbacks.delete(next[0]);
+          next[1](time);
+        }
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+    };
+
+    fireEvent.keyDown(window, { code: "Semicolon" });
+    await advance();
+    fireEvent.keyUp(window, { code: "Semicolon" });
+    for (let frame = 0; frame < 5; frame += 1) await advance();
+
+    expect(wasmBehavior.entryChecks).toBeGreaterThan(0);
+    expect(view.getByRole("dialog", { name: "训练失败" })).toBeInTheDocument();
+    expect(view.getByText("跳跃错过窗口")).toBeInTheDocument();
+    expect(view.getByText("请在绿色可行区间内按 Jump。")).toBeInTheDocument();
+
+    fireEvent.click(view.getByRole("button", { name: "R 重试" }));
+    module.end_trigger.bounds = { x: 0, y: 0, width: 320, height: 180 };
+    fireEvent.keyDown(window, { code: "KeyD" });
+    await advance();
+    fireEvent.keyUp(window, { code: "KeyD" });
+    expect(view.getByRole("dialog", { name: "训练失败" })).toBeInTheDocument();
+    expect(view.getByText("训练尚未通过")).toBeInTheDocument();
+    expect(view.getByText(/尚未通过训练条件/)).toBeInTheDocument();
   });
 });

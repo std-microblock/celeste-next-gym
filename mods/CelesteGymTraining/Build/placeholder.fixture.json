@@ -1,0 +1,19 @@
+{
+  "formatVersion": 1,
+  "package": "CelesteGymTraining",
+  "sid": "CelesteGymTraining/Training",
+  "rooms": [
+    {
+      "name": "playground",
+      "bounds": [0, 0, 504, 184],
+      "spawn": [16, 56],
+      "solids": [
+        [0, 56, 48, 128],
+        [120, 80, 72, 24],
+        [240, 104, 64, 24],
+        [416, 104, 88, 80]
+      ],
+      "entities": []
+    }
+  ]
+}

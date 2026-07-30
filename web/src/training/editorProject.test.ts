@@ -88,6 +88,7 @@ describe("training editor projects", () => {
     const memory = memoryDirectory();
     const project = createTrainingProject(PLAYGROUND);
     project.training.title = "文件夹训练图";
+    project.initialModuleId = project.training.modules[0].id;
     await saveTrainingWorkspace(memory.directory, [project]);
     expect(memory.files.has("celeste-gym.workspace.json")).toBe(true);
     expect(memory.files.has(project.mapFileName)).toBe(true);
@@ -96,5 +97,6 @@ describe("training editor projects", () => {
     expect(loaded).toHaveLength(1);
     expect(loaded[0].training).toEqual(project.training);
     expect(loaded[0].map).toEqual(project.map);
+    expect(loaded[0].initialModuleId).toBe(project.initialModuleId);
   });
 });

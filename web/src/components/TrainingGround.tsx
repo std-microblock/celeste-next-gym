@@ -32,7 +32,10 @@ import {
   candidateWindow,
   createTrainingSession,
   currentTrainingInput,
+  expireTrainingInput,
   expectedTrainingInputTriggered,
+  failTrainingAttempt,
+  failTrainingCompletion,
   matchingTrainingCandidate,
   nextTargetFrame,
   rebuildTrainingSession,
@@ -723,6 +726,14 @@ export function TrainingGround({
     resetTo(lessonStartFrameRef.current, module, stage);
   };
 
+  const exitLesson = () => {
+    const module = activeModuleRef.current ?? resetModuleRef.current;
+    if (!module) return;
+    keys.current.clear();
+    resetTo(lessonStartFrameRef.current, module, "free");
+    setNotice(`${module.tutorial.title} 已退出教学；自由操作仍会自动判定。`);
+  };
+
   const startLesson = (module: TrainingModule) => {
     const lessonState = structuredClone(module.validation.initial_state);
     const target = frameRef.current;
@@ -1005,10 +1016,19 @@ export function TrainingGround({
               map,
             );
             if (!active || epoch !== simulationEpoch.current) return;
-            if (result.candidates.length === 0)
-              throw new Error(
-                `${activeTutorial!.title} 在当前触发状态下没有成功候选`,
+            if (result.candidates.length === 0) {
+              const failedSession = failTrainingAttempt(
+                beforeSession,
+                activeTutorial!,
+                0,
               );
+              applySession(failedSession);
+              setNotice(
+                `${activeTutorial!.title} 在当前状态下没有可通过的输入轨迹。`,
+              );
+              beginFailure(currentFrame);
+              return;
+            }
             candidatesRef.current = result.candidates;
             evaluationsRef.current = result.evaluations;
             setCandidates(result.candidates);
@@ -1136,32 +1156,18 @@ export function TrainingGround({
             );
             applySession(nextSession);
             if (nextSession.phase === "failed") {
-              if (stage === "free") {
-                attempts.current = [];
-                fuzzStartRef.current = null;
-                setFuzzStartFrame(null);
-                applyPrediction({ windows: [], objectives: [] });
-                applySession(
-                  createTrainingSession(
-                    candidatesRef.current,
-                    activeTutorial,
-                  ),
-                );
-                setPlaying(true);
-              } else {
-                setNotice(
-                  nextSession.failure?.kind === "input_order_mismatch"
+              setNotice(
+                nextSession.failure?.kind === "input_order_mismatch"
+                  ? (activeTutorial.teaching.steps[
+                      nextSession.nextVerifiedInput
+                    ]?.order_error.body ?? "输入顺序不正确。")
+                  : nextSession.failure?.kind === "timing_window_miss"
                     ? (activeTutorial.teaching.steps[
                         nextSession.nextVerifiedInput
-                      ]?.order_error.body ?? "输入顺序不正确。")
-                    : nextSession.failure?.kind === "timing_window_miss"
-                      ? (activeTutorial.teaching.steps[
-                          nextSession.nextVerifiedInput
-                        ]?.window_error.body ?? "错过输入窗口。")
-                      : activeTutorial.entry.failure.body,
-                );
-                beginFailure(nextFrame, evaluatedCandidate);
-              }
+                      ]?.window_error.body ?? "错过输入窗口。")
+                    : activeTutorial.entry.failure.body,
+              );
+              beginFailure(nextFrame, evaluatedCandidate);
             } else if (nextSession.phase === "success") {
               const preview = predictionRef.current;
               const start = fuzzStartRef.current ?? currentFrame;
@@ -1238,6 +1244,30 @@ export function TrainingGround({
               );
             }
           }
+          if (
+            stage === "free" &&
+            activeModule &&
+            activeTutorial &&
+            outcomeRef.current === null &&
+            sessionRef.current.phase === "fuzz"
+          ) {
+            const localFrame =
+              currentFrame - (fuzzStartRef.current ?? currentFrame);
+            const expiredSession = expireTrainingInput(
+              sessionRef.current,
+              activeTutorial,
+              localFrame,
+            );
+            if (expiredSession.phase === "failed") {
+              applySession(expiredSession);
+              setNotice(
+                activeTutorial.teaching.steps[
+                  expiredSession.nextVerifiedInput
+                ]?.window_error.body ?? "错过输入窗口。",
+              );
+              beginFailure(nextFrame);
+            }
+          }
           const reachedModuleEnd =
             activeModule !== null &&
             triggerContainsPlayer(activeModule.end_trigger, after);
@@ -1260,10 +1290,38 @@ export function TrainingGround({
             return;
           }
           if (
+            stage === "free" &&
+            activeModule &&
+            activeTutorial &&
+            outcomeRef.current === null &&
+            (after.dead ||
+              (reachedModuleEnd && !pendingCompletionRef.current))
+          ) {
+            const localFrame =
+              sessionRef.current.phase === "pre_fuzz"
+                ? 0
+                : currentFrame - (fuzzStartRef.current ?? currentFrame);
+            const failedSession = failTrainingCompletion(
+              sessionRef.current,
+              activeTutorial,
+              localFrame,
+            );
+            if (failedSession.phase === "failed") {
+              applySession(failedSession);
+              setNotice(
+                after.dead
+                  ? `${activeTutorial.title} 尚未通过，角色已经死亡。`
+                  : `${activeTutorial.title} 尚未通过训练条件，不能完成本段。`,
+              );
+              beginFailure(nextFrame);
+            }
+          }
+          if (
             reachedModuleEnd &&
             activeModule &&
             stage === "free" &&
-            pendingCompletionRef.current
+            pendingCompletionRef.current &&
+            outcomeRef.current === null
           ) {
             const completion = {
               ...pendingCompletionRef.current,
@@ -1478,25 +1536,34 @@ export function TrainingGround({
               </em>
             </h1>
             {tutorial && lessonMode && (
-              <div className="training-lesson-stages" aria-label="训练三步">
-                {LESSON_STAGES.map((item, index) => (
-                  <button
-                    type="button"
-                    key={item.id}
-                    className={
-                      item.id === lessonStage
-                        ? "active"
-                        : LESSON_STAGES.findIndex(
-                              (stage) => stage.id === lessonStage,
-                            ) > index
-                          ? "complete"
-                          : ""
-                    }
-                    onClick={() => selectLessonStage(item.id)}
-                  >
-                    <b>{index + 1}</b> {item.label}
-                  </button>
-                ))}
+              <div className="training-lesson-toolbar">
+                <div className="training-lesson-stages" aria-label="训练三步">
+                  {LESSON_STAGES.map((item, index) => (
+                    <button
+                      type="button"
+                      key={item.id}
+                      className={
+                        item.id === lessonStage
+                          ? "active"
+                          : LESSON_STAGES.findIndex(
+                                (stage) => stage.id === lessonStage,
+                              ) > index
+                            ? "complete"
+                            : ""
+                      }
+                      onClick={() => selectLessonStage(item.id)}
+                    >
+                      <b>{index + 1}</b> {item.label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="training-lesson-exit"
+                  onClick={exitLesson}
+                >
+                  退出教学
+                </button>
               </div>
             )}
           </div>
@@ -1643,6 +1710,9 @@ export function TrainingGround({
         {outcome && tutorial && (
           <div
             className="training-failure"
+            role="dialog"
+            aria-modal="true"
+            aria-label="训练失败"
             style={{ "--outcome-progress": outcomeProgress } as CSSProperties}
           >
             <div className="training-outcome-layout failed">
@@ -1651,13 +1721,15 @@ export function TrainingGround({
                   <div>
                     <small>ATTEMPT RESULT</small>
                     <strong>
-                      {session.failure?.kind === "entry_check_failed"
-                        ? tutorial.entry.failure.title
-                        : session.failure?.kind === "input_order_mismatch"
-                          ? tutorial.teaching.steps[session.nextVerifiedInput]
-                              ?.order_error.title
-                          : tutorial.teaching.steps[session.nextVerifiedInput]
-                              ?.window_error.title}
+                      {session.failure?.kind === "completion_missed"
+                        ? "训练尚未通过"
+                        : session.failure?.kind === "entry_check_failed"
+                          ? tutorial.entry.failure.title
+                          : session.failure?.kind === "input_order_mismatch"
+                            ? tutorial.teaching.steps[session.nextVerifiedInput]
+                                ?.order_error.title
+                            : tutorial.teaching.steps[session.nextVerifiedInput]
+                                ?.window_error.title}
                     </strong>
                   </div>
                   <em>{failureTiming}</em>

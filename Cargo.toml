@@ -1,5 +1,10 @@
 [workspace]
-members = ["crates/celeste-physics", "crates/celeste-wasm", "crates/celeste-fuzz"]
+members = [
+  "crates/celeste-physics",
+  "crates/celeste-wasm",
+  "crates/celeste-fuzz",
+  "crates/celeste-gym-native",
+]
 resolver = "2"
 
 [workspace.package]

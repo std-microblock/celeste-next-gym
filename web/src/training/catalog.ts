@@ -1,6 +1,5 @@
-import type { GymMap, SimState } from "../model";
+import { createInitialState, type GymMap, type SimState } from "../model";
 import type { TrainingDefinition, TrainingObjective } from "./session";
-import { hyper } from "./techniques/hyper.ts";
 
 export interface TrainingDocument extends TrainingDefinition {
   version: 2;
@@ -95,15 +94,115 @@ export interface TrainingTechnique {
   variants: TrainingVariant[];
 }
 
-export const trainingCatalog = [hyper];
+interface TrainingTechniqueDocument {
+  id: string;
+  title: string;
+  summary: string;
+  related: string[];
+  section: { id: string; title: string; badge: string };
+}
+
+interface BundledWorkspaceManifest {
+  version: 1;
+  projects: Array<{
+    id: string;
+    map: string;
+    training: string;
+    initial_module?: string;
+  }>;
+}
+
+const bundledJson = import.meta.glob("./maps/**/*.json", {
+  eager: true,
+  import: "default",
+}) as Record<string, unknown>;
+
+function bundledDocument<T>(path: string): T {
+  const document = bundledJson[path];
+  if (document === undefined) throw new Error(`缺少训练工作区文件：${path}`);
+  return document as T;
+}
+
+function workspaceBase(techniquePath: string): string {
+  return techniquePath.slice(0, -"technique.json".length);
+}
+
+function loadBundledTechnique(
+  techniquePath: string,
+  document: TrainingTechniqueDocument,
+): TrainingTechnique {
+  const base = workspaceBase(techniquePath);
+  const manifest = bundledDocument<BundledWorkspaceManifest>(
+    `${base}celeste-gym.workspace.json`,
+  );
+  if (manifest.version !== 1)
+    throw new Error(`${document.id} 的训练工作区版本必须为 1`);
+  return {
+    id: document.id,
+    title: document.title,
+    summary: document.summary,
+    related: document.related,
+    variants: manifest.projects.map((entry) => {
+      const map = bundledDocument<GymMap>(`${base}${entry.map}`);
+      const training = bundledDocument<TrainingMapDocument>(
+        `${base}${entry.training}`,
+      );
+      const initialModule = entry.initial_module
+        ? training.modules.find((module) => module.id === entry.initial_module)
+        : undefined;
+      if (entry.initial_module && !initialModule)
+        throw new Error(
+          `${document.id}/${entry.id} 找不到初始模块 ${entry.initial_module}`,
+        );
+      return {
+        id: entry.id,
+        title: training.title,
+        summary: training.summary,
+        map,
+        training,
+        initial: initialModule
+          ? structuredClone(initialModule.validation.initial_state)
+          : createInitialState(map),
+      };
+    }),
+  };
+}
+
+const bundledTechniques = Object.entries(bundledJson)
+  .filter(([path]) => path.endsWith("/technique.json"))
+  .sort(([left], [right]) => left.localeCompare(right))
+  .map(([path, document]) => ({
+    document: document as TrainingTechniqueDocument,
+    technique: loadBundledTechnique(
+      path,
+      document as TrainingTechniqueDocument,
+    ),
+  }));
+
+export const trainingCatalog = bundledTechniques.map(
+  ({ technique }) => technique,
+);
 
 export const trainingCatalogSections = [
-  {
-    id: "dash-tech",
-    title: "冲刺技巧",
-    badge: "DASH TECH",
-    techniques: [hyper],
-  },
+  ...bundledTechniques
+    .reduce(
+      (sections, { document, technique }) => {
+        const section = sections.get(document.section.id) ?? {
+          ...document.section,
+          techniques: [] as TrainingTechnique[],
+        };
+        section.techniques.push(technique);
+        sections.set(document.section.id, section);
+        return sections;
+      },
+      new Map<
+        string,
+        TrainingTechniqueDocument["section"] & {
+          techniques: TrainingTechnique[];
+        }
+      >(),
+    )
+    .values(),
 ];
 
 export function findTrainingVariant(

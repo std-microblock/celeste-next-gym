@@ -1,0 +1,172 @@
+{
+  "formatVersion": 1,
+  "package": "CelesteGymTraining",
+  "sid": "CelesteGymTraining/Training",
+  "rooms": [
+    {
+      "name": "hyper-route",
+      "bounds": [
+        0,
+        0,
+        960,
+        272
+      ],
+      "spawn": [
+        32,
+        240
+      ],
+      "solids": [
+        [
+          0,
+          240,
+          176,
+          32
+        ],
+        [
+          208,
+          240,
+          752,
+          32
+        ],
+        [
+          0,
+          0,
+          8,
+          272
+        ],
+        [
+          952,
+          0,
+          8,
+          272
+        ]
+      ],
+      "entities": [
+        {
+          "id": "hyper-route-entity-0000",
+          "kind": "spikes",
+          "bounds": [
+            520,
+            237,
+            64,
+            3
+          ],
+          "direction": [
+            0,
+            -1
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "spikesUp"
+        }
+      ]
+    },
+    {
+      "name": "hyper-spikes",
+      "bounds": [
+        0,
+        336,
+        480,
+        272
+      ],
+      "spawn": [
+        32,
+        576
+      ],
+      "solids": [
+        [
+          0,
+          576,
+          480,
+          32
+        ],
+        [
+          0,
+          336,
+          8,
+          272
+        ],
+        [
+          472,
+          336,
+          8,
+          272
+        ]
+      ],
+      "entities": [
+        {
+          "id": "hyper-spikes-entity-0000",
+          "kind": "spikes",
+          "bounds": [
+            174,
+            573,
+            80,
+            3
+          ],
+          "direction": [
+            0,
+            -1
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "spikesUp"
+        }
+      ]
+    },
+    {
+      "name": "hyper-bubble",
+      "bounds": [
+        0,
+        672,
+        480,
+        272
+      ],
+      "spawn": [
+        112,
+        898
+      ],
+      "solids": [
+        [
+          0,
+          912,
+          480,
+          32
+        ],
+        [
+          0,
+          672,
+          8,
+          272
+        ],
+        [
+          472,
+          672,
+          8,
+          272
+        ]
+      ],
+      "entities": [
+        {
+          "id": "hyper-bubble-entity-0000",
+          "kind": "booster",
+          "bounds": [
+            104,
+            888,
+            16,
+            16
+          ],
+          "direction": [
+            0,
+            0
+          ],
+          "shielded": false,
+          "singleUse": false,
+          "nodes": [],
+          "name": "booster"
+        }
+      ]
+    }
+  ]
+}

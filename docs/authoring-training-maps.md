@@ -1,16 +1,18 @@
 # 教程地图制作手册
 
-本文说明 Web 训练模式的地图驱动格式、不可见 Trigger 的运行顺序、教程/Fuzz 脚本全部字段，以及一张教程地图从编写到验证的流程。当前可运行示例是 [`hyper-route.training.json`](../web/src/training/maps/hyper-route.training.json)。
+本文说明 Web 训练模式的地图驱动格式、不可见 Trigger 的运行顺序、教程/Fuzz 脚本全部字段，以及一张教程地图从编写到验证的流程。当前可运行示例工作区是 [`web/src/training/maps`](../web/src/training/maps)：`technique.json` 描述目录分类，`celeste-gym.workspace.json` 关联三组 `*.map.json` 与 `*.training.json`。Web 内置训练目录直接扫描这些 JSON，不再由技巧专用 TypeScript 文件拼装；地图编辑器的“打开文件夹”读取同一套工作区格式。
 
 ## 1. 核心模型
 
-训练的拥有者是**地图**，不是教程。目录中的一个 `TrainingVariant` 表示一张训练地图，它包含：
+训练的拥有者是**地图**，不是教程。工作区清单中的一个项目表示一张训练地图，加载后形成一个 `TrainingVariant`，它包含：
 
 - `map`：可模拟的房间碰撞、实体和出生点；
 - `initial`：玩家进入地图时的状态；
 - `training`：一个 version 2 地图脚本；
 - `training.modules[]`：任意数量的教程模块，每个模块各自绑定一个不可见 Trigger、一个教程和一个 Fuzz；
 - `training.finish.trigger`：终点 Trigger。
+
+运行画面始终使用 Celeste 的 320×180 相机视口，并直接读取模拟状态中的 `camera` 左上角坐标，不会再把宽地图整体缩小。地图编辑器和 Trigger 编辑器顶部的相机按钮每次横向移动 160 px、纵向移动 90 px，也可以直接回到出生点相机。
 
 一次模块的事件顺序如下：
 
