@@ -242,6 +242,15 @@ describe("training R reset", () => {
     expect(
       view.queryByRole("button", { name: "完成演示" }),
     ).not.toBeInTheDocument();
+    const timeoutSpy = vi.spyOn(globalThis, "setTimeout");
+    fireEvent.keyDown(window, { code: "Semicolon" });
+    await advance();
+    fireEvent.keyUp(window, { code: "Semicolon" });
+    expect(view.getByTestId("training-prompt")).toHaveTextContent(
+      "辅助实操完成",
+    );
+    expect(timeoutSpy.mock.calls.some((call) => call[1] === 2_000)).toBe(true);
+    timeoutSpy.mockRestore();
     fireEvent.click(view.getByRole("button", { name: "退出教学" }));
     expect(
       view.container.querySelector(".training-lesson-stages"),

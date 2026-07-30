@@ -95,7 +95,7 @@ export interface OutcomeAnimation {
 }
 
 const FAILURE_SLOWDOWN_MS = 1_000;
-const GUIDED_RESULT_HOLD_MS = 1_000;
+const GUIDED_RESULT_HOLD_MS = 2_000;
 export type TrainingResetMode = "current" | "start";
 
 export type TrainingLessonStage = "demo" | "assisted" | "free";
@@ -678,7 +678,7 @@ export function TrainingGround({
     setNotice(
       stage === "demo"
         ? `${module.tutorial.title}：演示完成，停留一秒查看结果。`
-        : `${module.tutorial.title}：辅助实操完成，停留一秒查看结果。`,
+        : `${module.tutorial.title}：辅助实操完成，停留两秒查看结果。`,
     );
     guidedResultTimerRef.current = setTimeout(() => {
       guidedResultTimerRef.current = null;
