@@ -12,6 +12,8 @@
 - `training.modules[]`：任意数量的教程模块，每个模块各自绑定一个不可见 Trigger、一个教程和一个 Fuzz；
 - `training.finish.trigger`：终点 Trigger。
 
+运行画面始终使用 Celeste 的 320×180 相机视口，并直接读取模拟状态中的 `camera` 左上角坐标，不会再把宽地图整体缩小。地图编辑器和 Trigger 编辑器顶部的相机按钮每次横向移动 160 px、纵向移动 90 px，也可以直接回到出生点相机。
+
 一次模块的事件顺序如下：
 
 1. 玩家碰到模块 Trigger，模块被“武装”，但 Fuzz 计时尚未开始。

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import type { GameViewViewport } from "../camera";
 import type { GymMap, SimState, Vec2 } from "../model";
 
 const MAX_SPEED = 900;
@@ -15,23 +16,25 @@ function approach(current: number, target: number, amount: number): number {
 export function mapPointTargetPercent(
   map: GymMap,
   point: Vec2,
-  viewport: { width: number; height: number },
+  viewport: Pick<GameViewViewport, "width" | "height"> &
+    Partial<Pick<GameViewViewport, "camera">>,
 ): Vec2 {
   if (viewport.width <= 0 || viewport.height <= 0) return { x: 50, y: 50 };
+  const world = viewport.camera ?? map.bounds;
   const scale = Math.min(
-    viewport.width / map.bounds.width,
-    viewport.height / map.bounds.height,
+    viewport.width / world.width,
+    viewport.height / world.height,
   );
-  const contentWidth = map.bounds.width * scale;
-  const contentHeight = map.bounds.height * scale;
+  const contentWidth = world.width * scale;
+  const contentHeight = world.height * scale;
   const offsetX = (viewport.width - contentWidth) / 2;
   const offsetY = (viewport.height - contentHeight) / 2;
   return {
     x:
-      ((offsetX + (point.x - map.bounds.x) * scale) / viewport.width) * 100,
+      ((offsetX + (point.x - world.x) * scale) / viewport.width) * 100,
     y:
       ((offsetY +
-        (point.y - map.bounds.y) * scale) /
+        (point.y - world.y) * scale) /
         viewport.height) *
       100,
   };
@@ -40,7 +43,8 @@ export function mapPointTargetPercent(
 export function promptTargetPercent(
   map: GymMap,
   state: SimState,
-  viewport: { width: number; height: number },
+  viewport: Pick<GameViewViewport, "width" | "height"> &
+    Partial<Pick<GameViewViewport, "camera">>,
 ): Vec2 {
   return mapPointTargetPercent(
     map,
@@ -58,7 +62,8 @@ export function TrainingPrompt({
 }: {
   map: GymMap;
   state: SimState;
-  viewport: { width: number; height: number };
+  viewport: Pick<GameViewViewport, "width" | "height"> &
+    Partial<Pick<GameViewViewport, "camera">>;
   text: string;
   hidden?: boolean;
 }) {

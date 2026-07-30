@@ -5,6 +5,13 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import {
+  cameraBounds,
+  cameraViewBox,
+  clampCameraPosition,
+  defaultCameraPosition,
+  pointInCameraViewport,
+} from "../camera";
 import { createInitialState, type KeyBindings } from "../model";
 import type {
   TrainingDocument,
@@ -68,19 +75,15 @@ function pointInMap(
   clientY: number,
   svg: SVGSVGElement,
   project: TrainingProject,
+  cameraPosition: { x: number; y: number },
 ) {
   const rect = svg.getBoundingClientRect();
-  const bounds = project.map.bounds;
-  const scale = Math.min(
-    rect.width / bounds.width,
-    rect.height / bounds.height,
+  return pointInCameraViewport(
+    clientX,
+    clientY,
+    rect,
+    cameraBounds(clampCameraPosition(project.map, cameraPosition)),
   );
-  const offsetX = (rect.width - bounds.width * scale) / 2;
-  const offsetY = (rect.height - bounds.height * scale) / 2;
-  return {
-    x: bounds.x + (clientX - rect.left - offsetX) / scale,
-    y: bounds.y + (clientY - rect.top - offsetY) / scale,
-  };
 }
 
 function JsonField({
@@ -1085,6 +1088,9 @@ export function TrainingFlowEditor({
   const [preview, setPreview] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResults, setTestResults] = useState<TestResult[]>([]);
+  const [cameraPosition, setCameraPosition] = useState(() =>
+    defaultCameraPosition(project.map),
+  );
   const drag = useRef<{
     mode: "move" | "resize";
     target: Target;
@@ -1093,6 +1099,17 @@ export function TrainingFlowEditor({
     corner?: ResizeCorner;
   } | null>(null);
   useEffect(() => () => client.dispose(), [client]);
+  useEffect(() => {
+    setCameraPosition((position) =>
+      clampCameraPosition(project.map, position),
+    );
+  }, [
+    project.id,
+    project.map.bounds.height,
+    project.map.bounds.width,
+    project.map.bounds.x,
+    project.map.bounds.y,
+  ]);
 
   const issues = validateTrainingProject(project);
   const selectedModule =
@@ -1110,10 +1127,20 @@ export function TrainingFlowEditor({
       summary: project.training.summary,
       map: project.map,
       training: project.training,
-      initial: createInitialState(project.map),
+      initial:
+        project.training.modules.find(
+          (module) => module.id === project.initialModuleId,
+        )?.validation.initial_state ?? createInitialState(project.map),
     }),
     [project],
   );
+  const moveCamera = (x: number, y: number) =>
+    setCameraPosition((position) =>
+      clampCameraPosition(project.map, {
+        x: position.x + x,
+        y: position.y + y,
+      }),
+    );
 
   const updateTraining = (mutator: (project: TrainingProject) => void) => {
     const next = cloneProject(project);
@@ -1191,7 +1218,13 @@ export function TrainingFlowEditor({
     drag.current = {
       mode: "move",
       target: nextTarget,
-      point: pointInMap(event.clientX, event.clientY, svg, project),
+      point: pointInMap(
+        event.clientX,
+        event.clientY,
+        svg,
+        project,
+        cameraPosition,
+      ),
       bounds: { ...bounds },
     };
     setTarget(nextTarget);
@@ -1210,7 +1243,13 @@ export function TrainingFlowEditor({
     drag.current = {
       mode: "resize",
       target: nextTarget,
-      point: pointInMap(event.clientX, event.clientY, svg, project),
+      point: pointInMap(
+        event.clientX,
+        event.clientY,
+        svg,
+        project,
+        cameraPosition,
+      ),
       bounds: { ...bounds },
       corner,
     };
@@ -1225,6 +1264,7 @@ export function TrainingFlowEditor({
       event.clientY,
       event.currentTarget,
       project,
+      cameraPosition,
     );
     const bounds =
       drag.current.mode === "resize" && drag.current.corner
@@ -1406,6 +1446,31 @@ export function TrainingFlowEditor({
                 : "地图终点区域"}
             </strong>
           </div>
+          <div className="training-camera-controls" aria-label="训练编辑相机">
+            <button aria-label="训练相机向左" onClick={() => moveCamera(-160, 0)}>
+              ←
+            </button>
+            <button aria-label="训练相机向上" onClick={() => moveCamera(0, -90)}>
+              ↑
+            </button>
+            <button
+              aria-label="训练相机回到出生点"
+              onClick={() =>
+                setCameraPosition(defaultCameraPosition(project.map))
+              }
+            >
+              出生点
+            </button>
+            <button aria-label="训练相机向下" onClick={() => moveCamera(0, 90)}>
+              ↓
+            </button>
+            <button aria-label="训练相机向右" onClick={() => moveCamera(160, 0)}>
+              →
+            </button>
+            <span>
+              CAM {Math.round(cameraPosition.x)}, {Math.round(cameraPosition.y)}
+            </span>
+          </div>
           <button disabled={!ready || testing} onClick={() => void runTests()}>
             {testing ? "测试中…" : "运行全部 Fuzz 测试"}
           </button>
@@ -1426,10 +1491,12 @@ export function TrainingFlowEditor({
           frame={0}
           stale={false}
           theme={theme}
+          cameraPosition={cameraPosition}
         >
-          <svg
+          {(viewport) => (
+            <svg
             className="training-trigger-overlay"
-            viewBox={`${project.map.bounds.x} ${project.map.bounds.y} ${project.map.bounds.width} ${project.map.bounds.height}`}
+            viewBox={cameraViewBox(viewport.camera)}
             preserveAspectRatio="xMidYMid meet"
             onPointerMove={moveDrag}
             onPointerUp={() => {
@@ -1546,7 +1613,8 @@ export function TrainingFlowEditor({
                 ))}
               </g>
             )}
-          </svg>
+            </svg>
+          )}
         </GameView>
         <section className="training-test-results" aria-live="polite">
           <header>

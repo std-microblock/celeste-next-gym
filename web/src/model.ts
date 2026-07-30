@@ -135,6 +135,9 @@ export interface SimState {
   death_freeze_pending: boolean;
   respawn_frames: number;
   dash_dir: Vec2;
+  /** Celeste Level.Camera.Position: top-left of the fixed 320x180 viewport. */
+  camera?: Vec2;
+  camera_initialized?: boolean;
   state_timer?: number;
   boost_target?: Vec2;
   boost_red?: boolean;

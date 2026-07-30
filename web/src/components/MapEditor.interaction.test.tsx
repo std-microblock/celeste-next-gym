@@ -1,14 +1,39 @@
 import { fireEvent, render, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import type { GameViewViewport } from "../camera";
 import { createInitialState } from "../model";
 import { createBlankGymMap } from "../training/editorProject";
 import { VISUAL_THEMES } from "../visualThemes";
 
 vi.mock("./GameView", () => ({
-  GameView: ({ children }: { children?: ReactNode }) => (
-    <div className="game-screen">{children}</div>
-  ),
+  GameView: ({
+    children,
+    cameraPosition,
+  }: {
+    children?: ReactNode | ((viewport: GameViewViewport) => ReactNode);
+    cameraPosition?: { x: number; y: number };
+  }) => {
+    const viewport = {
+      width: 320,
+      height: 180,
+      camera: {
+        x: cameraPosition?.x ?? 0,
+        y: cameraPosition?.y ?? 0,
+        width: 320,
+        height: 180,
+      },
+    };
+    return (
+      <div
+        className="game-screen"
+        data-camera-x={viewport.camera.x}
+        data-camera-y={viewport.camera.y}
+      >
+        {typeof children === "function" ? children(viewport) : children}
+      </div>
+    );
+  },
 }));
 
 import { MapEditor } from "./MapEditor";
@@ -74,6 +99,27 @@ describe("MapEditor interactions", () => {
     expect(
       within(container).getByRole("button", { name: "Zip Mover" }),
     ).toBeInTheDocument();
+  });
+
+  it("pans a fixed 320x180 editor camera across wide maps", () => {
+    const map = createBlankGymMap();
+    map.bounds.width = 960;
+    const { container } = editor(map);
+    expect(container.querySelector(".map-editor-overlay")).toHaveAttribute(
+      "viewBox",
+      "0 0 320 180",
+    );
+
+    fireEvent.click(within(container).getByRole("button", { name: "相机向右" }));
+
+    expect(container.querySelector(".game-screen")).toHaveAttribute(
+      "data-camera-x",
+      "160",
+    );
+    expect(container.querySelector(".map-editor-overlay")).toHaveAttribute(
+      "viewBox",
+      "160 0 320 180",
+    );
   });
 
   it("edits room and entity properties from the inspector", () => {

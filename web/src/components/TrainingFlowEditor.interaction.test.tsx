@@ -1,14 +1,35 @@
 import { fireEvent, render, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import type { GameViewViewport } from "../camera";
 import { PLAYGROUND, createInitialState } from "../model";
 import { createTrainingProject } from "../training/editorProject";
 import { VISUAL_THEMES } from "../visualThemes";
 
 vi.mock("./GameView", () => ({
-  GameView: ({ children }: { children?: ReactNode }) => (
-    <div className="game-screen">{children}</div>
-  ),
+  GameView: ({
+    children,
+    cameraPosition,
+  }: {
+    children?: ReactNode | ((viewport: GameViewViewport) => ReactNode);
+    cameraPosition?: { x: number; y: number };
+  }) => {
+    const viewport = {
+      width: 320,
+      height: 180,
+      camera: {
+        x: cameraPosition?.x ?? 0,
+        y: cameraPosition?.y ?? 0,
+        width: 320,
+        height: 180,
+      },
+    };
+    return (
+      <div className="game-screen">
+        {typeof children === "function" ? children(viewport) : children}
+      </div>
+    );
+  },
 }));
 vi.mock("./TrainingGround", () => ({
   TrainingGround: () => <div data-testid="training-preview" />,
@@ -44,6 +65,10 @@ beforeAll(() => {
   });
 });
 
+function cameraScreenPoint(x: number, y: number) {
+  return { clientX: x * 3, clientY: (y - 364) * 3 + 2 };
+}
+
 describe("training recording controls", () => {
   it("shows a start and end region for every module", () => {
     const project = createTrainingProject(PLAYGROUND);
@@ -72,6 +97,17 @@ describe("training recording controls", () => {
       container.querySelectorAll(".training-trigger-resize-handles rect"),
     ).toHaveLength(4);
     expect(within(container).getByText("END TRIGGER ID")).toBeInTheDocument();
+    expect(container.querySelector(".training-trigger-overlay")).toHaveAttribute(
+      "viewBox",
+      "0 364 320 180",
+    );
+    fireEvent.click(
+      within(container).getByRole("button", { name: "训练相机向右" }),
+    );
+    expect(container.querySelector(".training-trigger-overlay")).toHaveAttribute(
+      "viewBox",
+      "160 364 320 180",
+    );
   });
 
   it("edits recorded checkpoint conditions and objectives in form mode", () => {
@@ -190,13 +226,17 @@ describe("training recording controls", () => {
     const originalX = project.training.modules[0].end_trigger.bounds.x;
     fireEvent.pointerDown(end, {
       pointerId: 1,
-      clientX: originalX,
-      clientY: project.training.modules[0].end_trigger.bounds.y,
+      ...cameraScreenPoint(
+        originalX,
+        project.training.modules[0].end_trigger.bounds.y,
+      ),
     });
     fireEvent.pointerMove(overlay, {
       pointerId: 1,
-      clientX: originalX + 16,
-      clientY: project.training.modules[0].end_trigger.bounds.y,
+      ...cameraScreenPoint(
+        originalX + 16,
+        project.training.modules[0].end_trigger.bounds.y,
+      ),
     });
     expect(
       onChange.mock.calls.at(-1)?.[0].training.modules[0].end_trigger.bounds.x,
@@ -235,8 +275,7 @@ describe("training recording controls", () => {
     const original = project.training.modules[0].end_trigger.bounds;
     fireEvent.pointerDown(end, {
       pointerId: 2,
-      clientX: original.x,
-      clientY: original.y,
+      ...cameraScreenPoint(original.x, original.y),
     });
     fireEvent.pointerUp(overlay, { pointerId: 2 });
     const southeast = view.container.querySelector(
@@ -244,13 +283,17 @@ describe("training recording controls", () => {
     )!;
     fireEvent.pointerDown(southeast, {
       pointerId: 3,
-      clientX: original.x + original.width,
-      clientY: original.y + original.height,
+      ...cameraScreenPoint(
+        original.x + original.width,
+        original.y + original.height,
+      ),
     });
     fireEvent.pointerMove(overlay, {
       pointerId: 3,
-      clientX: original.x + original.width + 16,
-      clientY: original.y + original.height + 8,
+      ...cameraScreenPoint(
+        original.x + original.width + 16,
+        original.y + original.height + 8,
+      ),
     });
     const resized =
       onChange.mock.calls.at(-1)?.[0].training.modules[0].end_trigger.bounds;
