@@ -157,27 +157,55 @@ describe("editor folder workspace", () => {
       />,
     );
 
-    const catalogNav = view.getByRole("navigation", {
-      name: "训练分类目录",
-    });
-    fireEvent.click(within(catalogNav).getByRole("button", { name: "新建大分类" }));
+    fireEvent.click(view.getByRole("button", { name: "大分类菜单" }));
+    fireEvent.click(
+      within(view.getByRole("menu", { name: "大分类" })).getByRole("button", {
+        name: "新建大分类",
+      }),
+    );
     fireEvent.change(view.getByLabelText("大分类名称"), {
       target: { value: "移动技巧" },
     });
-    expect(view.getByLabelText("大分类")).toHaveDisplayValue("移动技巧");
-    fireEvent.click(within(catalogNav).getByRole("button", { name: "新建二级分类" }));
+    fireEvent.click(view.getByRole("button", { name: "完成" }));
+    expect(view.getByRole("button", { name: "大分类菜单" })).toHaveTextContent(
+      "移动技巧",
+    );
+
+    fireEvent.click(view.getByRole("button", { name: "二级分类菜单" }));
+    fireEvent.click(
+      within(view.getByRole("menu", { name: "二级分类" })).getByRole(
+        "button",
+        { name: "新建二级分类" },
+      ),
+    );
     fireEvent.change(view.getByLabelText("二级分类名称"), {
       target: { value: "超冲" },
     });
-    expect(view.getByLabelText("二级分类")).toHaveDisplayValue("超冲");
+    fireEvent.click(view.getByRole("button", { name: "完成" }));
+    expect(
+      view.getByRole("button", { name: "二级分类菜单" }),
+    ).toHaveTextContent("超冲");
 
-    vi.spyOn(window, "confirm").mockReturnValue(true);
-    fireEvent.click(within(catalogNav).getByRole("button", { name: "删除二级分类" }));
-    await waitFor(() =>
-      expect(view.getByLabelText("二级分类")).toHaveDisplayValue(
-        "暂无二级分类",
+    fireEvent.click(view.getByRole("button", { name: "二级分类菜单" }));
+    fireEvent.click(
+      within(view.getByRole("menu", { name: "二级分类" })).getByRole(
+        "button",
+        { name: "删除二级分类" },
       ),
     );
+    fireEvent.click(view.getByRole("button", { name: "确认删除" }));
+    await waitFor(() =>
+      expect(
+        view.getByRole("button", { name: "二级分类菜单" }),
+      ).toHaveTextContent("暂无二级分类"),
+    );
+
+    fireEvent.click(view.getByRole("button", { name: "大分类菜单" }));
+    expect(view.getByRole("menu", { name: "大分类" })).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(
+      view.queryByRole("menu", { name: "大分类" }),
+    ).not.toBeInTheDocument();
   });
 
   it("lists rooms from a BIN and imports only the selected room", async () => {
@@ -224,11 +252,44 @@ describe("editor folder workspace", () => {
 
     await waitFor(() => expect(loadMapBytes).toHaveBeenCalled());
     expect(loadMapBytes.mock.calls[0][1]).toBe("b-01");
-    expect(view.getByLabelText("房间项目")).toHaveDisplayValue(
+    expect(view.getByRole("button", { name: "房间菜单" })).toHaveTextContent(
       "chapter.bin / b-01",
     );
     expect(onMapChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ room: "b-01" }),
+    );
+
+    fireEvent.click(view.getByRole("button", { name: "房间菜单" }));
+    fireEvent.click(
+      within(view.getByRole("menu", { name: "房间" })).getByRole("button", {
+        name: "重命名房间",
+      }),
+    );
+    fireEvent.change(view.getByLabelText("房间名称"), {
+      target: { value: "泡泡出口练习" },
+    });
+    fireEvent.click(view.getByRole("button", { name: "完成" }));
+    expect(view.getByRole("button", { name: "房间菜单" })).toHaveTextContent(
+      "泡泡出口练习",
+    );
+    expect(onMapChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ name: "泡泡出口练习", room: "b-01" }),
+    );
+    fireEvent.click(view.getByRole("button", { name: "训练流程" }));
+    expect(view.getByTestId("training-flow")).toHaveTextContent(
+      "泡泡出口练习",
+    );
+    fireEvent.click(view.getByRole("button", { name: "房间菜单" }));
+    fireEvent.click(
+      within(view.getByRole("menu", { name: "房间" })).getByRole("button", {
+        name: "删除房间",
+      }),
+    );
+    fireEvent.click(view.getByRole("button", { name: "确认删除" }));
+    await waitFor(() =>
+      expect(view.getByRole("button", { name: "房间菜单" })).toHaveTextContent(
+        "未命名房间",
+      ),
     );
   });
 });

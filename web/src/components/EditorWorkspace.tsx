@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import type { KeyBindings, GymMap, SimState } from "../model";
 import type { WasmClient } from "../simulator/wasmClient";
 import {
@@ -55,6 +61,186 @@ interface BinImportState {
   room: string;
 }
 
+interface ManagedDropdownItem {
+  id: string;
+  label: string;
+  description?: string;
+}
+
+function EditorManagedDropdown({
+  id,
+  label,
+  selectedId,
+  selectedLabel,
+  items,
+  open,
+  disabled = false,
+  onOpenChange,
+  onSelect,
+  onCreate,
+  onDelete,
+  renameContent,
+  deleteDescription,
+}: {
+  id: string;
+  label: string;
+  selectedId?: string;
+  selectedLabel: string;
+  items: ManagedDropdownItem[];
+  open: boolean;
+  disabled?: boolean;
+  onOpenChange(open: boolean): void;
+  onSelect(id: string): void;
+  onCreate(): void;
+  onDelete(): void | Promise<void>;
+  renameContent: ReactNode;
+  deleteDescription: string;
+}) {
+  const [mode, setMode] = useState<"list" | "rename" | "delete">("list");
+  const rootRef = useRef<HTMLDivElement>(null);
+  const close = () => {
+    setMode("list");
+    onOpenChange(false);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const dismiss = () => {
+      setMode("list");
+      onOpenChange(false);
+    };
+    const pointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) dismiss();
+    };
+    const keyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") dismiss();
+    };
+    document.addEventListener("pointerdown", pointerDown);
+    document.addEventListener("keydown", keyDown);
+    return () => {
+      document.removeEventListener("pointerdown", pointerDown);
+      document.removeEventListener("keydown", keyDown);
+    };
+  }, [onOpenChange, open]);
+
+  return (
+    <div className="editor-managed-dropdown" ref={rootRef}>
+      <button
+        type="button"
+        className="editor-managed-trigger"
+        aria-label={`${label}菜单`}
+        aria-expanded={open}
+        aria-controls={`editor-managed-${id}`}
+        disabled={disabled}
+        onClick={() => {
+          setMode("list");
+          onOpenChange(!open);
+        }}
+      >
+        <span>
+          <small>{label}</small>
+          <strong>{selectedLabel}</strong>
+        </span>
+        <i aria-hidden="true">⌄</i>
+      </button>
+      {open && (
+        <div
+          id={`editor-managed-${id}`}
+          className="editor-managed-menu"
+          role="menu"
+          aria-label={label}
+        >
+          {mode === "list" ? (
+            <>
+              <div className="editor-managed-list">
+                {items.length ? (
+                  items.map((item) => (
+                    <button
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={item.id === selectedId}
+                      className={item.id === selectedId ? "active" : ""}
+                      key={item.id}
+                      onClick={() => {
+                        onSelect(item.id);
+                        close();
+                      }}
+                    >
+                      <span>{item.label}</span>
+                      {item.description && <small>{item.description}</small>}
+                    </button>
+                  ))
+                ) : (
+                  <p>暂无{label}</p>
+                )}
+              </div>
+              <div className="editor-managed-actions">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onCreate();
+                    setMode("rename");
+                  }}
+                >
+                  新建{label}
+                </button>
+                <button
+                  type="button"
+                  disabled={!selectedId}
+                  onClick={() => setMode("rename")}
+                >
+                  重命名{label}
+                </button>
+                <button
+                  type="button"
+                  className="danger"
+                  disabled={!selectedId}
+                  onClick={() => setMode("delete")}
+                >
+                  删除{label}
+                </button>
+              </div>
+            </>
+          ) : mode === "rename" ? (
+            <div className="editor-managed-editor">
+              <header>
+                <strong>重命名{label}</strong>
+                <small>ID 与文件名保持不变</small>
+              </header>
+              {renameContent}
+              <div className="editor-managed-confirm-actions">
+                <button type="button" onClick={() => setMode("list")}>
+                  返回
+                </button>
+                <button type="button" className="primary" onClick={close}>
+                  完成
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="editor-managed-delete">
+              <strong>确认删除{label}？</strong>
+              <p>{deleteDescription}</p>
+              <div className="editor-managed-confirm-actions">
+                <button type="button" onClick={() => setMode("list")}>
+                  取消
+                </button>
+                <button
+                  type="button"
+                  className="danger"
+                  onClick={() => void Promise.resolve(onDelete()).then(close)}
+                >
+                  确认删除
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export interface EditorWorkspaceProps {
   map: GymMap;
   state: SimState;
@@ -89,6 +275,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
   const [recordingScope, setRecordingScope] =
     useState<TrainingRecordingScope | null>(null);
   const [binImport, setBinImport] = useState<BinImportState | null>(null);
+  const [managedDropdown, setManagedDropdown] = useState<string | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const binImportRef = useRef<HTMLInputElement>(null);
   const revision = useRef(0);
@@ -369,12 +556,6 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
     const owned = catalog.techniques.filter(
       (technique) => technique.metadata.section.id === currentSection.id,
     );
-    if (
-      !window.confirm(
-        `删除大分类“${currentSection.title}”？其中 ${owned.length} 个二级分类及其房间文件也会删除。`,
-      )
-    )
-      return;
     try {
       if (directory)
         for (const technique of owned)
@@ -433,12 +614,6 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
 
   const deleteTechnique = async () => {
     if (!currentTechnique) return;
-    if (
-      !window.confirm(
-        `删除二级分类“${currentTechnique.metadata.title}”及其 ${currentTechnique.projects.length} 个房间？`,
-      )
-    )
-      return;
     try {
       if (directory)
         await removeTrainingTechniqueFiles(directory, currentTechnique);
@@ -487,7 +662,6 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
 
   const deleteProject = async () => {
     if (!currentTechnique || !current) return;
-    if (!window.confirm(`删除房间“${current.training.title}”？`)) return;
     try {
       if (directory)
         await removeTrainingProjectFiles(directory, currentTechnique, current);
@@ -503,6 +677,15 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
     } catch (error) {
       setNotice(error instanceof Error ? `删除失败：${error.message}` : "删除失败");
     }
+  };
+
+  const renameCurrentProject = (name: string) => {
+    if (!current) return;
+    changeCurrent({
+      ...current,
+      map: { ...current.map, name },
+      training: { ...current.training, title: name },
+    });
   };
 
   if (recordingScope && current) {
@@ -539,28 +722,6 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
               训练流程
             </button>
           </div>
-          <select
-            aria-label="房间项目"
-            disabled={!currentTechnique?.projects.length}
-            value={current ? projectIndex : ""}
-            onChange={(event) => {
-              const index = Number(event.target.value);
-              setProjectIndex(index);
-              if (currentTechnique?.projects[index])
-                props.onMapChange(currentTechnique.projects[index].map);
-            }}
-          >
-            {!current && <option value="">暂无房间</option>}
-            {currentTechnique?.projects.map((project, index) => (
-              <option value={index} key={`${project.id}-${index}`}>
-                {project.training.title}
-              </option>
-            ))}
-          </select>
-          <button onClick={addProject}>新建房间</button>
-          <button disabled={!current} onClick={() => void deleteProject()}>
-            删除房间
-          </button>
           <button onClick={() => void openFolder()}>打开目录</button>
           <button disabled={!current} onClick={() => importRef.current?.click()}>
             导入 JSON
@@ -622,97 +783,163 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
           <output title={notice}>{notice}</output>
         </nav>
         <nav className="editor-catalog-nav" aria-label="训练分类目录">
-          <label>
-            <small>大分类</small>
-            <select
-              aria-label="大分类"
-              value={sectionId}
-              onChange={(event) => {
-                const nextSectionId = event.target.value;
-                setSectionId(nextSectionId);
-                selectTechnique(
-                  catalog.techniques.find(
-                    (technique) =>
-                      technique.metadata.section.id === nextSectionId,
-                  ),
-                );
-              }}
-            >
-              {catalog.sections.map((candidate) => (
-                <option key={candidate.id} value={candidate.id}>
-                  {candidate.title}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <small>大分类名称</small>
-            <input
-              aria-label="大分类名称"
-              disabled={!currentSection}
-              value={currentSection?.title ?? ""}
-              onChange={(event) => updateSection("title", event.target.value)}
-            />
-          </label>
-          <label className="editor-badge-field">
-            <small>徽标</small>
-            <input
-              aria-label="大分类徽标"
-              disabled={!currentSection}
-              value={currentSection?.badge ?? ""}
-              onChange={(event) => updateSection("badge", event.target.value)}
-            />
-          </label>
-          <button onClick={addSection}>新建大分类</button>
-          <button disabled={!currentSection} onClick={() => void deleteSection()}>
-            删除大分类
-          </button>
-          <span className="editor-catalog-divider" />
-          <label>
-            <small>二级分类</small>
-            <select
-              aria-label="二级分类"
-              value={currentTechnique?.metadata.id ?? ""}
-              onChange={(event) =>
-                selectTechnique(
-                  sectionTechniques.find(
-                    (technique) => technique.metadata.id === event.target.value,
-                  ),
-                )
-              }
-            >
-              {!sectionTechniques.length && <option value="">暂无二级分类</option>}
-              {sectionTechniques.map((technique) => (
-                <option key={technique.metadata.id} value={technique.metadata.id}>
-                  {technique.metadata.title}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <small>二级分类名称</small>
-            <input
-              aria-label="二级分类名称"
-              disabled={!currentTechnique}
-              value={currentTechnique?.metadata.title ?? ""}
-              onChange={(event) => updateTechnique("title", event.target.value)}
-            />
-          </label>
-          <label className="editor-technique-summary">
-            <small>简介</small>
-            <input
-              aria-label="二级分类简介"
-              disabled={!currentTechnique}
-              value={currentTechnique?.metadata.summary ?? ""}
-              onChange={(event) => updateTechnique("summary", event.target.value)}
-            />
-          </label>
-          <button disabled={!currentSection} onClick={addTechnique}>
-            新建二级分类
-          </button>
-          <button disabled={!currentTechnique} onClick={() => void deleteTechnique()}>
-            删除二级分类
-          </button>
+          <EditorManagedDropdown
+            id="section"
+            label="大分类"
+            selectedId={currentSection?.id}
+            selectedLabel={currentSection?.title ?? "暂无大分类"}
+            items={catalog.sections.map((candidate) => ({
+              id: candidate.id,
+              label: candidate.title,
+              description: candidate.badge,
+            }))}
+            open={managedDropdown === "section"}
+            onOpenChange={(open) =>
+              setManagedDropdown(open ? "section" : null)
+            }
+            onSelect={(nextSectionId) => {
+              setSectionId(nextSectionId);
+              selectTechnique(
+                catalog.techniques.find(
+                  (technique) =>
+                    technique.metadata.section.id === nextSectionId,
+                ),
+              );
+            }}
+            onCreate={addSection}
+            onDelete={deleteSection}
+            deleteDescription={
+              currentSection
+                ? `“${currentSection.title}”下的 ${sectionTechniques.length} 个二级分类及其房间也会删除。`
+                : "当前没有可删除的大分类。"
+            }
+            renameContent={
+              <div className="editor-managed-fields">
+                <label>
+                  <span>名称</span>
+                  <input
+                    aria-label="大分类名称"
+                    value={currentSection?.title ?? ""}
+                    onChange={(event) =>
+                      updateSection("title", event.target.value)
+                    }
+                  />
+                </label>
+                <label>
+                  <span>徽标</span>
+                  <input
+                    aria-label="大分类徽标"
+                    value={currentSection?.badge ?? ""}
+                    onChange={(event) =>
+                      updateSection("badge", event.target.value)
+                    }
+                  />
+                </label>
+              </div>
+            }
+          />
+          <span className="editor-catalog-path">›</span>
+          <EditorManagedDropdown
+            id="technique"
+            label="二级分类"
+            selectedId={currentTechnique?.metadata.id}
+            selectedLabel={currentTechnique?.metadata.title ?? "暂无二级分类"}
+            items={sectionTechniques.map((technique) => ({
+              id: technique.metadata.id,
+              label: technique.metadata.title,
+              description: `${technique.projects.length} 个房间`,
+            }))}
+            open={managedDropdown === "technique"}
+            disabled={!currentSection}
+            onOpenChange={(open) =>
+              setManagedDropdown(open ? "technique" : null)
+            }
+            onSelect={(nextTechniqueId) =>
+              selectTechnique(
+                sectionTechniques.find(
+                  (technique) => technique.metadata.id === nextTechniqueId,
+                ),
+              )
+            }
+            onCreate={addTechnique}
+            onDelete={deleteTechnique}
+            deleteDescription={
+              currentTechnique
+                ? `“${currentTechnique.metadata.title}”及其 ${currentTechnique.projects.length} 个房间文件会被删除。`
+                : "当前没有可删除的二级分类。"
+            }
+            renameContent={
+              <div className="editor-managed-fields">
+                <label>
+                  <span>名称</span>
+                  <input
+                    aria-label="二级分类名称"
+                    value={currentTechnique?.metadata.title ?? ""}
+                    onChange={(event) =>
+                      updateTechnique("title", event.target.value)
+                    }
+                  />
+                </label>
+                <label>
+                  <span>简介</span>
+                  <textarea
+                    aria-label="二级分类简介"
+                    value={currentTechnique?.metadata.summary ?? ""}
+                    onChange={(event) =>
+                      updateTechnique("summary", event.target.value)
+                    }
+                  />
+                </label>
+              </div>
+            }
+          />
+          <span className="editor-catalog-path">›</span>
+          <EditorManagedDropdown
+            id="room"
+            label="房间"
+            selectedId={current ? String(projectIndex) : undefined}
+            selectedLabel={current?.training.title ?? "暂无房间"}
+            items={(currentTechnique?.projects ?? []).map((project, index) => ({
+              id: String(index),
+              label: project.training.title,
+              description: project.map.room ?? project.id,
+            }))}
+            open={managedDropdown === "room"}
+            disabled={!currentTechnique}
+            onOpenChange={(open) =>
+              setManagedDropdown(open ? "room" : null)
+            }
+            onSelect={(indexText) => {
+              const index = Number(indexText);
+              setProjectIndex(index);
+              if (currentTechnique?.projects[index])
+                props.onMapChange(currentTechnique.projects[index].map);
+            }}
+            onCreate={addProject}
+            onDelete={deleteProject}
+            deleteDescription={
+              current
+                ? `“${current.training.title}”对应的地图和训练脚本文件会被删除。`
+                : "当前没有可删除的房间。"
+            }
+            renameContent={
+              <div className="editor-managed-fields">
+                <label>
+                  <span>房间名称</span>
+                  <input
+                    aria-label="房间名称"
+                    value={current?.training.title ?? ""}
+                    onChange={(event) =>
+                      renameCurrentProject(event.target.value)
+                    }
+                  />
+                </label>
+                <p>
+                  房间 ID：<code>{current?.map.room ?? current?.id ?? "-"}</code>
+                </p>
+              </div>
+            }
+          />
         </nav>
       </header>
 

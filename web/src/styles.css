@@ -3928,10 +3928,7 @@ footer {
   background: #10091ff7;
 }
 .editor-workspace-nav button,
-.editor-workspace-nav select,
-.editor-catalog-nav button,
-.editor-catalog-nav select,
-.editor-catalog-nav input {
+.editor-workspace-nav select {
   height: 29px;
   padding: 0 9px;
   color: inherit;
@@ -3948,51 +3945,195 @@ footer {
   min-width: 0;
   height: 42px;
   display: flex;
-  align-items: end;
-  gap: 6px;
-  overflow-x: auto;
+  align-items: center;
+  gap: 8px;
+  overflow: visible;
   padding: 4px 10px 5px;
   color: #cdbfd2;
   background: linear-gradient(90deg, #160b28, #0d081a);
 }
 .editor-workspace-nav button,
-.editor-catalog-nav button {
+.editor-managed-dropdown button {
   white-space: nowrap;
 }
-.editor-catalog-nav label {
+.editor-managed-dropdown {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.editor-managed-trigger {
+  width: 100%;
+  height: 33px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 10px;
+  color: #d9cedd;
+  border: 1px solid #5e456e;
+  background: linear-gradient(180deg, #251536, #160c26);
+  cursor: pointer;
+  text-align: left;
+}
+.editor-managed-trigger > span {
   min-width: 0;
   display: grid;
-  gap: 1px;
 }
-.editor-catalog-nav label > small {
-  color: #887594;
+.editor-managed-trigger small {
+  color: #8d7899;
   font: 7px Consolas, monospace;
-  text-transform: uppercase;
 }
-.editor-catalog-nav select {
-  min-width: 118px;
-  max-width: 170px;
+.editor-managed-trigger strong {
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.editor-catalog-nav input {
-  width: 145px;
-  box-sizing: border-box;
-  cursor: text;
+.editor-managed-trigger > i {
+  color: #b38cc3;
+  font-style: normal;
 }
-.editor-catalog-nav .editor-badge-field input {
-  width: 82px;
+.editor-managed-trigger[aria-expanded="true"] {
+  border-color: #b7558b;
+  background: #33172f;
+  box-shadow: 0 0 0 1px #b7558b44;
 }
-.editor-catalog-nav .editor-technique-summary {
-  flex: 1;
+.editor-catalog-path {
+  color: #6f5a7c;
+  font-size: 18px;
 }
-.editor-catalog-nav .editor-technique-summary input {
+.editor-managed-menu {
+  position: absolute;
+  z-index: 35;
+  top: calc(100% + 6px);
+  left: 0;
+  width: min(330px, calc(100vw - 24px));
+  overflow: hidden;
+  color: #ddd1e2;
+  border: 1px solid #6f4f7d;
+  background: #10091f;
+  box-shadow: 0 18px 48px #000c;
+}
+.editor-managed-dropdown:last-child .editor-managed-menu {
+  right: 0;
+  left: auto;
+}
+.editor-managed-list {
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 6px;
+}
+.editor-managed-list > button {
   width: 100%;
-  min-width: 130px;
+  min-height: 42px;
+  display: grid;
+  justify-items: start;
+  gap: 3px;
+  padding: 7px 9px;
+  color: #cdbfd2;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
 }
-.editor-catalog-divider {
-  align-self: stretch;
-  width: 1px;
-  margin: 0 4px;
-  background: #513869;
+.editor-managed-list > button:hover,
+.editor-managed-list > button.active {
+  color: #fff;
+  background: #351b43;
+}
+.editor-managed-list > button small {
+  color: #887594;
+  font: 8px Consolas, monospace;
+}
+.editor-managed-list > p {
+  margin: 16px;
+  color: #887594;
+  text-align: center;
+}
+.editor-managed-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  padding: 7px;
+  border-top: 1px solid #4c365b;
+  background: #0b0616;
+}
+.editor-managed-actions button,
+.editor-managed-confirm-actions button {
+  min-height: 30px;
+  padding: 5px 7px;
+  color: #d5c8da;
+  border: 1px solid #5d436b;
+  background: #1d102c;
+  cursor: pointer;
+  font-size: 9px;
+}
+.editor-managed-actions button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.editor-managed-actions button.danger,
+.editor-managed-confirm-actions button.danger {
+  color: #ffb4c9;
+  border-color: #73334f;
+  background: #351222;
+}
+.editor-managed-editor,
+.editor-managed-delete {
+  padding: 14px;
+}
+.editor-managed-editor > header {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 12px;
+}
+.editor-managed-editor > header small,
+.editor-managed-delete p {
+  color: #927f9d;
+  font-size: 9px;
+}
+.editor-managed-fields {
+  display: grid;
+  gap: 10px;
+}
+.editor-managed-fields label {
+  display: grid;
+  gap: 4px;
+}
+.editor-managed-fields label > span {
+  color: #a995b2;
+  font-size: 9px;
+}
+.editor-managed-fields input,
+.editor-managed-fields textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 7px 9px;
+  color: #fff;
+  border: 1px solid #634774;
+  background: #0b0716;
+  font: inherit;
+  font-size: 11px;
+}
+.editor-managed-fields textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+.editor-managed-fields p {
+  margin: 0;
+  color: #927f9d;
+  font-size: 9px;
+}
+.editor-managed-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 14px;
+}
+.editor-managed-confirm-actions button.primary {
+  color: #fff;
+  border-color: #a73b75;
+  background: #6f2354;
 }
 .editor-section-tabs {
   align-self: stretch;
@@ -4015,10 +4156,9 @@ footer {
   opacity: 0.4;
   cursor: wait;
 }
-.editor-catalog-nav button:disabled,
-.editor-catalog-nav input:disabled,
-.editor-catalog-nav select:disabled {
+.editor-managed-trigger:disabled {
   opacity: 0.4;
+  cursor: default;
 }
 .editor-save-state {
   display: flex;
@@ -5156,13 +5296,17 @@ footer {
   .editor-section-tabs button {
     min-width: 58px;
   }
-  .editor-workspace-nav select {
-    min-width: 86px;
-    max-width: 120px;
+  .editor-catalog-nav {
+    gap: 3px;
+    padding-right: 5px;
+    padding-left: 5px;
   }
-  .editor-workspace-nav > button:nth-of-type(2),
-  .editor-workspace-nav > button:nth-of-type(5) {
-    display: none;
+  .editor-catalog-path {
+    font-size: 12px;
+  }
+  .editor-managed-trigger {
+    padding-right: 6px;
+    padding-left: 6px;
   }
   .training-flow-editor {
     grid-template-columns: 118px minmax(0, 1fr);
