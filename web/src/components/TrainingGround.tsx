@@ -32,7 +32,10 @@ import {
   candidateWindow,
   createTrainingSession,
   currentTrainingInput,
+  expireTrainingInput,
   expectedTrainingInputTriggered,
+  failTrainingAttempt,
+  failTrainingCompletion,
   matchingTrainingCandidate,
   nextTargetFrame,
   rebuildTrainingSession,
@@ -1013,10 +1016,19 @@ export function TrainingGround({
               map,
             );
             if (!active || epoch !== simulationEpoch.current) return;
-            if (result.candidates.length === 0)
-              throw new Error(
-                `${activeTutorial!.title} 在当前触发状态下没有成功候选`,
+            if (result.candidates.length === 0) {
+              const failedSession = failTrainingAttempt(
+                beforeSession,
+                activeTutorial!,
+                0,
               );
+              applySession(failedSession);
+              setNotice(
+                `${activeTutorial!.title} 在当前状态下没有可通过的输入轨迹。`,
+              );
+              beginFailure(currentFrame);
+              return;
+            }
             candidatesRef.current = result.candidates;
             evaluationsRef.current = result.evaluations;
             setCandidates(result.candidates);
@@ -1232,6 +1244,30 @@ export function TrainingGround({
               );
             }
           }
+          if (
+            stage === "free" &&
+            activeModule &&
+            activeTutorial &&
+            outcomeRef.current === null &&
+            sessionRef.current.phase === "fuzz"
+          ) {
+            const localFrame =
+              currentFrame - (fuzzStartRef.current ?? currentFrame);
+            const expiredSession = expireTrainingInput(
+              sessionRef.current,
+              activeTutorial,
+              localFrame,
+            );
+            if (expiredSession.phase === "failed") {
+              applySession(expiredSession);
+              setNotice(
+                activeTutorial.teaching.steps[
+                  expiredSession.nextVerifiedInput
+                ]?.window_error.body ?? "错过输入窗口。",
+              );
+              beginFailure(nextFrame);
+            }
+          }
           const reachedModuleEnd =
             activeModule !== null &&
             triggerContainsPlayer(activeModule.end_trigger, after);
@@ -1254,10 +1290,38 @@ export function TrainingGround({
             return;
           }
           if (
+            stage === "free" &&
+            activeModule &&
+            activeTutorial &&
+            outcomeRef.current === null &&
+            (after.dead ||
+              (reachedModuleEnd && !pendingCompletionRef.current))
+          ) {
+            const localFrame =
+              sessionRef.current.phase === "pre_fuzz"
+                ? 0
+                : currentFrame - (fuzzStartRef.current ?? currentFrame);
+            const failedSession = failTrainingCompletion(
+              sessionRef.current,
+              activeTutorial,
+              localFrame,
+            );
+            if (failedSession.phase === "failed") {
+              applySession(failedSession);
+              setNotice(
+                after.dead
+                  ? `${activeTutorial.title} 尚未通过，角色已经死亡。`
+                  : `${activeTutorial.title} 尚未通过训练条件，不能完成本段。`,
+              );
+              beginFailure(nextFrame);
+            }
+          }
+          if (
             reachedModuleEnd &&
             activeModule &&
             stage === "free" &&
-            pendingCompletionRef.current
+            pendingCompletionRef.current &&
+            outcomeRef.current === null
           ) {
             const completion = {
               ...pendingCompletionRef.current,
@@ -1657,13 +1721,15 @@ export function TrainingGround({
                   <div>
                     <small>ATTEMPT RESULT</small>
                     <strong>
-                      {session.failure?.kind === "entry_check_failed"
-                        ? tutorial.entry.failure.title
-                        : session.failure?.kind === "input_order_mismatch"
-                          ? tutorial.teaching.steps[session.nextVerifiedInput]
-                              ?.order_error.title
-                          : tutorial.teaching.steps[session.nextVerifiedInput]
-                              ?.window_error.title}
+                      {session.failure?.kind === "completion_missed"
+                        ? "训练尚未通过"
+                        : session.failure?.kind === "entry_check_failed"
+                          ? tutorial.entry.failure.title
+                          : session.failure?.kind === "input_order_mismatch"
+                            ? tutorial.teaching.steps[session.nextVerifiedInput]
+                                ?.order_error.title
+                            : tutorial.teaching.steps[session.nextVerifiedInput]
+                                ?.window_error.title}
                     </strong>
                   </div>
                   <em>{failureTiming}</em>

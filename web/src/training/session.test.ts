@@ -6,7 +6,9 @@ import {
   candidateObjectivePoints,
   createTrainingSession,
   currentTrainingInput,
+  expireTrainingInput,
   expectedTrainingInputTriggered,
+  failTrainingCompletion,
   matchingTrainingCandidate,
   trainingEntryContextPassed,
   trainingEntryInput,
@@ -195,6 +197,46 @@ describe("training-defined entry input", () => {
       { frame: 4, values: [300], successful: true },
       { frame: 5, values: [250], successful: false },
     ]);
+  });
+
+  it("fails automatically after the final candidate window passes", () => {
+    const entered = verifyTrainingInput(
+      createTrainingSession(candidates, definition),
+      definition,
+      0,
+      ["jump"],
+    );
+    expect(expireTrainingInput(entered, definition, 4)).toBe(entered);
+    const expired = expireTrainingInput(entered, definition, 5);
+    expect(expired.phase).toBe("failed");
+    expect(expired.failure).toEqual({
+      kind: "timing_window_miss",
+      frame: 5,
+      expectedWindow: [{ from: 4, to: 4 }],
+    });
+  });
+
+  it("can fail map completion after the verified inputs succeeded", () => {
+    const entered = verifyTrainingInput(
+      createTrainingSession(candidates, definition),
+      definition,
+      0,
+      ["jump"],
+    );
+    const succeeded = verifyTrainingInput(
+      entered,
+      definition,
+      4,
+      ["grab"],
+    );
+    expect(succeeded.phase).toBe("success");
+    const failed = failTrainingCompletion(succeeded, definition, 8);
+    expect(failed.phase).toBe("failed");
+    expect(failed.failure).toEqual({
+      kind: "completion_missed",
+      frame: 8,
+      expectedWindow: [{ from: 4, to: 4 }],
+    });
   });
 
   it("does not release an assisted pause for an unrelated action", () => {
