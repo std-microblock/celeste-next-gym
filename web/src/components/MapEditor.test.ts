@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { PLAYGROUND } from "../model";
 import {
+  createEditorBrushEntity,
   createEditorEntity,
   editorEntityHitBounds,
+  entityBrushPoints,
   resizeEditorBounds,
   setEditorSpikeDirection,
   snapToGrid,
@@ -18,7 +20,7 @@ describe("map editor helpers", () => {
   it("creates simulator-ready entities from palette templates", () => {
     expect(createEditorEntity("spikes", 40, 80)).toEqual({
       kind: "spikes",
-      bounds: { x: 40, y: 80, width: 32, height: 3 },
+      bounds: { x: 40, y: 77, width: 32, height: 3 },
       direction: { x: 0, y: -1 },
       name: "spikesUp",
     });
@@ -37,7 +39,7 @@ describe("map editor helpers", () => {
       expect.objectContaining({
         name: "spikesLeft",
         direction: { x: -1, y: 0 },
-        bounds: { x: 8, y: 16, width: 3, height: 32 },
+        bounds: { x: 5, y: 16, width: 3, height: 32 },
       }),
     );
     expect(createEditorEntity("crystal-spinner", 24, 32)).toEqual({
@@ -55,21 +57,48 @@ describe("map editor helpers", () => {
       expect.objectContaining({
         name: "spikesLeft",
         direction: { x: -1, y: 0 },
-        bounds: { x: 40, y: 80, width: 3, height: 32 },
+        bounds: { x: 37, y: 80, width: 3, height: 32 },
       }),
     );
     expect(editorEntityHitBounds(spikes)).toEqual({
       x: 40,
-      y: 77,
+      y: 74,
       width: 32,
       height: 9,
     });
     expect(editorEntityHitBounds(left)).toEqual({
-      x: 37,
+      x: 34,
       y: 80,
       width: 9,
       height: 32,
     });
+  });
+
+  it("anchors upward and leftward spike colliders on the painted surface", () => {
+    const up = createEditorEntity("spikes-up", 40, 80)!;
+    const left = createEditorEntity("spikes-left", 40, 80)!;
+    expect(up.bounds.y + up.bounds.height).toBe(80);
+    expect(left.bounds.x + left.bounds.width).toBe(40);
+  });
+
+  it("fills every crossed editor grid cell with one-tile brush entities", () => {
+    expect(
+      entityBrushPoints({ x: 8, y: 16 }, { x: 40, y: 16 }, PLAYGROUND),
+    ).toEqual([
+      { x: 8, y: 16 },
+      { x: 16, y: 16 },
+      { x: 24, y: 16 },
+      { x: 32, y: 16 },
+      { x: 40, y: 16 },
+    ]);
+    expect(createEditorBrushEntity("spikes-up", 24, 80)).toEqual(
+      expect.objectContaining({
+        bounds: { x: 24, y: 77, width: 8, height: 3 },
+      }),
+    );
+    expect(createEditorBrushEntity("crystal-spinner", 24, 32, "red")).toEqual(
+      expect.objectContaining({ variant: "red" }),
+    );
   });
 
   it("creates zip movers with a movable destination node", () => {

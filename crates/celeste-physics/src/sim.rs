@@ -728,7 +728,15 @@ fn initialize_spinners(p: &mut PlayerSnapshot, map: &mut Map) {
                 collidable: true,
             });
         }
-        park_entity(&mut map.entities[entity_index]);
+        sync_spinner_entity(&mut map.entities[entity_index], &p.spinners[spinner_index]);
+    }
+}
+
+fn sync_spinner_entity(entity: &mut crate::Entity, state: &crate::SpinnerSnapshot) {
+    if state.visible && state.collidable {
+        entity.bounds = Rect::new(state.position.x - 8.0, state.position.y - 6.0, 16.0, 12.0);
+    } else {
+        park_entity(entity);
     }
 }
 
@@ -3853,12 +3861,7 @@ fn advance_spinners(p: &mut PlayerSnapshot, map: &mut Map) {
                     && (p.pos.y - state.position.y).abs() < 128.0;
             }
         }
-        let entity = &mut map.entities[entity_index];
-        if state.visible && state.collidable {
-            entity.bounds = Rect::new(state.position.x - 8.0, state.position.y - 6.0, 16.0, 12.0);
-        } else {
-            park_entity(entity);
-        }
+        sync_spinner_entity(&mut map.entities[entity_index], &state);
         p.spinners[spinner_index] = state;
     }
 }
@@ -3940,6 +3943,9 @@ fn step(
             p.pos = map.spawn;
             p.speed = Vec2::default();
             p.state = PlayerState::IntroRespawn;
+            // Player.IntroRespawnBegin creates a 0.6-second tween whose
+            // OnComplete changes StateMachine.State back to StNormal.
+            p.state_timer = 0.6;
             p.on_ground = grounded(p, map);
             p.player_on_ground = p.on_ground;
             p.player_on_ground_initialized = true;
@@ -4106,8 +4112,13 @@ fn step(
         PlayerState::TempleFall => temple_fall_update(p, map),
         PlayerState::ReflectionFall => reflection_fall_update(p, map),
         PlayerState::IntroRespawn => {
+            p.state_timer -= p.frame_delta_time;
             advance_post_player_entities(p, map, input);
             p.on_ground = grounded(p, map);
+            if p.state_timer <= 0.0 {
+                p.state_timer = 0.0;
+                p.state = PlayerState::Normal;
+            }
             return Ok(());
         }
         other => return Err(SimulationError::UnsupportedState(other)),
@@ -14714,6 +14725,57 @@ mod tests {
         assert!(!trace.states[1].dead);
         assert!(trace.states[1].spinners[0].collidable);
         assert!(trace.states[2].dead);
+    }
+
+    #[test]
+    fn visible_spinner_collision_survives_one_frame_web_simulation_segments() {
+        let player = PlayerSnapshot {
+            pos: Vec2::new(100.0, 100.0),
+            state: PlayerState::Frozen,
+            spinners: vec![crate::SpinnerSnapshot {
+                position: Vec2::new(100.0, 100.0),
+                offset: 0.0,
+                visible: true,
+                collidable: true,
+            }],
+            ..PlayerSnapshot::default()
+        };
+        let result = simulate(player, &[InputState::default()], &spinner_map(), 1).unwrap();
+        assert!(result.dead);
+    }
+
+    #[test]
+    fn intro_respawn_tween_returns_control_after_source_point_six_seconds() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            spawn: Vec2::new(32.0, 152.0),
+            solids: vec![Rect::new(0.0, 152.0, 320.0, 28.0)],
+            ..Map::default()
+        };
+        let dead = PlayerSnapshot {
+            dead: true,
+            respawn_frames: 1,
+            ..PlayerSnapshot::default()
+        };
+        let respawned = simulate(dead, &[InputState::default()], &map, 1).unwrap();
+        assert_eq!(respawned.state, PlayerState::IntroRespawn);
+        assert_eq!(respawned.state_timer, 0.6);
+
+        let intro = simulate(respawned, &[InputState::default(); 35], &map, 35).unwrap();
+        assert_eq!(intro.state, PlayerState::IntroRespawn);
+        let ready = simulate(intro, &[InputState::default()], &map, 1).unwrap();
+        assert_eq!(ready.state, PlayerState::Normal);
+        let moving = simulate(
+            ready,
+            &[InputState {
+                move_x: 1,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert!(moving.speed.x > 0.0);
     }
 
     #[test]

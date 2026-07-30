@@ -111,6 +111,7 @@ interface EntityTemplate {
 interface DragState {
   kind:
     | "create-solid"
+    | "paint-entities"
     | "move-selection"
     | "resize-selection"
     | "move-node"
@@ -121,6 +122,10 @@ interface DragState {
   selection?: EditorSelection;
   corner?: ResizeCorner;
   nodeIndex?: number;
+  templateId?: string;
+  lastPaintPoint?: { x: number; y: number };
+  paintedEntities?: MapEntity[];
+  paintedKeys?: Set<string>;
 }
 
 const ENTITY_TEMPLATES: readonly EntityTemplate[] = [
@@ -314,9 +319,19 @@ export function createEditorEntity(
     ENTITY_TEMPLATES.find((candidate) => candidate.id === templateIdOrKind) ??
     ENTITY_TEMPLATES.find((candidate) => candidate.kind === templateIdOrKind);
   if (!template) return null;
+  const bounds = {
+    x:
+      x +
+      (template.kind === "spikes" && template.direction?.x === -1 ? -3 : 0),
+    y:
+      y +
+      (template.kind === "spikes" && template.direction?.y === -1 ? -3 : 0),
+    width: template.width,
+    height: template.height,
+  };
   return {
     kind: template.kind,
-    bounds: { x, y, width: template.width, height: template.height },
+    bounds,
     direction: template.direction ? { ...template.direction } : { x: 0, y: 0 },
     ...(template.nodes
       ? {
@@ -328,6 +343,82 @@ export function createEditorEntity(
       : {}),
     name: template.name,
   };
+}
+
+export function createEditorBrushEntity(
+  templateId: string,
+  x: number,
+  y: number,
+  spinnerVariant = "theme",
+): MapEntity | null {
+  const entity = createEditorEntity(templateId, x, y);
+  if (!entity) return null;
+  if (entity.kind === "spikes") {
+    entity.bounds = {
+      ...entity.bounds,
+      width: entity.direction.y === 0 ? 3 : GRID_SIZE,
+      height: entity.direction.y === 0 ? GRID_SIZE : 3,
+    };
+  }
+  if (entity.kind === "crystal_static_spinner" && spinnerVariant !== "theme") {
+    entity.variant = spinnerVariant;
+  }
+  return entity;
+}
+
+export function entityBrushPoints(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  map: GymMap,
+): Array<{ x: number; y: number }> {
+  let x0 = Math.round(
+    (snapToGrid(from.x, map.bounds.x) - map.bounds.x) / GRID_SIZE,
+  );
+  let y0 = Math.round(
+    (snapToGrid(from.y, map.bounds.y) - map.bounds.y) / GRID_SIZE,
+  );
+  const x1 = Math.round(
+    (snapToGrid(to.x, map.bounds.x) - map.bounds.x) / GRID_SIZE,
+  );
+  const y1 = Math.round(
+    (snapToGrid(to.y, map.bounds.y) - map.bounds.y) / GRID_SIZE,
+  );
+  const points: Array<{ x: number; y: number }> = [];
+  const dx = Math.abs(x1 - x0);
+  const sx = x0 < x1 ? 1 : -1;
+  const dy = -Math.abs(y1 - y0);
+  const sy = y0 < y1 ? 1 : -1;
+  let error = dx + dy;
+
+  while (true) {
+    points.push({
+      x: map.bounds.x + x0 * GRID_SIZE,
+      y: map.bounds.y + y0 * GRID_SIZE,
+    });
+    if (x0 === x1 && y0 === y1) break;
+    const twiceError = error * 2;
+    if (twiceError >= dy) {
+      error += dy;
+      x0 += sx;
+    }
+    if (twiceError <= dx) {
+      error += dx;
+      y0 += sy;
+    }
+  }
+  return points;
+}
+
+function entityPaintKey(entity: MapEntity): string {
+  return [
+    entity.kind,
+    entity.bounds.x,
+    entity.bounds.y,
+    entity.bounds.width,
+    entity.bounds.height,
+    entity.direction.x,
+    entity.direction.y,
+  ].join(":");
 }
 
 export function setEditorSpikeDirection(
@@ -343,12 +434,15 @@ export function setEditorSpikeDirection(
   const wasHorizontal = Math.abs(entity.direction.y) > 0;
   const willBeHorizontal = Math.abs(direction.y) > 0;
   const length = wasHorizontal ? entity.bounds.width : entity.bounds.height;
+  const anchorX = entity.bounds.x + (entity.direction.x < 0 ? 3 : 0);
+  const anchorY = entity.bounds.y + (entity.direction.y < 0 ? 3 : 0);
   return {
     ...entity,
     name: config.name,
     direction: { ...direction },
     bounds: {
-      ...entity.bounds,
+      x: anchorX + (direction.x < 0 ? -3 : 0),
+      y: anchorY + (direction.y < 0 ? -3 : 0),
       width: willBeHorizontal ? length : 3,
       height: willBeHorizontal ? 3 : length,
     },
@@ -522,6 +616,7 @@ export function MapEditor({
   const [trajectoryRecording, setTrajectoryRecording] = useState(false);
   const [trajectoryFrame, setTrajectoryFrame] = useState(0);
   const [showAllTrajectory, setShowAllTrajectory] = useState(false);
+  const [spinnerBrushVariant, setSpinnerBrushVariant] = useState("theme");
   const capturedThroughFrame = useRef<number | null>(null);
   const drag = useRef<DragState | null>(null);
   const undoStack = useRef<GymMap[]>([]);
@@ -688,13 +783,14 @@ export function MapEditor({
     event: ReactPointerEvent<SVGRectElement>,
     nextSelection: EditorSelection,
   ) => {
-    event.stopPropagation();
     if (tool === "erase") {
+      event.stopPropagation();
       rememberAndChange(deleteSelection(map, nextSelection));
       setSelection(null);
       return;
     }
     if (tool !== "select") return;
+    event.stopPropagation();
     const svg = event.currentTarget.ownerSVGElement;
     if (!svg) return;
     drag.current = {
@@ -763,6 +859,7 @@ export function MapEditor({
 
   const pointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
     if (
+      !tool.startsWith("entity:") &&
       event.target !== event.currentTarget &&
       !(event.target as SVGElement).matches?.(
         '[data-editor-background="true"]',
@@ -802,15 +899,33 @@ export function MapEditor({
         },
       });
     } else if (tool.startsWith("entity:")) {
-      const entity = createEditorEntity(
-        tool.slice("entity:".length),
+      const templateId = tool.slice("entity:".length);
+      drag.current = {
+        kind: "paint-entities",
+        start: point,
+        originalMap: structuredClone(map),
+        templateId,
+        paintedEntities: [],
+        paintedKeys: new Set(map.entities.map(entityPaintKey)),
+      };
+      const entity = createEditorBrushEntity(
+        templateId,
         snapToGrid(point.x, map.bounds.x),
         snapToGrid(point.y, map.bounds.y),
+        spinnerBrushVariant,
       );
-      if (!entity) return;
-      rememberAndChange({ ...map, entities: [...map.entities, entity] });
-      setSelection({ type: "entity", index: map.entities.length });
-      setTool("select");
+      if (!entity) {
+        drag.current = null;
+        return;
+      }
+      drag.current.lastPaintPoint = point;
+      const key = entityPaintKey(entity);
+      if (!drag.current.paintedKeys?.has(key)) {
+        drag.current.paintedEntities = [entity];
+        drag.current.paintedKeys?.add(key);
+        onChange({ ...map, entities: [...map.entities, entity] });
+      }
+      event.currentTarget.setPointerCapture(event.pointerId);
     }
   };
 
@@ -847,6 +962,39 @@ export function MapEditor({
     );
     if (currentDrag.kind === "create-solid") {
       setDraft(normalizedRect(currentDrag.start, point, map));
+      return;
+    }
+    if (
+      currentDrag.kind === "paint-entities" &&
+      currentDrag.templateId &&
+      currentDrag.lastPaintPoint &&
+      currentDrag.paintedEntities &&
+      currentDrag.paintedKeys
+    ) {
+      const painted = [...currentDrag.paintedEntities];
+      let changed = false;
+      for (const anchor of entityBrushPoints(currentDrag.lastPaintPoint, point, map)) {
+        const entity = createEditorBrushEntity(
+          currentDrag.templateId,
+          anchor.x,
+          anchor.y,
+          spinnerBrushVariant,
+        );
+        if (!entity) continue;
+        const key = entityPaintKey(entity);
+        if (currentDrag.paintedKeys.has(key)) continue;
+        currentDrag.paintedKeys.add(key);
+        painted.push(entity);
+        changed = true;
+      }
+      currentDrag.lastPaintPoint = point;
+      if (changed) {
+        currentDrag.paintedEntities = painted;
+        onChange({
+          ...currentDrag.originalMap,
+          entities: [...currentDrag.originalMap.entities, ...painted],
+        });
+      }
       return;
     }
     const originalBounds = selectionBounds(
@@ -916,6 +1064,8 @@ export function MapEditor({
       rememberAndChange({ ...map, solids: [...map.solids, draft] });
       setSelection({ type: "solid", index: map.solids.length });
       setTool("select");
+    } else if (currentDrag.kind === "paint-entities") {
+      finishContinuousChange(currentDrag.originalMap);
     } else if (
       currentDrag.kind === "move-selection" ||
       currentDrag.kind === "resize-selection" ||
@@ -984,6 +1134,11 @@ export function MapEditor({
         event.target.matches("input, textarea, select, button")
       )
         return;
+      if (experiencing && event.code === "KeyR") {
+        event.preventDefault();
+        onResetExperience();
+        return;
+      }
       if (event.key === "Escape") {
         setSelection(null);
         return;
@@ -996,7 +1151,7 @@ export function MapEditor({
     };
     window.addEventListener("keydown", keydown);
     return () => window.removeEventListener("keydown", keydown);
-  }, [map, selection]);
+  }, [experiencing, map, onResetExperience, selection]);
 
   return (
     <main className={`map-editor ${experiencing ? "experiencing" : ""}`}>
@@ -1045,6 +1200,27 @@ export function MapEditor({
               );
             })}
           </div>
+          {tool === "entity:crystal-spinner" && (
+            <div className="editor-option-group">
+              <small>圆刺画笔外观</small>
+              <div className="editor-option-buttons spinner-variants">
+                {SPINNER_VARIANTS.map((option) => (
+                  <button
+                    key={option.id}
+                    className={spinnerBrushVariant === option.id ? "active" : ""}
+                    onClick={() => setSpinnerBrushVariant(option.id)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {tool.startsWith("entity:") && (
+            <small className="editor-tool-hint">
+              按住左键拖动可连续铺设，松开后仍保留当前画笔。
+            </small>
+          )}
         </div>
         <div className="editor-history" data-revision={historyRevision}>
           <button onClick={undo} disabled={undoStack.current.length === 0}>
@@ -1444,13 +1620,14 @@ export function MapEditor({
                           ? "active"
                           : ""
                       }
-                      onClick={() =>
+                      onClick={() => {
+                        setSpinnerBrushVariant(option.id);
                         updateSelectedEntity((entity) => ({
                           ...entity,
                           variant:
                             option.id === "theme" ? undefined : option.id,
-                        }))
-                      }
+                        }));
+                      }}
                     >
                       {option.label}
                     </button>

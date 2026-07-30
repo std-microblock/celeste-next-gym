@@ -221,6 +221,60 @@ describe("MapEditor interactions", () => {
     ).toBeInTheDocument();
   });
 
+  it("paints a continuous row of lethal, surface-aligned spikes while dragging", () => {
+    const { container, onChange } = editor();
+    fireEvent.click(within(container).getByRole("button", { name: "上刺" }));
+    const overlay = container.querySelector(".map-editor-overlay")!;
+    const background = container.querySelector(".editor-map-hitarea")!;
+    fireEvent.pointerDown(background, {
+      clientX: 80,
+      clientY: 304,
+      pointerId: 7,
+    });
+    fireEvent.pointerMove(overlay, {
+      clientX: 144,
+      clientY: 304,
+      pointerId: 7,
+    });
+    fireEvent.pointerUp(overlay, { pointerId: 7 });
+
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        entities: [40, 48, 56, 64, 72].map((x) =>
+          expect.objectContaining({
+            kind: "spikes",
+            bounds: { x, y: 149, width: 8, height: 3 },
+            direction: { x: 0, y: -1 },
+          }),
+        ),
+      }),
+    );
+    expect(
+      within(container).getByText("按住左键拖动可连续铺设，松开后仍保留当前画笔。"),
+    ).toBeInTheDocument();
+  });
+
+  it("resets a dead real-time editor run immediately with R", () => {
+    const map = createBlankGymMap();
+    const onResetExperience = vi.fn();
+    const view = render(
+      <MapEditor
+        map={map}
+        state={{ ...createInitialState(map), dead: true, respawn_frames: 80 }}
+        frame={12}
+        theme={VISUAL_THEMES[0]}
+        experiencing
+        ready
+        onChange={vi.fn()}
+        onExperienceChange={vi.fn()}
+        onResetExperience={onResetExperience}
+      />,
+    );
+    fireEvent.keyDown(window, { code: "KeyR", key: "r" });
+    expect(onResetExperience).toHaveBeenCalledTimes(1);
+    view.unmount();
+  });
+
   it("records, scrubs, and expands the complete player trajectory", async () => {
     const map = createBlankGymMap();
     const first = createInitialState(map);
