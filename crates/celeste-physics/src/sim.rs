@@ -4087,6 +4087,7 @@ fn step(
     }
 
     let was_pickup = p.state == PlayerState::Pickup;
+    let was_dream_dash = p.state == PlayerState::DreamDash;
     match p.state {
         PlayerState::Normal => normal_update(p, input, map, was_on_ground),
         PlayerState::Dash => dash_update(p, input, map),
@@ -4110,6 +4111,15 @@ fn step(
             return Ok(());
         }
         other => return Err(SimulationError::UnsupportedState(other)),
+    }
+
+    // StateMachine.Update applies DreamDashUpdate's returned state
+    // immediately, including DreamDashEnd, before Player.Update performs its
+    // collider restoration and ordinary MoveH/MoveV pass. Keeping this here
+    // preserves the horizontal-exit jump grace and therefore the duck
+    // collider for the exit frame.
+    if was_dream_dash {
+        try_end_dream_dash(p, map, input);
     }
 
     // PickupCoroutine observes the tween before Tween.Update. The pickup
@@ -4884,6 +4894,84 @@ fn dream_dash_update(p: &mut PlayerSnapshot) {
             p.speed.y * p.frame_delta_time,
         ),
     );
+}
+
+fn try_end_dream_dash(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
+    if p.state != PlayerState::DreamDash
+        || map.dream_block_at(current_player_rect(p, p.pos.x, p.pos.y))
+        || p.dream_dash_can_end_timer > 0.0
+    {
+        return;
+    }
+
+    let horizontal_exit = p.dash_dir.x != 0.0;
+    let dream_jump = input.jump_pressed && horizontal_exit;
+    if !dream_jump && (p.dash_dir.y >= 0.0 || horizontal_exit) {
+        // Celeste 1.4 pulls a horizontal exit five pixels back toward the
+        // DreamBlock before its two-sided ClimbCheck. DreamDash is still the
+        // active state here, so this is the source's naive MoveHExact
+        // correction rather than normal solid movement.
+        if p.dash_dir.x > 0.0 && map.solid_at(current_player_rect(p, p.pos.x - 5.0, p.pos.y)) {
+            dream_dash_exit_move_h_exact(p, map, -5);
+        } else if p.dash_dir.x < 0.0 && map.solid_at(current_player_rect(p, p.pos.x + 5.0, p.pos.y))
+        {
+            dream_dash_exit_move_h_exact(p, map, 5);
+        }
+    }
+    let wall = wall_dir(p, map);
+    let dream_grab = input.grab_held
+        && (p.dash_dir.y >= 0.0 || horizontal_exit)
+        && ((input.move_x == 1 && wall == 1) || (input.move_x == -1 && wall == -1));
+
+    if dream_jump {
+        // DreamDashUpdate calls Jump before the state transition, then
+        // DreamDashEnd restores horizontal-exit grace. That callback ordering
+        // is why a buffered Dream Jump can jump a second time.
+        p.state = PlayerState::Normal;
+        p.jump_buffer_timer = 0.0;
+        p.speed.y = JUMP_SPEED;
+        p.speed.x += input.move_x as f32 * JUMP_H_BOOST;
+        p.auto_jump = false;
+        p.dash_attack_timer = 0.0;
+        p.wall_slide_timer = WALL_SLIDE_TIME;
+        p.wall_boost_timer = 0.0;
+        p.var_jump_speed = p.speed.y;
+        p.var_jump_timer = VAR_JUMP_TIME;
+    } else if dream_grab {
+        p.state = PlayerState::Climb;
+        p.facing = wall > 0;
+        p.auto_jump = false;
+        p.speed.x = 0.0;
+        p.speed.y *= 0.2;
+        p.wall_slide_timer = WALL_SLIDE_TIME;
+        p.climb_no_move_timer = 0.1;
+        p.wall_boost_timer = 0.0;
+    } else {
+        p.state = PlayerState::Normal;
+        p.auto_jump = true;
+        p.auto_jump_timer = 0.0;
+    }
+    p.jump_grace_timer = if horizontal_exit { JUMP_GRACE } else { 0.0 };
+    p.dashes = p.dashes.max(1);
+    p.stamina = 110.0;
+    p.dash_attack_timer = 0.0;
+    p.freeze_timer = 0.05;
+}
+
+fn dream_dash_exit_move_h_exact(p: &mut PlayerSnapshot, map: &Map, amount: i32) {
+    let sign = amount.signum();
+    for _ in 0..amount.unsigned_abs() {
+        let next_x = p.pos.x + sign as f32;
+        if map.solid_at(current_player_rect(p, next_x, p.pos.y)) {
+            // Actor.MoveHExact clears the shared movement counter even when
+            // the very first pixel collides. The DreamBlock itself is still a
+            // Solid during DreamDashEnd, so this reset affects the ordinary
+            // movement rounding later on the same exit frame.
+            p.movement_remainder.x = 0.0;
+            break;
+        }
+        p.pos.x = next_x;
+    }
 }
 
 fn boost_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
@@ -5681,72 +5769,6 @@ fn interact(
         return;
     }
     if p.state == PlayerState::DreamDash {
-        if !map.dream_block_at(current_player_rect(p, p.pos.x, p.pos.y))
-            && p.dream_dash_can_end_timer <= 0.0
-        {
-            let horizontal_exit = p.dash_dir.x != 0.0;
-            let dream_jump = input.jump_pressed && horizontal_exit;
-            if !dream_jump && (p.dash_dir.y >= 0.0 || horizontal_exit) {
-                // Celeste 1.4 pulls a horizontal exit five pixels back toward
-                // the DreamBlock before its two-sided ClimbCheck. DreamDash is
-                // still the active state here, so this is the source's naive
-                // MoveHExact correction rather than normal solid movement.
-                if p.dash_dir.x > 0.0
-                    && map.non_dream_solid_at(current_player_rect(p, p.pos.x - 5.0, p.pos.y))
-                {
-                    p.pos.x -= 5.0;
-                } else if p.dash_dir.x < 0.0
-                    && map.non_dream_solid_at(current_player_rect(p, p.pos.x + 5.0, p.pos.y))
-                {
-                    p.pos.x += 5.0;
-                }
-            }
-            let wall = wall_dir(p, map);
-            let dream_grab = input.grab_held
-                && (p.dash_dir.y >= 0.0 || horizontal_exit)
-                && ((input.move_x == 1 && wall == 1) || (input.move_x == -1 && wall == -1));
-
-            if dream_jump {
-                // DreamDashUpdate calls Jump before the state transition, then
-                // DreamDashEnd restores horizontal-exit grace. That callback
-                // ordering is why a buffered Dream Jump can jump a second time.
-                p.state = PlayerState::Normal;
-                p.jump_buffer_timer = 0.0;
-                p.speed.y = JUMP_SPEED;
-                p.speed.x += input.move_x as f32 * JUMP_H_BOOST;
-                p.auto_jump = false;
-                p.dash_attack_timer = 0.0;
-                p.wall_slide_timer = WALL_SLIDE_TIME;
-                p.wall_boost_timer = 0.0;
-                p.var_jump_speed = p.speed.y;
-                p.var_jump_timer = VAR_JUMP_TIME;
-            } else if dream_grab {
-                p.state = PlayerState::Climb;
-                p.facing = wall > 0;
-                p.auto_jump = false;
-                p.speed.x = 0.0;
-                p.speed.y *= 0.2;
-                p.wall_slide_timer = WALL_SLIDE_TIME;
-                p.climb_no_move_timer = 0.1;
-                p.wall_boost_timer = 0.0;
-            } else {
-                p.state = PlayerState::Normal;
-                p.auto_jump = true;
-                p.auto_jump_timer = 0.0;
-            }
-            p.jump_grace_timer = if horizontal_exit { JUMP_GRACE } else { 0.0 };
-            p.dashes = p.dashes.max(1);
-            p.stamina = 110.0;
-            p.dash_attack_timer = 0.0;
-            p.freeze_timer = 0.05;
-
-            // DreamDashUpdate performs its naive 240 px/s move before
-            // returning the next state. Player.Update then performs the
-            // ordinary movement pass in that resulting state on the same
-            // frame, which is visible as a second displacement in Everest.
-            move_axis(p, map, true);
-            move_axis(p, map, false);
-        }
         return;
     }
     if p.state == PlayerState::Swim {
@@ -13405,6 +13427,49 @@ mod tests {
     }
 
     #[test]
+    fn grounded_diagonal_dream_exit_keeps_duck_collider_for_ordinary_movement() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            solids: vec![Rect::new(0.0, 80.0, 320.0, 100.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::DreamBlock,
+                bounds: Rect::new(73.0, 40.0, 32.0, 40.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "dreamBlock".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let diagonal_speed = DASH_SPEED * std::f32::consts::FRAC_1_SQRT_2;
+        let p = PlayerSnapshot {
+            pos: Vec2::new(72.0, 74.0),
+            speed: Vec2::new(-diagonal_speed, diagonal_speed),
+            state: PlayerState::DreamDash,
+            dash_dir: Vec2::new(
+                -std::f32::consts::FRAC_1_SQRT_2,
+                std::f32::consts::FRAC_1_SQRT_2,
+            ),
+            ducking: true,
+            dream_dash_can_end_timer: 0.0,
+            movement_remainder: Vec2::new(0.2, -0.03),
+            ..PlayerSnapshot::default()
+        };
+        let p = simulate(p, &[InputState::default()], &map, 1).unwrap();
+
+        assert_eq!(p.state, PlayerState::Normal);
+        assert!(p.ducking);
+        assert_eq!(p.jump_grace_timer, JUMP_GRACE);
+        assert_eq!(p.pos, Vec2::new(66.0, 80.0));
+        assert!(
+            (p.movement_remainder.x - 0.171_567_44).abs() < 0.000_001,
+            "exit remainder was {:?}",
+            p.movement_remainder
+        );
+    }
+
+    #[test]
     fn jump_buffer_survives_dream_exit_freeze_for_the_second_jump() {
         let p = PlayerSnapshot {
             pos: Vec2::new(825.0, -52.0),
@@ -13522,7 +13587,8 @@ mod tests {
         )
         .unwrap();
         assert_eq!(p.state, PlayerState::Climb);
-        assert_eq!(p.pos, Vec2::new(71.0, 64.0));
+        assert_eq!(p.pos, Vec2::new(76.0, 64.0));
+        assert_eq!(p.movement_remainder.x, 0.0);
         assert!(!p.facing);
     }
 

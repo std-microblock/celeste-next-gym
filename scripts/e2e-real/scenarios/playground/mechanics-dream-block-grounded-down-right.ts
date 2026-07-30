@@ -13,7 +13,7 @@ export const scenario = defineScenario({
   mapParts,
   name: "mechanics-dream-block-grounded-down-right",
   initial: { pos: [250, 432], speed: [0, 0], can_dream_dash: true },
-  inputs: inputFrames(10, (frame) => ({
+  inputs: inputFrames(20, (frame) => ({
     move_x: 1,
     move_y: 1,
     jump_pressed: false,
