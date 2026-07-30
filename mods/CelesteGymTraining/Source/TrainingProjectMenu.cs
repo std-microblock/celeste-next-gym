@@ -1,5 +1,4 @@
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Input;
 using Monocle;
 
 namespace Celeste.Mod.CelesteGymTraining;
@@ -22,6 +21,7 @@ public sealed class TrainingProjectMenu : Entity {
 
     private readonly Level level;
     private readonly TrainingMenuModel model;
+    private readonly TrainingMenuInput menuInput = new();
     private int firstVisibleColumn;
 
     public TrainingProjectMenu(Level level, IReadOnlyList<TrainingProjectOption> projects) {
@@ -39,15 +39,16 @@ public sealed class TrainingProjectMenu : Entity {
 
     public override void Removed(Scene scene) {
         level.Paused = false;
+        menuInput.Deregister();
         base.Removed(scene);
     }
 
     public override void Update() {
         base.Update();
-        bool up = Input.MenuUp.Pressed || MInput.Keyboard.Pressed(Keys.W) || MInput.Keyboard.Pressed(Keys.Up);
-        bool down = Input.MenuDown.Pressed || MInput.Keyboard.Pressed(Keys.S) || MInput.Keyboard.Pressed(Keys.Down);
-        bool left = Input.MenuLeft.Pressed || MInput.Keyboard.Pressed(Keys.A) || MInput.Keyboard.Pressed(Keys.Left);
-        bool right = Input.MenuRight.Pressed || MInput.Keyboard.Pressed(Keys.D) || MInput.Keyboard.Pressed(Keys.Right);
+        bool up = menuInput.Up.Pressed;
+        bool down = menuInput.Down.Pressed;
+        bool left = menuInput.Left.Pressed;
+        bool right = menuInput.Right.Pressed;
 
         if (up) model.MoveUp();
         else if (down) model.MoveDown();
@@ -61,10 +62,9 @@ public sealed class TrainingProjectMenu : Entity {
 
         UpdateMouse();
 
-        if (Input.MenuCancel.Pressed || MInput.Keyboard.Pressed(Keys.Escape)) {
+        if (Input.MenuCancel.Pressed) {
             Back();
-        } else if (Input.MenuConfirm.Pressed || MInput.Keyboard.Pressed(Keys.Enter)
-            || MInput.Keyboard.Pressed(Keys.Space) || MInput.Keyboard.Pressed(Keys.L)) {
+        } else if (Input.MenuConfirm.Pressed) {
             ActivateFocused();
         }
     }
@@ -140,7 +140,7 @@ public sealed class TrainingProjectMenu : Entity {
         RenderScrollAffordance();
         RenderButton(StartBounds, "开始训练", model.Focus == TrainingMenuFocus.Start, Primary);
         RenderButton(BackBounds, "返回", model.Focus == TrainingMenuFocus.Back, Card);
-        ChineseText.Draw("WASD / 方向键选择    鼠标滚轮浏览    L / Enter 确认    Esc 返回", new Vector2(120f, 1016f), new Vector2(0f, 1f), 0.42f, new Color(173, 188, 213), 2f);
+        ChineseText.Draw("玩家移动键选择    鼠标滚轮浏览    确认键确认    取消键返回", new Vector2(120f, 1016f), new Vector2(0f, 1f), 0.42f, new Color(173, 188, 213), 2f);
         RenderMouseCursor(MousePositionInUi());
     }
 
@@ -157,7 +157,7 @@ public sealed class TrainingProjectMenu : Entity {
         ChineseText.Draw(project.Difficulty, new Vector2(bounds.X + 61f, bounds.Y + 193f), new Vector2(0.5f, 0.5f), 0.38f, Color.White, 2f);
         ChineseText.Draw(project.Title, new Vector2(bounds.X + 20f, bounds.Y + 218f), Vector2.Zero, 0.58f, Color.White, 3f);
         ChineseText.Draw(project.Summary, new Vector2(bounds.X + 21f, bounds.Y + 258f), new Vector2(0f, 0.5f), 0.32f, new Color(190, 205, 228), 2f);
-        if (focused) ChineseText.Draw("L / Enter 开始", new Vector2(bounds.Right - 20f, bounds.Bottom - 18f), Vector2.One, 0.34f, Highlight, 2f);
+        if (focused) ChineseText.Draw("确认键开始", new Vector2(bounds.Right - 20f, bounds.Bottom - 18f), Vector2.One, 0.34f, Highlight, 2f);
     }
 
     private void RenderScrollAffordance() {

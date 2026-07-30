@@ -1,5 +1,4 @@
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Input;
 using Monocle;
 using System.Text.Json;
 using Celeste.Mod.Entities;
@@ -42,6 +41,7 @@ public sealed class TrainingRuntimeController : Entity {
 
     private readonly Level level;
     private readonly TrainingRuntimeProject project;
+    private readonly TrainingMenuInput menuInput = new();
     private readonly HashSet<string> completed = new(StringComparer.Ordinal);
     private readonly Dictionary<string, TrainingFuzzResult> fuzzByLesson = new(StringComparer.Ordinal);
     private readonly TimeRateModifier timeRateModifier = new(1f, true);
@@ -118,6 +118,7 @@ public sealed class TrainingRuntimeController : Entity {
     public override void Removed(Scene scene) {
         RestoreDemoInput();
         RestoreTimeRate();
+        menuInput.Deregister();
         base.Removed(scene);
     }
 
@@ -183,7 +184,7 @@ public sealed class TrainingRuntimeController : Entity {
             UpdatePassiveAttempt();
             return;
         }
-        if (MInput.Keyboard.Pressed(Keys.Back)) {
+        if (Input.MenuCancel.Pressed) {
             CloseLesson();
             return;
         }
@@ -195,9 +196,7 @@ public sealed class TrainingRuntimeController : Entity {
         if (nearbyLessonId is null) return;
         Rectangle launch = LaunchBoundsAt((int) hudX);
         bool hovered = launch.Contains(MousePointInUi());
-        if (MInput.Keyboard.Pressed(Keys.D4)
-            || MInput.Keyboard.Pressed(Keys.NumPad4)
-            || hovered && MInput.Mouse.PressedLeftButton) {
+        if (Input.MenuConfirm.Pressed || hovered && MInput.Mouse.PressedLeftButton) {
             BeginLesson(nearbyLessonId);
         }
     }
@@ -221,7 +220,7 @@ public sealed class TrainingRuntimeController : Entity {
 
     private void UpdatePassiveAttempt() {
         if (lesson is null || fuzz is null) return;
-        if (MInput.Keyboard.Pressed(Keys.D4) || MInput.Keyboard.Pressed(Keys.NumPad4)
+        if (Input.MenuConfirm.Pressed
             || LaunchBoundsAt((int) hudX).Contains(MousePointInUi()) && MInput.Mouse.PressedLeftButton) {
             BeginLesson(lesson.Id);
             return;
@@ -304,8 +303,8 @@ public sealed class TrainingRuntimeController : Entity {
     private void UpdateDemo() {
         if (lesson is null || fuzz is null) return;
         if (!demoPaused) return;
-        bool previous = Input.MenuLeft.Pressed || MInput.Keyboard.Pressed(Keys.A) || MInput.Keyboard.Pressed(Keys.Left);
-        bool next = Input.MenuRight.Pressed || MInput.Keyboard.Pressed(Keys.D) || MInput.Keyboard.Pressed(Keys.Right);
+        bool previous = menuInput.Left.Pressed;
+        bool next = menuInput.Right.Pressed;
         if (previous) demoControlFocus = 0;
         else if (next) demoControlFocus = 1;
         Point mouse = MousePointInUi();
@@ -315,7 +314,7 @@ public sealed class TrainingRuntimeController : Entity {
             if (MInput.Mouse.PressedLeftButton) ActivateDemoControl(index);
             return;
         }
-        if (Input.MenuConfirm.Pressed || MInput.Keyboard.Pressed(Keys.Enter) || MInput.Keyboard.Pressed(Keys.L)) {
+        if (Input.MenuConfirm.Pressed) {
             ActivateDemoControl(demoControlFocus);
         }
     }
@@ -471,12 +470,8 @@ public sealed class TrainingRuntimeController : Entity {
     private void UpdatePanel() {
         string[] buttons = PanelButtons;
         if (buttons.Length == 0) return;
-        bool previous = Input.MenuLeft.Pressed || Input.MenuUp.Pressed
-            || MInput.Keyboard.Pressed(Keys.A) || MInput.Keyboard.Pressed(Keys.W)
-            || MInput.Keyboard.Pressed(Keys.Left) || MInput.Keyboard.Pressed(Keys.Up);
-        bool next = Input.MenuRight.Pressed || Input.MenuDown.Pressed
-            || MInput.Keyboard.Pressed(Keys.D) || MInput.Keyboard.Pressed(Keys.S)
-            || MInput.Keyboard.Pressed(Keys.Right) || MInput.Keyboard.Pressed(Keys.Down);
+        bool previous = menuInput.Left.Pressed || menuInput.Up.Pressed;
+        bool next = menuInput.Right.Pressed || menuInput.Down.Pressed;
         if (previous) panelFocus = (panelFocus - 1 + buttons.Length) % buttons.Length;
         else if (next) panelFocus = (panelFocus + 1) % buttons.Length;
 
@@ -487,7 +482,7 @@ public sealed class TrainingRuntimeController : Entity {
             if (MInput.Mouse.PressedLeftButton) ActivatePanelButton(index);
             return;
         }
-        if (Input.MenuConfirm.Pressed || MInput.Keyboard.Pressed(Keys.Enter) || MInput.Keyboard.Pressed(Keys.L)) {
+        if (Input.MenuConfirm.Pressed) {
             ActivatePanelButton(panelFocus);
         }
     }
@@ -695,7 +690,7 @@ public sealed class TrainingRuntimeController : Entity {
         bool hovered = launch.Contains(MousePointInUi());
         Draw.Rect(launch, hovered ? new Color(38, 72, 86, 245) : new Color(27, 42, 65, 245));
         Draw.HollowRect(launch.X, launch.Y, launch.Width, launch.Height, hovered ? Cyan : new Color(93, 112, 143));
-        ChineseText.Draw("按 4 进入三阶段主动训练", launch.Center.ToVector2(), new Vector2(0.5f), 0.31f, Cyan, 2f);
+        ChineseText.Draw("按确认键进入三阶段主动训练", launch.Center.ToVector2(), new Vector2(0.5f), 0.31f, Cyan, 2f);
     }
 
     private void RenderLessonHud() {
@@ -711,7 +706,7 @@ public sealed class TrainingRuntimeController : Entity {
         Draw.HollowRect(box.X + 20, box.Y + 106, box.Width - 40, 52, StageColor);
         ChineseText.Draw(prompt, new Vector2(box.Center.X, box.Y + 132), new Vector2(0.5f), 0.30f, Color.White, 2f);
         if (stage == TrainingLessonStage.Demo) RenderDemoControls();
-        ChineseText.Draw("Backspace 退出练习", new Vector2(box.Right - 20, box.Bottom - 12), new Vector2(1f, 1f), 0.23f, new Color(169, 187, 215), 2f);
+        ChineseText.Draw("取消键退出练习", new Vector2(box.Right - 20, box.Bottom - 12), new Vector2(1f, 1f), 0.23f, new Color(169, 187, 215), 2f);
     }
 
     private void RenderDemoControls() {
@@ -873,7 +868,7 @@ public sealed class TrainingRuntimeController : Entity {
             Draw.HollowRect(bounds.X, bounds.Y, bounds.Width, bounds.Height, focused ? Color.White : new Color(100, 116, 145));
             ChineseText.Draw(buttons[index], bounds.Center.ToVector2(), new Vector2(0.5f), 0.44f, Color.White, 3f);
         }
-        ChineseText.Draw("WASD / 方向键选择    L / Enter 确认    鼠标点击", new Vector2(960, hasAttemptResult ? 925 : 730), new Vector2(0.5f, 1f), 0.32f, new Color(173, 190, 216), 2f);
+        ChineseText.Draw("玩家移动键选择    确认键确认    鼠标点击", new Vector2(960, hasAttemptResult ? 925 : 730), new Vector2(0.5f, 1f), 0.32f, new Color(173, 190, 216), 2f);
     }
 
     private void RenderFailurePopup(float progress) {
@@ -915,7 +910,7 @@ public sealed class TrainingRuntimeController : Entity {
             Draw.HollowRect(bounds.X, bounds.Y, bounds.Width, bounds.Height, focused ? Color.White : new Color(128, 91, 112));
             ChineseText.Draw(buttons[index], bounds.Center.ToVector2(), new Vector2(0.5f), 0.38f, Color.White, 3f);
         }
-        ChineseText.Draw("WASD / 方向键选择    L / Enter 确认    鼠标点击", new Vector2(card.Center.X, card.Bottom - 18),
+        ChineseText.Draw("玩家移动键选择    确认键确认    鼠标点击", new Vector2(card.Center.X, card.Bottom - 18),
             new Vector2(0.5f, 1f), 0.25f, new Color(173, 190, 216), 2f);
     }
 
