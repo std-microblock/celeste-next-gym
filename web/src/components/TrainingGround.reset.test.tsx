@@ -192,13 +192,23 @@ describe("training R reset", () => {
     expect(wasmBehavior.entryChecks).toBeGreaterThan(0);
     expect(
       view.container.querySelector(".training-failure"),
-    ).not.toBeInTheDocument();
-    expect(view.container.querySelector(".play-button")).toHaveTextContent("Ⅱ");
+    ).toBeInTheDocument();
+    expect(view.getByRole("dialog", { name: "训练失败" })).toBeInTheDocument();
+    expect(view.getByRole("button", { name: "R 重试" })).toBeInTheDocument();
     expect(
       view.container.querySelectorAll(".training-success-toast"),
     ).toHaveLength(0);
 
-    fireEvent.click(tutorialButton);
+    fireEvent.click(view.getByRole("button", { name: "R 重试" }));
+    expect(
+      view.container.querySelector(".training-failure"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      view.getByRole("button", {
+        name: /教学：教程 1/,
+      }),
+    );
     expect(view.getByTestId("training-prompt")).toHaveTextContent("正在准备");
     for (let frame = 0; frame < 4; frame += 1) {
       await advance();
@@ -206,7 +216,8 @@ describe("training R reset", () => {
     }
     expect(view.getByTestId("training-prompt")).toHaveTextContent("演示 1/1");
     expect(view.getByRole("button", { name: "完成演示" })).toBeEnabled();
-    fireEvent.click(view.getByRole("button", { name: /3 自由练习/ }));
+    expect(view.getByRole("button", { name: "退出教学" })).toBeInTheDocument();
+    fireEvent.click(view.getByRole("button", { name: "退出教学" }));
     expect(
       view.container.querySelector(".training-lesson-stages"),
     ).not.toBeInTheDocument();

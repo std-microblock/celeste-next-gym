@@ -419,11 +419,17 @@ textarea:focus-visible {
   font-size: 8px;
 }
 
-.training-lesson-stages {
+.training-lesson-toolbar {
   display: flex;
   align-items: center;
   gap: 5px;
   margin-top: 3px;
+}
+
+.training-lesson-stages {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   color: #74678f;
   font-size: 7px;
   letter-spacing: 0.02em;
@@ -472,6 +478,20 @@ textarea:focus-visible {
 
 .training-lesson-stages .complete {
   color: #7de8bd;
+}
+
+.training-lesson-exit {
+  padding: 2px 5px;
+  border: 1px solid #5e5278;
+  color: #d9cfee;
+  background: #17102e;
+  font-size: 7px;
+  cursor: pointer;
+}
+
+.training-lesson-exit:hover {
+  border-color: #ffd166;
+  color: #ffd166;
 }
 
 .training-demo-controls {
