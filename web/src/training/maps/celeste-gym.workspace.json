@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "projects": [
+    {
+      "id": "hyper-route",
+      "map": "hyper-route.map.json",
+      "training": "hyper-route.training.json"
+    }
+  ]
+}

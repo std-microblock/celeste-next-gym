@@ -3,25 +3,12 @@ import type {
   TrainingTechnique,
   TrainingVariant,
 } from "../catalog.ts";
+import type { GymMap } from "../../model.ts";
 import { room, snapshot } from "../helpers.ts";
+import routeMapJson from "../maps/hyper-route.map.json" with { type: "json" };
 import routeTrainingJson from "../maps/hyper-route.training.json" with { type: "json" };
 
-const routeMap = room("Hyper · 山路训练", "hyper-route", {
-  width: 960,
-  spawn: { x: 32, y: 240 },
-  floorSegments: [
-    { x: 0, y: 240, width: 176, height: 30 },
-    { x: 208, y: 240, width: 752, height: 30 },
-  ],
-  entities: [
-    {
-      kind: "spikes",
-      bounds: { x: 520, y: 237, width: 64, height: 3 },
-      direction: { x: 0, y: -1 },
-      name: "spikesUp",
-    },
-  ],
-});
+const routeMap = routeMapJson as GymMap;
 
 const spikeMap = room("Hyper · 越过尖刺", "hyper-spikes", {
   width: 480,

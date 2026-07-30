@@ -8,6 +8,7 @@ import type {
   TrainingDocument,
   TrainingMapDocument,
   TrainingModule,
+  TrainingVariant,
 } from "./catalog";
 import { trainingEntryInput, verifiedInputs } from "./session";
 
@@ -173,6 +174,19 @@ export function createTrainingProject(
     trainingFileName: `${id}.training.json`,
     map: structuredClone(map),
     training: normalized,
+  };
+}
+
+export function trainingVariantFromProject(
+  project: TrainingProject,
+): TrainingVariant {
+  return {
+    id: project.id,
+    title: project.training.title,
+    summary: project.training.summary,
+    map: project.map,
+    initial: createInitialState(project.map),
+    training: project.training,
   };
 }
 

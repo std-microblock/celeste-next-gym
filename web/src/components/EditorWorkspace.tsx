@@ -126,6 +126,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
       setProjects(loaded);
       setProjectIndex(0);
       props.onMapChange(loaded[0].map);
+      setSection("training");
       setSaveState("saved");
       setNotice(
         `已打开 ${handle.name} · ${loaded.length} 个训练项目 · 自动保存开启`,
