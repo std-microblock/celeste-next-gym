@@ -163,11 +163,6 @@ public sealed class TrainingRuntimeController : Entity {
         if (successToastTimer > 0f) successToastTimer -= Engine.RawDeltaTime;
         UpdateHudPlacement();
 
-        if (lesson is not null && MInput.Keyboard.Pressed(Keys.R)) {
-            RetryCurrentStage();
-            return;
-        }
-
         if (stageTransitionTimer > 0f) {
             stageTransitionTimer -= Engine.RawDeltaTime;
             if (stageTransitionTimer <= 0f) BeginStage(pendingStage);
@@ -532,6 +527,14 @@ public sealed class TrainingRuntimeController : Entity {
                 break;
         }
     }
+
+    internal bool TryConsumeQuickRestart() {
+        if (lesson is null || !Input.QuickRestart.Pressed) return false;
+        Input.QuickRestart.ConsumeBuffer();
+        return true;
+    }
+
+    internal void RetryCurrentStageFromBinding() => RetryCurrentStage();
 
     private void RetryCurrentStage() {
         if (lesson is null || fuzz is null) return;

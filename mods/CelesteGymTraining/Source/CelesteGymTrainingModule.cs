@@ -10,6 +10,7 @@ public sealed class CelesteGymTrainingModule : EverestModule {
 
     public override void Load() {
         TrainingNative.Initialize(Path.GetDirectoryName(Metadata.DLL));
+        On.Celeste.Level.Update += LevelUpdate;
         On.Celeste.Player.Update += PlayerUpdate;
         On.Celeste.Input.GetAimVector += GetAimVector;
         Everest.Events.Level.OnLoadLevel += OnLoadLevel;
@@ -17,9 +18,18 @@ public sealed class CelesteGymTrainingModule : EverestModule {
 
     public override void Unload() {
         Everest.Events.Level.OnLoadLevel -= OnLoadLevel;
+        On.Celeste.Level.Update -= LevelUpdate;
         On.Celeste.Player.Update -= PlayerUpdate;
         On.Celeste.Input.GetAimVector -= GetAimVector;
         ChineseText.Dispose();
+    }
+
+    private static void LevelUpdate(On.Celeste.Level.orig_Update orig, Level level) {
+        TrainingRuntimeController? controller = level.Tracker.GetEntity<TrainingRuntimeController>();
+        // Level handles QuickRestart before updating entities, so reserve it here and reset after the frame.
+        bool retryTrainingStage = controller?.TryConsumeQuickRestart() == true;
+        orig(level);
+        if (retryTrainingStage && controller?.Scene == level) controller.RetryCurrentStageFromBinding();
     }
 
     private static void PlayerUpdate(On.Celeste.Player.orig_Update orig, Player player) {
@@ -44,7 +54,6 @@ public sealed class CelesteGymTrainingModule : EverestModule {
     private static void OnLoadLevel(Level level, Player.IntroTypes playerIntro, bool isFromLoader) {
         if (!string.Equals(level.Session.Area.SID, AreaSid, StringComparison.Ordinal)) return;
         ApplyPreviewDisplayMode();
-        TrainingBindings.ApplyDefaultsIfVanilla();
         if (level.Session.GetFlag(TrainingActiveFlag)) {
             if (level.Tracker.GetEntity<TrainingRuntimeController>() is null
                 && TrainingRuntimeCatalog.ForRoom(level.Session.Level) is { } project) {
