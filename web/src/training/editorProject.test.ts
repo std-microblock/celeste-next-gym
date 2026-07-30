@@ -5,7 +5,6 @@ import {
   createTrainingProject,
   openTrainingWorkspace,
   saveTrainingWorkspace,
-  trainingVariantFromProject,
   validateTrainingProject,
 } from "./editorProject";
 
@@ -62,16 +61,6 @@ describe("training editor projects", () => {
     expect(validateTrainingProject(project)).toEqual([]);
   });
 
-  it("runs a folder project from the map spawn while keeping its training script", () => {
-    const project = createTrainingProject(PLAYGROUND);
-    project.training.title = "文件夹训练图";
-    const variant = trainingVariantFromProject(project);
-    expect(variant.map).toBe(project.map);
-    expect(variant.training).toBe(project.training);
-    expect(variant.title).toBe("文件夹训练图");
-    expect(variant.initial.pos).toEqual(project.map.spawn);
-  });
-
   it("migrates older modules to a per-tutorial end region", () => {
     const project = createTrainingProject(PLAYGROUND);
     const legacy = structuredClone(project.training);
@@ -99,6 +88,7 @@ describe("training editor projects", () => {
     const memory = memoryDirectory();
     const project = createTrainingProject(PLAYGROUND);
     project.training.title = "文件夹训练图";
+    project.initialModuleId = project.training.modules[0].id;
     await saveTrainingWorkspace(memory.directory, [project]);
     expect(memory.files.has("celeste-gym.workspace.json")).toBe(true);
     expect(memory.files.has(project.mapFileName)).toBe(true);
@@ -107,5 +97,6 @@ describe("training editor projects", () => {
     expect(loaded).toHaveLength(1);
     expect(loaded[0].training).toEqual(project.training);
     expect(loaded[0].map).toEqual(project.map);
+    expect(loaded[0].initialModuleId).toBe(project.initialModuleId);
   });
 });

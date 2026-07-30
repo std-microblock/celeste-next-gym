@@ -8,7 +8,6 @@ import type {
   TrainingDocument,
   TrainingMapDocument,
   TrainingModule,
-  TrainingVariant,
 } from "./catalog";
 import { trainingEntryInput, verifiedInputs } from "./session";
 
@@ -16,13 +15,19 @@ export interface TrainingProject {
   id: string;
   mapFileName: string;
   trainingFileName: string;
+  initialModuleId?: string;
   map: GymMap;
   training: TrainingMapDocument;
 }
 
 export interface TrainingWorkspaceManifest {
   version: 1;
-  projects: Array<{ id: string; map: string; training: string }>;
+  projects: Array<{
+    id: string;
+    map: string;
+    training: string;
+    initial_module?: string;
+  }>;
 }
 
 export interface ProjectValidationIssue {
@@ -174,19 +179,6 @@ export function createTrainingProject(
     trainingFileName: `${id}.training.json`,
     map: structuredClone(map),
     training: normalized,
-  };
-}
-
-export function trainingVariantFromProject(
-  project: TrainingProject,
-): TrainingVariant {
-  return {
-    id: project.id,
-    title: project.training.title,
-    summary: project.training.summary,
-    map: project.map,
-    initial: createInitialState(project.map),
-    training: project.training,
   };
 }
 
@@ -400,6 +392,7 @@ export async function openTrainingWorkspace(
           id: entry.id,
           mapFileName: entry.map,
           trainingFileName: entry.training,
+          initialModuleId: entry.initial_module,
           map,
           training: normalizeTrainingDocument(map, training),
         };
@@ -448,6 +441,9 @@ export async function saveTrainingWorkspace(
       id: project.id,
       map: project.mapFileName,
       training: project.trainingFileName,
+      ...(project.initialModuleId
+        ? { initial_module: project.initialModuleId }
+        : {}),
     })),
   };
   for (const project of projects) {

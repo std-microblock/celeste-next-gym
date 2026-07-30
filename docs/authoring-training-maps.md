@@ -1,10 +1,10 @@
 # 教程地图制作手册
 
-本文说明 Web 训练模式的地图驱动格式、不可见 Trigger 的运行顺序、教程/Fuzz 脚本全部字段，以及一张教程地图从编写到验证的流程。当前可运行示例工作区是 [`web/src/training/maps`](../web/src/training/maps)，其中 `celeste-gym.workspace.json` 同时关联 [`hyper-route.map.json`](../web/src/training/maps/hyper-route.map.json) 和 [`hyper-route.training.json`](../web/src/training/maps/hyper-route.training.json)。Web 训练页与地图编辑器的“打开文件夹”都读取这套格式。
+本文说明 Web 训练模式的地图驱动格式、不可见 Trigger 的运行顺序、教程/Fuzz 脚本全部字段，以及一张教程地图从编写到验证的流程。当前可运行示例工作区是 [`web/src/training/maps`](../web/src/training/maps)：`technique.json` 描述目录分类，`celeste-gym.workspace.json` 关联三组 `*.map.json` 与 `*.training.json`。Web 内置训练目录直接扫描这些 JSON，不再由技巧专用 TypeScript 文件拼装；地图编辑器的“打开文件夹”读取同一套工作区格式。
 
 ## 1. 核心模型
 
-训练的拥有者是**地图**，不是教程。目录中的一个 `TrainingVariant` 表示一张训练地图，它包含：
+训练的拥有者是**地图**，不是教程。工作区清单中的一个项目表示一张训练地图，加载后形成一个 `TrainingVariant`，它包含：
 
 - `map`：可模拟的房间碰撞、实体和出生点；
 - `initial`：玩家进入地图时的状态；

@@ -390,23 +390,6 @@ select:focus-visible {
   white-space: nowrap;
 }
 
-.training-context .top-actions select {
-  min-width: 128px;
-  max-width: 220px;
-  border: 1px solid #625579;
-  color: #f4efff;
-  background: #17102e;
-}
-
-.training-context .top-actions output {
-  max-width: 220px;
-  overflow: hidden;
-  color: #9d91b2;
-  font-size: 10px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .workspace {
   width: min(1640px, calc(100% - 28px));
   margin: 0 auto;

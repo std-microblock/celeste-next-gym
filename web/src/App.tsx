@@ -8,11 +8,6 @@ import { StateInspector } from "./components/StateInspector";
 import { TrainingGround } from "./components/TrainingGround";
 import { trainingCatalog } from "./training/catalog";
 import {
-  openTrainingWorkspace,
-  trainingVariantFromProject,
-  type TrainingProject,
-} from "./training/editorProject";
-import {
   StartSettings,
   type StartConfiguration,
 } from "./components/StartSettings";
@@ -152,16 +147,6 @@ export default function App() {
   );
   const [trainingVariantId, setTrainingVariantId] = useState(
     trainingCatalog[0].variants[0].id,
-  );
-  const [trainingWorkspaceProjects, setTrainingWorkspaceProjects] = useState<
-    TrainingProject[] | null
-  >(null);
-  const [trainingWorkspaceIndex, setTrainingWorkspaceIndex] = useState(0);
-  const [trainingWorkspaceName, setTrainingWorkspaceName] = useState<
-    string | null
-  >(null);
-  const [trainingWorkspaceNotice, setTrainingWorkspaceNotice] = useState(
-    "当前使用内置训练目录",
   );
   const [liveState, setLiveState] = useState<SimState>(() =>
     createInitialState(map),
@@ -787,59 +772,11 @@ export default function App() {
   const selectedTrainingTechnique =
     trainingCatalog.find((item) => item.id === trainingTechniqueId) ??
     trainingCatalog[0];
-  const selectedCatalogTrainingVariant =
+  const selectedTrainingVariant =
     selectedTrainingTechnique.variants.find(
       (item) => item.id === trainingVariantId,
     ) ?? selectedTrainingTechnique.variants[0];
-  const selectedTrainingProject =
-    trainingWorkspaceProjects?.[trainingWorkspaceIndex];
-  const selectedTrainingVariant = useMemo(
-    () =>
-      selectedTrainingProject
-        ? trainingVariantFromProject(selectedTrainingProject)
-        : selectedCatalogTrainingVariant,
-    [selectedCatalogTrainingVariant, selectedTrainingProject],
-  );
   const visualTheme = visualThemeById(visualThemeId);
-
-  const openTrainingFolder = async () => {
-    if (!window.showDirectoryPicker) {
-      setTrainingWorkspaceNotice(
-        "当前浏览器不支持 File System Access，请使用 Chromium 浏览器",
-      );
-      return;
-    }
-    try {
-      const handle = await window.showDirectoryPicker({
-        id: "celeste-gym-training-workspace",
-        mode: "read",
-      });
-      const loaded = await openTrainingWorkspace(
-        handle,
-        selectedTrainingVariant.map,
-      );
-      setTrainingWorkspaceProjects(loaded);
-      setTrainingWorkspaceIndex(0);
-      setTrainingWorkspaceName(handle.name);
-      setTrainingWorkspaceNotice(
-        `已打开 ${handle.name} · ${loaded.length} 个训练项目`,
-      );
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return;
-      setTrainingWorkspaceNotice(
-        error instanceof Error
-          ? `文件夹打开失败：${error.message}`
-          : "文件夹打开失败",
-      );
-    }
-  };
-
-  const useCatalogTraining = () => {
-    setTrainingWorkspaceProjects(null);
-    setTrainingWorkspaceIndex(0);
-    setTrainingWorkspaceName(null);
-    setTrainingWorkspaceNotice("已切回内置训练目录");
-  };
 
   const selectVisualTheme = (id: VisualThemeId) => {
     setVisualThemeId(id);
@@ -987,38 +924,11 @@ export default function App() {
               </strong>
               <span>
                 {selectedTrainingVariant.training.modules.length} 个教程模块 ·{" "}
-                {selectedTrainingVariant.summary} ·{" "}
-                {trainingWorkspaceName
-                  ? `文件夹 ${trainingWorkspaceName}`
-                  : "内置目录"}
+                {selectedTrainingVariant.summary}
               </span>
             </div>
             <div className="top-actions">
-              {trainingWorkspaceProjects && (
-                <select
-                  aria-label="训练文件夹项目"
-                  value={trainingWorkspaceIndex}
-                  onChange={(event) =>
-                    setTrainingWorkspaceIndex(Number(event.target.value))
-                  }
-                >
-                  {trainingWorkspaceProjects.map((project, index) => (
-                    <option value={index} key={`${project.id}-${index}`}>
-                      {project.training.title}
-                    </option>
-                  ))}
-                </select>
-              )}
-              <button onClick={() => void openTrainingFolder()}>
-                打开文件夹
-              </button>
-              {trainingWorkspaceProjects && (
-                <button onClick={useCatalogTraining}>内置训练</button>
-              )}
               <button onClick={() => setBindingsOpen(true)}>控制</button>
-              <output title={trainingWorkspaceNotice}>
-                {trainingWorkspaceNotice}
-              </output>
             </div>
           </div>
         ) : mode === "editor" ? (
@@ -1072,14 +982,7 @@ export default function App() {
           variantId={selectedTrainingVariant.id}
           bindings={bindings}
           theme={visualTheme}
-          variantOverride={
-            selectedTrainingProject ? selectedTrainingVariant : undefined
-          }
           onSelectTraining={(techniqueId, variantId) => {
-            setTrainingWorkspaceProjects(null);
-            setTrainingWorkspaceIndex(0);
-            setTrainingWorkspaceName(null);
-            setTrainingWorkspaceNotice("当前使用内置训练目录");
             setTrainingTechniqueId(techniqueId);
             setTrainingVariantId(variantId);
           }}
