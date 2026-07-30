@@ -4,6 +4,7 @@ import init, {
   cache_simulation_map_msgpack,
   decode_celeste_map_msgpack,
   fuzz_search_cached_map_msgpack,
+  list_celeste_map_rooms_msgpack,
   simulate_cached_map_msgpack,
   training_entry_check_msgpack,
 } from "../wasm/celeste_wasm.js";
@@ -17,6 +18,7 @@ type Request =
       room: string;
       name: string;
     }
+  | { id: number; type: "listMapRooms"; bytes: ArrayBuffer }
   | {
       id: number;
       type: "fuzzSearch";
@@ -72,6 +74,15 @@ self.onmessage = async (event: MessageEvent<Request>) => {
         ok: true,
         value: { ...response.map, name: request.name },
       });
+      return;
+    }
+    if (request.type === "listMapRooms") {
+      const response = decode(
+        list_celeste_map_rooms_msgpack(new Uint8Array(request.bytes)),
+      ) as { rooms?: string[]; error?: string };
+      if (!response.rooms)
+        throw new Error(response.error ?? "WASM 无法读取 Celeste 地图房间列表");
+      self.postMessage({ id: request.id, ok: true, value: response.rooms });
       return;
     }
     // The entry check is map-independent; all other requests run against the

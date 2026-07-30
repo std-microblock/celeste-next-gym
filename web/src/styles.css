@@ -3904,27 +3904,34 @@ footer {
 /* Editor project bar and map-owned training authoring. */
 .editor-workspace-shell {
   display: grid;
-  grid-template-rows: 42px minmax(0, 1fr);
+  grid-template-rows: 84px minmax(0, 1fr);
   height: calc(100vh - 68px);
   min-height: 0;
+}
+.editor-workspace-header {
+  z-index: 18;
+  min-width: 0;
+  box-shadow: 0 5px 18px #0008;
 }
 .editor-workspace-shell > .map-editor {
   height: 100%;
 }
 .editor-workspace-nav {
-  z-index: 18;
   min-width: 0;
   display: flex;
   align-items: center;
   gap: 6px;
+  overflow-x: auto;
   padding: 5px 10px;
   color: #cdbfd2;
   border-bottom: 1px solid #513869;
   background: #10091ff7;
-  box-shadow: 0 5px 18px #0008;
 }
 .editor-workspace-nav button,
-.editor-workspace-nav select {
+.editor-workspace-nav select,
+.editor-catalog-nav button,
+.editor-catalog-nav select,
+.editor-catalog-nav input {
   height: 29px;
   padding: 0 9px;
   color: inherit;
@@ -3936,6 +3943,56 @@ footer {
 .editor-workspace-nav select {
   min-width: 130px;
   max-width: 210px;
+}
+.editor-catalog-nav {
+  min-width: 0;
+  height: 42px;
+  display: flex;
+  align-items: end;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px 10px 5px;
+  color: #cdbfd2;
+  background: linear-gradient(90deg, #160b28, #0d081a);
+}
+.editor-workspace-nav button,
+.editor-catalog-nav button {
+  white-space: nowrap;
+}
+.editor-catalog-nav label {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+.editor-catalog-nav label > small {
+  color: #887594;
+  font: 7px Consolas, monospace;
+  text-transform: uppercase;
+}
+.editor-catalog-nav select {
+  min-width: 118px;
+  max-width: 170px;
+}
+.editor-catalog-nav input {
+  width: 145px;
+  box-sizing: border-box;
+  cursor: text;
+}
+.editor-catalog-nav .editor-badge-field input {
+  width: 82px;
+}
+.editor-catalog-nav .editor-technique-summary {
+  flex: 1;
+}
+.editor-catalog-nav .editor-technique-summary input {
+  width: 100%;
+  min-width: 130px;
+}
+.editor-catalog-divider {
+  align-self: stretch;
+  width: 1px;
+  margin: 0 4px;
+  background: #513869;
 }
 .editor-section-tabs {
   align-self: stretch;
@@ -3957,6 +4014,11 @@ footer {
 .editor-workspace-nav button:disabled {
   opacity: 0.4;
   cursor: wait;
+}
+.editor-catalog-nav button:disabled,
+.editor-catalog-nav input:disabled,
+.editor-catalog-nav select:disabled {
+  opacity: 0.4;
 }
 .editor-save-state {
   display: flex;
@@ -3996,6 +4058,82 @@ footer {
     monospace;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.editor-empty-state {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  color: #9d8aa8;
+  background: radial-gradient(circle at 50% 35%, #25143b, #080519 65%);
+}
+.editor-empty-state strong {
+  color: #eee5f0;
+  font-size: 18px;
+}
+.editor-empty-state button {
+  padding: 8px 14px;
+  color: #fff;
+  border: 1px solid #7b4d82;
+  background: #3b1b48;
+  cursor: pointer;
+}
+.editor-bin-dialog-backdrop {
+  position: fixed;
+  z-index: 90;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #05020dcc;
+  backdrop-filter: blur(5px);
+}
+.editor-bin-dialog {
+  width: min(430px, calc(100vw - 28px));
+  padding: 22px;
+  color: #eee5f0;
+  border: 1px solid #6b4a7d;
+  background: linear-gradient(145deg, #25133a, #0d071b);
+  box-shadow: 0 24px 80px #000c;
+}
+.editor-bin-dialog > small {
+  color: var(--pink);
+  font: 8px Consolas, monospace;
+}
+.editor-bin-dialog h2 {
+  margin: 5px 0 4px;
+}
+.editor-bin-dialog p {
+  margin: 0 0 18px;
+  color: #9d8aa8;
+}
+.editor-bin-dialog label {
+  display: grid;
+  gap: 6px;
+}
+.editor-bin-dialog select {
+  height: 36px;
+  padding: 0 10px;
+  color: #fff;
+  border: 1px solid #694b78;
+  background: #120b21;
+}
+.editor-bin-dialog > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+.editor-bin-dialog button {
+  padding: 8px 13px;
+  color: #d8cbdc;
+  border: 1px solid #5e456e;
+  background: #1a102c;
+  cursor: pointer;
+}
+.editor-bin-dialog button.primary {
+  color: #fff;
+  border-color: #a73b75;
+  background: #6f2354;
 }
 
 .training-flow-editor {

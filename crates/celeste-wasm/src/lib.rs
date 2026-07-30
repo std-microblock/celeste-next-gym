@@ -1,6 +1,6 @@
 use celeste_fuzz::{OutputMode, SearchOptions, compile, evaluate_current_checks, parse_spec};
 use celeste_physics::{
-    InputState, Map, PlayerSnapshot, decode_map, decode_map_room, simulate_trace,
+    InputState, Map, PlayerSnapshot, celeste_map_rooms, decode_map, decode_map_room, simulate_trace,
 };
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
@@ -21,6 +21,32 @@ struct WasmError<'a> {
 struct WasmMapResponse {
     success: bool,
     map: Map,
+}
+
+#[derive(Deserialize, Serialize)]
+struct WasmRoomListResponse {
+    success: bool,
+    rooms: Vec<String>,
+}
+
+/// Return all room IDs stored in an original Celeste BinaryPacker `.bin` map.
+#[wasm_bindgen]
+pub fn list_celeste_map_rooms_msgpack(map_bytes: &[u8]) -> Vec<u8> {
+    match celeste_map_rooms(map_bytes) {
+        Ok(rooms) => rmp_serde::to_vec_named(&WasmRoomListResponse {
+            success: true,
+            rooms,
+        })
+        .unwrap_or_default(),
+        Err(error) => {
+            let message = error.to_string();
+            rmp_serde::to_vec_named(&WasmError {
+                success: false,
+                error: &message,
+            })
+            .unwrap_or_default()
+        }
+    }
 }
 
 /// Decode an original Celeste BinaryPacker `.bin` map inside WASM and return
@@ -237,5 +263,16 @@ mod tests {
         let decoded: WasmMapResponse = rmp_serde::from_slice(&result).unwrap();
         assert!(decoded.success);
         assert_eq!(decoded.map.bounds.width, 320.0);
+    }
+
+    #[test]
+    fn bridge_lists_celeste_rooms() {
+        let mut source_map = Map::default();
+        source_map.bounds.height = 184.0;
+        let map = celeste_physics::encode_celeste_map(&source_map, "TestMap", "a-00").unwrap();
+        let result = list_celeste_map_rooms_msgpack(&map);
+        let decoded: WasmRoomListResponse = rmp_serde::from_slice(&result).unwrap();
+        assert!(decoded.success);
+        assert_eq!(decoded.rooms[0], "a-00");
     }
 }

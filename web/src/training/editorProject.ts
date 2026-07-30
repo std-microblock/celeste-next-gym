@@ -8,6 +8,7 @@ import type {
   TrainingDocument,
   TrainingMapDocument,
   TrainingModule,
+  TrainingTechniqueDocument,
 } from "./catalog";
 import { trainingEntryInput, verifiedInputs } from "./session";
 
@@ -30,6 +31,29 @@ export interface TrainingWorkspaceManifest {
   }>;
 }
 
+export interface TrainingCatalogSection {
+  id: string;
+  title: string;
+  badge: string;
+}
+
+export interface TrainingTechniqueWorkspace {
+  path: string;
+  metadata: TrainingTechniqueDocument;
+  projects: TrainingProject[];
+}
+
+export interface TrainingCatalogWorkspace {
+  sections: TrainingCatalogSection[];
+  techniques: TrainingTechniqueWorkspace[];
+}
+
+interface TrainingCatalogManifest {
+  version: 1;
+  sections: TrainingCatalogSection[];
+  techniques: Array<{ path: string }>;
+}
+
 export interface ProjectValidationIssue {
   path: string;
   message: string;
@@ -37,6 +61,8 @@ export interface ProjectValidationIssue {
 }
 
 const WORKSPACE_MANIFEST = "celeste-gym.workspace.json";
+const CATALOG_MANIFEST = "celeste-gym.catalog.json";
+const TECHNIQUE_DOCUMENT = "technique.json";
 const DIRECTION_KEYS = new Set(["up", "down", "left", "right"]);
 
 export function createBlankGymMap(id = "untitled-room"): GymMap {
@@ -51,7 +77,7 @@ export function createBlankGymMap(id = "untitled-room"): GymMap {
   };
 }
 
-function slug(value: string): string {
+export function trainingSlug(value: string): string {
   return (
     value
       .trim()
@@ -144,7 +170,7 @@ export function createTrainingModule(map: GymMap, index = 0): TrainingModule {
 
 export function createTrainingDocument(
   map: GymMap,
-  id = slug(map.room ?? map.name),
+  id = trainingSlug(map.room ?? map.name),
 ): TrainingMapDocument {
   return {
     version: 2,
@@ -171,7 +197,7 @@ export function createTrainingProject(
   map: GymMap,
   training = createTrainingDocument(map),
 ): TrainingProject {
-  const id = slug(training.id);
+  const id = trainingSlug(training.id);
   const normalized = normalizeTrainingDocument(map, training);
   return {
     id,
@@ -179,6 +205,43 @@ export function createTrainingProject(
     trainingFileName: `${id}.training.json`,
     map: structuredClone(map),
     training: normalized,
+  };
+}
+
+export function createTrainingTechniqueWorkspace(
+  section: TrainingCatalogSection = {
+    id: "uncategorized",
+    title: "未分类",
+    badge: "GENERAL",
+  },
+  id = "new-technique",
+  title = "新二级分类",
+  path = `${section.id}/${id}`,
+): TrainingTechniqueWorkspace {
+  return {
+    path,
+    metadata: {
+      id,
+      title,
+      summary: "说明这个技巧分类包含的训练内容。",
+      related: [],
+      section: { ...section },
+    },
+    projects: [
+      createTrainingProject(createBlankGymMap(`${id}-room-1`)),
+    ],
+  };
+}
+
+export function createTrainingCatalogWorkspace(): TrainingCatalogWorkspace {
+  const section: TrainingCatalogSection = {
+    id: "uncategorized",
+    title: "未分类",
+    badge: "GENERAL",
+  };
+  return {
+    sections: [section],
+    techniques: [createTrainingTechniqueWorkspace(section)],
   };
 }
 
@@ -421,7 +484,7 @@ export async function openTrainingWorkspace(
         trainingFileName,
       );
       return {
-        id: slug(training.id || base),
+        id: trainingSlug(training.id || base),
         mapFileName,
         trainingFileName,
         map,
@@ -451,6 +514,122 @@ export async function saveTrainingWorkspace(
     await writeJson(directory, project.trainingFileName, project.training);
   }
   await writeJson(directory, WORKSPACE_MANIFEST, manifest);
+}
+
+async function tryReadJson<T>(
+  directory: FileSystemDirectoryHandle,
+  name: string,
+): Promise<T | null> {
+  try {
+    return await readJson<T>(directory, name);
+  } catch {
+    return null;
+  }
+}
+
+async function directoryAt(
+  root: FileSystemDirectoryHandle,
+  path: string,
+  create = false,
+): Promise<FileSystemDirectoryHandle> {
+  let directory = root;
+  if (path === "." || !path) return directory;
+  for (const segment of path.split("/").filter(Boolean))
+    directory = await directory.getDirectoryHandle(segment, { create });
+  return directory;
+}
+
+export async function openTrainingCatalogWorkspace(
+  root: FileSystemDirectoryHandle,
+  fallbackMap: GymMap,
+): Promise<TrainingCatalogWorkspace> {
+  const manifest = await tryReadJson<TrainingCatalogManifest>(
+    root,
+    CATALOG_MANIFEST,
+  );
+  if (!manifest) {
+    for await (const _entry of root.entries())
+      throw new Error(`目录缺少 ${CATALOG_MANIFEST}，请选择完整训练目录`);
+    return createTrainingCatalogWorkspace();
+  }
+  if (manifest.version !== 1)
+    throw new Error(`${CATALOG_MANIFEST} 版本必须为 1`);
+  const paths = manifest.techniques.map((entry) => entry.path);
+
+  const techniques = await Promise.all(
+    [...new Set(paths)].map(async (path) => {
+      const directory = await directoryAt(root, path);
+      const metadata = await readJson<TrainingTechniqueDocument>(
+        directory,
+        TECHNIQUE_DOCUMENT,
+      );
+      return {
+        path,
+        metadata,
+        projects: await openTrainingWorkspace(directory, fallbackMap),
+      };
+    }),
+  );
+  const sections = [...manifest.sections];
+  for (const technique of techniques) {
+    const section = technique.metadata.section;
+    if (!sections.some((candidate) => candidate.id === section.id))
+      throw new Error(
+        `${technique.path}/${TECHNIQUE_DOCUMENT} 引用了目录中不存在的大分类 ${section.id}`,
+      );
+  }
+  return { sections, techniques };
+}
+
+export async function saveTrainingCatalogWorkspace(
+  root: FileSystemDirectoryHandle,
+  catalog: TrainingCatalogWorkspace,
+): Promise<void> {
+  for (const technique of catalog.techniques) {
+    const directory = await directoryAt(root, technique.path, true);
+    await writeJson(directory, TECHNIQUE_DOCUMENT, technique.metadata);
+    await saveTrainingWorkspace(directory, technique.projects);
+  }
+  const manifest: TrainingCatalogManifest = {
+    version: 1,
+    sections: catalog.sections,
+    techniques: catalog.techniques.map((technique) => ({
+      path: technique.path,
+    })),
+  };
+  await writeJson(root, CATALOG_MANIFEST, manifest);
+}
+
+async function removeFileIfPresent(
+  directory: FileSystemDirectoryHandle,
+  name: string,
+): Promise<void> {
+  try {
+    await directory.removeEntry(name);
+  } catch (error) {
+    if (!(error instanceof DOMException) || error.name !== "NotFoundError")
+      throw error;
+  }
+}
+
+export async function removeTrainingProjectFiles(
+  root: FileSystemDirectoryHandle,
+  technique: TrainingTechniqueWorkspace,
+  project: TrainingProject,
+): Promise<void> {
+  const directory = await directoryAt(root, technique.path);
+  await removeFileIfPresent(directory, project.mapFileName);
+  await removeFileIfPresent(directory, project.trainingFileName);
+}
+
+export async function removeTrainingTechniqueFiles(
+  root: FileSystemDirectoryHandle,
+  technique: TrainingTechniqueWorkspace,
+): Promise<void> {
+  const parts = technique.path.split("/").filter(Boolean);
+  const name = parts.pop();
+  const parent = await directoryAt(root, parts.join("/"));
+  if (name) await parent.removeEntry(name, { recursive: true });
 }
 
 export function coreValidationState(state: SimState): SimState {

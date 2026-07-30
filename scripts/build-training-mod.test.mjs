@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { resolve } from "node:path";
 
-import { compileWorkspace } from "./build-training-mod.mjs";
+import { compileCatalog } from "./build-training-mod.mjs";
 
-const example = resolve(import.meta.dirname, "../web/src/training/maps");
+const catalog = resolve(import.meta.dirname, "../training");
 
-test("compiles the committed JSON workspace into deterministic training rooms", () => {
-  const result = compileWorkspace(example);
+test("compiles the root catalog into deterministic Mod training rooms", () => {
+  const result = compileCatalog(catalog);
   assert.equal(result.fixture.sid, "CelesteGymTraining/Training");
   assert.deepEqual(
     result.fixture.rooms.map((room) => room.name),
@@ -21,5 +21,11 @@ test("compiles the committed JSON workspace into deterministic training rooms", 
   assert.equal(
     result.catalog.projects[0].training.modules[0].tutorial.title,
     "跨越断层",
+  );
+  assert.equal(result.catalog.sourceWorkspace, "training");
+  assert.equal(result.catalog.projects[0].technique.id, "hyper");
+  assert.equal(
+    result.catalog.projects[0].technique.section.title,
+    "冲刺技巧",
   );
 });

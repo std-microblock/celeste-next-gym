@@ -94,7 +94,7 @@ export interface TrainingTechnique {
   variants: TrainingVariant[];
 }
 
-interface TrainingTechniqueDocument {
+export interface TrainingTechniqueDocument {
   id: string;
   title: string;
   summary: string;
@@ -112,10 +112,17 @@ interface BundledWorkspaceManifest {
   }>;
 }
 
-const bundledJson = import.meta.glob("./maps/**/*.json", {
+interface BundledCatalogManifest {
+  version: 1;
+  sections: TrainingTechniqueDocument["section"][];
+  techniques: Array<{ path: string }>;
+}
+
+const bundledJson = import.meta.glob("../../../training/**/*.json", {
   eager: true,
   import: "default",
 }) as Record<string, unknown>;
+const catalogPath = "../../../training/celeste-gym.catalog.json";
 
 function bundledDocument<T>(path: string): T {
   const document = bundledJson[path];
@@ -168,42 +175,34 @@ function loadBundledTechnique(
   };
 }
 
-const bundledTechniques = Object.entries(bundledJson)
-  .filter(([path]) => path.endsWith("/technique.json"))
-  .sort(([left], [right]) => left.localeCompare(right))
-  .map(([path, document]) => ({
-    document: document as TrainingTechniqueDocument,
+const bundledCatalog = bundledDocument<BundledCatalogManifest>(catalogPath);
+if (bundledCatalog.version !== 1)
+  throw new Error("训练目录 celeste-gym.catalog.json 版本必须为 1");
+
+const bundledTechniques = bundledCatalog.techniques.map(({ path }) => {
+  const techniquePath = `../../../training/${path}/technique.json`;
+  const document = bundledDocument<TrainingTechniqueDocument>(techniquePath);
+  return {
+    document,
     technique: loadBundledTechnique(
-      path,
-      document as TrainingTechniqueDocument,
+      techniquePath,
+      document,
     ),
-  }));
+  };
+});
 
 export const trainingCatalog = bundledTechniques.map(
   ({ technique }) => technique,
 );
 
-export const trainingCatalogSections = [
-  ...bundledTechniques
-    .reduce(
-      (sections, { document, technique }) => {
-        const section = sections.get(document.section.id) ?? {
-          ...document.section,
-          techniques: [] as TrainingTechnique[],
-        };
-        section.techniques.push(technique);
-        sections.set(document.section.id, section);
-        return sections;
-      },
-      new Map<
-        string,
-        TrainingTechniqueDocument["section"] & {
-          techniques: TrainingTechnique[];
-        }
-      >(),
-    )
-    .values(),
-];
+export const trainingCatalogSections = bundledCatalog.sections.map(
+  (section) => ({
+    ...section,
+    techniques: bundledTechniques
+      .filter(({ document }) => document.section.id === section.id)
+      .map(({ technique }) => technique),
+  }),
+);
 
 export function findTrainingVariant(
   techniqueId: string,

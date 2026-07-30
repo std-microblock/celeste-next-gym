@@ -76,7 +76,19 @@ export class WasmClient implements SimulationRunner {
       });
       this.mapDownloads.set(url, download);
     }
-    return this.request({ type: "loadMap", bytes: await download, room, name });
+    return this.loadMapBytes(await download, room, name);
+  }
+
+  listMapRooms(bytes: ArrayBuffer): Promise<string[]> {
+    return this.request({ type: "listMapRooms", bytes });
+  }
+
+  loadMapBytes(
+    bytes: ArrayBuffer,
+    room: string,
+    name: string,
+  ): Promise<GymMap> {
+    return this.request({ type: "loadMap", bytes, room, name });
   }
 
   simulate(

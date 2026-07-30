@@ -921,6 +921,25 @@ pub fn decode_map(bytes: &[u8]) -> Result<Map, MapError> {
     decode_map_room(bytes, None)
 }
 
+pub fn celeste_map_rooms(bytes: &[u8]) -> Result<Vec<String>, MapError> {
+    let root = parse_celeste_bin(bytes).map_err(|e| MapError::Unsupported(e.to_string()))?;
+    let levels = root
+        .children
+        .iter()
+        .find(|element| element.name == "levels")
+        .ok_or(MapError::NoLevel)?;
+    let rooms = levels
+        .children
+        .iter()
+        .filter_map(|level| attr_text(level, "name"))
+        .map(|name| name.strip_prefix("lvl_").unwrap_or(name).to_owned())
+        .collect::<Vec<_>>();
+    if rooms.is_empty() {
+        return Err(MapError::NoLevel);
+    }
+    Ok(rooms)
+}
+
 pub fn decode_map_room(bytes: &[u8], room: Option<&str>) -> Result<Map, MapError> {
     if let Ok(map) = rmp_serde::from_slice::<Map>(bytes) {
         return Ok(map);

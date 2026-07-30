@@ -1,6 +1,6 @@
 # 教程地图制作手册
 
-本文说明 Web 训练模式的地图驱动格式、不可见 Trigger 的运行顺序、教程/Fuzz 脚本全部字段，以及一张教程地图从编写到验证的流程。当前可运行示例工作区是 [`web/src/training/maps`](../web/src/training/maps)：`technique.json` 描述目录分类，`celeste-gym.workspace.json` 关联三组 `*.map.json` 与 `*.training.json`。Web 内置训练目录直接扫描这些 JSON，不再由技巧专用 TypeScript 文件拼装；地图编辑器的“打开文件夹”读取同一套工作区格式。
+本文说明 Web 训练模式的地图驱动格式、不可见 Trigger 的运行顺序、教程/Fuzz 脚本全部字段，以及一张教程地图从编写到验证的流程。唯一训练资源目录是仓库根部的 [`training`](../training)：根目录 `celeste-gym.catalog.json` 保存大分类与二级分类路径，每个二级分类目录内的 `technique.json` 描述分类信息，`celeste-gym.workspace.json` 关联该分类下的 `*.map.json` 与 `*.training.json`。Web、地图编辑器和 Mod 构建都读取这同一份目录，不再接受单独打开一个技巧文件夹。
 
 ## 1. 核心模型
 
@@ -358,7 +358,7 @@ import trainingJson from "../maps/my-map.training.json" with { type: "json" };
 
 ## 9. 制作与验证清单
 
-1. 在 `web/src/training/maps/` 新建 `*.training.json`，先画模块 Trigger 与终点 Trigger。
+1. 在 `training/<大分类 ID>/<二级分类 ID>/` 新建 `*.training.json`，先画模块 Trigger 与终点 Trigger。
 2. 为每个模块写教程入口、教学步骤与 Fuzz；保证 `entry.input_id` 指向 F0 的受验证输入。
 3. 给每个模块准备可信的 `validation.initial_state`。
 4. 在 technique 文件中建立/导入 `GymMap`，注册为一个目录地图。

@@ -1,4 +1,4 @@
-import { readdir, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { decode, encode } from "@msgpack/msgpack";
 import init, {
   cache_simulation_map_msgpack,
@@ -21,23 +21,23 @@ interface TechniqueDocument {
   id: string;
 }
 
+interface CatalogManifest {
+  version: 1;
+  techniques: Array<{ path: string }>;
+}
+
 async function json<T>(url: URL): Promise<T> {
   return JSON.parse(await readFile(url, "utf8")) as T;
 }
 
-async function findTechniqueFiles(directory: URL): Promise<URL[]> {
-  const result: URL[] = [];
-  for (const entry of await readdir(directory, { withFileTypes: true })) {
-    const url = new URL(`${entry.name}${entry.isDirectory() ? "/" : ""}`, directory);
-    if (entry.isDirectory()) result.push(...(await findTechniqueFiles(url)));
-    else if (entry.name === "technique.json") result.push(url);
-  }
-  return result;
-}
-
+const catalogRoot = new URL("../../training/", import.meta.url);
+const catalogManifest = await json<CatalogManifest>(
+  new URL("celeste-gym.catalog.json", catalogRoot),
+);
 const trainingCatalog = await Promise.all(
-  (await findTechniqueFiles(new URL("../src/training/maps/", import.meta.url))).map(
-    async (techniqueUrl) => {
+  catalogManifest.techniques.map(
+    async (entry) => {
+      const techniqueUrl = new URL(`${entry.path}/technique.json`, catalogRoot);
       const technique = await json<TechniqueDocument>(techniqueUrl);
       const manifest = await json<WorkspaceManifest>(
         new URL("celeste-gym.workspace.json", techniqueUrl),

@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "sections": [
+    {
+      "id": "dash-tech",
+      "title": "冲刺技巧",
+      "badge": "DASH TECH"
+    }
+  ],
+  "techniques": [
+    {
+      "path": "dash-tech/hyper"
+    }
+  ]
+}

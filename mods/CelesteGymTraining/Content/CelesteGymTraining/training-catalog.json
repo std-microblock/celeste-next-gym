@@ -2,7 +2,7 @@
   "version": 1,
   "areaSid": "CelesteGymTraining/Training",
   "skin": "strawberry-jam-2021-beginner-gym",
-  "sourceWorkspace": "web/src/training/maps",
+  "sourceWorkspace": "training",
   "projects": [
     {
       "id": "route",
@@ -11,6 +11,16 @@
       "room": "hyper-route",
       "difficulty": "入门",
       "thumbnail": null,
+      "technique": {
+        "id": "hyper",
+        "title": "Hyper",
+        "summary": "右下冲后快速起跳，把冲刺转成高速地面移动。",
+        "section": {
+          "id": "dash-tech",
+          "title": "冲刺技巧",
+          "badge": "DASH TECH"
+        }
+      },
       "coordinateOffset": {
         "x": 0,
         "y": 0
@@ -417,6 +427,16 @@
       "room": "hyper-spikes",
       "difficulty": "入门",
       "thumbnail": null,
+      "technique": {
+        "id": "hyper",
+        "title": "Hyper",
+        "summary": "右下冲后快速起跳，把冲刺转成高速地面移动。",
+        "section": {
+          "id": "dash-tech",
+          "title": "冲刺技巧",
+          "badge": "DASH TECH"
+        }
+      },
       "coordinateOffset": {
         "x": 0,
         "y": 336
@@ -658,6 +678,16 @@
       "room": "hyper-bubble",
       "difficulty": "入门",
       "thumbnail": null,
+      "technique": {
+        "id": "hyper",
+        "title": "Hyper",
+        "summary": "右下冲后快速起跳，把冲刺转成高速地面移动。",
+        "section": {
+          "id": "dash-tech",
+          "title": "冲刺技巧",
+          "badge": "DASH TECH"
+        }
+      },
       "coordinateOffset": {
         "x": 0,
         "y": 672

@@ -2,46 +2,82 @@ import { describe, expect, it } from "vitest";
 import { PLAYGROUND } from "../model";
 import {
   createBlankGymMap,
+  createTrainingCatalogWorkspace,
   createTrainingProject,
+  openTrainingCatalogWorkspace,
   openTrainingWorkspace,
+  saveTrainingCatalogWorkspace,
   saveTrainingWorkspace,
   validateTrainingProject,
 } from "./editorProject";
 
+interface MemoryDirectoryNode {
+  files: Map<string, string>;
+  directories: Map<string, MemoryDirectoryNode>;
+  directory: FileSystemDirectoryHandle;
+}
+
 function memoryDirectory() {
-  const files = new Map<string, string>();
-  const directory = {
-    name: "training-workspace",
-    kind: "directory" as const,
-    async getFileHandle(name: string, options?: { create?: boolean }) {
-      if (!files.has(name) && !options?.create)
-        throw new DOMException("Not found", "NotFoundError");
-      return {
-        name,
-        kind: "file" as const,
-        async getFile() {
-          return new File([files.get(name) ?? ""], name, {
-            type: "application/json",
-          });
-        },
-        async createWritable() {
-          return {
-            async write(value: string) {
-              files.set(name, value);
-            },
-            async close() {},
-          };
-        },
-      };
-    },
-    async *entries() {
-      for (const name of files.keys())
-        yield [name, await this.getFileHandle(name)] as const;
-    },
+  const makeDirectory = (name: string): MemoryDirectoryNode => {
+    const files = new Map<string, string>();
+    const directories = new Map<string, MemoryDirectoryNode>();
+    const directory = {
+      name,
+      kind: "directory" as const,
+      async getFileHandle(fileName: string, options?: { create?: boolean }) {
+        if (!files.has(fileName) && !options?.create)
+          throw new DOMException("Not found", "NotFoundError");
+        return {
+          name: fileName,
+          kind: "file" as const,
+          async getFile() {
+            return new File([files.get(fileName) ?? ""], fileName, {
+              type: "application/json",
+            });
+          },
+          async createWritable() {
+            return {
+              async write(value: string) {
+                files.set(fileName, value);
+              },
+              async close() {},
+            };
+          },
+        };
+      },
+      async getDirectoryHandle(
+        directoryName: string,
+        options?: { create?: boolean },
+      ) {
+        let child = directories.get(directoryName);
+        if (!child && options?.create) {
+          child = makeDirectory(directoryName);
+          directories.set(directoryName, child);
+        }
+        if (!child) throw new DOMException("Not found", "NotFoundError");
+        return child.directory;
+      },
+      async removeEntry(entryName: string) {
+        if (!files.delete(entryName) && !directories.delete(entryName))
+          throw new DOMException("Not found", "NotFoundError");
+      },
+      async *entries() {
+        for (const fileName of files.keys())
+          yield [fileName, await this.getFileHandle(fileName)] as const;
+        for (const [directoryName, child] of directories)
+          yield [directoryName, child.directory] as const;
+      },
+    };
+    return {
+      files,
+      directories,
+      directory: directory as unknown as FileSystemDirectoryHandle,
+    };
   };
+  const root = makeDirectory("training-workspace");
   return {
-    files,
-    directory: directory as unknown as FileSystemDirectoryHandle,
+    files: root.files,
+    directory: root.directory as unknown as FileSystemDirectoryHandle,
   };
 }
 
@@ -98,5 +134,31 @@ describe("training editor projects", () => {
     expect(loaded[0].training).toEqual(project.training);
     expect(loaded[0].map).toEqual(project.map);
     expect(loaded[0].initialModuleId).toBe(project.initialModuleId);
+  });
+
+  it("round-trips the required root catalog and nested technique workspace", async () => {
+    const memory = memoryDirectory();
+    const catalog = createTrainingCatalogWorkspace();
+    catalog.sections[0].title = "测试大分类";
+    catalog.techniques[0].metadata.section.title = "测试大分类";
+    catalog.techniques[0].metadata.title = "测试二级分类";
+    await saveTrainingCatalogWorkspace(memory.directory, catalog);
+    const loaded = await openTrainingCatalogWorkspace(
+      memory.directory,
+      PLAYGROUND,
+    );
+    expect(loaded.sections[0].title).toBe("测试大分类");
+    expect(loaded.techniques[0].metadata.title).toBe("测试二级分类");
+    expect(loaded.techniques[0].path).toBe("uncategorized/new-technique");
+  });
+
+  it("rejects a non-empty single-technique folder without a root catalog", async () => {
+    const memory = memoryDirectory();
+    await saveTrainingWorkspace(memory.directory, [
+      createTrainingProject(PLAYGROUND),
+    ]);
+    await expect(
+      openTrainingCatalogWorkspace(memory.directory, PLAYGROUND),
+    ).rejects.toThrow("请选择完整训练目录");
   });
 });

@@ -996,6 +996,7 @@ export default function App() {
           stateFrameOffset={liveHistoryRef.current.startFrame}
           theme={visualTheme}
           bindings={bindings}
+          wasmClient={client}
           experiencing={editorExperiencing}
           ready={wasmStatus === "ready"}
           onMapChange={updateEditorMap}

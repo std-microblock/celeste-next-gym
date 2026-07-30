@@ -7,47 +7,77 @@ import { fileURLToPath } from "node:url";
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
 
-export function compileWorkspace(workspaceRoot) {
-  const root = resolve(workspaceRoot);
-  const manifestPath = resolve(root, "celeste-gym.workspace.json");
+export function compileCatalog(catalogRoot) {
+  const root = resolve(catalogRoot);
+  const manifestPath = resolve(root, "celeste-gym.catalog.json");
   assertRegularFileWithin(root, manifestPath);
   const manifest = readJson(manifestPath);
-  if (manifest.version !== 1 || !Array.isArray(manifest.projects) || manifest.projects.length === 0) {
-    throw new Error("workspace must be version 1 with at least one project");
+  if (manifest.version !== 1 || !Array.isArray(manifest.sections) || !Array.isArray(manifest.techniques)) {
+    throw new Error("catalog must be version 1 with sections and techniques");
   }
+  const sectionIds = new Set(manifest.sections.map((section) => section.id));
+  const workspaces = manifest.techniques.map((entry) => {
+    const techniqueRoot = resolveCatalogDirectory(root, entry.path);
+    const techniquePath = resolve(techniqueRoot, "technique.json");
+    assertRegularFileWithin(techniqueRoot, techniquePath);
+    const technique = readJson(techniquePath);
+    if (!technique?.id || !technique?.title || !technique?.section?.id || !sectionIds.has(technique.section.id)) {
+      throw new Error(`${entry.path}: technique.json must reference a catalog section`);
+    }
+    return { root: techniqueRoot, technique };
+  });
+  if (!workspaces.length) throw new Error("catalog must contain at least one technique");
+  return compileWorkspaceSet(root, workspaces);
+}
+
+function compileWorkspaceSet(sourceRoot, workspaces) {
   const rooms = [];
   const projects = [];
   const usedIds = new Set();
   const usedRooms = new Set();
   let nextRoomY = 0;
-  for (const entry of manifest.projects) {
-    if (!entry || typeof entry.id !== "string" || !entry.id.trim()) throw new Error("workspace project id is required");
-    if (usedIds.has(entry.id)) throw new Error(`duplicate workspace project id: ${entry.id}`);
-    usedIds.add(entry.id);
-    const mapPath = resolveProjectFile(root, entry.map, `${entry.id}.map`);
-    const trainingPath = resolveProjectFile(root, entry.training, `${entry.id}.training`);
-    const map = readJson(mapPath);
-    const training = readJson(trainingPath);
-    validateMap(map, entry.id);
-    validateTraining(training, entry.id);
-    const room = map.room || entry.id;
-    if (!/^[A-Za-z0-9_-]+$/.test(room)) throw new Error(`${entry.id}: room must use letters, digits, underscore, or dash`);
-    if (usedRooms.has(room)) throw new Error(`duplicate workspace room: ${room}`);
-    usedRooms.add(room);
-    const normalized = normalizeRoom(map, room, nextRoomY);
-    nextRoomY = normalized.bounds[1] + normalized.bounds[3] + 64;
-    rooms.push(normalized.fixture);
-    projects.push({
-      id: entry.id,
-      title: training.title,
-      summary: training.summary,
-      room,
-      difficulty: typeof entry.difficulty === "string" && entry.difficulty.trim() ? entry.difficulty : "入门",
-      thumbnail: typeof entry.thumbnail === "string" && entry.thumbnail.trim() ? entry.thumbnail : null,
-      coordinateOffset: normalized.offset,
-      map: transformMap(map, normalized.offset, normalized.bounds),
-      training: transformTraining(training, normalized.offset),
-    });
+  for (const workspace of workspaces) {
+    const manifestPath = resolve(workspace.root, "celeste-gym.workspace.json");
+    assertRegularFileWithin(workspace.root, manifestPath);
+    const manifest = readJson(manifestPath);
+    if (manifest.version !== 1 || !Array.isArray(manifest.projects) || manifest.projects.length === 0) {
+      throw new Error(`${relative(sourceRoot, workspace.root)}: workspace must be version 1 with at least one project`);
+    }
+    for (const entry of manifest.projects) {
+      if (!entry || typeof entry.id !== "string" || !entry.id.trim()) throw new Error("workspace project id is required");
+      if (usedIds.has(entry.id)) throw new Error(`duplicate workspace project id: ${entry.id}`);
+      usedIds.add(entry.id);
+      const mapPath = resolveProjectFile(workspace.root, entry.map, `${entry.id}.map`);
+      const trainingPath = resolveProjectFile(workspace.root, entry.training, `${entry.id}.training`);
+      const map = readJson(mapPath);
+      const training = readJson(trainingPath);
+      validateMap(map, entry.id);
+      validateTraining(training, entry.id);
+      const room = map.room || entry.id;
+      if (!/^[A-Za-z0-9_-]+$/.test(room)) throw new Error(`${entry.id}: room must use letters, digits, underscore, or dash`);
+      if (usedRooms.has(room)) throw new Error(`duplicate workspace room: ${room}`);
+      usedRooms.add(room);
+      const normalized = normalizeRoom(map, room, nextRoomY);
+      nextRoomY = normalized.bounds[1] + normalized.bounds[3] + 64;
+      rooms.push(normalized.fixture);
+      projects.push({
+        id: entry.id,
+        title: training.title,
+        summary: training.summary,
+        room,
+        difficulty: typeof entry.difficulty === "string" && entry.difficulty.trim() ? entry.difficulty : "入门",
+        thumbnail: typeof entry.thumbnail === "string" && entry.thumbnail.trim() ? entry.thumbnail : null,
+        technique: {
+          id: workspace.technique.id,
+          title: workspace.technique.title,
+          summary: workspace.technique.summary,
+          section: workspace.technique.section,
+        },
+        coordinateOffset: normalized.offset,
+        map: transformMap(map, normalized.offset, normalized.bounds),
+        training: transformTraining(training, normalized.offset),
+      });
+    }
   }
   return {
     fixture: { formatVersion: 1, package: "CelesteGymTraining", sid: "CelesteGymTraining/Training", rooms },
@@ -55,10 +85,22 @@ export function compileWorkspace(workspaceRoot) {
       version: 1,
       areaSid: "CelesteGymTraining/Training",
       skin: "strawberry-jam-2021-beginner-gym",
-      sourceWorkspace: relative(repoRoot, root).replaceAll("\\", "/"),
+      sourceWorkspace: relative(repoRoot, sourceRoot).replaceAll("\\", "/"),
       projects,
     },
   };
+}
+
+function resolveCatalogDirectory(root, path) {
+  if (typeof path !== "string" || !path || isAbsolute(path)) throw new Error("technique path must be relative");
+  const target = resolve(root, path);
+  const relativePath = relative(root, target);
+  if (relativePath.startsWith("..") || isAbsolute(relativePath)) throw new Error(`catalog path escapes root: ${target}`);
+  if (!existsSync(target) || !lstatSync(target).isDirectory() || lstatSync(target).isSymbolicLink()) {
+    throw new Error(`catalog technique must be a regular non-link directory: ${target}`);
+  }
+  if (relative(root, realpathSync(target)).startsWith("..")) throw new Error(`catalog directory resolves outside root: ${target}`);
+  return target;
 }
 
 function normalizeRoom(map, room, targetY) {
@@ -189,9 +231,9 @@ const gridRect = (value, offset) => {
 };
 
 async function main() {
-  const workspaceRoot = resolve(repoRoot, process.argv[2] ?? "web/src/training/maps");
+  const workspaceRoot = resolve(repoRoot, process.argv[2] ?? "training");
   const modRoot = resolve(repoRoot, "mods/CelesteGymTraining");
-  const generated = compileWorkspace(workspaceRoot);
+  const generated = compileCatalog(workspaceRoot);
   const fixturePath = resolve(modRoot, "Build/generated.fixture.json");
   const catalogPath = resolve(modRoot, "Content/CelesteGymTraining/training-catalog.json");
   const rawMapPath = resolve(repoRoot, ".tmp/training-build/Training.raw.bin");
