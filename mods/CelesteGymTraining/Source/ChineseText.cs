@@ -28,7 +28,7 @@ public static class ChineseText {
     private const string FontAsset = "CelesteGymTraining/Fonts/NotoSansSC-Medium.ttf";
     private const float FontPixelSize = 48f;
     private const float LineHeight = 64f;
-    private static readonly Dictionary<(char Character, int PixelSize), Glyph> Glyphs = [];
+    private static readonly Dictionary<(char Character, int PixelSize, int ViewWidth), Glyph> Glyphs = [];
     private static readonly Dictionary<int, DrawingFont> Fonts = [];
     private static PrivateFontCollection? fontCollection;
     private static DrawingFont? drawingFont;
@@ -105,7 +105,21 @@ public static class ChineseText {
             Glyph glyph = GetGlyph(character, scale);
             Vector2 drawAt = position + cursor + glyph.Offset - origin;
             if (glyph.Texture is not null) {
-                Monocle.Draw.SpriteBatch.Draw(glyph.Texture, drawAt, null, color, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
+                drawAt = new Vector2(
+                    MathF.Round(drawAt.X * glyph.OutputScale) / glyph.OutputScale,
+                    MathF.Round(drawAt.Y * glyph.OutputScale) / glyph.OutputScale
+                );
+                Monocle.Draw.SpriteBatch.Draw(
+                    glyph.Texture,
+                    drawAt,
+                    null,
+                    color,
+                    0f,
+                    Vector2.Zero,
+                    glyph.TextureScale,
+                    SpriteEffects.None,
+                    0f
+                );
             }
             cursor.X += glyph.Advance;
         }
@@ -145,13 +159,18 @@ public static class ChineseText {
     }
 
     private static Glyph GetGlyph(char character, float scale) {
-        int pixelSize = Math.Max(8, (int) MathF.Round(FontPixelSize * Math.Max(0.01f, scale)));
-        (char Character, int PixelSize) key = (character, pixelSize);
+        int viewWidth = Math.Max(1, Engine.ViewWidth);
+        float outputScale = Math.Max(0.01f, viewWidth / 1920f);
+        float textureScale = 1f / outputScale;
+        int pixelSize = Math.Max(8, (int) MathF.Round(FontPixelSize * Math.Max(0.01f, scale) * outputScale));
+        (char Character, int PixelSize, int ViewWidth) key = (character, pixelSize, viewWidth);
         if (Glyphs.TryGetValue(key, out Glyph? cached)) return cached;
         if (fontCollection is null || stringFormat is null) throw new InvalidOperationException("Chinese UI font was not prepared.");
         DrawingFont font = GetFont(pixelSize);
 
-        if (character == '\t') return Glyphs[key] = new Glyph(null, pixelSize * 2f, Vector2.Zero);
+        if (character == '\t') {
+            return Glyphs[key] = new Glyph(null, pixelSize * 2f * textureScale, Vector2.Zero, textureScale, outputScale);
+        }
         string text = character.ToString();
         float advance;
         using (DrawingBitmap measurement = new(1, 1, PixelFormat.Format32bppArgb))
@@ -159,7 +178,9 @@ public static class ChineseText {
             graphics.PageUnit = DrawingGraphicsUnit.Pixel;
             advance = Math.Max(1f, graphics.MeasureString(text, font, DrawingPointF.Empty, stringFormat).Width);
         }
-        if (char.IsWhiteSpace(character)) return Glyphs[key] = new Glyph(null, advance, Vector2.Zero);
+        if (char.IsWhiteSpace(character)) {
+            return Glyphs[key] = new Glyph(null, advance * textureScale, Vector2.Zero, textureScale, outputScale);
+        }
 
         int padding = Math.Max(2, (int) MathF.Ceiling(pixelSize / 12f));
         int width = Math.Max(1, (int) Math.Ceiling(advance) + padding * 2);
@@ -167,18 +188,24 @@ public static class ChineseText {
         using DrawingBitmap bitmap = new(width, height, PixelFormat.Format32bppArgb);
         bitmap.SetResolution(96f, 96f);
         using (DrawingGraphics graphics = DrawingGraphics.FromImage(bitmap)) {
-            graphics.Clear(System.Drawing.Color.Transparent);
+            graphics.Clear(System.Drawing.Color.Black);
             graphics.PageUnit = DrawingGraphicsUnit.Pixel;
-            graphics.CompositingMode = CompositingMode.SourceCopy;
+            graphics.CompositingMode = CompositingMode.SourceOver;
             graphics.CompositingQuality = CompositingQuality.HighQuality;
             graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
             graphics.SmoothingMode = SmoothingMode.HighQuality;
-            graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+            graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
             graphics.DrawString(text, font, DrawingBrushes.White, new DrawingPointF(padding, padding), stringFormat);
         }
 
-        Texture2D texture = CreatePremultipliedTexture(bitmap);
-        Glyph result = new(texture, advance, new Vector2(-padding, -padding));
+        Texture2D texture = CreateClearTypeTexture(bitmap);
+        Glyph result = new(
+            texture,
+            advance * textureScale,
+            new Vector2(-padding * textureScale),
+            textureScale,
+            outputScale
+        );
         Glyphs.Add(key, result);
         return result;
     }
@@ -193,7 +220,7 @@ public static class ChineseText {
 
     private static float ScaledLineHeight(float scale) => Math.Max(1f, LineHeight * scale);
 
-    private static Texture2D CreatePremultipliedTexture(DrawingBitmap bitmap) {
+    private static Texture2D CreateClearTypeTexture(DrawingBitmap bitmap) {
         System.Drawing.Rectangle bounds = new(0, 0, bitmap.Width, bitmap.Height);
         BitmapData data = bitmap.LockBits(bounds, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
         try {
@@ -209,13 +236,8 @@ public static class ChineseText {
                     byte blue = pixels[source];
                     byte green = pixels[source + 1];
                     byte red = pixels[source + 2];
-                    byte alpha = pixels[source + 3];
-                    colors[y * bitmap.Width + x] = new Color(
-                        Premultiply(red, alpha),
-                        Premultiply(green, alpha),
-                        Premultiply(blue, alpha),
-                        alpha
-                    );
+                    byte coverage = Median(red, green, blue);
+                    colors[y * bitmap.Width + x] = new Color(coverage, coverage, coverage, coverage);
                 }
             }
 
@@ -227,7 +249,14 @@ public static class ChineseText {
         }
     }
 
-    private static byte Premultiply(byte color, byte alpha) => (byte) ((color * alpha + 127) / 255);
+    private static byte Median(byte first, byte second, byte third) =>
+        (byte) (first + second + third - Math.Min(first, Math.Min(second, third)) - Math.Max(first, Math.Max(second, third)));
 
-    private sealed record Glyph(Texture2D? Texture, float Advance, Vector2 Offset);
+    private sealed record Glyph(
+        Texture2D? Texture,
+        float Advance,
+        Vector2 Offset,
+        float TextureScale,
+        float OutputScale
+    );
 }
