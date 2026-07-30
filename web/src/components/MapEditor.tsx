@@ -4,8 +4,32 @@ import {
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
   type WheelEvent as ReactWheelEvent,
 } from "react";
+import {
+  FiArrowDown,
+  FiArrowLeft,
+  FiArrowRight,
+  FiArrowUp,
+  FiBox,
+  FiCircle,
+  FiEye,
+  FiEyeOff,
+  FiMapPin,
+  FiMaximize,
+  FiMousePointer,
+  FiPlay,
+  FiRefreshCcw,
+  FiRotateCcw,
+  FiRotateCw,
+  FiSquare,
+  FiStopCircle,
+  FiTrash2,
+  FiX,
+  FiZoomIn,
+  FiZoomOut,
+} from "react-icons/fi";
 import {
   cameraBounds,
   cameraViewBox,
@@ -21,11 +45,57 @@ import type { VisualTheme } from "../visualThemes";
 import { GameView } from "./GameView";
 
 const GRID_SIZE = 8;
+const PLAYER_HALF_WIDTH = 4;
+const PLAYER_STANDING_HEIGHT = 11;
+const PLAYER_DUCKING_HEIGHT = 6;
+const MAX_TRAJECTORY_COLLIDERS = 480;
 
 type EditorTool = "select" | "solid" | "spawn" | "erase" | `entity:${string}`;
 type EditorSelection = { type: "solid" | "entity"; index: number };
 type EditableBounds = { x: number; y: number; width: number; height: number };
 type ResizeCorner = "nw" | "ne" | "se" | "sw";
+
+interface EditorTrajectory {
+  startFrame: number;
+  states: SimState[];
+}
+
+function EditorIcon({ children }: { children: ReactNode }) {
+  return <span className="editor-icon" aria-hidden="true">{children}</span>;
+}
+
+export function playerCollisionBounds(state: SimState): EditableBounds {
+  const height = state.ducking
+    ? PLAYER_DUCKING_HEIGHT
+    : PLAYER_STANDING_HEIGHT;
+  return {
+    x: state.pos.x - PLAYER_HALF_WIDTH,
+    y: state.pos.y - height,
+    width: PLAYER_HALF_WIDTH * 2,
+    height,
+  };
+}
+
+function trajectoryPath(states: readonly SimState[], endIndex: number): string {
+  return states
+    .slice(0, endIndex + 1)
+    .map((snapshot, index) =>
+      `${index === 0 ? "M" : "L"} ${snapshot.pos.x} ${snapshot.pos.y}`,
+    )
+    .join(" ");
+}
+
+function trajectoryColliderIndices(endIndex: number): number[] {
+  if (endIndex < 0) return [];
+  const step = Math.max(
+    1,
+    Math.ceil((endIndex + 1) / MAX_TRAJECTORY_COLLIDERS),
+  );
+  const result: number[] = [];
+  for (let index = 0; index <= endIndex; index += step) result.push(index);
+  if (result.at(-1) !== endIndex) result.push(endIndex);
+  return result;
+}
 
 interface EntityTemplate {
   id: string;
@@ -448,6 +518,11 @@ export function MapEditor({
     cameraBounds(defaultCameraPosition(map)),
   );
   const [historyRevision, setHistoryRevision] = useState(0);
+  const [trajectory, setTrajectory] = useState<EditorTrajectory | null>(null);
+  const [trajectoryRecording, setTrajectoryRecording] = useState(false);
+  const [trajectoryFrame, setTrajectoryFrame] = useState(0);
+  const [showAllTrajectory, setShowAllTrajectory] = useState(false);
+  const capturedThroughFrame = useRef<number | null>(null);
   const drag = useRef<DragState | null>(null);
   const undoStack = useRef<GymMap[]>([]);
   const redoStack = useRef<GymMap[]>([]);
@@ -458,10 +533,98 @@ export function MapEditor({
     () => ({ solids: map.solids.length, entities: map.entities.length }),
     [map.entities.length, map.solids.length],
   );
+  const reviewedTrajectoryState = trajectory?.states[
+    Math.min(trajectoryFrame, Math.max(0, trajectory.states.length - 1))
+  ];
+  const renderedState =
+    !experiencing && reviewedTrajectoryState
+      ? reviewedTrajectoryState
+      : state;
+  const renderedFrame =
+    !experiencing && trajectory
+      ? trajectory.startFrame + trajectoryFrame
+      : frame;
+  const renderedStates =
+    !experiencing && trajectory ? trajectory.states : states;
+  const renderedStateFrameOffset =
+    !experiencing && trajectory ? trajectory.startFrame : stateFrameOffset;
+  const trajectoryEndIndex = trajectory
+    ? showAllTrajectory
+      ? trajectory.states.length - 1
+      : Math.min(trajectoryFrame, trajectory.states.length - 1)
+    : -1;
+  const trajectoryLine = useMemo(
+    () => trajectoryPath(trajectory?.states ?? [], trajectoryEndIndex),
+    [trajectory, trajectoryEndIndex],
+  );
+  const colliderIndices = useMemo(
+    () =>
+      showAllTrajectory
+        ? trajectoryColliderIndices(trajectoryEndIndex)
+        : trajectoryEndIndex >= 0
+          ? [trajectoryEndIndex]
+          : [],
+    [showAllTrajectory, trajectoryEndIndex],
+  );
 
   useEffect(() => {
     setCameraViewport((viewport) => clampCameraViewport(map, viewport));
   }, [map.bounds.height, map.bounds.width, map.bounds.x, map.bounds.y, map.room]);
+
+  useEffect(() => {
+    setTrajectory(null);
+    setTrajectoryRecording(false);
+    setTrajectoryFrame(0);
+    setShowAllTrajectory(false);
+    capturedThroughFrame.current = null;
+  }, [map.room]);
+
+  useEffect(() => {
+    if (!trajectoryRecording) return;
+    const capturedThrough = capturedThroughFrame.current;
+    if (capturedThrough === null || frame < capturedThrough) return;
+    const appended: SimState[] = [];
+    for (let target = capturedThrough + 1; target <= frame; target += 1) {
+      const snapshot =
+        states[target - stateFrameOffset] ?? (target === frame ? state : null);
+      if (snapshot) appended.push(structuredClone(snapshot));
+    }
+    if (!appended.length) return;
+    capturedThroughFrame.current = frame;
+    setTrajectory((current) =>
+      current
+        ? { ...current, states: [...current.states, ...appended] }
+        : current,
+    );
+    setTrajectoryFrame((current) => current + appended.length);
+  }, [frame, state, stateFrameOffset, states, trajectoryRecording]);
+
+  const startTrajectoryRecording = () => {
+    const initial = structuredClone(
+      states[frame - stateFrameOffset] ?? state,
+    );
+    setTrajectory({ startFrame: frame, states: [initial] });
+    setTrajectoryFrame(0);
+    setShowAllTrajectory(false);
+    capturedThroughFrame.current = frame;
+    setTrajectoryRecording(true);
+  };
+
+  const stopTrajectoryRecording = () => {
+    setTrajectoryRecording(false);
+    capturedThroughFrame.current = null;
+    setTrajectoryFrame(Math.max(0, (trajectory?.states.length ?? 1) - 1));
+  };
+
+  const toggleExperience = () => {
+    if (experiencing && trajectoryRecording) stopTrajectoryRecording();
+    onExperienceChange(!experiencing);
+  };
+
+  const resetExperience = () => {
+    if (trajectoryRecording) stopTrajectoryRecording();
+    onResetExperience();
+  };
 
   const moveCamera = (x: number, y: number) =>
     setCameraViewport((viewport) =>
@@ -850,15 +1013,17 @@ export function MapEditor({
               onClick={() => chooseTool(candidate)}
               aria-pressed={tool === candidate}
             >
-              <span>
-                {candidate === "select"
-                  ? "↖"
-                  : candidate === "solid"
-                    ? "▦"
-                    : candidate === "spawn"
-                      ? "◆"
-                      : "⌫"}
-              </span>
+              <EditorIcon>
+                {candidate === "select" ? (
+                  <FiMousePointer />
+                ) : candidate === "solid" ? (
+                  <FiBox />
+                ) : candidate === "spawn" ? (
+                  <FiMapPin />
+                ) : (
+                  <FiTrash2 />
+                )}
+              </EditorIcon>
               {toolLabel(candidate)}
             </button>
           ))}
@@ -883,10 +1048,12 @@ export function MapEditor({
         </div>
         <div className="editor-history" data-revision={historyRevision}>
           <button onClick={undo} disabled={undoStack.current.length === 0}>
-            ↶ 撤销
+            <EditorIcon><FiRotateCcw /></EditorIcon>
+            撤销
           </button>
           <button onClick={redo} disabled={redoStack.current.length === 0}>
-            ↷ 重做
+            <EditorIcon><FiRotateCw /></EditorIcon>
+            重做
           </button>
         </div>
         <p className="editor-hint">
@@ -896,7 +1063,7 @@ export function MapEditor({
         </p>
       </aside>
 
-      <section className="editor-stage">
+      <section className={`editor-stage ${trajectory ? "has-trajectory" : ""}`}>
         <div className="editor-stage-bar">
           <div>
             <small>{experiencing ? "LIVE EXPERIENCE" : "EDITING"}</small>
@@ -912,70 +1079,94 @@ export function MapEditor({
                   aria-label="相机向左"
                   onClick={() => moveCamera(-cameraViewport.width / 2, 0)}
                 >
-                  ←
+                  <EditorIcon><FiArrowLeft /></EditorIcon>
                 </button>
                 <button
                   aria-label="相机向上"
                   onClick={() => moveCamera(0, -cameraViewport.height / 2)}
                 >
-                  ↑
+                  <EditorIcon><FiArrowUp /></EditorIcon>
                 </button>
                 <button
                   aria-label="相机回到出生点"
                   onClick={resetCamera}
                 >
+                  <EditorIcon><FiMapPin /></EditorIcon>
                   出生点
                 </button>
                 <button
                   aria-label="相机向下"
                   onClick={() => moveCamera(0, cameraViewport.height / 2)}
                 >
-                  ↓
+                  <EditorIcon><FiArrowDown /></EditorIcon>
                 </button>
                 <button
                   aria-label="相机向右"
                   onClick={() => moveCamera(cameraViewport.width / 2, 0)}
                 >
-                  →
+                  <EditorIcon><FiArrowRight /></EditorIcon>
                 </button>
                 <button aria-label="缩小地图" onClick={() => zoomCamera(1.25)}>
-                  −
+                  <EditorIcon><FiZoomOut /></EditorIcon>
                 </button>
                 <span>
                   {Math.round((320 / cameraViewport.width) * 100)}%
                 </span>
                 <button aria-label="放大地图" onClick={() => zoomCamera(0.8)}>
-                  +
+                  <EditorIcon><FiZoomIn /></EditorIcon>
                 </button>
                 <button aria-label="地图适配屏幕" onClick={fitCamera}>
+                  <EditorIcon><FiMaximize /></EditorIcon>
                   适配
                 </button>
               </div>
             )}
             {experiencing && (
-              <button onClick={() => onResetExperience()}>重生</button>
+              <>
+                <button
+                  className={trajectoryRecording ? "recording" : ""}
+                  onClick={
+                    trajectoryRecording
+                      ? stopTrajectoryRecording
+                      : startTrajectoryRecording
+                  }
+                >
+                  <EditorIcon>
+                    {trajectoryRecording ? <FiStopCircle /> : <FiCircle />}
+                  </EditorIcon>
+                  {trajectoryRecording ? "结束录制" : "录制轨迹"}
+                </button>
+                <button onClick={resetExperience}>
+                  <EditorIcon><FiRefreshCcw /></EditorIcon>
+                  重生
+                </button>
+              </>
             )}
             <button
               className={experiencing ? "stop" : "experience"}
               disabled={!ready}
-              onClick={() => onExperienceChange(!experiencing)}
+              onClick={toggleExperience}
             >
-              {experiencing ? "■ 返回编辑" : "▶ 实时体验"}
+              <EditorIcon>
+                {experiencing ? <FiSquare /> : <FiPlay />}
+              </EditorIcon>
+              {experiencing ? "返回编辑" : "实时体验"}
             </button>
           </div>
         </div>
         <GameView
           map={map}
-          state={state}
-          states={states}
-          stateFrameOffset={stateFrameOffset}
-          frame={frame}
+          state={renderedState}
+          states={renderedStates}
+          stateFrameOffset={renderedStateFrameOffset}
+          frame={renderedFrame}
           stale={false}
           theme={theme}
           cameraViewport={experiencing ? undefined : cameraViewport}
         >
-          {(viewport) =>
-            !experiencing && (
+          {(viewport) => (
+            <>
+            {!experiencing && (
             <svg
               className={`map-editor-overlay tool-${tool.replace(":", "-")}`}
               viewBox={cameraViewBox(viewport.camera)}
@@ -1093,12 +1284,98 @@ export function MapEditor({
                 <path d="M -4 0 H 4 M 0 -4 V 4" />
               </g>
             </svg>
+            )}
+            {trajectory && trajectoryEndIndex >= 0 && (
+              <svg
+                className="editor-trajectory-overlay"
+                viewBox={cameraViewBox(viewport.camera)}
+                preserveAspectRatio="xMidYMid meet"
+                aria-label="已录制轨迹"
+              >
+                <path className="editor-trajectory-line-glow" d={trajectoryLine} />
+                <path className="editor-trajectory-line" d={trajectoryLine} />
+                <g className={showAllTrajectory ? "all" : "selected"}>
+                  {colliderIndices.map((index) => {
+                    const snapshot = trajectory.states[index];
+                    if (!snapshot) return null;
+                    return (
+                      <rect
+                        key={index}
+                        data-frame={trajectory.startFrame + index}
+                        className={index === trajectoryFrame ? "current" : ""}
+                        {...playerCollisionBounds(snapshot)}
+                      />
+                    );
+                  })}
+                </g>
+                {reviewedTrajectoryState && (
+                  <circle
+                    className="editor-trajectory-point"
+                    cx={reviewedTrajectoryState.pos.x}
+                    cy={reviewedTrajectoryState.pos.y}
+                    r="2.5"
+                  />
+                )}
+              </svg>
+            )}
+            </>
           )}
         </GameView>
         {experiencing && (
           <div className="editor-live-note">
             <i />
-            WASM 60 FPS · 与游玩模式相同 · 不记录 state
+            {trajectoryRecording
+              ? `正在录制轨迹 · ${trajectory?.states.length ?? 0} 帧`
+              : "WASM 60 FPS · 与游玩模式相同"}
+          </div>
+        )}
+        {trajectory && (
+          <div className="editor-trajectory-timeline">
+            <div className="editor-trajectory-meta">
+              <strong>
+                {trajectoryRecording ? "正在录制" : "轨迹回放"}
+              </strong>
+              <span>
+                F{trajectory.startFrame + trajectoryFrame} · {trajectory.states.length} 帧 · {reviewedTrajectoryState?.state ?? "-"}
+              </span>
+            </div>
+            <input
+              type="range"
+              aria-label="轨迹进度"
+              min={0}
+              max={Math.max(0, trajectory.states.length - 1)}
+              value={Math.min(
+                trajectoryFrame,
+                Math.max(0, trajectory.states.length - 1),
+              )}
+              disabled={trajectoryRecording}
+              onChange={(event) => {
+                setTrajectoryFrame(Number(event.target.value));
+                setShowAllTrajectory(false);
+              }}
+            />
+            <button
+              type="button"
+              aria-pressed={showAllTrajectory}
+              onClick={() => setShowAllTrajectory((value) => !value)}
+            >
+              <EditorIcon>
+                {showAllTrajectory ? <FiEyeOff /> : <FiEye />}
+              </EditorIcon>
+              {showAllTrajectory ? "聚焦当前帧" : "显示全部轨迹"}
+            </button>
+            <button
+              type="button"
+              aria-label="清除轨迹"
+              disabled={trajectoryRecording}
+              onClick={() => {
+                setTrajectory(null);
+                setTrajectoryFrame(0);
+                setShowAllTrajectory(false);
+              }}
+            >
+              <EditorIcon><FiX /></EditorIcon>
+            </button>
           </div>
         )}
       </section>

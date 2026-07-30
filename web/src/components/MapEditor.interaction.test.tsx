@@ -1,4 +1,4 @@
-import { fireEvent, render, within } from "@testing-library/react";
+import { fireEvent, render, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { GameViewViewport } from "../camera";
@@ -11,10 +11,12 @@ vi.mock("./GameView", () => ({
     children,
     cameraPosition,
     cameraViewport,
+    state,
   }: {
     children?: ReactNode | ((viewport: GameViewViewport) => ReactNode);
     cameraPosition?: { x: number; y: number };
     cameraViewport?: GameViewViewport["camera"];
+    state: { pos: { x: number; y: number } };
   }) => {
     const viewport: GameViewViewport = {
       width: 320,
@@ -33,6 +35,8 @@ vi.mock("./GameView", () => ({
         data-camera-y={viewport.camera.y}
         data-camera-width={viewport.camera.width}
         data-camera-height={viewport.camera.height}
+        data-state-x={state.pos.x}
+        data-state-y={state.pos.y}
       >
         {typeof children === "function" ? children(viewport) : children}
       </div>
@@ -215,5 +219,78 @@ describe("MapEditor interactions", () => {
     expect(
       within(first.container).getByText("ZIP MOVER 终点"),
     ).toBeInTheDocument();
+  });
+
+  it("records, scrubs, and expands the complete player trajectory", async () => {
+    const map = createBlankGymMap();
+    const first = createInitialState(map);
+    const second = {
+      ...structuredClone(first),
+      pos: { x: 52, y: 100 },
+      ducking: true,
+      state: "StDuck",
+    };
+    const third = {
+      ...structuredClone(first),
+      pos: { x: 76, y: 92 },
+      state: "StDash",
+    };
+    const onExperienceChange = vi.fn();
+    const renderEditor = (
+      experiencing: boolean,
+      frame: number,
+      state: typeof first,
+      states: typeof first[],
+    ) => (
+      <MapEditor
+        map={map}
+        state={state}
+        frame={frame}
+        states={states}
+        stateFrameOffset={0}
+        theme={VISUAL_THEMES[0]}
+        experiencing={experiencing}
+        ready
+        onChange={vi.fn()}
+        onExperienceChange={onExperienceChange}
+        onResetExperience={vi.fn()}
+      />
+    );
+    const view = render(renderEditor(true, 0, first, [first]));
+    const screen = within(view.container);
+
+    fireEvent.click(screen.getByRole("button", { name: "录制轨迹" }));
+    view.rerender(renderEditor(true, 2, third, [first, second, third]));
+    await waitFor(() =>
+      expect(screen.getByRole("slider", { name: "轨迹进度" })).toHaveAttribute(
+        "max",
+        "2",
+      ),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "结束录制" }));
+    view.rerender(renderEditor(false, 2, third, [first, second, third]));
+
+    const progress = screen.getByRole("slider", { name: "轨迹进度" });
+    expect(progress).toHaveAttribute("max", "2");
+    fireEvent.change(progress, { target: { value: "1" } });
+    expect(view.container.querySelector(".game-screen")).toHaveAttribute(
+      "data-state-x",
+      "52",
+    );
+    const currentCollider = view.container.querySelector(
+      '.editor-trajectory-overlay rect.current[data-frame="1"]',
+    );
+    expect(currentCollider).toHaveAttribute("x", "48");
+    expect(currentCollider).toHaveAttribute("y", "94");
+    expect(currentCollider).toHaveAttribute("width", "8");
+    expect(currentCollider).toHaveAttribute("height", "6");
+
+    fireEvent.click(screen.getByRole("button", { name: "显示全部轨迹" }));
+    expect(
+      view.container.querySelectorAll(".editor-trajectory-overlay rect"),
+    ).toHaveLength(3);
+    expect(
+      view.container.querySelector(".editor-trajectory-line"),
+    ).toHaveAttribute("d", expect.stringContaining("L 76 92"));
   });
 });

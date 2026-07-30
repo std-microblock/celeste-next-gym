@@ -14,6 +14,8 @@ import {
 import {
   createTrainingCatalogWorkspace,
   createTrainingProject,
+  createTrainingTechniqueWorkspace,
+  openTrainingCatalogWorkspace,
   saveTrainingCatalogWorkspace,
 } from "../training/editorProject";
 import { VISUAL_THEMES } from "../visualThemes";
@@ -206,6 +208,157 @@ describe("editor folder workspace", () => {
     expect(
       view.queryByRole("menu", { name: "大分类" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("renames catalog and room IDs, migrates paths, and updates references", async () => {
+    const directory = memoryDirectory();
+    const catalog = createTrainingCatalogWorkspace();
+    const section = catalog.sections[0];
+    const related = createTrainingTechniqueWorkspace(
+      section,
+      "related-technique",
+      "关联技巧",
+    );
+    related.metadata.related = [catalog.techniques[0].metadata.id];
+    catalog.techniques.push(related);
+    await saveTrainingCatalogWorkspace(directory, catalog);
+    window.showDirectoryPicker = vi.fn(async () => directory);
+    const onMapChange = vi.fn();
+    const initial = createInitialState(PLAYGROUND);
+    const view = render(
+      <EditorWorkspace
+        map={PLAYGROUND}
+        state={initial}
+        frame={0}
+        states={[initial]}
+        stateFrameOffset={0}
+        theme={VISUAL_THEMES[0]}
+        bindings={DEFAULT_BINDINGS}
+        wasmClient={{ listMapRooms: vi.fn(), loadMapBytes: vi.fn() }}
+        experiencing={false}
+        ready
+        onMapChange={onMapChange}
+        onExperienceChange={vi.fn()}
+        onResetExperience={vi.fn()}
+      />,
+    );
+
+    expect(view.getByRole("button", { name: "打开目录" }).querySelector("svg"))
+      .not.toBeNull();
+    fireEvent.click(view.getByRole("button", { name: "打开目录" }));
+    await view.findByTestId("training-flow");
+
+    fireEvent.click(view.getByRole("button", { name: "大分类菜单" }));
+    let menu = view.getByRole("menu", { name: "大分类" });
+    fireEvent.click(
+      within(menu).getByRole("button", { name: "重命名大分类" }),
+    );
+    fireEvent.change(view.getByLabelText("大分类 ID"), {
+      target: { value: "movement" },
+    });
+    fireEvent.click(within(menu).getByRole("button", { name: "应用 ID" }));
+    await waitFor(() =>
+      expect(view.getByText("大分类 ID 已改为 movement")).toBeInTheDocument(),
+    );
+    fireEvent.click(within(menu).getByRole("button", { name: "完成" }));
+
+    fireEvent.click(view.getByRole("button", { name: "二级分类菜单" }));
+    menu = view.getByRole("menu", { name: "二级分类" });
+    fireEvent.click(
+      within(menu).getByRole("button", { name: "重命名二级分类" }),
+    );
+    fireEvent.change(view.getByLabelText("二级分类 ID"), {
+      target: { value: "hyper" },
+    });
+    fireEvent.click(within(menu).getByRole("button", { name: "应用 ID" }));
+    await waitFor(() =>
+      expect(view.getByText("二级分类 ID 已改为 hyper")).toBeInTheDocument(),
+    );
+    fireEvent.click(within(menu).getByRole("button", { name: "完成" }));
+
+    fireEvent.click(view.getByRole("button", { name: "房间菜单" }));
+    menu = view.getByRole("menu", { name: "房间" });
+    fireEvent.click(within(menu).getByRole("button", { name: "重命名房间" }));
+    fireEvent.change(view.getByLabelText("房间 ID"), {
+      target: { value: "hyper-room" },
+    });
+    fireEvent.click(within(menu).getByRole("button", { name: "应用 ID" }));
+    expect(onMapChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ room: "hyper-room" }),
+    );
+    fireEvent.click(within(menu).getByRole("button", { name: "完成" }));
+    fireEvent.click(view.getByRole("button", { name: "保存" }));
+    await waitFor(() =>
+      expect(view.getByText(/已保存到 shared-training-folder/)).toBeInTheDocument(),
+    );
+
+    const loaded = await openTrainingCatalogWorkspace(directory, PLAYGROUND);
+    expect(loaded.sections[0].id).toBe("movement");
+    expect(loaded.techniques.map((technique) => technique.path)).toEqual([
+      "movement/hyper",
+      "movement/related-technique",
+    ]);
+    expect(loaded.techniques[0].metadata.section.id).toBe("movement");
+    expect(loaded.techniques[0].metadata.id).toBe("hyper");
+    expect(loaded.techniques[0].projects[0].map.room).toBe("hyper-room");
+    expect(loaded.techniques[1].metadata.related).toEqual(["hyper"]);
+
+    const oldSection = await directory.getDirectoryHandle("uncategorized");
+    await expect(
+      oldSection.getDirectoryHandle("new-technique"),
+    ).rejects.toMatchObject({ name: "NotFoundError" });
+    await expect(
+      oldSection.getDirectoryHandle("related-technique"),
+    ).rejects.toMatchObject({ name: "NotFoundError" });
+    const movement = await directory.getDirectoryHandle("movement");
+    await expect(movement.getDirectoryHandle("hyper")).resolves.toBeDefined();
+  });
+
+  it("rejects unsafe and duplicate IDs", async () => {
+    const directory = memoryDirectory();
+    const catalog = createTrainingCatalogWorkspace();
+    const second = createTrainingProject(PLAYGROUND);
+    second.map.room = "occupied-room";
+    second.id = "second-project";
+    catalog.techniques[0].projects.push(second);
+    await saveTrainingCatalogWorkspace(directory, catalog);
+    window.showDirectoryPicker = vi.fn(async () => directory);
+    const initial = createInitialState(PLAYGROUND);
+    const view = render(
+      <EditorWorkspace
+        map={PLAYGROUND}
+        state={initial}
+        frame={0}
+        states={[initial]}
+        stateFrameOffset={0}
+        theme={VISUAL_THEMES[0]}
+        bindings={DEFAULT_BINDINGS}
+        wasmClient={{ listMapRooms: vi.fn(), loadMapBytes: vi.fn() }}
+        experiencing={false}
+        ready
+        onMapChange={vi.fn()}
+        onExperienceChange={vi.fn()}
+        onResetExperience={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(view.getByRole("button", { name: "打开目录" }));
+    await view.findByTestId("training-flow");
+    fireEvent.click(view.getByRole("button", { name: "房间菜单" }));
+    const menu = view.getByRole("menu", { name: "房间" });
+    fireEvent.click(within(menu).getByRole("button", { name: "重命名房间" }));
+    fireEvent.change(view.getByLabelText("房间 ID"), {
+      target: { value: "Bad Room" },
+    });
+    fireEvent.click(within(menu).getByRole("button", { name: "应用 ID" }));
+    expect(view.getByRole("alert")).toHaveTextContent(
+      "只能使用小写字母、数字、连字符和下划线",
+    );
+    fireEvent.change(view.getByLabelText("房间 ID"), {
+      target: { value: "occupied-room" },
+    });
+    fireEvent.click(within(menu).getByRole("button", { name: "应用 ID" }));
+    expect(view.getByRole("alert")).toHaveTextContent("已被使用");
   });
 
   it("lists rooms from a BIN and imports only the selected room", async () => {

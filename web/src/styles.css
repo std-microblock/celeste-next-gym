@@ -2922,6 +2922,17 @@ footer {
     monospace;
   text-align: center;
 }
+.editor-icon {
+  width: 1em;
+  height: 1em;
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+}
+.editor-icon svg {
+  width: 100%;
+  height: 100%;
+}
 .editor-tool-group button:hover,
 .editor-entity-tools button:hover {
   color: #fff;
@@ -2983,6 +2994,13 @@ footer {
   opacity: 0.35;
   cursor: default;
 }
+.editor-history button,
+.editor-stage-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
 .editor-hint {
   margin: 0 14px 18px;
   color: #806d8d;
@@ -3007,6 +3025,9 @@ footer {
   padding: 8px 14px;
   border-bottom: 1px solid #513869;
   background: linear-gradient(90deg, #211331, #0e091c);
+}
+.editor-stage.has-trajectory {
+  grid-template-rows: 58px minmax(0, 1fr) 64px;
 }
 .editor-stage-bar > div:first-child {
   min-width: 0;
@@ -3069,6 +3090,12 @@ footer {
   opacity: 0.4;
   cursor: wait;
 }
+.editor-stage-actions button.recording {
+  color: #fff;
+  border-color: #ff7198;
+  background: #7d2447;
+  box-shadow: 0 0 12px #ff4f8144;
+}
 .editor-camera-controls,
 .training-camera-controls {
   display: flex;
@@ -3130,6 +3157,52 @@ footer {
 }
 .map-editor-overlay[class*="tool-entity-"] {
   cursor: copy;
+}
+.editor-trajectory-overlay {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.editor-trajectory-line,
+.editor-trajectory-line-glow {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.editor-trajectory-line-glow {
+  stroke: #000b;
+  stroke-width: 5;
+}
+.editor-trajectory-line {
+  stroke: var(--cyan);
+  stroke-width: 2;
+}
+.editor-trajectory-overlay rect {
+  fill: #65d9ff12;
+  stroke: #65d9ff80;
+  stroke-width: 0.8;
+  vector-effect: non-scaling-stroke;
+}
+.editor-trajectory-overlay g.all rect {
+  opacity: 0.42;
+}
+.editor-trajectory-overlay rect.current {
+  fill: #ffd37a35;
+  stroke: var(--gold);
+  stroke-width: 1.6;
+  opacity: 1;
+}
+.editor-trajectory-point {
+  fill: #fff;
+  stroke: var(--cyan);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 3px var(--cyan));
 }
 .editor-map-hitarea {
   fill: transparent;
@@ -3255,6 +3328,61 @@ footer {
   background: var(--green);
   box-shadow: 0 0 8px var(--green);
   animation: editor-live-pulse 1.2s infinite;
+}
+.editor-stage.has-trajectory .editor-live-note {
+  bottom: 76px;
+}
+.editor-trajectory-timeline {
+  z-index: 7;
+  display: grid;
+  grid-template-columns: auto minmax(100px, 1fr) auto 32px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  color: #d9cedd;
+  border-top: 1px solid #513869;
+  background: linear-gradient(90deg, #171027, #0d091a);
+  box-shadow: 0 -8px 24px #0008;
+}
+.editor-trajectory-meta {
+  min-width: 120px;
+  display: grid;
+  gap: 3px;
+}
+.editor-trajectory-meta strong {
+  color: var(--cyan);
+  font-size: 9px;
+}
+.editor-trajectory-meta span {
+  color: #8f7b9b;
+  font: 8px Consolas, monospace;
+}
+.editor-trajectory-timeline input[type="range"] {
+  width: 100%;
+  accent-color: var(--cyan);
+}
+.editor-trajectory-timeline button {
+  min-height: 31px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 9px;
+  color: #d9cedd;
+  border: 1px solid #5f4775;
+  background: #211431;
+  cursor: pointer;
+  font-size: 8px;
+}
+.editor-trajectory-timeline button[aria-pressed="true"] {
+  color: #08150f;
+  border-color: var(--green);
+  background: var(--green);
+}
+.editor-trajectory-timeline button:disabled,
+.editor-trajectory-timeline input:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 @keyframes editor-live-pulse {
   50% {
@@ -3941,6 +4069,28 @@ footer {
   min-width: 130px;
   max-width: 210px;
 }
+.editor-workspace-nav button,
+.editor-section-tabs button,
+.editor-managed-actions button,
+.editor-managed-confirm-actions button,
+.editor-empty-state button,
+.editor-bin-dialog button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+.editor-button-icon {
+  width: 1em;
+  height: 1em;
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+}
+.editor-button-icon svg {
+  width: 100%;
+  height: 100%;
+}
 .editor-catalog-nav {
   min-width: 0;
   height: 42px;
@@ -3989,9 +4139,13 @@ footer {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.editor-managed-trigger > i {
+.editor-managed-trigger > svg {
+  flex: 0 0 auto;
   color: #b38cc3;
-  font-style: normal;
+  transition: transform 0.15s ease;
+}
+.editor-managed-trigger[aria-expanded="true"] > svg {
+  transform: rotate(180deg);
 }
 .editor-managed-trigger[aria-expanded="true"] {
   border-color: #b7558b;
@@ -4118,6 +4272,36 @@ footer {
 .editor-managed-fields textarea {
   min-height: 72px;
   resize: vertical;
+}
+.editor-managed-id-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+.editor-managed-id-row button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 9px;
+  color: #fff;
+  border: 1px solid #a73b75;
+  background: #6f2354;
+  cursor: pointer;
+  font-size: 9px;
+}
+.editor-managed-id-row button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.editor-managed-fields label > em {
+  color: #ff8caf;
+  font-size: 8px;
+  font-style: normal;
+}
+.editor-managed-fields label > small {
+  color: #7f6c8a;
+  font-size: 8px;
 }
 .editor-managed-fields p {
   margin: 0;

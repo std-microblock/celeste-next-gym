@@ -5,6 +5,21 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import {
+  FiArchive,
+  FiCheck,
+  FiChevronDown,
+  FiDownload,
+  FiEdit3,
+  FiFolder,
+  FiGitBranch,
+  FiMap,
+  FiPlus,
+  FiSave,
+  FiTrash2,
+  FiUpload,
+  FiX,
+} from "react-icons/fi";
 import type { KeyBindings, GymMap, SimState } from "../model";
 import type { WasmClient } from "../simulator/wasmClient";
 import {
@@ -52,6 +67,24 @@ function uniqueId(label: string, existing: Iterable<string>, fallback: string) {
   let suffix = 2;
   while (used.has(candidate)) candidate = `${base}-${suffix++}`;
   return candidate;
+}
+
+const EDITABLE_ID_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
+
+function editableIdError(
+  label: string,
+  value: string,
+  existing: Iterable<string>,
+): string | null {
+  if (!value) return `${label}不能为空`;
+  if (!EDITABLE_ID_PATTERN.test(value))
+    return `${label}只能使用小写字母、数字、连字符和下划线`;
+  if (new Set(existing).has(value)) return `${label}“${value}”已被使用`;
+  return null;
+}
+
+function ButtonIcon({ children }: { children: ReactNode }) {
+  return <span className="editor-button-icon" aria-hidden="true">{children}</span>;
 }
 
 interface BinImportState {
@@ -141,7 +174,7 @@ function EditorManagedDropdown({
           <small>{label}</small>
           <strong>{selectedLabel}</strong>
         </span>
-        <i aria-hidden="true">⌄</i>
+        <FiChevronDown aria-hidden="true" />
       </button>
       {open && (
         <div
@@ -182,6 +215,7 @@ function EditorManagedDropdown({
                     setMode("rename");
                   }}
                 >
+                  <ButtonIcon><FiPlus /></ButtonIcon>
                   新建{label}
                 </button>
                 <button
@@ -189,6 +223,7 @@ function EditorManagedDropdown({
                   disabled={!selectedId}
                   onClick={() => setMode("rename")}
                 >
+                  <ButtonIcon><FiEdit3 /></ButtonIcon>
                   重命名{label}
                 </button>
                 <button
@@ -197,6 +232,7 @@ function EditorManagedDropdown({
                   disabled={!selectedId}
                   onClick={() => setMode("delete")}
                 >
+                  <ButtonIcon><FiTrash2 /></ButtonIcon>
                   删除{label}
                 </button>
               </div>
@@ -205,14 +241,16 @@ function EditorManagedDropdown({
             <div className="editor-managed-editor">
               <header>
                 <strong>重命名{label}</strong>
-                <small>ID 与文件名保持不变</small>
+                <small>名称和 ID 可分别修改；ID 需要明确应用</small>
               </header>
               {renameContent}
               <div className="editor-managed-confirm-actions">
                 <button type="button" onClick={() => setMode("list")}>
+                  <ButtonIcon><FiX /></ButtonIcon>
                   返回
                 </button>
                 <button type="button" className="primary" onClick={close}>
+                  <ButtonIcon><FiCheck /></ButtonIcon>
                   完成
                 </button>
               </div>
@@ -223,6 +261,7 @@ function EditorManagedDropdown({
               <p>{deleteDescription}</p>
               <div className="editor-managed-confirm-actions">
                 <button type="button" onClick={() => setMode("list")}>
+                  <ButtonIcon><FiX /></ButtonIcon>
                   取消
                 </button>
                 <button
@@ -230,6 +269,7 @@ function EditorManagedDropdown({
                   className="danger"
                   onClick={() => void Promise.resolve(onDelete()).then(close)}
                 >
+                  <ButtonIcon><FiTrash2 /></ButtonIcon>
                   确认删除
                 </button>
               </div>
@@ -276,6 +316,12 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
     useState<TrainingRecordingScope | null>(null);
   const [binImport, setBinImport] = useState<BinImportState | null>(null);
   const [managedDropdown, setManagedDropdown] = useState<string | null>(null);
+  const [sectionIdDraft, setSectionIdDraft] = useState("");
+  const [techniqueIdDraft, setTechniqueIdDraft] = useState("");
+  const [roomIdDraft, setRoomIdDraft] = useState("");
+  const [sectionIdError, setSectionIdError] = useState<string | null>(null);
+  const [techniqueIdError, setTechniqueIdError] = useState<string | null>(null);
+  const [roomIdError, setRoomIdError] = useState<string | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const binImportRef = useRef<HTMLInputElement>(null);
   const revision = useRef(0);
@@ -297,6 +343,21 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
   const allProjects = catalog.techniques.flatMap(
     (technique) => technique.projects,
   );
+
+  useEffect(() => {
+    setSectionIdDraft(currentSection?.id ?? "");
+    setSectionIdError(null);
+  }, [currentSection?.id]);
+
+  useEffect(() => {
+    setTechniqueIdDraft(currentTechnique?.metadata.id ?? "");
+    setTechniqueIdError(null);
+  }, [currentTechnique?.metadata.id]);
+
+  useEffect(() => {
+    setRoomIdDraft(current?.map.room ?? current?.id ?? "");
+    setRoomIdError(null);
+  }, [current?.id, current?.map.room]);
 
   useEffect(() => {
     const first = catalog.techniques[0]?.projects[0];
@@ -551,6 +612,102 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
     });
   };
 
+  const persistCatalogIdChange = async (
+    next: TrainingCatalogWorkspace,
+    previousTechniques: readonly TrainingTechniqueWorkspace[],
+    successNotice: string,
+  ): Promise<boolean> => {
+    if (directory) {
+      try {
+        setSaveState("saving");
+        await saveTrainingCatalogWorkspace(directory, next);
+      } catch (error) {
+        setSaveState("error");
+        setNotice(
+          error instanceof Error
+            ? `ID 修改失败：${error.message}`
+            : "ID 修改失败",
+        );
+        return false;
+      }
+    }
+
+    const stalePaths = previousTechniques.filter(
+      (previous) =>
+        !next.techniques.some((technique) => technique.path === previous.path),
+    );
+    const cleanupFailures: string[] = [];
+    if (directory) {
+      for (const previous of stalePaths) {
+        try {
+          await removeTrainingTechniqueFiles(directory, previous);
+        } catch {
+          cleanupFailures.push(previous.path);
+        }
+      }
+    }
+
+    markChanged(next);
+    if (directory) setSaveState("saved");
+    setNotice(
+      cleanupFailures.length
+        ? `${successNotice}；旧目录未能清理：${cleanupFailures.join("、")}`
+        : successNotice,
+    );
+    return true;
+  };
+
+  const applySectionId = async () => {
+    if (!currentSection) return;
+    const nextId = sectionIdDraft.trim();
+    const error = editableIdError(
+      "大分类 ID",
+      nextId,
+      catalog.sections
+        .filter((candidate) => candidate.id !== currentSection.id)
+        .map((candidate) => candidate.id),
+    );
+    setSectionIdError(error);
+    if (error) return;
+    if (nextId === currentSection.id) {
+      setNotice("大分类 ID 没有变化");
+      return;
+    }
+
+    const previousTechniques = catalog.techniques.filter(
+      (technique) => technique.metadata.section.id === currentSection.id,
+    );
+    const updatedSection = { ...currentSection, id: nextId };
+    const next: TrainingCatalogWorkspace = {
+      sections: catalog.sections.map((candidate) =>
+        candidate.id === currentSection.id ? updatedSection : candidate,
+      ),
+      techniques: catalog.techniques.map((technique) =>
+        technique.metadata.section.id === currentSection.id
+          ? {
+              ...technique,
+              path: `${nextId}/${technique.metadata.id}`,
+              metadata: {
+                ...technique.metadata,
+                section: { ...updatedSection },
+              },
+            }
+          : technique,
+      ),
+    };
+    if (
+      await persistCatalogIdChange(
+        next,
+        previousTechniques,
+        `大分类 ID 已改为 ${nextId}`,
+      )
+    ) {
+      setSectionId(nextId);
+      setSectionIdDraft(nextId);
+      setSectionIdError(null);
+    }
+  };
+
   const deleteSection = async () => {
     if (!currentSection) return;
     const owned = catalog.techniques.filter(
@@ -610,6 +767,55 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
       ...currentTechnique,
       metadata: { ...currentTechnique.metadata, [field]: value },
     });
+  };
+
+  const applyTechniqueId = async () => {
+    if (!currentTechnique) return;
+    const previousId = currentTechnique.metadata.id;
+    const nextId = techniqueIdDraft.trim();
+    const error = editableIdError(
+      "二级分类 ID",
+      nextId,
+      catalog.techniques
+        .filter((candidate) => candidate.metadata.id !== previousId)
+        .map((candidate) => candidate.metadata.id),
+    );
+    setTechniqueIdError(error);
+    if (error) return;
+    if (nextId === previousId) {
+      setNotice("二级分类 ID 没有变化");
+      return;
+    }
+
+    const next: TrainingCatalogWorkspace = {
+      ...catalog,
+      techniques: catalog.techniques.map((technique) => {
+        const related = technique.metadata.related.map((id) =>
+          id === previousId ? nextId : id,
+        );
+        if (technique.metadata.id !== previousId)
+          return {
+            ...technique,
+            metadata: { ...technique.metadata, related },
+          };
+        return {
+          ...technique,
+          path: `${technique.metadata.section.id}/${nextId}`,
+          metadata: { ...technique.metadata, id: nextId, related },
+        };
+      }),
+    };
+    if (
+      await persistCatalogIdChange(
+        next,
+        [currentTechnique],
+        `二级分类 ID 已改为 ${nextId}`,
+      )
+    ) {
+      setTechniqueId(nextId);
+      setTechniqueIdDraft(nextId);
+      setTechniqueIdError(null);
+    }
   };
 
   const deleteTechnique = async () => {
@@ -688,6 +894,28 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
     });
   };
 
+  const applyRoomId = () => {
+    if (!current) return;
+    const nextId = roomIdDraft.trim();
+    const error = editableIdError(
+      "房间 ID",
+      nextId,
+      allProjects
+        .filter((project) => project !== current)
+        .map((project) => project.map.room ?? project.id),
+    );
+    setRoomIdError(error);
+    if (error) return;
+    if (nextId === (current.map.room ?? current.id)) {
+      setNotice("房间 ID 没有变化");
+      return;
+    }
+    changeCurrent({ ...current, map: { ...current.map, room: nextId } });
+    setRoomIdDraft(nextId);
+    setRoomIdError(null);
+    setNotice(`房间 ID 已改为 ${nextId}`);
+  };
+
   if (recordingScope && current) {
     return (
       <TrainingRecorder
@@ -713,17 +941,23 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
               className={section === "map" ? "active" : ""}
               onClick={() => setSection("map")}
             >
+              <ButtonIcon><FiMap /></ButtonIcon>
               地图
             </button>
             <button
               className={section === "training" ? "active" : ""}
               onClick={() => setSection("training")}
             >
+              <ButtonIcon><FiGitBranch /></ButtonIcon>
               训练流程
             </button>
           </div>
-          <button onClick={() => void openFolder()}>打开目录</button>
+          <button onClick={() => void openFolder()}>
+            <ButtonIcon><FiFolder /></ButtonIcon>
+            打开目录
+          </button>
           <button disabled={!current} onClick={() => importRef.current?.click()}>
+            <ButtonIcon><FiUpload /></ButtonIcon>
             导入 JSON
           </button>
           <input
@@ -740,6 +974,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
             disabled={!currentTechnique}
             onClick={() => binImportRef.current?.click()}
           >
+            <ButtonIcon><FiArchive /></ButtonIcon>
             从 BIN 导入房间
           </button>
           <input
@@ -760,12 +995,14 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
               setNotice("地图与训练脚本已导出");
             }}
           >
+            <ButtonIcon><FiDownload /></ButtonIcon>
             导出
           </button>
           <button
             disabled={!directory || saveState === "saving"}
             onClick={() => void saveNow()}
           >
+            <ButtonIcon><FiSave /></ButtonIcon>
             保存
           </button>
           <span className={`editor-save-state ${saveState}`}>
@@ -815,6 +1052,30 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
             }
             renameContent={
               <div className="editor-managed-fields">
+                <label>
+                  <span>ID</span>
+                  <div className="editor-managed-id-row">
+                    <input
+                      aria-label="大分类 ID"
+                      value={sectionIdDraft}
+                      spellCheck={false}
+                      onChange={(event) => {
+                        setSectionIdDraft(event.target.value);
+                        setSectionIdError(null);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="primary"
+                      disabled={sectionIdDraft.trim() === currentSection?.id}
+                      onClick={() => void applySectionId()}
+                    >
+                      <ButtonIcon><FiCheck /></ButtonIcon>
+                      应用 ID
+                    </button>
+                  </div>
+                  {sectionIdError && <em role="alert">{sectionIdError}</em>}
+                </label>
                 <label>
                   <span>名称</span>
                   <input
@@ -870,6 +1131,33 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
             }
             renameContent={
               <div className="editor-managed-fields">
+                <label>
+                  <span>ID</span>
+                  <div className="editor-managed-id-row">
+                    <input
+                      aria-label="二级分类 ID"
+                      value={techniqueIdDraft}
+                      spellCheck={false}
+                      onChange={(event) => {
+                        setTechniqueIdDraft(event.target.value);
+                        setTechniqueIdError(null);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="primary"
+                      disabled={
+                        techniqueIdDraft.trim() ===
+                        currentTechnique?.metadata.id
+                      }
+                      onClick={() => void applyTechniqueId()}
+                    >
+                      <ButtonIcon><FiCheck /></ButtonIcon>
+                      应用 ID
+                    </button>
+                  </div>
+                  {techniqueIdError && <em role="alert">{techniqueIdError}</em>}
+                </label>
                 <label>
                   <span>名称</span>
                   <input
@@ -934,9 +1222,34 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
                     }
                   />
                 </label>
-                <p>
-                  房间 ID：<code>{current?.map.room ?? current?.id ?? "-"}</code>
-                </p>
+                <label>
+                  <span>房间 ID</span>
+                  <div className="editor-managed-id-row">
+                    <input
+                      aria-label="房间 ID"
+                      value={roomIdDraft}
+                      spellCheck={false}
+                      onChange={(event) => {
+                        setRoomIdDraft(event.target.value);
+                        setRoomIdError(null);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="primary"
+                      disabled={
+                        roomIdDraft.trim() ===
+                        (current?.map.room ?? current?.id ?? "")
+                      }
+                      onClick={applyRoomId}
+                    >
+                      <ButtonIcon><FiCheck /></ButtonIcon>
+                      应用 ID
+                    </button>
+                  </div>
+                  {roomIdError && <em role="alert">{roomIdError}</em>}
+                  <small>项目文件名保持不变。</small>
+                </label>
               </div>
             }
           />
@@ -959,6 +1272,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
             disabled={!currentSection}
             onClick={currentTechnique ? addProject : addTechnique}
           >
+            <ButtonIcon><FiPlus /></ButtonIcon>
             {currentTechnique ? "新建房间" : "新建二级分类"}
           </button>
         </main>
@@ -1013,8 +1327,12 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
               </select>
             </label>
             <div>
-              <button onClick={() => setBinImport(null)}>取消</button>
+              <button onClick={() => setBinImport(null)}>
+                <ButtonIcon><FiX /></ButtonIcon>
+                取消
+              </button>
               <button className="primary" onClick={() => void importBinRoom()}>
+                <ButtonIcon><FiUpload /></ButtonIcon>
                 导入所选房间
               </button>
             </div>
