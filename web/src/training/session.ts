@@ -331,7 +331,7 @@ export function trainingReferenceButtons(
 export function trainingReferenceEndFrame(
   candidate: TrainingCandidate,
   definition: TrainingDefinition,
-  tailFrames = 24,
+  tailFrames = 60,
 ): number {
   const lastInput = definition.fuzz.inputs.reduce((last, input, inputIndex) => {
     const at = resolvedCandidateInputFrame(candidate, input, inputIndex);

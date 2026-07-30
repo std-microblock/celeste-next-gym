@@ -226,6 +226,22 @@ describe("training R reset", () => {
     expect(view.getByTestId("training-prompt")).toHaveTextContent("演示 1/1");
     expect(view.getByRole("button", { name: "完成演示" })).toBeEnabled();
     expect(view.getByRole("button", { name: "退出教学" })).toBeInTheDocument();
+    fireEvent.click(view.getByRole("button", { name: "完成演示" }));
+    for (let frame = 0; frame < 90; frame += 1) {
+      await advance();
+      if (
+        view.getByRole("button", { name: /辅助实操/ }).classList.contains("active")
+      )
+        break;
+    }
+    await waitFor(() =>
+      expect(view.getByRole("button", { name: /辅助实操/ })).toHaveClass(
+        "active",
+      ),
+    );
+    expect(
+      view.queryByRole("button", { name: "完成演示" }),
+    ).not.toBeInTheDocument();
     fireEvent.click(view.getByRole("button", { name: "退出教学" }));
     expect(
       view.container.querySelector(".training-lesson-stages"),

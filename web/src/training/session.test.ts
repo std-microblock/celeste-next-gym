@@ -274,7 +274,7 @@ describe("training-defined entry input", () => {
       jump: false,
       grab: true,
     });
-    expect(trainingReferenceEndFrame(candidates[0], definition)).toBe(28);
+    expect(trainingReferenceEndFrame(candidates[0], definition)).toBe(64);
     expect(trainingReferenceSteps(candidates[0], definition)).toEqual([
       { inputIndex: 2, inputId: "jump_entry", frame: 0, keys: ["jump"] },
       { inputIndex: 3, inputId: "grab_later", frame: 4, keys: ["grab"] },

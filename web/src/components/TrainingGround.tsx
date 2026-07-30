@@ -43,6 +43,7 @@ import {
   trainingEntryInput,
   trainingVerificationTriggered,
   trainingReferenceButtons,
+  trainingReferenceEndFrame,
   trainingReferenceSteps,
   referenceStepBrake,
   verificationKeys,
@@ -1060,8 +1061,9 @@ export function TrainingGround({
             activeTutorial &&
             candidatesRef.current[0]
           ) {
+            const demoCandidate = candidatesRef.current[0];
             const steps = trainingReferenceSteps(
-              candidatesRef.current[0],
+              demoCandidate,
               activeTutorial,
             );
             const step = steps[demoStepIndexRef.current];
@@ -1086,12 +1088,24 @@ export function TrainingGround({
               previousButtons.current =
                 nextStep.frame > 0
                   ? trainingReferenceButtons(
-                      candidatesRef.current[0],
+                      demoCandidate,
                       activeTutorial,
                       nextStep.frame - 1,
                     )
                   : makeEmptyButtons();
               setPlaying(false);
+              return;
+            }
+            if (
+              demoInputsFinishedRef.current &&
+              nextFrame - lessonStartFrameRef.current >=
+                trainingReferenceEndFrame(demoCandidate, activeTutorial)
+            ) {
+              resetTo(
+                lessonStartFrameRef.current,
+                activeModule,
+                "assisted",
+              );
               return;
             }
           }
@@ -1271,15 +1285,6 @@ export function TrainingGround({
           const reachedModuleEnd =
             activeModule !== null &&
             triggerContainsPlayer(activeModule.end_trigger, after);
-          if (
-            reachedModuleEnd &&
-            activeModule &&
-            stage === "demo" &&
-            demoInputsFinishedRef.current
-          ) {
-            holdGuidedResult("demo", activeModule);
-            return;
-          }
           if (
             reachedModuleEnd &&
             activeModule &&
