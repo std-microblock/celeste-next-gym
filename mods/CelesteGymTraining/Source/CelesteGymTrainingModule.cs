@@ -5,6 +5,8 @@ namespace Celeste.Mod.CelesteGymTraining;
 public sealed class CelesteGymTrainingModule : EverestModule {
     public const string AreaSid = "CelesteGymTraining/Training";
     public const string TrainingActiveFlag = "celeste_gym_training_active";
+    private const string PreviewFullscreenEnvironment = "CELESTE_GYM_PREVIEW_FULLSCREEN";
+    private static bool previewDisplayApplied;
 
     public override void Load() {
         TrainingNative.Initialize(Path.GetDirectoryName(Metadata.DLL));
@@ -41,6 +43,7 @@ public sealed class CelesteGymTrainingModule : EverestModule {
 
     private static void OnLoadLevel(Level level, Player.IntroTypes playerIntro, bool isFromLoader) {
         if (!string.Equals(level.Session.Area.SID, AreaSid, StringComparison.Ordinal)) return;
+        ApplyPreviewDisplayMode();
         TrainingBindings.ApplyDefaultsIfVanilla();
         if (level.Session.GetFlag(TrainingActiveFlag)) {
             if (level.Tracker.GetEntity<TrainingRuntimeController>() is null
@@ -51,5 +54,21 @@ public sealed class CelesteGymTrainingModule : EverestModule {
         }
         if (level.Tracker.GetEntity<TrainingProjectMenu>() is not null) return;
         level.Add(new TrainingProjectMenu(level, TrainingCatalog.Projects));
+    }
+
+    private static void ApplyPreviewDisplayMode() {
+        if (previewDisplayApplied
+            || !string.Equals(Environment.GetEnvironmentVariable(PreviewFullscreenEnvironment), "1", StringComparison.Ordinal)) {
+            return;
+        }
+
+        previewDisplayApplied = true;
+        Settings.Instance.Fullscreen = true;
+        Settings.Instance.ViewportPadding = 0;
+        Engine.ViewPadding = 0;
+        Microsoft.Xna.Framework.Graphics.DisplayMode display =
+            Engine.Graphics.GraphicsDevice.Adapter.CurrentDisplayMode;
+        Logger.Log(LogLevel.Info, "CelesteGymTraining", $"Sizing preview to fullscreen {display.Width}x{display.Height}");
+        Engine.SetFullscreen();
     }
 }

@@ -59,6 +59,7 @@ try {
       ...process.env,
       CELESTE_GYM_COLLECTOR_PORT: String(modPort.port),
       CELESTE_GYM_RUN_NONCE: context.runNonce,
+      CELESTE_GYM_PREVIEW_FULLSCREEN: "1",
       EVEREST_SAVEPATH: context.saveRoot,
       EVEREST_TMPDIR: context.tempRoot,
     },
