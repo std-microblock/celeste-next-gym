@@ -177,10 +177,7 @@ public static class ChineseText {
             graphics.DrawString(text, font, DrawingBrushes.White, new DrawingPointF(padding, padding), stringFormat);
         }
 
-        using MemoryStream png = new();
-        bitmap.Save(png, ImageFormat.Png);
-        png.Position = 0;
-        Texture2D texture = Texture2D.FromStream(Engine.Graphics.GraphicsDevice, png);
+        Texture2D texture = CreatePremultipliedTexture(bitmap);
         Glyph result = new(texture, advance, new Vector2(-padding, -padding));
         Glyphs.Add(key, result);
         return result;
@@ -195,6 +192,42 @@ public static class ChineseText {
     }
 
     private static float ScaledLineHeight(float scale) => Math.Max(1f, LineHeight * scale);
+
+    private static Texture2D CreatePremultipliedTexture(DrawingBitmap bitmap) {
+        System.Drawing.Rectangle bounds = new(0, 0, bitmap.Width, bitmap.Height);
+        BitmapData data = bitmap.LockBits(bounds, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+        try {
+            int stride = Math.Abs(data.Stride);
+            byte[] pixels = new byte[stride * bitmap.Height];
+            Marshal.Copy(data.Scan0, pixels, 0, pixels.Length);
+            Color[] colors = new Color[bitmap.Width * bitmap.Height];
+            for (int y = 0; y < bitmap.Height; y++) {
+                int sourceY = data.Stride < 0 ? bitmap.Height - 1 - y : y;
+                int row = sourceY * stride;
+                for (int x = 0; x < bitmap.Width; x++) {
+                    int source = row + x * 4;
+                    byte blue = pixels[source];
+                    byte green = pixels[source + 1];
+                    byte red = pixels[source + 2];
+                    byte alpha = pixels[source + 3];
+                    colors[y * bitmap.Width + x] = new Color(
+                        Premultiply(red, alpha),
+                        Premultiply(green, alpha),
+                        Premultiply(blue, alpha),
+                        alpha
+                    );
+                }
+            }
+
+            Texture2D texture = new(Engine.Graphics.GraphicsDevice, bitmap.Width, bitmap.Height);
+            texture.SetData(colors);
+            return texture;
+        } finally {
+            bitmap.UnlockBits(data);
+        }
+    }
+
+    private static byte Premultiply(byte color, byte alpha) => (byte) ((color * alpha + 127) / 255);
 
     private sealed record Glyph(Texture2D? Texture, float Advance, Vector2 Offset);
 }
