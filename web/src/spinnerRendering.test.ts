@@ -23,6 +23,7 @@ describe("crystal spinner rendering", () => {
     expect(resolveSpinnerStyle(theme)).toEqual({
       foreground: "danger/spikes/SJ2021/1-Beginner/brambles/fg",
       background: "danger/spikes/SJ2021/1-Beginner/brambles/bg",
+      kind: "sprite",
     });
     expect(resolveSpinnerStyle(theme, "red")).toEqual({
       foreground: "danger/crystal/fg_red",

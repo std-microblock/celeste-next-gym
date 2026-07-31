@@ -50,8 +50,108 @@
       "frameWidth": 24,
       "frameHeight": 136
     },
-    "tilesets/SJ2021/BeginnerLobby/lobbyCliff": {
+    "danger/SJ2021/Gym/Orb/fg_beg00": {
       "x": 132,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Gym/Orb/bg_beg00": {
+      "x": 158,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Gym/Orb/fg_int00": {
+      "x": 184,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Gym/Orb/bg_int00": {
+      "x": 210,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Gym/Orb/fg_adv00": {
+      "x": 236,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Gym/Orb/bg_adv00": {
+      "x": 262,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Gym/Orb/fg_exp00": {
+      "x": 288,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Gym/Orb/bg_exp00": {
+      "x": 314,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Gym/Orb/fg_gm00": {
+      "x": 340,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Gym/Orb/bg_gm00": {
+      "x": 366,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "tilesets/SJ2021/BeginnerLobby/lobbyCliff": {
+      "x": 392,
       "y": 2,
       "width": 48,
       "height": 120,
@@ -61,7 +161,7 @@
       "frameHeight": 120
     },
     "tilesets/SJ2021/Int_Lobby/IntGirderFg": {
-      "x": 182,
+      "x": 442,
       "y": 2,
       "width": 48,
       "height": 120,
@@ -71,7 +171,7 @@
       "frameHeight": 120
     },
     "tilesets/SJ2021/Advanced_Lobby/advCloudSunset": {
-      "x": 232,
+      "x": 492,
       "y": 2,
       "width": 48,
       "height": 120,
@@ -81,7 +181,7 @@
       "frameHeight": 120
     },
     "tilesets/SJ2021/ExpertLobby/spaceVegetation": {
-      "x": 282,
+      "x": 542,
       "y": 2,
       "width": 48,
       "height": 120,
@@ -91,7 +191,7 @@
       "frameHeight": 120
     },
     "tilesets/SJ2021/Grandmaster/elysianGrass": {
-      "x": 332,
+      "x": 592,
       "y": 2,
       "width": 48,
       "height": 120,
@@ -101,7 +201,7 @@
       "frameHeight": 120
     },
     "bgs/SJ2021/Gym/begGymDarkBG": {
-      "x": 382,
+      "x": 642,
       "y": 2,
       "width": 64,
       "height": 8,
@@ -111,7 +211,7 @@
       "frameHeight": 8
     },
     "bgs/SJ2021/Gym/intGymDarkBG": {
-      "x": 448,
+      "x": 708,
       "y": 2,
       "width": 64,
       "height": 8,
@@ -121,7 +221,7 @@
       "frameHeight": 8
     },
     "bgs/SJ2021/Gym/advGymDarkBG": {
-      "x": 514,
+      "x": 774,
       "y": 2,
       "width": 64,
       "height": 8,
@@ -131,7 +231,7 @@
       "frameHeight": 8
     },
     "bgs/SJ2021/Gym/expGymDarkBG": {
-      "x": 580,
+      "x": 840,
       "y": 2,
       "width": 64,
       "height": 8,
@@ -141,7 +241,7 @@
       "frameHeight": 8
     },
     "bgs/SJ2021/Gym/gmGymDarkBG": {
-      "x": 646,
+      "x": 906,
       "y": 2,
       "width": 64,
       "height": 8,
@@ -1017,6 +1117,16 @@
     "tilesets/SJ2021/Gym/AdvancedGym": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Gym/AdvancedGym.png",
     "tilesets/SJ2021/Gym/ExpertGym": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Gym/ExpertGym.png",
     "tilesets/SJ2021/Gym/GrandmasterGym": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Gym/GrandmasterGym.png",
+    "danger/SJ2021/Gym/Orb/fg_beg00": "Graphics/Atlases/Gameplay/danger/SJ2021/Gym/Orb/fg_beg00.png",
+    "danger/SJ2021/Gym/Orb/bg_beg00": "Graphics/Atlases/Gameplay/danger/SJ2021/Gym/Orb/bg_beg00.png",
+    "danger/SJ2021/Gym/Orb/fg_int00": "Graphics/Atlases/Gameplay/danger/SJ2021/Gym/Orb/fg_int00.png",
+    "danger/SJ2021/Gym/Orb/bg_int00": "Graphics/Atlases/Gameplay/danger/SJ2021/Gym/Orb/bg_int00.png",
+    "danger/SJ2021/Gym/Orb/fg_adv00": "Graphics/Atlases/Gameplay/danger/SJ2021/Gym/Orb/fg_adv00.png",
+    "danger/SJ2021/Gym/Orb/bg_adv00": "Graphics/Atlases/Gameplay/danger/SJ2021/Gym/Orb/bg_adv00.png",
+    "danger/SJ2021/Gym/Orb/fg_exp00": "Graphics/Atlases/Gameplay/danger/SJ2021/Gym/Orb/fg_exp00.png",
+    "danger/SJ2021/Gym/Orb/bg_exp00": "Graphics/Atlases/Gameplay/danger/SJ2021/Gym/Orb/bg_exp00.png",
+    "danger/SJ2021/Gym/Orb/fg_gm00": "Graphics/Atlases/Gameplay/danger/SJ2021/Gym/Orb/fg_gm00.png",
+    "danger/SJ2021/Gym/Orb/bg_gm00": "Graphics/Atlases/Gameplay/danger/SJ2021/Gym/Orb/bg_gm00.png",
     "tilesets/SJ2021/BeginnerLobby/lobbyCliff": "Graphics/Atlases/Gameplay/tilesets/SJ2021/BeginnerLobby/lobbyCliff.png",
     "tilesets/SJ2021/Int_Lobby/IntGirderFg": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Int_Lobby/IntGirderFg.png",
     "tilesets/SJ2021/Advanced_Lobby/advCloudSunset": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Advanced_Lobby/advCloudSunset.png",

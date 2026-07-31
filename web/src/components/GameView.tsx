@@ -27,7 +27,8 @@ import {
   spinnerHue,
   spinnersConnect,
 } from "../spinnerRendering";
-import type { VisualTheme, VisualThemeLayer } from "../visualThemes";
+import { autotileByRules, strawberryJamGymTileCoordinate } from "../tileRules";
+import { VISUAL_THEME_COLLECTIONS, type VisualTheme, type VisualThemeLayer } from "../visualThemes";
 
 interface AtlasEntry {
   x: number;
@@ -70,40 +71,45 @@ function loadAssetImage(
 
 function loadAssets(): Promise<GameAssets> {
   if (!assetsPromise) {
-    assetsPromise = Promise.all([
-      fetch("/assets/original/gameplay/gameplay-selected.json").then(
-        (response) => response.json(),
-      ) as Promise<{ entries: Record<string, AtlasEntry> }>,
-      loadAssetImage(
-        "/assets/original/gameplay/gameplay-selected.png",
-        "原版 Gameplay 图集加载失败",
-      ),
-      fetch("/assets/strawberry-jam/gameplay/theme-selected.json").then(
-        (response) => response.json(),
-      ) as Promise<{ entries: Record<string, AtlasEntry> }>,
-      loadAssetImage(
-        "/assets/strawberry-jam/gameplay/theme-selected.png",
-        "Strawberry Jam 主题图集加载失败",
-      ),
-    ]).then(([originalManifest, originalImage, jamManifest, jamImage]) => {
-      const image = document.createElement("canvas");
-      image.width = Math.max(originalImage.naturalWidth, jamImage.naturalWidth);
-      image.height = originalImage.naturalHeight + jamImage.naturalHeight;
-      const context = image.getContext("2d");
-      if (!context) throw new Error("主题图集 Canvas 创建失败");
-      context.imageSmoothingEnabled = false;
-      context.drawImage(originalImage, 0, 0);
-      context.drawImage(jamImage, 0, originalImage.naturalHeight);
-      const jamEntries = Object.fromEntries(
-        Object.entries(jamManifest.entries).map(([key, entry]) => [
-          key,
-          {
-            ...entry,
-            y: entry.y + originalImage.naturalHeight,
-          },
-        ]),
+    assetsPromise = (async () => {
+      const atlases = [
+        ...new Set(
+          VISUAL_THEME_COLLECTIONS.map((collection) => collection.atlas).filter(
+            (atlas): atlas is string => Boolean(atlas),
+          ),
+        ),
+      ];
+      const loaded = await Promise.all(
+        atlases.map(async (atlas) => ({
+          manifest: (await fetch(`/${atlas}.json`).then((response) =>
+            response.json(),
+          )) as { entries: Record<string, AtlasEntry> },
+          image: await loadAssetImage(
+            `/${atlas}.png`,
+            `${atlas} ??????`,
+          ),
+        })),
       );
-      const entries = { ...originalManifest.entries, ...jamEntries };
+      const image = document.createElement("canvas");
+      image.width = Math.max(
+        ...loaded.map((atlas) => atlas.image.naturalWidth),
+      );
+      image.height = loaded.reduce(
+        (sum, atlas) => sum + atlas.image.naturalHeight,
+        0,
+      );
+      const context = image.getContext("2d");
+      if (!context) throw new Error("???? Canvas ????");
+      context.imageSmoothingEnabled = false;
+      const entries: Record<string, AtlasEntry> = {};
+      let offsetY = 0;
+      for (const atlas of loaded) {
+        context.drawImage(atlas.image, 0, offsetY);
+        for (const [key, entry] of Object.entries(atlas.manifest.entries)) {
+          entries[key] = { ...entry, y: entry.y + offsetY };
+        }
+        offsetY += atlas.image.naturalHeight;
+      }
       return {
         image,
         entries,
@@ -111,7 +117,7 @@ function loadAssets(): Promise<GameAssets> {
         frameLists: new Map(),
         tinted: new Map(),
       };
-    });
+    })();
   }
   return assetsPromise;
 }
@@ -838,33 +844,54 @@ function tileCoordinate(
   return [5, 12];
 }
 
-function strawberryJamGymTileCoordinate(
-  grid: string[][],
-  x: number,
-  y: number,
-): [number, number] {
-  const filled = (dx: number, dy: number) =>
-    grid[y + dy]?.[x + dx] !== undefined && grid[y + dy][x + dx] !== "0";
-  const top = filled(0, -1);
-  const bottom = filled(0, 1);
-  const left = filled(-1, 0);
-  const right = filled(1, 0);
-  if (!top && bottom && left && right) return [1, 2];
-  if (top && !bottom && left && right) return [1, 4];
-  if (top && bottom && !left && right) return [0, 3];
-  if (top && bottom && left && !right) return [2, 3];
-  if (!top && bottom && !left && right) return [0, 2];
-  if (!top && bottom && left && !right) return [2, 2];
-  if (top && !bottom && !left && right) return [0, 4];
-  if (top && !bottom && left && !right) return [2, 4];
-  if (!top && !bottom && left && right) return [1, 14];
-  if (top && bottom && !left && !right) return [2, 12];
-  if (!top && !bottom && !left && right) return [0, 14];
-  if (!top && !bottom && left && !right) return [2, 14];
-  if (!top && bottom && !left && !right) return [2, 11];
-  if (top && !bottom && !left && !right) return [2, 13];
-  if (!top && !bottom && !left && !right) return [1, 13];
-  return [2, 15];
+function drawParallaxBackdropLayer(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  layer: VisualThemeLayer,
+  entry: AtlasEntry,
+  frame: number,
+  camera: CameraBounds,
+): void {
+  const time = frame / 60;
+  const scrollX = layer.scrollX ?? 1;
+  const scrollY = layer.scrollY ?? 1;
+  // Vanilla Parallax.Render draws at screen (Position - Camera * Scroll);
+  // under the world transform the anchor is Position + Camera * (1 - Scroll).
+  const anchorX = (layer.speedX ?? 0) * time + camera.x * (1 - scrollX);
+  const anchorY =
+    (layer.y ?? 0) + (layer.speedY ?? 0) * time + camera.y * (1 - scrollY);
+  const drawAt = (x: number, y: number) =>
+    context.drawImage(
+      assets.image,
+      entry.x,
+      entry.y,
+      entry.width,
+      entry.height,
+      x + entry.drawOffsetX,
+      y + entry.drawOffsetY,
+      entry.frameWidth,
+      entry.frameHeight,
+    );
+  context.save();
+  context.globalAlpha = layer.opacity ?? 1;
+  if (layer.loopX || layer.loopY) {
+    const firstX = layer.loopX
+      ? anchorX + Math.floor((camera.x - anchorX) / entry.frameWidth) * entry.frameWidth
+      : anchorX;
+    for (let x = firstX; x < camera.x + camera.width; x += entry.frameWidth) {
+      const firstY = layer.loopY
+        ? anchorY + Math.floor((camera.y - anchorY) / entry.frameHeight) * entry.frameHeight
+        : anchorY;
+      for (let y = firstY; y < camera.y + camera.height; y += entry.frameHeight) {
+        drawAt(x, y);
+        if (!layer.loopY) break;
+      }
+      if (!layer.loopX) break;
+    }
+  } else {
+    drawAt(anchorX, anchorY);
+  }
+  context.restore();
 }
 
 function drawBackdropLayer(
@@ -872,9 +899,15 @@ function drawBackdropLayer(
   assets: GameAssets,
   map: GymMap,
   layer: VisualThemeLayer,
+  frame: number,
+  camera: CameraBounds,
 ): void {
   const entry = assets.entries[layer.key];
   if (!entry) return;
+  if (layer.scrollX !== undefined || layer.scrollY !== undefined) {
+    drawParallaxBackdropLayer(context, assets, layer, entry, frame, camera);
+    return;
+  }
   if (layer.repeat) {
     context.save();
     context.globalAlpha = layer.opacity ?? 1;
@@ -979,6 +1012,7 @@ function drawThemeBackground(
   map: GymMap,
   theme: VisualTheme,
   frame: number,
+  camera: CameraBounds,
 ): void {
   context.fillStyle = theme.background;
   context.fillRect(
@@ -1007,7 +1041,7 @@ function drawThemeBackground(
     drawOldSiteStars(context, assets, map, frame);
   }
   for (const layer of theme.layers)
-    drawBackdropLayer(context, assets, map, layer);
+    drawBackdropLayer(context, assets, map, layer, frame, camera);
   context.fillStyle = "rgba(5, 7, 20, .13)";
   context.fillRect(
     map.bounds.x,
@@ -1035,8 +1069,9 @@ function buildTileLayer(
   for (let y = 0; y < grid.length; y += 1) {
     for (let x = 0; x < grid[y].length; x += 1) {
       if (grid[y][x] === "0") continue;
-      const [tileX, tileY] =
-        theme.tileLayout === "sj-gym"
+      const [tileX, tileY] = theme.tileRules
+        ? autotileByRules(grid, x, y, theme.tileRules) ?? [2, 15]
+        : theme.tileLayout === "sj-gym"
           ? strawberryJamGymTileCoordinate(grid, x, y)
           : tileCoordinate(grid, x, y);
       context.drawImage(
@@ -2165,6 +2200,49 @@ function drawSpinnerConnections(
   }
 }
 
+function spinnerStyleKind(
+  style: VisualTheme["spinner"],
+): "crystal" | "sprite" {
+  return (
+    style.kind ??
+    (style.foreground.startsWith("danger/crystal/") ? "crystal" : "sprite")
+  );
+}
+
+// SJ custom spinners (Gym Orb, lobby brambles/Ceph/Julia) are round sprite
+// sheets, not the vanilla 24x24 shard sheet. Draw the sheet centered and
+// animate through its frames instead of cutting four corner slices.
+function drawSpriteSpinner(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  entity: MapEntity,
+  frame: number,
+  state: SimState,
+  kindIndex: number,
+  theme: VisualTheme,
+): void {
+  const runtime = state.spinners?.[kindIndex];
+  if (runtime && !runtime.visible) return;
+  const position = runtime?.position ?? spinnerCenter(entity);
+  const style = resolveSpinnerStyle(theme, entity.variant);
+  const available = frames(assets, style.foreground);
+  if (available.length === 0) return;
+  const key = available[Math.floor(frame / 6) % available.length];
+  const entry = assets.entries[key];
+  if (!entry) return;
+  const tint = style.rainbow ? spinnerHue(position, frame) : undefined;
+  drawOutlinedTintedEntry(
+    context,
+    assets,
+    key,
+    position.x,
+    position.y,
+    entry.frameWidth * 0.5,
+    entry.frameHeight * 0.5,
+    tint,
+  );
+}
+
 function drawCrystalSpinner(
   context: CanvasRenderingContext2D,
   assets: GameAssets,
@@ -2647,16 +2725,22 @@ function drawEntity(
   } else if (entity.kind === "cassette_block") {
     drawCassetteBlock(context, assets, entity, state, kindIndex);
   } else if (entity.kind === "crystal_static_spinner") {
-    drawCrystalSpinner(
-      context,
-      assets,
-      map,
-      entity,
-      frame,
-      state,
-      kindIndex,
-      theme,
-    );
+    if (
+      spinnerStyleKind(resolveSpinnerStyle(theme, entity.variant)) === "sprite"
+    ) {
+      drawSpriteSpinner(context, assets, entity, frame, state, kindIndex, theme);
+    } else {
+      drawCrystalSpinner(
+        context,
+        assets,
+        map,
+        entity,
+        frame,
+        state,
+        kindIndex,
+        theme,
+      );
+    }
   } else if (entity.kind === "moving_solid") {
     drawMovingSolid(context, entity, state, kindIndex);
   } else if (entity.kind !== "wind") {
@@ -2747,7 +2831,7 @@ export function GameView({
       offsetY - camera.y * scale,
     );
     context.scale(scale, scale);
-    drawThemeBackground(context, assets, map, theme, frame);
+    drawThemeBackground(context, assets, map, theme, frame, camera);
     if (tileLayer) context.drawImage(tileLayer, map.bounds.x, map.bounds.y);
     drawSpinnerConnections(context, assets, map, frame, state, theme);
     const kindCounts = new Map<EntityKind, number>();

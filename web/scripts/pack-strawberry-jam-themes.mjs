@@ -30,6 +30,17 @@ const themeAssets = [
   "tilesets/SJ2021/Gym/AdvancedGym.png",
   "tilesets/SJ2021/Gym/ExpertGym.png",
   "tilesets/SJ2021/Gym/GrandmasterGym.png",
+  // Gym "Orb" spinner sheets (one foreground + one background per tier).
+  "danger/SJ2021/Gym/Orb/fg_beg00.png",
+  "danger/SJ2021/Gym/Orb/bg_beg00.png",
+  "danger/SJ2021/Gym/Orb/fg_int00.png",
+  "danger/SJ2021/Gym/Orb/bg_int00.png",
+  "danger/SJ2021/Gym/Orb/fg_adv00.png",
+  "danger/SJ2021/Gym/Orb/bg_adv00.png",
+  "danger/SJ2021/Gym/Orb/fg_exp00.png",
+  "danger/SJ2021/Gym/Orb/bg_exp00.png",
+  "danger/SJ2021/Gym/Orb/fg_gm00.png",
+  "danger/SJ2021/Gym/Orb/bg_gm00.png",
   // Lobby tilesets.
   "tilesets/SJ2021/BeginnerLobby/lobbyCliff.png",
   "tilesets/SJ2021/Int_Lobby/IntGirderFg.png",

@@ -10,13 +10,21 @@ import {
 } from "./visualThemes";
 
 describe("visual themes", () => {
-  it("exposes the five original themes and ten Strawberry Jam themes", () => {
-    expect(VISUAL_THEMES).toHaveLength(15);
+  it("exposes the five original themes, ten curated Strawberry Jam themes, and extracted room themes", () => {
+    const curated = VISUAL_THEMES.filter(
+      (theme) => theme.collection === "celeste" || theme.collection === "strawberry-jam",
+    );
+    expect(curated).toHaveLength(15);
+    const rooms = VISUAL_THEMES.filter(
+      (theme) => theme.collection === "strawberry-jam-rooms",
+    );
+    expect(rooms.length).toBeGreaterThan(0);
+    expect(VISUAL_THEMES).toHaveLength(curated.length + rooms.length);
     expect(new Set(VISUAL_THEMES.map((theme) => theme.id)).size).toBe(
       VISUAL_THEMES.length,
     );
-    expect(new Set(VISUAL_THEMES.map((theme) => theme.tileset)).size).toBe(
-      VISUAL_THEMES.length,
+    expect(new Set(curated.map((theme) => theme.tileset)).size).toBe(
+      curated.length,
     );
     expect(
       VISUAL_THEMES.filter((theme) => theme.collection === "celeste"),
@@ -25,10 +33,13 @@ describe("visual themes", () => {
       VISUAL_THEMES.filter((theme) => theme.collection === "strawberry-jam"),
     ).toHaveLength(10);
     expect(VISUAL_THEME_COLLECTIONS.map((collection) => collection.id)).toEqual(
-      ["celeste", "strawberry-jam"],
+      ["celeste", "strawberry-jam", "strawberry-jam-rooms"],
     );
     for (const theme of VISUAL_THEMES)
       expect(theme.tileset).toMatch(/^tilesets\//);
+    expect(VISUAL_THEME_COLLECTIONS.map((collection) => collection.id)).toContain(
+      "strawberry-jam-rooms",
+    );
     expect(visualThemeById("celestial-resort").spike).toBe("default");
     expect(visualThemeById("golden-ridge").spike).toBe("cliffside");
     expect(visualThemeById("summit").spike).toBe("outline");
@@ -103,5 +114,22 @@ describe("visual themes", () => {
     expect(visualThemeById("not-a-theme" as VisualThemeId).id).toBe(
       DEFAULT_VISUAL_THEME_ID,
     );
+  });
+
+  it("carries per-room tileset rules and parallax layers from the extraction", () => {
+    const rooms = VISUAL_THEMES.filter(
+      (theme) => theme.collection === "strawberry-jam-rooms",
+    );
+    const gym = rooms.find((theme) => theme.label.includes("0-Gyms/1-Beginner"));
+    expect(gym).toBeDefined();
+    expect(gym?.tileset).toBe("tilesets/SJ2021/Gym/BeginnerGym");
+    expect(gym?.tileRules?.length).toBe(48);
+    expect(gym?.layers[0]).toEqual(
+      expect.objectContaining({ key: "bgs/SJ2021/Gym/begGymDarkBG", scrollX: 1 }),
+    );
+    const lobby = rooms.find((theme) =>
+      theme.label.includes("0-Lobbies/1-Beginner.bin"),
+    );
+    expect(lobby?.layers.some((layer) => layer.scrollX !== undefined)).toBe(true);
   });
 });

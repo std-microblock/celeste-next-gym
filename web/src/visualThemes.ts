@@ -1,4 +1,6 @@
-export type VisualThemeId =
+import { ROOM_THEMES } from "./roomThemes";
+
+export type VisualThemeId = | `room:${string}`
   | "forsaken-city"
   | "old-site"
   | "celestial-resort"
@@ -15,7 +17,10 @@ export type VisualThemeId =
   | "sj-expert-lobby"
   | "sj-grandmaster-lobby";
 
-export type VisualThemeCollectionId = "celeste" | "strawberry-jam";
+export type VisualThemeCollectionId =
+  | "celeste"
+  | "strawberry-jam"
+  | "strawberry-jam-rooms";
 export type VisualThemeTileLayout = "vanilla" | "sj-gym";
 
 export interface VisualThemeLayer {
@@ -23,6 +28,14 @@ export interface VisualThemeLayer {
   opacity?: number;
   repeat?: boolean;
   y?: number;
+  /** Parallax scroll factors: 0 = screen-fixed, 1 = world-anchored. */
+  scrollX?: number;
+  scrollY?: number;
+  loopX?: boolean;
+  loopY?: boolean;
+  /** Automatic drift in pixels/second. */
+  speedX?: number;
+  speedY?: number;
 }
 
 export interface VisualTheme {
@@ -37,14 +50,22 @@ export interface VisualTheme {
     foreground: string;
     background: string;
     rainbow?: boolean;
+    /**
+     * "crystal" renders vanilla CrystalStaticSpinner shards from a 24x24
+     * sheet; "sprite" draws the sheet centered (SJ custom spinners).
+     * Defaults to "crystal" for danger/crystal/* and "sprite" otherwise.
+     */
+    kind?: "crystal" | "sprite";
   };
   tileLayout?: VisualThemeTileLayout;
+  /** Per-room autotiler rules extracted from a mod's ForegroundTiles.xml. */
+  tileRules?: readonly (readonly [string, readonly [number, number]])[];
   background: string;
   layers: readonly VisualThemeLayer[];
   stars?: boolean;
 }
 
-export const VISUAL_THEMES: readonly VisualTheme[] = [
+const VISUAL_THEMES_CURATED: readonly VisualTheme[] = [
   {
     id: "forsaken-city",
     label: "遗忘之城",
@@ -143,8 +164,9 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     tileset: "tilesets/SJ2021/Gym/BeginnerGym",
     spike: "SJ2021/Gym/beg",
     spinner: {
-      foreground: "danger/crystal/fg_blue",
-      background: "danger/crystal/bg_blue",
+      foreground: "danger/SJ2021/Gym/Orb/fg_beg",
+      background: "danger/SJ2021/Gym/Orb/bg_beg",
+      kind: "sprite",
     },
     tileLayout: "sj-gym",
     background: "#071323",
@@ -158,8 +180,9 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     tileset: "tilesets/SJ2021/Gym/IntermediateGym",
     spike: "SJ2021/Gym/int",
     spinner: {
-      foreground: "danger/crystal/fg_purple",
-      background: "danger/crystal/bg_purple",
+      foreground: "danger/SJ2021/Gym/Orb/fg_int",
+      background: "danger/SJ2021/Gym/Orb/bg_int",
+      kind: "sprite",
     },
     tileLayout: "sj-gym",
     background: "#210a0b",
@@ -173,8 +196,9 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     tileset: "tilesets/SJ2021/Gym/AdvancedGym",
     spike: "SJ2021/Gym/adv",
     spinner: {
-      foreground: "danger/crystal/fg_red",
-      background: "danger/crystal/bg_red",
+      foreground: "danger/SJ2021/Gym/Orb/fg_adv",
+      background: "danger/SJ2021/Gym/Orb/bg_adv",
+      kind: "sprite",
     },
     tileLayout: "sj-gym",
     background: "#191707",
@@ -188,9 +212,9 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     tileset: "tilesets/SJ2021/Gym/ExpertGym",
     spike: "SJ2021/Gym/exp",
     spinner: {
-      foreground: "danger/crystal/fg_white",
-      background: "danger/crystal/bg_white",
-      rainbow: true,
+      foreground: "danger/SJ2021/Gym/Orb/fg_exp",
+      background: "danger/SJ2021/Gym/Orb/bg_exp",
+      kind: "sprite",
     },
     tileLayout: "sj-gym",
     background: "#1b0c04",
@@ -204,9 +228,9 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     tileset: "tilesets/SJ2021/Gym/GrandmasterGym",
     spike: "SJ2021/Gym/gm",
     spinner: {
-      foreground: "danger/crystal/fg_white",
-      background: "danger/crystal/bg_white",
-      rainbow: true,
+      foreground: "danger/SJ2021/Gym/Orb/fg_gm",
+      background: "danger/SJ2021/Gym/Orb/bg_gm",
+      kind: "sprite",
     },
     tileLayout: "sj-gym",
     background: "#190419",
@@ -222,6 +246,7 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     spinner: {
       foreground: "danger/spikes/SJ2021/1-Beginner/brambles/fg",
       background: "danger/spikes/SJ2021/1-Beginner/brambles/bg",
+      kind: "sprite",
     },
     background: "#8dc8ec",
     layers: [
@@ -240,6 +265,7 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     spinner: {
       foreground: "danger/SJ2021/Ceph/Spinner/fg",
       background: "danger/SJ2021/Ceph/Spinner/bg",
+      kind: "sprite",
     },
     background: "#25204f",
     layers: [
@@ -258,6 +284,7 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
     spinner: {
       foreground: "danger/SJ2021/Julia/Spinner/fg",
       background: "danger/SJ2021/Julia/Spinner/bg",
+      kind: "sprite",
     },
     background: "#351b55",
     layers: [
@@ -305,12 +332,28 @@ export const VISUAL_THEMES: readonly VisualTheme[] = [
   },
 ];
 
+export const VISUAL_THEMES: readonly VisualTheme[] = [
+  ...VISUAL_THEMES_CURATED,
+  ...ROOM_THEMES,
+];
+
 export const VISUAL_THEME_COLLECTIONS: readonly {
   id: VisualThemeCollectionId;
   label: string;
+  /** URL prefix of the Gameplay atlas JSON/PNG pair this collection uses. */
+  atlas?: string;
 }[] = [
-  { id: "celeste", label: "Celeste 原版" },
-  { id: "strawberry-jam", label: "Strawberry Jam 2021" },
+  { id: "celeste", label: "Celeste 原版", atlas: "assets/original/gameplay/gameplay-selected" },
+  {
+    id: "strawberry-jam",
+    label: "Strawberry Jam 2021",
+    atlas: "assets/strawberry-jam/gameplay/theme-selected",
+  },
+  {
+    id: "strawberry-jam-rooms",
+    label: "SJ2021 房间主题",
+    atlas: "assets/strawberry-jam/gameplay/theme-selected",
+  },
 ];
 
 export const DEFAULT_VISUAL_THEME_ID: VisualThemeId = "forsaken-city";
