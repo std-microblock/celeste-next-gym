@@ -152,12 +152,15 @@ function mergeGameAssets(
       ]),
     ),
   };
+  // Fresh caches: the theme atlas loads asynchronously, and a frames() hit
+  // against the base-only assets would otherwise cache an empty list that
+  // survives the merge and hides every custom texture (the gym Orb, ...).
   return {
     image,
     entries,
     keys: Object.keys(entries),
-    frameLists: base.frameLists,
-    tinted: base.tinted,
+    frameLists: new Map(),
+    tinted: new Map(),
   };
 }
 
