@@ -1555,6 +1555,9 @@ export function runtimeEntityBounds(
   } else if (entity.kind === "move_block") {
     const position = state.move_blocks?.[kindIndex]?.position;
     if (position) return { ...box, x: position.x, y: position.y };
+  } else if (entity.kind === "falling_block") {
+    const position = state.falling_blocks?.[kindIndex]?.position;
+    if (position) return { ...box, x: position.x, y: position.y };
   } else if (entity.kind === "cassette_block") {
     const position = state.cassette_blocks?.[kindIndex]?.position;
     if (position) return { ...box, x: position.x, y: position.y };
@@ -2626,6 +2629,79 @@ function drawMovingSolid(
   }
 }
 
+function drawRefill(
+  context: CanvasRenderingContext2D,
+  entity: MapEntity,
+  frame: number,
+  state: SimState,
+  kindIndex: number,
+): void {
+  const runtime = state.refills?.[kindIndex];
+  if (runtime?.removed) return;
+  const box = entity.bounds;
+  const centerX = box.x + box.width / 2;
+  const centerY = box.y + box.height / 2;
+  const twoDash = runtime?.two_dashes ?? entity.direction.x !== 0;
+  const color = twoDash ? "#ff6def" : "#9fd8ff";
+  const active = runtime?.collidable ?? true;
+  const size = 6 + Math.sin(frame / 8) * 0.5;
+  context.save();
+  context.globalAlpha = active ? 1 : 0.35;
+  context.shadowColor = color;
+  context.shadowBlur = 8;
+  context.fillStyle = "#ffffff";
+  context.beginPath();
+  context.moveTo(centerX, centerY - size);
+  context.lineTo(centerX + size, centerY);
+  context.lineTo(centerX, centerY + size);
+  context.lineTo(centerX - size, centerY);
+  context.closePath();
+  context.fill();
+  context.fillStyle = color;
+  context.beginPath();
+  context.moveTo(centerX, centerY - size * 0.55);
+  context.lineTo(centerX + size * 0.55, centerY);
+  context.lineTo(centerX, centerY + size * 0.55);
+  context.lineTo(centerX - size * 0.55, centerY);
+  context.closePath();
+  context.fill();
+  context.restore();
+}
+
+function drawFallingBlock(
+  context: CanvasRenderingContext2D,
+  entity: MapEntity,
+  state: SimState,
+  kindIndex: number,
+): void {
+  const runtime = state.falling_blocks?.[kindIndex];
+  if (runtime?.removed) return;
+  const box = runtimeEntityBounds(entity, state, kindIndex);
+  context.fillStyle = "#3f4a5a";
+  context.fillRect(box.x, box.y, box.width, box.height);
+  context.strokeStyle = "#8a97a8";
+  context.lineWidth = 1;
+  context.strokeRect(
+    box.x + 0.5,
+    box.y + 0.5,
+    Math.max(0, box.width - 1),
+    Math.max(0, box.height - 1),
+  );
+  context.strokeStyle = "rgba(138, 151, 168, .35)";
+  for (let x = 8; x < box.width; x += 8) {
+    context.beginPath();
+    context.moveTo(box.x + x, box.y);
+    context.lineTo(box.x + x, box.y + box.height);
+    context.stroke();
+  }
+  for (let y = 8; y < box.height; y += 8) {
+    context.beginPath();
+    context.moveTo(box.x, box.y + y);
+    context.lineTo(box.x + box.width, box.y + y);
+    context.stroke();
+  }
+}
+
 function drawUnknownEntity(
   context: CanvasRenderingContext2D,
   entity: MapEntity,
@@ -2710,6 +2786,10 @@ function drawEntity(
   } else if (entity.kind === "strawberry") {
     if (!strawberryIsPicked(state, entityIndex))
       drawStrawberry(context, assets, entity, frame);
+  } else if (entity.kind === "refill") {
+    drawRefill(context, entity, frame, state, kindIndex);
+  } else if (entity.kind === "falling_block") {
+    drawFallingBlock(context, entity, state, kindIndex);
   } else if (entity.kind === "bounce_block") {
     drawBounceBlock(context, assets, entity, frame, state, kindIndex);
   } else if (entity.kind === "theo_crystal") {

@@ -235,6 +235,23 @@ const ENTITY_TEMPLATES: readonly EntityTemplate[] = [
     height: 16,
   },
   {
+    id: "refill",
+    kind: "refill",
+    label: "回填钻石",
+    name: "refill",
+    width: 16,
+    height: 16,
+  },
+  {
+    id: "falling-block",
+    kind: "falling_block",
+    label: "下落块",
+    name: "fallingBlock",
+    width: 32,
+    height: 16,
+    direction: { x: 1, y: 0 },
+  },
+  {
     id: "fly-feather",
     kind: "fly_feather",
     label: "羽毛",

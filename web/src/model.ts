@@ -80,6 +80,27 @@ export interface CloudState {
   start: Vec2;
 }
 
+export interface RefillState {
+  two_dashes: boolean;
+  one_use: boolean;
+  respawn_timer: number;
+  collidable: boolean;
+  removed: boolean;
+}
+
+export interface FallingBlockState {
+  phase: number;
+  position: Vec2;
+  start: Vec2;
+  remainder_y: number;
+  fall_speed: number;
+  fall_delay: number;
+  triggered: boolean;
+  collidable: boolean;
+  removed: boolean;
+  safe: boolean;
+}
+
 export interface MoveBlockState {
   phase: number;
   wait_timer: number;
@@ -162,6 +183,8 @@ export interface SimState {
   gliders?: GliderState[];
   clouds?: CloudState[];
   move_blocks?: MoveBlockState[];
+  refills?: RefillState[];
+  falling_blocks?: FallingBlockState[];
   heart_gems?: HeartGemState[];
   cassette_blocks?: CassetteBlockState[];
   spinners?: SpinnerState[];
@@ -193,6 +216,8 @@ export type EntityKind =
   | "badeline_boost"
   | "spring"
   | "strawberry"
+  | "refill"
+  | "falling_block"
   | "wind"
   | "bounce_block"
   | "theo_crystal"
