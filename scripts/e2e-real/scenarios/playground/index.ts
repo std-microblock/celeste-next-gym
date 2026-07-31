@@ -150,6 +150,10 @@ import { scenario as scenario147 } from "./mechanics-move-block-side-grab.js";
 import { scenario as scenario148 } from "./mechanics-bounce-block-side-grab.js";
 import { scenario as scenario149 } from "./mechanics-dream-block-grounded-down-right.js";
 import { scenario as scenario150 } from "./mechanics-dream-block-grounded-down-left.js";
+import { scenario as scenario151 } from "./entity-refill.js";
+import { scenario as scenario152 } from "./entity-refill-two-dash.js";
+import { scenario as scenario153 } from "./entity-falling-block.js";
+import { scenario as scenario154 } from "./entity-falling-block-jump-off.js";
 
 export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario0,
@@ -303,4 +307,8 @@ export const scenarios: readonly ScenarioDefinition[] = Object.freeze([
   scenario148,
   scenario149,
   scenario150,
+  scenario151,
+  scenario152,
+  scenario153,
+  scenario154,
 ]);

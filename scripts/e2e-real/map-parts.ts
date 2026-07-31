@@ -187,6 +187,8 @@ const ENTITY_KINDS = new Set<FixtureEntity["kind"]>([
   "badeline_boost",
   "spring",
   "strawberry",
+  "refill",
+  "falling_block",
   "puffer",
   "angry_oshiro",
   "seeker",
@@ -268,6 +270,11 @@ function validateAuthoringEntity(
     allowed.add("singleUse");
   }
   if (entity.kind === "rising_lava") allowed.add("singleUse");
+  if (entity.kind === "refill") {
+    allowed.add("direction");
+    allowed.add("singleUse");
+  }
+  if (entity.kind === "falling_block") allowed.add("direction");
   if (entity.kind === "ice_ball") {
     allowed.add("nodes");
     allowed.add("singleUse");
@@ -412,6 +419,8 @@ function validateCanonicalEntity(
     entity.kind !== "move_block" &&
     entity.kind !== "moving_solid" &&
     entity.kind !== "lookout" &&
+    entity.kind !== "refill" &&
+    entity.kind !== "falling_block" &&
     (x !== 0 || y !== 0)
   ) {
     throw new Error(
@@ -437,7 +446,8 @@ function validateCanonicalEntity(
     entity.singleUse &&
     entity.kind !== "fly_feather" &&
     entity.kind !== "ice_ball" &&
-    entity.kind !== "rising_lava"
+    entity.kind !== "rising_lava" &&
+    entity.kind !== "refill"
   ) {
     throw new Error(
       `entity ${entity.id} kind ${entity.kind} forbids singleUse`,

@@ -603,6 +603,66 @@ export const TECH_OTHER_5_8_ROBOBOOST = fixturePart(
   },
 );
 
+
+// Refill booth: a regular diamond above the main floor. The scenario starts
+// the player at (168, 496) so the first grounded frame overlaps the 16x16
+// collider and Player.UseRefill restores the depleted dash and stamina.
+export const PLAYGROUND_REFILL = fixturePart("playground.refill", {
+  entities: [
+    {
+      id: "playground-refill",
+      kind: "refill",
+      bounds: [160, 480, 16, 16],
+      direction: [0, 0],
+      name: "refill",
+    },
+  ],
+});
+export const PLAYGROUND_REFILL_TWO_DASH = fixturePart(
+  "playground.refill-two-dash",
+  {
+    entities: [
+      {
+        id: "playground-refill-two-dash",
+        kind: "refill",
+        bounds: [160, 480, 16, 16],
+        direction: [1, 0],
+        name: "refill",
+      },
+    ],
+  },
+);
+// Falling block booth: a 32x16 climbFall block hangs over the main floor.
+// The scenario spawns the player on top so the rider check starts the drop.
+export const PLAYGROUND_FALLING_BLOCK = fixturePart(
+  "playground.falling-block",
+  {
+    entities: [
+      {
+        id: "playground-falling-block",
+        kind: "falling_block",
+        bounds: [200, 400, 32, 16],
+        direction: [1, 0],
+        name: "fallingBlock",
+      },
+    ],
+  },
+);
+export const PLAYGROUND_FALLING_BLOCK_JUMP_OFF = fixturePart(
+  "playground.falling-block-jump-off",
+  {
+    entities: [
+      {
+        id: "playground-falling-block-jump-off",
+        kind: "falling_block",
+        bounds: [200, 400, 32, 16],
+        direction: [1, 0],
+        name: "fallingBlock",
+      },
+    ],
+  },
+);
+
 export const COMMON_MAP_PARTS = new Map<string, MapPart>(
   [
     PLAYGROUND_BASE,
@@ -612,6 +672,10 @@ export const COMMON_MAP_PARTS = new Map<string, MapPart>(
     PLAYGROUND_SPIKES,
     PLAYGROUND_SPRING,
     PLAYGROUND_BERRY,
+    PLAYGROUND_REFILL,
+    PLAYGROUND_REFILL_TWO_DASH,
+    PLAYGROUND_FALLING_BLOCK,
+    PLAYGROUND_FALLING_BLOCK_JUMP_OFF,
     PLAYGROUND_SWIM,
     PLAYGROUND_DREAM_BLOCK,
     PLAYGROUND_STAR_FLY,

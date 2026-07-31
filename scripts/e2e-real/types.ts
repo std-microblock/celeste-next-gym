@@ -110,6 +110,15 @@ export type FixtureEntity =
       readonly singleUse?: boolean;
     })
   | (FixtureEntityBase & {
+      readonly kind: "refill";
+      readonly direction?: Vector2;
+      readonly singleUse?: boolean;
+    })
+  | (FixtureEntityBase & {
+      readonly kind: "falling_block";
+      readonly direction?: Vector2;
+    })
+  | (FixtureEntityBase & {
       readonly kind:
         | "spikes"
         | "spring"
