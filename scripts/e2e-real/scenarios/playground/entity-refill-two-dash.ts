@@ -13,8 +13,8 @@ export const scenario = defineScenario({
   techniqueIds: [],
   mapParts,
   name: "entity-refill-two-dash",
-  initial: { pos: [168, 496], speed: [0, 0], dashes: 0, stamina: 5 },
-  inputs: Array.from({ length: 20 }, () => input()),
+  initial: { pos: [168, 465], speed: [0, 0], dashes: 0, stamina: 5 },
+  inputs: Array.from({ length: 40 }, () => input()),
   verify(states) {
     const collected = states[1];
     semanticAssert(

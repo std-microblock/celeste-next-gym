@@ -612,7 +612,7 @@ export const PLAYGROUND_REFILL = fixturePart("playground.refill", {
     {
       id: "playground-refill",
       kind: "refill",
-      bounds: [160, 480, 16, 16],
+      bounds: [160, 460, 16, 16],
       direction: [0, 0],
       name: "refill",
     },
@@ -625,7 +625,7 @@ export const PLAYGROUND_REFILL_TWO_DASH = fixturePart(
       {
         id: "playground-refill-two-dash",
         kind: "refill",
-        bounds: [160, 480, 16, 16],
+        bounds: [160, 460, 16, 16],
         direction: [1, 0],
         name: "refill",
       },
