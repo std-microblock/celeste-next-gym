@@ -3132,7 +3132,11 @@ export function GameView({
     canvas.width = Math.round(rect.width * dpr);
     canvas.height = Math.round(rect.height * dpr);
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
-    context.imageSmoothingEnabled = false;
+    // The real game (HiresRenderer) upscales the 320x180 buffer with
+    // SamplerState.LinearClamp. Bilinear filtering keeps the textures' thin
+    // dark details (crystal facets, spike seams) subtle; nearest-neighbor
+    // would inflate them into chunky black lines.
+    context.imageSmoothingEnabled = true;
 
     const scale = Math.min(
       rect.width / camera.width,
