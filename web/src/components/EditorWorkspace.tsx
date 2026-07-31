@@ -296,8 +296,8 @@ export interface EditorWorkspaceProps {
   /** Live-render refs forwarded to the embedded GameView (editor experience). */
   liveRefs?: LiveRenderRefs;
   onMapChange: (map: GymMap) => void;
-  onExperienceChange: (experiencing: boolean) => void;
-  onResetExperience: () => void;
+  onExperienceChange: (experiencing: boolean, map: GymMap) => void;
+  onResetExperience: (map: GymMap) => void;
 }
 
 export function EditorWorkspace(props: EditorWorkspaceProps) {

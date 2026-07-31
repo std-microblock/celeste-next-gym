@@ -321,8 +321,8 @@ export interface MapEditorProps {
   /** Live-render refs for the embedded GameView while experiencing. */
   liveRefs?: LiveRenderRefs;
   onChange: (map: GymMap) => void;
-  onExperienceChange: (experiencing: boolean) => void;
-  onResetExperience: () => void;
+  onExperienceChange: (experiencing: boolean, map: GymMap) => void;
+  onResetExperience: (map: GymMap) => void;
 }
 
 export function snapToGrid(
@@ -925,12 +925,12 @@ export function MapEditor({
 
   const toggleExperience = () => {
     if (experiencing && trajectoryRecording) stopTrajectoryRecording();
-    onExperienceChange(!experiencing);
+    onExperienceChange(!experiencing, map);
   };
 
   const resetExperience = () => {
     if (trajectoryRecording) stopTrajectoryRecording();
-    onResetExperience();
+    onResetExperience(map);
   };
 
   const moveCamera = (x: number, y: number) =>
@@ -1387,7 +1387,7 @@ export function MapEditor({
         return;
       if (experiencing && event.code === "KeyR") {
         event.preventDefault();
-        onResetExperience();
+        onResetExperience(map);
         return;
       }
       if (event.key === "Escape") {

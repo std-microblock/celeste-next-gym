@@ -273,7 +273,32 @@ describe("MapEditor interactions", () => {
       />,
     );
     fireEvent.keyDown(window, { code: "KeyR", key: "r" });
-    expect(onResetExperience).toHaveBeenCalledTimes(1);
+    expect(onResetExperience).toHaveBeenCalledWith(map);
+    view.unmount();
+  });
+
+  it("starts real-time experience with the exact map shown by the editor", () => {
+    const map = createBlankGymMap("second-room");
+    map.spawn.x = 100;
+    const onExperienceChange = vi.fn();
+    const view = render(
+      <MapEditor
+        map={map}
+        state={createInitialState(map)}
+        frame={0}
+        theme={VISUAL_THEMES[0]}
+        experiencing={false}
+        ready
+        onChange={vi.fn()}
+        onExperienceChange={onExperienceChange}
+        onResetExperience={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(
+      within(view.container).getByRole("button", { name: "实时体验" }),
+    );
+    expect(onExperienceChange).toHaveBeenCalledWith(true, map);
     view.unmount();
   });
 

@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { GymMap } from "./model";
+import type { GymMap, SimState } from "./model";
 import { PLAYGROUND } from "./model";
 import { createBlankGymMap } from "./training/editorProject";
 
@@ -18,8 +18,8 @@ vi.mock("./simulator/wasmClient", () => ({
       return wasm.loadMap(...args);
     }
 
-    simulate() {
-      return Promise.resolve([]);
+    simulate(state: SimState) {
+      return Promise.resolve([state]);
     }
 
     dispose() {}
@@ -50,15 +50,23 @@ vi.mock("./components/TrainingGround", () => ({
 vi.mock("./components/EditorWorkspace", () => ({
   EditorWorkspace: ({
     map,
+    state,
     ready,
+    experiencing,
     onMapChange,
+    onExperienceChange,
   }: {
     map: GymMap;
+    state: SimState;
     ready: boolean;
+    experiencing: boolean;
     onMapChange: (map: GymMap) => void;
+    onExperienceChange: (experiencing: boolean, map: GymMap) => void;
   }) => (
     <div>
       <span data-testid="simulation-map">{map.name}</span>
+      <span data-testid="live-position-x">{state.pos.x}</span>
+      <span data-testid="editor-experiencing">{String(experiencing)}</span>
       <span data-testid="wasm-ready">{String(ready)}</span>
       <button
         type="button"
@@ -70,6 +78,26 @@ vi.mock("./components/EditorWorkspace", () => ({
         }
       >
         选择编辑地图
+      </button>
+      <button type="button" onClick={() => onExperienceChange(true, map)}>
+        开始实时体验
+      </button>
+      <button type="button" onClick={() => onExperienceChange(false, map)}>
+        停止实时体验
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          const second = {
+            ...createBlankGymMap("second-room"),
+            name: "Second Room",
+            spawn: { x: 100, y: 152 },
+          };
+          onMapChange(second);
+          onExperienceChange(true, second);
+        }}
+      >
+        切换并体验第二张地图
       </button>
     </div>
   ),
@@ -114,5 +142,25 @@ describe("App startup map loading", () => {
       expect(view.getByText(PLAYGROUND.name)).toBeInTheDocument(),
     );
     expect(wasm.loadMap).not.toHaveBeenCalled();
+  });
+
+  it("starts the selected editor map after stopping the previous experience", async () => {
+    const view = render(<App />);
+    fireEvent.change(view.getByLabelText("页面模式"), {
+      target: { value: "editor" },
+    });
+    await waitFor(() =>
+      expect(view.getByTestId("wasm-ready")).toHaveTextContent("true"),
+    );
+
+    fireEvent.click(view.getByRole("button", { name: "开始实时体验" }));
+    fireEvent.click(view.getByRole("button", { name: "停止实时体验" }));
+    fireEvent.click(
+      view.getByRole("button", { name: "切换并体验第二张地图" }),
+    );
+
+    expect(view.getByTestId("simulation-map")).toHaveTextContent("Second Room");
+    expect(view.getByTestId("live-position-x")).toHaveTextContent("100");
+    expect(view.getByTestId("editor-experiencing")).toHaveTextContent("true");
   });
 });

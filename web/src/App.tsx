@@ -794,8 +794,9 @@ export default function App() {
   );
 
   const toggleEditorExperience = useCallback(
-    (next: boolean) => {
-      resetLiveMap();
+    (next: boolean, editorMap: GymMap) => {
+      setMap(editorMap);
+      resetLiveMap(editorMap);
       setEditorExperiencing(next);
       setNotice(
         next
