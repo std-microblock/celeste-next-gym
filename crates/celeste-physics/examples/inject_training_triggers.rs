@@ -1,9 +1,4 @@
-use std::{
-    collections::BTreeMap,
-    env, fs,
-    path::Path,
-    process::ExitCode,
-};
+use std::{collections::BTreeMap, env, fs, path::Path, process::ExitCode};
 
 use celeste_physics::{BinaryElement, BinaryValue, encode_celeste_bin, parse_celeste_bin};
 use serde::Deserialize;
@@ -69,7 +64,9 @@ fn main() -> ExitCode {
 fn run() -> Result<String, String> {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
     if args.len() != 3 {
-        return Err("usage: inject_training_triggers <input.bin> <catalog.json> <output.bin>".into());
+        return Err(
+            "usage: inject_training_triggers <input.bin> <catalog.json> <output.bin>".into(),
+        );
     }
     let input = Path::new(&args[0]);
     let catalog_path = Path::new(&args[1]);
@@ -106,7 +103,8 @@ fn run() -> Result<String, String> {
             .ok_or_else(|| format!("room {} has no triggers container", project.room))?;
 
         for module in project.training.modules {
-            let mut attributes = trigger_attributes(module.trigger.bounds, level_x, level_y, injected as i32);
+            let mut attributes =
+                trigger_attributes(module.trigger.bounds, level_x, level_y, injected as i32);
             attributes.insert("lessonId".into(), BinaryValue::String(module.id.clone()));
             attributes.insert("projectId".into(), BinaryValue::String(project.id.clone()));
             triggers.children.push(BinaryElement {
@@ -117,7 +115,8 @@ fn run() -> Result<String, String> {
             });
             injected += 1;
 
-            let mut end_attributes = trigger_attributes(module.end_trigger.bounds, level_x, level_y, injected as i32);
+            let mut end_attributes =
+                trigger_attributes(module.end_trigger.bounds, level_x, level_y, injected as i32);
             end_attributes.insert("lessonId".into(), BinaryValue::String(module.id));
             end_attributes.insert("projectId".into(), BinaryValue::String(project.id.clone()));
             triggers.children.push(BinaryElement {
@@ -156,16 +155,36 @@ fn run() -> Result<String, String> {
     }
     fs::write(output, bytes)
         .map_err(|error| format!("failed to write {}: {error}", output.display()))?;
-    Ok(format!("injected {injected} training triggers into {}", output.display()))
+    Ok(format!(
+        "injected {injected} training triggers into {}",
+        output.display()
+    ))
 }
 
-fn trigger_attributes(bounds: Bounds, level_x: i32, level_y: i32, id: i32) -> BTreeMap<String, BinaryValue> {
+fn trigger_attributes(
+    bounds: Bounds,
+    level_x: i32,
+    level_y: i32,
+    id: i32,
+) -> BTreeMap<String, BinaryValue> {
     BTreeMap::from([
-        ("height".into(), BinaryValue::Int(bounds.height.round() as i32)),
+        (
+            "height".into(),
+            BinaryValue::Int(bounds.height.round() as i32),
+        ),
         ("id".into(), BinaryValue::Int(10_000 + id)),
-        ("width".into(), BinaryValue::Int(bounds.width.round() as i32)),
-        ("x".into(), BinaryValue::Int(bounds.x.round() as i32 - level_x)),
-        ("y".into(), BinaryValue::Int(bounds.y.round() as i32 - level_y)),
+        (
+            "width".into(),
+            BinaryValue::Int(bounds.width.round() as i32),
+        ),
+        (
+            "x".into(),
+            BinaryValue::Int(bounds.x.round() as i32 - level_x),
+        ),
+        (
+            "y".into(),
+            BinaryValue::Int(bounds.y.round() as i32 - level_y),
+        ),
     ])
 }
 

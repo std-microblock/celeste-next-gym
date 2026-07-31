@@ -43,8 +43,8 @@ fn run() -> Result<String, String> {
         .map_err(|error| format!("failed to read {}: {error}", fixture_path.display()))?;
     let fixture = parse_map_fixture(&fixture_json).map_err(|error| error.to_string())?;
     if canonicalize {
-        let canonical = canonical_map_fixture_json(fixture.clone())
-            .map_err(|error| error.to_string())?;
+        let canonical =
+            canonical_map_fixture_json(fixture.clone()).map_err(|error| error.to_string())?;
         fs::write(fixture_path, canonical)
             .map_err(|error| format!("failed to write {}: {error}", fixture_path.display()))?;
     }

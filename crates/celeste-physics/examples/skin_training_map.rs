@@ -101,19 +101,37 @@ fn metadata(start_level: String) -> BinaryElement {
             ("DarknessAlpha".to_owned(), BinaryValue::Float(0.05)),
             ("Dreaming".to_owned(), BinaryValue::Bool(false)),
             ("Interlude".to_owned(), BinaryValue::Bool(false)),
-            ("IntroType".to_owned(), BinaryValue::String("None".to_owned())),
+            (
+                "IntroType".to_owned(),
+                BinaryValue::String("None".to_owned()),
+            ),
             ("OverrideASideMeta".to_owned(), BinaryValue::Bool(true)),
-            ("Spike".to_owned(), BinaryValue::String("SJ2021/Gym/beg".to_owned())),
-            ("TitleAccentColor".to_owned(), BinaryValue::String("7eb2dd".to_owned())),
-            ("TitleBaseColor".to_owned(), BinaryValue::String("1a2438".to_owned())),
-            ("TitleTextColor".to_owned(), BinaryValue::String("ffffff".to_owned())),
+            (
+                "Spike".to_owned(),
+                BinaryValue::String("SJ2021/Gym/beg".to_owned()),
+            ),
+            (
+                "TitleAccentColor".to_owned(),
+                BinaryValue::String("7eb2dd".to_owned()),
+            ),
+            (
+                "TitleBaseColor".to_owned(),
+                BinaryValue::String("1a2438".to_owned()),
+            ),
+            (
+                "TitleTextColor".to_owned(),
+                BinaryValue::String("ffffff".to_owned()),
+            ),
         ]),
         children: vec![BinaryElement {
             package: None,
             name: "mode".to_owned(),
             attributes: BTreeMap::from([
                 ("HeartIsEnd".to_owned(), BinaryValue::Bool(false)),
-                ("Inventory".to_owned(), BinaryValue::String("Default".to_owned())),
+                (
+                    "Inventory".to_owned(),
+                    BinaryValue::String("Default".to_owned()),
+                ),
                 ("SeekerSlowdown".to_owned(), BinaryValue::Bool(false)),
                 ("StartLevel".to_owned(), BinaryValue::String(start_level)),
                 ("TheoInBubble".to_owned(), BinaryValue::Bool(false)),

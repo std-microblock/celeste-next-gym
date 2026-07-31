@@ -75,6 +75,14 @@ const STAR_FLY_MAX_EXIT_X: f32 = 140.0;
 const STAR_FLY_EXIT_UP: f32 = -100.0;
 const STAR_FLY_TRANSFORM_FRAMES: u8 = 27;
 const FEATHER_RESPAWN_TIME: f32 = 3.0;
+const REFILL_RESPAWN_TIME: f32 = 2.5;
+const REFILL_FREEZE_TIME: f32 = 0.05;
+const FALLING_BLOCK_MAX_SPEED: f32 = 160.0;
+const FALLING_BLOCK_ACCEL: f32 = 500.0;
+const FALLING_BLOCK_SHAKE_TIME: f32 = 0.2;
+const FALLING_BLOCK_WAIT_TIME: f32 = 0.4;
+const FALLING_BLOCK_IMPACT_TIME: f32 = 0.2;
+const FALLING_BLOCK_PLATFORM_TICK: f32 = 0.1;
 const LAUNCH_CANCEL_THRESHOLD: f32 = 220.0;
 const TRANSITION_TIME: f32 = 0.65;
 const TRANSITION_MOVE_SPEED: f32 = 60.0;
@@ -142,6 +150,8 @@ impl Simulator {
         initialize_cassette_blocks(&mut snapshot, &mut runtime_map);
         initialize_spinners(&mut snapshot, &mut runtime_map);
         initialize_bumpers(&mut snapshot, &mut runtime_map);
+        initialize_refills(&mut snapshot, &mut runtime_map);
+        initialize_falling_blocks(&mut snapshot, &mut runtime_map);
         initialize_lookouts(&mut snapshot, &runtime_map);
         position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
         Ok(Self {
@@ -482,6 +492,25 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
             .iter()
             .all(|value| value.is_finite())
     });
+    let refills_are_finite = s
+        .refills
+        .iter()
+        .all(|refill| refill.respawn_timer.is_finite());
+    let falling_blocks_are_finite = s.falling_blocks.iter().all(|block| {
+        [
+            block.position.x,
+            block.position.y,
+            block.start.x,
+            block.start.y,
+            block.remainder_y,
+            block.fall_speed,
+            block.fall_delay,
+            block.shake_timer,
+            block.wait_timer,
+        ]
+        .iter()
+        .all(|value| value.is_finite())
+    });
     let lookouts_are_finite = s.lookouts.iter().all(|lookout| {
         [
             lookout.timer,
@@ -515,6 +544,8 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         && cassette_blocks_are_finite
         && spinners_are_finite
         && lookouts_are_finite
+        && refills_are_finite
+        && falling_blocks_are_finite
     {
         Ok(())
     } else {
@@ -798,6 +829,84 @@ fn advance_bumpers(p: &mut PlayerSnapshot, map: &mut Map) {
         );
         state.respawn_timer = (state.respawn_timer - p.frame_delta_time).max(0.0);
         entity.bounds = Rect::new(state.position.x - 12.0, state.position.y - 12.0, 24.0, 24.0);
+    }
+}
+
+fn initialize_refills(p: &mut PlayerSnapshot, map: &mut Map) {
+    let refill_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::Refill).then_some(index))
+        .collect();
+    p.refills.truncate(refill_indices.len());
+    for (refill_index, entity_index) in refill_indices.into_iter().enumerate() {
+        if refill_index == p.refills.len() {
+            let entity = &map.entities[entity_index];
+            p.refills.push(crate::RefillSnapshot {
+                two_dashes: entity.direction.x != 0.0,
+                one_use: entity.single_use,
+                respawn_timer: 0.0,
+                collidable: true,
+                removed: false,
+            });
+        }
+    }
+}
+
+fn initialize_falling_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
+    let block_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::FallingBlock).then_some(index))
+        .collect();
+    p.falling_blocks.truncate(block_indices.len());
+    for (block_index, entity_index) in block_indices.into_iter().enumerate() {
+        if block_index == p.falling_blocks.len() {
+            let bounds = map.entities[entity_index].bounds;
+            let position = Vec2::new(bounds.x, bounds.y);
+            p.falling_blocks.push(crate::FallingBlockSnapshot {
+                position,
+                start: position,
+                collidable: true,
+                ..crate::FallingBlockSnapshot::default()
+            });
+        }
+        let state = &p.falling_blocks[block_index];
+        let entity = &mut map.entities[entity_index];
+        if state.collidable {
+            entity.bounds = Rect::new(
+                state.position.x,
+                state.position.y,
+                entity.bounds.width,
+                entity.bounds.height,
+            );
+        } else {
+            park_entity(entity);
+        }
+    }
+}
+
+fn advance_refills(p: &mut PlayerSnapshot, map: &mut Map) {
+    let mut refill_index = 0usize;
+    for entity in &mut map.entities {
+        if entity.kind != EntityKind::Refill {
+            continue;
+        }
+        let state = &mut p.refills[refill_index];
+        refill_index += 1;
+        if state.removed {
+            continue;
+        }
+        // Refill.Update decrements respawnTimer, then Respawn restores
+        // collidability before the same entity frame runs its PlayerCollider.
+        if state.respawn_timer > 0.0 {
+            state.respawn_timer = (state.respawn_timer - p.frame_delta_time).max(0.0);
+            if state.respawn_timer <= 0.0 {
+                state.collidable = true;
+            }
+        }
     }
 }
 
@@ -1266,6 +1375,7 @@ fn solid_at_with_gate(map: &Map, rect: Rect, pusher_index: usize, pusher_collida
                 entity.kind,
                 EntityKind::DreamBlock
                     | EntityKind::BounceBlock
+                    | EntityKind::FallingBlock
                     | EntityKind::MoveBlock
                     | EntityKind::MovingSolid
                     | EntityKind::ZipMover
@@ -1681,6 +1791,7 @@ fn solid_collision_env(map: &Map, pusher_index: usize) -> SolidCollisionEnv {
             entity.kind,
             EntityKind::BounceBlock
                 | EntityKind::DreamBlock
+                | EntityKind::FallingBlock
                 | EntityKind::MoveBlock
                 | EntityKind::MovingSolid
                 | EntityKind::ZipMover
@@ -2198,6 +2309,7 @@ fn runtime_solid_collision(map: &Map, skip_index: usize, rect: Rect) -> bool {
                     EntityKind::BounceBlock
                         | EntityKind::CassetteBlock
                         | EntityKind::DreamBlock
+                        | EntityKind::FallingBlock
                         | EntityKind::MoveBlock
                         | EntityKind::MovingSolid
                         | EntityKind::ZipMover
@@ -3866,6 +3978,265 @@ fn advance_spinners(p: &mut PlayerSnapshot, map: &mut Map) {
     }
 }
 
+fn falling_block_entity_indices(map: &Map) -> Vec<usize> {
+    map.entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::FallingBlock).then_some(index))
+        .collect()
+}
+
+fn falling_block_player_fall_check(
+    p: &PlayerSnapshot,
+    entity: &crate::Entity,
+    climb_fall: bool,
+) -> bool {
+    // PlayerFallCheck: climbFall blocks trigger on HasPlayerRider; ordinary
+    // blocks trigger on HasPlayerOnTop (CollideFirst<Player>(Position - UnitY)).
+    if climb_fall {
+        player_riding_solid(p, entity.bounds)
+    } else {
+        player_on_top_of_solid(p, entity.bounds)
+    }
+}
+
+fn falling_block_player_wait_check(
+    p: &PlayerSnapshot,
+    entity: &crate::Entity,
+    climb_fall: bool,
+    triggered: bool,
+) -> bool {
+    // PlayerWaitCheck keeps the pre-drop timer from counting down while the
+    // player is on top. climbFall blocks additionally wait while the player
+    // overlaps either side by one pixel (CollideCheck<Player>(Position +/- UnitX)).
+    if triggered {
+        return true;
+    }
+    if falling_block_player_fall_check(p, entity, climb_fall) {
+        return true;
+    }
+    if climb_fall {
+        let player = current_player_rect(p, p.pos.x, p.pos.y);
+        return Rect::new(
+            entity.bounds.x - 1.0,
+            entity.bounds.y,
+            entity.bounds.width,
+            entity.bounds.height,
+        )
+        .intersects(player)
+            || Rect::new(
+                entity.bounds.x + 1.0,
+                entity.bounds.y,
+                entity.bounds.width,
+                entity.bounds.height,
+            )
+            .intersects(player);
+    }
+    false
+}
+
+fn falling_block_platform_below(map: &Map, entity_index: usize, below: Rect) -> bool {
+    // CollideCheck<Platform>(Position + (0,1)): static tiles plus every
+    // Platform entity (JumpThrus, Clouds, and Solid entities) below the block.
+    map.static_solid_at(below)
+        || map.entities.iter().enumerate().any(|(index, entity)| {
+            index != entity_index
+                && matches!(
+                    entity.kind,
+                    EntityKind::JumpThru
+                        | EntityKind::Cloud
+                        | EntityKind::BounceBlock
+                        | EntityKind::CassetteBlock
+                        | EntityKind::DreamBlock
+                        | EntityKind::FallingBlock
+                        | EntityKind::MoveBlock
+                        | EntityKind::MovingSolid
+                        | EntityKind::ZipMover
+                        | EntityKind::TempleGate
+                )
+                && entity.bounds.intersects(below)
+        })
+}
+
+/// Move a FallingBlock down `amount` pixels, stopping before the first solid
+/// or (downward) jumpthru pixel. Riders are carried exactly like
+/// Solid.MoveVExact; the returned bool is true when the move was blocked.
+fn move_falling_block_down(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    entity_index: usize,
+    state: &mut crate::FallingBlockSnapshot,
+    amount: i32,
+) -> bool {
+    if amount <= 0 {
+        return false;
+    }
+    let env = solid_collision_env(map, entity_index);
+    let bounds = map.entities[entity_index].bounds;
+    let mut moved = 0i32;
+    while moved < amount {
+        let candidate = Rect::new(
+            bounds.x,
+            bounds.y + (moved + 1) as f32,
+            bounds.width,
+            bounds.height,
+        );
+        if env_solid_at(&env, candidate, None)
+            || env_jump_thru_at(&env, candidate, bounds.y + bounds.height + moved as f32)
+        {
+            break;
+        }
+        moved += 1;
+    }
+    if moved > 0 {
+        let entity = &mut map.entities[entity_index];
+        // MoveVCollideSolids writes LiftSpeed.Y = moveV / DeltaTime for the
+        // full requested move before the exact pass truncates it at impact.
+        move_runtime_solid_exact(
+            p,
+            &mut entity.bounds,
+            &env,
+            false,
+            moved as f32,
+            Vec2::new(0.0, state.fall_speed),
+        );
+        state.position.y += moved as f32;
+    }
+    moved < amount
+}
+
+fn advance_falling_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
+    for (block_index, entity_index) in falling_block_entity_indices(map).into_iter().enumerate() {
+        let mut state = p.falling_blocks[block_index].clone();
+        if state.removed {
+            p.falling_blocks[block_index] = state;
+            continue;
+        }
+        let climb_fall = map.entities[entity_index].direction.x != 0.0;
+        match state.phase {
+            // Wait for Triggered or the player fall check, then the FallDelay.
+            0 => {
+                if state.triggered
+                    || falling_block_player_fall_check(p, &map.entities[entity_index], climb_fall)
+                {
+                    if state.fall_delay > 0.0 {
+                        state.fall_delay = (state.fall_delay - p.frame_delta_time).max(0.0);
+                    }
+                    if state.fall_delay <= 0.0 {
+                        state.fall_delay = 0.0;
+                        state.phase = 1;
+                        state.shake_timer = FALLING_BLOCK_SHAKE_TIME;
+                    }
+                }
+            }
+            // ShakeSfx + StartShaking, then yield return 0.2f.
+            1 => {
+                state.shake_timer -= p.frame_delta_time;
+                if state.shake_timer <= 0.0 {
+                    state.phase = 2;
+                    state.wait_timer = FALLING_BLOCK_WAIT_TIME;
+                    // The loop-head condition runs on the same resume frame as
+                    // the float-yield completion, before the timer is ever
+                    // decremented. A player who leaves during the shake
+                    // therefore ends the wait immediately.
+                    if !falling_block_player_wait_check(
+                        p,
+                        &map.entities[entity_index],
+                        climb_fall,
+                        state.triggered,
+                    ) {
+                        state.phase = 3;
+                        state.fall_speed = 0.0;
+                    }
+                }
+            }
+            // while (timer > 0 && PlayerWaitCheck()) { timer -= dt; }
+            2 => {
+                // Each later resume decrements first, then re-checks the
+                // condition; the drop starts on the frame the timer reaches
+                // zero or the player leaves.
+                if state.wait_timer > 0.0 {
+                    state.wait_timer -= p.frame_delta_time;
+                }
+                if state.wait_timer <= 0.0
+                    || !falling_block_player_wait_check(
+                        p,
+                        &map.entities[entity_index],
+                        climb_fall,
+                        state.triggered,
+                    )
+                {
+                    state.phase = 3;
+                    state.fall_speed = 0.0;
+                }
+            }
+            // Fall: approach 160 px/s at 500 px/s^2, moving through MoveV.
+            3 => {
+                state.fall_speed = approach(
+                    state.fall_speed,
+                    FALLING_BLOCK_MAX_SPEED,
+                    FALLING_BLOCK_ACCEL * p.frame_delta_time,
+                );
+                state.remainder_y += state.fall_speed * p.frame_delta_time;
+                let exact = state.remainder_y.round_ties_even() as i32;
+                state.remainder_y -= exact as f32;
+                if move_falling_block_down(p, map, entity_index, &mut state, exact) {
+                    state.phase = 4;
+                    state.shake_timer = FALLING_BLOCK_IMPACT_TIME;
+                } else {
+                    let bounds = map.entities[entity_index].bounds;
+                    let below = Rect::new(bounds.x, bounds.y + 1.0, bounds.width, bounds.height);
+                    let fell_out = bounds.y > map.bounds.bottom() + 16.0
+                        || (bounds.y > map.bounds.bottom() - 1.0
+                            && runtime_solid_collision(map, entity_index, below));
+                    if fell_out {
+                        state.collidable = false;
+                        state.removed = true;
+                    }
+                }
+            }
+            // Impact: land shake, then rest permanently on tiles or wait on a
+            // platform before falling again.
+            4 => {
+                state.shake_timer -= p.frame_delta_time;
+                if state.shake_timer <= 0.0 {
+                    let bounds = map.entities[entity_index].bounds;
+                    let below = Rect::new(bounds.x, bounds.y + 1.0, bounds.width, bounds.height);
+                    if map.static_solid_at(below) {
+                        state.phase = 5;
+                        state.safe = true;
+                    } else if falling_block_platform_below(map, entity_index, below) {
+                        state.phase = 6;
+                        state.wait_timer = FALLING_BLOCK_PLATFORM_TICK;
+                    } else {
+                        state.phase = 1;
+                        state.shake_timer = FALLING_BLOCK_SHAKE_TIME;
+                    }
+                }
+            }
+            // Landed permanently; Safe = true and the coroutine ends.
+            5 => {}
+            // while (CollideCheck<Platform>(Position + (0,1))) { yield 0.1f; }
+            6 => {
+                state.wait_timer -= p.frame_delta_time;
+                if state.wait_timer <= 0.0 {
+                    let bounds = map.entities[entity_index].bounds;
+                    let below = Rect::new(bounds.x, bounds.y + 1.0, bounds.width, bounds.height);
+                    if falling_block_platform_below(map, entity_index, below) {
+                        state.wait_timer = FALLING_BLOCK_PLATFORM_TICK;
+                    } else {
+                        state.phase = 1;
+                        state.shake_timer = FALLING_BLOCK_SHAKE_TIME;
+                    }
+                }
+            }
+            _ => {
+                state.phase = 0;
+            }
+        }
+        p.falling_blocks[block_index] = state;
+    }
+}
 fn advance_post_player_entities(p: &mut PlayerSnapshot, map: &mut Map, input: InputState) {
     // Booster.BoostRoutine runs after Player.Update. It retains
     // BoostingPlayer throughout Dash/RedDash, then releases the player and
@@ -3877,6 +4248,7 @@ fn advance_post_player_entities(p: &mut PlayerSnapshot, map: &mut Map, input: In
     advance_zip_movers(p, map);
     advance_bounce_blocks(p, map);
     advance_move_blocks(p, map, input);
+    advance_falling_blocks(p, map);
     advance_theo_crystals(p, map);
     advance_heart_gems(p);
     advance_rising_lavas(p, map);
@@ -4184,6 +4556,7 @@ fn step(
     // PlayerCollider invokes OnPlayer. Keep it immediately before the
     // portable collider callbacks, after Player has completed its movement.
     advance_bumpers(p, map);
+    advance_refills(p, map);
     interact(p, map, input, lookout_booster_box);
     try_begin_lookout(p, map, input);
     advance_lookouts(p, map, input, menu_cancel_pressed);
@@ -5826,6 +6199,7 @@ fn interact(
     let mut rising_lava_index = 0usize;
     let mut sandwich_lava_index = 0usize;
     let mut bumper_index = 0usize;
+    let mut refill_index = 0usize;
     for (entity_index, entity) in map.entities.iter().enumerate() {
         let current_bumper = (entity.kind == EntityKind::Bumper).then(|| {
             let index = bumper_index;
@@ -5849,6 +6223,13 @@ fn interact(
         let current_sandwich_lava = if entity.kind == EntityKind::SandwichLava {
             let index = sandwich_lava_index;
             sandwich_lava_index += 1;
+            Some(index)
+        } else {
+            None
+        };
+        let current_refill = if entity.kind == EntityKind::Refill {
+            let index = refill_index;
+            refill_index += 1;
             Some(index)
         } else {
             None
@@ -6053,6 +6434,29 @@ fn interact(
                         p.strawberry_collect_timer = 0.0;
                     }
                     p.carried_strawberries = p.carried_strawberries.saturating_add(1);
+                }
+            }
+            EntityKind::Refill => {
+                let Some(index) = current_refill else {
+                    continue;
+                };
+                let state = &mut p.refills[index];
+                if state.removed || !state.collidable {
+                    continue;
+                }
+                // Player.UseRefill(twoDashes): refill only when Dashes < num
+                // (MaxDashes, or 2 for the pink diamond) or Stamina < 20.
+                let target_dashes = if state.two_dashes { 2 } else { 1 };
+                if p.dashes < target_dashes || p.stamina < CLIMB_TIRED_THRESHOLD {
+                    p.dashes = target_dashes;
+                    p.stamina = 110.0;
+                    state.collidable = false;
+                    state.respawn_timer = REFILL_RESPAWN_TIME;
+                    // RefillRoutine begins with Celeste.Freeze(0.05f).
+                    p.freeze_timer = REFILL_FREEZE_TIME;
+                    if state.one_use {
+                        state.removed = true;
+                    }
                 }
             }
             EntityKind::HeartGem => {
@@ -7348,6 +7752,39 @@ mod tests {
                 single_use: false,
                 nodes: vec![],
                 name: "spring".to_owned(),
+            }],
+            ..Map::default()
+        }
+    }
+    fn refill_map(two_dashes: bool, one_use: bool) -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            solids: vec![Rect::new(0.0, 100.0, 320.0, 80.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::Refill,
+                bounds: Rect::new(80.0, 88.0, 16.0, 16.0),
+                direction: Vec2::new(if two_dashes { 1.0 } else { 0.0 }, 0.0),
+                shielded: false,
+                single_use: one_use,
+                nodes: vec![],
+                name: "refill".to_owned(),
+            }],
+            ..Map::default()
+        }
+    }
+    fn falling_block_map(climb_fall: bool, top: f32) -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            // The block hangs at (112, top); the floor below starts at 160.
+            solids: vec![Rect::new(0.0, 160.0, 320.0, 20.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::FallingBlock,
+                bounds: Rect::new(112.0, top, 32.0, 16.0),
+                direction: Vec2::new(if climb_fall { 1.0 } else { 0.0 }, 0.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "fallingBlock".to_owned(),
             }],
             ..Map::default()
         }
@@ -14957,6 +15394,156 @@ mod tests {
         assert!(trace.states.iter().all(|state| !state.dead));
     }
 
+    #[test]
+    fn refill_restores_dash_and_stamina_then_respawns_after_two_point_five_seconds() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(84.0, 89.0),
+            on_ground: true,
+            dashes: 0,
+            stamina: 5.0,
+            ..PlayerSnapshot::default()
+        };
+        let map = refill_map(false, false);
+        let trace = simulate_trace(p, &[InputState::default(); 200], &map, 200).unwrap();
+        // Frame 1 collects: dashes 0 -> 1, stamina 5 -> 110, 0.05s freeze.
+        assert_eq!(trace.states[1].dashes, 1);
+        assert_eq!(trace.states[1].stamina, 110.0);
+        assert_eq!(trace.states[1].freeze_timer, REFILL_FREEZE_TIME);
+        assert!(!trace.states[1].refills[0].collidable);
+        assert_eq!(
+            trace.states[1].refills[0].respawn_timer,
+            REFILL_RESPAWN_TIME
+        );
+        assert!((trace.states[2].freeze_timer - (REFILL_FREEZE_TIME - DT)).abs() < 1e-6);
+        // Respawn restores collidability after ~150 active frames.
+        assert!(!trace.states[100].refills[0].collidable);
+        assert!(trace.states[160].refills[0].collidable);
+    }
+
+    #[test]
+    fn pink_refill_sets_two_dashes_while_full_refill_does_not_collect() {
+        let map = refill_map(true, false);
+        let p = PlayerSnapshot {
+            pos: Vec2::new(84.0, 89.0),
+            on_ground: true,
+            dashes: 1,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(p, &[InputState::default(); 3], &map, 3).unwrap();
+        assert_eq!(trace.states[1].dashes, 2);
+        assert!(!trace.states[1].refills[0].collidable);
+
+        // A full player touching a regular refill gains nothing and the
+        // refill stays collidable for a later depleted pass.
+        let map = refill_map(false, false);
+        let p = PlayerSnapshot {
+            pos: Vec2::new(84.0, 89.0),
+            on_ground: true,
+            dashes: 1,
+            stamina: 110.0,
+            ..PlayerSnapshot::default()
+        };
+        let p = simulate(p, &[InputState::default(); 2], &map, 2).unwrap();
+        assert_eq!(p.dashes, 1);
+        assert!(p.refills[0].collidable);
+    }
+
+    #[test]
+    fn one_use_refill_removes_itself_after_collection() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(84.0, 89.0),
+            on_ground: true,
+            dashes: 0,
+            stamina: 5.0,
+            ..PlayerSnapshot::default()
+        };
+        let map = refill_map(false, true);
+        let trace = simulate_trace(p, &[InputState::default(); 20], &map, 20).unwrap();
+        assert!(trace.states[1].refills[0].removed);
+        assert!(!trace.states[1].refills[0].collidable);
+        assert!(trace.states[20].refills[0].removed);
+    }
+
+    #[test]
+    fn falling_block_triggers_rides_and_lands_permanently() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(120.0, 100.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let map = falling_block_map(true, 100.0);
+        let trace = simulate_trace(p, &[InputState::default(); 140], &map, 140).unwrap();
+        // Phase timeline: 1 shake (0.2s), 2 player-wait (0.4s), 3 falling.
+        assert_eq!(trace.states[1].falling_blocks[0].phase, 1);
+        assert_eq!(trace.states[13].falling_blocks[0].phase, 2);
+        assert_eq!(trace.states[37].falling_blocks[0].phase, 3);
+        // The rider is carried: the player bottom (pos.y) stays flush with
+        // the block top on the falling frames (top y=100 -> floor at y=160).
+        assert!(
+            (trace.states[40].pos.y - trace.states[40].falling_blocks[0].position.y).abs() < 0.01
+        );
+        assert!(trace.states[40].falling_blocks[0].position.y > 100.0);
+        // Landing: block rests on the floor, becomes Safe, player on top.
+        assert_eq!(trace.states[100].falling_blocks[0].phase, 5);
+        assert!(trace.states[100].falling_blocks[0].safe);
+        assert_eq!(trace.states[100].falling_blocks[0].position.y, 144.0);
+        assert_eq!(trace.states[100].pos.y, 144.0);
+        assert!(trace.states[100].on_ground);
+        assert!(!trace.states[100].dead);
+    }
+
+    #[test]
+    fn falling_block_wait_window_ends_early_when_the_player_leaves() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(120.0, 100.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let map = falling_block_map(true, 100.0);
+        // Stand through the 0.2s shake, then jump on the shake-end step.
+        // The shake resume's loop-head check sees the airborne player and the
+        // block drops that same frame; without the early exit it would wait
+        // until frame 37.
+        let inputs: Vec<_> = (0..24)
+            .map(|frame| InputState {
+                jump_pressed: frame == 12,
+                jump_held: frame >= 12,
+                ..InputState::default()
+            })
+            .collect();
+        let trace = simulate_trace(p, &inputs, &map, 24).unwrap();
+        assert_eq!(trace.states[13].falling_blocks[0].phase, 3);
+        assert!(trace.states[20].falling_blocks[0].position.y > 100.0);
+    }
+
+    #[test]
+    fn ordinary_falling_block_triggers_from_player_on_top() {
+        let p = PlayerSnapshot {
+            pos: Vec2::new(120.0, 100.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let map = falling_block_map(false, 100.0);
+        let trace = simulate_trace(p, &[InputState::default(); 50], &map, 50).unwrap();
+        assert_eq!(trace.states[1].falling_blocks[0].phase, 1);
+        assert_eq!(trace.states[37].falling_blocks[0].phase, 3);
+        assert!(trace.states[50].falling_blocks[0].position.y > 100.0);
+    }
+
+    #[test]
+    fn triggered_falling_block_drops_without_a_player_and_despawns_below_bounds() {
+        let mut map = falling_block_map(true, 160.0);
+        map.solids.clear();
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(20.0, 20.0),
+            ..PlayerSnapshot::default()
+        };
+        p = simulate(p, &[InputState::default(); 1], &map, 1).unwrap();
+        p.falling_blocks[0].triggered = true;
+        let p = simulate(p, &[InputState::default(); 90], &map, 90).unwrap();
+        assert!(p.falling_blocks[0].removed);
+        assert!(!p.falling_blocks[0].collidable);
+    }
     #[test]
     fn spring_cancel_uses_the_buffered_dash_after_the_spring_refills_it() {
         let p = PlayerSnapshot {
