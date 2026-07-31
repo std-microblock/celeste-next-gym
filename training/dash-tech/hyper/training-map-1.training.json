@@ -1,68 +1,67 @@
 {
   "version": 2,
-  "id": "spike-gap",
-  "title": "越过尖刺",
-  "summary": "控制起跳窗口，越过地面的尖刺带。",
+  "id": "training-map-1",
+  "title": "基础 Hyper",
+  "summary": "一张可实时测试的训练地图。",
   "modules": [
     {
-      "id": "spike-gap",
+      "id": "lesson-1",
       "trigger": {
-        "id": "spike-gap-start",
+        "id": "lesson-1-start",
         "bounds": {
-          "x": 56,
-          "y": 190,
-          "width": 104,
-          "height": 50
+          "x": 0,
+          "y": 104,
+          "width": 88,
+          "height": 56
         }
       },
       "end_trigger": {
-        "id": "spike-gap-end",
+        "id": "lesson-1-end",
         "bounds": {
-          "x": 320,
-          "y": 180,
-          "width": 96,
-          "height": 60
+          "x": 88,
+          "y": 96,
+          "width": 24,
+          "height": 84
         }
       },
       "tutorial": {
         "version": 2,
-        "id": "spike-gap-tutorial",
-        "title": "越过尖刺",
-        "summary": "控制起跳窗口，越过地面的尖刺带。",
+        "id": "lesson-1-tutorial",
+        "title": "基础 Hyper",
+        "summary": "依次完成 冲刺、跳跃。",
         "entry": {
-          "input_id": "diagonal_dash",
-          "hint": "触发区已激活：下一个动作请按住右下并冲刺。",
+          "input_id": "dash",
+          "hint": "按 冲刺 开始。",
           "check": [
-            "!current.dead",
-            "current.state == state::dash"
+            "!current.dead"
           ],
           "failure": {
-            "title": "需要右下冲",
-            "body": "进入触发区后，按住右和下，再按 Dash。"
+            "title": "需要 冲刺",
+            "body": "先按 冲刺。"
           }
         },
         "teaching": {
           "steps": [
             {
-              "prompt": "按住右下并冲刺。",
+              "prompt": "按 冲刺。",
               "order_error": {
-                "title": "先右下冲",
-                "body": "第一个动作需要是右下冲刺。"
+                "title": "动作顺序不正确",
+                "body": "按 冲刺。"
               },
               "window_error": {
-                "title": "冲刺时机不对",
-                "body": "从触发后的第一个动作开始计时。"
+                "title": "错过输入窗口",
+                "body": "稍早或稍晚按 冲刺。"
               }
             },
             {
-              "prompt": "接近最佳点时按 Jump。",
+              "prompt": "按 跳跃并保持 6 帧；X 速度 325 px/s。",
               "order_error": {
-                "title": "这里需要 Jump",
-                "body": "右下冲后的下一关键输入是跳跃。"
+                "title": "动作顺序不正确",
+                "body": "按 跳跃。"
               },
               "window_error": {
-                "title": "跳跃错过窗口",
-                "body": "查看时间线中的绿色可行区间。"
+                "title": "错过输入窗口",
+                "body": "稍早或稍晚按 跳跃。"
               }
             }
           ]
@@ -79,17 +78,17 @@
           "version": 1,
           "inputs": [
             {
-              "id": "hold_diagonal",
+              "id": "hold-down-right",
               "keys": [
-                "right",
-                "down"
+                "down",
+                "right"
               ],
               "at": 0,
-              "held_time": "hold::inf",
-              "verify": false
+              "verify": false,
+              "held_time": "hold::inf"
             },
             {
-              "id": "diagonal_dash",
+              "id": "dash",
               "keys": [
                 "dash"
               ],
@@ -102,7 +101,8 @@
                 "jump"
               ],
               "at": "jump_frame",
-              "verify": true
+              "verify": true,
+              "held_time": 6
             }
           ],
           "variables": [
@@ -110,21 +110,13 @@
               "name": "jump_frame",
               "range": {
                 "from": 0,
-                "to": 60
+                "to": 20
               }
             }
           ],
-          "observe_until": "max(jump_frame+1, 5)",
-          "success": [
-            "!final.dead",
-            "final.speed.x >= 320"
-          ],
-          "objectives": [
-            {
-              "type": "maximize",
-              "expression": "final.speed.x"
-            }
-          ],
+          "observe_until": "max(21, jump_frame + 6)",
+          "success": [],
+          "objectives": [],
           "search": {
             "bindings": {},
             "output": [
@@ -132,14 +124,30 @@
               "windows",
               "coverage"
             ]
-          }
+          },
+          "checkpoints": [
+            {
+              "id": "recorded-node-11",
+              "at": "jump_frame",
+              "description": "X 速度 325 px/s",
+              "success": [
+                "after.speed.x >= 324.99"
+              ],
+              "objectives": [
+                {
+                  "type": "maximize",
+                  "expression": "after.speed.x"
+                }
+              ]
+            }
+          ]
         }
       },
       "validation": {
         "initial_state": {
           "pos": {
-            "x": 100,
-            "y": 240
+            "x": 32,
+            "y": 152
           },
           "speed": {
             "x": 0,
@@ -149,7 +157,7 @@
           "facing": true,
           "dashes": 1,
           "stamina": 110,
-          "on_ground": true,
+          "on_ground": false,
           "ducking": false,
           "can_dream_dash": true,
           "dead": false,
@@ -165,12 +173,12 @@
   ],
   "finish": {
     "trigger": {
-      "id": "spike-gap-finish",
+      "id": "training-map-1-room-finish",
       "bounds": {
-        "x": 320,
-        "y": 180,
-        "width": 96,
-        "height": 60
+        "x": 208,
+        "y": 0,
+        "width": 112,
+        "height": 180
       }
     },
     "require_all_modules": true

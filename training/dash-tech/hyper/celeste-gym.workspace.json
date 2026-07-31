@@ -2,20 +2,14 @@
   "version": 1,
   "projects": [
     {
-      "id": "route",
-      "map": "hyper-route.map.json",
-      "training": "hyper-route.training.json"
+      "id": "training-map-1",
+      "map": "training-map-1.map.json",
+      "training": "training-map-1.training.json"
     },
     {
-      "id": "spike-gap",
-      "map": "spike-gap.map.json",
-      "training": "spike-gap.training.json"
-    },
-    {
-      "id": "bubble-exit",
-      "map": "bubble-exit.map.json",
-      "training": "bubble-exit.training.json",
-      "initial_module": "bubble-exit"
+      "id": "training-map-2",
+      "map": "training-map-2.map.json",
+      "training": "training-map-2.training.json"
     }
   ]
 }

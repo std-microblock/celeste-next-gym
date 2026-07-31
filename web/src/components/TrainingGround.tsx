@@ -1349,6 +1349,7 @@ export function TrainingGround({
         })()
           .catch((error: unknown) => {
             if (active && epoch === simulationEpoch.current) {
+              console.error(error);
               setPlaying(false);
               setNotice(
                 error instanceof Error ? error.message : "训练模拟失败",

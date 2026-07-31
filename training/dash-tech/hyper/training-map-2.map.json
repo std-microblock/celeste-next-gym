@@ -1,0 +1,24 @@
+{
+  "name": "充能 Hyper",
+  "room": "charged-hyper",
+  "bounds": {
+    "x": 0,
+    "y": 0,
+    "width": 320,
+    "height": 180
+  },
+  "spawn": {
+    "x": 32,
+    "y": 152
+  },
+  "solids": [
+    {
+      "x": 0,
+      "y": 152,
+      "width": 320,
+      "height": 28
+    }
+  ],
+  "entities": [],
+  "source_package": null
+}

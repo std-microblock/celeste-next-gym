@@ -1,0 +1,139 @@
+{
+  "version": 2,
+  "id": "training-map-2",
+  "title": "充能 Hyper",
+  "summary": "一张可实时测试的训练地图。",
+  "modules": [
+    {
+      "id": "lesson-1",
+      "trigger": {
+        "id": "lesson-1-start",
+        "bounds": {
+          "x": 8,
+          "y": 112,
+          "width": 64,
+          "height": 48
+        }
+      },
+      "end_trigger": {
+        "id": "lesson-1-end",
+        "bounds": {
+          "x": 136,
+          "y": 112,
+          "width": 64,
+          "height": 48
+        }
+      },
+      "tutorial": {
+        "version": 2,
+        "id": "lesson-1-tutorial",
+        "title": "教程 1",
+        "summary": "说明这个模块要教授的技巧。",
+        "entry": {
+          "input_id": "dash-entry",
+          "hint": "触发区已激活：下一个动作请按 Dash。",
+          "check": [
+            "!current.dead"
+          ],
+          "failure": {
+            "title": "入口动作不正确",
+            "body": "请按提示完成第一个动作。"
+          }
+        },
+        "teaching": {
+          "steps": [
+            {
+              "prompt": "按 Dash。",
+              "order_error": {
+                "title": "动作顺序不正确",
+                "body": "请按当前提示输入。"
+              },
+              "window_error": {
+                "title": "错过输入窗口",
+                "body": "请在绿色可行区间内输入。"
+              }
+            }
+          ]
+        },
+        "assist": {
+          "result_sample_after_input_frames": 0,
+          "auto_slowdown": {
+            "enabled_by_default": true,
+            "radius_frames": 12,
+            "minimum_multiplier": 0.85
+          }
+        },
+        "fuzz": {
+          "version": 1,
+          "inputs": [
+            {
+              "id": "dash-entry",
+              "keys": [
+                "dash"
+              ],
+              "at": 0,
+              "verify": true
+            }
+          ],
+          "variables": [],
+          "observe_until": 8,
+          "success": [
+            "!final.dead"
+          ],
+          "objectives": [
+            {
+              "type": "maximize",
+              "expression": "final.speed.x"
+            }
+          ],
+          "search": {
+            "bindings": {},
+            "output": [
+              "best",
+              "windows",
+              "coverage"
+            ]
+          }
+        }
+      },
+      "validation": {
+        "initial_state": {
+          "pos": {
+            "x": 32,
+            "y": 152
+          },
+          "speed": {
+            "x": 0,
+            "y": 0
+          },
+          "state": "Normal",
+          "facing": true,
+          "dashes": 1,
+          "stamina": 110,
+          "on_ground": true,
+          "ducking": false,
+          "can_dream_dash": true,
+          "dead": false,
+          "death_freeze_pending": false,
+          "respawn_frames": 0,
+          "dash_dir": {
+            "x": 0,
+            "y": 0
+          }
+        }
+      }
+    }
+  ],
+  "finish": {
+    "trigger": {
+      "id": "training-map-2-room-finish",
+      "bounds": {
+        "x": 224,
+        "y": 0,
+        "width": 96,
+        "height": 180
+      }
+    },
+    "require_all_modules": true
+  }
+}
