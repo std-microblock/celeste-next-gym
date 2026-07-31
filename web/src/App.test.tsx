@@ -5,10 +5,7 @@ import { PLAYGROUND } from "./model";
 import { createBlankGymMap } from "./training/editorProject";
 
 const wasm = vi.hoisted(() => ({
-  loadRequests: [] as Array<{
-    room: string;
-    resolve: (map: GymMap) => void;
-  }>,
+  loadMap: vi.fn(),
 }));
 
 vi.mock("./simulator/wasmClient", () => ({
@@ -17,10 +14,8 @@ vi.mock("./simulator/wasmClient", () => ({
       return Promise.resolve();
     }
 
-    loadMap(_url: string, room: string) {
-      return new Promise<GymMap>((resolve) => {
-        wasm.loadRequests.push({ room, resolve });
-      });
+    loadMap(...args: unknown[]) {
+      return wasm.loadMap(...args);
     }
 
     simulate() {
@@ -82,52 +77,42 @@ vi.mock("./components/EditorWorkspace", () => ({
 
 import App from "./App";
 
-function resolvePlaygroundLoads(): void {
-  for (const request of wasm.loadRequests.splice(0)) {
-    request.resolve({
-      ...structuredClone(PLAYGROUND),
-      room: request.room,
-      name: `Playground / ${request.room}`,
-    });
-  }
-}
-
 afterEach(() => {
   cleanup();
-  wasm.loadRequests.length = 0;
+  wasm.loadMap.mockClear();
   vi.restoreAllMocks();
 });
 
 describe("App startup map loading", () => {
-  it("does not replace an editor-selected map when Playground finishes loading later", async () => {
+  it("readies WASM without loading Playground.bin and retains the editor map", async () => {
     const view = render(<App />);
 
+    await waitFor(() =>
+      expect(view.getByTestId("training-ground")).toBeInTheDocument(),
+    );
     fireEvent.change(view.getByLabelText("页面模式"), {
       target: { value: "editor" },
     });
     fireEvent.click(view.getByRole("button", { name: "选择编辑地图" }));
     expect(view.getByTestId("simulation-map")).toHaveTextContent("Editor Room");
 
-    await waitFor(() => expect(wasm.loadRequests).toHaveLength(2));
-    resolvePlaygroundLoads();
-
     await waitFor(() =>
       expect(view.getByTestId("wasm-ready")).toHaveTextContent("true"),
     );
     expect(view.getByTestId("simulation-map")).toHaveTextContent("Editor Room");
+    expect(wasm.loadMap).not.toHaveBeenCalled();
   });
 
-  it("uses the decoded Playground when no map has claimed the simulator", async () => {
+  it("uses the bundled in-memory playground without binary decoding", async () => {
     const view = render(<App />);
 
-    await waitFor(() => expect(wasm.loadRequests).toHaveLength(2));
-    resolvePlaygroundLoads();
     fireEvent.change(view.getByLabelText("页面模式"), {
       target: { value: "play" },
     });
 
     await waitFor(() =>
-      expect(view.getByText("Playground / playground")).toBeInTheDocument(),
+      expect(view.getByText(PLAYGROUND.name)).toBeInTheDocument(),
     );
+    expect(wasm.loadMap).not.toHaveBeenCalled();
   });
 });

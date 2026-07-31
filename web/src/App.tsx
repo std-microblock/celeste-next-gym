@@ -61,10 +61,7 @@ interface RunDocument {
   bindings: Bindings;
 }
 
-const PLAYGROUND_MAP_URL =
-  "/assets/original/maps/CelesteGymPlayground-Playground.bin";
 const DEFAULT_ROOM = "playground";
-const PLAYGROUND_ROOMS = ["playground", "transition_0"] as const;
 const MAX_ANIMATION_DELTA_MS = 250;
 const LIVE_RENDER_HISTORY_FRAMES = 240;
 const VISUAL_THEME_STORAGE_KEY = "celeste-gym-visual-theme";
@@ -132,9 +129,6 @@ function buttonsFromKeys(
 export default function App() {
   const client = useMemo(() => new WasmClient(), []);
   const [map, setMap] = useState<GymMap>(() => structuredClone(PLAYGROUND));
-  const [startMaps, setStartMaps] = useState<GymMap[]>(() => [
-    structuredClone(PLAYGROUND),
-  ]);
   const cache = useMemo(
     () => new FrameCache(client, map, createInitialState(map), 360),
     [client],
@@ -186,7 +180,6 @@ export default function App() {
   const gamepadLatched = useRef<FrameButtons>(makeEmptyButtons());
   const advancing = useRef(false);
   const calculationRevision = useRef(0);
-  const mapSelectionRevision = useRef(0);
 
   const replaceLiveSession = useCallback((initial: SimState) => {
     liveStateRef.current = initial;
@@ -205,44 +198,12 @@ export default function App() {
 
   useEffect(() => {
     let active = true;
-    const initialMapSelectionRevision = mapSelectionRevision.current;
     client
       .ready()
-      .then(async () => {
+      .then(() => {
         if (!active) return;
-        const loadedRooms = await Promise.all(
-          PLAYGROUND_ROOMS.map(async (room) => ({
-            ...(await client.loadMap(
-              PLAYGROUND_MAP_URL,
-              room,
-              `CelesteGymPlayground / ${room}`,
-            )),
-            room,
-          })),
-        );
-        if (!active) return;
-        const loadedMap =
-          loadedRooms.find((candidate) => candidate.room === DEFAULT_ROOM) ??
-          loadedRooms[0];
-        setStartMaps(loadedRooms);
-        if (mapSelectionRevision.current === initialMapSelectionRevision) {
-          setMap(loadedMap);
-          const initial = createInitialState(loadedMap);
-          cache.replace(
-            loadedMap,
-            initial,
-            cache.getInputs().map((input) => ({ ...input })),
-          );
-          replaceLiveSession(initial);
-          frameRef.current = 0;
-          setFrame(0);
-        }
         setWasmStatus("ready");
-        setNotice(
-          mapSelectionRevision.current === initialMapSelectionRevision
-            ? "WASM 已从 CelesteGymPlayground/Playground.bin 解码可选房间"
-            : "WASM 已就绪 · 保留当前编辑地图",
-        );
+        setNotice("WASM 核心已就绪");
       })
       .catch((error: Error) => {
         if (!active) return;
@@ -252,7 +213,7 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [cache, client, replaceLiveSession]);
+  }, [client]);
 
   useEffect(() => {
     if (
@@ -540,9 +501,11 @@ export default function App() {
   const selectableStartMaps = useMemo(
     () => [
       map,
-      ...startMaps.filter((candidate) => candidate.room !== map.room),
+      ...(PLAYGROUND.room === map.room
+        ? []
+        : [structuredClone(PLAYGROUND)]),
     ],
-    [map, startMaps],
+    [map],
   );
 
   const changeBinding = useCallback((action: Action, code: string) => {
@@ -734,7 +697,6 @@ export default function App() {
 
   const updateEditorMap = useCallback(
     (nextMap: GymMap) => {
-      mapSelectionRevision.current += 1;
       setMap(nextMap);
       replaceLiveSession(createInitialState(nextMap));
     },
