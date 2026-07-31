@@ -157,9 +157,15 @@ export default function App() {
     states: SimState[];
   }>({ startFrame: 0, states: [liveState] });
   const lastLiveUiUpdate = useRef(0);
+  const liveStaleRef = useRef(false);
   const livePreviousButtons = useRef<FrameButtons>(makeEmptyButtons());
   const liveRenderRefs = useMemo(
-    () => ({ state: liveStateRef, frame: liveFrameRef, history: liveHistoryRef }),
+    () => ({
+      state: liveStateRef,
+      frame: liveFrameRef,
+      history: liveHistoryRef,
+      stale: liveStaleRef,
+    }),
     [],
   );
   const [, redraw] = useState(0);
@@ -199,7 +205,34 @@ export default function App() {
     livePreviousButtons.current = makeEmptyButtons();
   }, []);
 
-  useEffect(() => cache.subscribe(() => redraw((value) => value + 1)), [cache]);
+  /** Mirror the frame-cache cursor into the live render refs so the
+   * advanced-mode GameView keeps drawing at full cadence while React state
+   * updates are throttled to ~10Hz. */
+  const syncPlaybackRefs = useCallback(() => {
+    const current = frameRef.current;
+    const exact = cache.getState(current);
+    const visible = exact
+      ? { frame: current, state: exact }
+      : cache.getNearestState(current);
+    liveFrameRef.current = visible.frame;
+    liveStateRef.current = visible.state;
+    liveHistoryRef.current.startFrame = 0;
+    liveHistoryRef.current.states = cache.getStates() as SimState[];
+    liveStaleRef.current = !exact || visible.frame !== current;
+  }, [cache]);
+
+  useEffect(
+    () =>
+      cache.subscribe(() => {
+        redraw((value) => value + 1);
+        syncPlaybackRefs();
+      }),
+    [cache, syncPlaybackRefs],
+  );
+
+  useEffect(() => {
+    if (mode === "advanced") syncPlaybackRefs();
+  }, [mode, syncPlaybackRefs]);
   useEffect(() => {
     frameRef.current = frame;
   }, [frame]);
@@ -413,6 +446,7 @@ export default function App() {
       }
       frameRef.current = next;
       setFrame(next);
+      syncPlaybackRefs();
       if (!cache.getState(next)) {
         const requestRevision = ++calculationRevision.current;
         setNotice(`从最近检查点计算到 F${next}…`);
@@ -489,7 +523,13 @@ export default function App() {
           .then((state) => {
             if (!active || !state) return;
             frameRef.current = target;
-            setFrame(target);
+            liveFrameRef.current = target;
+            liveStateRef.current = state;
+            const now = performance.now();
+            if (now - lastLiveUiUpdate.current >= LIVE_UI_UPDATE_INTERVAL_MS) {
+              lastLiveUiUpdate.current = now;
+              setFrame(target);
+            }
           })
           .catch((error: Error) => {
             setPlaying(false);
@@ -510,6 +550,35 @@ export default function App() {
       document.removeEventListener("visibilitychange", resetClock);
     };
   }, [bindings, cache, playing, recording, speed, wasmStatus]);
+
+  const paintInputs = useCallback(
+    (action: Action, from: number, to: number, value: boolean) => {
+      cache.paint(action, from, to, value);
+    },
+    [cache],
+  );
+  const moveInputs = useCallback(
+    (
+      action: Action,
+      targetAction: Action,
+      start: number,
+      end: number,
+      delta: number,
+    ): { start: number; end: number } =>
+      cache.moveRun(action, targetAction, start, end, delta),
+    [cache],
+  );
+  const completeInputEdit = useCallback(() => {
+    const current = frameRef.current;
+    if (!cache.getState(current)) seek(current, false);
+  }, [cache, seek]);
+  const resizeInputs = useCallback(
+    (frames: number) => {
+      cache.resize(frames);
+      if (frameRef.current > cache.frameCount) seek(cache.frameCount);
+    },
+    [cache, seek],
+  );
 
   const inputs = cache.getInputs();
   const states = cache.getStates();
@@ -597,6 +666,7 @@ export default function App() {
       replaceLiveSession(initial);
       frameRef.current = 0;
       setFrame(0);
+      syncPlaybackRefs();
       setStartSettingsOpen(false);
       setNotice(
         `已从房间 ${room} 的 (${position.x}, ${position.y}) 开始，时间线输入已保留`,
@@ -664,6 +734,7 @@ export default function App() {
       await cache.ensureFrame(endFrame);
       frameRef.current = endFrame;
       setFrame(endFrame);
+      syncPlaybackRefs();
       const actual = createWebTrace(
         traceMap,
         cache.getInputs(),
@@ -753,12 +824,20 @@ export default function App() {
       replaceLiveSession(initial);
       frameRef.current = 0;
       setFrame(0);
+      syncPlaybackRefs();
     } else if (nextMode === "editor") {
       resetLiveMap();
     }
     setOtherModesOpen(false);
     setMode(nextMode);
   };
+  const selectTraining = useCallback(
+    (techniqueId: string, variantId: string) => {
+      setTrainingTechniqueId(techniqueId);
+      setTrainingVariantId(variantId);
+    },
+    [],
+  );
   const selectedTrainingTechnique =
     trainingCatalog.find((item) => item.id === trainingTechniqueId) ??
     trainingCatalog[0];
@@ -960,10 +1039,7 @@ export default function App() {
           variantId={selectedTrainingVariant.id}
           bindings={bindings}
           theme={visualTheme}
-          onSelectTraining={(techniqueId, variantId) => {
-            setTrainingTechniqueId(techniqueId);
-            setTrainingVariantId(variantId);
-          }}
+          onSelectTraining={selectTraining}
         />
       ) : mode === "editor" ? (
         <EditorWorkspace
@@ -1008,6 +1084,7 @@ export default function App() {
                 frame={visible.frame}
                 stale={!exactState || visible.frame !== frame}
                 theme={visualTheme}
+                liveRefs={liveRenderRefs}
               />
               <div className="transport">
                 <button aria-label="回到第一帧" onClick={() => seek(0)}>
@@ -1107,20 +1184,10 @@ export default function App() {
               inputs={inputs}
               states={states}
               onSeek={seek}
-              onPaint={(action, from, to, value) =>
-                cache.paint(action, from, to, value)
-              }
-              onMove={(action, targetAction, start, end, delta) =>
-                cache.moveRun(action, targetAction, start, end, delta)
-              }
-              onEditComplete={() => {
-                const current = frameRef.current;
-                if (!cache.getState(current)) seek(current, false);
-              }}
-              onResize={(frames) => {
-                cache.resize(frames);
-                if (frameRef.current > cache.frameCount) seek(cache.frameCount);
-              }}
+              onPaint={paintInputs}
+              onMove={moveInputs}
+              onEditComplete={completeInputEdit}
+              onResize={resizeInputs}
             />
           </main>
           <footer>

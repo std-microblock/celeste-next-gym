@@ -1,4 +1,5 @@
 import {
+  memo,
   useCallback,
   useEffect,
   useRef,
@@ -144,7 +145,7 @@ function stateColor(state: SimState): string {
   return "#72f0b0";
 }
 
-export function InputTimeline({
+export const InputTimeline = memo(function InputTimeline({
   frame,
   inputs,
   states,
@@ -920,4 +921,4 @@ export function InputTimeline({
       </div>
     </section>
   );
-}
+});

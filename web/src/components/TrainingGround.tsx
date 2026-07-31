@@ -1,4 +1,5 @@
 import {
+  memo,
   useEffect,
   useMemo,
   useRef,
@@ -204,7 +205,7 @@ export function trainingRetryTarget(
 }
 
 /** Map-driven lesson runner: triggers arm tutorial modules; the next action is local F0. */
-export function TrainingGround({
+export const TrainingGround = memo(function TrainingGround({
   techniqueId,
   variantId,
   bindings,
@@ -1994,4 +1995,4 @@ export function TrainingGround({
       )}
     </main>
   );
-}
+});

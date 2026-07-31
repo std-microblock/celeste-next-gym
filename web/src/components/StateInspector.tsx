@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { SimState } from "../model";
 
 function number(value: number): string {
@@ -10,7 +11,7 @@ function BoolLight({ value }: { value: boolean }) {
   );
 }
 
-export function StateInspector({
+export const StateInspector = memo(function StateInspector({
   frame,
   state,
   exact,
@@ -85,4 +86,4 @@ export function StateInspector({
       </dl>
     </section>
   );
-}
+});

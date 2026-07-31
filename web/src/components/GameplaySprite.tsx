@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 
 interface AtlasEntry {
   x: number;
@@ -36,7 +36,7 @@ function loadGameplayAtlas(): Promise<GameplayAtlas> {
 }
 
 /** Draws the original Celeste strawberry frames directly from the Gameplay atlas. */
-export function GameplayStrawberry({ scale = 5 }: { scale?: number }) {
+export const GameplayStrawberry = memo(function GameplayStrawberry({ scale = 5 }: { scale?: number }) {
   const canvas = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -92,4 +92,4 @@ export function GameplayStrawberry({ scale = 5 }: { scale?: number }) {
       aria-label="草莓"
     />
   );
-}
+});
