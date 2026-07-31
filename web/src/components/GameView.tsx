@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  memo,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { atlasFrameKeys } from "../atlasFrames";
 import {
   cameraBounds,
@@ -2942,7 +2950,140 @@ function drawEntity(
   }
 }
 
-export function GameView({
+/** Refs the live loop updates every simulated tick without a React commit.
+ * GameView's own rAF loop reads these so the canvas can keep running at the
+ * display cadence even when React state updates are throttled. */
+export interface LiveRenderRefs {
+  /** Latest live player state. */
+  state: RefObject<SimState>;
+  /** Latest live frame number. */
+  frame: RefObject<number>;
+  /** Latest live history window (mutated in place by the host). */
+  history: RefObject<{ startFrame: number; states: SimState[] }>;
+  /** Latest live staleness flag (optional; defaults to the prop value). */
+  stale?: RefObject<boolean>;
+}
+
+/** Everything paintGame needs to draw one canvas frame. */
+interface GameViewDrawInput {
+  assets: GameAssets;
+  map: GymMap;
+  theme: VisualTheme;
+  frame: number;
+  state: SimState;
+  states: readonly (SimState | undefined)[];
+  stateFrameOffset: number;
+  stale: boolean;
+  camera: CameraBounds;
+  tileLayer: HTMLCanvasElement | undefined;
+}
+
+function paintGame(
+  canvas: HTMLCanvasElement,
+  context: CanvasRenderingContext2D,
+  dpr: number,
+  input: GameViewDrawInput,
+): void {
+  const rect = canvas.getBoundingClientRect();
+  const width = Math.round(rect.width * dpr);
+  const height = Math.round(rect.height * dpr);
+  // Resizing clears the canvas and resets the transform; only do it when the
+  // backing store actually changed so steady-state frames skip the reset.
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+    context.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  const {
+    assets,
+    map,
+    theme,
+    frame,
+    state,
+    states,
+    stateFrameOffset,
+    stale,
+    camera,
+    tileLayer,
+  } = input;
+  context.imageSmoothingEnabled = false;
+
+  const scale = Math.min(
+    rect.width / camera.width,
+    rect.height / camera.height,
+  );
+  const offsetX = (rect.width - camera.width * scale) / 2;
+  const offsetY = (rect.height - camera.height * scale) / 2;
+  context.fillStyle = "#000000";
+  context.fillRect(0, 0, rect.width, rect.height);
+
+  context.save();
+  context.translate(
+    offsetX - camera.x * scale,
+    offsetY - camera.y * scale,
+  );
+  context.scale(scale, scale);
+  // The playfield is the room rect; everything outside it stays black.
+  context.beginPath();
+  context.rect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height);
+  context.clip();
+  drawThemeBackground(context, assets, map, theme, frame, camera);
+  if (tileLayer) context.drawImage(tileLayer, map.bounds.x, map.bounds.y);
+  const spinnerItems = collectSpinnerDrawItems(
+    assets,
+    map,
+    frame,
+    state,
+    theme,
+    camera,
+  );
+  drawSpinnerItems(context, assets, spinnerItems);
+  const kindCounts = new Map<EntityKind, number>();
+  for (const [entityIndex, entity] of map.entities.entries()) {
+    const kindIndex = kindCounts.get(entity.kind) ?? 0;
+    drawEntity(
+      context,
+      assets,
+      entity,
+      frame,
+      state,
+      kindIndex,
+      entityIndex,
+      theme,
+    );
+    kindCounts.set(entity.kind, kindIndex + 1);
+  }
+  context.globalAlpha = stale ? 0.45 : 1;
+  drawPlayerParticles(context, assets, states, frame, stateFrameOffset);
+  drawPlayerTrail(context, assets, states, frame, stateFrameOffset);
+  drawPlayer(context, assets, states, state, frame, stateFrameOffset);
+  drawWind(context, assets, map, state, frame);
+  context.restore();
+}
+
+function gameViewDrawChanged(
+  next: GameViewDrawInput,
+  last: GameViewDrawInput | null,
+): boolean {
+  if (!last) return true;
+  return (
+    next.assets !== last.assets ||
+    next.map !== last.map ||
+    next.theme !== last.theme ||
+    next.frame !== last.frame ||
+    next.state !== last.state ||
+    next.states !== last.states ||
+    next.stateFrameOffset !== last.stateFrameOffset ||
+    next.stale !== last.stale ||
+    next.tileLayer !== last.tileLayer ||
+    next.camera.x !== last.camera.x ||
+    next.camera.y !== last.camera.y ||
+    next.camera.width !== last.camera.width ||
+    next.camera.height !== last.camera.height
+  );
+}
+
+export const GameView = memo(function GameView({
   map,
   state,
   states,
@@ -2953,6 +3094,7 @@ export function GameView({
   cameraPosition,
   cameraViewport,
   children,
+  liveRefs,
 }: {
   map: GymMap;
   state: SimState;
@@ -2968,6 +3110,9 @@ export function GameView({
   children?:
     | ReactNode
     | ((viewport: GameViewViewport) => ReactNode);
+  /** Live-render refs: when present, the rAF loop draws from these refs
+   * (updated by the host without React commits) instead of the props. */
+  liveRefs?: LiveRenderRefs;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [assets, setAssets] = useState<GameAssets | null>(null);
@@ -3019,87 +3164,68 @@ export function GameView({
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !mergedAssets) return;
-    const context = canvas.getContext("2d");
-    if (!context) return;
-    const assets = mergedAssets;
-    const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = Math.round(rect.width * dpr);
-    canvas.height = Math.round(rect.height * dpr);
-    context.setTransform(dpr, 0, 0, dpr, 0, 0);
-    context.imageSmoothingEnabled = false;
-
-    const scale = Math.min(
-      rect.width / camera.width,
-      rect.height / camera.height,
-    );
-    const offsetX = (rect.width - camera.width * scale) / 2;
-    const offsetY = (rect.height - camera.height * scale) / 2;
-    context.fillStyle = "#000000";
-    context.fillRect(0, 0, rect.width, rect.height);
-
-    context.save();
-    context.translate(
-      offsetX - camera.x * scale,
-      offsetY - camera.y * scale,
-    );
-    context.scale(scale, scale);
-    // The playfield is the room rect; everything outside it stays black.
-    context.beginPath();
-    context.rect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height);
-    context.clip();
-    drawThemeBackground(context, assets, map, theme, frame, camera);
-    if (tileLayer) context.drawImage(tileLayer, map.bounds.x, map.bounds.y);
-    const spinnerItems = collectSpinnerDrawItems(
-      assets,
-      map,
-      frame,
-      state,
-      theme,
-      camera,
-    );
-    drawSpinnerItems(context, assets, spinnerItems);
-    const kindCounts = new Map<EntityKind, number>();
-    for (const [entityIndex, entity] of map.entities.entries()) {
-      const kindIndex = kindCounts.get(entity.kind) ?? 0;
-      drawEntity(
-        context,
-        assets,
-        entity,
+  // Latest draw inputs, refreshed on every render. The rAF loop below reads
+  // this instead of re-running a full redraw inside a props-driven effect, so
+  // the canvas work is decoupled from React commit timing and frequency.
+  const drawInputRef = useRef<GameViewDrawInput | null>(null);
+  drawInputRef.current = mergedAssets
+    ? {
+        assets: mergedAssets,
+        map,
+        theme,
         frame,
         state,
-        kindIndex,
-        entityIndex,
-        theme,
-      );
-      kindCounts.set(entity.kind, kindIndex + 1);
-    }
-    context.globalAlpha = stale ? 0.45 : 1;
-    drawPlayerParticles(context, assets, states, frame, stateFrameOffset);
-    drawPlayerTrail(context, assets, states, frame, stateFrameOffset);
-    drawPlayer(context, assets, states, state, frame, stateFrameOffset);
-    drawWind(context, assets, map, state, frame);
-    context.restore();
-  }, [
-    mergedAssets,
-    camera.height,
-    camera.width,
-    camera.x,
-    camera.y,
-    frame,
-    map,
-    solidGrid,
-    stale,
-    state,
-    stateFrameOffset,
-    states,
-    theme,
-    tileLayer,
-    viewportRevision,
-  ]);
+        states,
+        stateFrameOffset,
+        stale,
+        camera,
+        tileLayer,
+      }
+    : null;
+
+  const drawSnapshotForFrame = (): GameViewDrawInput | null => {
+    const base = drawInputRef.current;
+    if (!base) return null;
+    if (!liveRefs) return base;
+    const liveState = liveRefs.state.current;
+    const history = liveRefs.history.current;
+    return {
+      ...base,
+      state: liveState,
+      frame: liveRefs.frame.current,
+      states: history.states,
+      stateFrameOffset: history.startFrame,
+      stale: liveRefs.stale?.current ?? base.stale,
+      camera: cameraViewport
+        ? clampCameraViewport(map, cameraViewport)
+        : cameraBounds(
+            cameraPosition
+              ? clampCameraPosition(map, cameraPosition)
+              : stateCameraPosition(map, liveState),
+          ),
+    };
+  };
+
+  useEffect(() => {
+    if (!mergedAssets) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    const dpr = window.devicePixelRatio || 1;
+    let animation = 0;
+    let last: GameViewDrawInput | null = null;
+    const tick = () => {
+      animation = requestAnimationFrame(tick);
+      const snapshot = drawSnapshotForFrame();
+      if (!snapshot) return;
+      if (!gameViewDrawChanged(snapshot, last)) return;
+      paintGame(canvas, context, dpr, snapshot);
+      last = snapshot;
+    };
+    animation = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(animation);
+  }, [mergedAssets, liveRefs]);
 
   return (
     <div className="game-screen">
@@ -3130,6 +3256,6 @@ export function GameView({
       )}
     </div>
   );
-}
+});
 
 
