@@ -1,0 +1,6754 @@
+{
+  "modId": "ChineseNewYear2024",
+  "rooms": [
+    {
+      "id": "ChineseNewYear2024-0-Lobbies-0-Prologue",
+      "label": "序幕",
+      "mapFile": "ChineseNewYear2024/0-Lobbies/0-Prologue.bin",
+      "room": "a_bamboo",
+      "rooms": [
+        "a_bamboo",
+        "a_intro2",
+        "a_intro"
+      ],
+      "roomCount": 3,
+      "tileset": "tilesets/ChineseNewYear2024/Lobby/summitalt",
+      "tileRules": [
+        [
+          "x0x-111-x1x",
+          [
+            0,
+            0
+          ]
+        ],
+        [
+          "x1x-111-x0x",
+          [
+            0,
+            1
+          ]
+        ],
+        [
+          "x1x-011-x1x",
+          [
+            0,
+            2
+          ]
+        ],
+        [
+          "x1x-110-x1x",
+          [
+            0,
+            3
+          ]
+        ],
+        [
+          "x0x-111-x0x",
+          [
+            0,
+            4
+          ]
+        ],
+        [
+          "x1x-010-x1x",
+          [
+            0,
+            5
+          ]
+        ],
+        [
+          "x0x-010-x1x",
+          [
+            0,
+            6
+          ]
+        ],
+        [
+          "x1x-010-x0x",
+          [
+            0,
+            7
+          ]
+        ],
+        [
+          "x0x-011-x0x",
+          [
+            0,
+            8
+          ]
+        ],
+        [
+          "x0x-110-x0x",
+          [
+            0,
+            9
+          ]
+        ],
+        [
+          "x0x-010-x0x",
+          [
+            0,
+            10
+          ]
+        ],
+        [
+          "x0x-011-x1x",
+          [
+            0,
+            11
+          ]
+        ],
+        [
+          "x0x-110-x1x",
+          [
+            0,
+            12
+          ]
+        ],
+        [
+          "x1x-011-x0x",
+          [
+            0,
+            13
+          ]
+        ],
+        [
+          "x1x-110-x0x",
+          [
+            0,
+            14
+          ]
+        ],
+        [
+          "111-111-110",
+          [
+            4,
+            0
+          ]
+        ],
+        [
+          "110-111-111",
+          [
+            4,
+            1
+          ]
+        ],
+        [
+          "111-111-011",
+          [
+            4,
+            2
+          ]
+        ],
+        [
+          "011-111-111",
+          [
+            4,
+            3
+          ]
+        ],
+        [
+          "110-111-110",
+          [
+            4,
+            4
+          ]
+        ],
+        [
+          "010-111-111",
+          [
+            4,
+            5
+          ]
+        ],
+        [
+          "011-111-011",
+          [
+            4,
+            6
+          ]
+        ],
+        [
+          "111-111-010",
+          [
+            4,
+            7
+          ]
+        ],
+        [
+          "010-111-110",
+          [
+            4,
+            8
+          ]
+        ],
+        [
+          "010-111-011",
+          [
+            4,
+            9
+          ]
+        ],
+        [
+          "011-111-010",
+          [
+            4,
+            10
+          ]
+        ],
+        [
+          "110-111-010",
+          [
+            4,
+            11
+          ]
+        ],
+        [
+          "010-111-010",
+          [
+            4,
+            12
+          ]
+        ],
+        [
+          "110-111-011",
+          [
+            4,
+            13
+          ]
+        ],
+        [
+          "011-111-110",
+          [
+            4,
+            14
+          ]
+        ]
+      ],
+      "centerTile": [
+        5,
+        6
+      ],
+      "spike": "default",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg18_night",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg18_night",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "purplesunset",
+          "scrollX": 1,
+          "scrollY": 1,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.09999999403953552
+        },
+        {
+          "key": "mist",
+          "scrollX": 1,
+          "scrollY": 1,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.7999998927116394
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg19_moon",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.7999998927116394
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg28_moonlight",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 2
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg24_bgmount2Down",
+          "scrollX": 0,
+          "scrollY": 1,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 2
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg23_bgmount1",
+          "scrollX": 0.022999996319413185,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.6999999284744263
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg35_cloudsky1",
+          "scrollX": 0.29999998211860657,
+          "scrollY": 1,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 3,
+          "speedY": 0,
+          "opacity": 0.6999999284744263
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg23_bgmount1",
+          "scrollX": 0.09599998593330383,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.7999998927116394
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg24_bgmount2",
+          "scrollX": 0.12339998781681061,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.8999999165534973
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg35_cloudsky1",
+          "scrollX": 0.11999998986721039,
+          "scrollY": 1,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 8,
+          "speedY": 0,
+          "opacity": 0.6999999284744263
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg24_bgmount2",
+          "scrollX": 0.19999997317790985,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "mist",
+          "scrollX": 1,
+          "scrollY": 1,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.7999998927116394
+        },
+        {
+          "key": "mist",
+          "scrollX": 1,
+          "scrollY": 1,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.7999998927116394
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-0-Lobbies-1-Maps",
+      "label": "一江画廊",
+      "mapFile": "ChineseNewYear2024/0-Lobbies/1-Maps.bin",
+      "room": "Flowing Gallery",
+      "rooms": [
+        "Flowing Gallery",
+        "HSEntry",
+        "HSEntry_b"
+      ],
+      "roomCount": 3,
+      "tileset": "tilesets/ChineseNewYear2024/Lobby/GCAlex6886spacesummitNoSnow",
+      "tileRules": [
+        [
+          "x0x-111-x1x",
+          [
+            0,
+            0
+          ]
+        ],
+        [
+          "x1x-111-x0x",
+          [
+            0,
+            1
+          ]
+        ],
+        [
+          "x1x-011-x1x",
+          [
+            0,
+            2
+          ]
+        ],
+        [
+          "x1x-110-x1x",
+          [
+            0,
+            3
+          ]
+        ],
+        [
+          "x0x-111-x0x",
+          [
+            0,
+            4
+          ]
+        ],
+        [
+          "x1x-010-x1x",
+          [
+            0,
+            5
+          ]
+        ],
+        [
+          "x0x-010-x1x",
+          [
+            0,
+            6
+          ]
+        ],
+        [
+          "x1x-010-x0x",
+          [
+            0,
+            7
+          ]
+        ],
+        [
+          "x0x-011-x0x",
+          [
+            0,
+            8
+          ]
+        ],
+        [
+          "x0x-110-x0x",
+          [
+            0,
+            9
+          ]
+        ],
+        [
+          "x0x-010-x0x",
+          [
+            0,
+            10
+          ]
+        ],
+        [
+          "x0x-011-x1x",
+          [
+            0,
+            11
+          ]
+        ],
+        [
+          "x0x-110-x1x",
+          [
+            0,
+            12
+          ]
+        ],
+        [
+          "x1x-011-x0x",
+          [
+            0,
+            13
+          ]
+        ],
+        [
+          "x1x-110-x0x",
+          [
+            0,
+            14
+          ]
+        ],
+        [
+          "111-111-110",
+          [
+            4,
+            0
+          ]
+        ],
+        [
+          "110-111-111",
+          [
+            4,
+            1
+          ]
+        ],
+        [
+          "111-111-011",
+          [
+            4,
+            2
+          ]
+        ],
+        [
+          "011-111-111",
+          [
+            4,
+            3
+          ]
+        ],
+        [
+          "110-111-110",
+          [
+            4,
+            4
+          ]
+        ],
+        [
+          "010-111-111",
+          [
+            4,
+            5
+          ]
+        ],
+        [
+          "011-111-011",
+          [
+            4,
+            6
+          ]
+        ],
+        [
+          "111-111-010",
+          [
+            4,
+            7
+          ]
+        ],
+        [
+          "010-111-110",
+          [
+            4,
+            8
+          ]
+        ],
+        [
+          "010-111-011",
+          [
+            4,
+            9
+          ]
+        ],
+        [
+          "011-111-010",
+          [
+            4,
+            10
+          ]
+        ],
+        [
+          "110-111-010",
+          [
+            4,
+            11
+          ]
+        ],
+        [
+          "010-111-010",
+          [
+            4,
+            12
+          ]
+        ],
+        [
+          "110-111-011",
+          [
+            4,
+            13
+          ]
+        ],
+        [
+          "011-111-110",
+          [
+            4,
+            14
+          ]
+        ]
+      ],
+      "centerTile": [
+        5,
+        6
+      ],
+      "spike": "outline",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/ChineseNewYear2024/LittleV/bg00",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0.09999999403953552,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/00/bg3",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireYHS/YHSlbg",
+          "scrollX": 0.20000000298023224,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0.5,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireYHS/YHSSun",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": false,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.5999999642372131
+        },
+        {
+          "key": "bgs/asri_1/03/bg2",
+          "scrollX": 0.25,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.5
+        },
+        {
+          "key": "bgs/04/bgc0",
+          "scrollX": 0.5999999642372131,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 5,
+          "speedY": 0,
+          "opacity": 0.8999999761581421
+        },
+        {
+          "key": "bgs/04/bgc3",
+          "scrollX": 0.5,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 3,
+          "speedY": 0,
+          "opacity": 0.7999999523162842
+        },
+        {
+          "key": "bgs/04/bgc1",
+          "scrollX": 0.3999999761581421,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 3,
+          "speedY": 0,
+          "opacity": 0.5
+        },
+        {
+          "key": "bgs/04/bgc4",
+          "scrollX": 0.699999988079071,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 3,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/asri_1/03/bg2",
+          "scrollX": 0.25999999046325684,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/asri_1/03/bg2",
+          "scrollX": 0.3199999928474426,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/LittleV/LVGCskybrighter",
+          "scrollX": 0.20000000298023224,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/LittleV/sky",
+          "scrollX": 0.20000000298023224,
+          "scrollY": 0.20000000298023224,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/LittleV/LVGCskybrighter",
+          "scrollX": 0.20000000298023224,
+          "scrollY": 0.20000000298023224,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.19999998807907104
+        },
+        {
+          "key": "mist",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 3,
+          "speedY": 4,
+          "opacity": 0.6000000238418579
+        },
+        {
+          "key": "mist",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 1,
+          "speedY": -2,
+          "opacity": 0.4000000059604645
+        },
+        {
+          "key": "mist",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": -2,
+          "speedY": -3,
+          "opacity": 0.30000001192092896
+        },
+        {
+          "key": "bgs/05/temple/bg0",
+          "scrollX": 0.06999999284744263,
+          "scrollY": 0.06999999284744263,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/05/temple/bg1",
+          "scrollX": 0.07999999821186066,
+          "scrollY": 0.07999999821186066,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/05/temple/bg2",
+          "scrollX": 0.09999999403953552,
+          "scrollY": 0.09999999403953552,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/05/temple/bg3",
+          "scrollX": 0.19999998807907104,
+          "scrollY": 0.19999998807907104,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "mist",
+          "scrollX": 1,
+          "scrollY": 1,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 22,
+          "speedY": -12,
+          "opacity": 0.5999999642372131
+        },
+        {
+          "key": "mist",
+          "scrollX": 1,
+          "scrollY": 1,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 22,
+          "speedY": -12,
+          "opacity": 0.3999999761581421
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphire/FRc2BG",
+          "scrollX": 0.09999999403953552,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Underdragon/NightCity00",
+          "scrollX": 1,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Underdragon/NightCity01",
+          "scrollX": 1,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -5,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Underdragon/NightCity02",
+          "scrollX": 1,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -12,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Underdragon/NightCity03",
+          "scrollX": 1,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -14,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Underdragon/NightCity04",
+          "scrollX": 1,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -16,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Underdragon/NightCity05",
+          "scrollX": 0.5999999642372131,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -10,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Underdragon/NightCity06",
+          "scrollX": 0.7999999523162842,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -12,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Underdragon/NightCity07",
+          "scrollX": 1.1999999284744263,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -10,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Underdragon/NightCity09",
+          "scrollX": 0.5999999642372131,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Underdragon/NightCity10",
+          "scrollX": 0.7999999523162842,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/DX3906/bgskyred",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/DX3906/bg04nosun",
+          "scrollX": 1.149999976158142,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.25
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Underdragon/NightCity08",
+          "scrollX": 0.3999999761581421,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/DX3906/bg04nosun",
+          "scrollX": 1,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.3499999940395355
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireGDDN/TwilightCity0_B",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireGDDN/TwilightCity4",
+          "scrollX": 0.04999999701976776,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireGDDN/TwilightCity3",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireGDDN/TwilightCity2",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireGDDN/TwilightCity5",
+          "scrollX": 0.09999999403953552,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireGDDN/TwilightCity6",
+          "scrollX": 0.19999998807907104,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireGDDN/TwilightCity7",
+          "scrollX": 0.29999998211860657,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/01/bg0",
+          "scrollX": 0.029999999329447746,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/01/bg1",
+          "scrollX": 0.07999999821186066,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/01/bg2",
+          "scrollX": 0.10000000149011612,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/00/bg2",
+          "scrollX": 0.11999999731779099,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/00/bg3",
+          "scrollX": 0.15000000596046448,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphire/SDbg",
+          "scrollX": 0.14999999105930328,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/DX3906/gradient",
+          "scrollX": 0.19999998807907104,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/DX3906/buildingsCeiling",
+          "scrollX": 0.19999998807907104,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/DX3906/buildingsBack",
+          "scrollX": 0.19999998807907104,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/DX3906/buildingsMid",
+          "scrollX": 0.25,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/DX3906/buildingsfront",
+          "scrollX": 0.29999998211860657,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Aura/MS/bg",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/04/bg0",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "mist",
+          "scrollX": 1,
+          "scrollY": 1,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.09999999403953552
+        },
+        {
+          "key": "mist",
+          "scrollX": 1,
+          "scrollY": 1,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 21,
+          "speedY": 22,
+          "opacity": 0.14999999105930328
+        },
+        {
+          "key": "mist",
+          "scrollX": 1,
+          "scrollY": 1,
+          "loopX": true,
+          "loopY": true,
+          "speedX": -20,
+          "speedY": -12,
+          "opacity": 0.11999999731779099
+        },
+        {
+          "key": "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/hoshiyakimu/starscape00",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": false,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/hoshiyakimu/moon",
+          "scrollX": 0.0009999999310821295,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/hoshiyakimu/clouds",
+          "scrollX": 0.029999999329447746,
+          "scrollY": 0.019999997690320015,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0.7999998927116394,
+          "speedY": 0,
+          "opacity": 0.6999999284744263
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/hoshiyakimu/Mountain",
+          "scrollX": 0.004999999888241291,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "mist",
+          "scrollX": 1,
+          "scrollY": 1,
+          "loopX": true,
+          "loopY": true,
+          "speedX": -160,
+          "speedY": -60,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/LittleV/Spacebg02",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/LittleV/Spacebg01",
+          "scrollX": 0.004999999888241291,
+          "scrollY": 0.0004999999073334038,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/LittleV/Spacebg00",
+          "scrollX": 0.009999999776482582,
+          "scrollY": 0.0009999999310821295,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "purplesunset",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/asri_1/04/bg0",
+          "scrollX": 0.16999998688697815,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 10,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/asri_1/03/bg2",
+          "scrollX": 0.16999998688697815,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.5999999046325684
+        },
+        {
+          "key": "bgs/asri_1/03/bg3",
+          "scrollX": 0.17999999225139618,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireSTLR/erouSpace1",
+          "scrollX": 0.09999999403953552,
+          "scrollY": 0.09999999403953552,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.6999999284744263
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireSTLR/erouSpace2",
+          "scrollX": 0.1499999761581421,
+          "scrollY": 0.1499999761581421,
+          "loopX": true,
+          "loopY": true,
+          "speedX": -0.5,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireSTLR/erouSpace3",
+          "scrollX": 0.19999997317790985,
+          "scrollY": 0.19999997317790985,
+          "loopX": true,
+          "loopY": true,
+          "speedX": -1,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireSTLR/erouSpace4",
+          "scrollX": 0.25,
+          "scrollY": 0.25,
+          "loopX": true,
+          "loopY": true,
+          "speedX": -1.1999998092651367,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/asri_1/07/07/bg00",
+          "scrollX": 0.09999999403953552,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -10,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/asri_1/07/07/bg01",
+          "scrollX": 0.12999999523162842,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -15,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/asri_1/07/07/bg02",
+          "scrollX": 0.1599999964237213,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -19,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/asri_1/07/07/bg03",
+          "scrollX": 0.19999998807907104,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -23,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/asri_1/07/07/bg04",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "mist",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -30,
+          "speedY": 0,
+          "opacity": 0.5
+        },
+        {
+          "key": "mist",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -42,
+          "speedY": 0,
+          "opacity": 0.5
+        },
+        {
+          "key": "mist",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -49,
+          "speedY": 0,
+          "opacity": 0.5
+        },
+        {
+          "key": "bgs/04/bgCloudLoop",
+          "scrollX": 1,
+          "scrollY": 1,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.5999999642372131
+        },
+        {
+          "key": "decals/ChineseNewYear2024/fengchen/bg0",
+          "scrollX": 1,
+          "scrollY": 1,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/04/bg0",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "purplesunset",
+          "scrollX": 0.25,
+          "scrollY": 0.25,
+          "loopX": true,
+          "loopY": true,
+          "speedX": -16,
+          "speedY": -12,
+          "opacity": 0.4229999780654907
+        },
+        {
+          "key": "bgs/04/bg0",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/Aura/mm.2fps0",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.14999999105930328
+        },
+        {
+          "key": "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/LittleV/00",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": false,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/icecream/HazySpaceBG00",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg18_night",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg19_moon",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motoninebg22_shadow",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg37_cloudsky3",
+          "scrollX": 0.10000000149011612,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 2,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg35_cloudsky1",
+          "scrollX": 0.10000000149011612,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 5,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg39_cloudsky5",
+          "scrollX": 0.10000000149011612,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 3,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg23_bgmount1",
+          "scrollX": 0.019999997690320015,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg24_bgmount2",
+          "scrollX": 0.03999999538064003,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg32_clouddown1",
+          "scrollX": 0.03999999538064003,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0.5,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg34_clouddown3",
+          "scrollX": 0.03999999538064003,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0.5,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg20_house",
+          "scrollX": 0.059999994933605194,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg29_bridge",
+          "scrollX": 0.059999994933605194,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg21_tower",
+          "scrollX": 0.059999994933605194,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg25_ripple1",
+          "scrollX": 0.10000000149011612,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 5,
+          "speedY": 0,
+          "opacity": 0.5
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg27_ripple3",
+          "scrollX": 0.10000000149011612,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 15,
+          "speedY": 0,
+          "opacity": 0.5
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg26_ripple2",
+          "scrollX": 0.10000000149011612,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 10,
+          "speedY": 0,
+          "opacity": 0.5
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg33_clouddown2",
+          "scrollX": 0.03999999538064003,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0.5,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg31_tree",
+          "scrollX": 0.10000000149011612,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "mist",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": -20,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Lobby/motonine_bg28_moonlight",
+          "scrollX": 0.10000000149011612,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 10,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "mist",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": -30,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "mist",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": -10,
+          "speedY": 0,
+          "opacity": 1
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-ahayo3",
+      "label": "默城",
+      "mapFile": "ChineseNewYear2024/1-Maps/ahayo3.bin",
+      "room": "ahayo_4",
+      "rooms": [
+        "ahayo_4",
+        "ahayo_2",
+        "ahayo_1",
+        "ahayo_3",
+        "ahayo_6",
+        "ahayo_5",
+        "ahayo_heart",
+        "ahayo_tuto_dfb",
+        "ahayo_berry1"
+      ],
+      "roomCount": 9,
+      "tileset": null,
+      "tileRules": null,
+      "centerTile": null,
+      "spike": "default",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/01/bg0",
+          "scrollX": 0.029999999329447746,
+          "scrollY": 0.029999999329447746,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/01/bg1",
+          "scrollX": 0.07999999821186066,
+          "scrollY": 0.03999999910593033,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/01/bg2",
+          "scrollX": 0.10000000149011612,
+          "scrollY": 0.10000000149011612,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/00/bg2",
+          "scrollX": 0.11999999731779099,
+          "scrollY": 0.11999999731779099,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/00/bg3",
+          "scrollX": 0.15000000596046448,
+          "scrollY": 0.15000000596046448,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-AuraMP",
+      "label": "动量炼狱",
+      "mapFile": "ChineseNewYear2024/1-Maps/AuraMP.bin",
+      "room": "t5",
+      "rooms": [
+        "t5",
+        "t2",
+        "t3",
+        "strawberry",
+        "t4",
+        "t6",
+        "fin",
+        "t1",
+        "t7"
+      ],
+      "roomCount": 9,
+      "tileset": "tilesets/ChineseNewYear2024/Aura/mp",
+      "tileRules": [
+        [
+          "x0x-111-x1x",
+          [
+            6,
+            5
+          ]
+        ],
+        [
+          "x1x-111-x0x",
+          [
+            6,
+            10
+          ]
+        ],
+        [
+          "x1x-011-x1x",
+          [
+            5,
+            6
+          ]
+        ],
+        [
+          "x1x-110-x1x",
+          [
+            10,
+            6
+          ]
+        ],
+        [
+          "x0x-111-x0x",
+          [
+            2,
+            6
+          ]
+        ],
+        [
+          "x0x-011-x0x",
+          [
+            1,
+            6
+          ]
+        ],
+        [
+          "x0x-110-x0x",
+          [
+            3,
+            6
+          ]
+        ],
+        [
+          "x1x-010-x1x",
+          [
+            6,
+            2
+          ]
+        ],
+        [
+          "x0x-010-x1x",
+          [
+            6,
+            1
+          ]
+        ],
+        [
+          "x1x-010-x0x",
+          [
+            6,
+            3
+          ]
+        ],
+        [
+          "x0x-010-x0x",
+          [
+            1,
+            1
+          ]
+        ],
+        [
+          "x0x-011-x1x",
+          [
+            4,
+            4
+          ]
+        ],
+        [
+          "x0x-110-x1x",
+          [
+            10,
+            4
+          ]
+        ],
+        [
+          "x1x-011-x0x",
+          [
+            4,
+            10
+          ]
+        ],
+        [
+          "x1x-110-x0x",
+          [
+            10,
+            10
+          ]
+        ],
+        [
+          "111-111-110",
+          [
+            1,
+            3
+          ]
+        ],
+        [
+          "110-111-111",
+          [
+            1,
+            4
+          ]
+        ],
+        [
+          "111-111-011",
+          [
+            2,
+            3
+          ]
+        ],
+        [
+          "011-111-111",
+          [
+            2,
+            4
+          ]
+        ],
+        [
+          "110-111-110",
+          [
+            11,
+            7
+          ]
+        ],
+        [
+          "010-111-111",
+          [
+            7,
+            4
+          ]
+        ],
+        [
+          "011-111-011",
+          [
+            4,
+            7
+          ]
+        ],
+        [
+          "111-111-010",
+          [
+            7,
+            11
+          ]
+        ],
+        [
+          "010-111-110",
+          [
+            3,
+            2
+          ]
+        ],
+        [
+          "010-111-011",
+          [
+            4,
+            2
+          ]
+        ],
+        [
+          "011-111-010",
+          [
+            4,
+            1
+          ]
+        ],
+        [
+          "110-111-010",
+          [
+            3,
+            1
+          ]
+        ],
+        [
+          "010-111-010",
+          [
+            3,
+            3
+          ]
+        ],
+        [
+          "110-111-011",
+          [
+            3,
+            4
+          ]
+        ],
+        [
+          "011-111-110",
+          [
+            4,
+            3
+          ]
+        ]
+      ],
+      "centerTile": [
+        7,
+        7
+      ],
+      "spike": "default",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/Aura/mm.2fps0",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.14999999105930328
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-AuraMS",
+      "label": "玛德琳：铲子",
+      "mapFile": "ChineseNewYear2024/1-Maps/AuraMS.bin",
+      "room": "15",
+      "rooms": [
+        "15",
+        "8",
+        "11",
+        "9",
+        "shovelknight",
+        "7",
+        "12",
+        "6",
+        "10",
+        "5",
+        "4",
+        "3",
+        "13",
+        "14",
+        "fin",
+        "1",
+        "2"
+      ],
+      "roomCount": 17,
+      "tileset": null,
+      "tileRules": null,
+      "centerTile": null,
+      "spike": "default",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/ChineseNewYear2024/Aura/MS/bg",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-B612",
+      "label": "B612",
+      "mapFile": "ChineseNewYear2024/1-Maps/B612.bin",
+      "room": "a6",
+      "rooms": [
+        "a6",
+        "a3",
+        "a4",
+        "a5",
+        "a7",
+        "a2",
+        "a1",
+        "a0",
+        "car"
+      ],
+      "roomCount": 9,
+      "tileset": "tilesets/ChineseNewYear2024/LittleV/lostlevelsblue",
+      "tileRules": [
+        [
+          "x0x-111-x1x",
+          [
+            0,
+            0
+          ]
+        ],
+        [
+          "x1x-111-x0x",
+          [
+            0,
+            1
+          ]
+        ],
+        [
+          "x1x-011-x1x",
+          [
+            0,
+            2
+          ]
+        ],
+        [
+          "x1x-110-x1x",
+          [
+            0,
+            3
+          ]
+        ],
+        [
+          "x0x-111-x0x",
+          [
+            0,
+            4
+          ]
+        ],
+        [
+          "x1x-010-x1x",
+          [
+            0,
+            5
+          ]
+        ],
+        [
+          "x0x-010-x1x",
+          [
+            0,
+            6
+          ]
+        ],
+        [
+          "x1x-010-x0x",
+          [
+            0,
+            7
+          ]
+        ],
+        [
+          "x0x-011-x0x",
+          [
+            0,
+            8
+          ]
+        ],
+        [
+          "x0x-110-x0x",
+          [
+            0,
+            9
+          ]
+        ],
+        [
+          "x0x-010-x0x",
+          [
+            0,
+            10
+          ]
+        ],
+        [
+          "x0x-011-x1x",
+          [
+            0,
+            11
+          ]
+        ],
+        [
+          "x0x-110-x1x",
+          [
+            0,
+            12
+          ]
+        ],
+        [
+          "x1x-011-x0x",
+          [
+            0,
+            13
+          ]
+        ],
+        [
+          "x1x-110-x0x",
+          [
+            0,
+            14
+          ]
+        ],
+        [
+          "111-111-110",
+          [
+            4,
+            0
+          ]
+        ],
+        [
+          "110-111-111",
+          [
+            4,
+            1
+          ]
+        ],
+        [
+          "111-111-011",
+          [
+            4,
+            2
+          ]
+        ],
+        [
+          "011-111-111",
+          [
+            4,
+            3
+          ]
+        ],
+        [
+          "110-111-110",
+          [
+            4,
+            4
+          ]
+        ],
+        [
+          "010-111-111",
+          [
+            4,
+            5
+          ]
+        ],
+        [
+          "011-111-011",
+          [
+            4,
+            6
+          ]
+        ],
+        [
+          "111-111-010",
+          [
+            4,
+            7
+          ]
+        ],
+        [
+          "010-111-110",
+          [
+            4,
+            8
+          ]
+        ],
+        [
+          "010-111-011",
+          [
+            4,
+            9
+          ]
+        ],
+        [
+          "011-111-010",
+          [
+            4,
+            10
+          ]
+        ],
+        [
+          "110-111-010",
+          [
+            4,
+            11
+          ]
+        ],
+        [
+          "010-111-010",
+          [
+            4,
+            12
+          ]
+        ],
+        [
+          "110-111-011",
+          [
+            4,
+            13
+          ]
+        ],
+        [
+          "011-111-110",
+          [
+            4,
+            14
+          ]
+        ]
+      ],
+      "centerTile": [
+        5,
+        6
+      ],
+      "spike": "cliffside",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/ChineseNewYear2024/LittleV/Spacebg02",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/LittleV/Spacebg01",
+          "scrollX": 0.004999999888241291,
+          "scrollY": 0.0004999999655410647,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/LittleV/Spacebg00",
+          "scrollX": 0.009999999776482582,
+          "scrollY": 0.0009999999310821295,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-bitsxiangsu",
+      "label": "神庙之墟",
+      "mapFile": "ChineseNewYear2024/1-Maps/bitsxiangsu.bin",
+      "room": "bits_a-04",
+      "rooms": [
+        "bits_a-04",
+        "filler-09",
+        "bits_a-06",
+        "bits_a-01",
+        "bits_a-02",
+        "bits_a-05",
+        "bits_a-09",
+        "bits_a-03",
+        "filler-08",
+        "filler-04",
+        "bits_a-07",
+        "bits_a-00",
+        "filler-06",
+        "bits_a-08",
+        "filler-05",
+        "filler-02",
+        "filler-07",
+        "filler-01",
+        "filler-03"
+      ],
+      "roomCount": 19,
+      "tileset": null,
+      "tileRules": null,
+      "centerTile": null,
+      "spike": "default",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/05/temple/bg0",
+          "scrollX": 0.06999999284744263,
+          "scrollY": 0.06999999284744263,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/05/temple/bg1",
+          "scrollX": 0.07999999821186066,
+          "scrollY": 0.07999999821186066,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/05/temple/bg2",
+          "scrollX": 0.09999999403953552,
+          "scrollY": 0.09999999403953552,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/05/temple/bg3",
+          "scrollX": 0.19999998807907104,
+          "scrollY": 0.19999998807907104,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-DLK",
+      "label": "现实 - 209",
+      "mapFile": "ChineseNewYear2024/1-Maps/DLK.bin",
+      "room": "spaceuk",
+      "rooms": [
+        "spaceuk",
+        "dx09",
+        "dx08",
+        "dxberry1",
+        "dx07",
+        "dx04",
+        "dx10",
+        "dx03",
+        "dx06",
+        "dx01",
+        "dx05",
+        "spaceuk2",
+        "dx02"
+      ],
+      "roomCount": 13,
+      "tileset": null,
+      "tileRules": null,
+      "centerTile": null,
+      "spike": "default",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/ChineseNewYear2024/DX3906/gradient",
+          "scrollX": 0.19999998807907104,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/DX3906/buildingsCeiling",
+          "scrollX": 0.19999998807907104,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/DX3906/buildingsBack",
+          "scrollX": 0.19999998807907104,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/DX3906/buildingsMid",
+          "scrollX": 0.25,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/DX3906/buildingsfront",
+          "scrollX": 0.29999998211860657,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-DX3906I",
+      "label": "红色地平线",
+      "mapFile": "ChineseNewYear2024/1-Maps/DX3906I.bin",
+      "room": "car8",
+      "rooms": [
+        "car8",
+        "car6",
+        "carsecret",
+        "car7",
+        "car5",
+        "car3",
+        "car2",
+        "car4",
+        "car1",
+        "carsecret2"
+      ],
+      "roomCount": 10,
+      "tileset": null,
+      "tileRules": null,
+      "centerTile": null,
+      "spike": "default",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/ChineseNewYear2024/DX3906/bgskyred",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/DX3906/bg04nosun",
+          "scrollX": 1.149999976158142,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.25
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/DX3906/bg04nosun",
+          "scrollX": 1,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.3499999940395355
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-fengchen",
+      "label": "梦幻山脊",
+      "mapFile": "ChineseNewYear2024/1-Maps/fengchen.bin",
+      "room": "fengchen-00",
+      "rooms": [
+        "fengchen-00",
+        "fengchen-09",
+        "fengchen-10",
+        "fengchen-11",
+        "fengchen-04",
+        "fengchen-06",
+        "fengchen-07",
+        "fengchen-05",
+        "fengchen-08",
+        "fengchen-01",
+        "fengchen-03",
+        "fengchen-02",
+        "FILLER"
+      ],
+      "roomCount": 13,
+      "tileset": null,
+      "tileRules": null,
+      "centerTile": null,
+      "spike": "default",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/04/bgCloudLoop",
+          "scrollX": 1,
+          "scrollY": 1,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.5999999642372131
+        },
+        {
+          "key": "decals/ChineseNewYear2024/fengchen/bg0",
+          "scrollX": 1,
+          "scrollY": 1,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-hoshiyakimu",
+      "label": "星光山峰",
+      "mapFile": "ChineseNewYear2024/1-Maps/hoshiyakimu.bin",
+      "room": "SS_a_9",
+      "rooms": [
+        "SS_a_9",
+        "SS_a_2",
+        "SS_a_6",
+        "SS_a_8",
+        "SS_a_4",
+        "SS_a_1",
+        "SS_a_5",
+        "SS_a_3",
+        "SS_a_ex_0-2",
+        "SS_a_f_5",
+        "SS_a_7",
+        "SS_a_e0",
+        "SS_a_0",
+        "test",
+        "SS_a_f_3",
+        "SS_a_f_1",
+        "SS_a_ex_1",
+        "SS_a_f_10",
+        "SS_a_f_4",
+        "SS_a_f_7",
+        "SS_a_f_9",
+        "SS_a_f_2",
+        "SS_a_caidan",
+        "SS_a_f_8",
+        "SS_a_f_6"
+      ],
+      "roomCount": 25,
+      "tileset": "tilesets/ChineseNewYear2024/hoshiyakimu/dirtDark",
+      "tileRules": [
+        [
+          "x0x-111-x1x",
+          [
+            0,
+            0
+          ]
+        ],
+        [
+          "x1x-111-x0x",
+          [
+            0,
+            1
+          ]
+        ],
+        [
+          "x1x-011-x1x",
+          [
+            0,
+            2
+          ]
+        ],
+        [
+          "x1x-110-x1x",
+          [
+            0,
+            3
+          ]
+        ],
+        [
+          "x0x-111-x0x",
+          [
+            0,
+            4
+          ]
+        ],
+        [
+          "x1x-010-x1x",
+          [
+            0,
+            5
+          ]
+        ],
+        [
+          "x0x-010-x1x",
+          [
+            0,
+            6
+          ]
+        ],
+        [
+          "x1x-010-x0x",
+          [
+            0,
+            7
+          ]
+        ],
+        [
+          "x0x-011-x0x",
+          [
+            0,
+            8
+          ]
+        ],
+        [
+          "x0x-110-x0x",
+          [
+            0,
+            9
+          ]
+        ],
+        [
+          "x0x-010-x0x",
+          [
+            0,
+            10
+          ]
+        ],
+        [
+          "x0x-011-x1x",
+          [
+            0,
+            11
+          ]
+        ],
+        [
+          "x0x-110-x1x",
+          [
+            0,
+            12
+          ]
+        ],
+        [
+          "x1x-011-x0x",
+          [
+            0,
+            13
+          ]
+        ],
+        [
+          "x1x-110-x0x",
+          [
+            0,
+            14
+          ]
+        ],
+        [
+          "111-111-110",
+          [
+            4,
+            0
+          ]
+        ],
+        [
+          "110-111-111",
+          [
+            4,
+            1
+          ]
+        ],
+        [
+          "111-111-011",
+          [
+            4,
+            2
+          ]
+        ],
+        [
+          "011-111-111",
+          [
+            4,
+            3
+          ]
+        ],
+        [
+          "110-111-110",
+          [
+            4,
+            4
+          ]
+        ],
+        [
+          "010-111-111",
+          [
+            4,
+            5
+          ]
+        ],
+        [
+          "011-111-011",
+          [
+            4,
+            6
+          ]
+        ],
+        [
+          "111-111-010",
+          [
+            4,
+            7
+          ]
+        ],
+        [
+          "010-111-110",
+          [
+            4,
+            8
+          ]
+        ],
+        [
+          "010-111-011",
+          [
+            4,
+            9
+          ]
+        ],
+        [
+          "011-111-010",
+          [
+            4,
+            10
+          ]
+        ],
+        [
+          "110-111-010",
+          [
+            4,
+            11
+          ]
+        ],
+        [
+          "010-111-010",
+          [
+            4,
+            12
+          ]
+        ],
+        [
+          "110-111-011",
+          [
+            4,
+            13
+          ]
+        ],
+        [
+          "011-111-110",
+          [
+            4,
+            14
+          ]
+        ]
+      ],
+      "centerTile": [
+        5,
+        6
+      ],
+      "spike": "cliffside",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/hoshiyakimu/starscape00",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": false,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/hoshiyakimu/moon",
+          "scrollX": 0.0009999999310821295,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/hoshiyakimu/clouds",
+          "scrollX": 0.029999999329447746,
+          "scrollY": 0.019999999552965164,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0.7999999523162842,
+          "speedY": 0,
+          "opacity": 0.699999988079071
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/hoshiyakimu/Mountain",
+          "scrollX": 0.004999999888241291,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-iceCream",
+      "label": "迷胧空间",
+      "mapFile": "ChineseNewYear2024/1-Maps/iceCream.bin",
+      "room": "a-08",
+      "rooms": [
+        "a-08",
+        "a-04",
+        "a-07",
+        "a-02",
+        "a-heart",
+        "a-01",
+        "a-05",
+        "a-06",
+        "a-intro",
+        "a-04-b",
+        "a-03",
+        "a-07b"
+      ],
+      "roomCount": 12,
+      "tileset": "tilesets/ChineseNewYear2024/iceCream/ABuffZucchini_spike block b",
+      "tileRules": [
+        [
+          "x0x-111-x1x",
+          [
+            6,
+            5
+          ]
+        ],
+        [
+          "x1x-111-x0x",
+          [
+            6,
+            10
+          ]
+        ],
+        [
+          "x1x-011-x1x",
+          [
+            5,
+            6
+          ]
+        ],
+        [
+          "x1x-110-x1x",
+          [
+            10,
+            6
+          ]
+        ],
+        [
+          "x0x-111-x0x",
+          [
+            2,
+            6
+          ]
+        ],
+        [
+          "x0x-011-x0x",
+          [
+            1,
+            6
+          ]
+        ],
+        [
+          "x0x-110-x0x",
+          [
+            3,
+            6
+          ]
+        ],
+        [
+          "x1x-010-x1x",
+          [
+            6,
+            2
+          ]
+        ],
+        [
+          "x0x-010-x1x",
+          [
+            6,
+            1
+          ]
+        ],
+        [
+          "x1x-010-x0x",
+          [
+            6,
+            3
+          ]
+        ],
+        [
+          "x0x-010-x0x",
+          [
+            1,
+            1
+          ]
+        ],
+        [
+          "x0x-011-x1x",
+          [
+            4,
+            4
+          ]
+        ],
+        [
+          "x0x-110-x1x",
+          [
+            10,
+            4
+          ]
+        ],
+        [
+          "x1x-011-x0x",
+          [
+            4,
+            10
+          ]
+        ],
+        [
+          "x1x-110-x0x",
+          [
+            10,
+            10
+          ]
+        ],
+        [
+          "111-111-110",
+          [
+            1,
+            3
+          ]
+        ],
+        [
+          "110-111-111",
+          [
+            1,
+            4
+          ]
+        ],
+        [
+          "111-111-011",
+          [
+            2,
+            3
+          ]
+        ],
+        [
+          "011-111-111",
+          [
+            2,
+            4
+          ]
+        ],
+        [
+          "110-111-110",
+          [
+            11,
+            7
+          ]
+        ],
+        [
+          "010-111-111",
+          [
+            7,
+            4
+          ]
+        ],
+        [
+          "011-111-011",
+          [
+            4,
+            7
+          ]
+        ],
+        [
+          "111-111-010",
+          [
+            7,
+            11
+          ]
+        ],
+        [
+          "010-111-110",
+          [
+            3,
+            2
+          ]
+        ],
+        [
+          "010-111-011",
+          [
+            4,
+            2
+          ]
+        ],
+        [
+          "011-111-010",
+          [
+            4,
+            1
+          ]
+        ],
+        [
+          "110-111-010",
+          [
+            3,
+            1
+          ]
+        ],
+        [
+          "010-111-010",
+          [
+            3,
+            3
+          ]
+        ],
+        [
+          "110-111-011",
+          [
+            3,
+            4
+          ]
+        ],
+        [
+          "011-111-110",
+          [
+            4,
+            3
+          ]
+        ]
+      ],
+      "centerTile": [
+        7,
+        7
+      ],
+      "spike": "default",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/icecream/HazySpaceBG00",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-LittleV1",
+      "label": "蓝莓果冻谷",
+      "mapFile": "ChineseNewYear2024/1-Maps/LittleV1.bin",
+      "room": "a-04",
+      "rooms": [
+        "a-04",
+        "a-07",
+        "a-10",
+        "a-06",
+        "a-05",
+        "a-08",
+        "a-08b",
+        "a-03",
+        "a-05b",
+        "a-09",
+        "a-01",
+        "a-02"
+      ],
+      "roomCount": 12,
+      "tileset": "tilesets/ChineseNewYear2024/LittleV/Blueberry",
+      "tileRules": [
+        [
+          "x0x-111-x1x",
+          [
+            0,
+            0
+          ]
+        ],
+        [
+          "x1x-111-x0x",
+          [
+            0,
+            1
+          ]
+        ],
+        [
+          "x1x-011-x1x",
+          [
+            0,
+            2
+          ]
+        ],
+        [
+          "x1x-110-x1x",
+          [
+            0,
+            3
+          ]
+        ],
+        [
+          "x0x-111-x0x",
+          [
+            0,
+            4
+          ]
+        ],
+        [
+          "x1x-010-x1x",
+          [
+            0,
+            5
+          ]
+        ],
+        [
+          "x0x-010-x1x",
+          [
+            0,
+            6
+          ]
+        ],
+        [
+          "x1x-010-x0x",
+          [
+            0,
+            7
+          ]
+        ],
+        [
+          "x0x-011-x0x",
+          [
+            0,
+            8
+          ]
+        ],
+        [
+          "x0x-110-x0x",
+          [
+            0,
+            9
+          ]
+        ],
+        [
+          "x0x-010-x0x",
+          [
+            0,
+            10
+          ]
+        ],
+        [
+          "x0x-011-x1x",
+          [
+            0,
+            11
+          ]
+        ],
+        [
+          "x0x-110-x1x",
+          [
+            0,
+            12
+          ]
+        ],
+        [
+          "x1x-011-x0x",
+          [
+            0,
+            13
+          ]
+        ],
+        [
+          "x1x-110-x0x",
+          [
+            0,
+            14
+          ]
+        ],
+        [
+          "111-111-110",
+          [
+            4,
+            0
+          ]
+        ],
+        [
+          "110-111-111",
+          [
+            4,
+            1
+          ]
+        ],
+        [
+          "111-111-011",
+          [
+            4,
+            2
+          ]
+        ],
+        [
+          "011-111-111",
+          [
+            4,
+            3
+          ]
+        ],
+        [
+          "110-111-110",
+          [
+            4,
+            4
+          ]
+        ],
+        [
+          "010-111-111",
+          [
+            4,
+            5
+          ]
+        ],
+        [
+          "011-111-011",
+          [
+            4,
+            6
+          ]
+        ],
+        [
+          "111-111-010",
+          [
+            4,
+            7
+          ]
+        ],
+        [
+          "010-111-110",
+          [
+            4,
+            8
+          ]
+        ],
+        [
+          "010-111-011",
+          [
+            4,
+            9
+          ]
+        ],
+        [
+          "011-111-010",
+          [
+            4,
+            10
+          ]
+        ],
+        [
+          "110-111-010",
+          [
+            4,
+            11
+          ]
+        ],
+        [
+          "010-111-010",
+          [
+            4,
+            12
+          ]
+        ],
+        [
+          "110-111-011",
+          [
+            4,
+            13
+          ]
+        ],
+        [
+          "011-111-110",
+          [
+            4,
+            14
+          ]
+        ]
+      ],
+      "centerTile": [
+        5,
+        6
+      ],
+      "spike": "default",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/ChineseNewYear2024/LittleV/sky",
+          "scrollX": 0.20000000298023224,
+          "scrollY": 0.20000000298023224,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "mist",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 3,
+          "speedY": 4,
+          "opacity": 0.6000000238418579
+        },
+        {
+          "key": "mist",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 1,
+          "speedY": -2,
+          "opacity": 0.4000000059604645
+        },
+        {
+          "key": "mist",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": -2,
+          "speedY": -3,
+          "opacity": 0.30000001192092896
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/LittleV/LVGCskybrighter",
+          "scrollX": 0.20000000298023224,
+          "scrollY": 0.20000000298023224,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.19999998807907104
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-LittleV5",
+      "label": "疾星焕影",
+      "mapFile": "ChineseNewYear2024/1-Maps/LittleV5.bin",
+      "room": "bits_s1",
+      "rooms": [
+        "bits_s1",
+        "rd_07",
+        "rd_09",
+        "rd_11",
+        "rd_08",
+        "bits_01",
+        "rd_10",
+        "bits_03",
+        "rd_05",
+        "rd_berry3",
+        "bits_04",
+        "bits_02",
+        "rd_06",
+        "bits_berry1",
+        "bits_berry2",
+        "F_02",
+        "rd_12",
+        "F_01"
+      ],
+      "roomCount": 18,
+      "tileset": "tilesets/ChineseNewYear2024/LittleV/Cyber2",
+      "tileRules": [
+        [
+          "x0x-111-x1x",
+          [
+            0,
+            0
+          ]
+        ],
+        [
+          "x1x-111-x0x",
+          [
+            0,
+            1
+          ]
+        ],
+        [
+          "x1x-011-x1x",
+          [
+            0,
+            2
+          ]
+        ],
+        [
+          "x1x-110-x1x",
+          [
+            0,
+            3
+          ]
+        ],
+        [
+          "x0x-111-x0x",
+          [
+            0,
+            4
+          ]
+        ],
+        [
+          "x1x-010-x1x",
+          [
+            0,
+            5
+          ]
+        ],
+        [
+          "x0x-010-x1x",
+          [
+            0,
+            6
+          ]
+        ],
+        [
+          "x1x-010-x0x",
+          [
+            0,
+            7
+          ]
+        ],
+        [
+          "x0x-011-x0x",
+          [
+            0,
+            8
+          ]
+        ],
+        [
+          "x0x-110-x0x",
+          [
+            0,
+            9
+          ]
+        ],
+        [
+          "x0x-010-x0x",
+          [
+            0,
+            10
+          ]
+        ],
+        [
+          "x0x-011-x1x",
+          [
+            0,
+            11
+          ]
+        ],
+        [
+          "x0x-110-x1x",
+          [
+            0,
+            12
+          ]
+        ],
+        [
+          "x1x-011-x0x",
+          [
+            0,
+            13
+          ]
+        ],
+        [
+          "x1x-110-x0x",
+          [
+            0,
+            14
+          ]
+        ],
+        [
+          "111-111-110",
+          [
+            4,
+            0
+          ]
+        ],
+        [
+          "110-111-111",
+          [
+            4,
+            1
+          ]
+        ],
+        [
+          "111-111-011",
+          [
+            4,
+            2
+          ]
+        ],
+        [
+          "011-111-111",
+          [
+            4,
+            3
+          ]
+        ],
+        [
+          "110-111-110",
+          [
+            4,
+            4
+          ]
+        ],
+        [
+          "010-111-111",
+          [
+            4,
+            5
+          ]
+        ],
+        [
+          "011-111-011",
+          [
+            4,
+            6
+          ]
+        ],
+        [
+          "111-111-010",
+          [
+            4,
+            7
+          ]
+        ],
+        [
+          "010-111-110",
+          [
+            4,
+            8
+          ]
+        ],
+        [
+          "010-111-011",
+          [
+            4,
+            9
+          ]
+        ],
+        [
+          "011-111-010",
+          [
+            4,
+            10
+          ]
+        ],
+        [
+          "110-111-010",
+          [
+            4,
+            11
+          ]
+        ],
+        [
+          "010-111-010",
+          [
+            4,
+            12
+          ]
+        ],
+        [
+          "110-111-011",
+          [
+            4,
+            13
+          ]
+        ],
+        [
+          "011-111-110",
+          [
+            4,
+            14
+          ]
+        ]
+      ],
+      "centerTile": [
+        5,
+        12
+      ],
+      "spike": "default",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/LittleV/00",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": false,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-rd_cny_gf",
+      "label": "引力流",
+      "mapFile": "ChineseNewYear2024/1-Maps/rd_cny_gf.bin",
+      "room": "rd-08",
+      "rooms": [
+        "rd-08",
+        "rd-04",
+        "rd-05",
+        "rd-07",
+        "rd-!!",
+        "rd-06",
+        "rd-03",
+        "rd-02",
+        "rd-01",
+        "filler4",
+        "rd-00",
+        "filler3",
+        "filler1 (1)",
+        "filler2",
+        "filler1",
+        "rd-??",
+        "rd-heart",
+        "rd-dearapplesheep"
+      ],
+      "roomCount": 18,
+      "tileset": "tilesets/ChineseNewYear2024/RD/orangeLeaves",
+      "tileRules": [
+        [
+          "x0x-111-x1x",
+          [
+            1,
+            0
+          ]
+        ],
+        [
+          "x1x-111-x0x",
+          [
+            1,
+            2
+          ]
+        ],
+        [
+          "x1x-011-x1x",
+          [
+            0,
+            1
+          ]
+        ],
+        [
+          "x1x-110-x1x",
+          [
+            2,
+            1
+          ]
+        ],
+        [
+          "x0x-010-x1x",
+          [
+            1,
+            3
+          ]
+        ],
+        [
+          "x1x-010-x0x",
+          [
+            1,
+            5
+          ]
+        ],
+        [
+          "x0x-011-x0x",
+          [
+            0,
+            4
+          ]
+        ],
+        [
+          "x0x-110-x0x",
+          [
+            2,
+            4
+          ]
+        ],
+        [
+          "x0x-111-x0x",
+          [
+            0,
+            5
+          ]
+        ],
+        [
+          "x1x-010-x1x",
+          [
+            2,
+            5
+          ]
+        ],
+        [
+          "x0x-010-x0x",
+          [
+            1,
+            5
+          ]
+        ],
+        [
+          "x0x-011-x1x",
+          [
+            0,
+            0
+          ]
+        ],
+        [
+          "x0x-110-x1x",
+          [
+            2,
+            0
+          ]
+        ],
+        [
+          "x1x-011-x0x",
+          [
+            0,
+            2
+          ]
+        ],
+        [
+          "x1x-110-x0x",
+          [
+            2,
+            2
+          ]
+        ],
+        [
+          "011-111-111",
+          [
+            0,
+            6
+          ]
+        ],
+        [
+          "110-111-111",
+          [
+            1,
+            6
+          ]
+        ],
+        [
+          "111-111-011",
+          [
+            0,
+            7
+          ]
+        ],
+        [
+          "111-111-110",
+          [
+            1,
+            7
+          ]
+        ],
+        [
+          "010-111-111",
+          [
+            2,
+            7
+          ]
+        ],
+        [
+          "111-111-010",
+          [
+            2,
+            9
+          ]
+        ],
+        [
+          "011-111-011",
+          [
+            1,
+            8
+          ]
+        ],
+        [
+          "110-111-110",
+          [
+            3,
+            8
+          ]
+        ],
+        [
+          "010-111-011",
+          [
+            0,
+            9
+          ]
+        ],
+        [
+          "010-111-110",
+          [
+            1,
+            9
+          ]
+        ],
+        [
+          "011-111-010",
+          [
+            0,
+            10
+          ]
+        ],
+        [
+          "110-111-010",
+          [
+            1,
+            10
+          ]
+        ],
+        [
+          "010-111-010",
+          [
+            0,
+            11
+          ]
+        ],
+        [
+          "110-111-011",
+          [
+            1,
+            11
+          ]
+        ],
+        [
+          "011-111-110",
+          [
+            2,
+            11
+          ]
+        ]
+      ],
+      "centerTile": [
+        0,
+        13
+      ],
+      "spike": "cliffside",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/asri_1/04/bg0",
+          "scrollX": 0.16999998688697815,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 10,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/asri_1/03/bg2",
+          "scrollX": 0.16999998688697815,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.5999999642372131
+        },
+        {
+          "key": "bgs/asri_1/03/bg3",
+          "scrollX": 0.17999999225139618,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-rifsAcetone",
+      "label": "灰暗大地, 尘封记忆",
+      "mapFile": "ChineseNewYear2024/1-Maps/rifsAcetone.bin",
+      "room": "5",
+      "rooms": [
+        "5",
+        "2",
+        "3",
+        "4",
+        "1",
+        "filler_rellif"
+      ],
+      "roomCount": 6,
+      "tileset": null,
+      "tileRules": null,
+      "centerTile": null,
+      "spike": "default",
+      "spinner": null,
+      "background": "#000000",
+      "layers": []
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-RoCas",
+      "label": "韵梦遗迹",
+      "mapFile": "ChineseNewYear2024/1-Maps/RoCas.bin",
+      "room": "a-08",
+      "rooms": [
+        "a-08",
+        "a-06",
+        "a-05",
+        "a-04",
+        "a-04-2",
+        "a-03",
+        "a-07",
+        "a-01",
+        "a-09",
+        "a-07-2",
+        "a-02"
+      ],
+      "roomCount": 11,
+      "tileset": "tilesets/ChineseNewYear2024/ShadowRo/skyglass",
+      "tileRules": [
+        [
+          "x0x-111-x1x",
+          [
+            0,
+            0
+          ]
+        ],
+        [
+          "x1x-111-x0x",
+          [
+            0,
+            1
+          ]
+        ],
+        [
+          "x1x-011-x1x",
+          [
+            0,
+            2
+          ]
+        ],
+        [
+          "x1x-110-x1x",
+          [
+            0,
+            3
+          ]
+        ],
+        [
+          "x0x-111-x0x",
+          [
+            0,
+            4
+          ]
+        ],
+        [
+          "x1x-010-x1x",
+          [
+            0,
+            5
+          ]
+        ],
+        [
+          "x0x-010-x1x",
+          [
+            0,
+            6
+          ]
+        ],
+        [
+          "x1x-010-x0x",
+          [
+            0,
+            7
+          ]
+        ],
+        [
+          "x0x-011-x0x",
+          [
+            0,
+            8
+          ]
+        ],
+        [
+          "x0x-110-x0x",
+          [
+            0,
+            9
+          ]
+        ],
+        [
+          "x0x-010-x0x",
+          [
+            0,
+            10
+          ]
+        ],
+        [
+          "x0x-011-x1x",
+          [
+            0,
+            11
+          ]
+        ],
+        [
+          "x0x-110-x1x",
+          [
+            0,
+            12
+          ]
+        ],
+        [
+          "x1x-011-x0x",
+          [
+            0,
+            13
+          ]
+        ],
+        [
+          "x1x-110-x0x",
+          [
+            0,
+            14
+          ]
+        ],
+        [
+          "111-111-110",
+          [
+            4,
+            0
+          ]
+        ],
+        [
+          "110-111-111",
+          [
+            4,
+            1
+          ]
+        ],
+        [
+          "111-111-011",
+          [
+            4,
+            2
+          ]
+        ],
+        [
+          "011-111-111",
+          [
+            4,
+            3
+          ]
+        ],
+        [
+          "110-111-110",
+          [
+            4,
+            4
+          ]
+        ],
+        [
+          "010-111-111",
+          [
+            4,
+            5
+          ]
+        ],
+        [
+          "011-111-011",
+          [
+            4,
+            6
+          ]
+        ],
+        [
+          "111-111-010",
+          [
+            4,
+            7
+          ]
+        ],
+        [
+          "010-111-110",
+          [
+            4,
+            8
+          ]
+        ],
+        [
+          "010-111-011",
+          [
+            4,
+            9
+          ]
+        ],
+        [
+          "011-111-010",
+          [
+            4,
+            10
+          ]
+        ],
+        [
+          "110-111-010",
+          [
+            4,
+            11
+          ]
+        ],
+        [
+          "010-111-010",
+          [
+            4,
+            12
+          ]
+        ],
+        [
+          "110-111-011",
+          [
+            4,
+            13
+          ]
+        ],
+        [
+          "011-111-110",
+          [
+            4,
+            14
+          ]
+        ]
+      ],
+      "centerTile": [
+        5,
+        12
+      ],
+      "spike": "outline",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "purplesunset",
+          "scrollX": 0.25,
+          "scrollY": 0.25,
+          "loopX": true,
+          "loopY": true,
+          "speedX": -16,
+          "speedY": -12,
+          "opacity": 0.4229999780654907
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-ShadowRo",
+      "label": "四季·寻灵",
+      "mapFile": "ChineseNewYear2024/1-Maps/ShadowRo.bin",
+      "room": "final_MLeasteregg",
+      "rooms": [
+        "final_MLeasteregg",
+        "a_04",
+        "c_04",
+        "a_02",
+        "b_04",
+        "a_03",
+        "final_intro",
+        "start",
+        "d_01",
+        "d_04",
+        "c_03",
+        "b_02",
+        "c_05",
+        "b_01",
+        "c_intro",
+        "d_03",
+        "b_05",
+        "b_03",
+        "c_02",
+        "b_filler1",
+        "d_02",
+        "c_filler1",
+        "Final",
+        "b_filler2",
+        "a_intro",
+        "d_05",
+        "a_01",
+        "c_01",
+        "a_05",
+        "a_start",
+        "d_start",
+        "b_start",
+        "c_start",
+        "c_selectdeco",
+        "decoroom",
+        "decoroom2"
+      ],
+      "roomCount": 36,
+      "tileset": "tilesets/ChineseNewYear2024/ShadowRo/Av_MarbleTower",
+      "tileRules": [
+        [
+          "x0x-111-x1x",
+          [
+            0,
+            0
+          ]
+        ],
+        [
+          "x1x-111-x0x",
+          [
+            0,
+            1
+          ]
+        ],
+        [
+          "x1x-011-x1x",
+          [
+            0,
+            2
+          ]
+        ],
+        [
+          "x1x-110-x1x",
+          [
+            0,
+            3
+          ]
+        ],
+        [
+          "x0x-111-x0x",
+          [
+            0,
+            4
+          ]
+        ],
+        [
+          "x1x-010-x1x",
+          [
+            0,
+            5
+          ]
+        ],
+        [
+          "x0x-010-x1x",
+          [
+            0,
+            6
+          ]
+        ],
+        [
+          "x1x-010-x0x",
+          [
+            0,
+            7
+          ]
+        ],
+        [
+          "x0x-011-x0x",
+          [
+            0,
+            8
+          ]
+        ],
+        [
+          "x0x-110-x0x",
+          [
+            0,
+            9
+          ]
+        ],
+        [
+          "x0x-010-x0x",
+          [
+            0,
+            10
+          ]
+        ],
+        [
+          "x0x-011-x1x",
+          [
+            0,
+            11
+          ]
+        ],
+        [
+          "x0x-110-x1x",
+          [
+            0,
+            12
+          ]
+        ],
+        [
+          "x1x-011-x0x",
+          [
+            0,
+            13
+          ]
+        ],
+        [
+          "x1x-110-x0x",
+          [
+            0,
+            14
+          ]
+        ],
+        [
+          "111-111-110",
+          [
+            4,
+            0
+          ]
+        ],
+        [
+          "110-111-111",
+          [
+            4,
+            1
+          ]
+        ],
+        [
+          "111-111-011",
+          [
+            4,
+            2
+          ]
+        ],
+        [
+          "011-111-111",
+          [
+            4,
+            3
+          ]
+        ],
+        [
+          "110-111-110",
+          [
+            4,
+            4
+          ]
+        ],
+        [
+          "010-111-111",
+          [
+            4,
+            5
+          ]
+        ],
+        [
+          "011-111-011",
+          [
+            4,
+            6
+          ]
+        ],
+        [
+          "111-111-010",
+          [
+            4,
+            7
+          ]
+        ],
+        [
+          "010-111-110",
+          [
+            4,
+            8
+          ]
+        ],
+        [
+          "010-111-011",
+          [
+            4,
+            9
+          ]
+        ],
+        [
+          "011-111-010",
+          [
+            4,
+            10
+          ]
+        ],
+        [
+          "110-111-010",
+          [
+            4,
+            11
+          ]
+        ],
+        [
+          "010-111-010",
+          [
+            4,
+            12
+          ]
+        ],
+        [
+          "110-111-011",
+          [
+            4,
+            13
+          ]
+        ],
+        [
+          "011-111-110",
+          [
+            4,
+            14
+          ]
+        ]
+      ],
+      "centerTile": [
+        5,
+        12
+      ],
+      "spike": "outline",
+      "spinner": null,
+      "background": "#000000",
+      "layers": []
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-StarSapphireCyberDance",
+      "label": "赛博漫游",
+      "mapFile": "ChineseNewYear2024/1-Maps/StarSapphireCyberDance.bin",
+      "room": "CBDC_05",
+      "rooms": [
+        "CBDC_05",
+        "CBDC_00",
+        "CBDC_03",
+        "CBDC_09",
+        "CBDC_06",
+        "CBDC_08",
+        "CBDC_02",
+        "CBDC_01",
+        "CBDC_07",
+        "CBDC_04",
+        "CBDC_F2",
+        "CBDC_10",
+        "CBDC_F1",
+        "CBDC_F5",
+        "CBDC_F4",
+        "CBDC_F3",
+        "CBDC_Ready"
+      ],
+      "roomCount": 17,
+      "tileset": "tilesets/ChineseNewYear2024/StarSapphire/FgBlue",
+      "tileRules": [
+        [
+          "x0x-111-x1x",
+          [
+            0,
+            0
+          ]
+        ],
+        [
+          "x1x-111-x0x",
+          [
+            0,
+            1
+          ]
+        ],
+        [
+          "x1x-011-x1x",
+          [
+            0,
+            2
+          ]
+        ],
+        [
+          "x1x-110-x1x",
+          [
+            0,
+            3
+          ]
+        ],
+        [
+          "x0x-111-x0x",
+          [
+            0,
+            4
+          ]
+        ],
+        [
+          "x1x-010-x1x",
+          [
+            0,
+            5
+          ]
+        ],
+        [
+          "x0x-010-x1x",
+          [
+            0,
+            6
+          ]
+        ],
+        [
+          "x1x-010-x0x",
+          [
+            0,
+            7
+          ]
+        ],
+        [
+          "x0x-011-x0x",
+          [
+            0,
+            8
+          ]
+        ],
+        [
+          "x0x-110-x0x",
+          [
+            0,
+            9
+          ]
+        ],
+        [
+          "x0x-010-x0x",
+          [
+            0,
+            10
+          ]
+        ],
+        [
+          "x0x-011-x1x",
+          [
+            0,
+            11
+          ]
+        ],
+        [
+          "x0x-110-x1x",
+          [
+            0,
+            12
+          ]
+        ],
+        [
+          "x1x-011-x0x",
+          [
+            0,
+            13
+          ]
+        ],
+        [
+          "x1x-110-x0x",
+          [
+            0,
+            14
+          ]
+        ],
+        [
+          "111-111-110",
+          [
+            4,
+            0
+          ]
+        ],
+        [
+          "110-111-111",
+          [
+            4,
+            1
+          ]
+        ],
+        [
+          "111-111-011",
+          [
+            4,
+            2
+          ]
+        ],
+        [
+          "011-111-111",
+          [
+            4,
+            3
+          ]
+        ],
+        [
+          "110-111-110",
+          [
+            4,
+            4
+          ]
+        ],
+        [
+          "010-111-111",
+          [
+            4,
+            5
+          ]
+        ],
+        [
+          "011-111-011",
+          [
+            4,
+            6
+          ]
+        ],
+        [
+          "111-111-010",
+          [
+            4,
+            7
+          ]
+        ],
+        [
+          "010-111-110",
+          [
+            4,
+            8
+          ]
+        ],
+        [
+          "010-111-011",
+          [
+            4,
+            9
+          ]
+        ],
+        [
+          "011-111-010",
+          [
+            4,
+            10
+          ]
+        ],
+        [
+          "110-111-010",
+          [
+            4,
+            11
+          ]
+        ],
+        [
+          "010-111-010",
+          [
+            4,
+            12
+          ]
+        ],
+        [
+          "110-111-011",
+          [
+            4,
+            13
+          ]
+        ],
+        [
+          "011-111-110",
+          [
+            4,
+            14
+          ]
+        ]
+      ],
+      "centerTile": [
+        5,
+        12
+      ],
+      "spike": "ChineseNewYear2024/StarSapphire/destination",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphire/SDbg",
+          "scrollX": 0.14999999105930328,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-StarSapphireFR",
+      "label": "工厂遗迹-C2",
+      "mapFile": "ChineseNewYear2024/1-Maps/StarSapphireFR.bin",
+      "room": "Star_Berry04",
+      "rooms": [
+        "Star_Berry04",
+        "Star_10",
+        "Star_08",
+        "Star_Berry03",
+        "Star_06",
+        "Star_09",
+        "Star_Berry02",
+        "Star_07",
+        "Star_05",
+        "Star_03",
+        "Star_Berry01",
+        "Star_Caidan01",
+        "Star_02",
+        "Star_00",
+        "Star_04",
+        "Star_01",
+        "Star_Caidan02",
+        "Star_11",
+        "F_07",
+        "F_06",
+        "F_04",
+        "F_03",
+        "F_01",
+        "F_05",
+        "F_02",
+        "Star_Readyfg",
+        "Star_ready"
+      ],
+      "roomCount": 27,
+      "tileset": "tilesets/ChineseNewYear2024/StarSapphire/FRC2fg",
+      "tileRules": [
+        [
+          "x0x-111-x1x",
+          [
+            0,
+            0
+          ]
+        ],
+        [
+          "x1x-111-x0x",
+          [
+            0,
+            1
+          ]
+        ],
+        [
+          "x1x-011-x1x",
+          [
+            0,
+            2
+          ]
+        ],
+        [
+          "x1x-110-x1x",
+          [
+            0,
+            3
+          ]
+        ],
+        [
+          "x0x-111-x0x",
+          [
+            0,
+            4
+          ]
+        ],
+        [
+          "x1x-010-x1x",
+          [
+            0,
+            5
+          ]
+        ],
+        [
+          "x0x-010-x1x",
+          [
+            0,
+            6
+          ]
+        ],
+        [
+          "x1x-010-x0x",
+          [
+            0,
+            7
+          ]
+        ],
+        [
+          "x0x-011-x0x",
+          [
+            0,
+            8
+          ]
+        ],
+        [
+          "x0x-110-x0x",
+          [
+            0,
+            9
+          ]
+        ],
+        [
+          "x0x-010-x0x",
+          [
+            0,
+            10
+          ]
+        ],
+        [
+          "x0x-011-x1x",
+          [
+            0,
+            11
+          ]
+        ],
+        [
+          "x0x-110-x1x",
+          [
+            0,
+            12
+          ]
+        ],
+        [
+          "x1x-011-x0x",
+          [
+            0,
+            13
+          ]
+        ],
+        [
+          "x1x-110-x0x",
+          [
+            0,
+            14
+          ]
+        ],
+        [
+          "111-111-110",
+          [
+            4,
+            0
+          ]
+        ],
+        [
+          "110-111-111",
+          [
+            4,
+            1
+          ]
+        ],
+        [
+          "111-111-011",
+          [
+            4,
+            2
+          ]
+        ],
+        [
+          "011-111-111",
+          [
+            4,
+            3
+          ]
+        ],
+        [
+          "110-111-110",
+          [
+            4,
+            4
+          ]
+        ],
+        [
+          "010-111-111",
+          [
+            4,
+            5
+          ]
+        ],
+        [
+          "011-111-011",
+          [
+            4,
+            6
+          ]
+        ],
+        [
+          "111-111-010",
+          [
+            4,
+            7
+          ]
+        ],
+        [
+          "010-111-110",
+          [
+            4,
+            8
+          ]
+        ],
+        [
+          "010-111-011",
+          [
+            4,
+            9
+          ]
+        ],
+        [
+          "011-111-010",
+          [
+            4,
+            10
+          ]
+        ],
+        [
+          "110-111-010",
+          [
+            4,
+            11
+          ]
+        ],
+        [
+          "010-111-010",
+          [
+            4,
+            12
+          ]
+        ],
+        [
+          "110-111-011",
+          [
+            4,
+            13
+          ]
+        ],
+        [
+          "011-111-110",
+          [
+            4,
+            14
+          ]
+        ]
+      ],
+      "centerTile": [
+        5,
+        12
+      ],
+      "spike": "default",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphire/FRc2BG",
+          "scrollX": 0.09999999403953552,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-StarSapphireGDDN",
+      "label": "游戏开发部",
+      "mapFile": "ChineseNewYear2024/1-Maps/StarSapphireGDDN.bin",
+      "room": "GDDN_21",
+      "rooms": [
+        "GDDN_21",
+        "GDDN_11",
+        "GDDN_23",
+        "GDDN_18",
+        "GDDN_22",
+        "GDDN_01",
+        "GDDN_16",
+        "GDDN_09",
+        "GDDN_06",
+        "GDDN_08",
+        "GDDN_10",
+        "GDDN_13",
+        "GDDN_04",
+        "GDDN_14",
+        "GDDN_15",
+        "GDDN_05",
+        "GDDN_00",
+        "GDDN_03",
+        "GDDN_07",
+        "GDDN_02",
+        "GDDN_20",
+        "GDDN_17",
+        "GDDN_19"
+      ],
+      "roomCount": 23,
+      "tileset": null,
+      "tileRules": null,
+      "centerTile": null,
+      "spike": "default",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireGDDN/TwilightCity0_B",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireGDDN/TwilightCity4",
+          "scrollX": 0.04999999701976776,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireGDDN/TwilightCity3",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireGDDN/TwilightCity2",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireGDDN/TwilightCity5",
+          "scrollX": 0.09999999403953552,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireGDDN/TwilightCity6",
+          "scrollX": 0.19999998807907104,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireGDDN/TwilightCity7",
+          "scrollX": 0.29999998211860657,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-StarSapphireMADWMY",
+      "label": "终末",
+      "mapFile": "ChineseNewYear2024/1-Maps/StarSapphireMADWMY.bin",
+      "room": "StarMADWMY_03",
+      "rooms": [
+        "StarMADWMY_03",
+        "StarMADWMY_Berry01",
+        "StarMADWMY_06",
+        "StarMADWMY_04",
+        "StarMADWMY_07",
+        "StarMADWMY_02",
+        "StarMADWMY_01",
+        "StarMADWMY_00",
+        "StarMADWMY_08",
+        "StarMADWMY_05",
+        "StarMADWMY_Ready"
+      ],
+      "roomCount": 11,
+      "tileset": "tilesets/ChineseNewYear2024/StarSapphire/UD_Compound",
+      "tileRules": [
+        [
+          "x0x-111-x1x",
+          [
+            6,
+            5
+          ]
+        ],
+        [
+          "x1x-111-x0x",
+          [
+            6,
+            10
+          ]
+        ],
+        [
+          "x1x-011-x1x",
+          [
+            5,
+            6
+          ]
+        ],
+        [
+          "x1x-110-x1x",
+          [
+            10,
+            6
+          ]
+        ],
+        [
+          "x0x-111-x0x",
+          [
+            2,
+            6
+          ]
+        ],
+        [
+          "x0x-011-x0x",
+          [
+            1,
+            6
+          ]
+        ],
+        [
+          "x0x-110-x0x",
+          [
+            3,
+            6
+          ]
+        ],
+        [
+          "x1x-010-x1x",
+          [
+            6,
+            2
+          ]
+        ],
+        [
+          "x0x-010-x1x",
+          [
+            6,
+            1
+          ]
+        ],
+        [
+          "x1x-010-x0x",
+          [
+            6,
+            3
+          ]
+        ],
+        [
+          "x0x-010-x0x",
+          [
+            1,
+            1
+          ]
+        ],
+        [
+          "x0x-011-x1x",
+          [
+            4,
+            4
+          ]
+        ],
+        [
+          "x0x-110-x1x",
+          [
+            10,
+            4
+          ]
+        ],
+        [
+          "x1x-011-x0x",
+          [
+            4,
+            10
+          ]
+        ],
+        [
+          "x1x-110-x0x",
+          [
+            10,
+            10
+          ]
+        ],
+        [
+          "111-111-110",
+          [
+            1,
+            3
+          ]
+        ],
+        [
+          "110-111-111",
+          [
+            1,
+            4
+          ]
+        ],
+        [
+          "111-111-011",
+          [
+            2,
+            3
+          ]
+        ],
+        [
+          "011-111-111",
+          [
+            2,
+            4
+          ]
+        ],
+        [
+          "110-111-110",
+          [
+            11,
+            7
+          ]
+        ],
+        [
+          "010-111-111",
+          [
+            7,
+            4
+          ]
+        ],
+        [
+          "011-111-011",
+          [
+            4,
+            7
+          ]
+        ],
+        [
+          "111-111-010",
+          [
+            7,
+            11
+          ]
+        ],
+        [
+          "010-111-110",
+          [
+            3,
+            2
+          ]
+        ],
+        [
+          "010-111-011",
+          [
+            4,
+            2
+          ]
+        ],
+        [
+          "011-111-010",
+          [
+            4,
+            1
+          ]
+        ],
+        [
+          "110-111-010",
+          [
+            3,
+            1
+          ]
+        ],
+        [
+          "010-111-010",
+          [
+            3,
+            3
+          ]
+        ],
+        [
+          "110-111-011",
+          [
+            3,
+            4
+          ]
+        ],
+        [
+          "011-111-110",
+          [
+            4,
+            3
+          ]
+        ]
+      ],
+      "centerTile": [
+        7,
+        7
+      ],
+      "spike": "outline",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/asri_1/07/07/bg00",
+          "scrollX": 0.09999999403953552,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -10,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/asri_1/07/07/bg01",
+          "scrollX": 0.12999999523162842,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -15,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/asri_1/07/07/bg02",
+          "scrollX": 0.1599999964237213,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -19,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/asri_1/07/07/bg03",
+          "scrollX": 0.19999998807907104,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -23,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/asri_1/07/07/bg04",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "mist",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -30,
+          "speedY": 0,
+          "opacity": 0.5
+        },
+        {
+          "key": "mist",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -42,
+          "speedY": 0,
+          "opacity": 0.5
+        },
+        {
+          "key": "mist",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -49,
+          "speedY": 0,
+          "opacity": 0.5
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-StarSapphireSTLR",
+      "label": "星尘遗迹",
+      "mapFile": "ChineseNewYear2024/1-Maps/StarSapphireSTLR.bin",
+      "room": "StarLR_15",
+      "rooms": [
+        "StarLR_15",
+        "StarLR_13",
+        "StarLR_10",
+        "StarLR_06",
+        "StarLR_11",
+        "StarLR_04",
+        "StarLR_08",
+        "StarLR_14",
+        "StarLR_05",
+        "StarLR_07",
+        "StarLR_03",
+        "StarLR_09",
+        "StarLR_12",
+        "StarLR_02",
+        "StarLR_01",
+        "StarLR_17",
+        "StarLR_00",
+        "StarLR_F02",
+        "StarLR_F05",
+        "StarLR_F03",
+        "StarLR_F01",
+        "StarLR_16",
+        "StarLR_F04",
+        "StarLR_ready"
+      ],
+      "roomCount": 24,
+      "tileset": null,
+      "tileRules": null,
+      "centerTile": null,
+      "spike": "default",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireSTLR/erouSpace1",
+          "scrollX": 0.09999999403953552,
+          "scrollY": 0.09999999403953552,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.699999988079071
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireSTLR/erouSpace2",
+          "scrollX": 0.14999999105930328,
+          "scrollY": 0.14999999105930328,
+          "loopX": true,
+          "loopY": true,
+          "speedX": -0.5,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireSTLR/erouSpace3",
+          "scrollX": 0.19999998807907104,
+          "scrollY": 0.19999998807907104,
+          "loopX": true,
+          "loopY": true,
+          "speedX": -1,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireSTLR/erouSpace4",
+          "scrollX": 0.25,
+          "scrollY": 0.25,
+          "loopX": true,
+          "loopY": true,
+          "speedX": -1.1999999284744263,
+          "speedY": 0,
+          "opacity": 1
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-StarSapphireYHS",
+      "label": "余晖山",
+      "mapFile": "ChineseNewYear2024/1-Maps/StarSapphireYHS.bin",
+      "room": "Star_07",
+      "rooms": [
+        "Star_07",
+        "Star_19",
+        "Star_20",
+        "Star_11",
+        "Star_10",
+        "Star_08",
+        "Star_09",
+        "Star_16",
+        "Star_14",
+        "Star_21",
+        "Star_12",
+        "Star_13",
+        "Star_17",
+        "Star_berry02",
+        "Star_06",
+        "Star_03",
+        "Star_05",
+        "Star_berry04",
+        "Star_01",
+        "Star_00",
+        "Star_02",
+        "Star_berry03",
+        "F_17",
+        "Star_berry01",
+        "F_09",
+        "F_01",
+        "F_08",
+        "Star_18",
+        "F_14",
+        "F_19",
+        "F_10",
+        "Star_15",
+        "F_04",
+        "F_02",
+        "F_12",
+        "F_13",
+        "F_06",
+        "F_07",
+        "F_16",
+        "F_11",
+        "F_15",
+        "F_05",
+        "F_03",
+        "F_18",
+        "Star_70",
+        "Star_71",
+        "Star_READY"
+      ],
+      "roomCount": 47,
+      "tileset": null,
+      "tileRules": null,
+      "centerTile": null,
+      "spike": "cliffside",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireYHS/YHSbg",
+          "scrollX": 0.20000000298023224,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0.5,
+          "speedY": 0,
+          "opacity": 0.7999999523162842
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/StarSapphireYHS/YHSSun",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": false,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.5999999642372131
+        },
+        {
+          "key": "bgs/asri_1/03/bg2",
+          "scrollX": 0.25,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.5
+        },
+        {
+          "key": "bgs/04/bgc0",
+          "scrollX": 0.5999999642372131,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 5,
+          "speedY": 0,
+          "opacity": 0.8999999761581421
+        },
+        {
+          "key": "bgs/04/bgc3",
+          "scrollX": 0.5,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 3,
+          "speedY": 0,
+          "opacity": 0.7999999523162842
+        },
+        {
+          "key": "bgs/04/bgc1",
+          "scrollX": 0.3999999761581421,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 3,
+          "speedY": 0,
+          "opacity": 0.5
+        },
+        {
+          "key": "bgs/04/bgc4",
+          "scrollX": 0.699999988079071,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 3,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/asri_1/03/bg2",
+          "scrollX": 0.25999999046325684,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/asri_1/03/bg2",
+          "scrollX": 0.3199999928474426,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-Underdragon1",
+      "label": "晕影漫步",
+      "mapFile": "ChineseNewYear2024/1-Maps/Underdragon1.bin",
+      "room": "08",
+      "rooms": [
+        "08",
+        "02",
+        "03",
+        "09",
+        "07",
+        "02secret",
+        "11",
+        "10",
+        "04k1",
+        "06",
+        "04",
+        "11st1",
+        "12",
+        "01",
+        "05",
+        "05k2",
+        "05k3",
+        "0connect"
+      ],
+      "roomCount": 18,
+      "tileset": null,
+      "tileRules": null,
+      "centerTile": null,
+      "spike": "default",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/ChineseNewYear2024/Underdragon/NightCity00",
+          "scrollX": 1,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Underdragon/NightCity01",
+          "scrollX": 1,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -5,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Underdragon/NightCity02",
+          "scrollX": 1,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -12,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Underdragon/NightCity03",
+          "scrollX": 1,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -14,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Underdragon/NightCity04",
+          "scrollX": 1,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -16,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Underdragon/NightCity05",
+          "scrollX": 0.5999999642372131,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -10,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Underdragon/NightCity06",
+          "scrollX": 0.7999999523162842,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -12,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Underdragon/NightCity07",
+          "scrollX": 1.1999999284744263,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -10,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Underdragon/NightCity08",
+          "scrollX": 0.3999999761581421,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Underdragon/NightCity09",
+          "scrollX": 0.5999999642372131,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/Underdragon/NightCity10",
+          "scrollX": 0.7999999523162842,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-yanshi",
+      "label": "负负得正",
+      "mapFile": "ChineseNewYear2024/1-Maps/yanshi.bin",
+      "room": "a_n03",
+      "rooms": [
+        "a_n03",
+        "a_nn05",
+        "a_nn03",
+        "filler01",
+        "a_final",
+        "a_nn06",
+        "a_nn04",
+        "a_n02",
+        "a_n01",
+        "a_04",
+        "a_01",
+        "a_00",
+        "a_nn09",
+        "a_02",
+        "a_nn07",
+        "a_nn08",
+        "a_nn10",
+        "a_03",
+        "a_nn02",
+        "a_nn11",
+        "a_05"
+      ],
+      "roomCount": 21,
+      "tileset": "tilesets/ChineseNewYear2024/jpyx/destination",
+      "tileRules": [
+        [
+          "x0x-111-x1x",
+          [
+            6,
+            5
+          ]
+        ],
+        [
+          "x1x-111-x0x",
+          [
+            6,
+            10
+          ]
+        ],
+        [
+          "x1x-011-x1x",
+          [
+            5,
+            6
+          ]
+        ],
+        [
+          "x1x-110-x1x",
+          [
+            10,
+            6
+          ]
+        ],
+        [
+          "x0x-111-x0x",
+          [
+            2,
+            6
+          ]
+        ],
+        [
+          "x0x-011-x0x",
+          [
+            1,
+            6
+          ]
+        ],
+        [
+          "x0x-110-x0x",
+          [
+            3,
+            6
+          ]
+        ],
+        [
+          "x1x-010-x1x",
+          [
+            6,
+            2
+          ]
+        ],
+        [
+          "x0x-010-x1x",
+          [
+            6,
+            1
+          ]
+        ],
+        [
+          "x1x-010-x0x",
+          [
+            6,
+            3
+          ]
+        ],
+        [
+          "x0x-010-x0x",
+          [
+            1,
+            1
+          ]
+        ],
+        [
+          "x0x-011-x1x",
+          [
+            4,
+            4
+          ]
+        ],
+        [
+          "x0x-110-x1x",
+          [
+            10,
+            4
+          ]
+        ],
+        [
+          "x1x-011-x0x",
+          [
+            4,
+            10
+          ]
+        ],
+        [
+          "x1x-110-x0x",
+          [
+            10,
+            10
+          ]
+        ],
+        [
+          "111-111-110",
+          [
+            1,
+            3
+          ]
+        ],
+        [
+          "110-111-111",
+          [
+            1,
+            4
+          ]
+        ],
+        [
+          "111-111-011",
+          [
+            2,
+            3
+          ]
+        ],
+        [
+          "011-111-111",
+          [
+            2,
+            4
+          ]
+        ],
+        [
+          "110-111-110",
+          [
+            11,
+            7
+          ]
+        ],
+        [
+          "010-111-111",
+          [
+            7,
+            4
+          ]
+        ],
+        [
+          "011-111-011",
+          [
+            4,
+            7
+          ]
+        ],
+        [
+          "111-111-010",
+          [
+            7,
+            11
+          ]
+        ],
+        [
+          "010-111-110",
+          [
+            3,
+            2
+          ]
+        ],
+        [
+          "010-111-011",
+          [
+            4,
+            2
+          ]
+        ],
+        [
+          "011-111-010",
+          [
+            4,
+            1
+          ]
+        ],
+        [
+          "110-111-010",
+          [
+            3,
+            1
+          ]
+        ],
+        [
+          "010-111-010",
+          [
+            3,
+            3
+          ]
+        ],
+        [
+          "110-111-011",
+          [
+            3,
+            4
+          ]
+        ],
+        [
+          "011-111-110",
+          [
+            4,
+            3
+          ]
+        ]
+      ],
+      "centerTile": [
+        7,
+        7
+      ],
+      "spike": "default",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "mist",
+          "scrollX": 1,
+          "scrollY": 1,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 0.09999999403953552
+        },
+        {
+          "key": "mist",
+          "scrollX": 1,
+          "scrollY": 1,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 21,
+          "speedY": 22,
+          "opacity": 0.14999999105930328
+        },
+        {
+          "key": "mist",
+          "scrollX": 1,
+          "scrollY": 1,
+          "loopX": true,
+          "loopY": true,
+          "speedX": -20,
+          "speedY": -12,
+          "opacity": 0.11999999731779099
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-youziAfterain",
+      "label": "雨霁",
+      "mapFile": "ChineseNewYear2024/1-Maps/youziAfterain.bin",
+      "room": "youzi_05",
+      "rooms": [
+        "youzi_05",
+        "youzi_08",
+        "youzi_09",
+        "youzi_04",
+        "youzi_07",
+        "youzi_03",
+        "youzi_02",
+        "youzi_01",
+        "Start",
+        "youzi_06",
+        "youzi_100",
+        "youzi_99",
+        "youzi_96",
+        "youzi_10",
+        "youzi_95",
+        "youzi_97",
+        "youzi_94",
+        "youzi_98"
+      ],
+      "roomCount": 18,
+      "tileset": null,
+      "tileRules": null,
+      "centerTile": null,
+      "spike": "cliffside",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/ChineseNewYear2024/LittleV/bg00",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 2.5,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/00/bg3",
+          "scrollX": 0.09999999403953552,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": true,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        }
+      ]
+    },
+    {
+      "id": "ChineseNewYear2024-1-Maps-ZZ-HeartSide",
+      "label": "画界 · 万花筒",
+      "mapFile": "ChineseNewYear2024/1-Maps/ZZ-HeartSide.bin",
+      "room": "GCHeartSide_e2",
+      "rooms": [
+        "GCHeartSide_e2",
+        "GCHeartSide_b5",
+        "GCHeartSide_c3",
+        "GCHeartSide_d1",
+        "GCHeartSide_d2",
+        "GCHeartSide_d3",
+        "GCHeartSide_b4",
+        "GCHeartSide_a3",
+        "GCHeartSide_c4",
+        "GCHeartSide_a1",
+        "GCHeartSide_d4",
+        "GCHeartSide_e0",
+        "GCHeartSide_e1",
+        "GCHeartSide_a4",
+        "GCHeartSide_a2",
+        "GCHeartSide_e5_intro",
+        "GCHeartSide_c2",
+        "GCHeartSide_c5",
+        "GCHeartSide_e5_4",
+        "GCHeartSide_b11",
+        "GCHeartSide_e4",
+        "GCHeartSide_b2",
+        "GCHeartSide_a0",
+        "GCHeartSide_b3",
+        "GCHeartSide_c1",
+        "GCHeartSide_final_fall",
+        "GCHeartSide_e5_2",
+        "GCHeartSide_d0",
+        "GCHeartSide_c32",
+        "GCHeartSide_b1",
+        "GCHeartSide_a50",
+        "GCHeartSide_e3",
+        "GCHeartSide_final_heart",
+        "filler01",
+        "GCHeartSide_e5_3",
+        "filler02",
+        "GCHeartSide_c0",
+        "GCHeartSide_e5_1",
+        "GCHeartSide_b0",
+        "filler05",
+        "filler08",
+        "filler07",
+        "GCHeartSide_a5",
+        "filler03",
+        "GCHeartSide_d5",
+        "filler06",
+        "filler04",
+        "a_01",
+        "b_01",
+        "c_01",
+        "d_01"
+      ],
+      "roomCount": 51,
+      "tileset": "tilesets/ChineseNewYear2024/LittleV/Cyber2",
+      "tileRules": [
+        [
+          "x0x-111-x1x",
+          [
+            0,
+            0
+          ]
+        ],
+        [
+          "x1x-111-x0x",
+          [
+            0,
+            1
+          ]
+        ],
+        [
+          "x1x-011-x1x",
+          [
+            0,
+            2
+          ]
+        ],
+        [
+          "x1x-110-x1x",
+          [
+            0,
+            3
+          ]
+        ],
+        [
+          "x0x-111-x0x",
+          [
+            0,
+            4
+          ]
+        ],
+        [
+          "x1x-010-x1x",
+          [
+            0,
+            5
+          ]
+        ],
+        [
+          "x0x-010-x1x",
+          [
+            0,
+            6
+          ]
+        ],
+        [
+          "x1x-010-x0x",
+          [
+            0,
+            7
+          ]
+        ],
+        [
+          "x0x-011-x0x",
+          [
+            0,
+            8
+          ]
+        ],
+        [
+          "x0x-110-x0x",
+          [
+            0,
+            9
+          ]
+        ],
+        [
+          "x0x-010-x0x",
+          [
+            0,
+            10
+          ]
+        ],
+        [
+          "x0x-011-x1x",
+          [
+            0,
+            11
+          ]
+        ],
+        [
+          "x0x-110-x1x",
+          [
+            0,
+            12
+          ]
+        ],
+        [
+          "x1x-011-x0x",
+          [
+            0,
+            13
+          ]
+        ],
+        [
+          "x1x-110-x0x",
+          [
+            0,
+            14
+          ]
+        ],
+        [
+          "111-111-110",
+          [
+            4,
+            0
+          ]
+        ],
+        [
+          "110-111-111",
+          [
+            4,
+            1
+          ]
+        ],
+        [
+          "111-111-011",
+          [
+            4,
+            2
+          ]
+        ],
+        [
+          "011-111-111",
+          [
+            4,
+            3
+          ]
+        ],
+        [
+          "110-111-110",
+          [
+            4,
+            4
+          ]
+        ],
+        [
+          "010-111-111",
+          [
+            4,
+            5
+          ]
+        ],
+        [
+          "011-111-011",
+          [
+            4,
+            6
+          ]
+        ],
+        [
+          "111-111-010",
+          [
+            4,
+            7
+          ]
+        ],
+        [
+          "010-111-110",
+          [
+            4,
+            8
+          ]
+        ],
+        [
+          "010-111-011",
+          [
+            4,
+            9
+          ]
+        ],
+        [
+          "011-111-010",
+          [
+            4,
+            10
+          ]
+        ],
+        [
+          "110-111-010",
+          [
+            4,
+            11
+          ]
+        ],
+        [
+          "010-111-010",
+          [
+            4,
+            12
+          ]
+        ],
+        [
+          "110-111-011",
+          [
+            4,
+            13
+          ]
+        ],
+        [
+          "011-111-110",
+          [
+            4,
+            14
+          ]
+        ]
+      ],
+      "centerTile": [
+        5,
+        12
+      ],
+      "spike": "default",
+      "spinner": null,
+      "background": "#000000",
+      "layers": [
+        {
+          "key": "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/GCHS/islandA/islandA00",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": false,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/GCHS/islandB/islandB00",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/GCHS/islandC/islandC00",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/GCHS/star/star00",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": false,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/GCHS/lightbug/lightbug00",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": false,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/GCHS/line/lineA/lineA00",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": false,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/GCHS/line/lineB/lineB00",
+          "scrollX": 0.17999999225139618,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/GCHS/milong/milong00",
+          "scrollX": 0.17999999225139618,
+          "scrollY": 0,
+          "loopX": false,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/ZZ_HS/hsE/car",
+          "scrollX": 0.17999999225139618,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/ZZ_HS/hsE/clock",
+          "scrollX": 0.16999998688697815,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/ZZ_HS/hsE/debris",
+          "scrollX": 0.1599999964237213,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/ZZ_HS/hsE/shovel",
+          "scrollX": 0.14999999105930328,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/ZZ_HS/hsE/stars",
+          "scrollX": 0.13999998569488525,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/ZZ_HS/hsE/tree",
+          "scrollX": 0.12999999523162842,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/ZZ_HS/hsE/tube",
+          "scrollX": 0.11999999731779099,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/ChineseNewYear2024/bits-Atomizated/whitebg",
+          "scrollX": 0.09999999403953552,
+          "scrollY": 0,
+          "loopX": true,
+          "loopY": false,
+          "speedX": -20,
+          "speedY": 0,
+          "opacity": 0.09999999403953552
+        },
+        {
+          "key": "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/GCHS/line/lineA/lineA00",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": false,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/GCHS/line/lineA/lineA00",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": false,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/GCHS/line/lineB/lineB00",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": false,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        },
+        {
+          "key": "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/GCHS/line/lineB/lineB00",
+          "scrollX": 0,
+          "scrollY": 0,
+          "loopX": false,
+          "loopY": false,
+          "speedX": 0,
+          "speedY": 0,
+          "opacity": 1
+        }
+      ]
+    }
+  ],
+  "atlas": "assets/cny2024/gameplay/room-theme-assets.json"
+}

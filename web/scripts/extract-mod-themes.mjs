@@ -1,4 +1,4 @@
-﻿import { mkdir, readFile, writeFile, readdir, stat } from "node:fs/promises";
+import { mkdir, readFile, writeFile, readdir, stat } from "node:fs/promises";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -7,18 +7,18 @@ import sharp from "sharp";
 import { parseCelesteBin, attrText } from "./celeste-bin.mjs";
 
 /**
- * Extract each room's theme (tileset + autotiler rules, spike type, parallax
- * background layers) from a Celeste mod pack into a JSON theme file that the
- * web theme picker can switch to.
+ * Extract one switchable theme per map from a Celeste mod pack: tileset +
+ * autotiler rules, spike type, spinner, and parallax background layers.
+ * Chinese map names are read from the mod's Dialog/Simplified Chinese.txt.
  *
- * usage: node scripts/extract-mod-themes.mjs <mod-root|mod.zip> <out-dir>
- *          [--filter 0-Gyms/*,0-Lobbies/*] [--atlas <existing theme-selected.json>]
+ * usage: node scripts/extract-mod-themes.mjs <mod-root|zip> <out-dir>
+ *          [--filter globs] [--atlas existing.json,existing.json] [--meta meta.json] [--sid Prefix]
  */
 const args = process.argv.slice(2);
 const input = args[0];
 const outDir = args[1];
 if (!input || !outDir) {
-  console.error("usage: node scripts/extract-mod-themes.mjs <mod-root|zip> <out-dir> [--filter globs] [--atlas json]");
+  console.error("usage: node scripts/extract-mod-themes.mjs <mod-root|zip> <out-dir> [--filter globs] [--atlas json] [--meta json] [--sid Prefix]");
   process.exit(2);
 }
 const takeArg = (name) => {
@@ -29,10 +29,11 @@ const filterArg = takeArg("--filter");
 const filters = filterArg ? filterArg.split(",").filter(Boolean) : null;
 const existingAtlas = takeArg("--atlas");
 const metaPath = takeArg("--meta");
-const metaOverrides = metaPath ? JSON.parse(await readFile(metaPath, "utf8")) : {};
+const sidOverride = takeArg("--sid");
 
 const modRoot = await resolveModRoot(input);
 const gameplayRoot = path.join(modRoot, "Graphics", "Atlases", "Gameplay");
+const mapsRoot = path.join(modRoot, "Maps");
 
 async function resolveModRoot(input) {
   const resolved = path.resolve(input);
@@ -63,7 +64,6 @@ async function findFiles(root, suffix) {
 }
 
 function parseForegroundTiles(xmlText) {
-  // Handle both paired and self-closing <Tileset ...> elements.
   const tilesets = {};
   const tagRe = /<Tileset\s+([^>]*?)\/?>/gs;
   for (const match of xmlText.matchAll(tagRe)) {
@@ -86,18 +86,12 @@ function parseForegroundTiles(xmlText) {
     for (const rule of match[2].matchAll(/<set mask="([^"]+)" tiles="([^"]+)"[^>]*\/?>/g)) {
       if (rule[1] === "center") {
         const first = rule[2].split(";")[0].trim().split(",").map(Number);
-        if (first.length === 2 && Number.isInteger(first[0]) && Number.isInteger(first[1])) {
-          tilesets[id].center = [first[0], first[1]];
-        }
+        if (first.length === 2 && Number.isInteger(first[0]) && Number.isInteger(first[1])) tilesets[id].center = [first[0], first[1]];
         continue;
       }
       if (!/^[x01]{3}-[x01]{3}-[x01]{3}$/.test(rule[1])) continue;
-      // The game randomizes among semicolon-separated candidates; keep the
-      // first for a deterministic web render.
       const first = rule[2].split(";")[0].trim().split(",").map(Number);
-      if (first.length === 2 && Number.isInteger(first[0]) && Number.isInteger(first[1])) {
-        rules.push([rule[1], [first[0], first[1]]]);
-      }
+      if (first.length === 2 && Number.isInteger(first[0]) && Number.isInteger(first[1])) rules.push([rule[1], [first[0], first[1]]]);
     }
     tilesets[id].rules = rules;
   }
@@ -123,6 +117,34 @@ function parseForegroundTiles(xmlText) {
   }));
 }
 
+// Chinese map names from Dialog/Simplified Chinese.txt (UTF-8 or GBK).
+async function readDialogNames(root) {
+  for (const file of ["Dialog/Simplified Chinese.txt", "Dialog/chinese.txt"]) {
+    let buf;
+    try { buf = await readFile(path.join(root, file)); } catch { continue; }
+    let text = "";
+    try { text = new TextDecoder("utf-8", { fatal: true }).decode(buf); }
+    catch { text = new TextDecoder("gbk").decode(buf); }
+    const names = {};
+    let current = null;
+    for (const raw of text.split(/\r?\n/)) {
+      const line = raw.trim();
+      if (!line) continue;
+      const keyMatch = /^([A-Za-z0-9_.-]+)=/.exec(line);
+      if (keyMatch) {
+        current = keyMatch[1];
+        names[current] = line.slice(line.indexOf("=") + 1).trim();
+      } else if (current) {
+        names[current] += (names[current] ? "\n" : "") + line;
+      }
+    }
+    return names;
+  }
+  return {};
+}
+const dialogNames = await readDialogNames(modRoot);
+const modId = sidOverride ?? (await readdir(mapsRoot))[0] ?? "Mod";
+
 const xmlFiles = await findFiles(modRoot, "ForegroundTiles.xml");
 const xmlTables = new Map();
 for (const xmlFile of xmlFiles) {
@@ -134,10 +156,11 @@ function globMatch(pattern, room) {
   const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp("^" + escaped.replace(/\\\*/g, ".*") + "$").test(room);
 }
+
 function backdropVisible(backdrop, room) {
   const attributes = backdrop.attributes;
   if (typeof attributes.exclude === "string" && attributes.exclude.split(",").some((p) => p && globMatch(p, room))) return false;
-  if (attributes.flag) return false; // session flags are not evaluated offline
+  if (attributes.flag) return false;
   if (typeof attributes.only === "string" && attributes.only.trim()) {
     const patterns = attributes.only.split(",").filter(Boolean);
     if (!patterns.some((p) => globMatch(p, room))) return false;
@@ -150,7 +173,6 @@ function parallaxLayer(element, above) {
     element.attributes[key] !== undefined
       ? element.attributes[key]
       : above?.attributes?.[key];
-  const text = (key) => (typeof attr(key) === "string" ? attr(key) : undefined);
   const number = (key, fallback) => {
     const value = attr(key);
     if (typeof value === "boolean") return fallback;
@@ -162,8 +184,8 @@ function parallaxLayer(element, above) {
     if (typeof value === "boolean") return value;
     return value === undefined ? fallback : String(value) === "true";
   };
-  const texture = text("texture");
-  if (!texture) return null;
+  const texture = attr("texture");
+  if (typeof texture !== "string") return null;
   return {
     key: texture,
     scrollX: number("scrollx", 1),
@@ -197,7 +219,38 @@ function roomBackdrops(style, room) {
   return layers;
 }
 
-const mapsRoot = path.join(modRoot, "Maps");
+async function addSpikeTextures(spike) {
+  const parts = spike.split("/");
+  const base = parts.pop();
+  const dir = path.join(gameplayRoot, "danger", "spikes", ...parts);
+  let files = [];
+  try { files = await readdir(dir); } catch { return; }
+  for (const name of files) {
+    if (name.startsWith(base + "_") && name.endsWith(".png")) {
+      referencedTextures.add("danger/spikes/" + (parts.length ? parts.join("/") + "/" : "") + name.slice(0, -4));
+    }
+  }
+}
+
+const referencedTextures = new Set();
+const rooms = [];
+const metaOverrides = metaPath ? JSON.parse(await readFile(metaPath, "utf8")) : {};
+
+function i18nLabel(mapRelative) {
+  let segments = mapRelative.replace(/\.bin$/, "").split("/");
+  if (segments[0] === modId) segments = segments.slice(1);
+  const candidates = [];
+  if (segments[0] === "0-Gyms") {
+    candidates.push(modId + "_" + segments.slice(1).map((s) => s.replace(/[^A-Za-z0-9]/g, "_")).join("_"));
+  }
+  candidates.push(modId + "_" + segments.map((s) => s.replace(/[^A-Za-z0-9]/g, "_")).join("_"));
+  for (const key of candidates) {
+    const name = dialogNames[key];
+    if (name && name.trim()) return name.trim().split("\n")[0];
+  }
+  return null;
+}
+
 const mapFiles = (await findFiles(mapsRoot, ".bin")).filter((file) => {
   if (!filters) return true;
   const relative = path.relative(mapsRoot, file).replaceAll("\\", "/");
@@ -207,55 +260,39 @@ const mapFiles = (await findFiles(mapsRoot, ".bin")).filter((file) => {
   });
 });
 
-const rooms = [];
-const referencedTextures = new Set();
-
-// Add every danger/spikes/<spike>_<dir> texture the mod ships for a spike type.
-async function addSpikeTextures(spike) {
-  const parts = spike.split("/");
-  const base = parts.pop();
-  const dir = path.join(gameplayRoot, "danger", "spikes", ...parts);
-  let files = [];
-  try { files = await readdir(dir); } catch { return; }
-  for (const name of files) {
-    if (name.startsWith(base + "_") && name.endsWith(".png")) {
-      const key = "danger/spikes/" + (parts.length ? parts.join("/") + "/" : "") + name.slice(0, -4);
-      referencedTextures.add(key);
-    }
-  }
-}
 for (const mapFile of mapFiles) {
-  const bytes = await readFile(mapFile);
-  const root = parseCelesteBin(bytes);
+  const root = parseCelesteBin(await readFile(mapFile));
   if (!root) {
     console.warn("skip unparseable map", mapFile);
     continue;
   }
   const meta = root.children.find((c) => c.name === "meta");
   const style = root.children.find((c) => c.name === "Style");
-  const fgPath = attrText(meta, "ForegroundTiles");
-  const tilesets = fgPath ? xmlTables.get(fgPath) : undefined;
+  const fgPath = attrText(meta, "ForegroundTiles") ?? "Graphics/ForegroundTiles.xml";
+  const tilesets = xmlTables.get(fgPath);
   const mapRelative = path.relative(mapsRoot, mapFile).replaceAll("\\", "/");
   const mapMeta = metaOverrides[mapRelative] ?? {};
   const levels = root.children.find((c) => c.name === "levels");
+  const mapRooms = [];
   for (const level of levels?.children ?? []) {
     const roomName = attrText(level, "name") ?? "unknown";
     const solids = level.children.find((c) => c.name === "solids");
     const grid = attrText(solids, "innerText") ?? "";
+    const solidChars = grid.replace(/[\s0]+/g, "");
     const counts = {};
-    for (const ch of grid.replace(/[\s0]+/g, "")) counts[ch] = (counts[ch] ?? 0) + 1;
+    for (const ch of solidChars) counts[ch] = (counts[ch] ?? 0) + 1;
     const dominantId = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
     let tileset = null;
     let tileRules = null;
-    let used = null;
+    let centerTile = null;
     if (tilesets) {
-      used = dominantId
-        ? tilesets.find((t) => t.id === dominantId) ??
-          tilesets.find((t) => counts[t.id])
+      const used = dominantId
+        ? tilesets.find((t) => t.id === dominantId) ?? tilesets.find((t) => counts[t.id])
         : undefined;
-      if (used) {
+      if (used && used.path) {
         tileset = used.path.startsWith("tilesets/") ? used.path : "tilesets/" + used.path;
         tileRules = used.rules;
+        centerTile = used.center;
         if (tileset) referencedTextures.add(tileset);
       }
     }
@@ -272,37 +309,64 @@ for (const mapFile of mapFiles) {
     const layers = roomBackdrops(style, roomName);
     for (const layer of layers) referencedTextures.add(layer.key);
     if (spike && spike !== "default") await addSpikeTextures(spike);
-    const roomId = (mapRelative.replace(/[^A-Za-z0-9_-]+/g, "-") + "-" + roomName.replace(/[^A-Za-z0-9_-]+/g, "-")).replace(/^-+|-+$/g, "");
-    const label = mapMeta.label
-      ? mapMeta.label + (mapMeta.label.endsWith(roomName) ? "" : " / " + roomName)
-      : mapRelative + " / " + roomName;
-    rooms.push({
-      id: roomId,
-      label,
-      mapFile: mapRelative,
-      room: roomName,
-      tileset,
-      tileRules,
-      centerTile: used?.center ?? null,
-      spike,
-      spinner: mapMeta.spinner ?? null,
-      background: "#000000",
-      layers,
-    });
+    mapRooms.push({ roomName, solidsCount: solidChars.length, tileset, tileRules, centerTile, spike, layers });
   }
+  mapRooms.sort((a, b) => b.solidsCount - a.solidsCount);
+  const chosen = mapRooms[0];
+  if (!chosen) {
+    console.log("extracted " + mapRelative + " (no solid rooms)");
+    continue;
+  }
+  const roomId = mapRelative.replace(/\.bin$/, "").replace(/[^A-Za-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
+  const label = i18nLabel(mapRelative) ?? mapMeta.label ?? mapRelative.replace(/\.bin$/, "");
+  rooms.push({
+    id: roomId,
+    label,
+    mapFile: mapRelative,
+    room: chosen.roomName,
+    rooms: mapRooms.map((room) => room.roomName),
+    roomCount: mapRooms.length,
+    tileset: chosen.tileset,
+    tileRules: chosen.tileRules,
+    centerTile: chosen.centerTile,
+    spike: chosen.spike,
+    spinner: mapMeta.spinner ?? null,
+    background: "#000000",
+    layers: chosen.layers,
+  });
   console.log("extracted " + mapRelative);
 }
+
+let reuseAtlas = null;
 if (existingAtlas) {
-  // --atlas is accepted for backward compatibility; the mod atlas is still
-  // packed below so rooms render the mod's own tileset/bg textures.
-  void existingAtlas;
+  const atlasEntries = {};
+  for (const file of existingAtlas.split(",")) {
+    Object.assign(atlasEntries, JSON.parse(await readFile(file.trim(), "utf8")).entries);
+  }
+  // Only textures that actually ship as loose PNGs in the mod are required;
+  // procedural references (mist, purplesunset, tentacles) are never packable.
+  const fileExists = async (key) => {
+    try { return (await stat(path.join(gameplayRoot, ...key.split("/")) + ".png")).isFile(); }
+    catch { return false; }
+  };
+  const missing = [];
+  for (const key of referencedTextures) {
+    if (!atlasEntries[key] && (await fileExists(key))) missing.push(key);
+  }
+  if (missing.length === 0) {
+    reuseAtlas = existingAtlas.split(",")[0].trim();
+    console.log("all " + referencedTextures.size + " textures already in " + reuseAtlas + "; reusing it");
+  } else {
+    console.log("missing " + missing.length + " of " + referencedTextures.size + " textures; packing a mod atlas");
+  }
 }
-{
+
+if (!reuseAtlas) {
   const packKeys = [];
   for (const key of referencedTextures) {
-    const input = path.join(gameplayRoot, ...key.split("/"));
+    const input = path.join(gameplayRoot, ...key.split("/")) + ".png";
     try {
-      if ((await stat(input + ".png")).isFile()) packKeys.push(key);
+      if ((await stat(input)).isFile()) packKeys.push(key);
     } catch {
       // ignore missing texture files
     }
@@ -343,51 +407,11 @@ if (existingAtlas) {
   console.log("packed " + placements.length + " textures into " + path.join(outDir, "gameplay", "room-theme-assets"));
 }
 
-// Rooms with identical theme data (same tileset/rules/spike/spinner/layers)
-// collapse into one switchable theme; the label keeps the room count.
-const seen = new Map();
-const deduped = [];
-for (const room of rooms) {
-  const signature = JSON.stringify([
-    room.tileset,
-    room.tileRules,
-    room.centerTile,
-    room.spike,
-    room.spinner,
-    room.background,
-    room.layers.map((layer) => [
-      layer.key,
-      layer.scrollX,
-      layer.scrollY,
-      layer.loopX,
-      layer.loopY,
-      layer.speedX,
-      layer.speedY,
-      layer.opacity,
-    ]),
-  ]);
-  const existing = seen.get(signature);
-  if (existing) {
-    existing.rooms.push(room.room);
-    existing.roomCount = (existing.roomCount ?? 1) + 1;
-    continue;
-  }
-  room.rooms = [room.room];
-  room.roomCount = 1;
-  seen.set(signature, room);
-  deduped.push(room);
-}
-for (const room of deduped) {
-  if (room.roomCount > 1) {
-    const mapLabel = metaOverrides[room.mapFile]?.label;
-    room.label = mapLabel
-      ? mapLabel + "\uFF08" + room.roomCount + "\u4E2A\u623F\u95F4\uFF09"
-      : room.label;
-  }
-}
-
 await mkdir(outDir, { recursive: true });
 const output = path.join(outDir, "room-themes.json");
-const atlasField = "assets/" + path.basename(outDir) + "/gameplay/room-theme-assets.json";
-await writeFile(output, JSON.stringify({ modId: path.basename(outDir), rooms: deduped, atlas: atlasField }, null, 2) + "\n", "utf8");
-console.log("wrote " + deduped.length + " distinct room themes (" + rooms.length + " rooms) to " + output);
+const atlasField = reuseAtlas
+  ? reuseAtlas.replace(/^web\/public\//, "").replace(/\\/g, "/")
+  : "assets/" + path.basename(outDir) + "/gameplay/room-theme-assets.json";
+await writeFile(output, JSON.stringify({ modId, rooms, atlas: atlasField }, null, 2) + "\n", "utf8");
+console.log("wrote " + rooms.length + " map themes to " + output);
+

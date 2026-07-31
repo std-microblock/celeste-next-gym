@@ -2876,6 +2876,10 @@ export function GameView({
       offsetY - camera.y * scale,
     );
     context.scale(scale, scale);
+    // The playfield is the room rect; everything outside it stays black.
+    context.beginPath();
+    context.rect(map.bounds.x, map.bounds.y, map.bounds.width, map.bounds.height);
+    context.clip();
     drawThemeBackground(context, assets, map, theme, frame, camera);
     if (tileLayer) context.drawImage(tileLayer, map.bounds.x, map.bounds.y);
     drawSpinnerConnections(context, assets, map, frame, state, theme);

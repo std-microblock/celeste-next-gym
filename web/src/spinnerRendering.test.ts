@@ -19,10 +19,10 @@ function spinner(x: number, y: number): MapEntity {
 
 describe("crystal spinner rendering", () => {
   it("uses the theme art unless the editor selects a vanilla color override", () => {
-    const theme = visualThemeById("sj-beginner-lobby");
+    const theme = visualThemeById("room:StrawberryJam2021-0-Lobbies-1-Beginner");
     expect(resolveSpinnerStyle(theme)).toEqual({
-      foreground: "danger/spikes/SJ2021/1-Beginner/brambles/fg",
-      background: "danger/spikes/SJ2021/1-Beginner/brambles/bg"
+      foreground: "danger/crystal/fg_blue",
+      background: "danger/crystal/bg_blue"
     });
     expect(resolveSpinnerStyle(theme, "red")).toEqual({
       foreground: "danger/crystal/fg_red",

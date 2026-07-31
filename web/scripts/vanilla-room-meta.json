@@ -1,0 +1,77 @@
+{
+  "0-Intro.bin": {
+    "label": "序章"
+  },
+  "1-ForsakenCity.bin": {
+    "label": "遗忘之城"
+  },
+  "1H-ForsakenCity.bin": {
+    "label": "遗忘之城 B面"
+  },
+  "1X-ForsakenCity.bin": {
+    "label": "遗忘之城 C面"
+  },
+  "2-OldSite.bin": {
+    "label": "旧址"
+  },
+  "2H-OldSite.bin": {
+    "label": "旧址 B面"
+  },
+  "2X-OldSite.bin": {
+    "label": "旧址 C面"
+  },
+  "3-CelestialResort.bin": {
+    "label": "天空度假村"
+  },
+  "3H-CelestialResort.bin": {
+    "label": "天空度假村 B面"
+  },
+  "3X-CelestialResort.bin": {
+    "label": "天空度假村 C面"
+  },
+  "4-GoldenRidge.bin": {
+    "label": "黄金山脊"
+  },
+  "4H-GoldenRidge.bin": {
+    "label": "黄金山脊 B面"
+  },
+  "4X-GoldenRidge.bin": {
+    "label": "黄金山脊 C面"
+  },
+  "5-MirrorTemple.bin": {
+    "label": "镜之寺"
+  },
+  "5H-MirrorTemple.bin": {
+    "label": "镜之寺 B面"
+  },
+  "5X-MirrorTemple.bin": {
+    "label": "镜之寺 C面"
+  },
+  "6-Reflection.bin": {
+    "label": "倒影"
+  },
+  "6H-Reflection.bin": {
+    "label": "倒影 B面"
+  },
+  "6X-Reflection.bin": {
+    "label": "倒影 C面"
+  },
+  "7-Summit.bin": {
+    "label": "山顶"
+  },
+  "7H-Summit.bin": {
+    "label": "山顶 B面"
+  },
+  "7X-Summit.bin": {
+    "label": "山顶 C面"
+  },
+  "8-Core.bin": {
+    "label": "核心"
+  },
+  "8H-Core.bin": {
+    "label": "核心 B面"
+  },
+  "9-Farewell.bin": {
+    "label": "再会"
+  }
+}
