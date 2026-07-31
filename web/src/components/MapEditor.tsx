@@ -42,7 +42,7 @@ import {
 } from "../camera";
 import type { EntityKind, GymMap, MapEntity, SimState } from "../model";
 import type { VisualTheme } from "../visualThemes";
-import { GameView } from "./GameView";
+import { GameView, type LiveRenderRefs } from "./GameView";
 
 const GRID_SIZE = 8;
 const PLAYER_HALF_WIDTH = 4;
@@ -318,6 +318,8 @@ export interface MapEditorProps {
   theme: VisualTheme;
   experiencing: boolean;
   ready: boolean;
+  /** Live-render refs for the embedded GameView while experiencing. */
+  liveRefs?: LiveRenderRefs;
   onChange: (map: GymMap) => void;
   onExperienceChange: (experiencing: boolean) => void;
   onResetExperience: () => void;
@@ -806,6 +808,7 @@ export function MapEditor({
   theme,
   experiencing,
   ready,
+  liveRefs,
   onChange,
   onExperienceChange,
   onResetExperience,
@@ -1590,6 +1593,7 @@ export function MapEditor({
           stale={false}
           theme={theme}
           cameraViewport={experiencing ? undefined : cameraViewport}
+          liveRefs={liveRefs}
         >
           {(viewport) => (
             <>

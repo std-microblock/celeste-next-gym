@@ -38,6 +38,7 @@ import {
   type TrainingTechniqueWorkspace,
 } from "../training/editorProject";
 import type { VisualTheme } from "../visualThemes";
+import type { LiveRenderRefs } from "./GameView";
 import { MapEditor } from "./MapEditor";
 import { TrainingFlowEditor } from "./TrainingFlowEditor";
 import {
@@ -292,6 +293,8 @@ export interface EditorWorkspaceProps {
   wasmClient: Pick<WasmClient, "listMapRooms" | "loadMapBytes">;
   experiencing: boolean;
   ready: boolean;
+  /** Live-render refs forwarded to the embedded GameView (editor experience). */
+  liveRefs?: LiveRenderRefs;
   onMapChange: (map: GymMap) => void;
   onExperienceChange: (experiencing: boolean) => void;
   onResetExperience: () => void;
@@ -1286,6 +1289,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
           theme={props.theme}
           experiencing={props.experiencing}
           ready={props.ready}
+          liveRefs={props.liveRefs}
           onChange={(map) => changeCurrent({ ...current, map })}
           onExperienceChange={props.onExperienceChange}
           onResetExperience={props.onResetExperience}

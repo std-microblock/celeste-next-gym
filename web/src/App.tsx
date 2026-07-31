@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { GameView } from "./components/GameView";
+import { GameView, type LiveRenderRefs } from "./components/GameView";
 import { GameplayStrawberry } from "./components/GameplaySprite";
 import { InputTimeline } from "./components/InputTimeline";
 import { KeyBindings } from "./components/KeyBindings";
@@ -65,6 +65,9 @@ interface RunDocument {
 const DEFAULT_ROOM = "playground";
 const MAX_ANIMATION_DELTA_MS = 250;
 const LIVE_RENDER_HISTORY_FRAMES = 240;
+/** How often the live loop flushes state into React (UI panels). The canvas
+ * reads the refs every frame, so this only bounds panel re-renders. */
+const LIVE_UI_UPDATE_INTERVAL_MS = 100;
 const VISUAL_THEME_STORAGE_KEY = "celeste-gym-visual-theme";
 
 type AppMode = "play" | "training" | "editor" | "advanced";
@@ -153,7 +156,12 @@ export default function App() {
     startFrame: number;
     states: SimState[];
   }>({ startFrame: 0, states: [liveState] });
+  const lastLiveUiUpdate = useRef(0);
   const livePreviousButtons = useRef<FrameButtons>(makeEmptyButtons());
+  const liveRenderRefs = useMemo(
+    () => ({ state: liveStateRef, frame: liveFrameRef, history: liveHistoryRef }),
+    [],
+  );
   const [, redraw] = useState(0);
   const [frame, setFrame] = useState(0);
   const frameRef = useRef(frame);
@@ -268,18 +276,28 @@ export default function App() {
             const current = trace.at(-1);
             if (!current) throw new Error("WASM 未返回游玩状态");
             const history = liveHistoryRef.current;
-            let states = [...history.states, ...trace.slice(1)];
-            let startFrame = history.startFrame;
-            if (states.length > LIVE_RENDER_HISTORY_FRAMES) {
-              const removed = states.length - LIVE_RENDER_HISTORY_FRAMES;
-              states = states.slice(removed);
-              startFrame += removed;
+            // Mutate the history window in place: the rAF render loop and the
+            // throttled React state below both read the same array, so each
+            // tick stops allocating a fresh copy (the old spread was the main
+            // source of the per-frame GC churn measured in the trace).
+            for (let index = 1; index < trace.length; index += 1)
+              history.states.push(trace[index]);
+            if (history.states.length > LIVE_RENDER_HISTORY_FRAMES) {
+              const removed = history.states.length - LIVE_RENDER_HISTORY_FRAMES;
+              history.states.splice(0, removed);
+              history.startFrame += removed;
             }
-            liveHistoryRef.current = { startFrame, states };
             liveStateRef.current = current;
-            setLiveState(current);
             liveFrameRef.current += steps;
-            setLiveFrame(liveFrameRef.current);
+            // Throttle React-bound state to ~10Hz. GameView draws from the
+            // refs at full cadence, so the UI panels update at 10Hz while the
+            // canvas keeps running at 60/120fps.
+            const now = performance.now();
+            if (now - lastLiveUiUpdate.current >= LIVE_UI_UPDATE_INTERVAL_MS) {
+              lastLiveUiUpdate.current = now;
+              setLiveState(current);
+              setLiveFrame(liveFrameRef.current);
+            }
           })
           .catch((error: Error) => {
             if (active) setNotice(error.message);
@@ -933,6 +951,7 @@ export default function App() {
             frame={liveFrame}
             stale={false}
             theme={visualTheme}
+            liveRefs={liveRenderRefs}
           />
         </main>
       ) : mode === "training" ? (
@@ -958,6 +977,7 @@ export default function App() {
           wasmClient={client}
           experiencing={editorExperiencing}
           ready={wasmStatus === "ready"}
+          liveRefs={liveRenderRefs}
           onMapChange={updateEditorMap}
           onExperienceChange={toggleEditorExperience}
           onResetExperience={resetLiveMap}
