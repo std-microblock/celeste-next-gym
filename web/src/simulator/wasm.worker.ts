@@ -72,12 +72,7 @@ self.onmessage = async (event: MessageEvent<Request>) => {
       self.postMessage({
         id: request.id,
         ok: true,
-        value: {
-          ...response.map,
-          name: request.name,
-          room: request.room,
-          backdrops: response.map.backdrops,
-        },
+        value: { ...response.map, name: request.name },
       });
       return;
     }

@@ -27,7 +27,6 @@ import {
   spinnerHue,
   spinnersConnect,
 } from "../spinnerRendering";
-import { backdropWorldAnchor, visibleMapBackdrops } from "../backdrops";
 import type { VisualTheme, VisualThemeLayer } from "../visualThemes";
 
 interface AtlasEntry {
@@ -1016,72 +1015,6 @@ function drawThemeBackground(
     map.bounds.width,
     map.bounds.height,
   );
-}
-
-
-function drawMapBackdrops(
-  context: CanvasRenderingContext2D,
-  assets: GameAssets,
-  map: GymMap,
-  theme: VisualTheme,
-  frame: number,
-  camera: CameraBounds,
-): void {
-  // The theme color stays as the base under the map's own backdrop stack so
-  // gaps (non-looping layers, editor zoom beyond 320x180) still have a color.
-  context.fillStyle = theme.background;
-  context.fillRect(
-    map.bounds.x,
-    map.bounds.y,
-    map.bounds.width,
-    map.bounds.height,
-  );
-  for (const backdrop of visibleMapBackdrops(map)) {
-    const entry = assets.entries[backdrop.texture];
-    if (!entry || entry.width <= 0 || entry.height <= 0) continue;
-    const anchor = backdropWorldAnchor(backdrop, camera, frame);
-    const tint =
-      backdrop.color && backdrop.color.toUpperCase() !== "FFFFFF"
-        ? `#${backdrop.color}`
-        : undefined;
-    context.save();
-    context.globalAlpha = backdrop.alpha;
-    if (backdrop.blend_mode === "additive")
-      context.globalCompositeOperation = "lighter";
-    const drawTile = (x: number, y: number) =>
-      drawEntry(
-        context,
-        assets,
-        backdrop.texture,
-        x,
-        y,
-        0,
-        0,
-        backdrop.flip_x ? -1 : 1,
-        backdrop.flip_y ? -1 : 1,
-        tint,
-      );
-    if (backdrop.loop_x || backdrop.loop_y) {
-      // Vanilla Parallax wraps the first tile into the pattern phase and tiles
-      // across the whole viewport when loopx/loopy is set.
-      const firstX = backdrop.loop_x
-        ? anchor.x + Math.floor((camera.x - anchor.x) / entry.width) * entry.width
-        : anchor.x;
-      for (let x = firstX; x < camera.x + camera.width; x += entry.width) {
-        const firstY = backdrop.loop_y
-          ? anchor.y + Math.floor((camera.y - anchor.y) / entry.height) * entry.height
-          : anchor.y;
-        for (let y = firstY; y < camera.y + camera.height; y += entry.height) {
-          drawTile(x, y);
-          if (!backdrop.loop_y) break;
-        }
-        if (!backdrop.loop_x) break;
-      }
-    } else {
-      drawTile(anchor.x, anchor.y);
-    }
-    context.restore();
-  }
 }
 
 function buildTileLayer(
@@ -2814,11 +2747,7 @@ export function GameView({
       offsetY - camera.y * scale,
     );
     context.scale(scale, scale);
-    if (map.backdrops && map.backdrops.length > 0) {
-      drawMapBackdrops(context, assets, map, theme, frame, camera);
-    } else {
-      drawThemeBackground(context, assets, map, theme, frame);
-    }
+    drawThemeBackground(context, assets, map, theme, frame);
     if (tileLayer) context.drawImage(tileLayer, map.bounds.x, map.bounds.y);
     drawSpinnerConnections(context, assets, map, frame, state, theme);
     const kindCounts = new Map<EntityKind, number>();

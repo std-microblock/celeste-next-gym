@@ -334,6 +334,5 @@ pub fn mechanics_playground() -> Map {
             },
         ],
         source_package: Some(PLAYGROUND_PACKAGE.to_owned()),
-        backdrops: vec![],
     }
 }
