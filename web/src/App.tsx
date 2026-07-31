@@ -186,6 +186,7 @@ export default function App() {
   const gamepadLatched = useRef<FrameButtons>(makeEmptyButtons());
   const advancing = useRef(false);
   const calculationRevision = useRef(0);
+  const mapSelectionRevision = useRef(0);
 
   const replaceLiveSession = useCallback((initial: SimState) => {
     liveStateRef.current = initial;
@@ -204,6 +205,7 @@ export default function App() {
 
   useEffect(() => {
     let active = true;
+    const initialMapSelectionRevision = mapSelectionRevision.current;
     client
       .ready()
       .then(async () => {
@@ -223,18 +225,24 @@ export default function App() {
           loadedRooms.find((candidate) => candidate.room === DEFAULT_ROOM) ??
           loadedRooms[0];
         setStartMaps(loadedRooms);
-        setMap(loadedMap);
-        const initial = createInitialState(loadedMap);
-        cache.replace(
-          loadedMap,
-          initial,
-          cache.getInputs().map((input) => ({ ...input })),
-        );
-        replaceLiveSession(initial);
-        frameRef.current = 0;
-        setFrame(0);
+        if (mapSelectionRevision.current === initialMapSelectionRevision) {
+          setMap(loadedMap);
+          const initial = createInitialState(loadedMap);
+          cache.replace(
+            loadedMap,
+            initial,
+            cache.getInputs().map((input) => ({ ...input })),
+          );
+          replaceLiveSession(initial);
+          frameRef.current = 0;
+          setFrame(0);
+        }
         setWasmStatus("ready");
-        setNotice("WASM 已从 CelesteGymPlayground/Playground.bin 解码可选房间");
+        setNotice(
+          mapSelectionRevision.current === initialMapSelectionRevision
+            ? "WASM 已从 CelesteGymPlayground/Playground.bin 解码可选房间"
+            : "WASM 已就绪 · 保留当前编辑地图",
+        );
       })
       .catch((error: Error) => {
         if (!active) return;
@@ -726,6 +734,7 @@ export default function App() {
 
   const updateEditorMap = useCallback(
     (nextMap: GymMap) => {
+      mapSelectionRevision.current += 1;
       setMap(nextMap);
       replaceLiveSession(createInitialState(nextMap));
     },
