@@ -6,41 +6,41 @@
     "label": "初级训练场",
     "spinner": {
       "foreground": "danger/SJ2021/Gym/Orb/fg_beg",
-      "background": "danger/SJ2021/Gym/Orb/bg_beg",
-      "kind": "sprite"
-    }
+      "background": "danger/SJ2021/Gym/Orb/bg_beg"
+    },
+    "spike": "SJ2021/Gym/beg"
   },
   "StrawberryJam2021/0-Gyms/2-Intermediate.bin": {
     "label": "中级训练场",
     "spinner": {
       "foreground": "danger/SJ2021/Gym/Orb/fg_int",
-      "background": "danger/SJ2021/Gym/Orb/bg_int",
-      "kind": "sprite"
-    }
+      "background": "danger/SJ2021/Gym/Orb/bg_int"
+    },
+    "spike": "SJ2021/Gym/int"
   },
   "StrawberryJam2021/0-Gyms/3-Advanced.bin": {
     "label": "高级训练场",
     "spinner": {
       "foreground": "danger/SJ2021/Gym/Orb/fg_adv",
-      "background": "danger/SJ2021/Gym/Orb/bg_adv",
-      "kind": "sprite"
-    }
+      "background": "danger/SJ2021/Gym/Orb/bg_adv"
+    },
+    "spike": "SJ2021/Gym/adv"
   },
   "StrawberryJam2021/0-Gyms/4-Expert.bin": {
     "label": "专家训练场",
     "spinner": {
       "foreground": "danger/SJ2021/Gym/Orb/fg_exp",
-      "background": "danger/SJ2021/Gym/Orb/bg_exp",
-      "kind": "sprite"
-    }
+      "background": "danger/SJ2021/Gym/Orb/bg_exp"
+    },
+    "spike": "SJ2021/Gym/exp"
   },
   "StrawberryJam2021/0-Gyms/5-Grandmaster.bin": {
     "label": "宗师训练场",
     "spinner": {
       "foreground": "danger/SJ2021/Gym/Orb/fg_gm",
-      "background": "danger/SJ2021/Gym/Orb/bg_gm",
-      "kind": "sprite"
-    }
+      "background": "danger/SJ2021/Gym/Orb/bg_gm"
+    },
+    "spike": "SJ2021/Gym/gm"
   },
   "StrawberryJam2021/0-Lobbies/0-Prologue.bin": {
     "label": "序章大厅"

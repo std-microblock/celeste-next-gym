@@ -21,10 +21,14 @@ if (!input || !outDir) {
   console.error("usage: node scripts/extract-mod-themes.mjs <mod-root|zip> <out-dir> [--filter globs] [--atlas json]");
   process.exit(2);
 }
-const filterArg = args[args.indexOf("--filter") + 1];
+const takeArg = (name) => {
+  const index = args.indexOf(name);
+  return index !== -1 ? args[index + 1] : undefined;
+};
+const filterArg = takeArg("--filter");
 const filters = filterArg ? filterArg.split(",").filter(Boolean) : null;
-const existingAtlas = args[args.indexOf("--atlas") + 1];
-const metaPath = args[args.indexOf("--meta") + 1];
+const existingAtlas = takeArg("--atlas");
+const metaPath = takeArg("--meta");
 const metaOverrides = metaPath ? JSON.parse(await readFile(metaPath, "utf8")) : {};
 
 const modRoot = await resolveModRoot(input);
@@ -205,6 +209,21 @@ const mapFiles = (await findFiles(mapsRoot, ".bin")).filter((file) => {
 
 const rooms = [];
 const referencedTextures = new Set();
+
+// Add every danger/spikes/<spike>_<dir> texture the mod ships for a spike type.
+async function addSpikeTextures(spike) {
+  const parts = spike.split("/");
+  const base = parts.pop();
+  const dir = path.join(gameplayRoot, "danger", "spikes", ...parts);
+  let files = [];
+  try { files = await readdir(dir); } catch { return; }
+  for (const name of files) {
+    if (name.startsWith(base + "_") && name.endsWith(".png")) {
+      const key = "danger/spikes/" + (parts.length ? parts.join("/") + "/" : "") + name.slice(0, -4);
+      referencedTextures.add(key);
+    }
+  }
+}
 for (const mapFile of mapFiles) {
   const bytes = await readFile(mapFile);
   const root = parseCelesteBin(bytes);
@@ -217,6 +236,7 @@ for (const mapFile of mapFiles) {
   const fgPath = attrText(meta, "ForegroundTiles");
   const tilesets = fgPath ? xmlTables.get(fgPath) : undefined;
   const mapRelative = path.relative(mapsRoot, mapFile).replaceAll("\\", "/");
+  const mapMeta = metaOverrides[mapRelative] ?? {};
   const levels = root.children.find((c) => c.name === "levels");
   for (const level of levels?.children ?? []) {
     const roomName = attrText(level, "name") ?? "unknown";
@@ -247,11 +267,12 @@ for (const mapFile of mapFiles) {
       spikeCounts[type] = (spikeCounts[type] ?? 0) + 1;
     }
     const spikeEntries = Object.entries(spikeCounts).sort((a, b) => b[1] - a[1]);
-    const spike = spikeEntries.find(([type]) => type !== "default")?.[0] ?? "default";
+    const detectedSpike = spikeEntries.find(([type]) => type !== "default")?.[0] ?? "default";
+    const spike = mapMeta.spike ?? detectedSpike;
     const layers = roomBackdrops(style, roomName);
     for (const layer of layers) referencedTextures.add(layer.key);
+    if (spike && spike !== "default") await addSpikeTextures(spike);
     const roomId = (mapRelative.replace(/[^A-Za-z0-9_-]+/g, "-") + "-" + roomName.replace(/[^A-Za-z0-9_-]+/g, "-")).replace(/^-+|-+$/g, "");
-    const mapMeta = metaOverrides[mapRelative] ?? {};
     const label = mapMeta.label
       ? mapMeta.label + (mapMeta.label.endsWith(roomName) ? "" : " / " + roomName)
       : mapRelative + " / " + roomName;
@@ -322,8 +343,51 @@ if (existingAtlas) {
   console.log("packed " + placements.length + " textures into " + path.join(outDir, "gameplay", "room-theme-assets"));
 }
 
+// Rooms with identical theme data (same tileset/rules/spike/spinner/layers)
+// collapse into one switchable theme; the label keeps the room count.
+const seen = new Map();
+const deduped = [];
+for (const room of rooms) {
+  const signature = JSON.stringify([
+    room.tileset,
+    room.tileRules,
+    room.centerTile,
+    room.spike,
+    room.spinner,
+    room.background,
+    room.layers.map((layer) => [
+      layer.key,
+      layer.scrollX,
+      layer.scrollY,
+      layer.loopX,
+      layer.loopY,
+      layer.speedX,
+      layer.speedY,
+      layer.opacity,
+    ]),
+  ]);
+  const existing = seen.get(signature);
+  if (existing) {
+    existing.rooms.push(room.room);
+    existing.roomCount = (existing.roomCount ?? 1) + 1;
+    continue;
+  }
+  room.rooms = [room.room];
+  room.roomCount = 1;
+  seen.set(signature, room);
+  deduped.push(room);
+}
+for (const room of deduped) {
+  if (room.roomCount > 1) {
+    const mapLabel = metaOverrides[room.mapFile]?.label;
+    room.label = mapLabel
+      ? mapLabel + "\uFF08" + room.roomCount + "\u4E2A\u623F\u95F4\uFF09"
+      : room.label;
+  }
+}
+
 await mkdir(outDir, { recursive: true });
 const output = path.join(outDir, "room-themes.json");
 const atlasField = "assets/" + path.basename(outDir) + "/gameplay/room-theme-assets.json";
-await writeFile(output, JSON.stringify({ modId: path.basename(outDir), rooms, atlas: atlasField }, null, 2) + "\n", "utf8");
-console.log("wrote " + rooms.length + " room themes to " + output);
+await writeFile(output, JSON.stringify({ modId: path.basename(outDir), rooms: deduped, atlas: atlasField }, null, 2) + "\n", "utf8");
+console.log("wrote " + deduped.length + " distinct room themes (" + rooms.length + " rooms) to " + output);

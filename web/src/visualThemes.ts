@@ -167,8 +167,7 @@ const VISUAL_THEMES_CURATED: readonly VisualTheme[] = [
     spike: "SJ2021/Gym/beg",
     spinner: {
       foreground: "danger/SJ2021/Gym/Orb/fg_beg",
-      background: "danger/SJ2021/Gym/Orb/bg_beg",
-      kind: "sprite",
+      background: "danger/SJ2021/Gym/Orb/bg_beg"
     },
     tileLayout: "sj-gym",
     background: "#071323",
@@ -183,8 +182,7 @@ const VISUAL_THEMES_CURATED: readonly VisualTheme[] = [
     spike: "SJ2021/Gym/int",
     spinner: {
       foreground: "danger/SJ2021/Gym/Orb/fg_int",
-      background: "danger/SJ2021/Gym/Orb/bg_int",
-      kind: "sprite",
+      background: "danger/SJ2021/Gym/Orb/bg_int"
     },
     tileLayout: "sj-gym",
     background: "#210a0b",
@@ -199,8 +197,7 @@ const VISUAL_THEMES_CURATED: readonly VisualTheme[] = [
     spike: "SJ2021/Gym/adv",
     spinner: {
       foreground: "danger/SJ2021/Gym/Orb/fg_adv",
-      background: "danger/SJ2021/Gym/Orb/bg_adv",
-      kind: "sprite",
+      background: "danger/SJ2021/Gym/Orb/bg_adv"
     },
     tileLayout: "sj-gym",
     background: "#191707",
@@ -215,8 +212,7 @@ const VISUAL_THEMES_CURATED: readonly VisualTheme[] = [
     spike: "SJ2021/Gym/exp",
     spinner: {
       foreground: "danger/SJ2021/Gym/Orb/fg_exp",
-      background: "danger/SJ2021/Gym/Orb/bg_exp",
-      kind: "sprite",
+      background: "danger/SJ2021/Gym/Orb/bg_exp"
     },
     tileLayout: "sj-gym",
     background: "#1b0c04",
@@ -231,8 +227,7 @@ const VISUAL_THEMES_CURATED: readonly VisualTheme[] = [
     spike: "SJ2021/Gym/gm",
     spinner: {
       foreground: "danger/SJ2021/Gym/Orb/fg_gm",
-      background: "danger/SJ2021/Gym/Orb/bg_gm",
-      kind: "sprite",
+      background: "danger/SJ2021/Gym/Orb/bg_gm"
     },
     tileLayout: "sj-gym",
     background: "#190419",
@@ -247,8 +242,7 @@ const VISUAL_THEMES_CURATED: readonly VisualTheme[] = [
     spike: "SJ2021/1-Beginner/bramble",
     spinner: {
       foreground: "danger/spikes/SJ2021/1-Beginner/brambles/fg",
-      background: "danger/spikes/SJ2021/1-Beginner/brambles/bg",
-      kind: "sprite",
+      background: "danger/spikes/SJ2021/1-Beginner/brambles/bg"
     },
     background: "#8dc8ec",
     layers: [
@@ -266,8 +260,7 @@ const VISUAL_THEMES_CURATED: readonly VisualTheme[] = [
     spike: "SJ2021/pixelator/v",
     spinner: {
       foreground: "danger/SJ2021/Ceph/Spinner/fg",
-      background: "danger/SJ2021/Ceph/Spinner/bg",
-      kind: "sprite",
+      background: "danger/SJ2021/Ceph/Spinner/bg"
     },
     background: "#25204f",
     layers: [
@@ -285,8 +278,7 @@ const VISUAL_THEMES_CURATED: readonly VisualTheme[] = [
     spike: "SJ2021/Archire/orange",
     spinner: {
       foreground: "danger/SJ2021/Julia/Spinner/fg",
-      background: "danger/SJ2021/Julia/Spinner/bg",
-      kind: "sprite",
+      background: "danger/SJ2021/Julia/Spinner/bg"
     },
     background: "#351b55",
     layers: [

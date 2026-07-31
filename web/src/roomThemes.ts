@@ -18,11 +18,7 @@ interface RoomThemeData {
   tileRules: readonly (readonly [string, readonly [number, number]])[] | null;
   centerTile: readonly [number, number] | null;
   spike: string;
-  spinner: {
-    foreground: string;
-    background: string;
-    kind?: "crystal" | "sprite";
-  } | null;
+  spinner: { foreground: string; background: string } | null;
   background: string;
   layers: readonly {
     key: string;

@@ -2203,49 +2203,6 @@ function drawSpinnerConnections(
   }
 }
 
-function spinnerStyleKind(
-  style: VisualTheme["spinner"],
-): "crystal" | "sprite" {
-  return (
-    style.kind ??
-    (style.foreground.startsWith("danger/crystal/") ? "crystal" : "sprite")
-  );
-}
-
-// SJ custom spinners (Gym Orb, lobby brambles/Ceph/Julia) are round sprite
-// sheets, not the vanilla 24x24 shard sheet. Draw the sheet centered and
-// animate through its frames instead of cutting four corner slices.
-function drawSpriteSpinner(
-  context: CanvasRenderingContext2D,
-  assets: GameAssets,
-  entity: MapEntity,
-  frame: number,
-  state: SimState,
-  kindIndex: number,
-  theme: VisualTheme,
-): void {
-  const runtime = state.spinners?.[kindIndex];
-  if (runtime && !runtime.visible) return;
-  const position = runtime?.position ?? spinnerCenter(entity);
-  const style = resolveSpinnerStyle(theme, entity.variant);
-  const available = frames(assets, style.foreground);
-  if (available.length === 0) return;
-  const key = available[Math.floor(frame / 6) % available.length];
-  const entry = assets.entries[key];
-  if (!entry) return;
-  const tint = style.rainbow ? spinnerHue(position, frame) : undefined;
-  drawOutlinedTintedEntry(
-    context,
-    assets,
-    key,
-    position.x,
-    position.y,
-    entry.frameWidth * 0.5,
-    entry.frameHeight * 0.5,
-    tint,
-  );
-}
-
 function drawCrystalSpinner(
   context: CanvasRenderingContext2D,
   assets: GameAssets,
@@ -2670,13 +2627,37 @@ function drawRefill(
 
 function drawFallingBlock(
   context: CanvasRenderingContext2D,
+  assets: GameAssets,
   entity: MapEntity,
   state: SimState,
   kindIndex: number,
+  theme: VisualTheme,
 ): void {
   const runtime = state.falling_blocks?.[kindIndex];
   if (runtime?.removed) return;
   const box = runtimeEntityBounds(entity, state, kindIndex);
+  // Vanilla FallingBlock is GFX.FGAutotiler.GenerateBox(tiletype): a solid box
+  // of the theme tileset, so render the tileset center fill across the body.
+  const tileset = assets.entries[theme.tileset];
+  if (tileset) {
+    const [tileX, tileY] = theme.centerTile ?? [2, 15];
+    for (let y = 0; y < box.height; y += 8) {
+      for (let x = 0; x < box.width; x += 8) {
+        context.drawImage(
+          assets.image,
+          tileset.x + tileX * 8,
+          tileset.y + tileY * 8,
+          8,
+          8,
+          box.x + x,
+          box.y + y,
+          8,
+          8,
+        );
+      }
+    }
+    return;
+  }
   context.fillStyle = "#3f4a5a";
   context.fillRect(box.x, box.y, box.width, box.height);
   context.strokeStyle = "#8a97a8";
@@ -2687,19 +2668,6 @@ function drawFallingBlock(
     Math.max(0, box.width - 1),
     Math.max(0, box.height - 1),
   );
-  context.strokeStyle = "rgba(138, 151, 168, .35)";
-  for (let x = 8; x < box.width; x += 8) {
-    context.beginPath();
-    context.moveTo(box.x + x, box.y);
-    context.lineTo(box.x + x, box.y + box.height);
-    context.stroke();
-  }
-  for (let y = 8; y < box.height; y += 8) {
-    context.beginPath();
-    context.moveTo(box.x, box.y + y);
-    context.lineTo(box.x + box.width, box.y + y);
-    context.stroke();
-  }
 }
 
 function drawUnknownEntity(
@@ -2789,7 +2757,7 @@ function drawEntity(
   } else if (entity.kind === "refill") {
     drawRefill(context, entity, frame, state, kindIndex);
   } else if (entity.kind === "falling_block") {
-    drawFallingBlock(context, entity, state, kindIndex);
+    drawFallingBlock(context, assets, entity, state, kindIndex, theme);
   } else if (entity.kind === "bounce_block") {
     drawBounceBlock(context, assets, entity, frame, state, kindIndex);
   } else if (entity.kind === "theo_crystal") {
@@ -2805,22 +2773,19 @@ function drawEntity(
   } else if (entity.kind === "cassette_block") {
     drawCassetteBlock(context, assets, entity, state, kindIndex);
   } else if (entity.kind === "crystal_static_spinner") {
-    if (
-      spinnerStyleKind(resolveSpinnerStyle(theme, entity.variant)) === "sprite"
-    ) {
-      drawSpriteSpinner(context, assets, entity, frame, state, kindIndex, theme);
-    } else {
-      drawCrystalSpinner(
-        context,
-        assets,
-        map,
-        entity,
-        frame,
-        state,
-        kindIndex,
-        theme,
-      );
-    }
+    // Vanilla CrystalStaticSpinner cuts four corner slices from the sheet and
+    // reassembles them around the entity center; this applies to every sheet
+    // (vanilla crystals and SJ custom spinners like the gym Orb).
+    drawCrystalSpinner(
+      context,
+      assets,
+      map,
+      entity,
+      frame,
+      state,
+      kindIndex,
+      theme,
+    );
   } else if (entity.kind === "moving_solid") {
     drawMovingSolid(context, entity, state, kindIndex);
   } else if (entity.kind !== "wind") {
