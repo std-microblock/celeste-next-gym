@@ -31,6 +31,18 @@ describe("map editor helpers", () => {
       name: "spikesUp",
     });
     expect(createEditorEntity("unknown", 0, 0)).toBeNull();
+    expect(createEditorEntity("refill", 40, 80)).toEqual({
+      kind: "refill",
+      bounds: { x: 40, y: 80, width: 16, height: 16 },
+      direction: { x: 0, y: 0 },
+      name: "refill",
+    });
+    expect(createEditorEntity("falling-block", 40, 80)).toEqual({
+      kind: "falling_block",
+      bounds: { x: 40, y: 80, width: 32, height: 16 },
+      direction: { x: 1, y: 0 },
+      name: "fallingBlock",
+    });
   });
 
   it("exposes all four spike directions and the crystal spinner", () => {

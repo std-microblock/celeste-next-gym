@@ -430,6 +430,24 @@ export const PLAYGROUND: GymMap = {
       name: "bounceBlock",
     },
     {
+      kind: "refill",
+      bounds: { x: 120, y: 480, width: 16, height: 16 },
+      direction: { x: 0, y: 0 },
+      name: "refill",
+    },
+    {
+      kind: "refill",
+      bounds: { x: 152, y: 480, width: 16, height: 16 },
+      direction: { x: 1, y: 0 },
+      name: "refill",
+    },
+    {
+      kind: "falling_block",
+      bounds: { x: 40, y: 360, width: 32, height: 16 },
+      direction: { x: 1, y: 0 },
+      name: "fallingBlock",
+    },
+    {
       kind: "wind",
       bounds: { x: 640, y: 128, width: 280, height: 120 },
       direction: { x: 400, y: 0 },

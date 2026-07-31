@@ -302,3 +302,80 @@ if (
   throw new Error(
     longTrace.error ?? "Long-running movement stopped unexpectedly",
   );
+
+
+// Refill + FallingBlock entities decode from a compiled map and simulate:
+// the airborne refill restores the depleted dash, and the falling block
+// carries the player down until it lands.
+const boothMap = {
+  bounds: { x: 0, y: 0, width: 320, height: 544 },
+  spawn: { x: 168, y: 465 },
+  solids: [{ x: 0, y: 496, width: 320, height: 48 }],
+  entities: [
+    {
+      kind: "refill",
+      bounds: { x: 160, y: 460, width: 16, height: 16 },
+      direction: { x: 0, y: 0 },
+      shielded: false,
+      single_use: false,
+      nodes: [],
+      name: "refill",
+    },
+    {
+      kind: "falling_block",
+      bounds: { x: 40, y: 120, width: 32, height: 16 },
+      direction: { x: 1, y: 0 },
+      shielded: false,
+      single_use: false,
+      nodes: [],
+      name: "fallingBlock",
+    },
+  ],
+  source_package: "CelesteGymPlayground",
+};
+const refillTrace = decode(
+  simulate_msgpack(
+    encode({ ...state, pos: { x: 168, y: 465 }, dashes: 0, stamina: 5 }),
+    encode(Array.from({ length: 6 }, () => input)),
+    encode(boothMap),
+    6,
+  ),
+);
+const refillCollected = refillTrace.states?.[1];
+const refillFreeze = refillTrace.states?.[2]?.freeze_timer;
+if (
+  !refillCollected ||
+  refillCollected.dashes !== 1 ||
+  Math.abs(refillCollected.stamina - 110) > 0.01 ||
+  (refillFreeze ?? 0) <= 0 ||
+  (refillFreeze ?? 1) >= (refillTrace.states?.[1]?.freeze_timer ?? 0)
+) {
+  throw new Error(
+    refillTrace.error ?? "WASM refill pickup did not restore dash/stamina",
+  );
+}
+const idleInput = { ...input, move_x: 0 };
+const fallingTrace = decode(
+  simulate_msgpack(
+    encode({ ...state, pos: { x: 56, y: 120 } }),
+    encode(Array.from({ length: 260 }, () => idleInput)),
+    encode(boothMap),
+    260,
+  ),
+);
+const fallingBlockStates = fallingTrace.states;
+const carried = fallingBlockStates?.find(
+  (s, index) => index > 10 && s.pos.y > 121,
+);
+const landed = fallingBlockStates?.at(-1);
+if (
+  !carried ||
+  !landed ||
+  !landed.on_ground ||
+  Math.abs(landed.pos.y - 480) > 0.01 ||
+  !landed.falling_blocks?.[0]?.safe
+) {
+  throw new Error(
+    fallingTrace.error ?? "WASM falling block did not carry the player down",
+  );
+}
