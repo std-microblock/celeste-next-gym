@@ -3287,6 +3287,33 @@ footer {
   vector-effect: non-scaling-stroke;
   pointer-events: none;
 }
+.editor-marquee {
+  fill: #ffd37a14;
+  stroke: var(--gold);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+.editor-multi-union {
+  fill: #ffd37a0f;
+  stroke: var(--gold);
+  stroke-width: 1;
+  stroke-dasharray: 6 4;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+.editor-multi-fields {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.25rem 0;
+}
+.editor-multi-hint {
+  color: #9aa4b2;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  margin: 0;
+}
 .editor-spawn {
   pointer-events: none;
   filter: drop-shadow(0 0 3px #ff4f81);

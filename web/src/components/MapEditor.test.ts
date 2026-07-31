@@ -3,10 +3,16 @@ import { PLAYGROUND } from "../model";
 import {
   createEditorBrushEntity,
   createEditorEntity,
+  deleteSelections,
   editorEntityHitBounds,
   entityBrushPoints,
+  objectsInRegion,
   resizeEditorBounds,
+  selectionBoundsUnion,
+  selectionInList,
+  selectionKey,
   setEditorSpikeDirection,
+  snapCoordinate,
   snapToGrid,
 } from "./MapEditor";
 
@@ -120,4 +126,71 @@ describe("map editor helpers", () => {
       resizeEditorBounds(bounds, "se", { x: 91, y: 83 }, PLAYGROUND),
     ).toEqual({ x: 40, y: 40, width: 48, height: 40 });
   });
+
+  it("snaps to whole pixels by default and to the 8px grid on demand", () => {
+    expect(snapCoordinate(18, 0, false)).toBe(18);
+    expect(snapCoordinate(18.6, 0, false)).toBe(19);
+    expect(snapCoordinate(18, 0, true)).toBe(16);
+    expect(snapCoordinate(18, 2, true)).toBe(18);
+    expect(snapCoordinate(-5, -16, true)).toBe(-8);
+  });
+
+  it("tracks multi-selection membership and the union of selected bounds", () => {
+    const a = { type: "solid" as const, index: 0 };
+    const b = { type: "entity" as const, index: 1 };
+    expect(selectionKey(a)).toBe("solid:0");
+    expect(selectionInList([a, b], a)).toBe(true);
+    expect(selectionInList([a], b)).toBe(false);
+    expect(selectionBoundsUnion(PLAYGROUND, [])).toBeNull();
+    expect(selectionBoundsUnion(PLAYGROUND, [a])).toEqual(
+      PLAYGROUND.solids[0],
+    );
+    expect(
+      selectionBoundsUnion(PLAYGROUND, [
+        a,
+        { type: "entity", index: 0 },
+      ]),
+    ).toEqual({
+      x: 0,
+      y: 400,
+      width: 960,
+      height: 144,
+    });
+  });
+
+  it("finds every solid and entity intersecting a region", () => {
+    const inside = objectsInRegion(PLAYGROUND, {
+      x: 0,
+      y: 240,
+      width: 300,
+      height: 400,
+    });
+    expect(inside).toEqual(
+      expect.arrayContaining([
+        { type: "solid", index: 0 },
+        { type: "entity", index: 0 },
+      ]),
+    );
+    const none = objectsInRegion(PLAYGROUND, {
+      x: 400,
+      y: 400,
+      width: 8,
+      height: 8,
+    });
+    expect(none).toEqual([]);
+  });
+
+  it("deletes all selected solids and entities at once", () => {
+    const map = deleteSelections(PLAYGROUND, [
+      { type: "solid", index: 0 },
+      { type: "entity", index: 0 },
+      { type: "entity", index: 1 },
+    ]);
+    expect(map.solids.length).toBe(PLAYGROUND.solids.length - 1);
+    expect(map.entities.length).toBe(PLAYGROUND.entities.length - 2);
+    expect(map.entities.some((entity) => entity.name === "jumpThru")).toBe(
+      false,
+    );
+  });
+
 });

@@ -16,6 +16,7 @@ import {
   FiCircle,
   FiEye,
   FiEyeOff,
+  FiGrid,
   FiMapPin,
   FiMaximize,
   FiMousePointer,
@@ -52,6 +53,8 @@ const MAX_TRAJECTORY_COLLIDERS = 480;
 
 type EditorTool = "select" | "solid" | "spawn" | "erase" | `entity:${string}`;
 type EditorSelection = { type: "solid" | "entity"; index: number };
+type EditorSelectionList = readonly EditorSelection[];
+
 type EditableBounds = { x: number; y: number; width: number; height: number };
 type ResizeCorner = "nw" | "ne" | "se" | "sw";
 
@@ -112,6 +115,7 @@ interface DragState {
   kind:
     | "create-solid"
     | "paint-entities"
+    | "select-region"
     | "move-selection"
     | "resize-selection"
     | "move-node"
@@ -120,6 +124,7 @@ interface DragState {
   originalMap: GymMap;
   originalCamera?: CameraBounds;
   selection?: EditorSelection;
+  selections?: EditorSelection[];
   corner?: ResizeCorner;
   nodeIndex?: number;
   templateId?: string;
@@ -310,6 +315,103 @@ export function snapToGrid(
   return Math.round((value - origin) / grid) * grid + origin;
 }
 
+/**
+ * Snap an editor coordinate. When {@link useGrid} is true the value snaps to
+ * the 8px Celeste tile grid; otherwise it snaps to whole pixels so objects can
+ * be placed freely while still keeping integer coordinates.
+ */
+export function snapCoordinate(
+  value: number,
+  origin = 0,
+  useGrid: boolean,
+): number {
+  return useGrid ? snapToGrid(value, origin, GRID_SIZE) : Math.round(value);
+}
+
+export function selectionKey(selection: EditorSelection): string {
+  return `${selection.type}:${selection.index}`;
+}
+
+export function selectionInList(
+  list: EditorSelectionList,
+  selection: EditorSelection,
+): boolean {
+  return list.some(
+    (candidate) => selectionKey(candidate) === selectionKey(selection),
+  );
+}
+
+export function selectionBoundsUnion(
+  map: GymMap,
+  selections: EditorSelectionList,
+): EditableBounds | null {
+  if (!selections.length) return null;
+  let left = Infinity;
+  let top = Infinity;
+  let right = -Infinity;
+  let bottom = -Infinity;
+  for (const item of selections) {
+    const itemBounds =
+      item.type === "solid"
+        ? map.solids[item.index]
+        : map.entities[item.index]?.bounds;
+    if (!itemBounds) continue;
+    left = Math.min(left, itemBounds.x);
+    top = Math.min(top, itemBounds.y);
+    right = Math.max(right, itemBounds.x + itemBounds.width);
+    bottom = Math.max(bottom, itemBounds.y + itemBounds.height);
+  }
+  if (!Number.isFinite(left)) return null;
+  return { x: left, y: top, width: right - left, height: bottom - top };
+}
+
+export function deleteSelections(
+  map: GymMap,
+  selections: EditorSelectionList,
+): GymMap {
+  const solidIndices = new Set(
+    selections.filter((item) => item.type === "solid").map((item) => item.index),
+  );
+  const entityIndices = new Set(
+    selections
+      .filter((item) => item.type === "entity")
+      .map((item) => item.index),
+  );
+  return {
+    ...map,
+    solids: map.solids.filter((_, index) => !solidIndices.has(index)),
+    entities: map.entities.filter((_, index) => !entityIndices.has(index)),
+  };
+}
+
+function intersects(
+  a: EditableBounds,
+  b: EditableBounds,
+): boolean {
+  return (
+    a.x < b.x + b.width &&
+    a.x + a.width > b.x &&
+    a.y < b.y + b.height &&
+    a.y + a.height > b.y
+  );
+}
+
+export function objectsInRegion(
+  map: GymMap,
+  region: EditableBounds,
+): EditorSelection[] {
+  const result: EditorSelection[] = [];
+  map.solids.forEach((solid, index) => {
+    if (intersects(solid, region)) result.push({ type: "solid", index });
+  });
+  map.entities.forEach((entity, index) => {
+    if (intersects(editorEntityHitBounds(entity), region)) {
+      result.push({ type: "entity", index });
+    }
+  });
+  return result;
+}
+
 export function createEditorEntity(
   templateIdOrKind: string,
   x: number,
@@ -370,18 +472,20 @@ export function entityBrushPoints(
   from: { x: number; y: number },
   to: { x: number; y: number },
   map: GymMap,
+  useGrid = true,
 ): Array<{ x: number; y: number }> {
+  const step = useGrid ? GRID_SIZE : 1;
   let x0 = Math.round(
-    (snapToGrid(from.x, map.bounds.x) - map.bounds.x) / GRID_SIZE,
+    (snapCoordinate(from.x, map.bounds.x, useGrid) - map.bounds.x) / step,
   );
   let y0 = Math.round(
-    (snapToGrid(from.y, map.bounds.y) - map.bounds.y) / GRID_SIZE,
+    (snapCoordinate(from.y, map.bounds.y, useGrid) - map.bounds.y) / step,
   );
   const x1 = Math.round(
-    (snapToGrid(to.x, map.bounds.x) - map.bounds.x) / GRID_SIZE,
+    (snapCoordinate(to.x, map.bounds.x, useGrid) - map.bounds.x) / step,
   );
   const y1 = Math.round(
-    (snapToGrid(to.y, map.bounds.y) - map.bounds.y) / GRID_SIZE,
+    (snapCoordinate(to.y, map.bounds.y, useGrid) - map.bounds.y) / step,
   );
   const points: Array<{ x: number; y: number }> = [];
   const dx = Math.abs(x1 - x0);
@@ -392,8 +496,8 @@ export function entityBrushPoints(
 
   while (true) {
     points.push({
-      x: map.bounds.x + x0 * GRID_SIZE,
-      y: map.bounds.y + y0 * GRID_SIZE,
+      x: map.bounds.x + x0 * step,
+      y: map.bounds.y + y0 * step,
     });
     if (x0 === x1 && y0 === y1) break;
     const twiceError = error * 2;
@@ -462,14 +566,15 @@ export function resizeEditorBounds(
   corner: ResizeCorner,
   point: { x: number; y: number },
   map: GymMap,
+  useGrid = true,
 ): EditableBounds {
   const left = bounds.x;
   const top = bounds.y;
   const right = bounds.x + bounds.width;
   const bottom = bounds.y + bounds.height;
-  const snappedX = snapToGrid(point.x, map.bounds.x);
-  const snappedY = snapToGrid(point.y, map.bounds.y);
-  const minimum = GRID_SIZE;
+  const snappedX = snapCoordinate(point.x, map.bounds.x, useGrid);
+  const snappedY = snapCoordinate(point.y, map.bounds.y, useGrid);
+  const minimum = useGrid ? GRID_SIZE : 1;
   const nextLeft =
     corner === "nw" || corner === "sw"
       ? Math.min(snappedX, right - minimum)
@@ -567,16 +672,76 @@ function normalizedRect(
   from: { x: number; y: number },
   to: { x: number; y: number },
   map: GymMap,
+  useGrid = true,
 ): EditableBounds {
-  const x1 = snapToGrid(from.x, map.bounds.x);
-  const y1 = snapToGrid(from.y, map.bounds.y);
-  const x2 = snapToGrid(to.x, map.bounds.x);
-  const y2 = snapToGrid(to.y, map.bounds.y);
+  const x1 = snapCoordinate(from.x, map.bounds.x, useGrid);
+  const y1 = snapCoordinate(from.y, map.bounds.y, useGrid);
+  const x2 = snapCoordinate(to.x, map.bounds.x, useGrid);
+  const y2 = snapCoordinate(to.y, map.bounds.y, useGrid);
   return {
     x: Math.min(x1, x2),
     y: Math.min(y1, y2),
-    width: Math.max(GRID_SIZE, Math.abs(x2 - x1)),
-    height: Math.max(GRID_SIZE, Math.abs(y2 - y1)),
+    width: Math.max(useGrid ? GRID_SIZE : 1, Math.abs(x2 - x1)),
+    height: Math.max(useGrid ? GRID_SIZE : 1, Math.abs(y2 - y1)),
+  };
+}
+
+function normalizedRegion(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+): EditableBounds {
+  return {
+    x: Math.min(from.x, to.x),
+    y: Math.min(from.y, to.y),
+    width: Math.abs(to.x - from.x),
+    height: Math.abs(to.y - from.y),
+  };
+}
+
+function clampMovedBounds(
+  bounds: EditableBounds,
+  dx: number,
+  dy: number,
+  map: GymMap,
+): EditableBounds {
+  return {
+    ...bounds,
+    x: Math.max(
+      map.bounds.x,
+      Math.min(
+        map.bounds.x + map.bounds.width - bounds.width,
+        bounds.x + dx,
+      ),
+    ),
+    y: Math.max(
+      map.bounds.y,
+      Math.min(
+        map.bounds.y + map.bounds.height - bounds.height,
+        bounds.y + dy,
+      ),
+    ),
+  };
+}
+
+function moveSelections(
+  map: GymMap,
+  selections: EditorSelectionList,
+  dx: number,
+  dy: number,
+): GymMap {
+  const keys = new Set(selections.map(selectionKey));
+  return {
+    ...map,
+    solids: map.solids.map((solid, index) =>
+      keys.has(selectionKey({ type: "solid", index }))
+        ? clampMovedBounds(solid, dx, dy, map)
+        : solid,
+    ),
+    entities: map.entities.map((entity, index) =>
+      keys.has(selectionKey({ type: "entity", index }))
+        ? { ...entity, bounds: clampMovedBounds(entity.bounds, dx, dy, map) }
+        : entity,
+    ),
   };
 }
 
@@ -606,7 +771,9 @@ export function MapEditor({
   onResetExperience,
 }: MapEditorProps) {
   const [tool, setTool] = useState<EditorTool>("select");
-  const [selection, setSelection] = useState<EditorSelection | null>(null);
+  const [selected, setSelected] = useState<EditorSelection[]>([]);
+  const [gridSnap, setGridSnap] = useState(false);
+  const [marquee, setMarquee] = useState<EditableBounds | null>(null);
   const [draft, setDraft] = useState<EditableBounds | null>(null);
   const [cameraViewport, setCameraViewport] = useState<CameraBounds>(() =>
     cameraBounds(defaultCameraPosition(map)),
@@ -621,7 +788,10 @@ export function MapEditor({
   const drag = useRef<DragState | null>(null);
   const undoStack = useRef<GymMap[]>([]);
   const redoStack = useRef<GymMap[]>([]);
+  const selection = selected.at(-1) ?? null;
+  const selectionCount = selected.length;
   const bounds = selectionBounds(map, selection);
+  const selectionUnion = selectionBoundsUnion(map, selected);
   const selectedEntity =
     selection?.type === "entity" ? map.entities[selection.index] : null;
   const stats = useMemo(
@@ -760,7 +930,7 @@ export function MapEditor({
     const previous = undoStack.current.pop();
     if (!previous) return;
     redoStack.current.push(structuredClone(map));
-    setSelection(null);
+    setSelected([]);
     setHistoryRevision((value) => value + 1);
     onChange(previous);
   };
@@ -769,14 +939,14 @@ export function MapEditor({
     const next = redoStack.current.pop();
     if (!next) return;
     undoStack.current.push(structuredClone(map));
-    setSelection(null);
+    setSelected([]);
     setHistoryRevision((value) => value + 1);
     onChange(next);
   };
 
   const chooseTool = (next: EditorTool) => {
     setTool(next);
-    if (next !== "select") setSelection(null);
+    if (next !== "select") setSelected([]);
   };
 
   const beginSelectionDrag = (
@@ -786,26 +956,44 @@ export function MapEditor({
     if (tool === "erase") {
       event.stopPropagation();
       rememberAndChange(deleteSelection(map, nextSelection));
-      setSelection(null);
+      setSelected([]);
       return;
     }
     if (tool !== "select") return;
     event.stopPropagation();
     const svg = event.currentTarget.ownerSVGElement;
     if (!svg) return;
+    const dragStart = pointInMap(
+      event.clientX,
+      event.clientY,
+      svg,
+      map,
+      cameraViewport,
+    );
+    let nextSelected: EditorSelection[];
+    if (event.ctrlKey) {
+      if (selectionInList(selected, nextSelection)) {
+        setSelected(
+          selected.filter(
+            (candidate) =>
+              selectionKey(candidate) !== selectionKey(nextSelection),
+          ),
+        );
+        return;
+      }
+      nextSelected = [...selected, nextSelection];
+    } else if (selectionInList(selected, nextSelection)) {
+      nextSelected = [...selected];
+    } else {
+      nextSelected = [nextSelection];
+    }
     drag.current = {
       kind: "move-selection",
-      start: pointInMap(
-        event.clientX,
-        event.clientY,
-        svg,
-        map,
-        cameraViewport,
-      ),
+      start: dragStart,
       originalMap: structuredClone(map),
-      selection: nextSelection,
+      selections: nextSelected,
     };
-    setSelection(nextSelection);
+    setSelected(nextSelected);
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
@@ -874,13 +1062,22 @@ export function MapEditor({
       cameraViewport,
     );
     if (tool === "select") {
-      setSelection(null);
-      drag.current = {
-        kind: "pan-camera",
-        start: { x: event.clientX, y: event.clientY },
-        originalMap: structuredClone(map),
-        originalCamera: cameraViewport,
-      };
+      if (event.ctrlKey) {
+        drag.current = {
+          kind: "select-region",
+          start: point,
+          originalMap: structuredClone(map),
+        };
+        setMarquee({ x: point.x, y: point.y, width: 0, height: 0 });
+      } else {
+        setSelected([]);
+        drag.current = {
+          kind: "pan-camera",
+          start: { x: event.clientX, y: event.clientY },
+          originalMap: structuredClone(map),
+          originalCamera: cameraViewport,
+        };
+      }
       event.currentTarget.setPointerCapture(event.pointerId);
     } else if (tool === "solid") {
       drag.current = {
@@ -888,14 +1085,14 @@ export function MapEditor({
         start: point,
         originalMap: structuredClone(map),
       };
-      setDraft(normalizedRect(point, point, map));
+      setDraft(normalizedRect(point, point, map, event.ctrlKey || gridSnap));
       event.currentTarget.setPointerCapture(event.pointerId);
     } else if (tool === "spawn") {
       rememberAndChange({
         ...map,
         spawn: {
-          x: snapToGrid(point.x, map.bounds.x),
-          y: snapToGrid(point.y, map.bounds.y),
+          x: snapCoordinate(point.x, map.bounds.x, event.ctrlKey || gridSnap),
+          y: snapCoordinate(point.y, map.bounds.y, event.ctrlKey || gridSnap),
         },
       });
     } else if (tool.startsWith("entity:")) {
@@ -910,8 +1107,8 @@ export function MapEditor({
       };
       const entity = createEditorBrushEntity(
         templateId,
-        snapToGrid(point.x, map.bounds.x),
-        snapToGrid(point.y, map.bounds.y),
+        snapCoordinate(point.x, map.bounds.x, event.ctrlKey || gridSnap),
+        snapCoordinate(point.y, map.bounds.y, event.ctrlKey || gridSnap),
         spinnerBrushVariant,
       );
       if (!entity) {
@@ -960,8 +1157,13 @@ export function MapEditor({
       map,
       cameraViewport,
     );
+    if (currentDrag.kind === "select-region") {
+      setMarquee(normalizedRegion(currentDrag.start, point));
+      return;
+    }
+    const useGrid = event.ctrlKey || gridSnap;
     if (currentDrag.kind === "create-solid") {
-      setDraft(normalizedRect(currentDrag.start, point, map));
+      setDraft(normalizedRect(currentDrag.start, point, map, useGrid));
       return;
     }
     if (
@@ -973,7 +1175,12 @@ export function MapEditor({
     ) {
       const painted = [...currentDrag.paintedEntities];
       let changed = false;
-      for (const anchor of entityBrushPoints(currentDrag.lastPaintPoint, point, map)) {
+      for (const anchor of entityBrushPoints(
+        currentDrag.lastPaintPoint,
+        point,
+        map,
+        useGrid,
+      )) {
         const entity = createEditorBrushEntity(
           currentDrag.templateId,
           anchor.x,
@@ -997,6 +1204,27 @@ export function MapEditor({
       }
       return;
     }
+    if (currentDrag.kind === "move-selection") {
+      const dx = snapCoordinate(
+        point.x - currentDrag.start.x,
+        0,
+        useGrid,
+      );
+      const dy = snapCoordinate(
+        point.y - currentDrag.start.y,
+        0,
+        useGrid,
+      );
+      onChange(
+        moveSelections(
+          currentDrag.originalMap,
+          currentDrag.selections ?? [],
+          dx,
+          dy,
+        ),
+      );
+      return;
+    }
     const originalBounds = selectionBounds(
       currentDrag.originalMap,
       currentDrag.selection ?? null,
@@ -1007,7 +1235,13 @@ export function MapEditor({
         replaceSelectionBounds(
           currentDrag.originalMap,
           currentDrag.selection,
-          resizeEditorBounds(originalBounds, currentDrag.corner, point, map),
+          resizeEditorBounds(
+            originalBounds,
+            currentDrag.corner,
+            point,
+            map,
+            useGrid,
+          ),
         ),
       );
       return;
@@ -1021,40 +1255,22 @@ export function MapEditor({
         if (index !== currentDrag.selection?.index) return entity;
         const nodes = [...(entity.nodes ?? [])];
         nodes[currentDrag.nodeIndex!] = {
-          x: snapToGrid(point.x - entity.bounds.width / 2, map.bounds.x),
-          y: snapToGrid(point.y - entity.bounds.height / 2, map.bounds.y),
+          x: snapCoordinate(
+            point.x - entity.bounds.width / 2,
+            map.bounds.x,
+            useGrid,
+          ),
+          y: snapCoordinate(
+            point.y - entity.bounds.height / 2,
+            map.bounds.y,
+            useGrid,
+          ),
         };
         return { ...entity, nodes };
       });
       onChange({ ...currentDrag.originalMap, entities });
       return;
     }
-    const dx = snapToGrid(point.x - currentDrag.start.x);
-    const dy = snapToGrid(point.y - currentDrag.start.y);
-    const moved = {
-      ...originalBounds,
-      x: Math.max(
-        map.bounds.x,
-        Math.min(
-          map.bounds.x + map.bounds.width - originalBounds.width,
-          originalBounds.x + dx,
-        ),
-      ),
-      y: Math.max(
-        map.bounds.y,
-        Math.min(
-          map.bounds.y + map.bounds.height - originalBounds.height,
-          originalBounds.y + dy,
-        ),
-      ),
-    };
-    onChange(
-      replaceSelectionBounds(
-        currentDrag.originalMap,
-        currentDrag.selection,
-        moved,
-      ),
-    );
   };
 
   const pointerUp = () => {
@@ -1062,8 +1278,11 @@ export function MapEditor({
     if (!currentDrag) return;
     if (currentDrag.kind === "create-solid" && draft) {
       rememberAndChange({ ...map, solids: [...map.solids, draft] });
-      setSelection({ type: "solid", index: map.solids.length });
+      setSelected([{ type: "solid", index: map.solids.length }]);
       setTool("select");
+    } else if (currentDrag.kind === "select-region") {
+      if (marquee) setSelected(objectsInRegion(map, marquee));
+      setMarquee(null);
     } else if (currentDrag.kind === "paint-entities") {
       finishContinuousChange(currentDrag.originalMap);
     } else if (
@@ -1100,9 +1319,9 @@ export function MapEditor({
   };
 
   const removeSelected = () => {
-    if (!selection) return;
-    rememberAndChange(deleteSelection(map, selection));
-    setSelection(null);
+    if (!selected.length) return;
+    rememberAndChange(deleteSelections(map, selected));
+    setSelected([]);
   };
 
   const updateSelectedEntity = (mutator: (entity: MapEntity) => MapEntity) => {
@@ -1140,18 +1359,21 @@ export function MapEditor({
         return;
       }
       if (event.key === "Escape") {
-        setSelection(null);
+        setSelected([]);
         return;
       }
-      if (!selection || (event.key !== "Delete" && event.key !== "Backspace"))
+      if (
+        !selected.length ||
+        (event.key !== "Delete" && event.key !== "Backspace")
+      )
         return;
       event.preventDefault();
-      rememberAndChange(deleteSelection(map, selection));
-      setSelection(null);
+      rememberAndChange(deleteSelections(map, selected));
+      setSelected([]);
     };
     window.addEventListener("keydown", keydown);
     return () => window.removeEventListener("keydown", keydown);
-  }, [experiencing, map, onResetExperience, selection]);
+  }, [experiencing, map, onResetExperience, selected]);
 
   return (
     <main className={`map-editor ${experiencing ? "experiencing" : ""}`}>
@@ -1182,6 +1404,17 @@ export function MapEditor({
               {toolLabel(candidate)}
             </button>
           ))}
+        </div>
+        <div className="editor-tool-group">
+          <button
+            className={gridSnap ? "active" : ""}
+            onClick={() => setGridSnap((value) => !value)}
+            aria-pressed={gridSnap}
+            title="开启后放置与移动默认对齐 8px 网格；按住 Ctrl 可临时切换"
+          >
+            <EditorIcon><FiGrid /></EditorIcon>
+            网格吸附
+          </button>
         </div>
         <div className="editor-tool-section">
           <small>实体</small>
@@ -1233,9 +1466,9 @@ export function MapEditor({
           </button>
         </div>
         <p className="editor-hint">
-          8 px 网格 · 空白处拖拽平移 · 滚轮缩放
+          1 px 精细对齐 · 按住 Ctrl 或开启“网格吸附”对齐 8 px 网格
           <br />
-          选择对象后可拖动或精确修改 · “适配”显示整张地图
+          Ctrl+拖拽框选区域 · Ctrl+点击多选 · 空白处拖拽平移 · 滚轮缩放
         </p>
       </aside>
 
@@ -1382,7 +1615,7 @@ export function MapEditor({
               {map.solids.map((solid, index) => (
                 <rect
                   key={`solid-${index}`}
-                  className={`editor-object solid ${selection?.type === "solid" && selection.index === index ? "selected" : ""}`}
+                  className={`editor-object solid ${selectionInList(selected, { type: "solid", index }) ? "selected" : ""}`}
                   {...solid}
                   onPointerDown={(event) =>
                     beginSelectionDrag(event, { type: "solid", index })
@@ -1393,14 +1626,15 @@ export function MapEditor({
                 <rect
                   key={`entity-${index}`}
                   data-kind={entity.kind}
-                  className={`editor-object entity ${selection?.type === "entity" && selection.index === index ? "selected" : ""}`}
+                  className={`editor-object entity ${selectionInList(selected, { type: "entity", index }) ? "selected" : ""}`}
                   {...editorEntityHitBounds(entity)}
                   onPointerDown={(event) =>
                     beginSelectionDrag(event, { type: "entity", index })
                   }
                 />
               ))}
-              {selectedEntity?.kind === "zip_mover" &&
+              {selected.length === 1 &&
+                selectedEntity?.kind === "zip_mover" &&
                 selectedEntity.nodes?.map((node, nodeIndex) => (
                   <g className="editor-zip-node" key={nodeIndex}>
                     <line
@@ -1429,7 +1663,7 @@ export function MapEditor({
                     />
                   </g>
                 ))}
-              {selection && bounds && (
+              {selected.length === 1 && selection && bounds && (
                 <g className="editor-resize-handles">
                   {(
                     [
@@ -1452,6 +1686,14 @@ export function MapEditor({
                 </g>
               )}
               {draft && <rect className="editor-draft" {...draft} />}
+              {marquee && <rect className="editor-marquee" {...marquee} />}
+              {selected.length > 1 && selectionUnion && (
+                <rect
+                  className="editor-multi-union"
+                  {...selectionUnion}
+                  pointerEvents="none"
+                />
+              )}
               <g
                 className="editor-spawn"
                 transform={`translate(${map.spawn.x} ${map.spawn.y})`}
@@ -1559,9 +1801,25 @@ export function MapEditor({
       <aside className="editor-inspector">
         <div className="editor-panel-heading">
           <small>INSPECTOR</small>
-          <h2>{selection ? (selectedEntity?.name ?? "实心块") : "房间"}</h2>
+          <h2>
+            {selectionCount > 1
+              ? `已选 ${selectionCount} 个对象`
+              : selection
+                ? (selectedEntity?.name ?? "实心块")
+                : "房间"}
+          </h2>
         </div>
-        {selection && bounds ? (
+        {selectionCount > 1 ? (
+          <div className="editor-multi-fields">
+            <div className="editor-kind">
+              <span>{selectionCount} 个对象已选中</span>
+              <button onClick={removeSelected}>删除对象</button>
+            </div>
+            <p className="editor-multi-hint">
+              拖拽任一选中对象可整体移动；Delete / Backspace 删除全部选中对象；Ctrl+点击可取消单个对象。
+            </p>
+          </div>
+        ) : selection && bounds ? (
           <>
             <div className="editor-kind">
               <span>
@@ -1895,7 +2153,7 @@ export function MapEditor({
             {experiencing
               ? "键盘和手柄输入直接送入 WASM；返回编辑时地图保持不变。"
               : tool === "select"
-                ? "拖动对象移动，拖动四角缩放；Delete / Backspace 删除。"
+                ? "拖动对象移动，拖动四角缩放；Ctrl+点击多选，Ctrl+拖拽框选；Delete / Backspace 删除。"
                 : tool === "solid"
                   ? "在画布空白处拖动，创建新的碰撞块。"
                   : "在画布中点击即可应用当前工具。"}

@@ -221,7 +221,7 @@ describe("MapEditor interactions", () => {
     ).toBeInTheDocument();
   });
 
-  it("paints a continuous row of lethal, surface-aligned spikes while dragging", () => {
+  it("paints a continuous row of lethal, surface-aligned spikes while holding Ctrl (grid snap)", () => {
     const { container, onChange } = editor();
     fireEvent.click(within(container).getByRole("button", { name: "上刺" }));
     const overlay = container.querySelector(".map-editor-overlay")!;
@@ -230,11 +230,13 @@ describe("MapEditor interactions", () => {
       clientX: 80,
       clientY: 304,
       pointerId: 7,
+      ctrlKey: true,
     });
     fireEvent.pointerMove(overlay, {
       clientX: 144,
       clientY: 304,
       pointerId: 7,
+      ctrlKey: true,
     });
     fireEvent.pointerUp(overlay, { pointerId: 7 });
 
@@ -347,4 +349,180 @@ describe("MapEditor interactions", () => {
       view.container.querySelector(".editor-trajectory-line"),
     ).toHaveAttribute("d", expect.stringContaining("L 76 92"));
   });
+
+  it("places solids at 1px resolution by default and on the 8px grid with Ctrl", () => {
+    const { container, onChange } = editor();
+    fireEvent.click(within(container).getByRole("button", { name: "实心块" }));
+    const overlay = container.querySelector(".map-editor-overlay")!;
+    const background = container.querySelector(".editor-map-hitarea")!;
+
+    fireEvent.pointerDown(background, {
+      clientX: 22,
+      clientY: 100,
+      pointerId: 1,
+    });
+    fireEvent.pointerMove(overlay, { clientX: 26, clientY: 100, pointerId: 1 });
+    fireEvent.pointerUp(overlay, { pointerId: 1 });
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        solids: [
+          expect.objectContaining({ x: 0, y: 152, width: 320, height: 28 }),
+          { x: 11, y: 50, width: 2, height: 1 },
+        ],
+      }),
+    );
+
+    fireEvent.click(within(container).getByRole("button", { name: "实心块" }));
+    fireEvent.pointerDown(background, {
+      clientX: 22,
+      clientY: 100,
+      pointerId: 2,
+      ctrlKey: true,
+    });
+    fireEvent.pointerMove(overlay, {
+      clientX: 38,
+      clientY: 116,
+      pointerId: 2,
+      ctrlKey: true,
+    });
+    fireEvent.pointerUp(overlay, { pointerId: 2 });
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        solids: expect.arrayContaining([
+          { x: 8, y: 48, width: 8, height: 8 },
+        ]),
+      }),
+    );
+  });
+
+  it("snaps to the 8px grid when the grid-snap toggle is enabled", () => {
+    const { container, onChange } = editor();
+    fireEvent.click(within(container).getByRole("button", { name: "网格吸附" }));
+    fireEvent.click(within(container).getByRole("button", { name: "实心块" }));
+    const overlay = container.querySelector(".map-editor-overlay")!;
+    const background = container.querySelector(".editor-map-hitarea")!;
+    fireEvent.pointerDown(background, {
+      clientX: 22,
+      clientY: 100,
+      pointerId: 3,
+    });
+    fireEvent.pointerMove(overlay, {
+      clientX: 38,
+      clientY: 116,
+      pointerId: 3,
+    });
+    fireEvent.pointerUp(overlay, { pointerId: 3 });
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        solids: expect.arrayContaining([
+          { x: 8, y: 48, width: 8, height: 8 },
+        ]),
+      }),
+    );
+  });
+
+  it("ctrl-clicks multiple objects and drags them together", () => {
+    const map = createBlankGymMap();
+    map.solids = [
+      { x: 10, y: 10, width: 20, height: 20 },
+      { x: 60, y: 10, width: 20, height: 20 },
+      { x: 200, y: 100, width: 20, height: 20 },
+    ];
+    const { container, onChange } = editor(map);
+    const solids = () => container.querySelectorAll(".editor-object.solid");
+
+    fireEvent.pointerDown(solids()[0], {
+      clientX: 40,
+      clientY: 40,
+      pointerId: 4,
+      ctrlKey: true,
+    });
+    fireEvent.pointerUp(container.querySelector(".map-editor-overlay")!, {
+      pointerId: 4,
+    });
+    fireEvent.pointerDown(solids()[1], {
+      clientX: 140,
+      clientY: 40,
+      pointerId: 5,
+      ctrlKey: true,
+    });
+    fireEvent.pointerUp(container.querySelector(".map-editor-overlay")!, {
+      pointerId: 5,
+    });
+    expect(container.querySelectorAll(".editor-object.selected")).toHaveLength(
+      2,
+    );
+    expect(container.querySelector(".editor-resize-handles")).toBeNull();
+    expect(container.querySelector(".editor-multi-union")).not.toBeNull();
+
+    fireEvent.pointerDown(solids()[1], {
+      clientX: 140,
+      clientY: 40,
+      pointerId: 6,
+    });
+    fireEvent.pointerMove(container.querySelector(".map-editor-overlay")!, {
+      clientX: 180,
+      clientY: 60,
+      pointerId: 6,
+    });
+    fireEvent.pointerUp(container.querySelector(".map-editor-overlay")!, {
+      pointerId: 6,
+    });
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        solids: [
+          { x: 30, y: 20, width: 20, height: 20 },
+          { x: 80, y: 20, width: 20, height: 20 },
+          { x: 200, y: 100, width: 20, height: 20 },
+        ],
+      }),
+    );
+  });
+
+  it("ctrl-drag selects every object inside the region and Delete removes them", () => {
+    const map = createBlankGymMap();
+    map.solids = [
+      { x: 10, y: 10, width: 20, height: 20 },
+      { x: 60, y: 10, width: 20, height: 20 },
+      { x: 200, y: 100, width: 20, height: 20 },
+    ];
+    map.entities.push({
+      kind: "strawberry",
+      bounds: { x: 40, y: 10, width: 16, height: 16 },
+      direction: { x: 0, y: 0 },
+      name: "strawberry",
+    });
+    const { container, onChange } = editor(map);
+    const overlay = container.querySelector(".map-editor-overlay")!;
+    const background = container.querySelector(".editor-map-hitarea")!;
+
+    fireEvent.pointerDown(background, {
+      clientX: 20,
+      clientY: 20,
+      pointerId: 7,
+      ctrlKey: true,
+    });
+    fireEvent.pointerMove(overlay, {
+      clientX: 180,
+      clientY: 60,
+      pointerId: 7,
+      ctrlKey: true,
+    });
+    expect(container.querySelector(".editor-marquee")).not.toBeNull();
+    fireEvent.pointerUp(overlay, { pointerId: 7 });
+
+    expect(container.querySelectorAll(".editor-object.selected")).toHaveLength(
+      3,
+    );
+    expect(container.querySelector(".editor-multi-union")).not.toBeNull();
+
+    fireEvent.keyDown(window, { key: "Delete" });
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        solids: [{ x: 200, y: 100, width: 20, height: 20 }],
+        entities: [],
+      }),
+    );
+  });
+
 });
