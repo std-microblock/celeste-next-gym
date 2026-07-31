@@ -58,8 +58,33 @@ fn apply_beginner_gym_tiles(root: &mut BinaryElement) -> Result<String, &'static
             return Err("solids layer has no string grid");
         };
         *grid = grid.replace('1', "Y");
+        skin_beginner_gym_spikes(level);
     }
     start_level.ok_or("map has no level")
+}
+
+/// Beginner Gym's spike skin. Vanilla Spikes entities (spikesUp/Down/Left/Right)
+/// carry a type attribute; pointing it at the SJ2021 path makes Spikes.Added load
+/// danger/spikes/SJ2021/Gym/beg_<dir>, the exact atlas keys the SJ2021 mod ships.
+fn skin_beginner_gym_spikes(level: &mut BinaryElement) {
+    let Some(entities) = level
+        .children
+        .iter_mut()
+        .find(|child| child.name == "entities")
+    else {
+        return;
+    };
+    for entity in &mut entities.children {
+        if matches!(
+            entity.name.as_str(),
+            "spikesUp" | "spikesDown" | "spikesLeft" | "spikesRight"
+        ) {
+            entity.attributes.insert(
+                "type".to_owned(),
+                BinaryValue::String("SJ2021/Gym/beg".to_owned()),
+            );
+        }
+    }
 }
 
 fn metadata(start_level: String) -> BinaryElement {
@@ -78,6 +103,7 @@ fn metadata(start_level: String) -> BinaryElement {
             ("Interlude".to_owned(), BinaryValue::Bool(false)),
             ("IntroType".to_owned(), BinaryValue::String("None".to_owned())),
             ("OverrideASideMeta".to_owned(), BinaryValue::Bool(true)),
+            ("Spike".to_owned(), BinaryValue::String("SJ2021/Gym/beg".to_owned())),
             ("TitleAccentColor".to_owned(), BinaryValue::String("7eb2dd".to_owned())),
             ("TitleBaseColor".to_owned(), BinaryValue::String("1a2438".to_owned())),
             ("TitleTextColor".to_owned(), BinaryValue::String("ffffff".to_owned())),

@@ -28,14 +28,10 @@ describe("visual themes", () => {
       ["celeste", "strawberry-jam"],
     );
     for (const theme of VISUAL_THEMES)
-      expect(theme.tileset).toMatch(/^(tilesets|sj\/tilesets)\//);
-    expect(visualThemeById("celestial-resort").spike).toBe(
-      "danger/spikes/default",
-    );
-    expect(visualThemeById("golden-ridge").spike).toBe(
-      "danger/spikes/cliffside",
-    );
-    expect(visualThemeById("summit").spike).toBe("danger/spikes/outline");
+      expect(theme.tileset).toMatch(/^tilesets\//);
+    expect(visualThemeById("celestial-resort").spike).toBe("default");
+    expect(visualThemeById("golden-ridge").spike).toBe("cliffside");
+    expect(visualThemeById("summit").spike).toBe("outline");
   });
 
   it("includes every Strawberry Jam gym tier with its native autotiler layout", () => {
@@ -63,13 +59,17 @@ describe("visual themes", () => {
         expect(entries[layer.key]).toBeDefined();
       }
       for (const direction of ["up", "down", "left", "right"]) {
+        // powerav ships its downward frame under the misspelled spacet_down00
+        // name, so space_down is absent exactly as in the original mod.
+        if (theme.spike === "SJ2021/powerav/space" && direction === "down")
+          continue;
         expect(
           Object.keys(entries).some((key) =>
-            key.startsWith(`${theme.spike}_${direction}`),
+            key.startsWith(`danger/spikes/${theme.spike}_${direction}`),
           ),
         ).toBe(true);
       }
-      if (theme.spinner.foreground.startsWith("sj/")) {
+      if (!theme.spinner.foreground.startsWith("danger/crystal/")) {
         expect(
           Object.keys(entries).some((key) =>
             key.startsWith(theme.spinner.foreground),

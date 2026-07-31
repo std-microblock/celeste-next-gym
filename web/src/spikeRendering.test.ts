@@ -44,11 +44,11 @@ describe("spike rendering", () => {
   });
 
   it("falls back to vanilla spikes when a custom theme is missing one direction", () => {
-    expect(spikeTexturePrefixes("sj/spikes/gym/int", "left")).toEqual([
-      "sj/spikes/gym/int_left",
+    expect(spikeTexturePrefixes("SJ2021/Gym/int", "left")).toEqual([
+      "danger/spikes/SJ2021/Gym/int_left",
       "danger/spikes/default_left",
     ]);
-    expect(spikeTexturePrefixes("danger/spikes/default", "up")).toEqual([
+    expect(spikeTexturePrefixes("default", "up")).toEqual([
       "danger/spikes/default_up",
     ]);
   });

@@ -12,184 +12,146 @@ if (!source || !destination) {
   process.exit(2);
 }
 
+/**
+ * Original Gameplay atlas paths selected from Strawberry Jam 2021. Every key in
+ * the packed atlas is the exact path under Graphics/Atlases/Gameplay minus the
+ * .png extension, i.e. the same key Everest produces when the mod's loose PNGs
+ * are merged into the Gameplay atlas. No renaming happens here, so the themes
+ * can reference the same values a Celeste map would use:
+ *   - tilesets via ForegroundTiles XML path="tilesets/..."
+ *   - spikes via the Spike meta / entity type "danger/spikes/<type>_<dir>"
+ *   - spinners via their atlas prefix
+ *   - backdrops via bgs/<...>
+ */
 const themeAssets = [
-  ["sj/tilesets/gym/beginner", "tilesets/SJ2021/Gym/BeginnerGym.png"],
-  ["sj/tilesets/gym/intermediate", "tilesets/SJ2021/Gym/IntermediateGym.png"],
-  ["sj/tilesets/gym/advanced", "tilesets/SJ2021/Gym/AdvancedGym.png"],
-  ["sj/tilesets/gym/expert", "tilesets/SJ2021/Gym/ExpertGym.png"],
-  ["sj/tilesets/gym/grandmaster", "tilesets/SJ2021/Gym/GrandmasterGym.png"],
-  ["sj/bgs/gym/beginner-dark", "bgs/SJ2021/Gym/begGymDarkBG.png"],
-  ["sj/bgs/gym/intermediate-dark", "bgs/SJ2021/Gym/intGymDarkBG.png"],
-  ["sj/bgs/gym/advanced-dark", "bgs/SJ2021/Gym/advGymDarkBG.png"],
-  ["sj/bgs/gym/expert-dark", "bgs/SJ2021/Gym/expGymDarkBG.png"],
-  ["sj/bgs/gym/grandmaster-dark", "bgs/SJ2021/Gym/gmGymDarkBG.png"],
-  [
-    "sj/tilesets/lobby/beginner-cliff",
-    "tilesets/SJ2021/BeginnerLobby/lobbyCliff.png",
-  ],
-  ["sj/bgs/lobby/beginner/sky", "bgs/SJ2021/BeginnerLobby/main/sky.png"],
-  ["sj/bgs/lobby/beginner/clouds", "bgs/SJ2021/BeginnerLobby/main/clouds.png"],
-  [
-    "sj/bgs/lobby/beginner/islands",
-    "bgs/SJ2021/BeginnerLobby/main/islands.png",
-  ],
-  [
-    "sj/tilesets/lobby/intermediate-girder",
-    "tilesets/SJ2021/Int_Lobby/IntGirderFg.png",
-  ],
-  ["sj/bgs/lobby/intermediate/skybox", "bgs/SJ2021/Int_Lobby/skybox.png"],
-  ["sj/bgs/lobby/intermediate/hills", "bgs/SJ2021/Int_Lobby/bghills.png"],
-  [
-    "sj/bgs/lobby/intermediate/foreground-hills",
-    "bgs/SJ2021/Int_Lobby/fghills.png",
-  ],
-  [
-    "sj/tilesets/lobby/advanced-cloud",
-    "tilesets/SJ2021/Advanced_Lobby/advCloudSunset.png",
-  ],
-  [
-    "sj/bgs/lobby/advanced/sunset",
-    "bgs/SJ2021/Advanced Lobby/sunset/sunset.png",
-  ],
-  [
-    "sj/bgs/lobby/advanced/mountains",
-    "bgs/SJ2021/Advanced Lobby/sunset/sunsetmountains.png",
-  ],
-  [
-    "sj/bgs/lobby/advanced/dunes",
-    "bgs/SJ2021/Advanced Lobby/sunset/sunsetdunes.png",
-  ],
-  [
-    "sj/tilesets/lobby/expert-vegetation",
-    "tilesets/SJ2021/ExpertLobby/spaceVegetation.png",
-  ],
-  ["sj/bgs/lobby/expert/space", "bgs/SJ2021/ExpertLobby/space.png"],
-  ["sj/bgs/lobby/expert/nebulae", "bgs/SJ2021/ExpertLobby/nebulae.png"],
-  ["sj/bgs/lobby/expert/planets", "bgs/SJ2021/ExpertLobby/planets.png"],
-  [
-    "sj/tilesets/lobby/grandmaster-grass",
-    "tilesets/SJ2021/Grandmaster/elysianGrass.png",
-  ],
-  ["sj/bgs/lobby/grandmaster/sky", "bgs/SJ2021/GMLobby/sky.png"],
-  ["sj/bgs/lobby/grandmaster/mountains", "bgs/SJ2021/GMLobby/mountains.png"],
-  ["sj/bgs/lobby/grandmaster/clouds", "bgs/SJ2021/GMLobby/cloud-group-1.png"],
+  // Gym tilesets (the five official SJ2021 palettes).
+  "tilesets/SJ2021/Gym/BeginnerGym.png",
+  "tilesets/SJ2021/Gym/IntermediateGym.png",
+  "tilesets/SJ2021/Gym/AdvancedGym.png",
+  "tilesets/SJ2021/Gym/ExpertGym.png",
+  "tilesets/SJ2021/Gym/GrandmasterGym.png",
+  // Lobby tilesets.
+  "tilesets/SJ2021/BeginnerLobby/lobbyCliff.png",
+  "tilesets/SJ2021/Int_Lobby/IntGirderFg.png",
+  "tilesets/SJ2021/Advanced_Lobby/advCloudSunset.png",
+  "tilesets/SJ2021/ExpertLobby/spaceVegetation.png",
+  "tilesets/SJ2021/Grandmaster/elysianGrass.png",
+  // Gym dark-mode backgrounds.
+  "bgs/SJ2021/Gym/begGymDarkBG.png",
+  "bgs/SJ2021/Gym/intGymDarkBG.png",
+  "bgs/SJ2021/Gym/advGymDarkBG.png",
+  "bgs/SJ2021/Gym/expGymDarkBG.png",
+  "bgs/SJ2021/Gym/gmGymDarkBG.png",
+  // Lobby backgrounds.
+  "bgs/SJ2021/BeginnerLobby/main/sky.png",
+  "bgs/SJ2021/BeginnerLobby/main/sky_top_gradient.png",
+  "bgs/SJ2021/BeginnerLobby/main/sun.png",
+  "bgs/SJ2021/BeginnerLobby/main/sun_reflection.png",
+  "bgs/SJ2021/BeginnerLobby/main/clouds.png",
+  "bgs/SJ2021/BeginnerLobby/main/clouds_reflection.png",
+  "bgs/SJ2021/BeginnerLobby/main/islands.png",
+  "bgs/SJ2021/BeginnerLobby/main/islands_reflection.png",
+  "bgs/SJ2021/BeginnerLobby/main/water_gradient.png",
+  "bgs/SJ2021/BeginnerLobby/main/water_bg.png",
+  "bgs/SJ2021/Int_Lobby/skybox.png",
+  "bgs/SJ2021/Int_Lobby/bghills.png",
+  "bgs/SJ2021/Int_Lobby/fghills.png",
+  "bgs/SJ2021/Advanced Lobby/sunset/sunset.png",
+  "bgs/SJ2021/Advanced Lobby/sunset/sunsetmountains.png",
+  "bgs/SJ2021/Advanced Lobby/sunset/sunsetdunes.png",
+  "bgs/SJ2021/ExpertLobby/space.png",
+  "bgs/SJ2021/ExpertLobby/nebulae.png",
+  "bgs/SJ2021/ExpertLobby/planets.png",
+  "bgs/SJ2021/GMLobby/sky.png",
+  "bgs/SJ2021/GMLobby/mountains.png",
+  "bgs/SJ2021/GMLobby/cloud-group-1.png",
 ];
 
-function addDirectionalSpikes(keyPrefix, sourceRoot, files) {
-  for (const [direction, names] of Object.entries(files)) {
-    names.forEach((name, index) =>
-      themeAssets.push([
-        `${keyPrefix}_${direction}${String(index).padStart(2, "0")}`,
-        `${sourceRoot}/${name}`,
-      ]),
-    );
+function directionalSpikes(prefix, directions) {
+  const paths = [];
+  for (const names of Object.values(directions)) {
+    for (const name of names) paths.push(`${prefix}/${name}.png`);
   }
+  return paths;
 }
 
-function addSpinner(keyPrefix, sourceRoot, backgroundName = "bg00.png") {
-  for (let index = 0; index < 4; index += 1) {
-    const suffix = String(index).padStart(2, "0");
-    themeAssets.push([
-      `${keyPrefix}/fg${suffix}`,
-      `${sourceRoot}/fg${suffix}.png`,
-    ]);
-  }
-  themeAssets.push([`${keyPrefix}/bg00`, `${sourceRoot}/${backgroundName}`]);
+// Gym spikes. Note intermediate has no numeric suffix on its left texture
+// (int_left.png), exactly like the mod ships it.
+for (const tier of ["beg", "int", "adv", "exp", "gm"]) {
+  themeAssets.push(
+    ...directionalSpikes("danger/spikes/SJ2021/Gym", {
+      up: [`${tier}_up00`],
+      down: [`${tier}_down00`],
+      left: [tier === "int" ? "int_left" : `${tier}_left00`],
+      right: [`${tier}_right00`],
+    }),
+  );
 }
 
-addDirectionalSpikes("sj/spikes/gym/beg", "danger/spikes/SJ2021/Gym", {
-  up: ["beg_up00.png"],
-  down: ["beg_down00.png"],
-  left: ["beg_left00.png"],
-  right: ["beg_right00.png"],
-});
-addDirectionalSpikes("sj/spikes/gym/int", "danger/spikes/SJ2021/Gym", {
-  up: ["int_up00.png"],
-  down: ["int_down00.png"],
-  left: ["int_left.png"],
-  right: ["int_right00.png"],
-});
-addDirectionalSpikes("sj/spikes/gym/adv", "danger/spikes/SJ2021/Gym", {
-  up: ["adv_up00.png"],
-  down: ["adv_down00.png"],
-  left: ["adv_left00.png"],
-  right: ["adv_right00.png"],
-});
-addDirectionalSpikes("sj/spikes/gym/exp", "danger/spikes/SJ2021/Gym", {
-  up: ["exp_up00.png"],
-  down: ["exp_down00.png"],
-  left: ["exp_left00.png"],
-  right: ["exp_right00.png"],
-});
-addDirectionalSpikes("sj/spikes/gym/gm", "danger/spikes/SJ2021/Gym", {
-  up: ["gm_up00.png"],
-  down: ["gm_down00.png"],
-  left: ["gm_left00.png"],
-  right: ["gm_right00.png"],
-});
-addDirectionalSpikes(
-  "sj/spikes/lobby/beginner-bramble",
-  "danger/spikes/SJ2021/1-Beginner",
-  {
-    up: [
-      "bramble_up00.png",
-      "bramble_up01.png",
-      "bramble_up02.png",
-      "bramble_up03.png",
-    ],
-    down: ["bramble_down00.png", "bramble_down01.png", "bramble_down02.png"],
-    left: ["bramble_left00.png", "bramble_left01.png", "bramble_left02.png"],
-    right: [
-      "bramble_right00.png",
-      "bramble_right01.png",
-      "bramble_right02.png",
-    ],
-  },
+// Lobby spikes.
+themeAssets.push(
+  ...directionalSpikes("danger/spikes/SJ2021/1-Beginner", {
+    up: ["bramble_up00", "bramble_up01", "bramble_up02", "bramble_up03"],
+    down: ["bramble_down00", "bramble_down01", "bramble_down02"],
+    left: ["bramble_left00", "bramble_left01", "bramble_left02"],
+    right: ["bramble_right00", "bramble_right01", "bramble_right02"],
+  }),
 );
-addDirectionalSpikes(
-  "sj/spikes/lobby/intermediate-pixel",
-  "danger/spikes/SJ2021/pixelator",
-  {
-    up: ["v_up00.png"],
-    down: ["v_down00.png"],
-    left: ["v_left00.png"],
-    right: ["v_right00.png"],
-  },
+themeAssets.push(
+  ...directionalSpikes("danger/spikes/SJ2021/pixelator", {
+    up: ["v_up00"],
+    down: ["v_down00"],
+    left: ["v_left00"],
+    right: ["v_right00"],
+  }),
 );
-addDirectionalSpikes(
-  "sj/spikes/lobby/advanced-orange",
-  "danger/spikes/SJ2021/Archire",
-  {
-    up: ["orange_up00.png"],
-    down: ["orange_down00.png"],
-    left: ["orange_left00.png"],
-    right: ["orange_right00.png"],
-  },
+themeAssets.push(
+  ...directionalSpikes("danger/spikes/SJ2021/Archire", {
+    up: ["orange_up00"],
+    down: ["orange_down00"],
+    left: ["orange_left00"],
+    right: ["orange_right00"],
+  }),
 );
-addDirectionalSpikes(
-  "sj/spikes/lobby/expert-space",
-  "danger/spikes/SJ2021/powerav",
-  {
-    up: ["space_up00.png"],
-    down: ["spacet_down00.png"],
-    left: ["space_left00.png"],
-    right: ["space_right00.png"],
-  },
+// powerav ships its downward frame under the misspelled spacet_down00 name;
+// the key stays untouched so the atlas matches the mod verbatim.
+themeAssets.push(
+  ...directionalSpikes("danger/spikes/SJ2021/powerav", {
+    up: ["space_up00"],
+    down: ["spacet_down00"],
+    left: ["space_left00"],
+    right: ["space_right00"],
+  }),
 );
-addDirectionalSpikes(
-  "sj/spikes/lobby/grandmaster-marble",
-  "danger/spikes/SJ2021/Grandmaster",
-  {
-    up: ["marble_up00.png"],
-    down: ["marble_down00.png"],
-    left: ["marble_left00.png"],
-    right: ["marble_right00.png"],
-  },
+themeAssets.push(
+  ...directionalSpikes("danger/spikes/SJ2021/Grandmaster", {
+    up: ["marble_up00"],
+    down: ["marble_down00"],
+    left: ["marble_left00"],
+    right: ["marble_right00"],
+  }),
 );
 
-addSpinner("sj/spinners/beginner", "danger/spikes/SJ2021/1-Beginner/brambles");
-addSpinner("sj/spinners/intermediate", "danger/SJ2021/Ceph/Spinner", "bg.png");
-addSpinner("sj/spinners/advanced", "danger/SJ2021/Julia/Spinner", "bg.png");
+// Custom lobby spinner sheets. Backgrounds may be a single bg (Ceph/Julia) or
+// bg00 (brambles), exactly as the SJ mod's texture caches reference them.
+themeAssets.push(
+  ...directionalSpikes("danger/spikes/SJ2021/1-Beginner/brambles", {
+    up: ["fg00", "fg01", "fg02", "fg03"],
+    down: ["bg00"],
+  }),
+);
+themeAssets.push(
+  ...directionalSpikes("danger/SJ2021/Ceph/Spinner", {
+    up: ["fg00", "fg01", "fg02", "fg03"],
+    down: ["bg"],
+  }),
+);
+themeAssets.push(
+  ...directionalSpikes("danger/SJ2021/Julia/Spinner", {
+    up: ["fg00", "fg01", "fg02", "fg03"],
+    down: ["bg"],
+  }),
+);
 
 const gameplayRoot = path.join(source, "Graphics", "Atlases", "Gameplay");
 const sheetWidth = 1024;
@@ -199,7 +161,8 @@ let cursorY = padding;
 let rowHeight = 0;
 const placements = [];
 
-for (const [key, relativePath] of themeAssets) {
+for (const relativePath of themeAssets) {
+  const key = relativePath.slice(0, -".png".length);
   const input = path.join(gameplayRoot, ...relativePath.split("/"));
   const metadata = await sharp(input).metadata();
   if (!metadata.width || !metadata.height)

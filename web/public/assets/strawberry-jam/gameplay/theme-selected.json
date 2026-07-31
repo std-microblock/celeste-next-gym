@@ -1,6 +1,6 @@
 {
   "entries": {
-    "sj/tilesets/gym/beginner": {
+    "tilesets/SJ2021/Gym/BeginnerGym": {
       "x": 2,
       "y": 2,
       "width": 24,
@@ -10,7 +10,7 @@
       "frameWidth": 24,
       "frameHeight": 136
     },
-    "sj/tilesets/gym/intermediate": {
+    "tilesets/SJ2021/Gym/IntermediateGym": {
       "x": 28,
       "y": 2,
       "width": 24,
@@ -20,7 +20,7 @@
       "frameWidth": 24,
       "frameHeight": 136
     },
-    "sj/tilesets/gym/advanced": {
+    "tilesets/SJ2021/Gym/AdvancedGym": {
       "x": 54,
       "y": 2,
       "width": 24,
@@ -30,7 +30,7 @@
       "frameWidth": 24,
       "frameHeight": 136
     },
-    "sj/tilesets/gym/expert": {
+    "tilesets/SJ2021/Gym/ExpertGym": {
       "x": 80,
       "y": 2,
       "width": 24,
@@ -40,7 +40,7 @@
       "frameWidth": 24,
       "frameHeight": 136
     },
-    "sj/tilesets/gym/grandmaster": {
+    "tilesets/SJ2021/Gym/GrandmasterGym": {
       "x": 106,
       "y": 2,
       "width": 24,
@@ -50,58 +50,18 @@
       "frameWidth": 24,
       "frameHeight": 136
     },
-    "sj/bgs/gym/beginner-dark": {
+    "tilesets/SJ2021/BeginnerLobby/lobbyCliff": {
       "x": 132,
       "y": 2,
-      "width": 64,
-      "height": 8,
+      "width": 48,
+      "height": 120,
       "drawOffsetX": 0,
       "drawOffsetY": 0,
-      "frameWidth": 64,
-      "frameHeight": 8
+      "frameWidth": 48,
+      "frameHeight": 120
     },
-    "sj/bgs/gym/intermediate-dark": {
-      "x": 198,
-      "y": 2,
-      "width": 64,
-      "height": 8,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 64,
-      "frameHeight": 8
-    },
-    "sj/bgs/gym/advanced-dark": {
-      "x": 264,
-      "y": 2,
-      "width": 64,
-      "height": 8,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 64,
-      "frameHeight": 8
-    },
-    "sj/bgs/gym/expert-dark": {
-      "x": 330,
-      "y": 2,
-      "width": 64,
-      "height": 8,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 64,
-      "frameHeight": 8
-    },
-    "sj/bgs/gym/grandmaster-dark": {
-      "x": 396,
-      "y": 2,
-      "width": 64,
-      "height": 8,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 64,
-      "frameHeight": 8
-    },
-    "sj/tilesets/lobby/beginner-cliff": {
-      "x": 462,
+    "tilesets/SJ2021/Int_Lobby/IntGirderFg": {
+      "x": 182,
       "y": 2,
       "width": 48,
       "height": 120,
@@ -110,59 +70,89 @@
       "frameWidth": 48,
       "frameHeight": 120
     },
-    "sj/bgs/lobby/beginner/sky": {
-      "x": 512,
+    "tilesets/SJ2021/Advanced_Lobby/advCloudSunset": {
+      "x": 232,
       "y": 2,
-      "width": 320,
-      "height": 180,
+      "width": 48,
+      "height": 120,
       "drawOffsetX": 0,
       "drawOffsetY": 0,
-      "frameWidth": 320,
-      "frameHeight": 180
+      "frameWidth": 48,
+      "frameHeight": 120
     },
-    "sj/bgs/lobby/beginner/clouds": {
-      "x": 2,
-      "y": 184,
-      "width": 320,
-      "height": 180,
+    "tilesets/SJ2021/ExpertLobby/spaceVegetation": {
+      "x": 282,
+      "y": 2,
+      "width": 48,
+      "height": 120,
       "drawOffsetX": 0,
       "drawOffsetY": 0,
-      "frameWidth": 320,
-      "frameHeight": 180
+      "frameWidth": 48,
+      "frameHeight": 120
     },
-    "sj/bgs/lobby/beginner/islands": {
-      "x": 324,
-      "y": 184,
-      "width": 320,
-      "height": 180,
+    "tilesets/SJ2021/Grandmaster/elysianGrass": {
+      "x": 332,
+      "y": 2,
+      "width": 48,
+      "height": 120,
       "drawOffsetX": 0,
       "drawOffsetY": 0,
-      "frameWidth": 320,
-      "frameHeight": 180
+      "frameWidth": 48,
+      "frameHeight": 120
     },
-    "sj/tilesets/lobby/intermediate-girder": {
+    "bgs/SJ2021/Gym/begGymDarkBG": {
+      "x": 382,
+      "y": 2,
+      "width": 64,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 64,
+      "frameHeight": 8
+    },
+    "bgs/SJ2021/Gym/intGymDarkBG": {
+      "x": 448,
+      "y": 2,
+      "width": 64,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 64,
+      "frameHeight": 8
+    },
+    "bgs/SJ2021/Gym/advGymDarkBG": {
+      "x": 514,
+      "y": 2,
+      "width": 64,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 64,
+      "frameHeight": 8
+    },
+    "bgs/SJ2021/Gym/expGymDarkBG": {
+      "x": 580,
+      "y": 2,
+      "width": 64,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 64,
+      "frameHeight": 8
+    },
+    "bgs/SJ2021/Gym/gmGymDarkBG": {
       "x": 646,
-      "y": 184,
-      "width": 48,
-      "height": 120,
+      "y": 2,
+      "width": 64,
+      "height": 8,
       "drawOffsetX": 0,
       "drawOffsetY": 0,
-      "frameWidth": 48,
-      "frameHeight": 120
+      "frameWidth": 64,
+      "frameHeight": 8
     },
-    "sj/bgs/lobby/intermediate/skybox": {
-      "x": 696,
-      "y": 184,
-      "width": 320,
-      "height": 180,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 320,
-      "frameHeight": 180
-    },
-    "sj/bgs/lobby/intermediate/hills": {
+    "bgs/SJ2021/BeginnerLobby/main/sky": {
       "x": 2,
-      "y": 366,
+      "y": 140,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -170,9 +160,119 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "sj/bgs/lobby/intermediate/foreground-hills": {
+    "bgs/SJ2021/BeginnerLobby/main/sky_top_gradient": {
       "x": 324,
-      "y": 366,
+      "y": 140,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/BeginnerLobby/main/sun": {
+      "x": 646,
+      "y": 140,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/BeginnerLobby/main/sun_reflection": {
+      "x": 2,
+      "y": 322,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/BeginnerLobby/main/clouds": {
+      "x": 324,
+      "y": 322,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/BeginnerLobby/main/clouds_reflection": {
+      "x": 646,
+      "y": 322,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/BeginnerLobby/main/islands": {
+      "x": 2,
+      "y": 504,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/BeginnerLobby/main/islands_reflection": {
+      "x": 324,
+      "y": 504,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/BeginnerLobby/main/water_gradient": {
+      "x": 646,
+      "y": 504,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/BeginnerLobby/main/water_bg": {
+      "x": 2,
+      "y": 686,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Int_Lobby/skybox": {
+      "x": 324,
+      "y": 686,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Int_Lobby/bghills": {
+      "x": 646,
+      "y": 686,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Int_Lobby/fghills": {
+      "x": 2,
+      "y": 868,
       "width": 500,
       "height": 260,
       "drawOffsetX": 0,
@@ -180,19 +280,9 @@
       "frameWidth": 500,
       "frameHeight": 260
     },
-    "sj/tilesets/lobby/advanced-cloud": {
-      "x": 826,
-      "y": 366,
-      "width": 48,
-      "height": 120,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 48,
-      "frameHeight": 120
-    },
-    "sj/bgs/lobby/advanced/sunset": {
-      "x": 2,
-      "y": 628,
+    "bgs/SJ2021/Advanced Lobby/sunset/sunset": {
+      "x": 504,
+      "y": 868,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -200,9 +290,19 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "sj/bgs/lobby/advanced/mountains": {
+    "bgs/SJ2021/Advanced Lobby/sunset/sunsetmountains": {
+      "x": 2,
+      "y": 1130,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Advanced Lobby/sunset/sunsetdunes": {
       "x": 324,
-      "y": 628,
+      "y": 1130,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -210,9 +310,9 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "sj/bgs/lobby/advanced/dunes": {
+    "bgs/SJ2021/ExpertLobby/space": {
       "x": 646,
-      "y": 628,
+      "y": 1130,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -220,19 +320,9 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "sj/tilesets/lobby/expert-vegetation": {
-      "x": 968,
-      "y": 628,
-      "width": 48,
-      "height": 120,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 48,
-      "frameHeight": 120
-    },
-    "sj/bgs/lobby/expert/space": {
+    "bgs/SJ2021/ExpertLobby/nebulae": {
       "x": 2,
-      "y": 810,
+      "y": 1312,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -240,9 +330,9 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "sj/bgs/lobby/expert/nebulae": {
+    "bgs/SJ2021/ExpertLobby/planets": {
       "x": 324,
-      "y": 810,
+      "y": 1312,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -250,29 +340,9 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "sj/bgs/lobby/expert/planets": {
+    "bgs/SJ2021/GMLobby/sky": {
       "x": 646,
-      "y": 810,
-      "width": 320,
-      "height": 180,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 320,
-      "frameHeight": 180
-    },
-    "sj/tilesets/lobby/grandmaster-grass": {
-      "x": 968,
-      "y": 810,
-      "width": 48,
-      "height": 120,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 48,
-      "frameHeight": 120
-    },
-    "sj/bgs/lobby/grandmaster/sky": {
-      "x": 2,
-      "y": 992,
+      "y": 1312,
       "width": 320,
       "height": 224,
       "drawOffsetX": 0,
@@ -280,9 +350,9 @@
       "frameWidth": 320,
       "frameHeight": 224
     },
-    "sj/bgs/lobby/grandmaster/mountains": {
+    "bgs/SJ2021/GMLobby/mountains": {
       "x": 2,
-      "y": 1218,
+      "y": 1538,
       "width": 880,
       "height": 168,
       "drawOffsetX": 0,
@@ -290,9 +360,9 @@
       "frameWidth": 880,
       "frameHeight": 168
     },
-    "sj/bgs/lobby/grandmaster/clouds": {
+    "bgs/SJ2021/GMLobby/cloud-group-1": {
       "x": 2,
-      "y": 1388,
+      "y": 1708,
       "width": 152,
       "height": 128,
       "drawOffsetX": 0,
@@ -300,9 +370,9 @@
       "frameWidth": 152,
       "frameHeight": 128
     },
-    "sj/spikes/gym/beg_up00": {
+    "danger/spikes/SJ2021/Gym/beg_up00": {
       "x": 156,
-      "y": 1388,
+      "y": 1708,
       "width": 10,
       "height": 9,
       "drawOffsetX": 0,
@@ -310,9 +380,9 @@
       "frameWidth": 10,
       "frameHeight": 9
     },
-    "sj/spikes/gym/beg_down00": {
+    "danger/spikes/SJ2021/Gym/beg_down00": {
       "x": 168,
-      "y": 1388,
+      "y": 1708,
       "width": 10,
       "height": 9,
       "drawOffsetX": 0,
@@ -320,9 +390,9 @@
       "frameWidth": 10,
       "frameHeight": 9
     },
-    "sj/spikes/gym/beg_left00": {
+    "danger/spikes/SJ2021/Gym/beg_left00": {
       "x": 180,
-      "y": 1388,
+      "y": 1708,
       "width": 9,
       "height": 10,
       "drawOffsetX": 0,
@@ -330,9 +400,9 @@
       "frameWidth": 9,
       "frameHeight": 10
     },
-    "sj/spikes/gym/beg_right00": {
+    "danger/spikes/SJ2021/Gym/beg_right00": {
       "x": 191,
-      "y": 1388,
+      "y": 1708,
       "width": 9,
       "height": 10,
       "drawOffsetX": 0,
@@ -340,9 +410,9 @@
       "frameWidth": 9,
       "frameHeight": 10
     },
-    "sj/spikes/gym/int_up00": {
+    "danger/spikes/SJ2021/Gym/int_up00": {
       "x": 202,
-      "y": 1388,
+      "y": 1708,
       "width": 10,
       "height": 9,
       "drawOffsetX": 0,
@@ -350,9 +420,9 @@
       "frameWidth": 10,
       "frameHeight": 9
     },
-    "sj/spikes/gym/int_down00": {
+    "danger/spikes/SJ2021/Gym/int_down00": {
       "x": 214,
-      "y": 1388,
+      "y": 1708,
       "width": 10,
       "height": 9,
       "drawOffsetX": 0,
@@ -360,9 +430,9 @@
       "frameWidth": 10,
       "frameHeight": 9
     },
-    "sj/spikes/gym/int_left00": {
+    "danger/spikes/SJ2021/Gym/int_left": {
       "x": 226,
-      "y": 1388,
+      "y": 1708,
       "width": 9,
       "height": 10,
       "drawOffsetX": 0,
@@ -370,9 +440,9 @@
       "frameWidth": 9,
       "frameHeight": 10
     },
-    "sj/spikes/gym/int_right00": {
+    "danger/spikes/SJ2021/Gym/int_right00": {
       "x": 237,
-      "y": 1388,
+      "y": 1708,
       "width": 9,
       "height": 10,
       "drawOffsetX": 0,
@@ -380,9 +450,9 @@
       "frameWidth": 9,
       "frameHeight": 10
     },
-    "sj/spikes/gym/adv_up00": {
+    "danger/spikes/SJ2021/Gym/adv_up00": {
       "x": 248,
-      "y": 1388,
+      "y": 1708,
       "width": 10,
       "height": 9,
       "drawOffsetX": 0,
@@ -390,9 +460,9 @@
       "frameWidth": 10,
       "frameHeight": 9
     },
-    "sj/spikes/gym/adv_down00": {
+    "danger/spikes/SJ2021/Gym/adv_down00": {
       "x": 260,
-      "y": 1388,
+      "y": 1708,
       "width": 10,
       "height": 9,
       "drawOffsetX": 0,
@@ -400,9 +470,9 @@
       "frameWidth": 10,
       "frameHeight": 9
     },
-    "sj/spikes/gym/adv_left00": {
+    "danger/spikes/SJ2021/Gym/adv_left00": {
       "x": 272,
-      "y": 1388,
+      "y": 1708,
       "width": 9,
       "height": 10,
       "drawOffsetX": 0,
@@ -410,9 +480,9 @@
       "frameWidth": 9,
       "frameHeight": 10
     },
-    "sj/spikes/gym/adv_right00": {
+    "danger/spikes/SJ2021/Gym/adv_right00": {
       "x": 283,
-      "y": 1388,
+      "y": 1708,
       "width": 9,
       "height": 10,
       "drawOffsetX": 0,
@@ -420,9 +490,9 @@
       "frameWidth": 9,
       "frameHeight": 10
     },
-    "sj/spikes/gym/exp_up00": {
+    "danger/spikes/SJ2021/Gym/exp_up00": {
       "x": 294,
-      "y": 1388,
+      "y": 1708,
       "width": 10,
       "height": 9,
       "drawOffsetX": 0,
@@ -430,9 +500,9 @@
       "frameWidth": 10,
       "frameHeight": 9
     },
-    "sj/spikes/gym/exp_down00": {
+    "danger/spikes/SJ2021/Gym/exp_down00": {
       "x": 306,
-      "y": 1388,
+      "y": 1708,
       "width": 10,
       "height": 9,
       "drawOffsetX": 0,
@@ -440,9 +510,9 @@
       "frameWidth": 10,
       "frameHeight": 9
     },
-    "sj/spikes/gym/exp_left00": {
+    "danger/spikes/SJ2021/Gym/exp_left00": {
       "x": 318,
-      "y": 1388,
+      "y": 1708,
       "width": 9,
       "height": 10,
       "drawOffsetX": 0,
@@ -450,9 +520,9 @@
       "frameWidth": 9,
       "frameHeight": 10
     },
-    "sj/spikes/gym/exp_right00": {
+    "danger/spikes/SJ2021/Gym/exp_right00": {
       "x": 329,
-      "y": 1388,
+      "y": 1708,
       "width": 9,
       "height": 10,
       "drawOffsetX": 0,
@@ -460,9 +530,9 @@
       "frameWidth": 9,
       "frameHeight": 10
     },
-    "sj/spikes/gym/gm_up00": {
+    "danger/spikes/SJ2021/Gym/gm_up00": {
       "x": 340,
-      "y": 1388,
+      "y": 1708,
       "width": 10,
       "height": 9,
       "drawOffsetX": 0,
@@ -470,9 +540,9 @@
       "frameWidth": 10,
       "frameHeight": 9
     },
-    "sj/spikes/gym/gm_down00": {
+    "danger/spikes/SJ2021/Gym/gm_down00": {
       "x": 352,
-      "y": 1388,
+      "y": 1708,
       "width": 10,
       "height": 9,
       "drawOffsetX": 0,
@@ -480,9 +550,9 @@
       "frameWidth": 10,
       "frameHeight": 9
     },
-    "sj/spikes/gym/gm_left00": {
+    "danger/spikes/SJ2021/Gym/gm_left00": {
       "x": 364,
-      "y": 1388,
+      "y": 1708,
       "width": 9,
       "height": 10,
       "drawOffsetX": 0,
@@ -490,9 +560,9 @@
       "frameWidth": 9,
       "frameHeight": 10
     },
-    "sj/spikes/gym/gm_right00": {
+    "danger/spikes/SJ2021/Gym/gm_right00": {
       "x": 375,
-      "y": 1388,
+      "y": 1708,
       "width": 9,
       "height": 10,
       "drawOffsetX": 0,
@@ -500,9 +570,9 @@
       "frameWidth": 9,
       "frameHeight": 10
     },
-    "sj/spikes/lobby/beginner-bramble_up00": {
+    "danger/spikes/SJ2021/1-Beginner/bramble_up00": {
       "x": 386,
-      "y": 1388,
+      "y": 1708,
       "width": 10,
       "height": 10,
       "drawOffsetX": 0,
@@ -510,9 +580,9 @@
       "frameWidth": 10,
       "frameHeight": 10
     },
-    "sj/spikes/lobby/beginner-bramble_up01": {
+    "danger/spikes/SJ2021/1-Beginner/bramble_up01": {
       "x": 398,
-      "y": 1388,
+      "y": 1708,
       "width": 10,
       "height": 10,
       "drawOffsetX": 0,
@@ -520,9 +590,9 @@
       "frameWidth": 10,
       "frameHeight": 10
     },
-    "sj/spikes/lobby/beginner-bramble_up02": {
+    "danger/spikes/SJ2021/1-Beginner/bramble_up02": {
       "x": 410,
-      "y": 1388,
+      "y": 1708,
       "width": 10,
       "height": 10,
       "drawOffsetX": 0,
@@ -530,9 +600,9 @@
       "frameWidth": 10,
       "frameHeight": 10
     },
-    "sj/spikes/lobby/beginner-bramble_up03": {
+    "danger/spikes/SJ2021/1-Beginner/bramble_up03": {
       "x": 422,
-      "y": 1388,
+      "y": 1708,
       "width": 10,
       "height": 10,
       "drawOffsetX": 0,
@@ -540,9 +610,9 @@
       "frameWidth": 10,
       "frameHeight": 10
     },
-    "sj/spikes/lobby/beginner-bramble_down00": {
+    "danger/spikes/SJ2021/1-Beginner/bramble_down00": {
       "x": 434,
-      "y": 1388,
+      "y": 1708,
       "width": 10,
       "height": 10,
       "drawOffsetX": 0,
@@ -550,9 +620,9 @@
       "frameWidth": 10,
       "frameHeight": 10
     },
-    "sj/spikes/lobby/beginner-bramble_down01": {
+    "danger/spikes/SJ2021/1-Beginner/bramble_down01": {
       "x": 446,
-      "y": 1388,
+      "y": 1708,
       "width": 10,
       "height": 10,
       "drawOffsetX": 0,
@@ -560,9 +630,9 @@
       "frameWidth": 10,
       "frameHeight": 10
     },
-    "sj/spikes/lobby/beginner-bramble_down02": {
+    "danger/spikes/SJ2021/1-Beginner/bramble_down02": {
       "x": 458,
-      "y": 1388,
+      "y": 1708,
       "width": 10,
       "height": 10,
       "drawOffsetX": 0,
@@ -570,9 +640,9 @@
       "frameWidth": 10,
       "frameHeight": 10
     },
-    "sj/spikes/lobby/beginner-bramble_left00": {
+    "danger/spikes/SJ2021/1-Beginner/bramble_left00": {
       "x": 470,
-      "y": 1388,
+      "y": 1708,
       "width": 10,
       "height": 10,
       "drawOffsetX": 0,
@@ -580,9 +650,9 @@
       "frameWidth": 10,
       "frameHeight": 10
     },
-    "sj/spikes/lobby/beginner-bramble_left01": {
+    "danger/spikes/SJ2021/1-Beginner/bramble_left01": {
       "x": 482,
-      "y": 1388,
+      "y": 1708,
       "width": 10,
       "height": 10,
       "drawOffsetX": 0,
@@ -590,9 +660,9 @@
       "frameWidth": 10,
       "frameHeight": 10
     },
-    "sj/spikes/lobby/beginner-bramble_left02": {
+    "danger/spikes/SJ2021/1-Beginner/bramble_left02": {
       "x": 494,
-      "y": 1388,
+      "y": 1708,
       "width": 10,
       "height": 10,
       "drawOffsetX": 0,
@@ -600,9 +670,9 @@
       "frameWidth": 10,
       "frameHeight": 10
     },
-    "sj/spikes/lobby/beginner-bramble_right00": {
+    "danger/spikes/SJ2021/1-Beginner/bramble_right00": {
       "x": 506,
-      "y": 1388,
+      "y": 1708,
       "width": 10,
       "height": 10,
       "drawOffsetX": 0,
@@ -610,9 +680,9 @@
       "frameWidth": 10,
       "frameHeight": 10
     },
-    "sj/spikes/lobby/beginner-bramble_right01": {
+    "danger/spikes/SJ2021/1-Beginner/bramble_right01": {
       "x": 518,
-      "y": 1388,
+      "y": 1708,
       "width": 10,
       "height": 10,
       "drawOffsetX": 0,
@@ -620,9 +690,9 @@
       "frameWidth": 10,
       "frameHeight": 10
     },
-    "sj/spikes/lobby/beginner-bramble_right02": {
+    "danger/spikes/SJ2021/1-Beginner/bramble_right02": {
       "x": 530,
-      "y": 1388,
+      "y": 1708,
       "width": 10,
       "height": 10,
       "drawOffsetX": 0,
@@ -630,9 +700,9 @@
       "frameWidth": 10,
       "frameHeight": 10
     },
-    "sj/spikes/lobby/intermediate-pixel_up00": {
+    "danger/spikes/SJ2021/pixelator/v_up00": {
       "x": 542,
-      "y": 1388,
+      "y": 1708,
       "width": 8,
       "height": 9,
       "drawOffsetX": 0,
@@ -640,9 +710,9 @@
       "frameWidth": 8,
       "frameHeight": 9
     },
-    "sj/spikes/lobby/intermediate-pixel_down00": {
+    "danger/spikes/SJ2021/pixelator/v_down00": {
       "x": 552,
-      "y": 1388,
+      "y": 1708,
       "width": 8,
       "height": 9,
       "drawOffsetX": 0,
@@ -650,9 +720,9 @@
       "frameWidth": 8,
       "frameHeight": 9
     },
-    "sj/spikes/lobby/intermediate-pixel_left00": {
+    "danger/spikes/SJ2021/pixelator/v_left00": {
       "x": 562,
-      "y": 1388,
+      "y": 1708,
       "width": 9,
       "height": 8,
       "drawOffsetX": 0,
@@ -660,9 +730,9 @@
       "frameWidth": 9,
       "frameHeight": 8
     },
-    "sj/spikes/lobby/intermediate-pixel_right00": {
+    "danger/spikes/SJ2021/pixelator/v_right00": {
       "x": 573,
-      "y": 1388,
+      "y": 1708,
       "width": 9,
       "height": 8,
       "drawOffsetX": 0,
@@ -670,9 +740,9 @@
       "frameWidth": 9,
       "frameHeight": 8
     },
-    "sj/spikes/lobby/advanced-orange_up00": {
+    "danger/spikes/SJ2021/Archire/orange_up00": {
       "x": 584,
-      "y": 1388,
+      "y": 1708,
       "width": 8,
       "height": 9,
       "drawOffsetX": 0,
@@ -680,9 +750,9 @@
       "frameWidth": 8,
       "frameHeight": 9
     },
-    "sj/spikes/lobby/advanced-orange_down00": {
+    "danger/spikes/SJ2021/Archire/orange_down00": {
       "x": 594,
-      "y": 1388,
+      "y": 1708,
       "width": 8,
       "height": 9,
       "drawOffsetX": 0,
@@ -690,9 +760,9 @@
       "frameWidth": 8,
       "frameHeight": 9
     },
-    "sj/spikes/lobby/advanced-orange_left00": {
+    "danger/spikes/SJ2021/Archire/orange_left00": {
       "x": 604,
-      "y": 1388,
+      "y": 1708,
       "width": 9,
       "height": 8,
       "drawOffsetX": 0,
@@ -700,9 +770,9 @@
       "frameWidth": 9,
       "frameHeight": 8
     },
-    "sj/spikes/lobby/advanced-orange_right00": {
+    "danger/spikes/SJ2021/Archire/orange_right00": {
       "x": 615,
-      "y": 1388,
+      "y": 1708,
       "width": 9,
       "height": 8,
       "drawOffsetX": 0,
@@ -710,9 +780,9 @@
       "frameWidth": 9,
       "frameHeight": 8
     },
-    "sj/spikes/lobby/expert-space_up00": {
+    "danger/spikes/SJ2021/powerav/space_up00": {
       "x": 626,
-      "y": 1388,
+      "y": 1708,
       "width": 8,
       "height": 9,
       "drawOffsetX": 0,
@@ -720,9 +790,9 @@
       "frameWidth": 8,
       "frameHeight": 9
     },
-    "sj/spikes/lobby/expert-space_down00": {
+    "danger/spikes/SJ2021/powerav/spacet_down00": {
       "x": 636,
-      "y": 1388,
+      "y": 1708,
       "width": 8,
       "height": 9,
       "drawOffsetX": 0,
@@ -730,9 +800,9 @@
       "frameWidth": 8,
       "frameHeight": 9
     },
-    "sj/spikes/lobby/expert-space_left00": {
+    "danger/spikes/SJ2021/powerav/space_left00": {
       "x": 646,
-      "y": 1388,
+      "y": 1708,
       "width": 9,
       "height": 8,
       "drawOffsetX": 0,
@@ -740,9 +810,9 @@
       "frameWidth": 9,
       "frameHeight": 8
     },
-    "sj/spikes/lobby/expert-space_right00": {
+    "danger/spikes/SJ2021/powerav/space_right00": {
       "x": 657,
-      "y": 1388,
+      "y": 1708,
       "width": 9,
       "height": 8,
       "drawOffsetX": 0,
@@ -750,9 +820,9 @@
       "frameWidth": 9,
       "frameHeight": 8
     },
-    "sj/spikes/lobby/grandmaster-marble_up00": {
+    "danger/spikes/SJ2021/Grandmaster/marble_up00": {
       "x": 668,
-      "y": 1388,
+      "y": 1708,
       "width": 8,
       "height": 9,
       "drawOffsetX": 0,
@@ -760,9 +830,9 @@
       "frameWidth": 8,
       "frameHeight": 9
     },
-    "sj/spikes/lobby/grandmaster-marble_down00": {
+    "danger/spikes/SJ2021/Grandmaster/marble_down00": {
       "x": 678,
-      "y": 1388,
+      "y": 1708,
       "width": 8,
       "height": 9,
       "drawOffsetX": 0,
@@ -770,9 +840,9 @@
       "frameWidth": 8,
       "frameHeight": 9
     },
-    "sj/spikes/lobby/grandmaster-marble_left00": {
+    "danger/spikes/SJ2021/Grandmaster/marble_left00": {
       "x": 688,
-      "y": 1388,
+      "y": 1708,
       "width": 9,
       "height": 8,
       "drawOffsetX": 0,
@@ -780,9 +850,9 @@
       "frameWidth": 9,
       "frameHeight": 8
     },
-    "sj/spikes/lobby/grandmaster-marble_right00": {
+    "danger/spikes/SJ2021/Grandmaster/marble_right00": {
       "x": 699,
-      "y": 1388,
+      "y": 1708,
       "width": 9,
       "height": 8,
       "drawOffsetX": 0,
@@ -790,9 +860,9 @@
       "frameWidth": 9,
       "frameHeight": 8
     },
-    "sj/spinners/beginner/fg00": {
+    "danger/spikes/SJ2021/1-Beginner/brambles/fg00": {
       "x": 710,
-      "y": 1388,
+      "y": 1708,
       "width": 24,
       "height": 24,
       "drawOffsetX": 0,
@@ -800,9 +870,9 @@
       "frameWidth": 24,
       "frameHeight": 24
     },
-    "sj/spinners/beginner/fg01": {
+    "danger/spikes/SJ2021/1-Beginner/brambles/fg01": {
       "x": 736,
-      "y": 1388,
+      "y": 1708,
       "width": 24,
       "height": 24,
       "drawOffsetX": 0,
@@ -810,9 +880,9 @@
       "frameWidth": 24,
       "frameHeight": 24
     },
-    "sj/spinners/beginner/fg02": {
+    "danger/spikes/SJ2021/1-Beginner/brambles/fg02": {
       "x": 762,
-      "y": 1388,
+      "y": 1708,
       "width": 24,
       "height": 24,
       "drawOffsetX": 0,
@@ -820,9 +890,9 @@
       "frameWidth": 24,
       "frameHeight": 24
     },
-    "sj/spinners/beginner/fg03": {
+    "danger/spikes/SJ2021/1-Beginner/brambles/fg03": {
       "x": 788,
-      "y": 1388,
+      "y": 1708,
       "width": 24,
       "height": 24,
       "drawOffsetX": 0,
@@ -830,9 +900,9 @@
       "frameWidth": 24,
       "frameHeight": 24
     },
-    "sj/spinners/beginner/bg00": {
+    "danger/spikes/SJ2021/1-Beginner/brambles/bg00": {
       "x": 814,
-      "y": 1388,
+      "y": 1708,
       "width": 24,
       "height": 24,
       "drawOffsetX": 0,
@@ -840,9 +910,9 @@
       "frameWidth": 24,
       "frameHeight": 24
     },
-    "sj/spinners/intermediate/fg00": {
+    "danger/SJ2021/Ceph/Spinner/fg00": {
       "x": 840,
-      "y": 1388,
+      "y": 1708,
       "width": 24,
       "height": 24,
       "drawOffsetX": 0,
@@ -850,9 +920,9 @@
       "frameWidth": 24,
       "frameHeight": 24
     },
-    "sj/spinners/intermediate/fg01": {
+    "danger/SJ2021/Ceph/Spinner/fg01": {
       "x": 866,
-      "y": 1388,
+      "y": 1708,
       "width": 24,
       "height": 24,
       "drawOffsetX": 0,
@@ -860,9 +930,9 @@
       "frameWidth": 24,
       "frameHeight": 24
     },
-    "sj/spinners/intermediate/fg02": {
+    "danger/SJ2021/Ceph/Spinner/fg02": {
       "x": 892,
-      "y": 1388,
+      "y": 1708,
       "width": 24,
       "height": 24,
       "drawOffsetX": 0,
@@ -870,9 +940,9 @@
       "frameWidth": 24,
       "frameHeight": 24
     },
-    "sj/spinners/intermediate/fg03": {
+    "danger/SJ2021/Ceph/Spinner/fg03": {
       "x": 918,
-      "y": 1388,
+      "y": 1708,
       "width": 24,
       "height": 24,
       "drawOffsetX": 0,
@@ -880,9 +950,9 @@
       "frameWidth": 24,
       "frameHeight": 24
     },
-    "sj/spinners/intermediate/bg00": {
+    "danger/SJ2021/Ceph/Spinner/bg": {
       "x": 944,
-      "y": 1388,
+      "y": 1708,
       "width": 24,
       "height": 24,
       "drawOffsetX": 0,
@@ -890,9 +960,9 @@
       "frameWidth": 24,
       "frameHeight": 24
     },
-    "sj/spinners/advanced/fg00": {
+    "danger/SJ2021/Julia/Spinner/fg00": {
       "x": 970,
-      "y": 1388,
+      "y": 1708,
       "width": 24,
       "height": 24,
       "drawOffsetX": 0,
@@ -900,9 +970,9 @@
       "frameWidth": 24,
       "frameHeight": 24
     },
-    "sj/spinners/advanced/fg01": {
+    "danger/SJ2021/Julia/Spinner/fg01": {
       "x": 996,
-      "y": 1388,
+      "y": 1708,
       "width": 24,
       "height": 24,
       "drawOffsetX": 0,
@@ -910,9 +980,9 @@
       "frameWidth": 24,
       "frameHeight": 24
     },
-    "sj/spinners/advanced/fg02": {
+    "danger/SJ2021/Julia/Spinner/fg02": {
       "x": 2,
-      "y": 1518,
+      "y": 1838,
       "width": 24,
       "height": 24,
       "drawOffsetX": 0,
@@ -920,9 +990,9 @@
       "frameWidth": 24,
       "frameHeight": 24
     },
-    "sj/spinners/advanced/fg03": {
+    "danger/SJ2021/Julia/Spinner/fg03": {
       "x": 28,
-      "y": 1518,
+      "y": 1838,
       "width": 24,
       "height": 24,
       "drawOffsetX": 0,
@@ -930,9 +1000,9 @@
       "frameWidth": 24,
       "frameHeight": 24
     },
-    "sj/spinners/advanced/bg00": {
+    "danger/SJ2021/Julia/Spinner/bg": {
       "x": 54,
-      "y": 1518,
+      "y": 1838,
       "width": 24,
       "height": 24,
       "drawOffsetX": 0,
@@ -942,99 +1012,106 @@
     }
   },
   "sources": {
-    "sj/tilesets/gym/beginner": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Gym/BeginnerGym.png",
-    "sj/tilesets/gym/intermediate": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Gym/IntermediateGym.png",
-    "sj/tilesets/gym/advanced": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Gym/AdvancedGym.png",
-    "sj/tilesets/gym/expert": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Gym/ExpertGym.png",
-    "sj/tilesets/gym/grandmaster": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Gym/GrandmasterGym.png",
-    "sj/bgs/gym/beginner-dark": "Graphics/Atlases/Gameplay/bgs/SJ2021/Gym/begGymDarkBG.png",
-    "sj/bgs/gym/intermediate-dark": "Graphics/Atlases/Gameplay/bgs/SJ2021/Gym/intGymDarkBG.png",
-    "sj/bgs/gym/advanced-dark": "Graphics/Atlases/Gameplay/bgs/SJ2021/Gym/advGymDarkBG.png",
-    "sj/bgs/gym/expert-dark": "Graphics/Atlases/Gameplay/bgs/SJ2021/Gym/expGymDarkBG.png",
-    "sj/bgs/gym/grandmaster-dark": "Graphics/Atlases/Gameplay/bgs/SJ2021/Gym/gmGymDarkBG.png",
-    "sj/tilesets/lobby/beginner-cliff": "Graphics/Atlases/Gameplay/tilesets/SJ2021/BeginnerLobby/lobbyCliff.png",
-    "sj/bgs/lobby/beginner/sky": "Graphics/Atlases/Gameplay/bgs/SJ2021/BeginnerLobby/main/sky.png",
-    "sj/bgs/lobby/beginner/clouds": "Graphics/Atlases/Gameplay/bgs/SJ2021/BeginnerLobby/main/clouds.png",
-    "sj/bgs/lobby/beginner/islands": "Graphics/Atlases/Gameplay/bgs/SJ2021/BeginnerLobby/main/islands.png",
-    "sj/tilesets/lobby/intermediate-girder": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Int_Lobby/IntGirderFg.png",
-    "sj/bgs/lobby/intermediate/skybox": "Graphics/Atlases/Gameplay/bgs/SJ2021/Int_Lobby/skybox.png",
-    "sj/bgs/lobby/intermediate/hills": "Graphics/Atlases/Gameplay/bgs/SJ2021/Int_Lobby/bghills.png",
-    "sj/bgs/lobby/intermediate/foreground-hills": "Graphics/Atlases/Gameplay/bgs/SJ2021/Int_Lobby/fghills.png",
-    "sj/tilesets/lobby/advanced-cloud": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Advanced_Lobby/advCloudSunset.png",
-    "sj/bgs/lobby/advanced/sunset": "Graphics/Atlases/Gameplay/bgs/SJ2021/Advanced Lobby/sunset/sunset.png",
-    "sj/bgs/lobby/advanced/mountains": "Graphics/Atlases/Gameplay/bgs/SJ2021/Advanced Lobby/sunset/sunsetmountains.png",
-    "sj/bgs/lobby/advanced/dunes": "Graphics/Atlases/Gameplay/bgs/SJ2021/Advanced Lobby/sunset/sunsetdunes.png",
-    "sj/tilesets/lobby/expert-vegetation": "Graphics/Atlases/Gameplay/tilesets/SJ2021/ExpertLobby/spaceVegetation.png",
-    "sj/bgs/lobby/expert/space": "Graphics/Atlases/Gameplay/bgs/SJ2021/ExpertLobby/space.png",
-    "sj/bgs/lobby/expert/nebulae": "Graphics/Atlases/Gameplay/bgs/SJ2021/ExpertLobby/nebulae.png",
-    "sj/bgs/lobby/expert/planets": "Graphics/Atlases/Gameplay/bgs/SJ2021/ExpertLobby/planets.png",
-    "sj/tilesets/lobby/grandmaster-grass": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Grandmaster/elysianGrass.png",
-    "sj/bgs/lobby/grandmaster/sky": "Graphics/Atlases/Gameplay/bgs/SJ2021/GMLobby/sky.png",
-    "sj/bgs/lobby/grandmaster/mountains": "Graphics/Atlases/Gameplay/bgs/SJ2021/GMLobby/mountains.png",
-    "sj/bgs/lobby/grandmaster/clouds": "Graphics/Atlases/Gameplay/bgs/SJ2021/GMLobby/cloud-group-1.png",
-    "sj/spikes/gym/beg_up00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/beg_up00.png",
-    "sj/spikes/gym/beg_down00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/beg_down00.png",
-    "sj/spikes/gym/beg_left00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/beg_left00.png",
-    "sj/spikes/gym/beg_right00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/beg_right00.png",
-    "sj/spikes/gym/int_up00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/int_up00.png",
-    "sj/spikes/gym/int_down00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/int_down00.png",
-    "sj/spikes/gym/int_left00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/int_left.png",
-    "sj/spikes/gym/int_right00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/int_right00.png",
-    "sj/spikes/gym/adv_up00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/adv_up00.png",
-    "sj/spikes/gym/adv_down00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/adv_down00.png",
-    "sj/spikes/gym/adv_left00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/adv_left00.png",
-    "sj/spikes/gym/adv_right00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/adv_right00.png",
-    "sj/spikes/gym/exp_up00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/exp_up00.png",
-    "sj/spikes/gym/exp_down00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/exp_down00.png",
-    "sj/spikes/gym/exp_left00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/exp_left00.png",
-    "sj/spikes/gym/exp_right00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/exp_right00.png",
-    "sj/spikes/gym/gm_up00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/gm_up00.png",
-    "sj/spikes/gym/gm_down00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/gm_down00.png",
-    "sj/spikes/gym/gm_left00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/gm_left00.png",
-    "sj/spikes/gym/gm_right00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/gm_right00.png",
-    "sj/spikes/lobby/beginner-bramble_up00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_up00.png",
-    "sj/spikes/lobby/beginner-bramble_up01": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_up01.png",
-    "sj/spikes/lobby/beginner-bramble_up02": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_up02.png",
-    "sj/spikes/lobby/beginner-bramble_up03": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_up03.png",
-    "sj/spikes/lobby/beginner-bramble_down00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_down00.png",
-    "sj/spikes/lobby/beginner-bramble_down01": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_down01.png",
-    "sj/spikes/lobby/beginner-bramble_down02": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_down02.png",
-    "sj/spikes/lobby/beginner-bramble_left00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_left00.png",
-    "sj/spikes/lobby/beginner-bramble_left01": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_left01.png",
-    "sj/spikes/lobby/beginner-bramble_left02": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_left02.png",
-    "sj/spikes/lobby/beginner-bramble_right00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_right00.png",
-    "sj/spikes/lobby/beginner-bramble_right01": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_right01.png",
-    "sj/spikes/lobby/beginner-bramble_right02": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_right02.png",
-    "sj/spikes/lobby/intermediate-pixel_up00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/pixelator/v_up00.png",
-    "sj/spikes/lobby/intermediate-pixel_down00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/pixelator/v_down00.png",
-    "sj/spikes/lobby/intermediate-pixel_left00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/pixelator/v_left00.png",
-    "sj/spikes/lobby/intermediate-pixel_right00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/pixelator/v_right00.png",
-    "sj/spikes/lobby/advanced-orange_up00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Archire/orange_up00.png",
-    "sj/spikes/lobby/advanced-orange_down00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Archire/orange_down00.png",
-    "sj/spikes/lobby/advanced-orange_left00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Archire/orange_left00.png",
-    "sj/spikes/lobby/advanced-orange_right00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Archire/orange_right00.png",
-    "sj/spikes/lobby/expert-space_up00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/powerav/space_up00.png",
-    "sj/spikes/lobby/expert-space_down00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/powerav/spacet_down00.png",
-    "sj/spikes/lobby/expert-space_left00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/powerav/space_left00.png",
-    "sj/spikes/lobby/expert-space_right00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/powerav/space_right00.png",
-    "sj/spikes/lobby/grandmaster-marble_up00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Grandmaster/marble_up00.png",
-    "sj/spikes/lobby/grandmaster-marble_down00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Grandmaster/marble_down00.png",
-    "sj/spikes/lobby/grandmaster-marble_left00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Grandmaster/marble_left00.png",
-    "sj/spikes/lobby/grandmaster-marble_right00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Grandmaster/marble_right00.png",
-    "sj/spinners/beginner/fg00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/brambles/fg00.png",
-    "sj/spinners/beginner/fg01": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/brambles/fg01.png",
-    "sj/spinners/beginner/fg02": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/brambles/fg02.png",
-    "sj/spinners/beginner/fg03": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/brambles/fg03.png",
-    "sj/spinners/beginner/bg00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/brambles/bg00.png",
-    "sj/spinners/intermediate/fg00": "Graphics/Atlases/Gameplay/danger/SJ2021/Ceph/Spinner/fg00.png",
-    "sj/spinners/intermediate/fg01": "Graphics/Atlases/Gameplay/danger/SJ2021/Ceph/Spinner/fg01.png",
-    "sj/spinners/intermediate/fg02": "Graphics/Atlases/Gameplay/danger/SJ2021/Ceph/Spinner/fg02.png",
-    "sj/spinners/intermediate/fg03": "Graphics/Atlases/Gameplay/danger/SJ2021/Ceph/Spinner/fg03.png",
-    "sj/spinners/intermediate/bg00": "Graphics/Atlases/Gameplay/danger/SJ2021/Ceph/Spinner/bg.png",
-    "sj/spinners/advanced/fg00": "Graphics/Atlases/Gameplay/danger/SJ2021/Julia/Spinner/fg00.png",
-    "sj/spinners/advanced/fg01": "Graphics/Atlases/Gameplay/danger/SJ2021/Julia/Spinner/fg01.png",
-    "sj/spinners/advanced/fg02": "Graphics/Atlases/Gameplay/danger/SJ2021/Julia/Spinner/fg02.png",
-    "sj/spinners/advanced/fg03": "Graphics/Atlases/Gameplay/danger/SJ2021/Julia/Spinner/fg03.png",
-    "sj/spinners/advanced/bg00": "Graphics/Atlases/Gameplay/danger/SJ2021/Julia/Spinner/bg.png"
+    "tilesets/SJ2021/Gym/BeginnerGym": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Gym/BeginnerGym.png",
+    "tilesets/SJ2021/Gym/IntermediateGym": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Gym/IntermediateGym.png",
+    "tilesets/SJ2021/Gym/AdvancedGym": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Gym/AdvancedGym.png",
+    "tilesets/SJ2021/Gym/ExpertGym": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Gym/ExpertGym.png",
+    "tilesets/SJ2021/Gym/GrandmasterGym": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Gym/GrandmasterGym.png",
+    "tilesets/SJ2021/BeginnerLobby/lobbyCliff": "Graphics/Atlases/Gameplay/tilesets/SJ2021/BeginnerLobby/lobbyCliff.png",
+    "tilesets/SJ2021/Int_Lobby/IntGirderFg": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Int_Lobby/IntGirderFg.png",
+    "tilesets/SJ2021/Advanced_Lobby/advCloudSunset": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Advanced_Lobby/advCloudSunset.png",
+    "tilesets/SJ2021/ExpertLobby/spaceVegetation": "Graphics/Atlases/Gameplay/tilesets/SJ2021/ExpertLobby/spaceVegetation.png",
+    "tilesets/SJ2021/Grandmaster/elysianGrass": "Graphics/Atlases/Gameplay/tilesets/SJ2021/Grandmaster/elysianGrass.png",
+    "bgs/SJ2021/Gym/begGymDarkBG": "Graphics/Atlases/Gameplay/bgs/SJ2021/Gym/begGymDarkBG.png",
+    "bgs/SJ2021/Gym/intGymDarkBG": "Graphics/Atlases/Gameplay/bgs/SJ2021/Gym/intGymDarkBG.png",
+    "bgs/SJ2021/Gym/advGymDarkBG": "Graphics/Atlases/Gameplay/bgs/SJ2021/Gym/advGymDarkBG.png",
+    "bgs/SJ2021/Gym/expGymDarkBG": "Graphics/Atlases/Gameplay/bgs/SJ2021/Gym/expGymDarkBG.png",
+    "bgs/SJ2021/Gym/gmGymDarkBG": "Graphics/Atlases/Gameplay/bgs/SJ2021/Gym/gmGymDarkBG.png",
+    "bgs/SJ2021/BeginnerLobby/main/sky": "Graphics/Atlases/Gameplay/bgs/SJ2021/BeginnerLobby/main/sky.png",
+    "bgs/SJ2021/BeginnerLobby/main/sky_top_gradient": "Graphics/Atlases/Gameplay/bgs/SJ2021/BeginnerLobby/main/sky_top_gradient.png",
+    "bgs/SJ2021/BeginnerLobby/main/sun": "Graphics/Atlases/Gameplay/bgs/SJ2021/BeginnerLobby/main/sun.png",
+    "bgs/SJ2021/BeginnerLobby/main/sun_reflection": "Graphics/Atlases/Gameplay/bgs/SJ2021/BeginnerLobby/main/sun_reflection.png",
+    "bgs/SJ2021/BeginnerLobby/main/clouds": "Graphics/Atlases/Gameplay/bgs/SJ2021/BeginnerLobby/main/clouds.png",
+    "bgs/SJ2021/BeginnerLobby/main/clouds_reflection": "Graphics/Atlases/Gameplay/bgs/SJ2021/BeginnerLobby/main/clouds_reflection.png",
+    "bgs/SJ2021/BeginnerLobby/main/islands": "Graphics/Atlases/Gameplay/bgs/SJ2021/BeginnerLobby/main/islands.png",
+    "bgs/SJ2021/BeginnerLobby/main/islands_reflection": "Graphics/Atlases/Gameplay/bgs/SJ2021/BeginnerLobby/main/islands_reflection.png",
+    "bgs/SJ2021/BeginnerLobby/main/water_gradient": "Graphics/Atlases/Gameplay/bgs/SJ2021/BeginnerLobby/main/water_gradient.png",
+    "bgs/SJ2021/BeginnerLobby/main/water_bg": "Graphics/Atlases/Gameplay/bgs/SJ2021/BeginnerLobby/main/water_bg.png",
+    "bgs/SJ2021/Int_Lobby/skybox": "Graphics/Atlases/Gameplay/bgs/SJ2021/Int_Lobby/skybox.png",
+    "bgs/SJ2021/Int_Lobby/bghills": "Graphics/Atlases/Gameplay/bgs/SJ2021/Int_Lobby/bghills.png",
+    "bgs/SJ2021/Int_Lobby/fghills": "Graphics/Atlases/Gameplay/bgs/SJ2021/Int_Lobby/fghills.png",
+    "bgs/SJ2021/Advanced Lobby/sunset/sunset": "Graphics/Atlases/Gameplay/bgs/SJ2021/Advanced Lobby/sunset/sunset.png",
+    "bgs/SJ2021/Advanced Lobby/sunset/sunsetmountains": "Graphics/Atlases/Gameplay/bgs/SJ2021/Advanced Lobby/sunset/sunsetmountains.png",
+    "bgs/SJ2021/Advanced Lobby/sunset/sunsetdunes": "Graphics/Atlases/Gameplay/bgs/SJ2021/Advanced Lobby/sunset/sunsetdunes.png",
+    "bgs/SJ2021/ExpertLobby/space": "Graphics/Atlases/Gameplay/bgs/SJ2021/ExpertLobby/space.png",
+    "bgs/SJ2021/ExpertLobby/nebulae": "Graphics/Atlases/Gameplay/bgs/SJ2021/ExpertLobby/nebulae.png",
+    "bgs/SJ2021/ExpertLobby/planets": "Graphics/Atlases/Gameplay/bgs/SJ2021/ExpertLobby/planets.png",
+    "bgs/SJ2021/GMLobby/sky": "Graphics/Atlases/Gameplay/bgs/SJ2021/GMLobby/sky.png",
+    "bgs/SJ2021/GMLobby/mountains": "Graphics/Atlases/Gameplay/bgs/SJ2021/GMLobby/mountains.png",
+    "bgs/SJ2021/GMLobby/cloud-group-1": "Graphics/Atlases/Gameplay/bgs/SJ2021/GMLobby/cloud-group-1.png",
+    "danger/spikes/SJ2021/Gym/beg_up00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/beg_up00.png",
+    "danger/spikes/SJ2021/Gym/beg_down00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/beg_down00.png",
+    "danger/spikes/SJ2021/Gym/beg_left00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/beg_left00.png",
+    "danger/spikes/SJ2021/Gym/beg_right00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/beg_right00.png",
+    "danger/spikes/SJ2021/Gym/int_up00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/int_up00.png",
+    "danger/spikes/SJ2021/Gym/int_down00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/int_down00.png",
+    "danger/spikes/SJ2021/Gym/int_left": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/int_left.png",
+    "danger/spikes/SJ2021/Gym/int_right00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/int_right00.png",
+    "danger/spikes/SJ2021/Gym/adv_up00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/adv_up00.png",
+    "danger/spikes/SJ2021/Gym/adv_down00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/adv_down00.png",
+    "danger/spikes/SJ2021/Gym/adv_left00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/adv_left00.png",
+    "danger/spikes/SJ2021/Gym/adv_right00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/adv_right00.png",
+    "danger/spikes/SJ2021/Gym/exp_up00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/exp_up00.png",
+    "danger/spikes/SJ2021/Gym/exp_down00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/exp_down00.png",
+    "danger/spikes/SJ2021/Gym/exp_left00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/exp_left00.png",
+    "danger/spikes/SJ2021/Gym/exp_right00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/exp_right00.png",
+    "danger/spikes/SJ2021/Gym/gm_up00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/gm_up00.png",
+    "danger/spikes/SJ2021/Gym/gm_down00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/gm_down00.png",
+    "danger/spikes/SJ2021/Gym/gm_left00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/gm_left00.png",
+    "danger/spikes/SJ2021/Gym/gm_right00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Gym/gm_right00.png",
+    "danger/spikes/SJ2021/1-Beginner/bramble_up00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_up00.png",
+    "danger/spikes/SJ2021/1-Beginner/bramble_up01": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_up01.png",
+    "danger/spikes/SJ2021/1-Beginner/bramble_up02": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_up02.png",
+    "danger/spikes/SJ2021/1-Beginner/bramble_up03": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_up03.png",
+    "danger/spikes/SJ2021/1-Beginner/bramble_down00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_down00.png",
+    "danger/spikes/SJ2021/1-Beginner/bramble_down01": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_down01.png",
+    "danger/spikes/SJ2021/1-Beginner/bramble_down02": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_down02.png",
+    "danger/spikes/SJ2021/1-Beginner/bramble_left00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_left00.png",
+    "danger/spikes/SJ2021/1-Beginner/bramble_left01": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_left01.png",
+    "danger/spikes/SJ2021/1-Beginner/bramble_left02": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_left02.png",
+    "danger/spikes/SJ2021/1-Beginner/bramble_right00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_right00.png",
+    "danger/spikes/SJ2021/1-Beginner/bramble_right01": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_right01.png",
+    "danger/spikes/SJ2021/1-Beginner/bramble_right02": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/bramble_right02.png",
+    "danger/spikes/SJ2021/pixelator/v_up00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/pixelator/v_up00.png",
+    "danger/spikes/SJ2021/pixelator/v_down00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/pixelator/v_down00.png",
+    "danger/spikes/SJ2021/pixelator/v_left00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/pixelator/v_left00.png",
+    "danger/spikes/SJ2021/pixelator/v_right00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/pixelator/v_right00.png",
+    "danger/spikes/SJ2021/Archire/orange_up00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Archire/orange_up00.png",
+    "danger/spikes/SJ2021/Archire/orange_down00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Archire/orange_down00.png",
+    "danger/spikes/SJ2021/Archire/orange_left00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Archire/orange_left00.png",
+    "danger/spikes/SJ2021/Archire/orange_right00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Archire/orange_right00.png",
+    "danger/spikes/SJ2021/powerav/space_up00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/powerav/space_up00.png",
+    "danger/spikes/SJ2021/powerav/spacet_down00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/powerav/spacet_down00.png",
+    "danger/spikes/SJ2021/powerav/space_left00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/powerav/space_left00.png",
+    "danger/spikes/SJ2021/powerav/space_right00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/powerav/space_right00.png",
+    "danger/spikes/SJ2021/Grandmaster/marble_up00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Grandmaster/marble_up00.png",
+    "danger/spikes/SJ2021/Grandmaster/marble_down00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Grandmaster/marble_down00.png",
+    "danger/spikes/SJ2021/Grandmaster/marble_left00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Grandmaster/marble_left00.png",
+    "danger/spikes/SJ2021/Grandmaster/marble_right00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/Grandmaster/marble_right00.png",
+    "danger/spikes/SJ2021/1-Beginner/brambles/fg00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/brambles/fg00.png",
+    "danger/spikes/SJ2021/1-Beginner/brambles/fg01": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/brambles/fg01.png",
+    "danger/spikes/SJ2021/1-Beginner/brambles/fg02": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/brambles/fg02.png",
+    "danger/spikes/SJ2021/1-Beginner/brambles/fg03": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/brambles/fg03.png",
+    "danger/spikes/SJ2021/1-Beginner/brambles/bg00": "Graphics/Atlases/Gameplay/danger/spikes/SJ2021/1-Beginner/brambles/bg00.png",
+    "danger/SJ2021/Ceph/Spinner/fg00": "Graphics/Atlases/Gameplay/danger/SJ2021/Ceph/Spinner/fg00.png",
+    "danger/SJ2021/Ceph/Spinner/fg01": "Graphics/Atlases/Gameplay/danger/SJ2021/Ceph/Spinner/fg01.png",
+    "danger/SJ2021/Ceph/Spinner/fg02": "Graphics/Atlases/Gameplay/danger/SJ2021/Ceph/Spinner/fg02.png",
+    "danger/SJ2021/Ceph/Spinner/fg03": "Graphics/Atlases/Gameplay/danger/SJ2021/Ceph/Spinner/fg03.png",
+    "danger/SJ2021/Ceph/Spinner/bg": "Graphics/Atlases/Gameplay/danger/SJ2021/Ceph/Spinner/bg.png",
+    "danger/SJ2021/Julia/Spinner/fg00": "Graphics/Atlases/Gameplay/danger/SJ2021/Julia/Spinner/fg00.png",
+    "danger/SJ2021/Julia/Spinner/fg01": "Graphics/Atlases/Gameplay/danger/SJ2021/Julia/Spinner/fg01.png",
+    "danger/SJ2021/Julia/Spinner/fg02": "Graphics/Atlases/Gameplay/danger/SJ2021/Julia/Spinner/fg02.png",
+    "danger/SJ2021/Julia/Spinner/fg03": "Graphics/Atlases/Gameplay/danger/SJ2021/Julia/Spinner/fg03.png",
+    "danger/SJ2021/Julia/Spinner/bg": "Graphics/Atlases/Gameplay/danger/SJ2021/Julia/Spinner/bg.png"
   }
 }

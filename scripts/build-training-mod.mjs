@@ -263,10 +263,37 @@ async function main() {
 
 async function buildSkinTexture(modRoot) {
   const sharp = require(resolve(repoRoot, "web/node_modules/sharp"));
-  const source = resolve(repoRoot, "web/public/assets/strawberry-jam/gameplay/theme-selected.png");
-  const output = resolve(modRoot, "Graphics/Atlases/Gameplay/tilesets/CelesteGymTraining/BeginnerGym.png");
-  mkdirSync(dirname(output), { recursive: true });
-  await sharp(source).extract({ left: 2, top: 2, width: 24, height: 136 }).png().toFile(output);
+  const atlasRoot = resolve(repoRoot, "web/public/assets/strawberry-jam/gameplay");
+  const manifest = readJson(resolve(atlasRoot, "theme-selected.json"));
+  const sheet = sharp(resolve(atlasRoot, "theme-selected.png"));
+  const copyEntry = async (key, outputPath) => {
+    const entry = manifest.entries[key];
+    if (!entry) throw new Error(`theme atlas is missing ${key}`);
+    const output = resolve(modRoot, "Graphics/Atlases/Gameplay", ...outputPath.split("/"));
+    mkdirSync(dirname(output), { recursive: true });
+    await sheet
+      .clone()
+      .extract({
+        left: entry.x,
+        top: entry.y,
+        width: entry.width,
+        height: entry.height,
+      })
+      .png()
+      .toFile(output);
+  };
+  // The training autotiler keeps its own tileset namespace so it never
+  // collides with the SJ2021 mod's own atlas entries.
+  await copyEntry(
+    "tilesets/SJ2021/Gym/BeginnerGym",
+    "tilesets/CelesteGymTraining/BeginnerGym.png",
+  );
+  // Beginner Gym spike skin, shipped under the exact atlas path the game reads
+  // for Spike="SJ2021/Gym/beg" (danger/spikes/SJ2021/Gym/beg_<dir>).
+  const spikePrefix = "danger/spikes/SJ2021/Gym/beg_";
+  for (const key of Object.keys(manifest.entries)) {
+    if (key.startsWith(spikePrefix)) await copyEntry(key, `${key}.png`);
+  }
 }
 
 function run(command, args) {

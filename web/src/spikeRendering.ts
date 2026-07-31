@@ -3,10 +3,12 @@ import type { MapEntity, Vec2 } from "./model";
 export type SpikeDirection = "up" | "down" | "left" | "right";
 
 export function spikeTexturePrefixes(
-  style: string,
+  spikeType: string,
   direction: SpikeDirection,
 ): string[] {
-  const preferred = `${style}_${direction}`;
+  // spikeType is the original Celeste value (AreaData.Spike or the spike
+  // entity type attribute); Spikes.Added looks up danger/spikes/<type>_<dir>.
+  const preferred = `danger/spikes/${spikeType}_${direction}`;
   const fallback = `danger/spikes/default_${direction}`;
   return preferred === fallback ? [preferred] : [preferred, fallback];
 }

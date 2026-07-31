@@ -14,6 +14,9 @@ To regenerate the atlas, extract that archive and run:
 node scripts/pack-strawberry-jam-themes.mjs <extracted-root> public/assets/strawberry-jam/gameplay
 ```
 
-`theme-selected.json` records the exact source path for every packed texture. Strawberry Jam,
+`theme-selected.json` records the exact source path for every packed texture. Atlas keys are the
+original Gameplay paths (e.g. `danger/spikes/SJ2021/Gym/beg_up00`, `tilesets/SJ2021/Gym/BeginnerGym`)
+so themes can reuse the same values a Celeste map would use (`Spike` meta / entity type, tileset
+paths, spinner prefixes) without a renaming step. Strawberry Jam,
 Celeste, and their visual assets belong to their respective creators and rights holders; these
 files are not intended as independently redistributable project assets.

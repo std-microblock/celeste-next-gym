@@ -21,8 +21,8 @@ describe("crystal spinner rendering", () => {
   it("uses the theme art unless the editor selects a vanilla color override", () => {
     const theme = visualThemeById("sj-beginner-lobby");
     expect(resolveSpinnerStyle(theme)).toEqual({
-      foreground: "sj/spinners/beginner/fg",
-      background: "sj/spinners/beginner/bg",
+      foreground: "danger/spikes/SJ2021/1-Beginner/brambles/fg",
+      background: "danger/spikes/SJ2021/1-Beginner/brambles/bg",
     });
     expect(resolveSpinnerStyle(theme, "red")).toEqual({
       foreground: "danger/crystal/fg_red",
