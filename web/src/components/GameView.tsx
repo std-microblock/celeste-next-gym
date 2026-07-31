@@ -276,6 +276,12 @@ function framedEntry(
   const cacheKey = `frame:${key}:${tint ?? "original"}`;
   const cached = assets.tinted.get(cacheKey);
   if (cached) return cached;
+  // Bounded LRU: animated rainbow hues change every frame and must not grow
+  // the cache without limit (the old entries are still collected by the GC).
+  if (assets.tinted.size >= 600) {
+    const oldest = assets.tinted.keys().next().value;
+    if (oldest !== undefined) assets.tinted.delete(oldest);
+  }
   const canvas = document.createElement("canvas");
   canvas.width = entry.frameWidth;
   canvas.height = entry.frameHeight;
@@ -2202,6 +2208,15 @@ function drawOutlinedSpinnerSlice(
   );
 }
 
+function spinnerInView(position: Vec2, camera: CameraBounds): boolean {
+  return (
+    position.x >= camera.x - 32 &&
+    position.x <= camera.x + camera.width + 32 &&
+    position.y >= camera.y - 32 &&
+    position.y <= camera.y + camera.height + 32
+  );
+}
+
 function drawSpinnerConnections(
   context: CanvasRenderingContext2D,
   assets: GameAssets,
@@ -2209,6 +2224,7 @@ function drawSpinnerConnections(
   frame: number,
   state: SimState,
   theme: VisualTheme,
+  camera: CameraBounds,
 ): void {
   const records: {
     entity: MapEntity;
@@ -2221,9 +2237,11 @@ function drawSpinnerConnections(
     const runtime = state.spinners?.[spinnerIndex];
     spinnerIndex += 1;
     if (runtime && !runtime.visible) continue;
+    const position = runtime?.position ?? spinnerCenter(entity);
+    if (!spinnerInView(position, camera)) continue;
     records.push({
       entity,
-      position: runtime?.position ?? spinnerCenter(entity),
+      position,
       style: entitySpinnerStyle(entity) ?? resolveSpinnerStyle(theme, entity.variant),
     });
   }
@@ -2272,10 +2290,12 @@ function drawCrystalSpinner(
   state: SimState,
   kindIndex: number,
   theme: VisualTheme,
+  camera: CameraBounds,
 ): void {
   const runtime = state.spinners?.[kindIndex];
   if (runtime && !runtime.visible) return;
   const position = runtime?.position ?? spinnerCenter(entity);
+  if (!spinnerInView(position, camera)) return;
   let style = entitySpinnerStyle(entity) ?? resolveSpinnerStyle(theme, entity.variant);
   let available = frames(assets, style.foreground);
   // Custom mod spinners whose texture pack is not loaded (for example
@@ -2290,34 +2310,51 @@ function drawCrystalSpinner(
   const seed = pseudo(position.x * 0.17 + position.y * 0.31 + kindIndex * 7.13);
   const key = available[Math.floor(seed * available.length) % available.length];
   const tint = entity.tint ?? (style.rainbow ? spinnerHue(position, frame) : undefined);
-  const slices = [
-    {
-      checkX: -4,
-      checkY: -4,
-      sourceX: 0,
-      sourceY: 0,
-      originX: 12,
-      originY: 12,
-    },
-    { checkX: 4, checkY: -4, sourceX: 10, sourceY: 0, originX: 2, originY: 12 },
-    { checkX: 4, checkY: 4, sourceX: 10, sourceY: 10, originX: 2, originY: 2 },
-    { checkX: -4, checkY: 4, sourceX: 0, sourceY: 10, originX: 12, originY: 2 },
-  ];
-  for (const slice of slices) {
-    if (pointInSolid(map, position.x + slice.checkX, position.y + slice.checkY))
-      continue;
-    drawOutlinedSpinnerSlice(
-      context,
-      assets,
-      key,
-      position,
-      slice.sourceX,
-      slice.sourceY,
-      slice.originX,
-      slice.originY,
-      tint,
-    );
+  const frameEntry = assets.entries[key];
+  if (!frameEntry) return;
+  if (frameEntry.frameWidth === 24 && frameEntry.frameHeight === 24) {
+    const slices = [
+      {
+        checkX: -4,
+        checkY: -4,
+        sourceX: 0,
+        sourceY: 0,
+        originX: 12,
+        originY: 12,
+      },
+      { checkX: 4, checkY: -4, sourceX: 10, sourceY: 0, originX: 2, originY: 12 },
+      { checkX: 4, checkY: 4, sourceX: 10, sourceY: 10, originX: 2, originY: 2 },
+      { checkX: -4, checkY: 4, sourceX: 0, sourceY: 10, originX: 12, originY: 2 },
+    ];
+    for (const slice of slices) {
+      if (pointInSolid(map, position.x + slice.checkX, position.y + slice.checkY))
+        continue;
+      drawOutlinedSpinnerSlice(
+        context,
+        assets,
+        key,
+        position,
+        slice.sourceX,
+        slice.sourceY,
+        slice.originX,
+        slice.originY,
+        tint,
+      );
+    }
+    return;
   }
+  // Non-24x24 custom sheets (QuantumSpaceman stars, pixelator towers, ...)
+  // are rendered whole at their natural size, like the mod's own entity.
+  drawOutlinedTintedEntry(
+    context,
+    assets,
+    key,
+    position.x,
+    position.y,
+    frameEntry.frameWidth * 0.5,
+    frameEntry.frameHeight * 0.5,
+    tint,
+  );
 }
 
 function drawTheoCrystal(
@@ -2812,6 +2849,7 @@ function drawEntity(
   kindIndex: number,
   entityIndex: number,
   theme: VisualTheme,
+  camera: CameraBounds,
 ): void {
   const box = entity.bounds;
   if (entity.kind === "spikes") {
@@ -2891,6 +2929,7 @@ function drawEntity(
       state,
       kindIndex,
       theme,
+      camera,
     );
   } else if (entity.kind === "moving_solid") {
     drawMovingSolid(context, entity, state, kindIndex);
@@ -3010,7 +3049,7 @@ export function GameView({
     context.clip();
     drawThemeBackground(context, assets, map, theme, frame, camera);
     if (tileLayer) context.drawImage(tileLayer, map.bounds.x, map.bounds.y);
-    drawSpinnerConnections(context, assets, map, frame, state, theme);
+    drawSpinnerConnections(context, assets, map, frame, state, theme, camera);
     const kindCounts = new Map<EntityKind, number>();
     for (const [entityIndex, entity] of map.entities.entries()) {
       const kindIndex = kindCounts.get(entity.kind) ?? 0;
@@ -3024,6 +3063,7 @@ export function GameView({
         kindIndex,
         entityIndex,
         theme,
+        camera,
       );
       kindCounts.set(entity.kind, kindIndex + 1);
     }
