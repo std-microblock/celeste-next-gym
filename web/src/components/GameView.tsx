@@ -2932,6 +2932,9 @@ function drawEntity(
     drawMoveBlock(context, assets, entity, state, kindIndex);
   } else if (entity.kind === "cassette_block") {
     drawCassetteBlock(context, assets, entity, state, kindIndex);
+  } else if (entity.kind === "crystal_static_spinner") {
+    // Drawn by collectSpinnerDrawItems/drawSpinnerItems (one two-pass group:
+    // black outline behind, tinted art on top), not inside the entity loop.
   } else if (entity.kind === "moving_solid") {
     drawMovingSolid(context, entity, state, kindIndex);
   } else if (entity.kind !== "wind") {
@@ -3128,3 +3131,5 @@ export function GameView({
     </div>
   );
 }
+
+
