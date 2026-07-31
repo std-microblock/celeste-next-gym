@@ -1070,7 +1070,7 @@ function buildTileLayer(
     for (let x = 0; x < grid[y].length; x += 1) {
       if (grid[y][x] === "0") continue;
       const [tileX, tileY] = theme.tileRules
-        ? autotileByRules(grid, x, y, theme.tileRules) ?? [2, 15]
+        ? autotileByRules(grid, x, y, theme.tileRules) ?? theme.centerTile ?? [2, 15]
         : theme.tileLayout === "sj-gym"
           ? strawberryJamGymTileCoordinate(grid, x, y)
           : tileCoordinate(grid, x, y);

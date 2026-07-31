@@ -120,15 +120,15 @@ describe("visual themes", () => {
     const rooms = VISUAL_THEMES.filter(
       (theme) => theme.collection === "strawberry-jam-rooms",
     );
-    const gym = rooms.find((theme) => theme.label.includes("0-Gyms/1-Beginner"));
+    const gym = rooms.find((theme) => theme.chapter.includes("0-Gyms/1-Beginner"));
     expect(gym).toBeDefined();
     expect(gym?.tileset).toBe("tilesets/SJ2021/Gym/BeginnerGym");
-    expect(gym?.tileRules?.length).toBe(48);
+    expect(gym?.tileRules?.length).toBe(46);
     expect(gym?.layers[0]).toEqual(
       expect.objectContaining({ key: "bgs/SJ2021/Gym/begGymDarkBG", scrollX: 1 }),
     );
     const lobby = rooms.find((theme) =>
-      theme.label.includes("0-Lobbies/1-Beginner.bin"),
+      theme.chapter.includes("0-Lobbies/1-Beginner.bin"),
     );
     expect(lobby?.layers.some((layer) => layer.scrollX !== undefined)).toBe(true);
   });

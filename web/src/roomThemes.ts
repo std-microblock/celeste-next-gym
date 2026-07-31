@@ -16,7 +16,13 @@ interface RoomThemeData {
   room: string;
   tileset: string | null;
   tileRules: readonly (readonly [string, readonly [number, number]])[] | null;
+  centerTile: readonly [number, number] | null;
   spike: string;
+  spinner: {
+    foreground: string;
+    background: string;
+    kind?: "crystal" | "sprite";
+  } | null;
   background: string;
   layers: readonly {
     key: string;
@@ -41,8 +47,9 @@ export const ROOM_THEMES: readonly VisualTheme[] = (
   collection: ROOM_THEMES_COLLECTION_ID as VisualThemeCollectionId,
   tileset: room.tileset ?? "tilesets/dirt",
   ...(room.tileRules ? { tileRules: room.tileRules } : {}),
+  ...(room.centerTile ? { centerTile: room.centerTile } : {}),
   spike: room.spike,
-  spinner: {
+  spinner: room.spinner ?? {
     foreground: "danger/crystal/fg_blue",
     background: "danger/crystal/bg_blue",
   },

@@ -60,6 +60,8 @@ export interface VisualTheme {
   tileLayout?: VisualThemeTileLayout;
   /** Per-room autotiler rules extracted from a mod's ForegroundTiles.xml. */
   tileRules?: readonly (readonly [string, readonly [number, number]])[];
+  /** Interior fill tile for tileRules (the XML's mask="center" set). */
+  centerTile?: readonly [number, number];
   background: string;
   layers: readonly VisualThemeLayer[];
   stars?: boolean;
@@ -352,7 +354,7 @@ export const VISUAL_THEME_COLLECTIONS: readonly {
   {
     id: "strawberry-jam-rooms",
     label: "SJ2021 房间主题",
-    atlas: "assets/strawberry-jam/gameplay/theme-selected",
+    atlas: "assets/strawberry-jam/gameplay/room-theme-assets"
   },
 ];
 

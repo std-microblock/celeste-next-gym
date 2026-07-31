@@ -24,6 +24,8 @@ if (!input || !outDir) {
 const filterArg = args[args.indexOf("--filter") + 1];
 const filters = filterArg ? filterArg.split(",").filter(Boolean) : null;
 const existingAtlas = args[args.indexOf("--atlas") + 1];
+const metaPath = args[args.indexOf("--meta") + 1];
+const metaOverrides = metaPath ? JSON.parse(await readFile(metaPath, "utf8")) : {};
 
 const modRoot = await resolveModRoot(input);
 const gameplayRoot = path.join(modRoot, "Graphics", "Atlases", "Gameplay");
@@ -57,20 +59,64 @@ async function findFiles(root, suffix) {
 }
 
 function parseForegroundTiles(xmlText) {
-  const tilesets = [];
-  const re = /<Tileset id="([^"]+)" path="([^"]+)"[^>]*>([\s\S]*?)<\/Tileset>/g;
-  for (const match of xmlText.matchAll(re)) {
-    const id = match[1];
-    const atlasPath = match[2];
-    const body = match[3];
-    const rules = [];
-    for (const rule of body.matchAll(/<set mask="([^"]+)" tiles="([^"]+)"\s*\/>/g)) {
-      const [col, row] = rule[2].split(",").map(Number);
-      if (Number.isInteger(col) && Number.isInteger(row)) rules.push([rule[1], [col, row]]);
-    }
-    tilesets.push({ id, path: atlasPath, rules });
+  // Handle both paired and self-closing <Tileset ...> elements.
+  const tilesets = {};
+  const tagRe = /<Tileset\s+([^>]*?)\/?>/gs;
+  for (const match of xmlText.matchAll(tagRe)) {
+    const attrs = match[1];
+    const id = /id="([^"]+)"/.exec(attrs)?.[1];
+    if (!id) continue;
+    tilesets[id] = {
+      id,
+      path: /path="([^"]+)"/.exec(attrs)?.[1] ?? null,
+      copy: /copy="([^"]+)"/.exec(attrs)?.[1] ?? null,
+      rules: [],
+      center: null,
+    };
   }
-  return tilesets;
+  const bodyRe = /<Tileset\s+([^>]*?)(?<!\/)>([\s\S]*?)<\/Tileset>/g;
+  for (const match of xmlText.matchAll(bodyRe)) {
+    const id = /id="([^"]+)"/.exec(match[1])?.[1];
+    if (!id || !tilesets[id]) continue;
+    const rules = [];
+    for (const rule of match[2].matchAll(/<set mask="([^"]+)" tiles="([^"]+)"[^>]*\/?>/g)) {
+      if (rule[1] === "center") {
+        const first = rule[2].split(";")[0].trim().split(",").map(Number);
+        if (first.length === 2 && Number.isInteger(first[0]) && Number.isInteger(first[1])) {
+          tilesets[id].center = [first[0], first[1]];
+        }
+        continue;
+      }
+      if (!/^[x01]{3}-[x01]{3}-[x01]{3}$/.test(rule[1])) continue;
+      // The game randomizes among semicolon-separated candidates; keep the
+      // first for a deterministic web render.
+      const first = rule[2].split(";")[0].trim().split(",").map(Number);
+      if (first.length === 2 && Number.isInteger(first[0]) && Number.isInteger(first[1])) {
+        rules.push([rule[1], [first[0], first[1]]]);
+      }
+    }
+    tilesets[id].rules = rules;
+  }
+  const resolve = (tileset, seen) => {
+    if (seen.has(tileset.id)) return [];
+    seen.add(tileset.id);
+    if (tileset.rules.length > 0) return tileset.rules;
+    if (tileset.copy && tilesets[tileset.copy]) return resolve(tilesets[tileset.copy], seen);
+    return [];
+  };
+  const resolveCenter = (tileset, seen) => {
+    if (seen.has(tileset.id)) return null;
+    seen.add(tileset.id);
+    if (tileset.center) return tileset.center;
+    if (tileset.copy && tilesets[tileset.copy]) return resolveCenter(tilesets[tileset.copy], seen);
+    return null;
+  };
+  return Object.values(tilesets).map((tileset) => ({
+    id: tileset.id,
+    path: tileset.path,
+    rules: resolve(tileset, new Set()),
+    center: resolveCenter(tileset, new Set()),
+  }));
 }
 
 const xmlFiles = await findFiles(modRoot, "ForegroundTiles.xml");
@@ -176,11 +222,17 @@ for (const mapFile of mapFiles) {
     const roomName = attrText(level, "name") ?? "unknown";
     const solids = level.children.find((c) => c.name === "solids");
     const grid = attrText(solids, "innerText") ?? "";
-    const tileIds = [...new Set(grid.replace(/[\s0]+/g, "").split(""))];
+    const counts = {};
+    for (const ch of grid.replace(/[\s0]+/g, "")) counts[ch] = (counts[ch] ?? 0) + 1;
+    const dominantId = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
     let tileset = null;
     let tileRules = null;
+    let used = null;
     if (tilesets) {
-      const used = tilesets.find((t) => tileIds.includes(t.id));
+      used = dominantId
+        ? tilesets.find((t) => t.id === dominantId) ??
+          tilesets.find((t) => counts[t.id])
+        : undefined;
       if (used) {
         tileset = used.path.startsWith("tilesets/") ? used.path : "tilesets/" + used.path;
         tileRules = used.rules;
@@ -199,34 +251,32 @@ for (const mapFile of mapFiles) {
     const layers = roomBackdrops(style, roomName);
     for (const layer of layers) referencedTextures.add(layer.key);
     const roomId = (mapRelative.replace(/[^A-Za-z0-9_-]+/g, "-") + "-" + roomName.replace(/[^A-Za-z0-9_-]+/g, "-")).replace(/^-+|-+$/g, "");
+    const mapMeta = metaOverrides[mapRelative] ?? {};
+    const label = mapMeta.label
+      ? mapMeta.label + (mapMeta.label.endsWith(roomName) ? "" : " / " + roomName)
+      : mapRelative + " / " + roomName;
     rooms.push({
       id: roomId,
-      label: mapRelative + " / " + roomName,
+      label,
       mapFile: mapRelative,
       room: roomName,
       tileset,
       tileRules,
+      centerTile: used?.center ?? null,
       spike,
+      spinner: mapMeta.spinner ?? null,
       background: "#000000",
       layers,
     });
   }
   console.log("extracted " + mapRelative);
 }
-let atlasEntries = null;
 if (existingAtlas) {
-  const atlasFiles = existingAtlas.split(",");
-  atlasEntries = {};
-  for (const atlasFile of atlasFiles) {
-    Object.assign(atlasEntries, JSON.parse(await readFile(atlasFile.trim(), "utf8")).entries);
-  }
-  const missing = [...referencedTextures].filter((key) => !atlasEntries[key]);
-  console.log(
-    "verified " + (referencedTextures.size - missing.length) + "/" + referencedTextures.size +
-    " textures across " + atlasFiles.length + " atlases" + (missing.length ? " (missing " + missing.length + ", e.g. " + missing.slice(0, 3).join(", ") + ")" : ""),
-  );
+  // --atlas is accepted for backward compatibility; the mod atlas is still
+  // packed below so rooms render the mod's own tileset/bg textures.
+  void existingAtlas;
 }
-if (!atlasEntries) {
+{
   const packKeys = [];
   for (const key of referencedTextures) {
     const input = path.join(gameplayRoot, ...key.split("/"));
@@ -236,14 +286,19 @@ if (!atlasEntries) {
       // ignore missing texture files
     }
   }
-  const sheetWidth = 1024;
+  let sheetWidth = 1024;
+  for (const key of packKeys) {
+    const probe = path.join(gameplayRoot, ...key.split("/")) + ".png";
+    const probeMeta = await sharp(probe).metadata();
+    sheetWidth = Math.max(sheetWidth, probeMeta.width ?? 0);
+  }
   const padding = 2;
   let cursorX = padding;
   let cursorY = padding;
   let rowHeight = 0;
   const placements = [];
   for (const key of packKeys) {
-    const input = path.join(gameplayRoot, ...key.split("/"));
+    const input = path.join(gameplayRoot, ...key.split("/")) + ".png";
     const metadata = await sharp(input).metadata();
     if (cursorX + metadata.width + padding > sheetWidth) {
       cursorX = padding;
@@ -259,18 +314,16 @@ if (!atlasEntries) {
   await sharp({ create: { width: sheetWidth, height: sheetHeight, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
     .composite(await Promise.all(placements.map(async (entry) => ({ input: await readFile(entry.input), left: entry.x, top: entry.y }))))
     .png({ compressionLevel: 9 })
-    .toFile(path.join(outDir, "gameplay", "theme-selected.png"));
+    .toFile(path.join(outDir, "gameplay", "room-theme-assets.png"));
   const entries = Object.fromEntries(
     placements.map((entry) => [entry.key, { x: entry.x, y: entry.y, width: entry.width, height: entry.height, drawOffsetX: 0, drawOffsetY: 0, frameWidth: entry.width, frameHeight: entry.height }]),
   );
-  await writeFile(path.join(outDir, "gameplay", "theme-selected.json"), JSON.stringify({ entries }, null, 2) + "\n", "utf8");
-  console.log("packed " + placements.length + " textures into " + path.join(outDir, "gameplay"));
+  await writeFile(path.join(outDir, "gameplay", "room-theme-assets.json"), JSON.stringify({ entries }, null, 2) + "\n", "utf8");
+  console.log("packed " + placements.length + " textures into " + path.join(outDir, "gameplay", "room-theme-assets"));
 }
 
 await mkdir(outDir, { recursive: true });
 const output = path.join(outDir, "room-themes.json");
-const atlasField = existingAtlas
-  ? "assets/strawberry-jam/gameplay/theme-selected.json"
-  : "assets/" + path.basename(outDir) + "/gameplay/theme-selected.json";
+const atlasField = "assets/" + path.basename(outDir) + "/gameplay/room-theme-assets.json";
 await writeFile(output, JSON.stringify({ modId: path.basename(outDir), rooms, atlas: atlasField }, null, 2) + "\n", "utf8");
 console.log("wrote " + rooms.length + " room themes to " + output);
