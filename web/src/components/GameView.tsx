@@ -548,17 +548,28 @@ function drawTrimmedSpinner(
   y: number,
   tint?: string,
 ): void {
-  // Draw only the sheet's own pixels: a black outline ring is NOT part of the
-  // art and reads as a chunky dark line at the web's zoom levels.
   const trimmed = trimmedSpinner(assets, key, tint);
   if (!trimmed) return;
   const cx = Math.round(x + trimmed.offsetX);
   const cy = Math.round(y + trimmed.offsetY);
-  context.drawImage(
-    trimmed.canvas,
-    cx - Math.floor(trimmed.canvas.width / 2),
-    cy - Math.floor(trimmed.canvas.height / 2),
-  );
+  const originX = Math.floor(trimmed.canvas.width / 2);
+  const originY = Math.floor(trimmed.canvas.height / 2);
+  for (const [dx, dy] of [
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1],
+  ] as const) {
+    const outline = trimmedSpinner(assets, key, "#000000");
+    if (outline) {
+      context.drawImage(
+        outline.canvas,
+        cx + dx - originX,
+        cy + dy - originY,
+      );
+    }
+  }
+  context.drawImage(trimmed.canvas, cx - originX, cy - originY);
 }
 
 function drawCenteredEntry(
