@@ -84,6 +84,112 @@ export function autotileByRules(
   return undefined;
 }
 
+
+/** One tileset definition inside a room theme: autotile rules of any scan
+ * size (the game supports 3x3 and the SJ 5x5 extension), padding/center
+ * interior tiles, and the neighbor-ignore list. */
+export interface TileSetDef {
+  path?: string;
+  scan?: readonly [number, number];
+  ignores?: string;
+  rules?: readonly (readonly [string, readonly [number, number]])[];
+  center?: readonly [number, number];
+  padded?: readonly [number, number];
+}
+
+function cellChar(grid: string[][], x: number, y: number, edges: "clamp" | "empty"): string {
+  if (edges === "empty") return grid[y]?.[x] ?? "0";
+  const rows = grid.length;
+  const cols = grid[0]?.length ?? 0;
+  if (rows === 0 || cols === 0) return "0";
+  const cx = Math.max(0, Math.min(cols - 1, x));
+  const cy = Math.max(0, Math.min(rows - 1, y));
+  return grid[cy]?.[cx] ?? "0";
+}
+
+function cellFilled(
+  def: TileSetDef,
+  grid: string[][],
+  x: number,
+  y: number,
+  edges: "clamp" | "empty",
+): boolean {
+  const ch = cellChar(grid, x, y, edges);
+  if (ch === "0" || ch === " ") return false;
+  const ignores = def.ignores ?? "";
+  if (ignores.includes("*")) return false;
+  return !ignores.includes(ch);
+}
+
+/** Port of the (patched) Celeste Autotiler.TileHandler: builds the scan-size
+ * neighborhood, matches 0/1/x/y masks in order, and falls back to the
+ * padded/center interior tiles for fully-surrounded cells. The edges flag
+ * mirrors Behaviour.EdgesExtend: ground clamps out-of-bounds to the edge
+ * tile while a GenerateBox (falling block) treats them as empty. */
+export function autotileCell(
+  grid: string[][],
+  x: number,
+  y: number,
+  def: TileSetDef,
+  edges: "clamp" | "empty" = "clamp",
+): readonly [number, number] | undefined {
+  const scan = def.scan ?? [3, 3];
+  const scanW = scan[0];
+  const scanH = scan[1];
+  const span: string[] = [];
+  const spanFilled: boolean[] = [];
+  let allFilled = true;
+  const midX = Math.floor(scanW / 2);
+  const midY = Math.floor(scanH / 2);
+  for (let dy = 0; dy < scanH; dy += 1) {
+    for (let dx = 0; dx < scanW; dx += 1) {
+      const nx = x + dx - midX;
+      const ny = y + dy - midY;
+      const filled = cellFilled(def, grid, nx, ny, edges);
+      span.push(cellChar(grid, nx, ny, edges));
+      spanFilled.push(filled);
+      if (!filled) allFilled = false;
+    }
+  }
+  const selfChar = span[midY * scanW + midX];
+  if (allFilled) {
+    const w = 1 + midX;
+    const h = 1 + midY;
+    const cross =
+      cellFilled(def, grid, x - w, y, edges) &&
+      cellFilled(def, grid, x + w, y, edges) &&
+      cellFilled(def, grid, x, y - h, edges) &&
+      cellFilled(def, grid, x, y + h, edges);
+    if (cross) return def.center ?? def.padded ?? undefined;
+    return def.padded ?? def.center ?? undefined;
+  }
+  for (const [mask, tile] of def.rules ?? []) {
+    const cells = mask.replaceAll("-", "");
+    if (cells.length !== scanW * scanH) continue;
+    let ok = true;
+    for (let k = 0; k < cells.length && ok; k += 1) {
+      const ch = cells[k];
+      if (ch === "x" || ch === "X" || ch === "z" || ch === "Z") continue;
+      if (ch === "0" && spanFilled[k]) ok = false;
+      else if (ch === "1" && !spanFilled[k]) ok = false;
+      else if ((ch === "y" || ch === "Y") && span[k] === selfChar) ok = false;
+      else if (/[a-zA-Z]/.test(ch)) ok = false; // whitelist/blacklist letters unsupported
+    }
+    if (ok) return [tile[0], tile[1]];
+  }
+  return undefined;
+}
+
+/** FallingBlock skin: GFX.FGAutotiler.GenerateBox(tiletype, w/8, h/8) with the
+ * default Behaviour (EdgesExtend=false), so cells outside the box are empty. */
+export function autotileBox(
+  boxGrid: string[][],
+  x: number,
+  y: number,
+  def: TileSetDef,
+): readonly [number, number] {
+  return autotileCell(boxGrid, x, y, def, "empty") ?? def.padded ?? def.center ?? [2, 15];
+}
 export function strawberryJamGymTileCoordinate(
   grid: string[][],
   x: number,

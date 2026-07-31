@@ -1,4 +1,5 @@
 import { ROOM_THEMES } from "./roomThemes";
+import type { TileSetDef } from "./tileRules";
 
 export type VisualThemeId = | `room:${string}`
   | "forsaken-city"
@@ -62,6 +63,14 @@ export interface VisualTheme {
   tileRules?: readonly (readonly [string, readonly [number, number]])[];
   /** Interior fill tile for tileRules (the XML's mask="center" set). */
   centerTile?: readonly [number, number];
+  /** Inner-edge fill tile (the XML's mask="padding" set). */
+  paddedTile?: readonly [number, number];
+  /** Autotile scan size of the dominant tileset (3x3 unless SJ 5x5). */
+  tileScan?: readonly [number, number];
+  /** Chars ignored when checking dominant-tileset neighbors. */
+  tileIgnores?: string;
+  /** Per-char tileset definitions for multi-tileset rooms. */
+  tilesets?: Record<string, TileSetDef>;
   /** Small per-theme atlas fetched when this theme is selected. */
   atlasUrl?: string;
   /** Pre-generated thumbnail shown in the theme picker. */

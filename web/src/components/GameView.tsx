@@ -22,12 +22,19 @@ import {
   spikeTexturePrefixes,
 } from "../spikeRendering";
 import {
+  entitySpinnerStyle,
   resolveSpinnerStyle,
   spinnerCenter,
   spinnerHue,
   spinnersConnect,
 } from "../spinnerRendering";
-import { autotileByRules, strawberryJamGymTileCoordinate } from "../tileRules";
+import {
+  autotileBox,
+  autotileByRules,
+  autotileCell,
+  strawberryJamGymTileCoordinate,
+  type TileSetDef,
+} from "../tileRules";
 import { type VisualTheme, type VisualThemeLayer } from "../visualThemes";
 
 interface AtlasEntry {
@@ -828,6 +835,14 @@ function drawPlayerParticles(
 }
 
 function buildSolidGrid(map: GymMap): string[][] {
+  if (map.tile_grid && map.tile_grid.length > 0) {
+    const columns = Math.max(...map.tile_grid.map((row) => row.length), 1);
+    return map.tile_grid.map((row) => {
+      const cells = row.split("");
+      while (cells.length < columns) cells.push("0");
+      return cells.map((cell) => (cell === " " ? "0" : cell));
+    });
+  }
   const columns = Math.ceil(map.bounds.width / 8);
   const rows = Math.ceil(map.bounds.height / 8);
   const grid = Array.from({ length: rows }, () =>
@@ -1089,9 +1104,14 @@ function buildTileLayer(
   grid: string[][],
   theme: VisualTheme,
 ): HTMLCanvasElement | undefined {
-  const tilesetKey = theme.tileset;
-  const tileset = assets.entries[tilesetKey];
-  if (!tileset) return undefined;
+  const dominant: TileSetDef = {
+    path: theme.tileset,
+    scan: theme.tileScan,
+    ignores: theme.tileIgnores,
+    rules: theme.tileRules ?? undefined,
+    center: theme.centerTile,
+    padded: theme.paddedTile,
+  };
   const layer = document.createElement("canvas");
   layer.width = Math.max(1, Math.ceil(map.bounds.width));
   layer.height = Math.max(1, Math.ceil(map.bounds.height));
@@ -1100,12 +1120,20 @@ function buildTileLayer(
   context.imageSmoothingEnabled = false;
   for (let y = 0; y < grid.length; y += 1) {
     for (let x = 0; x < grid[y].length; x += 1) {
-      if (grid[y][x] === "0") continue;
-      const [tileX, tileY] = theme.tileRules
-        ? autotileByRules(grid, x, y, theme.tileRules) ?? theme.centerTile ?? [2, 15]
-        : theme.tileLayout === "sj-gym"
-          ? strawberryJamGymTileCoordinate(grid, x, y)
-          : tileCoordinate(grid, x, y);
+      const cell = grid[y][x];
+      if (cell === "0") continue;
+      const def = theme.tilesets?.[cell] ?? dominant;
+      const tilesetKey = def.path ?? theme.tileset;
+      const tileset = assets.entries[tilesetKey];
+      if (!tileset) continue;
+      const [tileX, tileY] =
+        def.rules && def.rules.length > 0
+          ? autotileCell(grid, x, y, def) ?? def.center ?? def.padded ?? [2, 15]
+          : theme.tileRules
+            ? autotileByRules(grid, x, y, theme.tileRules) ?? theme.centerTile ?? [2, 15]
+            : theme.tileLayout === "sj-gym"
+              ? strawberryJamGymTileCoordinate(grid, x, y)
+              : tileCoordinate(grid, x, y);
       context.drawImage(
         assets.image,
         tileset.x + tileX * 8,
@@ -2196,7 +2224,7 @@ function drawSpinnerConnections(
     records.push({
       entity,
       position: runtime?.position ?? spinnerCenter(entity),
-      style: resolveSpinnerStyle(theme, entity.variant),
+      style: entitySpinnerStyle(entity) ?? resolveSpinnerStyle(theme, entity.variant),
     });
   }
   for (let left = 0; left < records.length; left += 1) {
@@ -2248,14 +2276,20 @@ function drawCrystalSpinner(
   const runtime = state.spinners?.[kindIndex];
   if (runtime && !runtime.visible) return;
   const position = runtime?.position ?? spinnerCenter(entity);
-  const style = resolveSpinnerStyle(theme, entity.variant);
-  const available = frames(assets, style.foreground);
+  let style = entitySpinnerStyle(entity) ?? resolveSpinnerStyle(theme, entity.variant);
+  let available = frames(assets, style.foreground);
+  // Custom mod spinners whose texture pack is not loaded (for example
+  // FrostHelper's own icecrystal directory) fall back to the theme crystal.
+  if (available.length === 0) {
+    style = resolveSpinnerStyle(theme, entity.variant);
+    available = frames(assets, style.foreground);
+  }
   if (available.length === 0) return;
   // CrystalStaticSpinner chooses one foreground sheet when its sprites are
   // instantiated. It is static; the four files are variants, not animation.
   const seed = pseudo(position.x * 0.17 + position.y * 0.31 + kindIndex * 7.13);
   const key = available[Math.floor(seed * available.length) % available.length];
-  const tint = style.rainbow ? spinnerHue(position, frame) : undefined;
+  const tint = entity.tint ?? (style.rainbow ? spinnerHue(position, frame) : undefined);
   const slices = [
     {
       checkX: -4,
@@ -2668,21 +2702,45 @@ function drawFallingBlock(
   const runtime = state.falling_blocks?.[kindIndex];
   if (runtime?.removed) return;
   const box = runtimeEntityBounds(entity, state, kindIndex);
-  // Vanilla FallingBlock is GFX.FGAutotiler.GenerateBox(tiletype): a solid box
-  // of the theme tileset, so render the tileset center fill across the body.
-  const tileset = assets.entries[theme.tileset];
+  // Vanilla FallingBlock is GFX.FGAutotiler.GenerateBox(tiletype, w/8, h/8):
+  // the box grid is autotiled with the tiletype char's tileset (border masks,
+  // padded inner edge, center fill), exactly like the in-game block skin.
+  const def: TileSetDef = entity.tile
+    ? theme.tilesets?.[entity.tile] ?? {
+        path: theme.tileset,
+        scan: theme.tileScan,
+        ignores: theme.tileIgnores,
+        rules: theme.tileRules ?? undefined,
+        center: theme.centerTile,
+        padded: theme.paddedTile,
+      }
+    : {
+        path: theme.tileset,
+        scan: theme.tileScan,
+        ignores: theme.tileIgnores,
+        rules: theme.tileRules ?? undefined,
+        center: theme.centerTile,
+        padded: theme.paddedTile,
+      };
+  const tilesetKey = def.path ?? theme.tileset;
+  const tileset = assets.entries[tilesetKey];
   if (tileset) {
-    const [tileX, tileY] = theme.centerTile ?? [2, 15];
-    for (let y = 0; y < box.height; y += 8) {
-      for (let x = 0; x < box.width; x += 8) {
+    const columns = Math.max(1, Math.floor(box.width / 8));
+    const rows = Math.max(1, Math.floor(box.height / 8));
+    const boxGrid = Array.from({ length: rows }, () =>
+      Array.from({ length: columns }, () => "1"),
+    );
+    for (let y = 0; y < rows; y += 1) {
+      for (let x = 0; x < columns; x += 1) {
+        const [tileX, tileY] = autotileBox(boxGrid, x, y, def);
         context.drawImage(
           assets.image,
           tileset.x + tileX * 8,
           tileset.y + tileY * 8,
           8,
           8,
-          box.x + x,
-          box.y + y,
+          box.x + x * 8,
+          box.y + y * 8,
           8,
           8,
         );

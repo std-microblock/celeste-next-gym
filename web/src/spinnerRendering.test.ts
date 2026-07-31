@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { MapEntity } from "./model";
 import {
+  entitySpinnerStyle,
   resolveSpinnerStyle,
   spinnerCenter,
   spinnerHue,
@@ -45,5 +46,33 @@ describe("crystal spinner rendering", () => {
     expect(spinnerHue({ x: 32, y: 48 }, 120)).toBe(
       spinnerHue({ x: 32, y: 48 }, 120),
     );
+  });
+});
+describe("entity spinner skins", () => {
+  it("derives the background sheet from the decoded foreground prefix", () => {
+    const viv: MapEntity = {
+      kind: "crystal_static_spinner",
+      bounds: { x: 0, y: 0, width: 16, height: 12 },
+      direction: { x: 0, y: 0 },
+      name: "VivHelper/CustomSpinner",
+      texture: "danger/SJ2021/Gym/Orb/fg_beg",
+    };
+    expect(entitySpinnerStyle(viv)).toEqual({
+      foreground: "danger/SJ2021/Gym/Orb/fg_beg",
+      background: "danger/SJ2021/Gym/Orb/bg_beg",
+    });
+    const frost: MapEntity = {
+      ...viv,
+      name: "FrostHelper/IceSpinner",
+      texture: "danger/SJ2021/Ceph/Spinner/fg",
+    };
+    expect(entitySpinnerStyle(frost)).toEqual({
+      foreground: "danger/SJ2021/Ceph/Spinner/fg",
+      background: "danger/SJ2021/Ceph/Spinner/bg",
+    });
+  });
+
+  it("returns undefined for entities without a decoded texture", () => {
+    expect(entitySpinnerStyle(spinner(0, 0))).toBeUndefined();
   });
 });

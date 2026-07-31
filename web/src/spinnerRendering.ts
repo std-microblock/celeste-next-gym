@@ -26,6 +26,23 @@ const VANILLA_SPINNERS: Record<
   },
 };
 
+
+/** Spinner skin carried by decoded mod entities (VivHelper/CustomSpinner and
+ * FrostHelper/IceSpinner). The Rust decoder stores the foreground prefix, so
+ * the background sheet is the same path with /fg replaced by /bg. */
+export function entitySpinnerStyle(
+  entity: MapEntity,
+): VisualTheme["spinner"] | undefined {
+  if (!entity.texture) return undefined;
+  const marker = entity.texture.lastIndexOf("/fg");
+  if (marker < 0) return undefined;
+  const background =
+    entity.texture.slice(0, marker) +
+    "/bg" +
+    entity.texture.slice(marker + 3);
+  return { foreground: entity.texture, background };
+}
+
 export function resolveSpinnerStyle(
   theme: VisualTheme,
   variant?: string,
