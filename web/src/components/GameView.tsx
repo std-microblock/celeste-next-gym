@@ -433,40 +433,6 @@ function drawOutlinedEntry(
   );
 }
 
-function drawOutlinedTintedEntry(
-  context: CanvasRenderingContext2D,
-  assets: GameAssets,
-  key: string,
-  x: number,
-  y: number,
-  originX: number,
-  originY: number,
-  tint: string | undefined,
-  rotation = 0,
-): void {
-  for (const [dx, dy] of [
-    [-1, 0],
-    [1, 0],
-    [0, -1],
-    [0, 1],
-  ] as const) {
-    drawEntry(
-      context,
-      assets,
-      key,
-      x + dx,
-      y + dy,
-      originX,
-      originY,
-      1,
-      1,
-      "#000000",
-      rotation,
-    );
-  }
-  drawEntry(context, assets, key, x, y, originX, originY, 1, 1, tint, rotation);
-}
-
 function drawCenteredEntry(
   context: CanvasRenderingContext2D,
   assets: GameAssets,
@@ -2169,46 +2135,94 @@ function drawSpinnerSlice(
   );
 }
 
-function drawOutlinedSpinnerSlice(
+const SPINNER_OUTLINE_OFFSETS = [
+  [-1, 0],
+  [1, 0],
+  [0, -1],
+  [0, 1],
+] as const;
+
+/** One drawable piece of the crystal-spinner group. Slices are the vanilla
+ * 24x24 corner cuts; entry items are non-24x24 custom sheets drawn whole and
+ * the background "filler" pieces between two connected crystals. */
+type SpinnerDrawItem =
+  | {
+      kind: "slice";
+      key: string;
+      position: Vec2;
+      sourceX: number;
+      sourceY: number;
+      originX: number;
+      originY: number;
+      tint?: string;
+    }
+  | {
+      kind: "entry";
+      key: string;
+      position: Vec2;
+      originX: number;
+      originY: number;
+      tint?: string;
+      rotation: number;
+    };
+
+function drawSpinnerItem(
   context: CanvasRenderingContext2D,
   assets: GameAssets,
-  key: string,
-  position: Vec2,
-  sourceX: number,
-  sourceY: number,
-  originX: number,
-  originY: number,
+  item: SpinnerDrawItem,
+  dx: number,
+  dy: number,
   tint?: string,
 ): void {
-  for (const [dx, dy] of [
-    [-1, 0],
-    [1, 0],
-    [0, -1],
-    [0, 1],
-  ] as const) {
+  const position = { x: item.position.x + dx, y: item.position.y + dy };
+  if (item.kind === "slice") {
     drawSpinnerSlice(
       context,
       assets,
-      key,
-      { x: position.x + dx, y: position.y + dy },
-      sourceX,
-      sourceY,
-      originX,
-      originY,
-      "#000000",
+      item.key,
+      position,
+      item.sourceX,
+      item.sourceY,
+      item.originX,
+      item.originY,
+      tint,
+    );
+  } else {
+    drawEntry(
+      context,
+      assets,
+      item.key,
+      position.x,
+      position.y,
+      item.originX,
+      item.originY,
+      1,
+      1,
+      tint,
+      item.rotation,
     );
   }
-  drawSpinnerSlice(
-    context,
-    assets,
-    key,
-    position,
-    sourceX,
-    sourceY,
-    originX,
-    originY,
-    tint,
-  );
+}
+
+/** Mirror CrystalStaticSpinner.Border: first draw every crystal image in black
+ * at the four 1px offsets, then the tinted images on top. Because all outline
+ * passes land behind the colored ones, overlapping slices (the 4x4 center of
+ * each crystal) and overlapping neighbors are re-covered by the tinted art:
+ * there is no black cross in the middle, and connected crystals share only
+ * their outer silhouette outline. */
+function drawSpinnerItems(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  items: readonly SpinnerDrawItem[],
+): void {
+  for (const [dx, dy] of SPINNER_OUTLINE_OFFSETS) {
+    for (const item of items) {
+      drawSpinnerItem(context, assets, item, dx, dy, "#000000");
+    }
+  }
+  for (const item of items) {
+    drawSpinnerItem(context, assets, item, 0, 0, item.tint);
+  }
 }
 
 function spinnerInView(position: Vec2, camera: CameraBounds): boolean {
@@ -2220,24 +2234,26 @@ function spinnerInView(position: Vec2, camera: CameraBounds): boolean {
   );
 }
 
-function drawSpinnerConnections(
-  context: CanvasRenderingContext2D,
+function collectSpinnerDrawItems(
   assets: GameAssets,
   map: GymMap,
   frame: number,
   state: SimState,
   theme: VisualTheme,
   camera: CameraBounds,
-): void {
+): SpinnerDrawItem[] {
+  const items: SpinnerDrawItem[] = [];
   const records: {
     entity: MapEntity;
     position: Vec2;
     style: VisualTheme["spinner"];
+    kindIndex: number;
   }[] = [];
   let spinnerIndex = 0;
   for (const entity of map.entities) {
     if (entity.kind !== "crystal_static_spinner") continue;
     const runtime = state.spinners?.[spinnerIndex];
+    const kindIndex = spinnerIndex;
     spinnerIndex += 1;
     if (runtime && !runtime.visible) continue;
     const position = runtime?.position ?? spinnerCenter(entity);
@@ -2245,9 +2261,13 @@ function drawSpinnerConnections(
     records.push({
       entity,
       position,
-      style: entitySpinnerStyle(entity) ?? resolveSpinnerStyle(theme, entity.variant),
+      style:
+        entitySpinnerStyle(entity) ?? resolveSpinnerStyle(theme, entity.variant),
+      kindIndex,
     });
   }
+  // CrystalStaticSpinner.CreateSprites adds a background "filler" image at the
+  // midpoint of every connected pair (same background, centers under 24px).
   for (let left = 0; left < records.length; left += 1) {
     for (let right = left + 1; right < records.length; right += 1) {
       const a = records[left];
@@ -2268,96 +2288,91 @@ function drawSpinnerConnections(
         available[Math.floor(seed * available.length) % available.length];
       const entry = assets.entries[key];
       if (!entry) continue;
-      const tint = a.style.rainbow ? spinnerHue(midpoint, frame) : undefined;
-      drawOutlinedTintedEntry(
-        context,
-        assets,
+      items.push({
+        kind: "entry",
         key,
-        midpoint.x,
-        midpoint.y,
-        entry.frameWidth * 0.5,
-        entry.frameHeight * 0.5,
-        tint,
-        Math.floor(seed * 4) * Math.PI * 0.5,
-      );
+        position: midpoint,
+        originX: entry.frameWidth * 0.5,
+        originY: entry.frameHeight * 0.5,
+        tint: a.style.rainbow ? spinnerHue(midpoint, frame) : undefined,
+        rotation: Math.floor(seed * 4) * Math.PI * 0.5,
+      });
     }
   }
-}
-
-function drawCrystalSpinner(
-  context: CanvasRenderingContext2D,
-  assets: GameAssets,
-  map: GymMap,
-  entity: MapEntity,
-  frame: number,
-  state: SimState,
-  kindIndex: number,
-  theme: VisualTheme,
-  camera: CameraBounds,
-): void {
-  const runtime = state.spinners?.[kindIndex];
-  if (runtime && !runtime.visible) return;
-  const position = runtime?.position ?? spinnerCenter(entity);
-  if (!spinnerInView(position, camera)) return;
-  let style = entitySpinnerStyle(entity) ?? resolveSpinnerStyle(theme, entity.variant);
-  let available = frames(assets, style.foreground);
-  // Custom mod spinners whose texture pack is not loaded (for example
-  // FrostHelper's own icecrystal directory) fall back to the theme crystal.
-  if (available.length === 0) {
-    style = resolveSpinnerStyle(theme, entity.variant);
-    available = frames(assets, style.foreground);
-  }
-  if (available.length === 0) return;
-  // CrystalStaticSpinner chooses one foreground sheet when its sprites are
-  // instantiated. It is static; the four files are variants, not animation.
-  const seed = pseudo(position.x * 0.17 + position.y * 0.31 + kindIndex * 7.13);
-  const key = available[Math.floor(seed * available.length) % available.length];
-  const tint = entity.tint ?? (style.rainbow ? spinnerHue(position, frame) : undefined);
-  const frameEntry = assets.entries[key];
-  if (!frameEntry) return;
-  if (frameEntry.frameWidth === 24 && frameEntry.frameHeight === 24) {
-    const slices = [
-      {
-        checkX: -4,
-        checkY: -4,
-        sourceX: 0,
-        sourceY: 0,
-        originX: 12,
-        originY: 12,
-      },
-      { checkX: 4, checkY: -4, sourceX: 10, sourceY: 0, originX: 2, originY: 12 },
-      { checkX: 4, checkY: 4, sourceX: 10, sourceY: 10, originX: 2, originY: 2 },
-      { checkX: -4, checkY: 4, sourceX: 0, sourceY: 10, originX: 12, originY: 2 },
-    ];
-    for (const slice of slices) {
-      if (pointInSolid(map, position.x + slice.checkX, position.y + slice.checkY))
-        continue;
-      drawOutlinedSpinnerSlice(
-        context,
-        assets,
-        key,
-        position,
-        slice.sourceX,
-        slice.sourceY,
-        slice.originX,
-        slice.originY,
-        tint,
-      );
+  // Each crystal picks one foreground sheet (static variants, not animation)
+  // and reassembles the four 14x14 corner slices around its center for 24x24
+  // sheets, skipping slices buried in solid tiles. Non-24x24 custom sheets
+  // (QuantumSpaceman stars, pixelator towers, ...) are rendered whole at their
+  // natural size, like the mod's own entity.
+  for (const record of records) {
+    let style = record.style;
+    let available = frames(assets, style.foreground);
+    // Custom mod spinners whose texture pack is not loaded (for example
+    // FrostHelper's own icecrystal directory) fall back to the theme crystal.
+    if (available.length === 0) {
+      style = resolveSpinnerStyle(theme, record.entity.variant);
+      available = frames(assets, style.foreground);
     }
-    return;
+    if (available.length === 0) continue;
+    const seed = pseudo(
+      record.position.x * 0.17 +
+        record.position.y * 0.31 +
+        record.kindIndex * 7.13,
+    );
+    const key =
+      available[Math.floor(seed * available.length) % available.length];
+    const frameEntry = assets.entries[key];
+    if (!frameEntry) continue;
+    const tint =
+      record.entity.tint ??
+      (style.rainbow ? spinnerHue(record.position, frame) : undefined);
+    if (frameEntry.frameWidth === 24 && frameEntry.frameHeight === 24) {
+      const slices = [
+        {
+          checkX: -4,
+          checkY: -4,
+          sourceX: 0,
+          sourceY: 0,
+          originX: 12,
+          originY: 12,
+        },
+        { checkX: 4, checkY: -4, sourceX: 10, sourceY: 0, originX: 2, originY: 12 },
+        { checkX: 4, checkY: 4, sourceX: 10, sourceY: 10, originX: 2, originY: 2 },
+        { checkX: -4, checkY: 4, sourceX: 0, sourceY: 10, originX: 12, originY: 2 },
+      ];
+      for (const slice of slices) {
+        if (
+          pointInSolid(
+            map,
+            record.position.x + slice.checkX,
+            record.position.y + slice.checkY,
+          )
+        )
+          continue;
+        items.push({
+          kind: "slice",
+          key,
+          position: record.position,
+          sourceX: slice.sourceX,
+          sourceY: slice.sourceY,
+          originX: slice.originX,
+          originY: slice.originY,
+          tint,
+        });
+      }
+      continue;
+    }
+    items.push({
+      kind: "entry",
+      key,
+      position: record.position,
+      originX: frameEntry.frameWidth * 0.5,
+      originY: frameEntry.frameHeight * 0.5,
+      tint,
+      rotation: 0,
+    });
   }
-  // Non-24x24 custom sheets (QuantumSpaceman stars, pixelator towers, ...)
-  // are rendered whole at their natural size, like the mod's own entity.
-  drawOutlinedTintedEntry(
-    context,
-    assets,
-    key,
-    position.x,
-    position.y,
-    frameEntry.frameWidth * 0.5,
-    frameEntry.frameHeight * 0.5,
-    tint,
-  );
+  return items;
 }
 
 function drawTheoCrystal(
@@ -2845,14 +2860,12 @@ function drawUnknownEntity(
 function drawEntity(
   context: CanvasRenderingContext2D,
   assets: GameAssets,
-  map: GymMap,
   entity: MapEntity,
   frame: number,
   state: SimState,
   kindIndex: number,
   entityIndex: number,
   theme: VisualTheme,
-  camera: CameraBounds,
 ): void {
   const box = entity.bounds;
   if (entity.kind === "spikes") {
@@ -2919,21 +2932,6 @@ function drawEntity(
     drawMoveBlock(context, assets, entity, state, kindIndex);
   } else if (entity.kind === "cassette_block") {
     drawCassetteBlock(context, assets, entity, state, kindIndex);
-  } else if (entity.kind === "crystal_static_spinner") {
-    // Vanilla CrystalStaticSpinner cuts four corner slices from the sheet and
-    // reassembles them around the entity center; this applies to every sheet
-    // (vanilla crystals and SJ custom spinners like the gym Orb).
-    drawCrystalSpinner(
-      context,
-      assets,
-      map,
-      entity,
-      frame,
-      state,
-      kindIndex,
-      theme,
-      camera,
-    );
   } else if (entity.kind === "moving_solid") {
     drawMovingSolid(context, entity, state, kindIndex);
   } else if (entity.kind !== "wind") {
@@ -3052,21 +3050,27 @@ export function GameView({
     context.clip();
     drawThemeBackground(context, assets, map, theme, frame, camera);
     if (tileLayer) context.drawImage(tileLayer, map.bounds.x, map.bounds.y);
-    drawSpinnerConnections(context, assets, map, frame, state, theme, camera);
+    const spinnerItems = collectSpinnerDrawItems(
+      assets,
+      map,
+      frame,
+      state,
+      theme,
+      camera,
+    );
+    drawSpinnerItems(context, assets, spinnerItems);
     const kindCounts = new Map<EntityKind, number>();
     for (const [entityIndex, entity] of map.entities.entries()) {
       const kindIndex = kindCounts.get(entity.kind) ?? 0;
       drawEntity(
         context,
         assets,
-        map,
         entity,
         frame,
         state,
         kindIndex,
         entityIndex,
         theme,
-        camera,
       );
       kindCounts.set(entity.kind, kindIndex + 1);
     }
