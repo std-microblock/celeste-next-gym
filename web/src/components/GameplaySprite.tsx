@@ -51,9 +51,15 @@ export const GameplayStrawberry = memo(function GameplayStrawberry({ scale = 5 }
         canvas.current.width = first.frameWidth * scale;
         canvas.current.height = first.frameHeight * scale;
       }
+      let lastFrame = -1;
       const draw = (now: number) => {
+        animation = requestAnimationFrame(draw);
         if (!active || !atlas || !canvas.current) return;
+        // The sprite animates at 10fps; skip all canvas work until the frame
+        // index actually changes instead of redrawing at the display rate.
         const frame = Math.floor((now - startedAt) / 100) % 7;
+        if (frame === lastFrame) return;
+        lastFrame = frame;
         const entry =
           atlas.entries[
             `collectables/strawberry/normal${String(frame).padStart(2, "0")}`
@@ -74,7 +80,6 @@ export const GameplayStrawberry = memo(function GameplayStrawberry({ scale = 5 }
             entry.height * scale,
           );
         }
-        animation = requestAnimationFrame(draw);
       };
       animation = requestAnimationFrame(draw);
     });
