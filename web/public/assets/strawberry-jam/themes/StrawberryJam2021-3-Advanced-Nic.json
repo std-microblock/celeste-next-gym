@@ -1,7 +1,17 @@
 {
   "entries": {
-    "bgs/SJ2021/Nic/UndergrowthCaveBG1": {
+    "tilesets/SJ2021/Nic/whiteGrass": {
       "x": 2,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/Nic/UndergrowthCaveBG1": {
+      "x": 52,
       "y": 2,
       "width": 320,
       "height": 176,
@@ -11,7 +21,7 @@
       "frameHeight": 176
     },
     "bgs/SJ2021/Nic/UndergrowthCaveBG2": {
-      "x": 324,
+      "x": 374,
       "y": 2,
       "width": 320,
       "height": 176,
@@ -21,7 +31,7 @@
       "frameHeight": 176
     },
     "bgs/SJ2021/Nic/UndergrowthCaveBG3": {
-      "x": 646,
+      "x": 696,
       "y": 2,
       "width": 320,
       "height": 176,

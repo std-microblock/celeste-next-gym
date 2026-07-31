@@ -10,8 +10,38 @@
       "frameWidth": 48,
       "frameHeight": 120
     },
-    "bgs/SJ2021/Advanced Lobby/sunset/sunset": {
+    "tilesets/SJ2021/Advanced_Lobby/advDirtMoss": {
       "x": 52,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Advanced_Lobby/advDirt": {
+      "x": 102,
+      "y": 2,
+      "width": 48,
+      "height": 128,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 128
+    },
+    "tilesets/SJ2021/Advanced_Lobby/advGrass": {
+      "x": 152,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/Advanced Lobby/sunset/sunset": {
+      "x": 202,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,7 +51,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Advanced Lobby/sunset/sunsetmountains": {
-      "x": 374,
+      "x": 524,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -31,16 +61,6 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Advanced Lobby/sunset/sunsetsmallmountains": {
-      "x": 696,
-      "y": 2,
-      "width": 320,
-      "height": 180,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 320,
-      "frameHeight": 180
-    },
-    "bgs/SJ2021/Advanced Lobby/sunset/sunsetdunes": {
       "x": 2,
       "y": 184,
       "width": 320,
@@ -50,8 +70,18 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/SJ2021/Advanced Lobby/sunset/sunsetsand": {
+    "bgs/SJ2021/Advanced Lobby/sunset/sunsetdunes": {
       "x": 324,
+      "y": 184,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Advanced Lobby/sunset/sunsetsand": {
+      "x": 646,
       "y": 184,
       "width": 320,
       "height": 180,

@@ -59,6 +59,56 @@
       "drawOffsetY": 0,
       "frameWidth": 8,
       "frameHeight": 9
+    },
+    "danger/SJ2021/pixelator/crystal_tower/fg00": {
+      "x": 512,
+      "y": 2,
+      "width": 19,
+      "height": 19,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 19,
+      "frameHeight": 19
+    },
+    "danger/SJ2021/pixelator/crystal_tower/fg01": {
+      "x": 533,
+      "y": 2,
+      "width": 19,
+      "height": 19,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 19,
+      "frameHeight": 19
+    },
+    "danger/SJ2021/pixelator/crystal_tower/fg02": {
+      "x": 554,
+      "y": 2,
+      "width": 19,
+      "height": 19,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 19,
+      "frameHeight": 19
+    },
+    "danger/SJ2021/pixelator/crystal_tower/fg03": {
+      "x": 575,
+      "y": 2,
+      "width": 19,
+      "height": 19,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 19,
+      "frameHeight": 19
+    },
+    "danger/SJ2021/pixelator/crystal_tower/bg00": {
+      "x": 596,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
     }
   }
 }

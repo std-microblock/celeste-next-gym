@@ -9,6 +9,46 @@
       "drawOffsetY": 0,
       "frameWidth": 48,
       "frameHeight": 120
+    },
+    "tilesets/SJ2021/NotYourBadeline/pipe_outer_2": {
+      "x": 52,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/NotYourBadeline/pipe_outer": {
+      "x": 238,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/NotYourBadeline/pipe_inner": {
+      "x": 424,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/NotYourBadeline/bruh": {
+      "x": 610,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
     }
   }
 }

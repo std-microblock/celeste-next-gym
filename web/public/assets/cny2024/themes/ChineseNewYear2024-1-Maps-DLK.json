@@ -1,7 +1,27 @@
 {
   "entries": {
-    "bgs/ChineseNewYear2024/DX3906/gradient": {
+    "tilesets/ChineseNewYear2024/DX3906/metallicFactoryNikko": {
       "x": 2,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/ChineseNewYear2024/DX3906/Alex6886scifi": {
+      "x": 100,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/ChineseNewYear2024/DX3906/gradient": {
+      "x": 150,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -11,7 +31,7 @@
       "frameHeight": 180
     },
     "bgs/ChineseNewYear2024/DX3906/buildingsCeiling": {
-      "x": 324,
+      "x": 472,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,16 +41,6 @@
       "frameHeight": 180
     },
     "bgs/ChineseNewYear2024/DX3906/buildingsBack": {
-      "x": 646,
-      "y": 2,
-      "width": 320,
-      "height": 180,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 320,
-      "frameHeight": 180
-    },
-    "bgs/ChineseNewYear2024/DX3906/buildingsMid": {
       "x": 2,
       "y": 184,
       "width": 320,
@@ -40,7 +50,7 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/ChineseNewYear2024/DX3906/buildingsfront": {
+    "bgs/ChineseNewYear2024/DX3906/buildingsMid": {
       "x": 324,
       "y": 184,
       "width": 320,
@@ -49,6 +59,66 @@
       "drawOffsetY": 0,
       "frameWidth": 320,
       "frameHeight": 180
+    },
+    "bgs/ChineseNewYear2024/DX3906/buildingsfront": {
+      "x": 646,
+      "y": 184,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "danger/ChineseNewYear2024/DX3906/fg00": {
+      "x": 968,
+      "y": 184,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/ChineseNewYear2024/DX3906/fg01": {
+      "x": 994,
+      "y": 184,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/ChineseNewYear2024/DX3906/fg02": {
+      "x": 2,
+      "y": 366,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/ChineseNewYear2024/DX3906/fg03": {
+      "x": 28,
+      "y": 366,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/ChineseNewYear2024/DX3906/bg00": {
+      "x": 54,
+      "y": 366,
+      "width": 20,
+      "height": 20,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 20,
+      "frameHeight": 20
     }
   }
 }

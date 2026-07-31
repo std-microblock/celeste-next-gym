@@ -1,6 +1,6 @@
 {
   "entries": {
-    "tilesets/SJ2021/Grandmaster/cliff": {
+    "tilesets/SJ2021/Grandmaster/betterWood": {
       "x": 2,
       "y": 2,
       "width": 96,
@@ -10,9 +10,399 @@
       "frameWidth": 96,
       "frameHeight": 96
     },
-    "bgs/SJ2021/tcookiem/bgsad": {
+    "tilesets/SJ2021/Grandmaster/Skytower": {
       "x": 100,
       "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/Grandmaster/Cloud": {
+      "x": 286,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/Grandmaster/cliff": {
+      "x": 472,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Ecl1psed/shadeStoneInside": {
+      "x": 570,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Ecl1psed/StellarRock": {
+      "x": 620,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/Ecl1psed/StellarRockSnow": {
+      "x": 806,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/Soloiini/solarRock": {
+      "x": 2,
+      "y": 124,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Dav/DistortionTower": {
+      "x": 52,
+      "y": 124,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Dav/DistortionTowerAlt": {
+      "x": 102,
+      "y": 124,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Dav/DavTopGround": {
+      "x": 152,
+      "y": 124,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Dav/DavGround": {
+      "x": 202,
+      "y": 124,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Dav/DavEdge": {
+      "x": 252,
+      "y": 124,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Grandmaster/elysianGrass": {
+      "x": 302,
+      "y": 124,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/tofu/tofu_concrete_final": {
+      "x": 352,
+      "y": 124,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/xplosives/crystalIridescent": {
+      "x": 538,
+      "y": 124,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/xlibiza/CaveCrystal": {
+      "x": 588,
+      "y": 124,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/xplosives/crystalIridescentAlt": {
+      "x": 638,
+      "y": 124,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/xlibiza/CaveRock": {
+      "x": 736,
+      "y": 124,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/xlibiza/TealRockFiller": {
+      "x": 786,
+      "y": 124,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/xlibiza/TealRock": {
+      "x": 836,
+      "y": 124,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Grandmaster/GrandmasterGym": {
+      "x": 886,
+      "y": 124,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "tilesets/SJ2021/Hydro/glassVoid": {
+      "x": 912,
+      "y": 124,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Hydro/whitePalace": {
+      "x": 2,
+      "y": 262,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Alisticious/SpaceStation": {
+      "x": 100,
+      "y": 262,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/tcookiem/summitNoSnowBeigeFilled": {
+      "x": 198,
+      "y": 262,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/tcookiem/cliffsideAltBeige": {
+      "x": 248,
+      "y": 262,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/RedBatNick/spookycaverock": {
+      "x": 298,
+      "y": 262,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/RedBatNick/ruinedwood": {
+      "x": 484,
+      "y": 262,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Maya/PinballSlopeLobby": {
+      "x": 534,
+      "y": 262,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Maya/PinballSquareLobby": {
+      "x": 584,
+      "y": 262,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Linj/linjgrass": {
+      "x": 634,
+      "y": 262,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/RedBatNick/avrock": {
+      "x": 684,
+      "y": 262,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Linj/downsideLost": {
+      "x": 734,
+      "y": 262,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/RedBatNick/avmossrock": {
+      "x": 784,
+      "y": 262,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/todd/ModernRed": {
+      "x": 834,
+      "y": 262,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/todd/ModernGreen": {
+      "x": 884,
+      "y": 262,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/todd/ModernPurple": {
+      "x": 934,
+      "y": 262,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/todd/Modern": {
+      "x": 2,
+      "y": 384,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/tobyaaa/castle": {
+      "x": 52,
+      "y": 384,
+      "width": 56,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 56,
+      "frameHeight": 48
+    },
+    "bgs/SJ2021/tcookiem/bgsad": {
+      "x": 110,
+      "y": 384,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -21,8 +411,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/tcookiem/bg111": {
-      "x": 422,
-      "y": 2,
+      "x": 432,
+      "y": 384,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -32,7 +422,7 @@
     },
     "bgs/SJ2021/tcookiem/bg112": {
       "x": 2,
-      "y": 184,
+      "y": 566,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -42,7 +432,7 @@
     },
     "bgs/SJ2021/tcookiem/sun": {
       "x": 324,
-      "y": 184,
+      "y": 566,
       "width": 320,
       "height": 244,
       "drawOffsetX": 0,
@@ -52,7 +442,7 @@
     },
     "bgs/SJ2021/tcookiem/bgc0": {
       "x": 646,
-      "y": 184,
+      "y": 566,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -62,7 +452,7 @@
     },
     "bgs/SJ2021/tcookiem/bgc1": {
       "x": 2,
-      "y": 430,
+      "y": 812,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -72,7 +462,7 @@
     },
     "bgs/SJ2021/tcookiem/bgc2": {
       "x": 324,
-      "y": 430,
+      "y": 812,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -82,7 +472,7 @@
     },
     "bgs/SJ2021/tcookiem/bgc3": {
       "x": 646,
-      "y": 430,
+      "y": 812,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -92,7 +482,7 @@
     },
     "bgs/SJ2021/tcookiem/bgc4": {
       "x": 2,
-      "y": 612,
+      "y": 994,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -102,7 +492,7 @@
     },
     "bgs/SJ2021/Maya/circuitboard": {
       "x": 324,
-      "y": 612,
+      "y": 994,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -112,7 +502,7 @@
     },
     "bgs/SJ2021/todd/modernOffwhite": {
       "x": 646,
-      "y": 612,
+      "y": 994,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -122,7 +512,7 @@
     },
     "bgs/SJ2021/todd/modernArrows": {
       "x": 2,
-      "y": 794,
+      "y": 1176,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -132,7 +522,7 @@
     },
     "bgs/SJ2021/todd/modernSquares": {
       "x": 324,
-      "y": 794,
+      "y": 1176,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -142,7 +532,7 @@
     },
     "bgs/SJ2021/Dav/BgLayer00": {
       "x": 646,
-      "y": 794,
+      "y": 1176,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -152,7 +542,7 @@
     },
     "bgs/MaxHelpingHand/animatedParallax/SJ2021/Dav/BgLayer01_AnimatedWaterfalls_00": {
       "x": 2,
-      "y": 976,
+      "y": 1358,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -162,7 +552,7 @@
     },
     "bgs/SJ2021/Dav/BgLayer02": {
       "x": 324,
-      "y": 976,
+      "y": 1358,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -172,7 +562,7 @@
     },
     "bgs/MaxHelpingHand/animatedParallax/SJ2021/Dav/BgLayer03a_AnimatedWaterfalls_00": {
       "x": 646,
-      "y": 976,
+      "y": 1358,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -182,7 +572,7 @@
     },
     "bgs/MaxHelpingHand/animatedParallax/SJ2021/Dav/BgLayer03b_AnimatedWaterfalls_00": {
       "x": 2,
-      "y": 1158,
+      "y": 1540,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -192,7 +582,7 @@
     },
     "bgs/SJ2021/Dav/BgLayer04": {
       "x": 324,
-      "y": 1158,
+      "y": 1540,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -202,7 +592,7 @@
     },
     "bgs/SJ2021/Dav/BgLayer05": {
       "x": 646,
-      "y": 1158,
+      "y": 1540,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -212,7 +602,7 @@
     },
     "bgs/SJ2021/Ecl1psed/space-planets": {
       "x": 2,
-      "y": 1340,
+      "y": 1722,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -222,7 +612,7 @@
     },
     "bgs/SJ2021/Ecl1psed/space-planets2": {
       "x": 324,
-      "y": 1340,
+      "y": 1722,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -232,7 +622,7 @@
     },
     "bgs/SJ2021/Ecl1psed/space-planets4": {
       "x": 646,
-      "y": 1340,
+      "y": 1722,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -242,7 +632,7 @@
     },
     "bgs/SJ2021/Ecl1psed/space-planets3": {
       "x": 2,
-      "y": 1522,
+      "y": 1904,
       "width": 80,
       "height": 46,
       "drawOffsetX": 0,
@@ -252,7 +642,7 @@
     },
     "bgs/SJ2021/Ecl1psed/space-planets7": {
       "x": 84,
-      "y": 1522,
+      "y": 1904,
       "width": 320,
       "height": 200,
       "drawOffsetX": 0,
@@ -262,7 +652,7 @@
     },
     "bgs/SJ2021/Ecl1psed/space-planets6": {
       "x": 406,
-      "y": 1522,
+      "y": 1904,
       "width": 60,
       "height": 60,
       "drawOffsetX": 0,
@@ -272,7 +662,7 @@
     },
     "bgs/SJ2021/xplosives/xplosives_1": {
       "x": 468,
-      "y": 1522,
+      "y": 1904,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -282,7 +672,7 @@
     },
     "bgs/SJ2021/xplosives/xplosives_2": {
       "x": 2,
-      "y": 1724,
+      "y": 2106,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -292,7 +682,7 @@
     },
     "bgs/SJ2021/xplosives/xplosives_4": {
       "x": 324,
-      "y": 1724,
+      "y": 2106,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -302,7 +692,7 @@
     },
     "bgs/SJ2021/xplosives/xplosives_3": {
       "x": 646,
-      "y": 1724,
+      "y": 2106,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -312,7 +702,7 @@
     },
     "bgs/SJ2021/xlibiza/shroomsB": {
       "x": 2,
-      "y": 1906,
+      "y": 2288,
       "width": 360,
       "height": 180,
       "drawOffsetX": 0,
@@ -322,7 +712,7 @@
     },
     "bgs/SJ2021/xlibiza/shroomsA": {
       "x": 364,
-      "y": 1906,
+      "y": 2288,
       "width": 320,
       "height": 182,
       "drawOffsetX": 0,
@@ -332,7 +722,7 @@
     },
     "bgs/SJ2021/GMLobby/sky": {
       "x": 686,
-      "y": 1906,
+      "y": 2288,
       "width": 320,
       "height": 224,
       "drawOffsetX": 0,
@@ -342,7 +732,7 @@
     },
     "bgs/SJ2021/Soloiini/literallyawhitebackground": {
       "x": 2,
-      "y": 2132,
+      "y": 2514,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -352,7 +742,7 @@
     },
     "bgs/SJ2021/Soloiini/spacebg": {
       "x": 324,
-      "y": 2132,
+      "y": 2514,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -362,7 +752,7 @@
     },
     "bgs/SJ2021/Soloiini/moss-bgglow": {
       "x": 646,
-      "y": 2132,
+      "y": 2514,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -372,7 +762,7 @@
     },
     "bgs/MaxHelpingHand/animatedParallax/SJ2021/Soloiini/moss-star7.7fps00": {
       "x": 2,
-      "y": 2314,
+      "y": 2696,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -382,7 +772,7 @@
     },
     "bgs/SJ2021/Soloiini/small00": {
       "x": 324,
-      "y": 2314,
+      "y": 2696,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -392,7 +782,7 @@
     },
     "bgs/SJ2021/Soloiini/small02": {
       "x": 646,
-      "y": 2314,
+      "y": 2696,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -402,7 +792,7 @@
     },
     "bgs/SJ2021/Soloiini/small01": {
       "x": 2,
-      "y": 2496,
+      "y": 2878,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -412,7 +802,7 @@
     },
     "bgs/SJ2021/Soloiini/small03": {
       "x": 324,
-      "y": 2496,
+      "y": 2878,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -422,7 +812,7 @@
     },
     "bgs/SJ2021/Soloiini/small05": {
       "x": 646,
-      "y": 2496,
+      "y": 2878,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -432,7 +822,7 @@
     },
     "bgs/SJ2021/Soloiini/big00": {
       "x": 2,
-      "y": 2678,
+      "y": 3060,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -442,7 +832,7 @@
     },
     "bgs/SJ2021/Soloiini/small06": {
       "x": 324,
-      "y": 2678,
+      "y": 3060,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -452,7 +842,7 @@
     },
     "bgs/SJ2021/Soloiini/small04": {
       "x": 646,
-      "y": 2678,
+      "y": 3060,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -462,7 +852,7 @@
     },
     "bgs/SJ2021/Soloiini/big01": {
       "x": 2,
-      "y": 2860,
+      "y": 3242,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -472,7 +862,7 @@
     },
     "bgs/SJ2021/GMLobby/sunglow-3": {
       "x": 324,
-      "y": 2860,
+      "y": 3242,
       "width": 320,
       "height": 224,
       "drawOffsetX": 0,
@@ -482,7 +872,7 @@
     },
     "bgs/SJ2021/GMLobby/sunglow-2": {
       "x": 646,
-      "y": 2860,
+      "y": 3242,
       "width": 320,
       "height": 224,
       "drawOffsetX": 0,
@@ -492,7 +882,7 @@
     },
     "bgs/SJ2021/GMLobby/sunglow-1": {
       "x": 2,
-      "y": 3086,
+      "y": 3468,
       "width": 320,
       "height": 224,
       "drawOffsetX": 0,
@@ -502,7 +892,7 @@
     },
     "bgs/SJ2021/GMLobby/sun": {
       "x": 324,
-      "y": 3086,
+      "y": 3468,
       "width": 320,
       "height": 224,
       "drawOffsetX": 0,
@@ -512,7 +902,7 @@
     },
     "bgs/SJ2021/GMLobby/gmvignette": {
       "x": 646,
-      "y": 3086,
+      "y": 3468,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -522,7 +912,7 @@
     },
     "bgs/SJ2021/GMLobby/cloud-loop-4": {
       "x": 2,
-      "y": 3312,
+      "y": 3694,
       "width": 320,
       "height": 104,
       "drawOffsetX": 0,
@@ -532,7 +922,7 @@
     },
     "bgs/SJ2021/GMLobby/cloud-loop-3": {
       "x": 324,
-      "y": 3312,
+      "y": 3694,
       "width": 116,
       "height": 160,
       "drawOffsetX": 0,
@@ -542,7 +932,7 @@
     },
     "bgs/SJ2021/GMLobby/cloud-loop-2": {
       "x": 442,
-      "y": 3312,
+      "y": 3694,
       "width": 116,
       "height": 160,
       "drawOffsetX": 0,
@@ -552,7 +942,7 @@
     },
     "bgs/SJ2021/GMLobby/mountains": {
       "x": 2,
-      "y": 3474,
+      "y": 3856,
       "width": 880,
       "height": 168,
       "drawOffsetX": 0,
@@ -562,7 +952,7 @@
     },
     "bgs/SJ2021/GMLobby/cloud-loop-1": {
       "x": 2,
-      "y": 3644,
+      "y": 4026,
       "width": 320,
       "height": 110,
       "drawOffsetX": 0,
@@ -572,7 +962,7 @@
     },
     "bgs/SJ2021/GMLobby/cloud-group-1": {
       "x": 324,
-      "y": 3644,
+      "y": 4026,
       "width": 152,
       "height": 128,
       "drawOffsetX": 0,
@@ -582,7 +972,7 @@
     },
     "bgs/SJ2021/GMLobby/cloud-group-2": {
       "x": 478,
-      "y": 3644,
+      "y": 4026,
       "width": 136,
       "height": 160,
       "drawOffsetX": 0,
@@ -592,7 +982,7 @@
     },
     "bgs/SJ2021/tofu/Tofu/tofudusk_backdrop": {
       "x": 616,
-      "y": 3644,
+      "y": 4026,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -602,7 +992,7 @@
     },
     "bgs/SJ2021/tofu/Tofu/tofudusk_moon": {
       "x": 2,
-      "y": 3826,
+      "y": 4208,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -612,7 +1002,7 @@
     },
     "bgs/SJ2021/tofu/Tofu/tofudusk_cloudback": {
       "x": 324,
-      "y": 3826,
+      "y": 4208,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -622,7 +1012,7 @@
     },
     "bgs/SJ2021/tofu/Tofu/tofudusk_cloudmiddle": {
       "x": 646,
-      "y": 3826,
+      "y": 4208,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -632,7 +1022,7 @@
     },
     "bgs/SJ2021/tofu/Tofu/tofudusk_cloudfront": {
       "x": 2,
-      "y": 4008,
+      "y": 4390,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -642,7 +1032,7 @@
     },
     "bgs/SJ2021/tofu/Tofu/tofudusk_hills": {
       "x": 324,
-      "y": 4008,
+      "y": 4390,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -652,7 +1042,7 @@
     },
     "bgs/SJ2021/tofu/Tofu/tofudusk_hills front": {
       "x": 646,
-      "y": 4008,
+      "y": 4390,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -662,7 +1052,7 @@
     },
     "bgs/SJ2021/tofu/Tofu/tofudusk_water": {
       "x": 2,
-      "y": 4190,
+      "y": 4572,
       "width": 320,
       "height": 250,
       "drawOffsetX": 0,
@@ -672,7 +1062,7 @@
     },
     "bgs/SJ2021/tofu/Tofu/tofudusk_lanterns2": {
       "x": 324,
-      "y": 4190,
+      "y": 4572,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -682,7 +1072,7 @@
     },
     "bgs/SJ2021/tofu/Tofu/tofudusk_lanterns": {
       "x": 646,
-      "y": 4190,
+      "y": 4572,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -692,7 +1082,7 @@
     },
     "bgs/SJ2021/GMLobby/sky2": {
       "x": 2,
-      "y": 4442,
+      "y": 4824,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -702,7 +1092,7 @@
     },
     "bgs/SJ2021/GMLobby/heartgatefinal": {
       "x": 324,
-      "y": 4442,
+      "y": 4824,
       "width": 262,
       "height": 180,
       "drawOffsetX": 0,
@@ -712,13 +1102,163 @@
     },
     "bgs/SJ2021/GMLobby/light": {
       "x": 2,
-      "y": 4624,
+      "y": 5006,
       "width": 640,
       "height": 180,
       "drawOffsetX": 0,
       "drawOffsetY": 0,
       "frameWidth": 640,
       "frameHeight": 180
+    },
+    "danger/SJ2021/Maya/minimalspinner/fg_minimalspinner00": {
+      "x": 644,
+      "y": 5006,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Maya/minimalspinner/bg_minimalspinner00": {
+      "x": 670,
+      "y": 5006,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/tofu/notplagiarizedspinners/a/fg_a00": {
+      "x": 696,
+      "y": 5006,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/tofu/notplagiarizedspinners/a/fg_a01": {
+      "x": 722,
+      "y": 5006,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/tofu/notplagiarizedspinners/a/fg_a02": {
+      "x": 748,
+      "y": 5006,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/tofu/notplagiarizedspinners/a/fg_a03": {
+      "x": 774,
+      "y": 5006,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/tofu/notplagiarizedspinners/a/fg_a04": {
+      "x": 800,
+      "y": 5006,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/tofu/notplagiarizedspinners/a/fg_a05": {
+      "x": 826,
+      "y": 5006,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/tofu/notplagiarizedspinners/a/fg_a06": {
+      "x": 852,
+      "y": 5006,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/tofu/notplagiarizedspinners/a/fg_a07": {
+      "x": 878,
+      "y": 5006,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/tofu/notplagiarizedspinners/a/fg_a08": {
+      "x": 904,
+      "y": 5006,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/tofu/notplagiarizedspinners/a/fg_a09": {
+      "x": 930,
+      "y": 5006,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/tofu/notplagiarizedspinners/a/fg_a10": {
+      "x": 956,
+      "y": 5006,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/tofu/notplagiarizedspinners/a/fg_a11": {
+      "x": 982,
+      "y": 5006,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/tofu/notplagiarizedspinners/a/bg_a00": {
+      "x": 2,
+      "y": 5188,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
     }
   }
 }

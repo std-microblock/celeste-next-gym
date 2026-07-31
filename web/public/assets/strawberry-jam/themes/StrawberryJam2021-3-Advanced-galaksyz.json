@@ -1,6 +1,6 @@
 {
   "entries": {
-    "tilesets/SJ2021/Galaksyz/blueSlime": {
+    "tilesets/SJ2021/Galaksyz/greenSlime": {
       "x": 2,
       "y": 2,
       "width": 184,
@@ -10,8 +10,28 @@
       "frameWidth": 184,
       "frameHeight": 104
     },
-    "bgs/SJ2021/Galaksyz/slimesky01": {
+    "tilesets/SJ2021/Galaksyz/blueSlime": {
       "x": 188,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/Galaksyz/redSlime": {
+      "x": 374,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "bgs/SJ2021/Galaksyz/slimesky01": {
+      "x": 560,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,8 +41,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Galaksyz/rolling_rainbow": {
-      "x": 510,
-      "y": 2,
+      "x": 2,
+      "y": 184,
       "width": 300,
       "height": 180,
       "drawOffsetX": 0,
@@ -31,7 +51,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Galaksyz/slimeplains02": {
-      "x": 2,
+      "x": 304,
       "y": 184,
       "width": 320,
       "height": 200,
@@ -41,7 +61,7 @@
       "frameHeight": 200
     },
     "bgs/SJ2021/Galaksyz/slimeplains01": {
-      "x": 324,
+      "x": 626,
       "y": 184,
       "width": 320,
       "height": 200,
@@ -51,7 +71,7 @@
       "frameHeight": 200
     },
     "danger/spikes/SJ2021/Galaksyz/slime_outline_down00": {
-      "x": 646,
+      "x": 948,
       "y": 184,
       "width": 10,
       "height": 9,
@@ -61,7 +81,7 @@
       "frameHeight": 9
     },
     "danger/spikes/SJ2021/Galaksyz/slime_outline_left00": {
-      "x": 658,
+      "x": 960,
       "y": 184,
       "width": 9,
       "height": 10,
@@ -71,7 +91,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/Galaksyz/slime_outline_right00": {
-      "x": 669,
+      "x": 971,
       "y": 184,
       "width": 9,
       "height": 10,
@@ -81,7 +101,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/Galaksyz/slime_outline_up00": {
-      "x": 680,
+      "x": 982,
       "y": 184,
       "width": 10,
       "height": 9,
@@ -89,6 +109,56 @@
       "drawOffsetY": 0,
       "frameWidth": 10,
       "frameHeight": 9
+    },
+    "danger/SJ2021/Galaksyz/fg_white00": {
+      "x": 994,
+      "y": 184,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Galaksyz/fg_white01": {
+      "x": 2,
+      "y": 386,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Galaksyz/fg_white02": {
+      "x": 28,
+      "y": 386,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Galaksyz/fg_white03": {
+      "x": 54,
+      "y": 386,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Galaksyz/bg_white00": {
+      "x": 80,
+      "y": 386,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
     }
   }
 }

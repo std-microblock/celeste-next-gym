@@ -10,8 +10,48 @@
       "frameWidth": 48,
       "frameHeight": 120
     },
-    "bgs/SJ2021/todd/modernOffwhite": {
+    "tilesets/SJ2021/todd/ModernGreen": {
       "x": 52,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/todd/ModernRed": {
+      "x": 102,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/todd/Modern": {
+      "x": 152,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/todd/ModernYellow": {
+      "x": 202,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/todd/modernOffwhite": {
+      "x": 252,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,7 +61,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/todd/modernArrows": {
-      "x": 374,
+      "x": 574,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -31,8 +71,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/todd/modernSquares": {
-      "x": 696,
-      "y": 2,
+      "x": 2,
+      "y": 184,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -41,7 +81,7 @@
       "frameHeight": 180
     },
     "danger/spikes/SJ2021/todd/modern_down00": {
-      "x": 2,
+      "x": 324,
       "y": 184,
       "width": 10,
       "height": 9,
@@ -51,7 +91,7 @@
       "frameHeight": 9
     },
     "danger/spikes/SJ2021/todd/modern_left00": {
-      "x": 14,
+      "x": 336,
       "y": 184,
       "width": 9,
       "height": 10,
@@ -61,7 +101,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/todd/modern_right00": {
-      "x": 25,
+      "x": 347,
       "y": 184,
       "width": 9,
       "height": 10,
@@ -71,7 +111,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/todd/modern_up00": {
-      "x": 36,
+      "x": 358,
       "y": 184,
       "width": 10,
       "height": 9,
@@ -79,6 +119,56 @@
       "drawOffsetY": 0,
       "frameWidth": 10,
       "frameHeight": 9
+    },
+    "danger/SJ2021/todd/modern/fg_gear00": {
+      "x": 370,
+      "y": 184,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/todd/modern/fg_gear01": {
+      "x": 396,
+      "y": 184,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/todd/modern/fg_gear02": {
+      "x": 422,
+      "y": 184,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/todd/modern/fg_gear03": {
+      "x": 448,
+      "y": 184,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/todd/modern/bg_gear00": {
+      "x": 474,
+      "y": 184,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
     }
   }
 }

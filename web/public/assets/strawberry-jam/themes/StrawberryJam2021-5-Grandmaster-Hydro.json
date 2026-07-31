@@ -10,8 +10,18 @@
       "frameWidth": 96,
       "frameHeight": 96
     },
-    "bgs/SJ2021/Hydro/shatterRune_NoDash": {
+    "tilesets/SJ2021/Hydro/whitePalace": {
       "x": 100,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "bgs/SJ2021/Hydro/shatterRune_NoDash": {
+      "x": 198,
       "y": 2,
       "width": 48,
       "height": 48,
@@ -21,7 +31,7 @@
       "frameHeight": 48
     },
     "bgs/SJ2021/Hydro/shatterRune_NoDashNoDashRefill": {
-      "x": 150,
+      "x": 248,
       "y": 2,
       "width": 48,
       "height": 48,
@@ -31,7 +41,7 @@
       "frameHeight": 48
     },
     "bgs/SJ2021/Hydro/shatterRune_NoDashNoStaminaRefill": {
-      "x": 200,
+      "x": 298,
       "y": 2,
       "width": 48,
       "height": 48,
@@ -41,7 +51,7 @@
       "frameHeight": 48
     },
     "bgs/SJ2021/Hydro/shatterRune_NoDashRefill": {
-      "x": 250,
+      "x": 348,
       "y": 2,
       "width": 48,
       "height": 48,
@@ -51,7 +61,7 @@
       "frameHeight": 48
     },
     "bgs/SJ2021/Hydro/shatterRune_NoDashRefillNoStaminaRefill": {
-      "x": 300,
+      "x": 398,
       "y": 2,
       "width": 48,
       "height": 48,
@@ -61,7 +71,7 @@
       "frameHeight": 48
     },
     "bgs/SJ2021/Hydro/shatterRune_NoEverything": {
-      "x": 350,
+      "x": 448,
       "y": 2,
       "width": 48,
       "height": 48,
@@ -71,7 +81,7 @@
       "frameHeight": 48
     },
     "bgs/SJ2021/Hydro/shatterRune_NoStaminaRefill": {
-      "x": 400,
+      "x": 498,
       "y": 2,
       "width": 48,
       "height": 48,
@@ -81,7 +91,7 @@
       "frameHeight": 48
     },
     "danger/spikes/SJ2021/Hydro/casspike_down00": {
-      "x": 450,
+      "x": 548,
       "y": 2,
       "width": 8,
       "height": 9,
@@ -91,7 +101,7 @@
       "frameHeight": 9
     },
     "danger/spikes/SJ2021/Hydro/casspike_left00": {
-      "x": 460,
+      "x": 558,
       "y": 2,
       "width": 9,
       "height": 8,
@@ -101,7 +111,7 @@
       "frameHeight": 8
     },
     "danger/spikes/SJ2021/Hydro/casspike_right00": {
-      "x": 471,
+      "x": 569,
       "y": 2,
       "width": 9,
       "height": 8,
@@ -111,7 +121,7 @@
       "frameHeight": 8
     },
     "danger/spikes/SJ2021/Hydro/casspike_up00": {
-      "x": 482,
+      "x": 580,
       "y": 2,
       "width": 8,
       "height": 9,

@@ -10,8 +10,28 @@
       "frameWidth": 96,
       "frameHeight": 96
     },
-    "bgs/SJ2021/Skeleton/bg3": {
+    "tilesets/SJ2021/Skeleton/nikkoWood": {
       "x": 100,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Skeleton/curioxidyHoneycomb": {
+      "x": 198,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "bgs/SJ2021/Skeleton/bg3": {
+      "x": 384,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,8 +41,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Skeleton/mountains_sky": {
-      "x": 422,
-      "y": 2,
+      "x": 2,
+      "y": 184,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -31,7 +51,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Skeleton/mountains_cliff0": {
-      "x": 2,
+      "x": 324,
       "y": 184,
       "width": 320,
       "height": 180,
@@ -41,16 +61,6 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Skeleton/mountains_cliff1": {
-      "x": 324,
-      "y": 184,
-      "width": 320,
-      "height": 180,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 320,
-      "frameHeight": 180
-    },
-    "bgs/SJ2021/Skeleton/mountains_cliff2": {
       "x": 646,
       "y": 184,
       "width": 320,
@@ -60,8 +70,18 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/SJ2021/Skeleton/JungleHelper/TreeBGAB": {
+    "bgs/SJ2021/Skeleton/mountains_cliff2": {
       "x": 2,
+      "y": 366,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Skeleton/JungleHelper/TreeBGAB": {
+      "x": 324,
       "y": 366,
       "width": 320,
       "height": 184,
@@ -71,7 +91,7 @@
       "frameHeight": 184
     },
     "bgs/SJ2021/Skeleton/JungleHelper/TreeBGAA": {
-      "x": 324,
+      "x": 646,
       "y": 366,
       "width": 360,
       "height": 137,
@@ -79,6 +99,56 @@
       "drawOffsetY": 0,
       "frameWidth": 360,
       "frameHeight": 137
+    },
+    "danger/crystal/SJ2021/Skeleton/fg_white00": {
+      "x": 2,
+      "y": 552,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Skeleton/fg_white01": {
+      "x": 28,
+      "y": 552,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Skeleton/fg_white02": {
+      "x": 54,
+      "y": 552,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Skeleton/fg_white03": {
+      "x": 80,
+      "y": 552,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Skeleton/bg_white00": {
+      "x": 106,
+      "y": 552,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
     }
   }
 }

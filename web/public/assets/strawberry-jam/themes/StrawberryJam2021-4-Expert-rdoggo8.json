@@ -10,8 +10,28 @@
       "frameWidth": 48,
       "frameHeight": 120
     },
-    "bgs/SJ2021/snolls/rdogswamp/sky_a": {
+    "tilesets/SJ2021/rdoggo8/avgrass": {
       "x": 52,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/rdoggo8/avmud2": {
+      "x": 102,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/snolls/rdogswamp/sky_a": {
+      "x": 152,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,7 +41,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/snolls/rdogswamp/sky_b": {
-      "x": 374,
+      "x": 474,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -31,8 +51,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/snolls/rdogswamp/sky_c": {
-      "x": 696,
-      "y": 2,
+      "x": 2,
+      "y": 184,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -41,7 +61,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/snolls/rdogswamp/bgland_a": {
-      "x": 2,
+      "x": 324,
       "y": 184,
       "width": 320,
       "height": 180,
@@ -51,16 +71,6 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/snolls/rdogswamp/bgland_b": {
-      "x": 324,
-      "y": 184,
-      "width": 320,
-      "height": 180,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 320,
-      "frameHeight": 180
-    },
-    "bgs/SJ2021/snolls/rdogswamp/bgland_c": {
       "x": 646,
       "y": 184,
       "width": 320,
@@ -70,7 +80,7 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/SJ2021/snolls/rdogswamp/water": {
+    "bgs/SJ2021/snolls/rdogswamp/bgland_c": {
       "x": 2,
       "y": 366,
       "width": 320,
@@ -80,8 +90,18 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/SJ2021/snolls/rdogswamp/waterbright_a": {
+    "bgs/SJ2021/snolls/rdogswamp/water": {
       "x": 324,
+      "y": 366,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/snolls/rdogswamp/waterbright_a": {
+      "x": 646,
       "y": 366,
       "width": 320,
       "height": 180,
@@ -149,6 +169,56 @@
       "drawOffsetY": 0,
       "frameWidth": 320,
       "frameHeight": 180
+    },
+    "danger/SJ2021/rdoggo8/brambles/fg00": {
+      "x": 324,
+      "y": 1094,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/rdoggo8/brambles/fg01": {
+      "x": 350,
+      "y": 1094,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/rdoggo8/brambles/fg02": {
+      "x": 376,
+      "y": 1094,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/rdoggo8/brambles/fg03": {
+      "x": 402,
+      "y": 1094,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/rdoggo8/brambles/bg00": {
+      "x": 428,
+      "y": 1094,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
     }
   }
 }

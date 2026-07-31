@@ -1,7 +1,47 @@
 {
   "entries": {
-    "bgs/SJ2021/Ferroshock/bg0": {
+    "tilesets/SJ2021/Ferroshock/oceanRock": {
       "x": 2,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Ferroshock/goldCoral": {
+      "x": 100,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Ferroshock/roseCoral": {
+      "x": 150,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Ferroshock/violetCoral": {
+      "x": 200,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/Ferroshock/bg0": {
+      "x": 250,
       "y": 2,
       "width": 320,
       "height": 184,
@@ -11,7 +51,7 @@
       "frameHeight": 184
     },
     "bgs/SJ2021/Ferroshock/bg1": {
-      "x": 324,
+      "x": 572,
       "y": 2,
       "width": 320,
       "height": 184,
@@ -21,16 +61,6 @@
       "frameHeight": 184
     },
     "bgs/SJ2021/Ferroshock/bg2": {
-      "x": 646,
-      "y": 2,
-      "width": 320,
-      "height": 184,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 320,
-      "frameHeight": 184
-    },
-    "bgs/SJ2021/Ferroshock/bg3": {
       "x": 2,
       "y": 188,
       "width": 320,
@@ -40,7 +70,7 @@
       "frameWidth": 320,
       "frameHeight": 184
     },
-    "bgs/SJ2021/Ferroshock/bg5": {
+    "bgs/SJ2021/Ferroshock/bg3": {
       "x": 324,
       "y": 188,
       "width": 320,
@@ -50,8 +80,18 @@
       "frameWidth": 320,
       "frameHeight": 184
     },
-    "danger/spikes/SJ2021/Jackal/water_down00": {
+    "bgs/SJ2021/Ferroshock/bg5": {
       "x": 646,
+      "y": 188,
+      "width": 320,
+      "height": 184,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 184
+    },
+    "danger/spikes/SJ2021/Jackal/water_down00": {
+      "x": 968,
       "y": 188,
       "width": 10,
       "height": 10,
@@ -61,7 +101,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/Jackal/water_down01": {
-      "x": 658,
+      "x": 980,
       "y": 188,
       "width": 10,
       "height": 10,
@@ -71,7 +111,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/Jackal/water_left00": {
-      "x": 670,
+      "x": 992,
       "y": 188,
       "width": 10,
       "height": 10,
@@ -81,7 +121,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/Jackal/water_left01": {
-      "x": 682,
+      "x": 1004,
       "y": 188,
       "width": 10,
       "height": 10,
@@ -91,8 +131,8 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/Jackal/water_right00": {
-      "x": 694,
-      "y": 188,
+      "x": 2,
+      "y": 374,
       "width": 10,
       "height": 10,
       "drawOffsetX": 0,
@@ -101,8 +141,8 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/Jackal/water_right01": {
-      "x": 706,
-      "y": 188,
+      "x": 14,
+      "y": 374,
       "width": 10,
       "height": 10,
       "drawOffsetX": 0,
@@ -111,8 +151,8 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/Jackal/water_up00": {
-      "x": 718,
-      "y": 188,
+      "x": 26,
+      "y": 374,
       "width": 10,
       "height": 10,
       "drawOffsetX": 0,
@@ -121,8 +161,8 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/Jackal/water_up01": {
-      "x": 730,
-      "y": 188,
+      "x": 38,
+      "y": 374,
       "width": 10,
       "height": 10,
       "drawOffsetX": 0,

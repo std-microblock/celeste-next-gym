@@ -1,6 +1,6 @@
 {
   "entries": {
-    "tilesets/ChineseNewYear2024/RD/orangeLeaves": {
+    "tilesets/ChineseNewYear2024/RD/fallingBlock": {
       "x": 2,
       "y": 2,
       "width": 39,
@@ -9,6 +9,26 @@
       "drawOffsetY": 0,
       "frameWidth": 39,
       "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/RD/orangeLeaves": {
+      "x": 43,
+      "y": 2,
+      "width": 39,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 39,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/RD/rockside": {
+      "x": 84,
+      "y": 2,
+      "width": 32,
+      "height": 80,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 32,
+      "frameHeight": 80
     }
   }
 }

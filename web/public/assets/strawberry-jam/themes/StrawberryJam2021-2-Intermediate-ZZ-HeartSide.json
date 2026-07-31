@@ -10,8 +10,68 @@
       "frameWidth": 24,
       "frameHeight": 136
     },
-    "bgs/SJ2021/Int_Lobby/Heartside/Moist/bg": {
+    "tilesets/SJ2021/Int_Lobby/IntDirtMossFg": {
       "x": 28,
+      "y": 2,
+      "width": 112,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 112,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/bryse0n/transparent": {
+      "x": 142,
+      "y": 2,
+      "width": 8,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 8
+    },
+    "tilesets/SJ2021/Int_Lobby/IntMoss": {
+      "x": 152,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Int_Lobby/IntGirderFg": {
+      "x": 202,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Int_Lobby/IntCoreRecolor": {
+      "x": 252,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Int_Lobby/IntRockFg": {
+      "x": 350,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "bgs/SJ2021/Int_Lobby/Heartside/Moist/bg": {
+      "x": 536,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,8 +81,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Int_Lobby/Heartside/vit/vit_bg": {
-      "x": 350,
-      "y": 2,
+      "x": 2,
+      "y": 184,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -31,8 +91,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Int_Lobby/cavewater_bg_1": {
-      "x": 672,
-      "y": 2,
+      "x": 324,
+      "y": 184,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -41,7 +101,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Int_Lobby/Heartside/vit/vit_cavewater": {
-      "x": 2,
+      "x": 646,
       "y": 184,
       "width": 320,
       "height": 180,
@@ -51,8 +111,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Int_Lobby/Heartside/yellow/yellow_cavewater": {
-      "x": 324,
-      "y": 184,
+      "x": 2,
+      "y": 366,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -61,8 +121,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Int_Lobby/Heartside/Moist/pillars": {
-      "x": 646,
-      "y": 184,
+      "x": 324,
+      "y": 366,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -71,7 +131,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Int_Lobby/Heartside/vit/vit_pillars": {
-      "x": 2,
+      "x": 646,
       "y": 366,
       "width": 320,
       "height": 180,
@@ -81,16 +141,6 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Int_Lobby/cavewater_bg_2": {
-      "x": 324,
-      "y": 366,
-      "width": 500,
-      "height": 100,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 500,
-      "frameHeight": 100
-    },
-    "bgs/SJ2021/Int_Lobby/Heartside/vit/vit_cavewaterfall": {
       "x": 2,
       "y": 548,
       "width": 500,
@@ -100,7 +150,7 @@
       "frameWidth": 500,
       "frameHeight": 100
     },
-    "bgs/SJ2021/Int_Lobby/Heartside/yellow/yellow_cavewaterfall": {
+    "bgs/SJ2021/Int_Lobby/Heartside/vit/vit_cavewaterfall": {
       "x": 504,
       "y": 548,
       "width": 500,
@@ -110,8 +160,18 @@
       "frameWidth": 500,
       "frameHeight": 100
     },
-    "bgs/SJ2021/Int_Lobby/Heartside/Moist/eyes": {
+    "bgs/SJ2021/Int_Lobby/Heartside/yellow/yellow_cavewaterfall": {
       "x": 2,
+      "y": 650,
+      "width": 500,
+      "height": 100,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 500,
+      "frameHeight": 100
+    },
+    "bgs/SJ2021/Int_Lobby/Heartside/Moist/eyes": {
+      "x": 504,
       "y": 650,
       "width": 320,
       "height": 180,
@@ -121,8 +181,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Int_Lobby/Heartside/vit/vit_smoosh": {
-      "x": 324,
-      "y": 650,
+      "x": 2,
+      "y": 832,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -131,8 +191,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Int_Lobby/Heartside/Moist/mountains_u": {
-      "x": 646,
-      "y": 650,
+      "x": 324,
+      "y": 832,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -141,7 +201,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Int_Lobby/Heartside/vit/vit_mountains_u": {
-      "x": 2,
+      "x": 646,
       "y": 832,
       "width": 320,
       "height": 180,
@@ -151,8 +211,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Int_Lobby/Heartside/Moist/rocks": {
-      "x": 324,
-      "y": 832,
+      "x": 2,
+      "y": 1014,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -161,8 +221,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Int_Lobby/Heartside/vit/vit_rock": {
-      "x": 646,
-      "y": 832,
+      "x": 324,
+      "y": 1014,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -171,7 +231,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Int_Lobby/Heartside/Moist/mountains": {
-      "x": 2,
+      "x": 646,
       "y": 1014,
       "width": 320,
       "height": 180,
@@ -181,8 +241,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Int_Lobby/Heartside/vit/vit_mountains": {
-      "x": 324,
-      "y": 1014,
+      "x": 2,
+      "y": 1196,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -191,8 +251,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/bryse0n/pinkbg": {
-      "x": 646,
-      "y": 1014,
+      "x": 324,
+      "y": 1196,
       "width": 128,
       "height": 128,
       "drawOffsetX": 0,
@@ -201,8 +261,8 @@
       "frameHeight": 128
     },
     "bgs/SJ2021/bryse0n/yellowfg": {
-      "x": 776,
-      "y": 1014,
+      "x": 454,
+      "y": 1196,
       "width": 128,
       "height": 128,
       "drawOffsetX": 0,
@@ -211,7 +271,7 @@
       "frameHeight": 128
     },
     "bgs/SJ2021/bryse0n/pinkfg": {
-      "x": 2,
+      "x": 584,
       "y": 1196,
       "width": 128,
       "height": 128,
@@ -221,7 +281,7 @@
       "frameHeight": 128
     },
     "bgs/SJ2021/bryse0n/yellowbg": {
-      "x": 132,
+      "x": 714,
       "y": 1196,
       "width": 128,
       "height": 128,
@@ -231,7 +291,7 @@
       "frameHeight": 128
     },
     "bgs/SJ2021/bryse0n/bluefg": {
-      "x": 262,
+      "x": 844,
       "y": 1196,
       "width": 128,
       "height": 128,
@@ -241,8 +301,8 @@
       "frameHeight": 128
     },
     "bgs/SJ2021/bryse0n/bluebg": {
-      "x": 392,
-      "y": 1196,
+      "x": 2,
+      "y": 1378,
       "width": 128,
       "height": 128,
       "drawOffsetX": 0,
@@ -251,8 +311,8 @@
       "frameHeight": 128
     },
     "danger/spikes/SJ2021/bryse0n/tall_down00": {
-      "x": 522,
-      "y": 1196,
+      "x": 132,
+      "y": 1378,
       "width": 8,
       "height": 9,
       "drawOffsetX": 0,
@@ -261,8 +321,8 @@
       "frameHeight": 9
     },
     "danger/spikes/SJ2021/bryse0n/tall_left00": {
-      "x": 532,
-      "y": 1196,
+      "x": 142,
+      "y": 1378,
       "width": 9,
       "height": 8,
       "drawOffsetX": 0,
@@ -271,8 +331,8 @@
       "frameHeight": 8
     },
     "danger/spikes/SJ2021/bryse0n/tall_right00": {
-      "x": 543,
-      "y": 1196,
+      "x": 153,
+      "y": 1378,
       "width": 9,
       "height": 8,
       "drawOffsetX": 0,
@@ -281,8 +341,8 @@
       "frameHeight": 8
     },
     "danger/spikes/SJ2021/bryse0n/tall_up00": {
-      "x": 554,
-      "y": 1196,
+      "x": 164,
+      "y": 1378,
       "width": 8,
       "height": 9,
       "drawOffsetX": 0,

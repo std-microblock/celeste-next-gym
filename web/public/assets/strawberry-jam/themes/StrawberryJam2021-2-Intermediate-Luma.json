@@ -10,8 +10,18 @@
       "frameWidth": 48,
       "frameHeight": 120
     },
-    "bgs/SJ2021/Luma/lumacloud2": {
+    "tilesets/SJ2021/Luma/sunsetStone": {
       "x": 52,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/Luma/lumacloud2": {
+      "x": 102,
       "y": 2,
       "width": 320,
       "height": 240,
@@ -21,7 +31,7 @@
       "frameHeight": 240
     },
     "bgs/SJ2021/Luma/lumacloud3": {
-      "x": 374,
+      "x": 424,
       "y": 2,
       "width": 320,
       "height": 240,
@@ -31,8 +41,8 @@
       "frameHeight": 240
     },
     "bgs/SJ2021/Luma/lumabg04": {
-      "x": 696,
-      "y": 2,
+      "x": 2,
+      "y": 244,
       "width": 320,
       "height": 244,
       "drawOffsetX": 0,
@@ -41,8 +51,8 @@
       "frameHeight": 244
     },
     "bgs/SJ2021/Luma/lumabg04ref": {
-      "x": 2,
-      "y": 248,
+      "x": 324,
+      "y": 244,
       "width": 320,
       "height": 244,
       "drawOffsetX": 0,

@@ -1,7 +1,47 @@
 {
   "entries": {
-    "bgs/ChineseNewYear2024/Underdragon/NightCity00": {
+    "tilesets/ChineseNewYear2024/Underdragon/ric_cement": {
       "x": 2,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/Underdragon/ric_girder": {
+      "x": 52,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/Underdragon/ric_dirt": {
+      "x": 102,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/Underdragon/ric_deadgrass": {
+      "x": 152,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/ChineseNewYear2024/Underdragon/NightCity00": {
+      "x": 202,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -11,7 +51,7 @@
       "frameHeight": 180
     },
     "bgs/ChineseNewYear2024/Underdragon/NightCity01": {
-      "x": 324,
+      "x": 524,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,8 +61,8 @@
       "frameHeight": 180
     },
     "bgs/ChineseNewYear2024/Underdragon/NightCity02": {
-      "x": 646,
-      "y": 2,
+      "x": 2,
+      "y": 184,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -31,7 +71,7 @@
       "frameHeight": 180
     },
     "bgs/ChineseNewYear2024/Underdragon/NightCity03": {
-      "x": 2,
+      "x": 324,
       "y": 184,
       "width": 320,
       "height": 180,
@@ -41,7 +81,7 @@
       "frameHeight": 180
     },
     "bgs/ChineseNewYear2024/Underdragon/NightCity04": {
-      "x": 324,
+      "x": 646,
       "y": 184,
       "width": 320,
       "height": 180,
@@ -51,8 +91,8 @@
       "frameHeight": 180
     },
     "bgs/ChineseNewYear2024/Underdragon/NightCity05": {
-      "x": 646,
-      "y": 184,
+      "x": 2,
+      "y": 366,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -61,7 +101,7 @@
       "frameHeight": 180
     },
     "bgs/ChineseNewYear2024/Underdragon/NightCity06": {
-      "x": 2,
+      "x": 324,
       "y": 366,
       "width": 320,
       "height": 180,
@@ -71,16 +111,6 @@
       "frameHeight": 180
     },
     "bgs/ChineseNewYear2024/Underdragon/NightCity07": {
-      "x": 324,
-      "y": 366,
-      "width": 320,
-      "height": 180,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 320,
-      "frameHeight": 180
-    },
-    "bgs/ChineseNewYear2024/Underdragon/NightCity08": {
       "x": 646,
       "y": 366,
       "width": 320,
@@ -90,7 +120,7 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/ChineseNewYear2024/Underdragon/NightCity09": {
+    "bgs/ChineseNewYear2024/Underdragon/NightCity08": {
       "x": 2,
       "y": 548,
       "width": 320,
@@ -100,8 +130,18 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/ChineseNewYear2024/Underdragon/NightCity10": {
+    "bgs/ChineseNewYear2024/Underdragon/NightCity09": {
       "x": 324,
+      "y": 548,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/ChineseNewYear2024/Underdragon/NightCity10": {
+      "x": 646,
       "y": 548,
       "width": 320,
       "height": 180,

@@ -10,8 +10,28 @@
       "frameWidth": 48,
       "frameHeight": 120
     },
-    "bgs/SJ2021/yoshachobi7/basediceberg": {
+    "tilesets/SJ2021/yoshachobi7/frozenGrass": {
       "x": 52,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/yoshachobi7/icedark": {
+      "x": 102,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/yoshachobi7/basediceberg": {
+      "x": 152,
       "y": 2,
       "width": 480,
       "height": 180,

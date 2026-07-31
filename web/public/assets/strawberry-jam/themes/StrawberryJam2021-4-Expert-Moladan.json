@@ -10,8 +10,28 @@
       "frameWidth": 96,
       "frameHeight": 96
     },
-    "bgs/SJ2021/Moladan/moladanbg": {
+    "tilesets/SJ2021/Moladan/tileswhite": {
       "x": 100,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Moladan/labfgdark": {
+      "x": 198,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "bgs/SJ2021/Moladan/moladanbg": {
+      "x": 296,
       "y": 2,
       "width": 320,
       "height": 180,

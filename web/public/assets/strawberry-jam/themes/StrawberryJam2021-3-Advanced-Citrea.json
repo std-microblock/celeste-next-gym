@@ -89,6 +89,56 @@
       "drawOffsetY": 0,
       "frameWidth": 384,
       "frameHeight": 216
+    },
+    "danger/SJ2021/LordCitrea/abstract/fg_abstract00": {
+      "x": 388,
+      "y": 656,
+      "width": 19,
+      "height": 19,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 19,
+      "frameHeight": 19
+    },
+    "danger/SJ2021/LordCitrea/abstract/fg_abstract01": {
+      "x": 409,
+      "y": 656,
+      "width": 19,
+      "height": 19,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 19,
+      "frameHeight": 19
+    },
+    "danger/SJ2021/LordCitrea/abstract/fg_abstract02": {
+      "x": 430,
+      "y": 656,
+      "width": 19,
+      "height": 19,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 19,
+      "frameHeight": 19
+    },
+    "danger/SJ2021/LordCitrea/abstract/fg_abstract03": {
+      "x": 451,
+      "y": 656,
+      "width": 19,
+      "height": 19,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 19,
+      "frameHeight": 19
+    },
+    "danger/SJ2021/LordCitrea/abstract/bg_abstract": {
+      "x": 472,
+      "y": 656,
+      "width": 11,
+      "height": 12,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 11,
+      "frameHeight": 12
     }
   }
 }

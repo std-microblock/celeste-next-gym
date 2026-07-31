@@ -1,3 +1,24 @@
 {
-  "entries": {}
+  "entries": {
+    "tilesets/SJ2021/voliver9/volicore": {
+      "x": 2,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/voliver9/VoliGirderNosnow": {
+      "x": 52,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    }
+  }
 }

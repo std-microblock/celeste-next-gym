@@ -1,6 +1,6 @@
 {
   "entries": {
-    "tilesets/SJ2021/ExpertLobby/oldtemple": {
+    "tilesets/SJ2021/Stotch/prplgrdr": {
       "x": 2,
       "y": 2,
       "width": 48,
@@ -10,9 +10,659 @@
       "frameWidth": 48,
       "frameHeight": 120
     },
-    "bgs/SJ2021/ExpertLobby/space": {
+    "tilesets/SJ2021/ExpertLobby/spaceVegetation": {
       "x": 52,
       "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/ExpertLobby/asteroidrock": {
+      "x": 102,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/QuantumSpaceman/cloudSunset": {
+      "x": 288,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/fonda1515/Brick": {
+      "x": 338,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Vina/AvRock": {
+      "x": 436,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Vina/AvRockMoss": {
+      "x": 486,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Vina/AvGrassy": {
+      "x": 536,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/powerav/eletricAlt": {
+      "x": 586,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/powerav/eletric": {
+      "x": 636,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Appels/airplane": {
+      "x": 686,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/powerav/eletricAltB": {
+      "x": 872,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Banana23/Expert/corealt": {
+      "x": 922,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/ExpertLobby/surfacerock": {
+      "x": 972,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/Marcossanches/batteryFloor": {
+      "x": 1158,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Marcossanches/batteryPipes": {
+      "x": 1256,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Gym Entrance/ExpertGym": {
+      "x": 1354,
+      "y": 2,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "tilesets/SJ2021/RedBoule/RedBouleTemple": {
+      "x": 1380,
+      "y": 2,
+      "width": 48,
+      "height": 152,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 152
+    },
+    "tilesets/SJ2021/rdoggo8/avmud": {
+      "x": 1430,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/rdoggo8/avmud2": {
+      "x": 1480,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/nyan/neon": {
+      "x": 1530,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/rdoggo8/avgrass": {
+      "x": 1716,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/ExpertLobby/science": {
+      "x": 1766,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Scroogle/pot": {
+      "x": 1864,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Scroogle/potAlt": {
+      "x": 1962,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Skunkynator/towerNew": {
+      "x": 2060,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Agent/whiteCloud": {
+      "x": 2110,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Skunkynator/scifiNew": {
+      "x": 2160,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/ExpertLobby/technology": {
+      "x": 2210,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/Linj/invis": {
+      "x": 2396,
+      "y": 2,
+      "width": 8,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 8
+    },
+    "tilesets/SJ2021/Agent/yellowCloud": {
+      "x": 2406,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Flamecrafter113/overgrownLinnStone": {
+      "x": 2456,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Flamecrafter113/overgrownLinnStoneMossy": {
+      "x": 2506,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/ExpertLobby/caverock": {
+      "x": 2556,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/KAERRA/subpanel": {
+      "x": 2742,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/KAERRA/mainpanel": {
+      "x": 2792,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/KAERRA/neonpipe": {
+      "x": 2,
+      "y": 156,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Ferroshock/oceanRock": {
+      "x": 52,
+      "y": 156,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/LethargicDoggo/Av_MarbleTower": {
+      "x": 150,
+      "y": 156,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/LethargicDoggo/GlowWoomiiTemple": {
+      "x": 200,
+      "y": 156,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/ExpertLobby/oldtemple": {
+      "x": 298,
+      "y": 156,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/ExpertLobby/crystaltemple": {
+      "x": 348,
+      "y": 156,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/LethargicDoggo/BlueSummit": {
+      "x": 398,
+      "y": 156,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Aspar/tower_grey": {
+      "x": 448,
+      "y": 156,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Moladan/tilesblack": {
+      "x": 498,
+      "y": 156,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Moladan/tileswhite": {
+      "x": 596,
+      "y": 156,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/hivemindsrule/PhrogTemple": {
+      "x": 694,
+      "y": 156,
+      "width": 48,
+      "height": 152,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 152
+    },
+    "tilesets/SJ2021/Aspar/autumn_grass": {
+      "x": 744,
+      "y": 156,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/spirialis/SpirialisTiles": {
+      "x": 794,
+      "y": 156,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Linj/towerSnow": {
+      "x": 892,
+      "y": 156,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/yoshachobi7/ice": {
+      "x": 942,
+      "y": 156,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/yoshachobi7/frozenGrass": {
+      "x": 992,
+      "y": 156,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Cabob/mushrooms": {
+      "x": 1042,
+      "y": 156,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/DanTKO/TempleTile_A": {
+      "x": 1228,
+      "y": 156,
+      "width": 184,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/DanTKO/TempleTile_B": {
+      "x": 1414,
+      "y": 156,
+      "width": 184,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Cabob/mushroomMetal": {
+      "x": 1600,
+      "y": 156,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/archire/catelinecomplexyelow": {
+      "x": 1786,
+      "y": 156,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "tilesets/SJ2021/archire/catelinecomplexorang": {
+      "x": 1812,
+      "y": 156,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "tilesets/SJ2021/archire/catelinecomplex": {
+      "x": 1838,
+      "y": 156,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "tilesets/SJ2021/archire/catelinecomplexgreon": {
+      "x": 1864,
+      "y": 156,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "tilesets/SJ2021/archire/catelinecomplexviolet": {
+      "x": 1890,
+      "y": 156,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "tilesets/SJ2021/archire/catelinecomplexblue": {
+      "x": 1916,
+      "y": 156,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "tilesets/SJ2021/archire/catelinecomplexindigo": {
+      "x": 1942,
+      "y": 156,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "tilesets/SJ2021/Ferroshock/goldCoral": {
+      "x": 1968,
+      "y": 156,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Ferroshock/roseCoral": {
+      "x": 2018,
+      "y": 156,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Ferroshock/violetCoral": {
+      "x": 2068,
+      "y": 156,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/ExpertLobby/space": {
+      "x": 2118,
+      "y": 156,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -21,8 +671,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/ExpertLobby/smallplanet": {
-      "x": 374,
-      "y": 2,
+      "x": 2440,
+      "y": 156,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -31,8 +681,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/ExpertLobby/smallplanetB": {
-      "x": 696,
-      "y": 2,
+      "x": 2,
+      "y": 338,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -41,8 +691,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/ExpertLobby/BigPlanet": {
-      "x": 1018,
-      "y": 2,
+      "x": 324,
+      "y": 338,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -51,8 +701,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/ExpertLobby/CP2_LYR0": {
-      "x": 1340,
-      "y": 2,
+      "x": 646,
+      "y": 338,
       "width": 500,
       "height": 180,
       "drawOffsetX": 0,
@@ -61,8 +711,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/ExpertLobby/CP2_LYR1": {
-      "x": 1842,
-      "y": 2,
+      "x": 1148,
+      "y": 338,
       "width": 500,
       "height": 180,
       "drawOffsetX": 0,
@@ -71,8 +721,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/ExpertLobby/CP2_LYR2": {
-      "x": 2344,
-      "y": 2,
+      "x": 1650,
+      "y": 338,
       "width": 500,
       "height": 180,
       "drawOffsetX": 0,
@@ -81,8 +731,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/ExpertLobby/CP2_LYR3": {
-      "x": 2,
-      "y": 184,
+      "x": 2152,
+      "y": 338,
       "width": 500,
       "height": 180,
       "drawOffsetX": 0,
@@ -92,7 +742,7 @@
     },
     "bgs/SJ2021/Linj/WATERLINE": {
       "x": 2,
-      "y": 366,
+      "y": 520,
       "width": 2880,
       "height": 80,
       "drawOffsetX": 0,
@@ -102,7 +752,7 @@
     },
     "bgs/SJ2021/Aspar/aspar_skybox_redux": {
       "x": 2,
-      "y": 448,
+      "y": 602,
       "width": 320,
       "height": 240,
       "drawOffsetX": 0,
@@ -112,7 +762,7 @@
     },
     "bgs/SJ2021/Aspar/aspar_very_far": {
       "x": 324,
-      "y": 448,
+      "y": 602,
       "width": 320,
       "height": 240,
       "drawOffsetX": 0,
@@ -122,7 +772,7 @@
     },
     "bgs/SJ2021/Aspar/aspar_mist": {
       "x": 646,
-      "y": 448,
+      "y": 602,
       "width": 320,
       "height": 240,
       "drawOffsetX": 0,
@@ -132,7 +782,7 @@
     },
     "bgs/SJ2021/Aspar/aspar_far": {
       "x": 968,
-      "y": 448,
+      "y": 602,
       "width": 320,
       "height": 240,
       "drawOffsetX": 0,
@@ -142,7 +792,7 @@
     },
     "bgs/SJ2021/Aspar/aspar_midfar": {
       "x": 1290,
-      "y": 448,
+      "y": 602,
       "width": 320,
       "height": 240,
       "drawOffsetX": 0,
@@ -152,7 +802,7 @@
     },
     "bgs/SJ2021/Aspar/aspar_middle": {
       "x": 1612,
-      "y": 448,
+      "y": 602,
       "width": 320,
       "height": 240,
       "drawOffsetX": 0,
@@ -162,7 +812,7 @@
     },
     "bgs/SJ2021/ExpertLobby/misterious": {
       "x": 1934,
-      "y": 448,
+      "y": 602,
       "width": 600,
       "height": 600,
       "drawOffsetX": 0,
@@ -172,7 +822,7 @@
     },
     "danger/spikes/SJ2021/DanTKO/AquaCopper_down00": {
       "x": 2536,
-      "y": 448,
+      "y": 602,
       "width": 8,
       "height": 9,
       "drawOffsetX": 0,
@@ -182,7 +832,7 @@
     },
     "danger/spikes/SJ2021/DanTKO/AquaCopper_down01": {
       "x": 2546,
-      "y": 448,
+      "y": 602,
       "width": 8,
       "height": 9,
       "drawOffsetX": 0,
@@ -192,7 +842,7 @@
     },
     "danger/spikes/SJ2021/DanTKO/AquaCopper_left00": {
       "x": 2556,
-      "y": 448,
+      "y": 602,
       "width": 9,
       "height": 8,
       "drawOffsetX": 0,
@@ -202,7 +852,7 @@
     },
     "danger/spikes/SJ2021/DanTKO/AquaCopper_left01": {
       "x": 2567,
-      "y": 448,
+      "y": 602,
       "width": 9,
       "height": 8,
       "drawOffsetX": 0,
@@ -212,7 +862,7 @@
     },
     "danger/spikes/SJ2021/DanTKO/AquaCopper_right00": {
       "x": 2578,
-      "y": 448,
+      "y": 602,
       "width": 9,
       "height": 8,
       "drawOffsetX": 0,
@@ -222,7 +872,7 @@
     },
     "danger/spikes/SJ2021/DanTKO/AquaCopper_right01": {
       "x": 2589,
-      "y": 448,
+      "y": 602,
       "width": 9,
       "height": 8,
       "drawOffsetX": 0,
@@ -232,7 +882,7 @@
     },
     "danger/spikes/SJ2021/DanTKO/AquaCopper_up00": {
       "x": 2600,
-      "y": 448,
+      "y": 602,
       "width": 8,
       "height": 9,
       "drawOffsetX": 0,
@@ -242,13 +892,383 @@
     },
     "danger/spikes/SJ2021/DanTKO/AquaCopper_up01": {
       "x": 2610,
-      "y": 448,
+      "y": 602,
       "width": 8,
       "height": 9,
       "drawOffsetX": 0,
       "drawOffsetY": 0,
       "frameWidth": 8,
       "frameHeight": 9
+    },
+    "danger/crystal/SJ2021/Agent/fg_clouds00": {
+      "x": 2620,
+      "y": 602,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Agent/fg_clouds01": {
+      "x": 2646,
+      "y": 602,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Agent/fg_clouds02": {
+      "x": 2672,
+      "y": 602,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Agent/fg_clouds03": {
+      "x": 2698,
+      "y": 602,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Agent/bg_clouds00": {
+      "x": 2724,
+      "y": 602,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/rdoggo8/brambles/fg00": {
+      "x": 2750,
+      "y": 602,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/rdoggo8/brambles/fg01": {
+      "x": 2776,
+      "y": 602,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/rdoggo8/brambles/fg02": {
+      "x": 2802,
+      "y": 602,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/rdoggo8/brambles/fg03": {
+      "x": 2828,
+      "y": 602,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/rdoggo8/brambles/bg00": {
+      "x": 2854,
+      "y": 602,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/nyan/fg_white00": {
+      "x": 2,
+      "y": 1204,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/nyan/fg_white01": {
+      "x": 28,
+      "y": 1204,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/nyan/fg_white02": {
+      "x": 54,
+      "y": 1204,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/nyan/fg_white03": {
+      "x": 80,
+      "y": 1204,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/nyan/bg_white00": {
+      "x": 106,
+      "y": 1204,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/QuantumSpaceman/star/fg00": {
+      "x": 132,
+      "y": 1204,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/SJ2021/QuantumSpaceman/star/fg01": {
+      "x": 152,
+      "y": 1204,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/SJ2021/QuantumSpaceman/star/fg02": {
+      "x": 172,
+      "y": 1204,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/SJ2021/QuantumSpaceman/star/fg03": {
+      "x": 192,
+      "y": 1204,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/SJ2021/QuantumSpaceman/star/fg_star00": {
+      "x": 212,
+      "y": 1204,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/SJ2021/QuantumSpaceman/star/fg_star01": {
+      "x": 232,
+      "y": 1204,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/SJ2021/QuantumSpaceman/star/fg_star02": {
+      "x": 252,
+      "y": 1204,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/SJ2021/QuantumSpaceman/star/fg_star03": {
+      "x": 272,
+      "y": 1204,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/SJ2021/QuantumSpaceman/star/bg00": {
+      "x": 292,
+      "y": 1204,
+      "width": 12,
+      "height": 12,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 12,
+      "frameHeight": 12
+    },
+    "danger/SJ2021/QuantumSpaceman/star/bg01": {
+      "x": 306,
+      "y": 1204,
+      "width": 12,
+      "height": 12,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 12,
+      "frameHeight": 12
+    },
+    "danger/SJ2021/QuantumSpaceman/star/bg_star00": {
+      "x": 320,
+      "y": 1204,
+      "width": 12,
+      "height": 12,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 12,
+      "frameHeight": 12
+    },
+    "danger/SJ2021/QuantumSpaceman/star/bg_star01": {
+      "x": 334,
+      "y": 1204,
+      "width": 12,
+      "height": 12,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 12,
+      "frameHeight": 12
+    },
+    "danger/crystal/SJ2021/Flamecrafter113/spinnerBlueish/fg00": {
+      "x": 348,
+      "y": 1204,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Flamecrafter113/spinnerBlueish/fg01": {
+      "x": 374,
+      "y": 1204,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Flamecrafter113/spinnerBlueish/fg02": {
+      "x": 400,
+      "y": 1204,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Flamecrafter113/spinnerBlueish/fg03": {
+      "x": 426,
+      "y": 1204,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Flamecrafter113/spinnerBlueish/bg00": {
+      "x": 452,
+      "y": 1204,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Scroogle/fg_thorns00": {
+      "x": 478,
+      "y": 1204,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Scroogle/fg_thorns01": {
+      "x": 504,
+      "y": 1204,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Scroogle/fg_thorns02": {
+      "x": 530,
+      "y": 1204,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Scroogle/fg_thorns03": {
+      "x": 556,
+      "y": 1204,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Scroogle/bg_thorns00": {
+      "x": 582,
+      "y": 1204,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
     }
   }
 }

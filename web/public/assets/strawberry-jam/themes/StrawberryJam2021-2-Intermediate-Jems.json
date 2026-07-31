@@ -1,7 +1,27 @@
 {
   "entries": {
-    "bgs/SJ2021/Jems/Industrial/bg": {
+    "tilesets/SJ2021/Jems/Av_Factory": {
       "x": 2,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/Jems/Metalplate": {
+      "x": 188,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/Jems/Industrial/bg": {
+      "x": 238,
       "y": 2,
       "width": 272,
       "height": 160,
@@ -11,7 +31,7 @@
       "frameHeight": 160
     },
     "bgs/SJ2021/Jems/bgc0": {
-      "x": 276,
+      "x": 512,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,16 +41,6 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Jems/bgc1": {
-      "x": 598,
-      "y": 2,
-      "width": 320,
-      "height": 180,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 320,
-      "frameHeight": 180
-    },
-    "bgs/SJ2021/Jems/bgc2": {
       "x": 2,
       "y": 184,
       "width": 320,
@@ -40,7 +50,7 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/SJ2021/Jems/bgc3": {
+    "bgs/SJ2021/Jems/bgc2": {
       "x": 324,
       "y": 184,
       "width": 320,
@@ -50,7 +60,7 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/SJ2021/Jems/bgc4": {
+    "bgs/SJ2021/Jems/bgc3": {
       "x": 646,
       "y": 184,
       "width": 320,
@@ -60,8 +70,18 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/SJ2021/Jems/Industrial/buildings": {
+    "bgs/SJ2021/Jems/bgc4": {
       "x": 2,
+      "y": 366,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Jems/Industrial/buildings": {
+      "x": 324,
       "y": 366,
       "width": 272,
       "height": 150,
@@ -71,7 +91,7 @@
       "frameHeight": 150
     },
     "bgs/SJ2021/Jems/Industrial/far-buildings": {
-      "x": 276,
+      "x": 598,
       "y": 366,
       "width": 213,
       "height": 142,
@@ -81,8 +101,8 @@
       "frameHeight": 142
     },
     "bgs/SJ2021/Jems/Industrial/skill-foreground": {
-      "x": 491,
-      "y": 366,
+      "x": 2,
+      "y": 548,
       "width": 272,
       "height": 104,
       "drawOffsetX": 0,

@@ -10,8 +10,18 @@
       "frameWidth": 48,
       "frameHeight": 120
     },
-    "bgs/SJ2021/BlueXans/sky": {
+    "tilesets/SJ2021/BlueXans/AV_templeBrick": {
       "x": 52,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/BlueXans/sky": {
+      "x": 102,
       "y": 2,
       "width": 320,
       "height": 180,

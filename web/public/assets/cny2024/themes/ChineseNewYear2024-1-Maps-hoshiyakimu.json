@@ -10,8 +10,48 @@
       "frameWidth": 48,
       "frameHeight": 120
     },
-    "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/hoshiyakimu/starscape00": {
+    "tilesets/ChineseNewYear2024/hoshiyakimu/IntRockFg": {
       "x": 52,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/ChineseNewYear2024/hoshiyakimu/dirtBright": {
+      "x": 238,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/hoshiyakimu/IntRockFgB": {
+      "x": 288,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/ChineseNewYear2024/hoshiyakimu/mud1": {
+      "x": 474,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/hoshiyakimu/starscape00": {
+      "x": 524,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,8 +61,8 @@
       "frameHeight": 180
     },
     "bgs/ChineseNewYear2024/hoshiyakimu/moon": {
-      "x": 374,
-      "y": 2,
+      "x": 2,
+      "y": 184,
       "width": 320,
       "height": 184,
       "drawOffsetX": 0,
@@ -31,8 +71,8 @@
       "frameHeight": 184
     },
     "bgs/ChineseNewYear2024/hoshiyakimu/clouds": {
-      "x": 696,
-      "y": 2,
+      "x": 324,
+      "y": 184,
       "width": 320,
       "height": 184,
       "drawOffsetX": 0,
@@ -41,14 +81,64 @@
       "frameHeight": 184
     },
     "bgs/ChineseNewYear2024/hoshiyakimu/Mountain": {
-      "x": 2,
-      "y": 188,
+      "x": 646,
+      "y": 184,
       "width": 320,
       "height": 184,
       "drawOffsetX": 0,
       "drawOffsetY": 0,
       "frameWidth": 320,
       "frameHeight": 184
+    },
+    "danger/customSpinner/ChineseNewYear2024/hoshiyakimu/fg_white00": {
+      "x": 968,
+      "y": 184,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/customSpinner/ChineseNewYear2024/hoshiyakimu/fg_white01": {
+      "x": 994,
+      "y": 184,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/customSpinner/ChineseNewYear2024/hoshiyakimu/fg_white02": {
+      "x": 2,
+      "y": 370,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/customSpinner/ChineseNewYear2024/hoshiyakimu/fg_white03": {
+      "x": 28,
+      "y": 370,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/customSpinner/ChineseNewYear2024/hoshiyakimu/bg_white00": {
+      "x": 54,
+      "y": 370,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
     }
   }
 }

@@ -10,8 +10,28 @@
       "frameWidth": 184,
       "frameHeight": 104
     },
-    "bgs/SJ2021/Goldian/ocean_sky": {
+    "tilesets/SJ2021/Goldian/pipe": {
       "x": 188,
+      "y": 2,
+      "width": 40,
+      "height": 32,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 40,
+      "frameHeight": 32
+    },
+    "tilesets/SJ2021/Goldian/NoSnowGirder": {
+      "x": 230,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/Goldian/ocean_sky": {
+      "x": 280,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,7 +41,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Goldian/ocean_cloudsmid": {
-      "x": 510,
+      "x": 602,
       "y": 2,
       "width": 320,
       "height": 180,

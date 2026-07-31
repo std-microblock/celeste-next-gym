@@ -10,8 +10,18 @@
       "frameWidth": 96,
       "frameHeight": 96
     },
-    "bgs/SJ2021/Tortoise/Aug BGA": {
+    "tilesets/SJ2021/Tortoise/KeyTile": {
       "x": 100,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "bgs/SJ2021/Tortoise/Aug BGA": {
+      "x": 198,
       "y": 2,
       "width": 400,
       "height": 230,
@@ -19,6 +29,66 @@
       "drawOffsetY": 0,
       "frameWidth": 400,
       "frameHeight": 230
+    },
+    "danger/crystal/SJ2021/Tortoise/fg00": {
+      "x": 600,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Tortoise/fg01": {
+      "x": 626,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Tortoise/fg02": {
+      "x": 652,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Tortoise/fg03": {
+      "x": 678,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Tortoise/fg_lg00": {
+      "x": 704,
+      "y": 2,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/crystal/SJ2021/Tortoise/bg00": {
+      "x": 754,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
     }
   }
 }

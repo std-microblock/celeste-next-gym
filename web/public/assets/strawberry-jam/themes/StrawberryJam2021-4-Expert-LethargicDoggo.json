@@ -10,8 +10,18 @@
       "frameWidth": 48,
       "frameHeight": 120
     },
-    "bgs/SJ2021/LethargicDoggo/lethargic_cloud 5": {
+    "tilesets/SJ2021/LethargicDoggo/GlowWoomiiTemple": {
       "x": 52,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "bgs/SJ2021/LethargicDoggo/lethargic_cloud 5": {
+      "x": 150,
       "y": 2,
       "width": 400,
       "height": 180,
@@ -21,7 +31,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/LethargicDoggo/lethargic_cloud 4": {
-      "x": 454,
+      "x": 552,
       "y": 2,
       "width": 400,
       "height": 180,

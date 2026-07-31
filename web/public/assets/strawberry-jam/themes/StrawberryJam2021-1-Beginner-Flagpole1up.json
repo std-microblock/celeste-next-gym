@@ -10,8 +10,18 @@
       "frameWidth": 48,
       "frameHeight": 120
     },
-    "bgs/SJ2021/Flagpole1up/Beginner/bg00": {
+    "tilesets/SJ2021/Flagpole1up/Beginner/PurpleMetallicAlt": {
       "x": 52,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/Flagpole1up/Beginner/bg00": {
+      "x": 102,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,7 +31,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Flagpole1up/Beginner/bg01": {
-      "x": 374,
+      "x": 424,
       "y": 2,
       "width": 68,
       "height": 180,
@@ -31,7 +41,7 @@
       "frameHeight": 180
     },
     "bgs/MaxHelpingHand/animatedParallax/SJ2021/Flagpole1up/bg_waves_3fps00": {
-      "x": 444,
+      "x": 494,
       "y": 2,
       "width": 68,
       "height": 180,
@@ -41,7 +51,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Flagpole1up/Beginner/bg02": {
-      "x": 514,
+      "x": 564,
       "y": 2,
       "width": 175,
       "height": 180,

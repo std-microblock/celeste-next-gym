@@ -1,3 +1,124 @@
 {
-  "entries": {}
+  "entries": {
+    "tilesets/SJ2021/RedBatNick/dungeonbricks": {
+      "x": 2,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/RedBatNick/ruinedwood": {
+      "x": 100,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "danger/crystal/SJ2021/RedBatNick/fg_wood00": {
+      "x": 150,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/RedBatNick/fg_wood01": {
+      "x": 176,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/RedBatNick/fg_wood02": {
+      "x": 202,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/RedBatNick/fg_wood03": {
+      "x": 228,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/RedBatNick/bg_wood00": {
+      "x": 254,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/RedBatNick/fg_attached00": {
+      "x": 280,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/RedBatNick/fg_attached01": {
+      "x": 306,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/RedBatNick/fg_attached02": {
+      "x": 332,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/RedBatNick/fg_attached03": {
+      "x": 358,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/RedBatNick/bg_attached00": {
+      "x": 384,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    }
+  }
 }

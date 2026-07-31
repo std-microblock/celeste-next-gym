@@ -10,8 +10,28 @@
       "frameWidth": 184,
       "frameHeight": 104
     },
-    "bgs/SJ2021/Ecl1psed/space-planets": {
+    "tilesets/SJ2021/Ecl1psed/StellarRockSnow": {
       "x": 188,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/Ecl1psed/shadeStoneInside": {
+      "x": 374,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/Ecl1psed/space-planets": {
+      "x": 424,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,8 +41,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Ecl1psed/space-planets2": {
-      "x": 510,
-      "y": 2,
+      "x": 2,
+      "y": 184,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -31,7 +51,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Ecl1psed/space-planets4": {
-      "x": 2,
+      "x": 324,
       "y": 184,
       "width": 320,
       "height": 180,
@@ -41,7 +61,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Ecl1psed/space-planets3": {
-      "x": 324,
+      "x": 646,
       "y": 184,
       "width": 80,
       "height": 46,
@@ -51,8 +71,8 @@
       "frameHeight": 46
     },
     "bgs/SJ2021/Ecl1psed/space-planets5": {
-      "x": 406,
-      "y": 184,
+      "x": 2,
+      "y": 366,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -61,7 +81,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Ecl1psed/space-planets7": {
-      "x": 2,
+      "x": 324,
       "y": 366,
       "width": 320,
       "height": 200,
@@ -71,7 +91,7 @@
       "frameHeight": 200
     },
     "bgs/SJ2021/Ecl1psed/space-planets6": {
-      "x": 324,
+      "x": 646,
       "y": 366,
       "width": 60,
       "height": 60,

@@ -1,7 +1,67 @@
 {
   "entries": {
-    "tilesets/SJ2021/archire/catelinecomplexorang": {
+    "tilesets/SJ2021/archire/catelinecomplex": {
       "x": 2,
+      "y": 2,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "tilesets/SJ2021/archire/catelinecomplexorang": {
+      "x": 28,
+      "y": 2,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "tilesets/SJ2021/archire/catelinecomplexyelow": {
+      "x": 54,
+      "y": 2,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "tilesets/SJ2021/archire/catelinecomplexgreon": {
+      "x": 80,
+      "y": 2,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "tilesets/SJ2021/archire/catelinecomplexblue": {
+      "x": 106,
+      "y": 2,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "tilesets/SJ2021/archire/catelinecomplexindigo": {
+      "x": 132,
+      "y": 2,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "tilesets/SJ2021/archire/catelinecomplexviolet": {
+      "x": 158,
       "y": 2,
       "width": 24,
       "height": 136,

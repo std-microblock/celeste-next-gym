@@ -1,7 +1,57 @@
 {
   "entries": {
-    "bgs/SJ2021/xlibiza/shroomsB": {
+    "tilesets/SJ2021/xlibiza/TealRock": {
       "x": 2,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/xlibiza/TealRockFiller": {
+      "x": 52,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/xlibiza/CaveCrystal": {
+      "x": 102,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/xlibiza/CaveRock": {
+      "x": 152,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/xlibiza/DashBlock": {
+      "x": 202,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/xlibiza/shroomsB": {
+      "x": 252,
       "y": 2,
       "width": 360,
       "height": 180,
@@ -11,7 +61,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/xlibiza/shroomsA": {
-      "x": 364,
+      "x": 614,
       "y": 2,
       "width": 320,
       "height": 182,

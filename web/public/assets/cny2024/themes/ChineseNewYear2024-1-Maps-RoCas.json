@@ -9,6 +9,16 @@
       "drawOffsetY": 0,
       "frameWidth": 48,
       "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/ShadowRo/CasBlock": {
+      "x": 52,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
     }
   }
 }

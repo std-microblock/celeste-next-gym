@@ -69,6 +69,206 @@
       "drawOffsetY": 0,
       "frameWidth": 8,
       "frameHeight": 9
+    },
+    "danger/SJ2021/alisticious/solid/fg_solid00": {
+      "x": 864,
+      "y": 2,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/SJ2021/alisticious/solid/fg_solid01": {
+      "x": 914,
+      "y": 2,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/SJ2021/alisticious/solid/fg_solid02": {
+      "x": 964,
+      "y": 2,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/SJ2021/alisticious/solid/fg_solid03": {
+      "x": 2,
+      "y": 179,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/SJ2021/alisticious/solid/fg_solid04": {
+      "x": 52,
+      "y": 179,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/SJ2021/alisticious/solid/fg_solid05": {
+      "x": 102,
+      "y": 179,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/SJ2021/alisticious/solid/fg_solid06": {
+      "x": 152,
+      "y": 179,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/SJ2021/alisticious/solid/fg_solid07": {
+      "x": 202,
+      "y": 179,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/SJ2021/alisticious/solid/fg_solid08": {
+      "x": 252,
+      "y": 179,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/SJ2021/alisticious/solid/fg_solid09": {
+      "x": 302,
+      "y": 179,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/SJ2021/alisticious/solid/fg_solid10": {
+      "x": 352,
+      "y": 179,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/SJ2021/alisticious/solid/fg_solid11": {
+      "x": 402,
+      "y": 179,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/SJ2021/alisticious/solid/fg_solid12": {
+      "x": 452,
+      "y": 179,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/SJ2021/alisticious/solid/fg_solid13": {
+      "x": 502,
+      "y": 179,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/SJ2021/alisticious/solid/fg_solid14": {
+      "x": 552,
+      "y": 179,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/SJ2021/alisticious/solid/fg_solid15": {
+      "x": 602,
+      "y": 179,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/SJ2021/alisticious/solid/bg_solid00": {
+      "x": 652,
+      "y": 179,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/SJ2021/alisticious/solid/bg_solid01": {
+      "x": 702,
+      "y": 179,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/SJ2021/alisticious/solid/bg_solid02": {
+      "x": 752,
+      "y": 179,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/SJ2021/alisticious/solid/bg_solid03": {
+      "x": 802,
+      "y": 179,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
     }
   }
 }

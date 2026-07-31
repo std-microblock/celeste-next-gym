@@ -1,6 +1,6 @@
 {
   "entries": {
-    "tilesets/SJ2021/Advanced_Lobby/advMesaRockMedium": {
+    "tilesets/SJ2021/Advanced_Lobby/advMesaRockLight": {
       "x": 2,
       "y": 2,
       "width": 96,
@@ -10,9 +10,589 @@
       "frameWidth": 96,
       "frameHeight": 96
     },
-    "bgs/SJ2021/Meario/sky": {
+    "tilesets/SJ2021/Advanced_Lobby/advMesaRockSnowB": {
       "x": 100,
       "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Advanced_Lobby/advMesaRockMediumSnow": {
+      "x": 198,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Advanced_Lobby/advCloudPink": {
+      "x": 296,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Advanced_Lobby/advMesaRockMedium": {
+      "x": 346,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Advanced_Lobby/advCloudWood": {
+      "x": 444,
+      "y": 2,
+      "width": 96,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Advanced_Lobby/advCloudWhite": {
+      "x": 542,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Advanced_Lobby/advCloudCold": {
+      "x": 592,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/JANisEXIST/DarkStoneCracked": {
+      "x": 642,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/JANisEXIST/ExtremelySadTower": {
+      "x": 692,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Advanced_Lobby/advCloudSunset": {
+      "x": 742,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Jolly/marsrock": {
+      "x": 792,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Jolly/oldCement": {
+      "x": 842,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Advanced_Lobby/advGrass": {
+      "x": 892,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Advanced_Lobby/advDirtMoss": {
+      "x": 942,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Advanced_Lobby/advDirt": {
+      "x": 992,
+      "y": 2,
+      "width": 48,
+      "height": 128,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 128
+    },
+    "tilesets/SJ2021/Advanced_Lobby/advGravel": {
+      "x": 1042,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/mmm/dirtDark": {
+      "x": 1228,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/pugroy/BossArena": {
+      "x": 1278,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Viv/metallicFactory": {
+      "x": 1328,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/Viv/lostlevelsIgnore": {
+      "x": 1514,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/LordCitrea/fgLordAbstract": {
+      "x": 1564,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Advanced_Lobby/advSand": {
+      "x": 2,
+      "y": 132,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/MousseMoose/BWTemple": {
+      "x": 100,
+      "y": 132,
+      "width": 48,
+      "height": 152,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 152
+    },
+    "tilesets/SJ2021/Advanced_Lobby/advSnadStoneFgBrick": {
+      "x": 150,
+      "y": 132,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Advanced_Lobby/advSnadStoneFg": {
+      "x": 248,
+      "y": 132,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/MousseMoose/BWTempleCrack": {
+      "x": 346,
+      "y": 132,
+      "width": 48,
+      "height": 152,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 152
+    },
+    "tilesets/SJ2021/Goldian/metal2": {
+      "x": 396,
+      "y": 132,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/Goldian/NoSnowGirder": {
+      "x": 582,
+      "y": 132,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Goldian/pipe": {
+      "x": 632,
+      "y": 132,
+      "width": 40,
+      "height": 32,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 40,
+      "frameHeight": 32
+    },
+    "tilesets/SJ2021/Advanced_Lobby/advImprovedWood": {
+      "x": 674,
+      "y": 132,
+      "width": 96,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Advanced_Lobby/advImprovedWoodAlt": {
+      "x": 772,
+      "y": 132,
+      "width": 96,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Meario/graygirder": {
+      "x": 870,
+      "y": 132,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/YaGrillRobib/card_red": {
+      "x": 968,
+      "y": 132,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/Meario/scififancyred": {
+      "x": 1154,
+      "y": 132,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/YaGrillRobib/card_pink": {
+      "x": 1204,
+      "y": 132,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/YaGrillRobib/card_white": {
+      "x": 1390,
+      "y": 132,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/Tortoise/DungeonPurple": {
+      "x": 1576,
+      "y": 132,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/TiltTheStars/honeycomb": {
+      "x": 2,
+      "y": 286,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/Galaksyz/blueSlime": {
+      "x": 188,
+      "y": 286,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/Galaksyz/redSlime": {
+      "x": 374,
+      "y": 286,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/Galaksyz/greenSlime": {
+      "x": 560,
+      "y": 286,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/Advanced_Lobby/AdvancedGym": {
+      "x": 746,
+      "y": 286,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "tilesets/SJ2021/astraxel/PurpleSandDark": {
+      "x": 772,
+      "y": 286,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Oppen/LobbyLeaftilesGreen": {
+      "x": 822,
+      "y": 286,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Oppen/LobbyWoodbark": {
+      "x": 872,
+      "y": 286,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/sp1029/Av_cement": {
+      "x": 922,
+      "y": 286,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/astraxel/PurpleSand": {
+      "x": 972,
+      "y": 286,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Advanced_Lobby/advMesaRockDark": {
+      "x": 1022,
+      "y": 286,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/BlueXans/AV_temple": {
+      "x": 1120,
+      "y": 286,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/BlueXans/AV_templeBrick": {
+      "x": 1170,
+      "y": 286,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/RadleyMcTuneston/moreCement": {
+      "x": 1220,
+      "y": 286,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/RadleyMcTuneston/girderNoSnow": {
+      "x": 1270,
+      "y": 286,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Nic/whiteGrass": {
+      "x": 1320,
+      "y": 286,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/vamp/Vampcore": {
+      "x": 1370,
+      "y": 286,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/vamp/grasspurple": {
+      "x": 1420,
+      "y": 286,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/vamp/Vampdirt": {
+      "x": 1470,
+      "y": 286,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/vamp/grassblue": {
+      "x": 1520,
+      "y": 286,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Julia/Skytower": {
+      "x": 1570,
+      "y": 286,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/Meario/sky": {
+      "x": 2,
+      "y": 424,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -21,8 +601,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Meario/cityBack": {
-      "x": 422,
-      "y": 2,
+      "x": 324,
+      "y": 424,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -31,8 +611,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Meario/cityGradient": {
-      "x": 744,
-      "y": 2,
+      "x": 646,
+      "y": 424,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -41,8 +621,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Meario/cityMid": {
-      "x": 1066,
-      "y": 2,
+      "x": 968,
+      "y": 424,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -51,8 +631,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Meario/cityTop": {
-      "x": 2,
-      "y": 184,
+      "x": 1290,
+      "y": 424,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -61,8 +641,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Meario/lake": {
-      "x": 324,
-      "y": 184,
+      "x": 2,
+      "y": 606,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -71,8 +651,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Meario/lakeGradient": {
-      "x": 646,
-      "y": 184,
+      "x": 324,
+      "y": 606,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -81,8 +661,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Advanced Lobby/misterious": {
-      "x": 968,
-      "y": 184,
+      "x": 646,
+      "y": 606,
       "width": 600,
       "height": 600,
       "drawOffsetX": 0,
@@ -91,8 +671,8 @@
       "frameHeight": 600
     },
     "bgs/SJ2021/Advanced Lobby/sky": {
-      "x": 2,
-      "y": 786,
+      "x": 1248,
+      "y": 606,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -101,8 +681,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Advanced Lobby/clouds": {
-      "x": 324,
-      "y": 786,
+      "x": 2,
+      "y": 1208,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -111,8 +691,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Advanced Lobby/4": {
-      "x": 646,
-      "y": 786,
+      "x": 324,
+      "y": 1208,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -121,8 +701,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Advanced Lobby/3": {
-      "x": 968,
-      "y": 786,
+      "x": 646,
+      "y": 1208,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -131,8 +711,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Advanced Lobby/2": {
-      "x": 1290,
-      "y": 786,
+      "x": 968,
+      "y": 1208,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -141,8 +721,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Advanced Lobby/1": {
-      "x": 2,
-      "y": 968,
+      "x": 1290,
+      "y": 1208,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -151,8 +731,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Nic/UndergrowthCaveBG1": {
-      "x": 324,
-      "y": 968,
+      "x": 2,
+      "y": 1390,
       "width": 320,
       "height": 176,
       "drawOffsetX": 0,
@@ -161,8 +741,8 @@
       "frameHeight": 176
     },
     "bgs/SJ2021/Nic/UndergrowthCaveBG2": {
-      "x": 646,
-      "y": 968,
+      "x": 324,
+      "y": 1390,
       "width": 320,
       "height": 176,
       "drawOffsetX": 0,
@@ -171,8 +751,8 @@
       "frameHeight": 176
     },
     "bgs/SJ2021/Nic/UndergrowthCaveBG3": {
-      "x": 968,
-      "y": 968,
+      "x": 646,
+      "y": 1390,
       "width": 320,
       "height": 176,
       "drawOffsetX": 0,
@@ -181,8 +761,8 @@
       "frameHeight": 176
     },
     "bgs/SJ2021/Nic/UndergrowthCaveBG4": {
-      "x": 1290,
-      "y": 968,
+      "x": 968,
+      "y": 1390,
       "width": 320,
       "height": 176,
       "drawOffsetX": 0,
@@ -191,8 +771,8 @@
       "frameHeight": 176
     },
     "bgs/SJ2021/Nic/UndergrowthCaveBG5": {
-      "x": 2,
-      "y": 1150,
+      "x": 1290,
+      "y": 1390,
       "width": 320,
       "height": 176,
       "drawOffsetX": 0,
@@ -201,8 +781,8 @@
       "frameHeight": 176
     },
     "bgs/SJ2021/LordCitrea/sj2021_whitebg": {
-      "x": 324,
-      "y": 1150,
+      "x": 2,
+      "y": 1568,
       "width": 100,
       "height": 100,
       "drawOffsetX": 0,
@@ -211,8 +791,8 @@
       "frameHeight": 100
     },
     "bgs/SJ2021/LordCitrea/sj2021_c1": {
-      "x": 426,
-      "y": 1150,
+      "x": 104,
+      "y": 1568,
       "width": 384,
       "height": 216,
       "drawOffsetX": 0,
@@ -221,8 +801,8 @@
       "frameHeight": 216
     },
     "bgs/SJ2021/LordCitrea/sj2021_c2": {
-      "x": 812,
-      "y": 1150,
+      "x": 490,
+      "y": 1568,
       "width": 384,
       "height": 216,
       "drawOffsetX": 0,
@@ -231,8 +811,8 @@
       "frameHeight": 216
     },
     "bgs/SJ2021/LordCitrea/sj2021_c3": {
-      "x": 1198,
-      "y": 1150,
+      "x": 876,
+      "y": 1568,
       "width": 384,
       "height": 216,
       "drawOffsetX": 0,
@@ -241,8 +821,8 @@
       "frameHeight": 216
     },
     "bgs/SJ2021/LordCitrea/sj2021_cc2": {
-      "x": 2,
-      "y": 1368,
+      "x": 1262,
+      "y": 1568,
       "width": 384,
       "height": 216,
       "drawOffsetX": 0,
@@ -251,8 +831,8 @@
       "frameHeight": 216
     },
     "bgs/SJ2021/LordCitrea/sj2021_r2": {
-      "x": 388,
-      "y": 1368,
+      "x": 2,
+      "y": 1786,
       "width": 384,
       "height": 216,
       "drawOffsetX": 0,
@@ -261,8 +841,8 @@
       "frameHeight": 216
     },
     "bgs/SJ2021/LordCitrea/sj2021_r1": {
-      "x": 774,
-      "y": 1368,
+      "x": 388,
+      "y": 1786,
       "width": 384,
       "height": 216,
       "drawOffsetX": 0,
@@ -271,8 +851,8 @@
       "frameHeight": 216
     },
     "bgs/SJ2021/LordCitrea/sj2021_cc1": {
-      "x": 1160,
-      "y": 1368,
+      "x": 774,
+      "y": 1786,
       "width": 384,
       "height": 216,
       "drawOffsetX": 0,
@@ -281,8 +861,8 @@
       "frameHeight": 216
     },
     "bgs/SJ2021/Julia/7_water": {
-      "x": 2,
-      "y": 1586,
+      "x": 1160,
+      "y": 1786,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -291,8 +871,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Julia/bubbles": {
-      "x": 324,
-      "y": 1586,
+      "x": 2,
+      "y": 2004,
       "width": 320,
       "height": 53,
       "drawOffsetX": 0,
@@ -301,8 +881,8 @@
       "frameHeight": 53
     },
     "bgs/SJ2021/Julia/4_volcano": {
-      "x": 646,
-      "y": 1586,
+      "x": 324,
+      "y": 2004,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -311,8 +891,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Julia/3_ruins": {
-      "x": 968,
-      "y": 1586,
+      "x": 646,
+      "y": 2004,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -321,8 +901,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Julia/6_fishLeft": {
-      "x": 1290,
-      "y": 1586,
+      "x": 968,
+      "y": 2004,
       "width": 320,
       "height": 32,
       "drawOffsetX": 0,
@@ -331,8 +911,8 @@
       "frameHeight": 32
     },
     "bgs/SJ2021/Julia/5_fishRight": {
-      "x": 2,
-      "y": 1768,
+      "x": 1290,
+      "y": 2004,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -341,8 +921,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Julia/vent_lava_b": {
-      "x": 324,
-      "y": 1768,
+      "x": 1612,
+      "y": 2004,
       "width": 56,
       "height": 48,
       "drawOffsetX": 0,
@@ -351,8 +931,8 @@
       "frameHeight": 48
     },
     "bgs/SJ2021/Julia/pillars_single": {
-      "x": 382,
-      "y": 1768,
+      "x": 2,
+      "y": 2186,
       "width": 78,
       "height": 176,
       "drawOffsetX": 0,
@@ -361,8 +941,8 @@
       "frameHeight": 176
     },
     "bgs/SJ2021/Julia/pillars": {
-      "x": 462,
-      "y": 1768,
+      "x": 82,
+      "y": 2186,
       "width": 320,
       "height": 240,
       "drawOffsetX": 0,
@@ -371,8 +951,8 @@
       "frameHeight": 240
     },
     "bgs/MaxHelpingHand/animatedParallax/SJ2021/Julia/smokea00": {
-      "x": 784,
-      "y": 1768,
+      "x": 404,
+      "y": 2186,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -381,8 +961,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Julia/vents": {
-      "x": 1106,
-      "y": 1768,
+      "x": 726,
+      "y": 2186,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -391,8 +971,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/vamp/white_clouds": {
-      "x": 2,
-      "y": 2010,
+      "x": 1048,
+      "y": 2186,
       "width": 320,
       "height": 200,
       "drawOffsetX": 0,
@@ -401,8 +981,8 @@
       "frameHeight": 200
     },
     "bgs/SJ2021/Indecx/skytransparent": {
-      "x": 324,
-      "y": 2010,
+      "x": 1370,
+      "y": 2186,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -411,8 +991,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/JAN is EXIST/Tower": {
-      "x": 646,
-      "y": 2010,
+      "x": 2,
+      "y": 2428,
       "width": 316,
       "height": 427,
       "drawOffsetX": 0,
@@ -421,8 +1001,8 @@
       "frameHeight": 427
     },
     "bgs/SJ2021/hennyburgr/distant/rocks_a": {
-      "x": 964,
-      "y": 2010,
+      "x": 320,
+      "y": 2428,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -431,8 +1011,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/hennyburgr/distant/rocks_b": {
-      "x": 1286,
-      "y": 2010,
+      "x": 642,
+      "y": 2428,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -441,8 +1021,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/hennyburgr/distant/rocks_c": {
-      "x": 2,
-      "y": 2439,
+      "x": 964,
+      "y": 2428,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -452,7 +1032,7 @@
     },
     "bgs/SJ2021/hennyburgr/bigrockwall_a": {
       "x": 2,
-      "y": 2621,
+      "y": 2857,
       "width": 1500,
       "height": 180,
       "drawOffsetX": 0,
@@ -462,7 +1042,7 @@
     },
     "bgs/SJ2021/hennyburgr/distant/rocks_d": {
       "x": 2,
-      "y": 2803,
+      "y": 3039,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -472,7 +1052,7 @@
     },
     "bgs/SJ2021/hennyburgr/bigrockwall_b": {
       "x": 324,
-      "y": 2803,
+      "y": 3039,
       "width": 419,
       "height": 180,
       "drawOffsetX": 0,
@@ -482,7 +1062,7 @@
     },
     "bgs/SJ2021/hennyburgr/lava_top": {
       "x": 745,
-      "y": 2803,
+      "y": 3039,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -492,7 +1072,7 @@
     },
     "bgs/SJ2021/hennyburgr/lava_mid": {
       "x": 1067,
-      "y": 2803,
+      "y": 3039,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -502,7 +1082,7 @@
     },
     "bgs/SJ2021/hennyburgr/boardwalk": {
       "x": 2,
-      "y": 2985,
+      "y": 3221,
       "width": 320,
       "height": 500,
       "drawOffsetX": 0,
@@ -512,7 +1092,7 @@
     },
     "bgs/SJ2021/hennyburgr/fg_rocks": {
       "x": 324,
-      "y": 2985,
+      "y": 3221,
       "width": 620,
       "height": 180,
       "drawOffsetX": 0,
@@ -522,7 +1102,7 @@
     },
     "bgs/SJ2021/hennyburgr/lava_rock_pillars_a": {
       "x": 946,
-      "y": 2985,
+      "y": 3221,
       "width": 320,
       "height": 400,
       "drawOffsetX": 0,
@@ -532,7 +1112,7 @@
     },
     "bgs/SJ2021/hennyburgr/lab_zero": {
       "x": 2,
-      "y": 3487,
+      "y": 3723,
       "width": 800,
       "height": 180,
       "drawOffsetX": 0,
@@ -542,7 +1122,7 @@
     },
     "bgs/SJ2021/hennyburgr/lavacarrier_a": {
       "x": 804,
-      "y": 3487,
+      "y": 3723,
       "width": 550,
       "height": 200,
       "drawOffsetX": 0,
@@ -552,7 +1132,7 @@
     },
     "bgs/SJ2021/hennyburgr/glass": {
       "x": 2,
-      "y": 3689,
+      "y": 3925,
       "width": 1280,
       "height": 720,
       "drawOffsetX": 0,
@@ -562,7 +1142,7 @@
     },
     "bgs/SJ2021/Tortoise/Aug BGA": {
       "x": 1284,
-      "y": 3689,
+      "y": 3925,
       "width": 400,
       "height": 230,
       "drawOffsetX": 0,
@@ -572,7 +1152,7 @@
     },
     "bgs/SJ2021/MousseMoose/smallCassette": {
       "x": 2,
-      "y": 4411,
+      "y": 4647,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -582,7 +1162,7 @@
     },
     "bgs/SJ2021/MousseMoose/bigCassette": {
       "x": 324,
-      "y": 4411,
+      "y": 4647,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -592,7 +1172,7 @@
     },
     "bgs/SJ2021/BlueXans/sky": {
       "x": 646,
-      "y": 4411,
+      "y": 4647,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -602,7 +1182,7 @@
     },
     "bgs/SJ2021/asri_1/small00": {
       "x": 968,
-      "y": 4411,
+      "y": 4647,
       "width": 32,
       "height": 32,
       "drawOffsetX": 0,
@@ -612,7 +1192,7 @@
     },
     "bgs/SJ2021/asri_1/bg0": {
       "x": 1002,
-      "y": 4411,
+      "y": 4647,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -622,7 +1202,7 @@
     },
     "bgs/SJ2021/asri_1/bg3": {
       "x": 1324,
-      "y": 4411,
+      "y": 4647,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -632,7 +1212,7 @@
     },
     "bgs/SJ2021/asri_1/bg2": {
       "x": 2,
-      "y": 4593,
+      "y": 4829,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -642,7 +1222,7 @@
     },
     "bgs/SJ2021/YaGrillRobib/VCdaySG_00_blanksky": {
       "x": 324,
-      "y": 4593,
+      "y": 4829,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -652,7 +1232,7 @@
     },
     "bgs/SJ2021/YaGrillRobib/VCdaySG_01_cloudsA": {
       "x": 646,
-      "y": 4593,
+      "y": 4829,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -662,7 +1242,7 @@
     },
     "bgs/SJ2021/YaGrillRobib/VCdaySG_02_cloudsB": {
       "x": 968,
-      "y": 4593,
+      "y": 4829,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -672,7 +1252,7 @@
     },
     "bgs/SJ2021/YaGrillRobib/VCdaySG_04_bgpaperfalling": {
       "x": 1290,
-      "y": 4593,
+      "y": 4829,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -682,7 +1262,7 @@
     },
     "bgs/SJ2021/YaGrillRobib/VCdaySG_04_cardpile": {
       "x": 2,
-      "y": 4775,
+      "y": 5011,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -692,7 +1272,7 @@
     },
     "bgs/SJ2021/YaGrillRobib/VCdaySG_06_paperpile": {
       "x": 2,
-      "y": 4957,
+      "y": 5193,
       "width": 1700,
       "height": 180,
       "drawOffsetX": 0,
@@ -702,7 +1282,7 @@
     },
     "bgs/SJ2021/YaGrillRobib/VCdaySG_07_paperpileB": {
       "x": 2,
-      "y": 5139,
+      "y": 5375,
       "width": 1700,
       "height": 180,
       "drawOffsetX": 0,
@@ -712,7 +1292,7 @@
     },
     "bgs/SJ2021/YaGrillRobib/VCdaySG_07_cardpileB": {
       "x": 2,
-      "y": 5321,
+      "y": 5557,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -722,7 +1302,7 @@
     },
     "bgs/SJ2021/YaGrillRobib/VCdaySG_05_fallingcards": {
       "x": 324,
-      "y": 5321,
+      "y": 5557,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -732,7 +1312,7 @@
     },
     "bgs/SJ2021/TiltTheStars/hive": {
       "x": 646,
-      "y": 5321,
+      "y": 5557,
       "width": 728,
       "height": 376,
       "drawOffsetX": 0,
@@ -742,7 +1322,7 @@
     },
     "bgs/SJ2021/TiltTheStars/honeycomb_bg_c": {
       "x": 2,
-      "y": 5699,
+      "y": 5935,
       "width": 600,
       "height": 376,
       "drawOffsetX": 0,
@@ -752,7 +1332,7 @@
     },
     "bgs/SJ2021/TiltTheStars/honeycomb_bg_b": {
       "x": 604,
-      "y": 5699,
+      "y": 5935,
       "width": 600,
       "height": 384,
       "drawOffsetX": 0,
@@ -762,7 +1342,7 @@
     },
     "bgs/SJ2021/TiltTheStars/honeycomb_bg_a": {
       "x": 2,
-      "y": 6085,
+      "y": 6321,
       "width": 632,
       "height": 408,
       "drawOffsetX": 0,
@@ -772,7 +1352,7 @@
     },
     "bgs/SJ2021/pugroy/skybrighter": {
       "x": 636,
-      "y": 6085,
+      "y": 6321,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -782,7 +1362,7 @@
     },
     "bgs/SJ2021/pugroy/smallPlanets": {
       "x": 958,
-      "y": 6085,
+      "y": 6321,
       "width": 640,
       "height": 235,
       "drawOffsetX": 0,
@@ -792,7 +1372,7 @@
     },
     "bgs/SJ2021/pugroy/bigPlanets": {
       "x": 2,
-      "y": 6495,
+      "y": 6731,
       "width": 640,
       "height": 235,
       "drawOffsetX": 0,
@@ -802,7 +1382,7 @@
     },
     "bgs/SJ2021/Viv/skyVoid": {
       "x": 644,
-      "y": 6495,
+      "y": 6731,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -812,7 +1392,7 @@
     },
     "bgs/SJ2021/Worldwaker2/rrbgsky": {
       "x": 966,
-      "y": 6495,
+      "y": 6731,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -822,7 +1402,7 @@
     },
     "bgs/SJ2021/Worldwaker2/rrbgc2": {
       "x": 1288,
-      "y": 6495,
+      "y": 6731,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -832,7 +1412,7 @@
     },
     "bgs/SJ2021/Worldwaker2/rrbgc0": {
       "x": 2,
-      "y": 6732,
+      "y": 6968,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -842,7 +1422,7 @@
     },
     "bgs/SJ2021/Worldwaker2/rrbg0": {
       "x": 324,
-      "y": 6732,
+      "y": 6968,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -852,7 +1432,7 @@
     },
     "bgs/SJ2021/Worldwaker2/rrbgc1": {
       "x": 646,
-      "y": 6732,
+      "y": 6968,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -862,7 +1442,7 @@
     },
     "bgs/SJ2021/Worldwaker2/rrbgc3": {
       "x": 968,
-      "y": 6732,
+      "y": 6968,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -872,7 +1452,7 @@
     },
     "bgs/SJ2021/Worldwaker2/rrbg1": {
       "x": 1290,
-      "y": 6732,
+      "y": 6968,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -882,7 +1462,7 @@
     },
     "bgs/MaxHelpingHand/animatedParallax/SJ2021/astraxel/ground layer 00": {
       "x": 2,
-      "y": 6914,
+      "y": 7150,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -892,7 +1472,7 @@
     },
     "bgs/MaxHelpingHand/animatedParallax/SJ2021/astraxel/hourglass a00": {
       "x": 324,
-      "y": 6914,
+      "y": 7150,
       "width": 83,
       "height": 84,
       "drawOffsetX": 0,
@@ -902,7 +1482,7 @@
     },
     "bgs/MaxHelpingHand/animatedParallax/SJ2021/astraxel/hourglass b00": {
       "x": 409,
-      "y": 6914,
+      "y": 7150,
       "width": 53,
       "height": 110,
       "drawOffsetX": 0,
@@ -912,7 +1492,7 @@
     },
     "bgs/SJ2021/Advanced Lobby/Cave/bg0": {
       "x": 464,
-      "y": 6914,
+      "y": 7150,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -922,7 +1502,7 @@
     },
     "bgs/SJ2021/Advanced Lobby/Cave/bg1": {
       "x": 786,
-      "y": 6914,
+      "y": 7150,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -932,7 +1512,7 @@
     },
     "bgs/SJ2021/Advanced Lobby/Cave/bg2": {
       "x": 1108,
-      "y": 6914,
+      "y": 7150,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -942,7 +1522,7 @@
     },
     "bgs/SJ2021/Advanced Lobby/Cave/bg3": {
       "x": 2,
-      "y": 7096,
+      "y": 7332,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -952,7 +1532,7 @@
     },
     "bgs/SJ2021/Advanced Lobby/Cave/bg4": {
       "x": 324,
-      "y": 7096,
+      "y": 7332,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -962,7 +1542,7 @@
     },
     "bgs/SJ2021/Galaksyz/slimesky01": {
       "x": 646,
-      "y": 7096,
+      "y": 7332,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -972,7 +1552,7 @@
     },
     "bgs/SJ2021/Galaksyz/slimeplains02": {
       "x": 968,
-      "y": 7096,
+      "y": 7332,
       "width": 320,
       "height": 200,
       "drawOffsetX": 0,
@@ -982,7 +1562,7 @@
     },
     "bgs/SJ2021/Galaksyz/slimeplains01": {
       "x": 1290,
-      "y": 7096,
+      "y": 7332,
       "width": 320,
       "height": 200,
       "drawOffsetX": 0,
@@ -992,7 +1572,7 @@
     },
     "bgs/SJ2021/Jolly/Starlight_00": {
       "x": 2,
-      "y": 7298,
+      "y": 7534,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -1002,7 +1582,7 @@
     },
     "bgs/SJ2021/Jolly/Starlight_01": {
       "x": 324,
-      "y": 7298,
+      "y": 7534,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -1012,7 +1592,7 @@
     },
     "bgs/SJ2021/Jolly/Starlight_02": {
       "x": 646,
-      "y": 7298,
+      "y": 7534,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -1022,7 +1602,7 @@
     },
     "bgs/SJ2021/Jolly/Starlight_03": {
       "x": 968,
-      "y": 7298,
+      "y": 7534,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -1032,7 +1612,7 @@
     },
     "bgs/SJ2021/Jolly/Starlight_04": {
       "x": 1290,
-      "y": 7298,
+      "y": 7534,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -1042,7 +1622,7 @@
     },
     "bgs/SJ2021/Jolly/Starlight_05": {
       "x": 2,
-      "y": 7480,
+      "y": 7716,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -1052,7 +1632,7 @@
     },
     "bgs/SJ2021/Jolly/Starlight_06": {
       "x": 324,
-      "y": 7480,
+      "y": 7716,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -1062,7 +1642,7 @@
     },
     "bgs/SJ2021/Goldian/ocean_sky": {
       "x": 646,
-      "y": 7480,
+      "y": 7716,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -1072,7 +1652,7 @@
     },
     "bgs/SJ2021/Goldian/ocean_cloudsmid": {
       "x": 968,
-      "y": 7480,
+      "y": 7716,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -1082,7 +1662,7 @@
     },
     "bgs/SJ2021/Goldian/gradient": {
       "x": 1290,
-      "y": 7480,
+      "y": 7716,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -1092,7 +1672,7 @@
     },
     "bgs/SJ2021/Goldian/sea": {
       "x": 2,
-      "y": 7662,
+      "y": 7898,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -1102,7 +1682,7 @@
     },
     "bgs/SJ2021/Goldian/ocean_cloudsfront": {
       "x": 324,
-      "y": 7662,
+      "y": 7898,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -1112,7 +1692,7 @@
     },
     "bgs/SJ2021/sp1029/gradient": {
       "x": 646,
-      "y": 7662,
+      "y": 7898,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -1122,7 +1702,7 @@
     },
     "bgs/SJ2021/sp1029/buildingsBack": {
       "x": 968,
-      "y": 7662,
+      "y": 7898,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -1132,7 +1712,7 @@
     },
     "bgs/SJ2021/sp1029/buildingsMid": {
       "x": 1290,
-      "y": 7662,
+      "y": 7898,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -1142,7 +1722,7 @@
     },
     "bgs/SJ2021/sp1029/buildingsCeiling": {
       "x": 2,
-      "y": 7844,
+      "y": 8080,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -1152,13 +1732,173 @@
     },
     "bgs/SJ2021/sp1029/buildingsFront": {
       "x": 324,
-      "y": 7844,
+      "y": 8080,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
       "drawOffsetY": 0,
       "frameWidth": 320,
       "frameHeight": 180
+    },
+    "danger/crystal/SJ2021/Tortoise/fg00": {
+      "x": 646,
+      "y": 8080,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Tortoise/fg01": {
+      "x": 672,
+      "y": 8080,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Tortoise/fg02": {
+      "x": 698,
+      "y": 8080,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Tortoise/fg03": {
+      "x": 724,
+      "y": 8080,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Tortoise/fg_lg00": {
+      "x": 750,
+      "y": 8080,
+      "width": 48,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 48
+    },
+    "danger/crystal/SJ2021/Tortoise/bg00": {
+      "x": 800,
+      "y": 8080,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Galaksyz/fg_white00": {
+      "x": 826,
+      "y": 8080,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Galaksyz/fg_white01": {
+      "x": 852,
+      "y": 8080,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Galaksyz/fg_white02": {
+      "x": 878,
+      "y": 8080,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Galaksyz/fg_white03": {
+      "x": 904,
+      "y": 8080,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Galaksyz/bg_white00": {
+      "x": 930,
+      "y": 8080,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Goldian/debris/fg00": {
+      "x": 956,
+      "y": 8080,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Goldian/debris/fg01": {
+      "x": 982,
+      "y": 8080,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Goldian/debris/fg02": {
+      "x": 1008,
+      "y": 8080,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Goldian/debris/fg03": {
+      "x": 1034,
+      "y": 8080,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Goldian/debris/bg": {
+      "x": 1060,
+      "y": 8080,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
     }
   }
 }

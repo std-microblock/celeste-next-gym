@@ -10,8 +10,28 @@
       "frameWidth": 184,
       "frameHeight": 104
     },
-    "bgs/SJ2021/GlowWoomii/hivebg0": {
+    "tilesets/SJ2021/GlowWoomii/metalfgtiles": {
       "x": 188,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/GlowWoomii/chainlinktiles": {
+      "x": 286,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "bgs/SJ2021/GlowWoomii/hivebg0": {
+      "x": 384,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,16 +41,6 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/GlowWoomii/catwalk": {
-      "x": 510,
-      "y": 2,
-      "width": 320,
-      "height": 180,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 320,
-      "frameHeight": 180
-    },
-    "bgs/SJ2021/GlowWoomii/hivebg02": {
       "x": 2,
       "y": 184,
       "width": 320,
@@ -40,7 +50,7 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/SJ2021/GlowWoomii/obsdeck": {
+    "bgs/SJ2021/GlowWoomii/hivebg02": {
       "x": 324,
       "y": 184,
       "width": 320,
@@ -50,9 +60,19 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/SJ2021/GlowWoomii/hivebg03": {
+    "bgs/SJ2021/GlowWoomii/obsdeck": {
       "x": 646,
       "y": 184,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/GlowWoomii/hivebg03": {
+      "x": 2,
+      "y": 366,
       "width": 320,
       "height": 360,
       "drawOffsetX": 0,

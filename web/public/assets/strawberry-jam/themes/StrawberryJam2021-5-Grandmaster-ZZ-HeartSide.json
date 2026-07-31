@@ -1,7 +1,47 @@
 {
   "entries": {
-    "tilesets/SJ2021/Maya/PinballSlopeLobby": {
+    "tilesets/SJ2021/Grandmaster/cliff": {
       "x": 2,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Maya/PinballSquareLobby": {
+      "x": 100,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Maya/PinballSlopeReal": {
+      "x": 150,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Maya/PinballSlopeLobby": {
+      "x": 200,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Grandmaster/invisibleB": {
+      "x": 250,
       "y": 2,
       "width": 48,
       "height": 120,
@@ -11,7 +51,7 @@
       "frameHeight": 120
     },
     "bgs/SJ2021/GMHeartside/CP4/sky": {
-      "x": 52,
+      "x": 300,
       "y": 2,
       "width": 320,
       "height": 224,
@@ -21,7 +61,7 @@
       "frameHeight": 224
     },
     "bgs/SJ2021/GMHeartside/CP4/starsloop": {
-      "x": 374,
+      "x": 622,
       "y": 2,
       "width": 320,
       "height": 224,
@@ -31,8 +71,8 @@
       "frameHeight": 224
     },
     "bgs/SJ2021/GMHeartside/CP4/moonglow": {
-      "x": 696,
-      "y": 2,
+      "x": 2,
+      "y": 228,
       "width": 320,
       "height": 224,
       "drawOffsetX": 0,
@@ -41,7 +81,7 @@
       "frameHeight": 224
     },
     "bgs/SJ2021/GMHeartside/CP4/moon": {
-      "x": 2,
+      "x": 324,
       "y": 228,
       "width": 320,
       "height": 224,
@@ -51,7 +91,7 @@
       "frameHeight": 224
     },
     "bgs/SJ2021/GMHeartside/CP4/gmvignette": {
-      "x": 324,
+      "x": 646,
       "y": 228,
       "width": 320,
       "height": 180,
@@ -61,8 +101,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/GMHeartside/CP4/cloud-loop-4": {
-      "x": 646,
-      "y": 228,
+      "x": 2,
+      "y": 454,
       "width": 320,
       "height": 104,
       "drawOffsetX": 0,
@@ -71,7 +111,7 @@
       "frameHeight": 104
     },
     "bgs/SJ2021/GMHeartside/CP4/cloud-loop-3": {
-      "x": 2,
+      "x": 324,
       "y": 454,
       "width": 116,
       "height": 160,
@@ -81,7 +121,7 @@
       "frameHeight": 160
     },
     "bgs/SJ2021/GMHeartside/CP4/cloud-loop-2": {
-      "x": 120,
+      "x": 442,
       "y": 454,
       "width": 116,
       "height": 160,
@@ -109,6 +149,26 @@
       "drawOffsetY": 0,
       "frameWidth": 320,
       "frameHeight": 110
+    },
+    "danger/SJ2021/Maya/minimalspinner/fg_minimalspinner00": {
+      "x": 324,
+      "y": 786,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Maya/minimalspinner/bg_minimalspinner00": {
+      "x": 350,
+      "y": 786,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
     }
   }
 }

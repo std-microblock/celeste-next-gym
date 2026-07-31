@@ -10,8 +10,28 @@
       "frameWidth": 184,
       "frameHeight": 96
     },
-    "bgs/SJ2021/DanTKO/HLD/HLD_00": {
+    "tilesets/SJ2021/DanTKO/TempleTile_B": {
       "x": 188,
+      "y": 2,
+      "width": 184,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/DanTKO/ElevatorTile": {
+      "x": 374,
+      "y": 2,
+      "width": 184,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 96
+    },
+    "bgs/SJ2021/DanTKO/HLD/HLD_00": {
+      "x": 560,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,8 +41,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/DanTKO/HLD/HLD_01": {
-      "x": 510,
-      "y": 2,
+      "x": 2,
+      "y": 184,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -31,7 +51,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/DanTKO/HLD/HLD_02": {
-      "x": 2,
+      "x": 324,
       "y": 184,
       "width": 320,
       "height": 180,
@@ -41,7 +61,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/DanTKO/HLD/HLD_03": {
-      "x": 324,
+      "x": 646,
       "y": 184,
       "width": 320,
       "height": 180,
@@ -51,8 +71,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/DanTKO/HLD/HLD_04": {
-      "x": 646,
-      "y": 184,
+      "x": 2,
+      "y": 366,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -61,7 +81,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/DanTKO/HLD/HLD_06": {
-      "x": 2,
+      "x": 324,
       "y": 366,
       "width": 320,
       "height": 180,
@@ -71,7 +91,7 @@
       "frameHeight": 180
     },
     "bgs/MaxHelpingHand/animatedParallax/SJ2021/DanTKO/HLDWaterfallBg8fps00": {
-      "x": 324,
+      "x": 646,
       "y": 366,
       "width": 320,
       "height": 180,
@@ -81,8 +101,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/DanTKO/HLD/HLD_05": {
-      "x": 646,
-      "y": 366,
+      "x": 2,
+      "y": 548,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -91,7 +111,7 @@
       "frameHeight": 180
     },
     "bgs/MaxHelpingHand/animatedParallax/SJ2021/DanTKO/HLDbirds_6fpsA00": {
-      "x": 2,
+      "x": 324,
       "y": 548,
       "width": 320,
       "height": 180,
@@ -101,16 +121,6 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/DanTKO/HLD/HLD_waterfalls_holeFix": {
-      "x": 324,
-      "y": 548,
-      "width": 320,
-      "height": 180,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 320,
-      "frameHeight": 180
-    },
-    "bgs/MaxHelpingHand/animatedParallax/SJ2021/DanTKO/HLDWaterfall_Fg_A00": {
       "x": 646,
       "y": 548,
       "width": 320,
@@ -120,7 +130,7 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/MaxHelpingHand/animatedParallax/SJ2021/DanTKO/HLDbirds_6fpsA04": {
+    "bgs/MaxHelpingHand/animatedParallax/SJ2021/DanTKO/HLDWaterfall_Fg_A00": {
       "x": 2,
       "y": 730,
       "width": 320,
@@ -130,8 +140,18 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "danger/spikes/SJ2021/DanTKO/AquaTemple_down00": {
+    "bgs/MaxHelpingHand/animatedParallax/SJ2021/DanTKO/HLDbirds_6fpsA04": {
       "x": 324,
+      "y": 730,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "danger/spikes/SJ2021/DanTKO/AquaTemple_down00": {
+      "x": 646,
       "y": 730,
       "width": 8,
       "height": 9,
@@ -141,7 +161,7 @@
       "frameHeight": 9
     },
     "danger/spikes/SJ2021/DanTKO/AquaTemple_down01": {
-      "x": 334,
+      "x": 656,
       "y": 730,
       "width": 8,
       "height": 9,
@@ -151,7 +171,7 @@
       "frameHeight": 9
     },
     "danger/spikes/SJ2021/DanTKO/AquaTemple_down02": {
-      "x": 344,
+      "x": 666,
       "y": 730,
       "width": 8,
       "height": 9,
@@ -161,7 +181,7 @@
       "frameHeight": 9
     },
     "danger/spikes/SJ2021/DanTKO/AquaTemple_left00": {
-      "x": 354,
+      "x": 676,
       "y": 730,
       "width": 9,
       "height": 8,
@@ -171,7 +191,7 @@
       "frameHeight": 8
     },
     "danger/spikes/SJ2021/DanTKO/AquaTemple_left01": {
-      "x": 365,
+      "x": 687,
       "y": 730,
       "width": 9,
       "height": 8,
@@ -181,7 +201,7 @@
       "frameHeight": 8
     },
     "danger/spikes/SJ2021/DanTKO/AquaTemple_left02": {
-      "x": 376,
+      "x": 698,
       "y": 730,
       "width": 9,
       "height": 8,
@@ -191,7 +211,7 @@
       "frameHeight": 8
     },
     "danger/spikes/SJ2021/DanTKO/AquaTemple_right00": {
-      "x": 387,
+      "x": 709,
       "y": 730,
       "width": 9,
       "height": 8,
@@ -201,7 +221,7 @@
       "frameHeight": 8
     },
     "danger/spikes/SJ2021/DanTKO/AquaTemple_right01": {
-      "x": 398,
+      "x": 720,
       "y": 730,
       "width": 9,
       "height": 8,
@@ -211,7 +231,7 @@
       "frameHeight": 8
     },
     "danger/spikes/SJ2021/DanTKO/AquaTemple_right02": {
-      "x": 409,
+      "x": 731,
       "y": 730,
       "width": 9,
       "height": 8,
@@ -221,7 +241,7 @@
       "frameHeight": 8
     },
     "danger/spikes/SJ2021/DanTKO/AquaTemple_up00": {
-      "x": 420,
+      "x": 742,
       "y": 730,
       "width": 8,
       "height": 9,
@@ -231,7 +251,7 @@
       "frameHeight": 9
     },
     "danger/spikes/SJ2021/DanTKO/AquaTemple_up01": {
-      "x": 430,
+      "x": 752,
       "y": 730,
       "width": 8,
       "height": 9,
@@ -241,7 +261,7 @@
       "frameHeight": 9
     },
     "danger/spikes/SJ2021/DanTKO/AquaTemple_up02": {
-      "x": 440,
+      "x": 762,
       "y": 730,
       "width": 8,
       "height": 9,

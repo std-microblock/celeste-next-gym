@@ -9,6 +9,26 @@
       "drawOffsetY": 0,
       "frameWidth": 48,
       "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/ShadowRo/WintertempleA": {
+      "x": 52,
+      "y": 2,
+      "width": 48,
+      "height": 152,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 152
+    },
+    "tilesets/ChineseNewYear2024/ShadowRo/Av_rock": {
+      "x": 102,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
     }
   }
 }

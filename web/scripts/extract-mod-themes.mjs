@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile, readdir, stat } from "node:fs/promises";
+import { mkdir, readFile, writeFile, readdir, stat, unlink, rename } from "node:fs/promises";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -18,7 +18,7 @@ const args = process.argv.slice(2);
 const input = args[0];
 const outDir = args[1];
 if (!input || !outDir) {
-  console.error("usage: node scripts/extract-mod-themes.mjs <mod-root|zip> <out-dir> [--filter globs] [--atlas json] [--meta json] [--sid Prefix]");
+  console.error("usage: node scripts/extract-mod-themes.mjs <mod-root|zip> <out-dir> [--filter globs] [--atlas json] [--meta json] [--sid Prefix] [--base-atlas json] [--base-fg xml]");
   process.exit(2);
 }
 const takeArg = (name) => {
@@ -31,6 +31,7 @@ const existingAtlas = takeArg("--atlas");
 const metaPath = takeArg("--meta");
 const sidOverride = takeArg("--sid");
 const baseAtlas = takeArg("--base-atlas");
+const baseFg = takeArg("--base-fg");
 
 const modRoot = await resolveModRoot(input);
 const gameplayRoot = path.join(modRoot, "Graphics", "Atlases", "Gameplay");
@@ -65,56 +66,91 @@ async function findFiles(root, suffix) {
 }
 
 function parseForegroundTiles(xmlText) {
+  xmlText = xmlText.replace(/<!--[\s\S]*?-->/g, "");
   const tilesets = {};
   const tagRe = /<Tileset\s+([^>]*?)\/?>/gs;
   for (const match of xmlText.matchAll(tagRe)) {
     const attrs = match[1];
-    const id = /id="([^"]+)"/.exec(attrs)?.[1];
+    const id = /id\s*=\s*"([^"]+)"/.exec(attrs)?.[1];
     if (!id) continue;
+    const scanW = parseInt(/scanWidth\s*=\s*"(\d+)"/.exec(attrs)?.[1] ?? "3", 10) || 3;
+    const scanH = parseInt(/scanHeight\s*=\s*"(\d+)"/.exec(attrs)?.[1] ?? "3", 10) || 3;
     tilesets[id] = {
       id,
-      path: /path="([^"]+)"/.exec(attrs)?.[1] ?? null,
-      copy: /copy="([^"]+)"/.exec(attrs)?.[1] ?? null,
+      path: /path\s*=\s*"([^"]+)"/.exec(attrs)?.[1] ?? null,
+      copy: /copy\s*=\s*"([^"]+)"/.exec(attrs)?.[1] ?? null,
+      scan: (scanW !== 3 || scanH !== 3) ? [scanW, scanH] : null,
+      ignores: /ignores\s*=\s*"([^"]+)"/.exec(attrs)?.[1] ?? "",
       rules: [],
       center: null,
+      padded: null,
     };
   }
   const bodyRe = /<Tileset\s+([^>]*?)(?<!\/)>([\s\S]*?)<\/Tileset>/g;
   for (const match of xmlText.matchAll(bodyRe)) {
-    const id = /id="([^"]+)"/.exec(match[1])?.[1];
+    const id = /id\s*=\s*"([^"]+)"/.exec(match[1])?.[1];
     if (!id || !tilesets[id]) continue;
-    const rules = [];
+    const entry = tilesets[id];
+    const takeFirst = (tiles) => {
+      const first = tiles.split(";")[0].trim().split(",").map(Number);
+      return first.length === 2 && Number.isInteger(first[0]) && Number.isInteger(first[1])
+        ? [first[0], first[1]]
+        : null;
+    };
     for (const rule of match[2].matchAll(/<set mask="([^"]+)" tiles="([^"]+)"[^>]*\/?>/g)) {
       if (rule[1] === "center") {
-        const first = rule[2].split(";")[0].trim().split(",").map(Number);
-        if (first.length === 2 && Number.isInteger(first[0]) && Number.isInteger(first[1])) tilesets[id].center = [first[0], first[1]];
+        if (!entry.center) entry.center = takeFirst(rule[2]);
         continue;
       }
-      if (!/^[x01]{3}-[x01]{3}-[x01]{3}$/.test(rule[1])) continue;
-      const first = rule[2].split(";")[0].trim().split(",").map(Number);
-      if (first.length === 2 && Number.isInteger(first[0]) && Number.isInteger(first[1])) rules.push([rule[1], [first[0], first[1]]]);
+      if (rule[1] === "padding") {
+        if (!entry.padded) entry.padded = takeFirst(rule[2]);
+        continue;
+      }
+      if (rule[1].startsWith("fill")) continue;
+      const first = takeFirst(rule[2]);
+      if (first) entry.rules.push([rule[1], first]);
     }
-    tilesets[id].rules = rules;
   }
-  const resolve = (tileset, seen) => {
-    if (seen.has(tileset.id)) return [];
-    seen.add(tileset.id);
-    if (tileset.rules.length > 0) return tileset.rules;
-    if (tileset.copy && tilesets[tileset.copy]) return resolve(tilesets[tileset.copy], seen);
-    return [];
+  const maskScore = (mask) => {
+    let letters = 0;
+    let ys = 0;
+    let xs = 0;
+    for (const ch of mask.replaceAll("-", "")) {
+      if (/[a-zA-Z]/.test(ch)) letters += 1;
+      else if (ch === "y" || ch === "Y") ys += 1;
+      else if (ch === "x" || ch === "X") xs += 1;
+    }
+    return [letters, ys, xs];
   };
-  const resolveCenter = (tileset, seen) => {
+  const resolveField = (tileset, field, seen) => {
     if (seen.has(tileset.id)) return null;
     seen.add(tileset.id);
-    if (tileset.center) return tileset.center;
-    if (tileset.copy && tilesets[tileset.copy]) return resolveCenter(tilesets[tileset.copy], seen);
+    const own = tileset[field];
+    if (field === "rules") {
+      const copied = tileset.copy && tilesets[tileset.copy]
+        ? resolveField(tilesets[tileset.copy], "rules", seen) ?? []
+        : [];
+      const merged = [...own, ...copied];
+      if (tileset.copy) merged.sort((a, b) => {
+        const sa = maskScore(a[0]);
+        const sb = maskScore(b[0]);
+        for (let i = 0; i < 3; i += 1) if (sa[i] !== sb[i]) return sa[i] - sb[i];
+        return 0;
+      });
+      return merged;
+    }
+    if (own !== null && own !== undefined && own !== "") return own;
+    if (tileset.copy && tilesets[tileset.copy]) return resolveField(tilesets[tileset.copy], field, seen);
     return null;
   };
   return Object.values(tilesets).map((tileset) => ({
     id: tileset.id,
     path: tileset.path,
-    rules: resolve(tileset, new Set()),
-    center: resolveCenter(tileset, new Set()),
+    scan: resolveField(tileset, "scan", new Set()) ?? [3, 3],
+    ignores: tileset.ignores,
+    rules: resolveField(tileset, "rules", new Set()) ?? [],
+    center: resolveField(tileset, "center", new Set()),
+    padded: resolveField(tileset, "padded", new Set()),
   }));
 }
 
@@ -151,6 +187,11 @@ const xmlTables = new Map();
 for (const xmlFile of xmlFiles) {
   const relative = path.relative(modRoot, xmlFile).replaceAll("\\", "/");
   xmlTables.set(relative, parseForegroundTiles(await readFile(xmlFile, "utf8")));
+}
+if (baseFg) {
+  // Maps without a ForegroundTiles meta attribute fall back to the vanilla
+  // game's default Graphics/ForegroundTiles.xml (which the web does not ship).
+  xmlTables.set("Graphics/ForegroundTiles.xml", parseForegroundTiles(await readFile(baseFg, "utf8")));
 }
 
 function globMatch(pattern, room) {
@@ -261,6 +302,18 @@ const mapFiles = (await findFiles(mapsRoot, ".bin")).filter((file) => {
   });
 });
 
+async function tilesetTable(fgPath) {
+  if (!xmlTables.has(fgPath)) {
+    try {
+      const buf = await readFile(path.join(modRoot, fgPath));
+      xmlTables.set(fgPath, parseForegroundTiles(buf.toString("utf8")));
+    } catch {
+      // leave the table undefined (map falls back to no tileset)
+    }
+  }
+  return xmlTables.get(fgPath);
+}
+
 for (const mapFile of mapFiles) {
   const root = parseCelesteBin(await readFile(mapFile));
   if (!root) {
@@ -269,8 +322,8 @@ for (const mapFile of mapFiles) {
   }
   const meta = root.children.find((c) => c.name === "meta");
   const style = root.children.find((c) => c.name === "Style");
-  const fgPath = attrText(meta, "ForegroundTiles") ?? "Graphics/ForegroundTiles.xml";
-  const tilesets = xmlTables.get(fgPath);
+  const fgPath = (attrText(meta, "ForegroundTiles") ?? "Graphics/ForegroundTiles.xml").replaceAll("\\", "/");
+  const tilesets = await tilesetTable(fgPath);
   const mapRelative = path.relative(mapsRoot, mapFile).replaceAll("\\", "/");
   const mapMeta = metaOverrides[mapRelative] ?? {};
   const levels = root.children.find((c) => c.name === "levels");
@@ -283,21 +336,37 @@ for (const mapFile of mapFiles) {
     const counts = {};
     for (const ch of solidChars) counts[ch] = (counts[ch] ?? 0) + 1;
     const dominantId = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
-    let tileset = null;
-    let tileRules = null;
-    let centerTile = null;
-    if (tilesets) {
-      const used = dominantId
-        ? tilesets.find((t) => t.id === dominantId) ?? tilesets.find((t) => counts[t.id])
-        : undefined;
-      if (used && used.path) {
-        tileset = used.path.startsWith("tilesets/") ? used.path : "tilesets/" + used.path;
-        tileRules = used.rules;
-        centerTile = used.center;
-        if (tileset) referencedTextures.add(tileset);
-      }
-    }
     const entities = level.children.find((c) => c.name === "entities");
+    // Every tile char used by the room, including entity tiletypes (falling
+    // blocks, exit blocks, ...) so GenerateBox skins resolve per char.
+    const usedChars = new Set(Object.keys(counts));
+    for (const entity of entities?.children ?? []) {
+      const tiletype = attrText(entity, "tiletype") ?? attrText(entity, "tileType");
+      if (tiletype && tiletype.length === 1 && tiletype !== "0") usedChars.add(tiletype);
+    }
+    const tilesetById = (id) => tilesets?.find((t) => t.id === id);
+    const themeTileset = (id) => {
+      const used = tilesetById(id);
+      if (!used || !used.path) return null;
+      return {
+        path: used.path.startsWith("tilesets/") ? used.path : "tilesets/" + used.path,
+        scan: used.scan,
+        ignores: used.ignores,
+        rules: used.rules,
+        center: used.center,
+        padded: used.padded,
+      };
+    };
+    const dominant = themeTileset(dominantId) ?? themeTileset(Object.keys(counts)[0]);
+    const byChar = {};
+    for (const ch of usedChars) {
+      const def = themeTileset(ch);
+      if (def) byChar[ch] = def;
+    }
+    if (dominant?.path) referencedTextures.add(dominant.path);
+    for (const def of Object.values(byChar)) {
+      if (def.path) referencedTextures.add(def.path);
+    }
     const spikeCounts = {};
     for (const entity of entities?.children ?? []) {
       if (!["spikesUp", "spikesDown", "spikesLeft", "spikesRight"].includes(entity.name)) continue;
@@ -307,11 +376,36 @@ for (const mapFile of mapFiles) {
     const spikeEntries = Object.entries(spikeCounts).sort((a, b) => b[1] - a[1]);
     const detectedSpike = spikeEntries.find(([type]) => type !== "default")?.[0] ?? "default";
     const spike = mapMeta.spike ?? detectedSpike;
+    const spinnerBases = new Set();
+    for (const entity of entities?.children ?? []) {
+      if (entity.name === "VivHelper/CustomSpinner") {
+        const dir = attrText(entity, "Directory");
+        const sub = attrText(entity, "Subdirectory");
+        if (dir) spinnerBases.add(sub ? dir + "/fg_" + sub : dir + "/fg");
+      } else if (entity.name === "FrostHelper/IceSpinner") {
+        const dir = attrText(entity, "directory");
+        if (dir && dir !== "danger/crystal") spinnerBases.add(dir + "/fg");
+      }
+    }
     const layers = roomBackdrops(style, roomName);
     for (const layer of layers) referencedTextures.add(layer.key);
     if (spike && spike !== "default") await addSpikeTextures(spike);
-    mapRooms.push({ roomName, solidsCount: solidChars.length, tileset, tileRules, centerTile, spike, layers });
+    mapRooms.push({
+      roomName,
+      solidsCount: solidChars.length,
+      tileset: dominant?.path ?? null,
+      tileRules: dominant?.rules ?? null,
+      tileScan: dominant?.scan ?? null,
+      tileIgnores: dominant?.ignores ?? "",
+      centerTile: dominant?.center ?? null,
+      paddedTile: dominant?.padded ?? null,
+      tilesets: byChar,
+      spike,
+      spinnerBases: [...spinnerBases],
+      layers,
+    });
   }
+
   mapRooms.sort((a, b) => b.solidsCount - a.solidsCount);
   const chosen = mapRooms[0];
   if (!chosen) {
@@ -329,9 +423,14 @@ for (const mapFile of mapFiles) {
     roomCount: mapRooms.length,
     tileset: chosen.tileset,
     tileRules: chosen.tileRules,
+    tileScan: chosen.tileScan,
+    tileIgnores: chosen.tileIgnores,
     centerTile: chosen.centerTile,
+    paddedTile: chosen.paddedTile,
+    tilesets: chosen.tilesets,
     spike: chosen.spike,
     spinner: mapMeta.spinner ?? null,
+    spinnerBases: chosen.spinnerBases ?? [],
     background: "#000000",
     layers: chosen.layers,
   });
@@ -371,7 +470,11 @@ async function spikeTextureKeys(spike) {
 
 async function themeTextureKeys(room) {
   const keys = new Set();
-  if (room.tileset) keys.add(room.tileset);
+  if (room.tilesets) {
+    for (const def of Object.values(room.tilesets)) if (def.path) keys.add(def.path);
+  } else if (room.tileset) {
+    keys.add(room.tileset);
+  }
   for (const layer of room.layers) keys.add(layer.key);
   if (room.spike && room.spike !== "default") {
     for (const key of await spikeTextureKeys(room.spike)) keys.add(key);
@@ -379,6 +482,22 @@ async function themeTextureKeys(room) {
   if (room.spinner) {
     keys.add(room.spinner.foreground);
     keys.add(room.spinner.background);
+  }
+  if (room.spinnerBases && room.spinnerBases.length > 0) {
+    for (const base of room.spinnerBases) {
+      const bgBase = base.replace(/\/fg_|\/fg$/, (m) => m.replace("fg", "bg"));
+      for (const prefix of [base, bgBase]) {
+        const parts = prefix.split("/");
+        const name = parts.pop();
+        let files = [];
+        try { files = await readdir(path.join(gameplayRoot, ...parts)); } catch { continue; }
+        for (const file of files) {
+          if (file.startsWith(name) && file.endsWith(".png")) {
+            keys.add([...parts, file.slice(0, -4)].join("/"));
+          }
+        }
+      }
+    }
   }
   return keys;
 }
@@ -420,14 +539,22 @@ for (const room of rooms) {
   if (placements.length > 0) {
     room.atlas = "assets/" + modIdOut + "/themes/" + room.id + ".json";
     const sheetHeight = cursorY + rowHeight + padding;
-    await sharp({ create: { width: sheetWidth, height: sheetHeight, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
-      .composite(await Promise.all(placements.map(async (entry) => ({ input: await readFile(entry.input), left: entry.x, top: entry.y }))))
-      .png({ compressionLevel: 9 })
-      .toFile(path.join(themeDir, room.id + ".png"));
+    const themePng = path.join(themeDir, room.id + ".png");
+    await unlink(themePng).catch(() => {});
+    await writeFile(
+      themePng,
+      await sharp({ create: { width: sheetWidth, height: sheetHeight, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+        .composite(await Promise.all(placements.map(async (entry) => ({ input: await readFile(entry.input), left: entry.x, top: entry.y }))))
+        .png({ compressionLevel: 9 })
+        .toBuffer(),
+    );
     const entries = Object.fromEntries(
       placements.map((entry) => [entry.key, { x: entry.x, y: entry.y, width: entry.width, height: entry.height, drawOffsetX: 0, drawOffsetY: 0, frameWidth: entry.width, frameHeight: entry.height }]),
     );
-    await writeFile(path.join(themeDir, room.id + ".json"), JSON.stringify({ entries }, null, 2) + "\n", "utf8");
+    const themeJson = path.join(themeDir, room.id + ".json");
+    const themeJsonTmp = themeJson + ".tmp";
+    await writeFile(themeJsonTmp, JSON.stringify({ entries }, null, 2) + "\n", "utf8");
+    await rename(themeJsonTmp, themeJson);
   }
   await renderPreview(room);
 }
@@ -500,13 +627,17 @@ async function renderPreview(room) {
   const previewDir = path.join(outDir, "previews");
   await mkdir(previewDir, { recursive: true });
   room.preview = "assets/" + modIdOut + "/previews/" + room.id + ".png";
+  const previewPng = path.join(previewDir, room.id + ".png");
+  await unlink(previewPng).catch(() => {});
   await sharp({ create: { width, height, channels: 4, background: parseHex(room.background) } })
     .composite(composites)
     .png({ compressionLevel: 9 })
-    .toFile(path.join(previewDir, room.id + ".png"));
+    .toFile(previewPng);
 }
 
 await mkdir(outDir, { recursive: true });
 const output = path.join(outDir, "room-themes.json");
-await writeFile(output, JSON.stringify({ modId, rooms }, null, 2) + "\n", "utf8");
+const outputTmp = output + ".tmp";
+await writeFile(outputTmp, JSON.stringify({ modId, rooms }, null, 2) + "\n", "utf8");
+await rename(outputTmp, output);
 console.log("wrote " + rooms.length + " map themes (per-theme atlases + previews) to " + output);

@@ -59,6 +59,26 @@
       "drawOffsetY": 0,
       "frameWidth": 10,
       "frameHeight": 9
+    },
+    "danger/SJ2021/Gym/Orb/fg_adv00": {
+      "x": 140,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Gym/Orb/bg_adv00": {
+      "x": 166,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
     }
   }
 }

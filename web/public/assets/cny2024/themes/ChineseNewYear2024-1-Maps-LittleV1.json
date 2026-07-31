@@ -10,8 +10,18 @@
       "frameWidth": 48,
       "frameHeight": 120
     },
-    "bgs/ChineseNewYear2024/LittleV/sky": {
+    "tilesets/ChineseNewYear2024/LittleV/Cheese": {
       "x": 52,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/ChineseNewYear2024/LittleV/sky": {
+      "x": 102,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,7 +31,7 @@
       "frameHeight": 180
     },
     "bgs/ChineseNewYear2024/LittleV/LVGCskybrighter": {
-      "x": 374,
+      "x": 424,
       "y": 2,
       "width": 320,
       "height": 180,

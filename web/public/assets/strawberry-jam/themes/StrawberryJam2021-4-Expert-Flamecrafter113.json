@@ -10,8 +10,18 @@
       "frameWidth": 48,
       "frameHeight": 120
     },
-    "bgs/SJ2021/Flamecrafter113/bg00": {
+    "tilesets/SJ2021/Flamecrafter113/overgrownLinnStoneMossy": {
       "x": 52,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/Flamecrafter113/bg00": {
+      "x": 102,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,7 +31,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Flamecrafter113/bg01": {
-      "x": 374,
+      "x": 424,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -31,8 +41,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Flamecrafter113/bg02": {
-      "x": 696,
-      "y": 2,
+      "x": 2,
+      "y": 184,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -41,7 +51,7 @@
       "frameHeight": 180
     },
     "danger/spikes/SJ2021/Flamecrafter113/OvergrownLinn_down00": {
-      "x": 2,
+      "x": 324,
       "y": 184,
       "width": 10,
       "height": 10,
@@ -51,7 +61,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/Flamecrafter113/OvergrownLinn_down01": {
-      "x": 14,
+      "x": 336,
       "y": 184,
       "width": 10,
       "height": 10,
@@ -61,7 +71,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/Flamecrafter113/OvergrownLinn_down02": {
-      "x": 26,
+      "x": 348,
       "y": 184,
       "width": 10,
       "height": 10,
@@ -71,7 +81,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/Flamecrafter113/OvergrownLinn_left00": {
-      "x": 38,
+      "x": 360,
       "y": 184,
       "width": 10,
       "height": 10,
@@ -81,7 +91,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/Flamecrafter113/OvergrownLinn_left01": {
-      "x": 50,
+      "x": 372,
       "y": 184,
       "width": 10,
       "height": 10,
@@ -91,7 +101,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/Flamecrafter113/OvergrownLinn_left02": {
-      "x": 62,
+      "x": 384,
       "y": 184,
       "width": 10,
       "height": 10,
@@ -101,7 +111,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/Flamecrafter113/OvergrownLinn_right00": {
-      "x": 74,
+      "x": 396,
       "y": 184,
       "width": 10,
       "height": 10,
@@ -111,7 +121,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/Flamecrafter113/OvergrownLinn_right01": {
-      "x": 86,
+      "x": 408,
       "y": 184,
       "width": 10,
       "height": 10,
@@ -121,7 +131,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/Flamecrafter113/OvergrownLinn_right02": {
-      "x": 98,
+      "x": 420,
       "y": 184,
       "width": 10,
       "height": 10,
@@ -131,7 +141,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/Flamecrafter113/OvergrownLinn_up00": {
-      "x": 110,
+      "x": 432,
       "y": 184,
       "width": 10,
       "height": 10,
@@ -141,7 +151,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/Flamecrafter113/OvergrownLinn_up01": {
-      "x": 122,
+      "x": 444,
       "y": 184,
       "width": 10,
       "height": 10,
@@ -151,7 +161,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/Flamecrafter113/OvergrownLinn_up02": {
-      "x": 134,
+      "x": 456,
       "y": 184,
       "width": 10,
       "height": 10,
@@ -161,7 +171,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/Flamecrafter113/OvergrownLinn_up03": {
-      "x": 146,
+      "x": 468,
       "y": 184,
       "width": 10,
       "height": 10,
@@ -169,6 +179,56 @@
       "drawOffsetY": 0,
       "frameWidth": 10,
       "frameHeight": 10
+    },
+    "danger/crystal/SJ2021/Flamecrafter113/spinnerBlueish/fg00": {
+      "x": 480,
+      "y": 184,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Flamecrafter113/spinnerBlueish/fg01": {
+      "x": 506,
+      "y": 184,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Flamecrafter113/spinnerBlueish/fg02": {
+      "x": 532,
+      "y": 184,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Flamecrafter113/spinnerBlueish/fg03": {
+      "x": 558,
+      "y": 184,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Flamecrafter113/spinnerBlueish/bg00": {
+      "x": 584,
+      "y": 184,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
     }
   }
 }

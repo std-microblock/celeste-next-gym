@@ -10,8 +10,28 @@
       "frameWidth": 96,
       "frameHeight": 96
     },
-    "bgs/SJ2021/Scroogle/bg_colour_Coffe": {
+    "tilesets/SJ2021/Scroogle/potAlt": {
       "x": 100,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Scroogle/invisible": {
+      "x": 198,
+      "y": 2,
+      "width": 8,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 8
+    },
+    "bgs/SJ2021/Scroogle/bg_colour_Coffe": {
+      "x": 208,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,7 +41,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Scroogle/bg_cloud_Coffe": {
-      "x": 422,
+      "x": 530,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -31,96 +51,6 @@
       "frameHeight": 180
     },
     "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_down00": {
-      "x": 744,
-      "y": 2,
-      "width": 10,
-      "height": 10,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 10,
-      "frameHeight": 10
-    },
-    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_down01": {
-      "x": 756,
-      "y": 2,
-      "width": 10,
-      "height": 10,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 10,
-      "frameHeight": 10
-    },
-    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_down02": {
-      "x": 768,
-      "y": 2,
-      "width": 10,
-      "height": 10,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 10,
-      "frameHeight": 10
-    },
-    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_left00": {
-      "x": 780,
-      "y": 2,
-      "width": 10,
-      "height": 10,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 10,
-      "frameHeight": 10
-    },
-    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_left01": {
-      "x": 792,
-      "y": 2,
-      "width": 10,
-      "height": 10,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 10,
-      "frameHeight": 10
-    },
-    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_left02": {
-      "x": 804,
-      "y": 2,
-      "width": 10,
-      "height": 10,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 10,
-      "frameHeight": 10
-    },
-    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_right00": {
-      "x": 816,
-      "y": 2,
-      "width": 10,
-      "height": 10,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 10,
-      "frameHeight": 10
-    },
-    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_right01": {
-      "x": 828,
-      "y": 2,
-      "width": 10,
-      "height": 10,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 10,
-      "frameHeight": 10
-    },
-    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_right02": {
-      "x": 840,
-      "y": 2,
-      "width": 10,
-      "height": 10,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 10,
-      "frameHeight": 10
-    },
-    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_up00": {
       "x": 852,
       "y": 2,
       "width": 10,
@@ -130,7 +60,7 @@
       "frameWidth": 10,
       "frameHeight": 10
     },
-    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_up01": {
+    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_down01": {
       "x": 864,
       "y": 2,
       "width": 10,
@@ -140,7 +70,7 @@
       "frameWidth": 10,
       "frameHeight": 10
     },
-    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_up02": {
+    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_down02": {
       "x": 876,
       "y": 2,
       "width": 10,
@@ -150,7 +80,7 @@
       "frameWidth": 10,
       "frameHeight": 10
     },
-    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_up03": {
+    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_left00": {
       "x": 888,
       "y": 2,
       "width": 10,
@@ -159,6 +89,146 @@
       "drawOffsetY": 0,
       "frameWidth": 10,
       "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_left01": {
+      "x": 900,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_left02": {
+      "x": 912,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_right00": {
+      "x": 924,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_right01": {
+      "x": 936,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_right02": {
+      "x": 948,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_up00": {
+      "x": 960,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_up01": {
+      "x": 972,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_up02": {
+      "x": 984,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Scroogle/cliffside/cliffside_up03": {
+      "x": 996,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/crystal/SJ2021/Scroogle/fg_thorns00": {
+      "x": 2,
+      "y": 184,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Scroogle/fg_thorns01": {
+      "x": 28,
+      "y": 184,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Scroogle/fg_thorns02": {
+      "x": 54,
+      "y": 184,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Scroogle/fg_thorns03": {
+      "x": 80,
+      "y": 184,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Scroogle/bg_thorns00": {
+      "x": 106,
+      "y": 184,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
     }
   }
 }

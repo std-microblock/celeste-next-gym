@@ -1,7 +1,17 @@
 {
   "entries": {
-    "bgs/SJ2021/pansear/bg_gradient": {
+    "tilesets/SJ2021/pansear/Av_rockyCliffs": {
       "x": 2,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/pansear/bg_gradient": {
+      "x": 52,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -11,7 +21,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/pansear/bg_pillarsback": {
-      "x": 324,
+      "x": 374,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,7 +31,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/pansear/bg_pillarsfront": {
-      "x": 646,
+      "x": 696,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -189,6 +199,56 @@
       "drawOffsetY": 0,
       "frameWidth": 10,
       "frameHeight": 10
+    },
+    "danger/crystal/SJ2021/pansear/fg_00": {
+      "x": 110,
+      "y": 366,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/pansear/fg_01": {
+      "x": 136,
+      "y": 366,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/pansear/fg_02": {
+      "x": 162,
+      "y": 366,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/pansear/fg_03": {
+      "x": 188,
+      "y": 366,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/pansear/bg_00": {
+      "x": 214,
+      "y": 366,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
     }
   }
 }

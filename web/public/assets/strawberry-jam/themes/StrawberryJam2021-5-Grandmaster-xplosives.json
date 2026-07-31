@@ -10,8 +10,28 @@
       "frameWidth": 48,
       "frameHeight": 120
     },
-    "bgs/SJ2021/xplosives/xplosives_1": {
+    "tilesets/SJ2021/xplosives/crystalIridescentAlt": {
       "x": 52,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/xplosives/shatterDash": {
+      "x": 150,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "bgs/SJ2021/xplosives/xplosives_1": {
+      "x": 336,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,7 +41,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/xplosives/xplosives_2": {
-      "x": 374,
+      "x": 658,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -31,8 +51,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/xplosives/xplosives_4": {
-      "x": 696,
-      "y": 2,
+      "x": 2,
+      "y": 184,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -41,7 +61,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/xplosives/xplosives_3": {
-      "x": 2,
+      "x": 324,
       "y": 184,
       "width": 320,
       "height": 180,

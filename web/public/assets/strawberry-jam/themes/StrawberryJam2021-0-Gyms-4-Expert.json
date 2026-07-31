@@ -10,8 +10,18 @@
       "frameWidth": 24,
       "frameHeight": 136
     },
-    "bgs/SJ2021/Gym/expGymDarkBG": {
+    "tilesets/SJ2021/Gym/GymFallingBlock": {
       "x": 28,
+      "y": 2,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "bgs/SJ2021/Gym/expGymDarkBG": {
+      "x": 54,
       "y": 2,
       "width": 64,
       "height": 8,
@@ -21,7 +31,7 @@
       "frameHeight": 8
     },
     "danger/spikes/SJ2021/Gym/exp_down00": {
-      "x": 94,
+      "x": 120,
       "y": 2,
       "width": 10,
       "height": 9,
@@ -31,7 +41,7 @@
       "frameHeight": 9
     },
     "danger/spikes/SJ2021/Gym/exp_left00": {
-      "x": 106,
+      "x": 132,
       "y": 2,
       "width": 9,
       "height": 10,
@@ -41,7 +51,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/Gym/exp_right00": {
-      "x": 117,
+      "x": 143,
       "y": 2,
       "width": 9,
       "height": 10,
@@ -51,7 +61,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/Gym/exp_up00": {
-      "x": 128,
+      "x": 154,
       "y": 2,
       "width": 10,
       "height": 9,
@@ -59,6 +69,26 @@
       "drawOffsetY": 0,
       "frameWidth": 10,
       "frameHeight": 9
+    },
+    "danger/SJ2021/Gym/Orb/fg_exp00": {
+      "x": 166,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Gym/Orb/bg_exp00": {
+      "x": 192,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
     }
   }
 }

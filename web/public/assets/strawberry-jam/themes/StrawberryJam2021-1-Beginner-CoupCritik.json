@@ -10,8 +10,18 @@
       "frameWidth": 48,
       "frameHeight": 48
     },
-    "bgs/SJ2021/CoupCritik/skydrop_night": {
+    "tilesets/SJ2021/CoupCritik/scraperIn": {
       "x": 52,
+      "y": 2,
+      "width": 32,
+      "height": 40,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 32,
+      "frameHeight": 40
+    },
+    "bgs/SJ2021/CoupCritik/skydrop_night": {
+      "x": 86,
       "y": 2,
       "width": 320,
       "height": 320,
@@ -21,7 +31,7 @@
       "frameHeight": 320
     },
     "bgs/SJ2021/CoupCritik/moon": {
-      "x": 374,
+      "x": 408,
       "y": 2,
       "width": 320,
       "height": 320,
@@ -31,8 +41,8 @@
       "frameHeight": 320
     },
     "bgs/SJ2021/CoupCritik/skydrop_dusk": {
-      "x": 696,
-      "y": 2,
+      "x": 2,
+      "y": 324,
       "width": 320,
       "height": 320,
       "drawOffsetX": 0,
@@ -41,7 +51,7 @@
       "frameHeight": 320
     },
     "bgs/SJ2021/CoupCritik/stars": {
-      "x": 2,
+      "x": 324,
       "y": 324,
       "width": 320,
       "height": 320,
@@ -51,7 +61,7 @@
       "frameHeight": 320
     },
     "bgs/SJ2021/CoupCritik/starlight": {
-      "x": 324,
+      "x": 646,
       "y": 324,
       "width": 320,
       "height": 320,
@@ -61,8 +71,8 @@
       "frameHeight": 320
     },
     "bgs/SJ2021/CoupCritik/silhouette": {
-      "x": 646,
-      "y": 324,
+      "x": 2,
+      "y": 646,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -71,7 +81,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/CoupCritik/middlebuildings": {
-      "x": 2,
+      "x": 324,
       "y": 646,
       "width": 320,
       "height": 180,
@@ -81,7 +91,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/CoupCritik/middlebuildings_lights": {
-      "x": 324,
+      "x": 646,
       "y": 646,
       "width": 320,
       "height": 180,
@@ -91,16 +101,6 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/CoupCritik/train": {
-      "x": 646,
-      "y": 646,
-      "width": 320,
-      "height": 180,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 320,
-      "frameHeight": 180
-    },
-    "bgs/SJ2021/CoupCritik/trainrails": {
       "x": 2,
       "y": 828,
       "width": 320,
@@ -110,7 +110,7 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/SJ2021/CoupCritik/frontbuildings": {
+    "bgs/SJ2021/CoupCritik/trainrails": {
       "x": 324,
       "y": 828,
       "width": 320,
@@ -120,9 +120,19 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/SJ2021/CoupCritik/frontbuildings_lights": {
+    "bgs/SJ2021/CoupCritik/frontbuildings": {
       "x": 646,
       "y": 828,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/CoupCritik/frontbuildings_lights": {
+      "x": 2,
+      "y": 1010,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,

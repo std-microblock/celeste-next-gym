@@ -1,6 +1,6 @@
 {
   "entries": {
-    "tilesets/SJ2021/Ceph/brownrock": {
+    "tilesets/SJ2021/Ceph/rockdirt": {
       "x": 2,
       "y": 2,
       "width": 48,
@@ -10,8 +10,38 @@
       "frameWidth": 48,
       "frameHeight": 120
     },
-    "bgs/SJ2021/Ceph/Legacy-Fantasy-VL.3 - Purple Bay/Background/Background-1": {
+    "tilesets/SJ2021/Ceph/brownrock": {
       "x": 52,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Ceph/greyrock": {
+      "x": 102,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Ceph/ruinedstone": {
+      "x": 152,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/Ceph/Legacy-Fantasy-VL.3 - Purple Bay/Background/Background-1": {
+      "x": 202,
       "y": 2,
       "width": 336,
       "height": 192,
@@ -21,7 +51,7 @@
       "frameHeight": 192
     },
     "bgs/SJ2021/Ceph/Legacy-Fantasy-VL.3 - Purple Bay/Background/Background-2": {
-      "x": 390,
+      "x": 540,
       "y": 2,
       "width": 336,
       "height": 192,
@@ -129,6 +159,56 @@
       "drawOffsetY": 0,
       "frameWidth": 10,
       "frameHeight": 10
+    },
+    "danger/SJ2021/Ceph/Spinner/fg00": {
+      "x": 774,
+      "y": 196,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Ceph/Spinner/fg01": {
+      "x": 800,
+      "y": 196,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Ceph/Spinner/fg02": {
+      "x": 826,
+      "y": 196,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Ceph/Spinner/fg03": {
+      "x": 852,
+      "y": 196,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Ceph/Spinner/bg": {
+      "x": 878,
+      "y": 196,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
     }
   }
 }

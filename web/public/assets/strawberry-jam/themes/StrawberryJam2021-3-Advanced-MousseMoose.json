@@ -10,8 +10,18 @@
       "frameWidth": 48,
       "frameHeight": 152
     },
-    "bgs/SJ2021/MousseMoose/smallCassette": {
+    "tilesets/SJ2021/MousseMoose/BWTempleCrack": {
       "x": 52,
+      "y": 2,
+      "width": 48,
+      "height": 152,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 152
+    },
+    "bgs/SJ2021/MousseMoose/smallCassette": {
+      "x": 102,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,7 +31,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/MousseMoose/bigCassette": {
-      "x": 374,
+      "x": 424,
       "y": 2,
       "width": 320,
       "height": 180,

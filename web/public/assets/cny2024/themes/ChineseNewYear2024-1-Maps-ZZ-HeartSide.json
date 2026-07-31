@@ -10,8 +10,48 @@
       "frameWidth": 48,
       "frameHeight": 120
     },
-    "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/GCHS/islandA/islandA00": {
+    "tilesets/ChineseNewYear2024/jpyx/destination": {
       "x": 52,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/ChineseNewYear2024/LittleV/Cyber1": {
+      "x": 238,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/LittleV/Cyber3": {
+      "x": 288,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/jpyx/destinationb": {
+      "x": 338,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/GCHS/islandA/islandA00": {
+      "x": 524,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,8 +61,8 @@
       "frameHeight": 180
     },
     "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/GCHS/islandB/islandB00": {
-      "x": 374,
-      "y": 2,
+      "x": 2,
+      "y": 184,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -31,8 +71,8 @@
       "frameHeight": 180
     },
     "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/GCHS/islandC/islandC00": {
-      "x": 696,
-      "y": 2,
+      "x": 324,
+      "y": 184,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -41,7 +81,7 @@
       "frameHeight": 180
     },
     "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/GCHS/star/star00": {
-      "x": 2,
+      "x": 646,
       "y": 184,
       "width": 14,
       "height": 12,
@@ -51,7 +91,7 @@
       "frameHeight": 12
     },
     "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/GCHS/lightbug/lightbug00": {
-      "x": 18,
+      "x": 662,
       "y": 184,
       "width": 25,
       "height": 25,
@@ -61,7 +101,7 @@
       "frameHeight": 25
     },
     "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/GCHS/line/lineA/lineA00": {
-      "x": 45,
+      "x": 689,
       "y": 184,
       "width": 85,
       "height": 90,
@@ -71,8 +111,8 @@
       "frameHeight": 90
     },
     "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/GCHS/line/lineB/lineB00": {
-      "x": 132,
-      "y": 184,
+      "x": 2,
+      "y": 366,
       "width": 247,
       "height": 130,
       "drawOffsetX": 0,
@@ -81,8 +121,8 @@
       "frameHeight": 130
     },
     "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/GCHS/milong/milong00": {
-      "x": 381,
-      "y": 184,
+      "x": 251,
+      "y": 366,
       "width": 19,
       "height": 23,
       "drawOffsetX": 0,
@@ -91,8 +131,8 @@
       "frameHeight": 23
     },
     "bgs/ChineseNewYear2024/ZZ_HS/hsE/car": {
-      "x": 402,
-      "y": 184,
+      "x": 272,
+      "y": 366,
       "width": 380,
       "height": 180,
       "drawOffsetX": 0,
@@ -102,7 +142,7 @@
     },
     "bgs/ChineseNewYear2024/ZZ_HS/hsE/clock": {
       "x": 2,
-      "y": 366,
+      "y": 548,
       "width": 380,
       "height": 180,
       "drawOffsetX": 0,
@@ -112,7 +152,7 @@
     },
     "bgs/ChineseNewYear2024/ZZ_HS/hsE/debris": {
       "x": 384,
-      "y": 366,
+      "y": 548,
       "width": 380,
       "height": 180,
       "drawOffsetX": 0,
@@ -122,7 +162,7 @@
     },
     "bgs/ChineseNewYear2024/ZZ_HS/hsE/shovel": {
       "x": 2,
-      "y": 548,
+      "y": 730,
       "width": 380,
       "height": 180,
       "drawOffsetX": 0,
@@ -132,7 +172,7 @@
     },
     "bgs/ChineseNewYear2024/ZZ_HS/hsE/stars": {
       "x": 384,
-      "y": 548,
+      "y": 730,
       "width": 380,
       "height": 180,
       "drawOffsetX": 0,
@@ -142,7 +182,7 @@
     },
     "bgs/ChineseNewYear2024/ZZ_HS/hsE/tree": {
       "x": 2,
-      "y": 730,
+      "y": 912,
       "width": 380,
       "height": 180,
       "drawOffsetX": 0,
@@ -152,7 +192,7 @@
     },
     "bgs/ChineseNewYear2024/ZZ_HS/hsE/tube": {
       "x": 384,
-      "y": 730,
+      "y": 912,
       "width": 380,
       "height": 180,
       "drawOffsetX": 0,
@@ -162,7 +202,7 @@
     },
     "bgs/ChineseNewYear2024/bits-Atomizated/whitebg": {
       "x": 2,
-      "y": 912,
+      "y": 1094,
       "width": 320,
       "height": 184,
       "drawOffsetX": 0,

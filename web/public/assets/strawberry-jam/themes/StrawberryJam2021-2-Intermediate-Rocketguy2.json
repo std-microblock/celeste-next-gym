@@ -9,6 +9,26 @@
       "drawOffsetY": 0,
       "frameWidth": 184,
       "frameHeight": 104
+    },
+    "tilesets/SJ2021/Rocketguy2/bathroomFloorL": {
+      "x": 188,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/Rocketguy2/pufferCarpets": {
+      "x": 374,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
     }
   }
 }

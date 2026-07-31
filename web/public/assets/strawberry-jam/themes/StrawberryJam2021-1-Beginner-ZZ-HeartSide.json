@@ -1,7 +1,37 @@
 {
   "entries": {
-    "bgs/SJ2021/BeginnerLobby/main/sky": {
+    "tilesets/SJ2021/Quinnigan/RoseGrass": {
       "x": 2,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/BeginnerLobby/lobbyCliffS": {
+      "x": 100,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/BeginnerLobby/avGrass": {
+      "x": 150,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/BeginnerLobby/main/sky": {
+      "x": 200,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -11,7 +41,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/BeginnerLobby/main/sky_top_gradient": {
-      "x": 324,
+      "x": 522,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,8 +51,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/BeginnerLobby/main/sun": {
-      "x": 646,
-      "y": 2,
+      "x": 2,
+      "y": 184,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -31,7 +61,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/BeginnerLobby/main/clouds": {
-      "x": 2,
+      "x": 324,
       "y": 184,
       "width": 320,
       "height": 180,
@@ -41,7 +71,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/BeginnerLobby/main/water_bg": {
-      "x": 324,
+      "x": 646,
       "y": 184,
       "width": 320,
       "height": 180,
@@ -51,8 +81,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/BeginnerLobby/main/sun_reflection": {
-      "x": 646,
-      "y": 184,
+      "x": 2,
+      "y": 366,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -61,7 +91,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/BeginnerLobby/main/clouds_reflection": {
-      "x": 2,
+      "x": 324,
       "y": 366,
       "width": 320,
       "height": 180,
@@ -71,7 +101,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/BeginnerLobby/main/islands_reflection": {
-      "x": 324,
+      "x": 646,
       "y": 366,
       "width": 320,
       "height": 180,
@@ -81,8 +111,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/BeginnerLobby/main/water_gradient": {
-      "x": 646,
-      "y": 366,
+      "x": 2,
+      "y": 548,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -91,7 +121,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/BeginnerLobby/main/islands": {
-      "x": 2,
+      "x": 324,
       "y": 548,
       "width": 320,
       "height": 180,
@@ -101,7 +131,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/BeginnerHeartside/cp4/BeginnerLobbyStylegrounds_cp4_sky": {
-      "x": 324,
+      "x": 646,
       "y": 548,
       "width": 320,
       "height": 180,
@@ -111,8 +141,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/BeginnerHeartside/cp4/BeginnerLobbyStylegrounds_cp4_sky_top_gradient": {
-      "x": 646,
-      "y": 548,
+      "x": 2,
+      "y": 730,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -121,7 +151,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/BeginnerHeartside/cp4/BeginnerLobbyStylegrounds_cp4_sun": {
-      "x": 2,
+      "x": 324,
       "y": 730,
       "width": 320,
       "height": 180,
@@ -131,7 +161,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/BeginnerHeartside/cp4/BeginnerLobbyStylegrounds_cp4_clouds": {
-      "x": 324,
+      "x": 646,
       "y": 730,
       "width": 320,
       "height": 180,
@@ -141,8 +171,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/BeginnerHeartside/cp4/BeginnerLobbyStylegrounds_cp4_water_bg": {
-      "x": 646,
-      "y": 730,
+      "x": 2,
+      "y": 912,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -151,7 +181,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/BeginnerHeartside/cp4/BeginnerLobbyStylegrounds_cp4_sun_reflection": {
-      "x": 2,
+      "x": 324,
       "y": 912,
       "width": 320,
       "height": 180,
@@ -161,16 +191,6 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/BeginnerHeartside/cp4/BeginnerLobbyStylegrounds_cp4_clouds_reflection": {
-      "x": 324,
-      "y": 912,
-      "width": 320,
-      "height": 180,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 320,
-      "frameHeight": 180
-    },
-    "bgs/SJ2021/BeginnerHeartside/cp4/BeginnerLobbyStylegrounds_cp4_islands_reflection": {
       "x": 646,
       "y": 912,
       "width": 320,
@@ -180,7 +200,7 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/SJ2021/BeginnerHeartside/cp4/BeginnerLobbyStylegrounds_cp4_watergradient": {
+    "bgs/SJ2021/BeginnerHeartside/cp4/BeginnerLobbyStylegrounds_cp4_islands_reflection": {
       "x": 2,
       "y": 1094,
       "width": 320,
@@ -190,8 +210,18 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/SJ2021/BeginnerHeartside/cp4/BeginnerLobbyStylegrounds_cp4_islands": {
+    "bgs/SJ2021/BeginnerHeartside/cp4/BeginnerLobbyStylegrounds_cp4_watergradient": {
       "x": 324,
+      "y": 1094,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/BeginnerHeartside/cp4/BeginnerLobbyStylegrounds_cp4_islands": {
+      "x": 646,
       "y": 1094,
       "width": 320,
       "height": 180,

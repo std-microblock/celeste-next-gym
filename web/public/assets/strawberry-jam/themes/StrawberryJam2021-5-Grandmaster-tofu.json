@@ -1,7 +1,47 @@
 {
   "entries": {
-    "tilesets/SJ2021/tofu/nelumboGrass": {
+    "tilesets/SJ2021/tofu/tofu_concrete_final": {
       "x": 2,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/tofu/mossRock": {
+      "x": 188,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/tofu/nelumboGrass": {
+      "x": 238,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/tofu/nelumboGrassIgnore": {
+      "x": 288,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/tofu/mossRockIgnore": {
+      "x": 338,
       "y": 2,
       "width": 48,
       "height": 120,
@@ -11,7 +51,7 @@
       "frameHeight": 120
     },
     "bgs/SJ2021/tofu/Tofu/tofudusk_backdrop": {
-      "x": 52,
+      "x": 388,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,8 +61,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/tofu/Tofu/tofudusk_moon": {
-      "x": 374,
-      "y": 2,
+      "x": 2,
+      "y": 184,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -31,8 +71,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/tofu/Tofu/tofudusk_cloudback": {
-      "x": 696,
-      "y": 2,
+      "x": 324,
+      "y": 184,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -41,7 +81,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/tofu/Tofu/tofudusk_cloudmiddle": {
-      "x": 2,
+      "x": 646,
       "y": 184,
       "width": 320,
       "height": 180,
@@ -51,8 +91,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/tofu/Tofu/tofudusk_cloudfront": {
-      "x": 324,
-      "y": 184,
+      "x": 2,
+      "y": 366,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -61,8 +101,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/tofu/Tofu/tofudusk_hills": {
-      "x": 646,
-      "y": 184,
+      "x": 324,
+      "y": 366,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -71,7 +111,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/tofu/Tofu/tofudusk_hills front": {
-      "x": 2,
+      "x": 646,
       "y": 366,
       "width": 320,
       "height": 180,
@@ -81,8 +121,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/tofu/Tofu/tofudusk_water": {
-      "x": 324,
-      "y": 366,
+      "x": 2,
+      "y": 548,
       "width": 320,
       "height": 250,
       "drawOffsetX": 0,
@@ -91,8 +131,8 @@
       "frameHeight": 250
     },
     "bgs/SJ2021/tofu/Tofu/tofudusk_lanterns2": {
-      "x": 646,
-      "y": 366,
+      "x": 324,
+      "y": 548,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -101,8 +141,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/tofu/Tofu/tofudusk_lanterns": {
-      "x": 2,
-      "y": 618,
+      "x": 646,
+      "y": 548,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,

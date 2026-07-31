@@ -10,9 +10,529 @@
       "frameWidth": 48,
       "frameHeight": 120
     },
-    "bgs/ChineseNewYear2024/LittleV/bg00": {
+    "tilesets/ChineseNewYear2024/RD/orangeLeaves": {
       "x": 52,
       "y": 2,
+      "width": 39,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 39,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/Lobby/DreamCollabLobbyFGPurple": {
+      "x": 93,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/Lobby/DreamCollabLobbyFGWhite": {
+      "x": 143,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/Lobby/DreamCollabLobbyFGBlue": {
+      "x": 193,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/RD/rockside": {
+      "x": 243,
+      "y": 2,
+      "width": 32,
+      "height": 80,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 32,
+      "frameHeight": 80
+    },
+    "tilesets/ChineseNewYear2024/LittleV/Cyber2": {
+      "x": 277,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/LittleV/Cyber1": {
+      "x": 327,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/DX3906/advSand": {
+      "x": 377,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/ChineseNewYear2024/ShadowRo/Av_MarbleTower": {
+      "x": 475,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/Aura/mp": {
+      "x": 525,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/ChineseNewYear2024/jpyx/invisible": {
+      "x": 711,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/iceCream/ABuffZucchini_spike block b": {
+      "x": 761,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/ChineseNewYear2024/Lobby/GCcrystalfgpurple": {
+      "x": 859,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/ChineseNewYear2024/ShadowRo/Av_rock": {
+      "x": 957,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/ShadowRo/rockrock": {
+      "x": 2,
+      "y": 124,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/ShadowRo/Av_newGrass": {
+      "x": 52,
+      "y": 124,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/Lobby/GClabsgrass": {
+      "x": 102,
+      "y": 124,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/Lobby/GCAlex6886spacegrass": {
+      "x": 152,
+      "y": 124,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/ShadowRo/Av_rockMoss": {
+      "x": 202,
+      "y": 124,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/ShadowRo/skyglass": {
+      "x": 252,
+      "y": 124,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/StarSapphire/FgScifiRock": {
+      "x": 302,
+      "y": 124,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/ShadowRo/WintertempleA": {
+      "x": 352,
+      "y": 124,
+      "width": 48,
+      "height": 152,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 152
+    },
+    "tilesets/ChineseNewYear2024/ShadowRo/CasBlock": {
+      "x": 402,
+      "y": 124,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/ChineseNewYear2024/Lobby/crystal4": {
+      "x": 588,
+      "y": 124,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/LittleV/lostlevelsblue": {
+      "x": 638,
+      "y": 124,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/Lobby/wallin1": {
+      "x": 688,
+      "y": 124,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/hoshiyakimu/dirtBright": {
+      "x": 738,
+      "y": 124,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/hoshiyakimu/IntRockFgB": {
+      "x": 788,
+      "y": 124,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/ChineseNewYear2024/hoshiyakimu/IntRockFg": {
+      "x": 2,
+      "y": 278,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/ChineseNewYear2024/ShadowRo/Av_newGrassB": {
+      "x": 188,
+      "y": 278,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/hoshiyakimu/dirtDark": {
+      "x": 238,
+      "y": 278,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/Lobby/wall2": {
+      "x": 288,
+      "y": 278,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/Lobby/wood2": {
+      "x": 338,
+      "y": 278,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/LittleV/Blueberry": {
+      "x": 388,
+      "y": 278,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/LittleV/Cheese": {
+      "x": 438,
+      "y": 278,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/jpyx/redglow": {
+      "x": 488,
+      "y": 278,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/Lobby/ABuffZucchinipastelblue": {
+      "x": 538,
+      "y": 278,
+      "width": 96,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/DX3906/advMesaRockLight": {
+      "x": 636,
+      "y": 278,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/ChineseNewYear2024/DX3906/metallicFactoryNikko": {
+      "x": 734,
+      "y": 278,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/ChineseNewYear2024/StarSapphire/GDDcolortiles": {
+      "x": 832,
+      "y": 278,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/ChineseNewYear2024/StarSapphire/GDDcolortilesfilled": {
+      "x": 2,
+      "y": 400,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/ChineseNewYear2024/Lobby/AquesLabFloor": {
+      "x": 188,
+      "y": 400,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/ChineseNewYear2024/StarSapphire/FgBlue": {
+      "x": 286,
+      "y": 400,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/StarSapphire/FRC2fg": {
+      "x": 336,
+      "y": 400,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/StarSapphire/UD_Compound": {
+      "x": 386,
+      "y": 400,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/ChineseNewYear2024/StarSapphire/ZMgirder": {
+      "x": 572,
+      "y": 400,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/Underdragon/ric_cement": {
+      "x": 622,
+      "y": 400,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/jpyx/destination": {
+      "x": 672,
+      "y": 400,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/ChineseNewYear2024/Underdragon/ric_dirt": {
+      "x": 858,
+      "y": 400,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/Underdragon/ric_girder": {
+      "x": 908,
+      "y": 400,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/ChineseNewYear2024/Lobby/GCemikblue": {
+      "x": 2,
+      "y": 522,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/ChineseNewYear2024/RD/fallingBlock": {
+      "x": 188,
+      "y": 522,
+      "width": 39,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 39,
+      "frameHeight": 120
+    },
+    "bgs/ChineseNewYear2024/LittleV/bg00": {
+      "x": 229,
+      "y": 522,
       "width": 320,
       "height": 240,
       "drawOffsetX": 0,
@@ -21,8 +541,8 @@
       "frameHeight": 240
     },
     "bgs/ChineseNewYear2024/StarSapphireYHS/YHSlbg": {
-      "x": 374,
-      "y": 2,
+      "x": 551,
+      "y": 522,
       "width": 320,
       "height": 240,
       "drawOffsetX": 0,
@@ -31,8 +551,8 @@
       "frameHeight": 240
     },
     "bgs/ChineseNewYear2024/StarSapphireYHS/YHSSun": {
-      "x": 696,
-      "y": 2,
+      "x": 873,
+      "y": 522,
       "width": 70,
       "height": 71,
       "drawOffsetX": 0,
@@ -42,7 +562,7 @@
     },
     "bgs/ChineseNewYear2024/LittleV/LVGCskybrighter": {
       "x": 2,
-      "y": 244,
+      "y": 764,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -52,7 +572,7 @@
     },
     "bgs/ChineseNewYear2024/LittleV/sky": {
       "x": 324,
-      "y": 244,
+      "y": 764,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -62,7 +582,7 @@
     },
     "bgs/ChineseNewYear2024/StarSapphire/FRc2BG": {
       "x": 646,
-      "y": 244,
+      "y": 764,
       "width": 320,
       "height": 184,
       "drawOffsetX": 0,
@@ -72,7 +592,7 @@
     },
     "bgs/ChineseNewYear2024/Underdragon/NightCity00": {
       "x": 2,
-      "y": 430,
+      "y": 950,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -82,7 +602,7 @@
     },
     "bgs/ChineseNewYear2024/Underdragon/NightCity01": {
       "x": 324,
-      "y": 430,
+      "y": 950,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -92,7 +612,7 @@
     },
     "bgs/ChineseNewYear2024/Underdragon/NightCity02": {
       "x": 646,
-      "y": 430,
+      "y": 950,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -102,7 +622,7 @@
     },
     "bgs/ChineseNewYear2024/Underdragon/NightCity03": {
       "x": 2,
-      "y": 612,
+      "y": 1132,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -112,7 +632,7 @@
     },
     "bgs/ChineseNewYear2024/Underdragon/NightCity04": {
       "x": 324,
-      "y": 612,
+      "y": 1132,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -122,7 +642,7 @@
     },
     "bgs/ChineseNewYear2024/Underdragon/NightCity05": {
       "x": 646,
-      "y": 612,
+      "y": 1132,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -132,7 +652,7 @@
     },
     "bgs/ChineseNewYear2024/Underdragon/NightCity06": {
       "x": 2,
-      "y": 794,
+      "y": 1314,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -142,7 +662,7 @@
     },
     "bgs/ChineseNewYear2024/Underdragon/NightCity07": {
       "x": 324,
-      "y": 794,
+      "y": 1314,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -152,7 +672,7 @@
     },
     "bgs/ChineseNewYear2024/Underdragon/NightCity09": {
       "x": 646,
-      "y": 794,
+      "y": 1314,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -162,7 +682,7 @@
     },
     "bgs/ChineseNewYear2024/Underdragon/NightCity10": {
       "x": 2,
-      "y": 976,
+      "y": 1496,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -172,7 +692,7 @@
     },
     "bgs/ChineseNewYear2024/DX3906/bgskyred": {
       "x": 324,
-      "y": 976,
+      "y": 1496,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -182,7 +702,7 @@
     },
     "bgs/ChineseNewYear2024/DX3906/bg04nosun": {
       "x": 646,
-      "y": 976,
+      "y": 1496,
       "width": 320,
       "height": 360,
       "drawOffsetX": 0,
@@ -192,7 +712,7 @@
     },
     "bgs/ChineseNewYear2024/Underdragon/NightCity08": {
       "x": 2,
-      "y": 1338,
+      "y": 1858,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -202,7 +722,7 @@
     },
     "bgs/ChineseNewYear2024/StarSapphireGDDN/TwilightCity0_B": {
       "x": 324,
-      "y": 1338,
+      "y": 1858,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -212,7 +732,7 @@
     },
     "bgs/ChineseNewYear2024/StarSapphireGDDN/TwilightCity4": {
       "x": 646,
-      "y": 1338,
+      "y": 1858,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -222,7 +742,7 @@
     },
     "bgs/ChineseNewYear2024/StarSapphireGDDN/TwilightCity3": {
       "x": 2,
-      "y": 1520,
+      "y": 2040,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -232,7 +752,7 @@
     },
     "bgs/ChineseNewYear2024/StarSapphireGDDN/TwilightCity2": {
       "x": 324,
-      "y": 1520,
+      "y": 2040,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -242,7 +762,7 @@
     },
     "bgs/ChineseNewYear2024/StarSapphireGDDN/TwilightCity5": {
       "x": 646,
-      "y": 1520,
+      "y": 2040,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -252,7 +772,7 @@
     },
     "bgs/ChineseNewYear2024/StarSapphireGDDN/TwilightCity6": {
       "x": 2,
-      "y": 1702,
+      "y": 2222,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -262,7 +782,7 @@
     },
     "bgs/ChineseNewYear2024/StarSapphireGDDN/TwilightCity7": {
       "x": 324,
-      "y": 1702,
+      "y": 2222,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -272,7 +792,7 @@
     },
     "bgs/ChineseNewYear2024/StarSapphire/SDbg": {
       "x": 646,
-      "y": 1702,
+      "y": 2222,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -282,7 +802,7 @@
     },
     "bgs/ChineseNewYear2024/DX3906/gradient": {
       "x": 2,
-      "y": 1884,
+      "y": 2404,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -292,7 +812,7 @@
     },
     "bgs/ChineseNewYear2024/DX3906/buildingsCeiling": {
       "x": 324,
-      "y": 1884,
+      "y": 2404,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -302,7 +822,7 @@
     },
     "bgs/ChineseNewYear2024/DX3906/buildingsBack": {
       "x": 646,
-      "y": 1884,
+      "y": 2404,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -312,7 +832,7 @@
     },
     "bgs/ChineseNewYear2024/DX3906/buildingsMid": {
       "x": 2,
-      "y": 2066,
+      "y": 2586,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -322,7 +842,7 @@
     },
     "bgs/ChineseNewYear2024/DX3906/buildingsfront": {
       "x": 324,
-      "y": 2066,
+      "y": 2586,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -332,7 +852,7 @@
     },
     "bgs/ChineseNewYear2024/Aura/MS/bg": {
       "x": 2,
-      "y": 2248,
+      "y": 2768,
       "width": 400,
       "height": 215,
       "drawOffsetX": 0,
@@ -342,7 +862,7 @@
     },
     "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/hoshiyakimu/starscape00": {
       "x": 404,
-      "y": 2248,
+      "y": 2768,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -352,7 +872,7 @@
     },
     "bgs/ChineseNewYear2024/hoshiyakimu/moon": {
       "x": 2,
-      "y": 2465,
+      "y": 2985,
       "width": 320,
       "height": 184,
       "drawOffsetX": 0,
@@ -362,7 +882,7 @@
     },
     "bgs/ChineseNewYear2024/hoshiyakimu/clouds": {
       "x": 324,
-      "y": 2465,
+      "y": 2985,
       "width": 320,
       "height": 184,
       "drawOffsetX": 0,
@@ -372,7 +892,7 @@
     },
     "bgs/ChineseNewYear2024/hoshiyakimu/Mountain": {
       "x": 646,
-      "y": 2465,
+      "y": 2985,
       "width": 320,
       "height": 184,
       "drawOffsetX": 0,
@@ -382,7 +902,7 @@
     },
     "bgs/ChineseNewYear2024/LittleV/Spacebg02": {
       "x": 2,
-      "y": 2651,
+      "y": 3171,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -392,7 +912,7 @@
     },
     "bgs/ChineseNewYear2024/LittleV/Spacebg01": {
       "x": 324,
-      "y": 2651,
+      "y": 3171,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -402,7 +922,7 @@
     },
     "bgs/ChineseNewYear2024/LittleV/Spacebg00": {
       "x": 646,
-      "y": 2651,
+      "y": 3171,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -412,7 +932,7 @@
     },
     "bgs/ChineseNewYear2024/StarSapphireSTLR/erouSpace1": {
       "x": 2,
-      "y": 2833,
+      "y": 3353,
       "width": 200,
       "height": 200,
       "drawOffsetX": 0,
@@ -422,7 +942,7 @@
     },
     "bgs/ChineseNewYear2024/StarSapphireSTLR/erouSpace2": {
       "x": 204,
-      "y": 2833,
+      "y": 3353,
       "width": 200,
       "height": 200,
       "drawOffsetX": 0,
@@ -432,7 +952,7 @@
     },
     "bgs/ChineseNewYear2024/StarSapphireSTLR/erouSpace3": {
       "x": 406,
-      "y": 2833,
+      "y": 3353,
       "width": 200,
       "height": 200,
       "drawOffsetX": 0,
@@ -442,7 +962,7 @@
     },
     "bgs/ChineseNewYear2024/StarSapphireSTLR/erouSpace4": {
       "x": 608,
-      "y": 2833,
+      "y": 3353,
       "width": 200,
       "height": 200,
       "drawOffsetX": 0,
@@ -452,7 +972,7 @@
     },
     "decals/ChineseNewYear2024/fengchen/bg0": {
       "x": 2,
-      "y": 3035,
+      "y": 3555,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -462,7 +982,7 @@
     },
     "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/Aura/mm.2fps0": {
       "x": 324,
-      "y": 3035,
+      "y": 3555,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -472,7 +992,7 @@
     },
     "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/LittleV/00": {
       "x": 646,
-      "y": 3035,
+      "y": 3555,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -482,7 +1002,7 @@
     },
     "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/icecream/HazySpaceBG00": {
       "x": 2,
-      "y": 3217,
+      "y": 3737,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -492,7 +1012,7 @@
     },
     "bgs/ChineseNewYear2024/Lobby/motonine_bg18_night": {
       "x": 324,
-      "y": 3217,
+      "y": 3737,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -502,7 +1022,7 @@
     },
     "bgs/ChineseNewYear2024/Lobby/motonine_bg19_moon": {
       "x": 646,
-      "y": 3217,
+      "y": 3737,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -512,7 +1032,7 @@
     },
     "bgs/ChineseNewYear2024/Lobby/motoninebg22_shadow": {
       "x": 2,
-      "y": 3399,
+      "y": 3919,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -522,7 +1042,7 @@
     },
     "bgs/ChineseNewYear2024/Lobby/motonine_bg37_cloudsky3": {
       "x": 324,
-      "y": 3399,
+      "y": 3919,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -532,7 +1052,7 @@
     },
     "bgs/ChineseNewYear2024/Lobby/motonine_bg35_cloudsky1": {
       "x": 646,
-      "y": 3399,
+      "y": 3919,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -542,7 +1062,7 @@
     },
     "bgs/ChineseNewYear2024/Lobby/motonine_bg39_cloudsky5": {
       "x": 2,
-      "y": 3581,
+      "y": 4101,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -552,7 +1072,7 @@
     },
     "bgs/ChineseNewYear2024/Lobby/motonine_bg23_bgmount1": {
       "x": 324,
-      "y": 3581,
+      "y": 4101,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -562,7 +1082,7 @@
     },
     "bgs/ChineseNewYear2024/Lobby/motonine_bg24_bgmount2": {
       "x": 646,
-      "y": 3581,
+      "y": 4101,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -572,7 +1092,7 @@
     },
     "bgs/ChineseNewYear2024/Lobby/motonine_bg32_clouddown1": {
       "x": 2,
-      "y": 3763,
+      "y": 4283,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -582,7 +1102,7 @@
     },
     "bgs/ChineseNewYear2024/Lobby/motonine_bg34_clouddown3": {
       "x": 324,
-      "y": 3763,
+      "y": 4283,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -592,7 +1112,7 @@
     },
     "bgs/ChineseNewYear2024/Lobby/motonine_bg20_house": {
       "x": 646,
-      "y": 3763,
+      "y": 4283,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -602,7 +1122,7 @@
     },
     "bgs/ChineseNewYear2024/Lobby/motonine_bg29_bridge": {
       "x": 2,
-      "y": 3945,
+      "y": 4465,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -612,7 +1132,7 @@
     },
     "bgs/ChineseNewYear2024/Lobby/motonine_bg21_tower": {
       "x": 324,
-      "y": 3945,
+      "y": 4465,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -622,7 +1142,7 @@
     },
     "bgs/ChineseNewYear2024/Lobby/motonine_bg25_ripple1": {
       "x": 646,
-      "y": 3945,
+      "y": 4465,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -632,7 +1152,7 @@
     },
     "bgs/ChineseNewYear2024/Lobby/motonine_bg27_ripple3": {
       "x": 2,
-      "y": 4127,
+      "y": 4647,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -642,7 +1162,7 @@
     },
     "bgs/ChineseNewYear2024/Lobby/motonine_bg26_ripple2": {
       "x": 324,
-      "y": 4127,
+      "y": 4647,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -652,7 +1172,7 @@
     },
     "bgs/ChineseNewYear2024/Lobby/motonine_bg33_clouddown2": {
       "x": 646,
-      "y": 4127,
+      "y": 4647,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -662,7 +1182,7 @@
     },
     "bgs/ChineseNewYear2024/Lobby/motonine_bg31_tree": {
       "x": 2,
-      "y": 4309,
+      "y": 4829,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -672,13 +1192,273 @@
     },
     "bgs/ChineseNewYear2024/Lobby/motonine_bg28_moonlight": {
       "x": 324,
-      "y": 4309,
+      "y": 4829,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
       "drawOffsetY": 0,
       "frameWidth": 320,
       "frameHeight": 180
+    },
+    "danger/customSpinner/ChineseNewYear2024/hoshiyakimu/fg_white00": {
+      "x": 646,
+      "y": 4829,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/customSpinner/ChineseNewYear2024/hoshiyakimu/fg_white01": {
+      "x": 672,
+      "y": 4829,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/customSpinner/ChineseNewYear2024/hoshiyakimu/fg_white02": {
+      "x": 698,
+      "y": 4829,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/customSpinner/ChineseNewYear2024/hoshiyakimu/fg_white03": {
+      "x": 724,
+      "y": 4829,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/customSpinner/ChineseNewYear2024/hoshiyakimu/bg_white00": {
+      "x": 750,
+      "y": 4829,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/customSpinner/ChineseNewYear2024/LittleV/B612/fg00": {
+      "x": 776,
+      "y": 4829,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/customSpinner/ChineseNewYear2024/LittleV/B612/fg01": {
+      "x": 796,
+      "y": 4829,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/customSpinner/ChineseNewYear2024/LittleV/B612/fg02": {
+      "x": 816,
+      "y": 4829,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/customSpinner/ChineseNewYear2024/LittleV/B612/fg03": {
+      "x": 836,
+      "y": 4829,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/customSpinner/ChineseNewYear2024/LittleV/B612/bg00": {
+      "x": 856,
+      "y": 4829,
+      "width": 12,
+      "height": 12,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 12,
+      "frameHeight": 12
+    },
+    "danger/customSpinner/ChineseNewYear2024/LittleV/B612/bg01": {
+      "x": 870,
+      "y": 4829,
+      "width": 12,
+      "height": 12,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 12,
+      "frameHeight": 12
+    },
+    "danger/customSpinner/ChineseNewYear2024/Dark/fg00": {
+      "x": 884,
+      "y": 4829,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/customSpinner/ChineseNewYear2024/Dark/fg01": {
+      "x": 910,
+      "y": 4829,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/customSpinner/ChineseNewYear2024/Dark/fg02": {
+      "x": 936,
+      "y": 4829,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/customSpinner/ChineseNewYear2024/Dark/fg03": {
+      "x": 962,
+      "y": 4829,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/customSpinner/ChineseNewYear2024/Dark/bg00": {
+      "x": 988,
+      "y": 4829,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/ChineseNewYear2024/GCHeartSide/GCspinner/fg00": {
+      "x": 2,
+      "y": 5011,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/ChineseNewYear2024/GCHeartSide/GCspinner/fg01": {
+      "x": 28,
+      "y": 5011,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/ChineseNewYear2024/GCHeartSide/GCspinner/fg02": {
+      "x": 54,
+      "y": 5011,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/ChineseNewYear2024/GCHeartSide/GCspinner/fg03": {
+      "x": 80,
+      "y": 5011,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/ChineseNewYear2024/GCHeartSide/GCspinner/bg00": {
+      "x": 106,
+      "y": 5011,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/ChineseNewYear2024/StarSapphire/cogs/fg00": {
+      "x": 132,
+      "y": 5011,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/ChineseNewYear2024/StarSapphire/cogs/fg01": {
+      "x": 158,
+      "y": 5011,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/ChineseNewYear2024/StarSapphire/cogs/fg02": {
+      "x": 184,
+      "y": 5011,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/ChineseNewYear2024/StarSapphire/cogs/fg03": {
+      "x": 210,
+      "y": 5011,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/ChineseNewYear2024/StarSapphire/cogs/bg": {
+      "x": 236,
+      "y": 5011,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
     }
   }
 }

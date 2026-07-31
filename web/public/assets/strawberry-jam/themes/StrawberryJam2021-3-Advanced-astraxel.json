@@ -10,8 +10,18 @@
       "frameWidth": 48,
       "frameHeight": 120
     },
-    "bgs/MaxHelpingHand/animatedParallax/SJ2021/Astraxel/ground layer 00": {
+    "tilesets/SJ2021/astraxel/PurpleSand": {
       "x": 52,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/MaxHelpingHand/animatedParallax/SJ2021/Astraxel/ground layer 00": {
+      "x": 102,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,7 +31,7 @@
       "frameHeight": 180
     },
     "bgs/MaxHelpingHand/animatedParallax/SJ2021/Astraxel/hourglass a00": {
-      "x": 374,
+      "x": 424,
       "y": 2,
       "width": 83,
       "height": 84,
@@ -31,7 +41,7 @@
       "frameHeight": 84
     },
     "bgs/MaxHelpingHand/animatedParallax/SJ2021/Astraxel/hourglass b00": {
-      "x": 459,
+      "x": 509,
       "y": 2,
       "width": 53,
       "height": 110,

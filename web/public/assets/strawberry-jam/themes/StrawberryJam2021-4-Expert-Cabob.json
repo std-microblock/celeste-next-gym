@@ -10,8 +10,28 @@
       "frameWidth": 184,
       "frameHeight": 104
     },
-    "bgs/SJ2021/Cabob/CyberForestSG": {
+    "tilesets/SJ2021/Cabob/mushroomMetal": {
       "x": 188,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/Cabob/greenMushroomMetal": {
+      "x": 374,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "bgs/SJ2021/Cabob/CyberForestSG": {
+      "x": 560,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,8 +41,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Cabob/CyberTreesSG": {
-      "x": 510,
-      "y": 2,
+      "x": 2,
+      "y": 184,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,

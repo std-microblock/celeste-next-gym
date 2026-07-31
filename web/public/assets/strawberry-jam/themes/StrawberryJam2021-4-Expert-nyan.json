@@ -1,7 +1,17 @@
 {
   "entries": {
-    "bgs/SJ2021/nyan/grid": {
+    "tilesets/SJ2021/nyan/neon": {
       "x": 2,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "bgs/SJ2021/nyan/grid": {
+      "x": 188,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -11,7 +21,7 @@
       "frameHeight": 180
     },
     "danger/spikes/SJ2021/nyan/neon_down00": {
-      "x": 324,
+      "x": 510,
       "y": 2,
       "width": 10,
       "height": 9,
@@ -21,7 +31,7 @@
       "frameHeight": 9
     },
     "danger/spikes/SJ2021/nyan/neon_left00": {
-      "x": 336,
+      "x": 522,
       "y": 2,
       "width": 9,
       "height": 10,
@@ -31,7 +41,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/nyan/neon_right00": {
-      "x": 347,
+      "x": 533,
       "y": 2,
       "width": 9,
       "height": 10,
@@ -41,7 +51,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/nyan/neon_up00": {
-      "x": 358,
+      "x": 544,
       "y": 2,
       "width": 10,
       "height": 9,
@@ -49,6 +59,56 @@
       "drawOffsetY": 0,
       "frameWidth": 10,
       "frameHeight": 9
+    },
+    "danger/crystal/SJ2021/nyan//fg_white00": {
+      "x": 556,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/nyan//fg_white01": {
+      "x": 582,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/nyan//fg_white02": {
+      "x": 608,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/nyan//fg_white03": {
+      "x": 634,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/nyan//bg_white00": {
+      "x": 660,
+      "y": 2,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
     }
   }
 }

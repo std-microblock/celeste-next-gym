@@ -1,7 +1,17 @@
 {
   "entries": {
-    "tilesets/SJ2021/Meario/scififancyred": {
+    "tilesets/SJ2021/Meario/graygirder": {
       "x": 2,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "tilesets/SJ2021/Meario/scififancyred": {
+      "x": 100,
       "y": 2,
       "width": 48,
       "height": 120,
@@ -11,7 +21,7 @@
       "frameHeight": 120
     },
     "bgs/SJ2021/Meario/sky": {
-      "x": 52,
+      "x": 150,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,7 +31,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Meario/cityBack": {
-      "x": 374,
+      "x": 472,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -31,16 +41,6 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Meario/cityGradient": {
-      "x": 696,
-      "y": 2,
-      "width": 320,
-      "height": 180,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 320,
-      "frameHeight": 180
-    },
-    "bgs/SJ2021/Meario/cityMid": {
       "x": 2,
       "y": 184,
       "width": 320,
@@ -50,7 +50,7 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/SJ2021/Meario/cityTop": {
+    "bgs/SJ2021/Meario/cityMid": {
       "x": 324,
       "y": 184,
       "width": 320,
@@ -60,7 +60,7 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/SJ2021/Meario/lake": {
+    "bgs/SJ2021/Meario/cityTop": {
       "x": 646,
       "y": 184,
       "width": 320,
@@ -70,8 +70,18 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/SJ2021/Meario/lakeGradient": {
+    "bgs/SJ2021/Meario/lake": {
       "x": 2,
+      "y": 366,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Meario/lakeGradient": {
+      "x": 324,
       "y": 366,
       "width": 320,
       "height": 180,

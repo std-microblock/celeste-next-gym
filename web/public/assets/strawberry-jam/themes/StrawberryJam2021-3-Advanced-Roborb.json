@@ -1,6 +1,6 @@
 {
   "entries": {
-    "tilesets/SJ2021/YaGrillRobib/card_pink": {
+    "tilesets/SJ2021/YaGrillRobib/card_white": {
       "x": 2,
       "y": 2,
       "width": 184,
@@ -10,8 +10,28 @@
       "frameWidth": 184,
       "frameHeight": 104
     },
-    "bgs/SJ2021/YaGrillRobib/VCdaySG_00_blanksky": {
+    "tilesets/SJ2021/YaGrillRobib/card_pink": {
       "x": 188,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "tilesets/SJ2021/YaGrillRobib/card_red": {
+      "x": 374,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "bgs/SJ2021/YaGrillRobib/VCdaySG_00_blanksky": {
+      "x": 560,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,7 +41,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/YaGrillRobib/VCdaySG_01_cloudsA": {
-      "x": 510,
+      "x": 882,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -31,7 +51,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/YaGrillRobib/VCdaySG_02_cloudsB": {
-      "x": 832,
+      "x": 1204,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -41,8 +61,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/YaGrillRobib/VCdaySG_04_bgpaperfalling": {
-      "x": 1154,
-      "y": 2,
+      "x": 2,
+      "y": 184,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -51,7 +71,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/YaGrillRobib/VCdaySG_04_cardpile": {
-      "x": 2,
+      "x": 324,
       "y": 184,
       "width": 320,
       "height": 180,

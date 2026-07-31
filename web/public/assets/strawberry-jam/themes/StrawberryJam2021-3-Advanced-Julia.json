@@ -99,6 +99,56 @@
       "drawOffsetY": 0,
       "frameWidth": 320,
       "frameHeight": 240
+    },
+    "danger/SJ2021/Julia/Spinner/fg00": {
+      "x": 462,
+      "y": 366,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Julia/Spinner/fg01": {
+      "x": 488,
+      "y": 366,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Julia/Spinner/fg02": {
+      "x": 514,
+      "y": 366,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Julia/Spinner/fg03": {
+      "x": 540,
+      "y": 366,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/Julia/Spinner/bg": {
+      "x": 566,
+      "y": 366,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
     }
   }
 }

@@ -1,7 +1,17 @@
 {
   "entries": {
-    "bgs/ChineseNewYear2024/DX3906/bgskyred": {
+    "tilesets/ChineseNewYear2024/DX3906/advSand": {
       "x": 2,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "bgs/ChineseNewYear2024/DX3906/bgskyred": {
+      "x": 100,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -11,7 +21,7 @@
       "frameHeight": 180
     },
     "bgs/ChineseNewYear2024/DX3906/bg04nosun": {
-      "x": 324,
+      "x": 422,
       "y": 2,
       "width": 320,
       "height": 360,

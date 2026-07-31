@@ -1,7 +1,37 @@
 {
   "entries": {
-    "bgs/SJ2021/Linj/linjdownsidecenter": {
+    "tilesets/SJ2021/Linj/towerIvory": {
       "x": 2,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Linj/linjgrass": {
+      "x": 52,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Linj/downsideLost": {
+      "x": 102,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/Linj/linjdownsidecenter": {
+      "x": 152,
       "y": 2,
       "width": 40,
       "height": 40,
@@ -11,7 +41,7 @@
       "frameHeight": 40
     },
     "bgs/SJ2021/Linj/Water1": {
-      "x": 44,
+      "x": 194,
       "y": 2,
       "width": 320,
       "height": 41,
@@ -21,7 +51,7 @@
       "frameHeight": 41
     },
     "bgs/SJ2021/Linj/Water2": {
-      "x": 366,
+      "x": 516,
       "y": 2,
       "width": 320,
       "height": 42,
@@ -31,8 +61,8 @@
       "frameHeight": 42
     },
     "bgs/SJ2021/Linj/Water3": {
-      "x": 688,
-      "y": 2,
+      "x": 2,
+      "y": 124,
       "width": 320,
       "height": 40,
       "drawOffsetX": 0,
@@ -41,8 +71,8 @@
       "frameHeight": 40
     },
     "bgs/SJ2021/Linj/Water4": {
-      "x": 2,
-      "y": 46,
+      "x": 324,
+      "y": 124,
       "width": 320,
       "height": 40,
       "drawOffsetX": 0,
@@ -51,8 +81,8 @@
       "frameHeight": 40
     },
     "bgs/SJ2021/Linj/Water5": {
-      "x": 324,
-      "y": 46,
+      "x": 646,
+      "y": 124,
       "width": 320,
       "height": 40,
       "drawOffsetX": 0,
@@ -62,7 +92,7 @@
     },
     "bgs/SJ2021/Linj/IvoryWATERLINE": {
       "x": 2,
-      "y": 88,
+      "y": 166,
       "width": 640,
       "height": 22,
       "drawOffsetX": 0,
@@ -72,7 +102,7 @@
     },
     "bgs/SJ2021/Linj/Island1": {
       "x": 2,
-      "y": 112,
+      "y": 190,
       "width": 640,
       "height": 41,
       "drawOffsetX": 0,
@@ -82,7 +112,7 @@
     },
     "bgs/SJ2021/Linj/LinjIvorySpeed1": {
       "x": 2,
-      "y": 155,
+      "y": 233,
       "width": 640,
       "height": 180,
       "drawOffsetX": 0,
@@ -92,7 +122,7 @@
     },
     "bgs/SJ2021/Linj/LinjIvorySpeed2": {
       "x": 2,
-      "y": 337,
+      "y": 415,
       "width": 640,
       "height": 180,
       "drawOffsetX": 0,
@@ -102,7 +132,7 @@
     },
     "bgs/SJ2021/Linj/LinjIvorySpeed3": {
       "x": 2,
-      "y": 519,
+      "y": 597,
       "width": 640,
       "height": 180,
       "drawOffsetX": 0,

@@ -10,8 +10,18 @@
       "frameWidth": 48,
       "frameHeight": 120
     },
-    "bgs/SJ2021/Liero/5thDimA": {
+    "tilesets/SJ2021/Liero/liero_notknipe": {
       "x": 52,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/Liero/5thDimA": {
+      "x": 102,
       "y": 2,
       "width": 321,
       "height": 321,
@@ -21,7 +31,7 @@
       "frameHeight": 321
     },
     "bgs/SJ2021/Liero/5thDimB": {
-      "x": 375,
+      "x": 425,
       "y": 2,
       "width": 321,
       "height": 321,
@@ -31,14 +41,64 @@
       "frameHeight": 321
     },
     "bgs/SJ2021/Liero/5thDimC": {
-      "x": 698,
-      "y": 2,
+      "x": 2,
+      "y": 325,
       "width": 321,
       "height": 321,
       "drawOffsetX": 0,
       "drawOffsetY": 0,
       "frameWidth": 321,
       "frameHeight": 321
+    },
+    "danger/crystal/SJ2021/Liero/fg00": {
+      "x": 325,
+      "y": 325,
+      "width": 19,
+      "height": 19,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 19,
+      "frameHeight": 19
+    },
+    "danger/crystal/SJ2021/Liero/fg01": {
+      "x": 346,
+      "y": 325,
+      "width": 19,
+      "height": 19,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 19,
+      "frameHeight": 19
+    },
+    "danger/crystal/SJ2021/Liero/fg02": {
+      "x": 367,
+      "y": 325,
+      "width": 19,
+      "height": 19,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 19,
+      "frameHeight": 19
+    },
+    "danger/crystal/SJ2021/Liero/fg03": {
+      "x": 388,
+      "y": 325,
+      "width": 19,
+      "height": 19,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 19,
+      "frameHeight": 19
+    },
+    "danger/crystal/SJ2021/Liero/bg00": {
+      "x": 409,
+      "y": 325,
+      "width": 11,
+      "height": 12,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 11,
+      "frameHeight": 12
     }
   }
 }

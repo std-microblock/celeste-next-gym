@@ -1,7 +1,27 @@
 {
   "entries": {
-    "tilesets/SJ2021/mosscairn/grayExtended": {
+    "tilesets/SJ2021/mosscairn/red": {
       "x": 2,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/mosscairn/orange": {
+      "x": 52,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/mosscairn/grayExtended": {
+      "x": 102,
       "y": 2,
       "width": 96,
       "height": 120,
@@ -10,8 +30,38 @@
       "frameWidth": 96,
       "frameHeight": 120
     },
+    "tilesets/SJ2021/mosscairn/brown": {
+      "x": 200,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/mosscairn/morningGrass": {
+      "x": 250,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/mosscairn/yellow": {
+      "x": 300,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
     "bgs/SJ2021/mosscairn/bg": {
-      "x": 100,
+      "x": 350,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,8 +71,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/mosscairn/bgclouds": {
-      "x": 422,
-      "y": 2,
+      "x": 2,
+      "y": 184,
       "width": 432,
       "height": 180,
       "drawOffsetX": 0,
@@ -31,7 +81,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/mosscairn/bigclouds": {
-      "x": 2,
+      "x": 436,
       "y": 184,
       "width": 448,
       "height": 180,
@@ -41,14 +91,64 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/mosscairn/midclouds": {
-      "x": 452,
-      "y": 184,
+      "x": 2,
+      "y": 366,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
       "drawOffsetY": 0,
       "frameWidth": 320,
       "frameHeight": 180
+    },
+    "danger/SJ2021/1-Beginner/brambles/fg00": {
+      "x": 324,
+      "y": 366,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/1-Beginner/brambles/fg01": {
+      "x": 350,
+      "y": 366,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/1-Beginner/brambles/fg02": {
+      "x": 376,
+      "y": 366,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/1-Beginner/brambles/fg03": {
+      "x": 402,
+      "y": 366,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/SJ2021/1-Beginner/brambles/bg00": {
+      "x": 428,
+      "y": 366,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
     }
   }
 }

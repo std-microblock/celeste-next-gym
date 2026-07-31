@@ -10,8 +10,28 @@
       "frameWidth": 48,
       "frameHeight": 120
     },
-    "bgs/SJ2021/Vina/gradientA": {
+    "tilesets/SJ2021/Vina/AvRock": {
       "x": 52,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Vina/AvRockMoss": {
+      "x": 102,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/Vina/gradientA": {
+      "x": 152,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,7 +41,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Vina/back_pillarsB": {
-      "x": 374,
+      "x": 474,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -31,8 +51,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Vina/back_pillarsA": {
-      "x": 696,
-      "y": 2,
+      "x": 2,
+      "y": 184,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -41,7 +61,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Vina/back_rocks": {
-      "x": 2,
+      "x": 324,
       "y": 184,
       "width": 320,
       "height": 180,
@@ -51,16 +71,6 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Vina/gradientB": {
-      "x": 324,
-      "y": 184,
-      "width": 320,
-      "height": 180,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 320,
-      "frameHeight": 180
-    },
-    "bgs/SJ2021/Vina/water": {
       "x": 646,
       "y": 184,
       "width": 320,
@@ -70,7 +80,7 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/SJ2021/Vina/front_rocksB": {
+    "bgs/SJ2021/Vina/water": {
       "x": 2,
       "y": 366,
       "width": 320,
@@ -80,7 +90,7 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/SJ2021/Vina/front_rocksA": {
+    "bgs/SJ2021/Vina/front_rocksB": {
       "x": 324,
       "y": 366,
       "width": 320,
@@ -89,6 +99,66 @@
       "drawOffsetY": 0,
       "frameWidth": 320,
       "frameHeight": 180
+    },
+    "bgs/SJ2021/Vina/front_rocksA": {
+      "x": 646,
+      "y": 366,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "danger/crystal/SJ2021/Vina/fg_thebubble00": {
+      "x": 968,
+      "y": 366,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Vina/fg_thebubble01": {
+      "x": 994,
+      "y": 366,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Vina/fg_thebubble02": {
+      "x": 2,
+      "y": 548,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Vina/fg_thebubble03": {
+      "x": 28,
+      "y": 548,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Vina/bg_thebubble00": {
+      "x": 54,
+      "y": 548,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
     }
   }
 }

@@ -39,6 +39,66 @@
       "drawOffsetY": 0,
       "frameWidth": 320,
       "frameHeight": 180
+    },
+    "danger/customSpinner/ChineseNewYear2024/LittleV/B612/fg00": {
+      "x": 2,
+      "y": 184,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/customSpinner/ChineseNewYear2024/LittleV/B612/fg01": {
+      "x": 22,
+      "y": 184,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/customSpinner/ChineseNewYear2024/LittleV/B612/fg02": {
+      "x": 42,
+      "y": 184,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/customSpinner/ChineseNewYear2024/LittleV/B612/fg03": {
+      "x": 62,
+      "y": 184,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/customSpinner/ChineseNewYear2024/LittleV/B612/bg00": {
+      "x": 82,
+      "y": 184,
+      "width": 12,
+      "height": 12,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 12,
+      "frameHeight": 12
+    },
+    "danger/customSpinner/ChineseNewYear2024/LittleV/B612/bg01": {
+      "x": 96,
+      "y": 184,
+      "width": 12,
+      "height": 12,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 12,
+      "frameHeight": 12
     }
   }
 }

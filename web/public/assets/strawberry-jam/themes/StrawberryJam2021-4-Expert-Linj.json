@@ -1,7 +1,27 @@
 {
   "entries": {
-    "bgs/SJ2021/Linj/linjwaterreflectiondown": {
+    "tilesets/SJ2021/Linj/towerSnow": {
       "x": 2,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/Linj/invis": {
+      "x": 52,
+      "y": 2,
+      "width": 8,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 8
+    },
+    "bgs/SJ2021/Linj/linjwaterreflectiondown": {
+      "x": 62,
       "y": 2,
       "width": 320,
       "height": 244,

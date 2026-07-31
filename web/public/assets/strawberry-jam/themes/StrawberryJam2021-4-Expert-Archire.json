@@ -9,6 +9,16 @@
       "drawOffsetY": 0,
       "frameWidth": 24,
       "frameHeight": 136
+    },
+    "tilesets/SJ2021/archire/catelinecomplexviolet": {
+      "x": 28,
+      "y": 2,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
     }
   }
 }

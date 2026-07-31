@@ -10,8 +10,28 @@
       "frameWidth": 48,
       "frameHeight": 120
     },
-    "bgs/SJ2021/KAERRA/back": {
+    "tilesets/SJ2021/KAERRA/mainpanel": {
       "x": 52,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "tilesets/SJ2021/KAERRA/purpletube": {
+      "x": 102,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/KAERRA/back": {
+      "x": 152,
       "y": 2,
       "width": 324,
       "height": 180,
@@ -21,7 +41,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/KAERRA/NeonBlue": {
-      "x": 378,
+      "x": 478,
       "y": 2,
       "width": 320,
       "height": 184,
@@ -31,8 +51,8 @@
       "frameHeight": 184
     },
     "bgs/SJ2021/KAERRA/NeonPurple": {
-      "x": 700,
-      "y": 2,
+      "x": 2,
+      "y": 188,
       "width": 320,
       "height": 184,
       "drawOffsetX": 0,

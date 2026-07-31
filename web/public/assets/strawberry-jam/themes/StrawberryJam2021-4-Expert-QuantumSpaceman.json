@@ -1,7 +1,17 @@
 {
   "entries": {
-    "bgs/SJ2021/QuantumSpaceman/night sky_1": {
+    "tilesets/SJ2021/QuantumSpaceman/cloudSunset": {
       "x": 2,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/QuantumSpaceman/night sky_1": {
+      "x": 52,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -11,7 +21,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/QuantumSpaceman/bgmoon": {
-      "x": 324,
+      "x": 374,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,7 +31,7 @@
       "frameHeight": 180
     },
     "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_down00": {
-      "x": 646,
+      "x": 696,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -31,7 +41,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_down01": {
-      "x": 658,
+      "x": 708,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -41,7 +51,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_down02": {
-      "x": 670,
+      "x": 720,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -51,7 +61,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_left00": {
-      "x": 682,
+      "x": 732,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -61,7 +71,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_left01": {
-      "x": 694,
+      "x": 744,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -71,7 +81,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_left02": {
-      "x": 706,
+      "x": 756,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -81,7 +91,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_right00": {
-      "x": 718,
+      "x": 768,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -91,7 +101,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_right01": {
-      "x": 730,
+      "x": 780,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -101,7 +111,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_right02": {
-      "x": 742,
+      "x": 792,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -111,7 +121,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_up00": {
-      "x": 754,
+      "x": 804,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -121,7 +131,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_up01": {
-      "x": 766,
+      "x": 816,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -131,7 +141,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_up02": {
-      "x": 778,
+      "x": 828,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -141,7 +151,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_up03": {
-      "x": 790,
+      "x": 840,
       "y": 2,
       "width": 10,
       "height": 10,
@@ -149,6 +159,126 @@
       "drawOffsetY": 0,
       "frameWidth": 10,
       "frameHeight": 10
+    },
+    "danger/SJ2021/QuantumSpaceman/star/fg00": {
+      "x": 852,
+      "y": 2,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/SJ2021/QuantumSpaceman/star/fg01": {
+      "x": 872,
+      "y": 2,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/SJ2021/QuantumSpaceman/star/fg02": {
+      "x": 892,
+      "y": 2,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/SJ2021/QuantumSpaceman/star/fg03": {
+      "x": 912,
+      "y": 2,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/SJ2021/QuantumSpaceman/star/fg_star00": {
+      "x": 932,
+      "y": 2,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/SJ2021/QuantumSpaceman/star/fg_star01": {
+      "x": 952,
+      "y": 2,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/SJ2021/QuantumSpaceman/star/fg_star02": {
+      "x": 972,
+      "y": 2,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/SJ2021/QuantumSpaceman/star/fg_star03": {
+      "x": 992,
+      "y": 2,
+      "width": 18,
+      "height": 18,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 18,
+      "frameHeight": 18
+    },
+    "danger/SJ2021/QuantumSpaceman/star/bg00": {
+      "x": 2,
+      "y": 184,
+      "width": 12,
+      "height": 12,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 12,
+      "frameHeight": 12
+    },
+    "danger/SJ2021/QuantumSpaceman/star/bg01": {
+      "x": 16,
+      "y": 184,
+      "width": 12,
+      "height": 12,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 12,
+      "frameHeight": 12
+    },
+    "danger/SJ2021/QuantumSpaceman/star/bg_star00": {
+      "x": 30,
+      "y": 184,
+      "width": 12,
+      "height": 12,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 12,
+      "frameHeight": 12
+    },
+    "danger/SJ2021/QuantumSpaceman/star/bg_star01": {
+      "x": 44,
+      "y": 184,
+      "width": 12,
+      "height": 12,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 12,
+      "frameHeight": 12
     }
   }
 }

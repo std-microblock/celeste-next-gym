@@ -1,6 +1,6 @@
 {
   "entries": {
-    "tilesets/SJ2021/Agent/yellowCloud": {
+    "tilesets/SJ2021/Agent/whiteCloud": {
       "x": 2,
       "y": 2,
       "width": 48,
@@ -10,8 +10,18 @@
       "frameWidth": 48,
       "frameHeight": 120
     },
-    "bgs/SJ2021/Agent/skyground_blankgroundA": {
+    "tilesets/SJ2021/Agent/yellowCloud": {
       "x": 52,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/Agent/skyground_blankgroundA": {
+      "x": 102,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,7 +31,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Agent/skyground_starsA": {
-      "x": 374,
+      "x": 424,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -31,8 +41,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Agent/skyground_sun": {
-      "x": 696,
-      "y": 2,
+      "x": 2,
+      "y": 184,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -41,7 +51,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Agent/skyground_coronaA": {
-      "x": 2,
+      "x": 324,
       "y": 184,
       "width": 320,
       "height": 180,
@@ -51,7 +61,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Agent/skyground_coronaB": {
-      "x": 324,
+      "x": 646,
       "y": 184,
       "width": 320,
       "height": 180,
@@ -61,8 +71,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Agent/skyground_coronaC": {
-      "x": 646,
-      "y": 184,
+      "x": 2,
+      "y": 366,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -71,7 +81,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Agent/skyground_earth": {
-      "x": 2,
+      "x": 324,
       "y": 366,
       "width": 320,
       "height": 180,
@@ -81,16 +91,6 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/Agent/skyground_celestecloudsA": {
-      "x": 324,
-      "y": 366,
-      "width": 320,
-      "height": 180,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 320,
-      "frameHeight": 180
-    },
-    "bgs/SJ2021/Agent/skyground_mountainsB": {
       "x": 646,
       "y": 366,
       "width": 320,
@@ -100,7 +100,7 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/SJ2021/Agent/skyground_cloudsA": {
+    "bgs/SJ2021/Agent/skyground_mountainsB": {
       "x": 2,
       "y": 548,
       "width": 320,
@@ -110,8 +110,18 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/SJ2021/Agent/skyground_cloudsB": {
+    "bgs/SJ2021/Agent/skyground_cloudsA": {
       "x": 324,
+      "y": 548,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Agent/skyground_cloudsB": {
+      "x": 646,
       "y": 548,
       "width": 320,
       "height": 180,
@@ -179,6 +189,56 @@
       "drawOffsetY": 0,
       "frameWidth": 700,
       "frameHeight": 180
+    },
+    "danger/crystal/SJ2021/Agent/fg_clouds00": {
+      "x": 704,
+      "y": 1276,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Agent/fg_clouds01": {
+      "x": 730,
+      "y": 1276,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Agent/fg_clouds02": {
+      "x": 756,
+      "y": 1276,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Agent/fg_clouds03": {
+      "x": 782,
+      "y": 1276,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
+    },
+    "danger/crystal/SJ2021/Agent/bg_clouds00": {
+      "x": 808,
+      "y": 1276,
+      "width": 24,
+      "height": 24,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 24
     }
   }
 }

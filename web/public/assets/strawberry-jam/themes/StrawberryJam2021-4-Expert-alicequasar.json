@@ -10,8 +10,18 @@
       "frameWidth": 96,
       "frameHeight": 96
     },
-    "danger/spikes/SJ2021/Marcossanches/default_down00": {
+    "tilesets/SJ2021/Marcossanches/batteryPipes": {
       "x": 100,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "danger/spikes/SJ2021/Marcossanches/default_down00": {
+      "x": 198,
       "y": 2,
       "width": 8,
       "height": 9,
@@ -21,7 +31,7 @@
       "frameHeight": 9
     },
     "danger/spikes/SJ2021/Marcossanches/default_down01": {
-      "x": 110,
+      "x": 208,
       "y": 2,
       "width": 8,
       "height": 9,
@@ -31,7 +41,7 @@
       "frameHeight": 9
     },
     "danger/spikes/SJ2021/Marcossanches/default_left00": {
-      "x": 120,
+      "x": 218,
       "y": 2,
       "width": 9,
       "height": 8,
@@ -41,7 +51,7 @@
       "frameHeight": 8
     },
     "danger/spikes/SJ2021/Marcossanches/default_left01": {
-      "x": 131,
+      "x": 229,
       "y": 2,
       "width": 9,
       "height": 8,
@@ -51,7 +61,7 @@
       "frameHeight": 8
     },
     "danger/spikes/SJ2021/Marcossanches/default_right00": {
-      "x": 142,
+      "x": 240,
       "y": 2,
       "width": 9,
       "height": 8,
@@ -61,7 +71,7 @@
       "frameHeight": 8
     },
     "danger/spikes/SJ2021/Marcossanches/default_right01": {
-      "x": 153,
+      "x": 251,
       "y": 2,
       "width": 9,
       "height": 8,
@@ -71,7 +81,7 @@
       "frameHeight": 8
     },
     "danger/spikes/SJ2021/Marcossanches/default_up00": {
-      "x": 164,
+      "x": 262,
       "y": 2,
       "width": 8,
       "height": 9,
@@ -81,7 +91,7 @@
       "frameHeight": 9
     },
     "danger/spikes/SJ2021/Marcossanches/default_up01": {
-      "x": 174,
+      "x": 272,
       "y": 2,
       "width": 8,
       "height": 9,

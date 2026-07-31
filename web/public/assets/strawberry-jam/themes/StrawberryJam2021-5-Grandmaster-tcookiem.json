@@ -1,6 +1,6 @@
 {
   "entries": {
-    "tilesets/SJ2021/tcookiem/summitNoSnowBeigeFilled": {
+    "tilesets/SJ2021/tcookiem/cliffsideAltBeige": {
       "x": 2,
       "y": 2,
       "width": 48,
@@ -10,8 +10,18 @@
       "frameWidth": 48,
       "frameHeight": 120
     },
-    "bgs/SJ2021/tcookiem/bgsad": {
+    "tilesets/SJ2021/tcookiem/summitNoSnowBeigeFilled": {
       "x": 52,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/tcookiem/bgsad": {
+      "x": 102,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -21,7 +31,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/tcookiem/bg111": {
-      "x": 374,
+      "x": 424,
       "y": 2,
       "width": 320,
       "height": 180,
@@ -31,8 +41,8 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/tcookiem/bg112": {
-      "x": 696,
-      "y": 2,
+      "x": 2,
+      "y": 184,
       "width": 320,
       "height": 180,
       "drawOffsetX": 0,
@@ -41,7 +51,7 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/tcookiem/sun": {
-      "x": 2,
+      "x": 324,
       "y": 184,
       "width": 320,
       "height": 244,
@@ -51,7 +61,7 @@
       "frameHeight": 244
     },
     "bgs/SJ2021/tcookiem/bgc0": {
-      "x": 324,
+      "x": 646,
       "y": 184,
       "width": 320,
       "height": 180,
@@ -61,16 +71,6 @@
       "frameHeight": 180
     },
     "bgs/SJ2021/tcookiem/bgc1": {
-      "x": 646,
-      "y": 184,
-      "width": 320,
-      "height": 180,
-      "drawOffsetX": 0,
-      "drawOffsetY": 0,
-      "frameWidth": 320,
-      "frameHeight": 180
-    },
-    "bgs/SJ2021/tcookiem/bgc2": {
       "x": 2,
       "y": 430,
       "width": 320,
@@ -80,7 +80,7 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/SJ2021/tcookiem/bgc3": {
+    "bgs/SJ2021/tcookiem/bgc2": {
       "x": 324,
       "y": 430,
       "width": 320,
@@ -90,7 +90,7 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
-    "bgs/SJ2021/tcookiem/bgc4": {
+    "bgs/SJ2021/tcookiem/bgc3": {
       "x": 646,
       "y": 430,
       "width": 320,
@@ -100,9 +100,19 @@
       "frameWidth": 320,
       "frameHeight": 180
     },
+    "bgs/SJ2021/tcookiem/bgc4": {
+      "x": 2,
+      "y": 612,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
     "danger/spikes/SJ2021/tcookiem/coost_down00": {
-      "x": 968,
-      "y": 430,
+      "x": 324,
+      "y": 612,
       "width": 10,
       "height": 10,
       "drawOffsetX": 0,
@@ -111,8 +121,8 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/tcookiem/coost_down01": {
-      "x": 980,
-      "y": 430,
+      "x": 336,
+      "y": 612,
       "width": 10,
       "height": 10,
       "drawOffsetX": 0,
@@ -121,8 +131,8 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/tcookiem/coost_down02": {
-      "x": 992,
-      "y": 430,
+      "x": 348,
+      "y": 612,
       "width": 10,
       "height": 10,
       "drawOffsetX": 0,
@@ -131,8 +141,8 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/tcookiem/coost_left00": {
-      "x": 1004,
-      "y": 430,
+      "x": 360,
+      "y": 612,
       "width": 10,
       "height": 10,
       "drawOffsetX": 0,
@@ -141,7 +151,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/tcookiem/coost_left01": {
-      "x": 2,
+      "x": 372,
       "y": 612,
       "width": 10,
       "height": 10,
@@ -151,7 +161,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/tcookiem/coost_left02": {
-      "x": 14,
+      "x": 384,
       "y": 612,
       "width": 10,
       "height": 10,
@@ -161,7 +171,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/tcookiem/coost_right00": {
-      "x": 26,
+      "x": 396,
       "y": 612,
       "width": 10,
       "height": 10,
@@ -171,7 +181,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/tcookiem/coost_right01": {
-      "x": 38,
+      "x": 408,
       "y": 612,
       "width": 10,
       "height": 10,
@@ -181,7 +191,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/tcookiem/coost_right02": {
-      "x": 50,
+      "x": 420,
       "y": 612,
       "width": 10,
       "height": 10,
@@ -191,7 +201,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/tcookiem/coost_up00": {
-      "x": 62,
+      "x": 432,
       "y": 612,
       "width": 10,
       "height": 10,
@@ -201,7 +211,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/tcookiem/coost_up01": {
-      "x": 74,
+      "x": 444,
       "y": 612,
       "width": 10,
       "height": 10,
@@ -211,7 +221,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/tcookiem/coost_up02": {
-      "x": 86,
+      "x": 456,
       "y": 612,
       "width": 10,
       "height": 10,
@@ -221,7 +231,7 @@
       "frameHeight": 10
     },
     "danger/spikes/SJ2021/tcookiem/coost_up03": {
-      "x": 98,
+      "x": 468,
       "y": 612,
       "width": 10,
       "height": 10,
