@@ -2654,6 +2654,7 @@ function drawMovingSolid(
 
 function drawRefill(
   context: CanvasRenderingContext2D,
+  assets: GameAssets,
   entity: MapEntity,
   frame: number,
   state: SimState,
@@ -2665,30 +2666,45 @@ function drawRefill(
   const centerX = box.x + box.width / 2;
   const centerY = box.y + box.height / 2;
   const twoDash = runtime?.two_dashes ?? entity.direction.x !== 0;
-  const color = twoDash ? "#ff6def" : "#9fd8ff";
+  const prefix = twoDash ? "objects/refillTwo" : "objects/refill";
+  // Vanilla Refill bobs on a 0.6 Hz SineWave with a per-entity random phase.
+  const seed = pseudo(box.x * 0.19 + box.y * 0.23 + kindIndex * 5.7);
+  const bob = Math.sin((frame / 60) * 0.6 * Math.PI * 2 + seed * Math.PI * 2) * 2;
+  const drawCentered = (key: string, yOffset = 0) => {
+    const entry = assets.entries[key];
+    if (!entry) return false;
+    context.drawImage(
+      assets.image,
+      entry.x,
+      entry.y,
+      entry.width,
+      entry.height,
+      Math.round(centerX - entry.frameWidth / 2),
+      Math.round(centerY + bob - entry.frameHeight / 2 + yOffset),
+      entry.frameWidth,
+      entry.frameHeight,
+    );
+    return true;
+  };
   const active = runtime?.collidable ?? true;
-  const size = 6 + Math.sin(frame / 8) * 0.5;
-  context.save();
-  context.globalAlpha = active ? 1 : 0.35;
-  context.shadowColor = color;
-  context.shadowBlur = 8;
-  context.fillStyle = "#ffffff";
-  context.beginPath();
-  context.moveTo(centerX, centerY - size);
-  context.lineTo(centerX + size, centerY);
-  context.lineTo(centerX, centerY + size);
-  context.lineTo(centerX - size, centerY);
-  context.closePath();
-  context.fill();
-  context.fillStyle = color;
-  context.beginPath();
-  context.moveTo(centerX, centerY - size * 0.55);
-  context.lineTo(centerX + size * 0.55, centerY);
-  context.lineTo(centerX, centerY + size * 0.55);
-  context.lineTo(centerX - size * 0.55, centerY);
-  context.closePath();
-  context.fill();
-  context.restore();
+  if (!active) {
+    // Consumed: only the respawn outline remains (Refill.Render shows
+    // sprite.DrawOutline, then the outline image once collected).
+    drawCentered(prefix + "/outline");
+    return;
+  }
+  const idles = frames(assets, prefix + "/idle");
+  if (idles.length === 0) return;
+  // Sprite.AddLoop("idle", "", 0.1f): six ticks per frame.
+  const key = idles[Math.floor(frame / 6) % idles.length];
+  if (!drawCentered(key)) return;
+  // A flash sequence plays every two seconds (0.05s per frame).
+  const flashTicks = Math.floor(frame / 3) % 40;
+  if (flashTicks < 6) {
+    const flashes = frames(assets, prefix + "/flash");
+    const flashKey = flashes[flashTicks % flashes.length];
+    if (flashKey) drawCentered(flashKey);
+  }
 }
 
 function drawFallingBlock(
@@ -2845,7 +2861,7 @@ function drawEntity(
     if (!strawberryIsPicked(state, entityIndex))
       drawStrawberry(context, assets, entity, frame);
   } else if (entity.kind === "refill") {
-    drawRefill(context, entity, frame, state, kindIndex);
+    drawRefill(context, assets, entity, frame, state, kindIndex);
   } else if (entity.kind === "falling_block") {
     drawFallingBlock(context, assets, entity, state, kindIndex, theme);
   } else if (entity.kind === "bounce_block") {
@@ -2915,9 +2931,14 @@ export function GameView({
   const [themeAssets, setThemeAssets] = useState<GameAssets | null>(null);
   const [viewportRevision, setViewportRevision] = useState(0);
   const solidGrid = useMemo(() => buildSolidGrid(map), [map]);
+  const mergedAssets = useMemo(
+    () => (assets ? (themeAssets ? mergeGameAssets(assets, themeAssets) : assets) : null),
+    [assets, themeAssets],
+  );
   const tileLayer = useMemo(
-    () => (assets ? buildTileLayer(assets, map, solidGrid, theme) : undefined),
-    [assets, map, solidGrid, theme],
+    () =>
+      mergedAssets ? buildTileLayer(mergedAssets, map, solidGrid, theme) : undefined,
+    [mergedAssets, map, solidGrid, theme],
   );
   const camera = cameraViewport
     ? clampCameraViewport(map, cameraViewport)
@@ -2954,11 +2975,6 @@ export function GameView({
     observer.observe(canvas);
     return () => observer.disconnect();
   }, []);
-
-  const mergedAssets = useMemo(
-    () => (assets ? (themeAssets ? mergeGameAssets(assets, themeAssets) : assets) : null),
-    [assets, themeAssets],
-  );
 
   useEffect(() => {
     const canvas = canvasRef.current;

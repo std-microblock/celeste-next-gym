@@ -168,6 +168,8 @@ const GAMEPLAY_PATHS = [
   "objects/fireball/",
   "characters/theoCrystal/idle",
   "objects/glider/",
+  "objects/refill/",
+  "objects/refillTwo/",
   "objects/puffer/",
   "objects/clouds/cloud",
   "objects/moveBlock/",
