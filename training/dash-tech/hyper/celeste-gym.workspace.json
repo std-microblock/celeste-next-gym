@@ -10,6 +10,16 @@
       "id": "training-map-2",
       "map": "training-map-2.map.json",
       "training": "training-map-2.training.json"
+    },
+    {
+      "id": "training-map-3",
+      "map": "training-map-3.map.json",
+      "training": "training-map-3.training.json"
+    },
+    {
+      "id": "training-map-4",
+      "map": "training-map-4.map.json",
+      "training": "training-map-4.training.json"
     }
   ]
 }

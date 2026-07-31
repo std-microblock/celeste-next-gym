@@ -15,10 +15,31 @@
     {
       "x": 0,
       "y": 152,
-      "width": 320,
+      "width": 64,
       "height": 28
+    },
+    {
+      "x": 240,
+      "y": 128,
+      "width": 80,
+      "height": 52
     }
   ],
-  "entities": [],
+  "entities": [
+    {
+      "kind": "strawberry",
+      "bounds": {
+        "x": 242,
+        "y": 109,
+        "width": 16,
+        "height": 16
+      },
+      "direction": {
+        "x": 0,
+        "y": 0
+      },
+      "name": "strawberry"
+    }
+  ],
   "source_package": null
 }

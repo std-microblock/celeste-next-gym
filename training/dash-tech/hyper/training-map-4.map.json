@@ -1,0 +1,30 @@
+{
+  "name": "反向 Hyper",
+  "room": "training-map-4-room",
+  "bounds": {
+    "x": 0,
+    "y": 0,
+    "width": 320,
+    "height": 180
+  },
+  "spawn": {
+    "x": 8,
+    "y": 152
+  },
+  "solids": [
+    {
+      "x": 0,
+      "y": 152,
+      "width": 16,
+      "height": 28
+    },
+    {
+      "x": 208,
+      "y": 152,
+      "width": 112,
+      "height": 28
+    }
+  ],
+  "entities": [],
+  "source_package": null
+}

@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "id": "training-map-2",
-  "title": "充能 Hyper",
+  "id": "training-map-4",
+  "title": "反向 Hyper",
   "summary": "一张可实时测试的训练地图。",
   "modules": [
     {
@@ -10,15 +10,15 @@
         "id": "lesson-1-start",
         "bounds": {
           "x": 0,
-          "y": 72,
-          "width": 104,
-          "height": 80
+          "y": 104,
+          "width": 56,
+          "height": 76
         }
       },
       "end_trigger": {
         "id": "lesson-1-end",
         "bounds": {
-          "x": 104,
+          "x": 56,
           "y": 0,
           "width": 24,
           "height": 180
@@ -54,7 +54,7 @@
               }
             },
             {
-              "prompt": "按 跳跃并保持 10 帧；X 速度 325 px/s，剩余冲刺 1。",
+              "prompt": "按 跳跃并保持 10 帧；X 速度 325 px/s，剩余冲刺。",
               "order_error": {
                 "title": "动作顺序不正确",
                 "body": "按 跳跃。"
@@ -78,10 +78,10 @@
           "version": 1,
           "inputs": [
             {
-              "id": "hold-down-right",
+              "id": "hold-down-left",
               "keys": [
                 "down",
-                "right"
+                "left"
               ],
               "at": 0,
               "held_time": "direction_change_1",
@@ -92,9 +92,9 @@
               "keys": [
                 "right"
               ],
-              "at": "direction_change_1",
+              "at": "jump_frame",
               "held_time": "hold::inf",
-              "verify": false
+              "verify": true
             },
             {
               "id": "dash",
@@ -119,13 +119,13 @@
               "name": "direction_change_1",
               "range": {
                 "from": 1,
-                "to": 7
+                "to": 8
               }
             },
             {
               "name": "jump_frame",
               "range": {
-                "from": 8,
+                "from": 9,
                 "to": 16
               }
             }
@@ -145,12 +145,10 @@
             {
               "id": "recorded-node-10",
               "at": "jump_frame",
-              "description": "X 速度 325 px/s，剩余冲刺 1",
+              "description": "X 速度 325 px/s，剩余冲刺",
               "success": [
                 "after.speed.x >= 324.99",
-                "after.speed.x <= 325.01",
-                "after.dashes >= 0.99",
-                "after.dashes <= 1.01"
+                "after.speed.x <= 325.01"
               ],
               "objectives": [
                 {
@@ -158,9 +156,8 @@
                   "expression": "after.speed.x"
                 },
                 {
-                  "type": "approach",
-                  "expression": "after.dashes",
-                  "target": 1
+                  "type": "maximize",
+                  "expression": "after.dashes"
                 }
               ]
             }
@@ -170,8 +167,8 @@
       "validation": {
         "initial_state": {
           "pos": {
-            "x": 32,
-            "y": 152
+            "x": 5,
+            "y": 151
           },
           "speed": {
             "x": 0,
@@ -197,12 +194,12 @@
   ],
   "finish": {
     "trigger": {
-      "id": "training-map-2-room-finish",
+      "id": "training-map-4-room-finish",
       "bounds": {
-        "x": 240,
+        "x": 224,
         "y": 0,
-        "width": 80,
-        "height": 168
+        "width": 96,
+        "height": 180
       }
     },
     "require_all_modules": true
