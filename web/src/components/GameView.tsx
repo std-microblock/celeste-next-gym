@@ -2163,6 +2163,8 @@ type SpinnerDrawItem =
       originX: number;
       originY: number;
       tint?: string;
+      /** Animated rainbow tint (resolved per frame; skipped by group pre-render). */
+      rainbow?: boolean;
     }
   | {
       kind: "entry";
@@ -2172,6 +2174,8 @@ type SpinnerDrawItem =
       originY: number;
       tint?: string;
       rotation: number;
+      /** Animated rainbow tint (resolved per frame; skipped by group pre-render). */
+      rainbow?: boolean;
     };
 
 function drawSpinnerItem(
@@ -2242,6 +2246,15 @@ function spinnerInView(position: Vec2, camera: CameraBounds): boolean {
   );
 }
 
+/** True when a spinner uses the per-frame animated rainbow tint (and thus
+ * cannot join a statically pre-rendered group canvas). */
+function spinnerIsRainbow(
+  entity: MapEntity,
+  style: VisualTheme["spinner"],
+): boolean {
+  return Boolean(style.rainbow && !entity.tint);
+}
+
 function collectSpinnerDrawItems(
   assets: GameAssets,
   map: GymMap,
@@ -2249,6 +2262,7 @@ function collectSpinnerDrawItems(
   state: SimState,
   theme: VisualTheme,
   camera: CameraBounds,
+  rainbowOnly = false,
 ): SpinnerDrawItem[] {
   const items: SpinnerDrawItem[] = [];
   const records: {
@@ -2265,12 +2279,14 @@ function collectSpinnerDrawItems(
     spinnerIndex += 1;
     if (runtime && !runtime.visible) continue;
     const position = runtime?.position ?? spinnerCenter(entity);
+    const style =
+      entitySpinnerStyle(entity) ?? resolveSpinnerStyle(theme, entity.variant);
+    if (rainbowOnly && !spinnerIsRainbow(entity, style)) continue;
     if (!spinnerInView(position, camera)) continue;
     records.push({
       entity,
       position,
-      style:
-        entitySpinnerStyle(entity) ?? resolveSpinnerStyle(theme, entity.variant),
+      style,
       kindIndex,
     });
   }
@@ -2303,84 +2319,299 @@ function collectSpinnerDrawItems(
         originX: entry.frameWidth * 0.5,
         originY: entry.frameHeight * 0.5,
         tint: a.style.rainbow ? spinnerHue(midpoint, frame) : undefined,
+        rainbow: a.style.rainbow,
         rotation: Math.floor(seed * 4) * Math.PI * 0.5,
       });
     }
   }
-  // Each crystal picks one foreground sheet (static variants, not animation)
+    // Each crystal picks one foreground sheet (static variants, not animation)
   // and reassembles the four 14x14 corner slices around its center for 24x24
   // sheets, skipping slices buried in solid tiles. Non-24x24 custom sheets
   // (QuantumSpaceman stars, pixelator towers, ...) are rendered whole at their
   // natural size, like the mod's own entity.
   for (const record of records) {
-    let style = record.style;
-    let available = frames(assets, style.foreground);
-    // Custom mod spinners whose texture pack is not loaded (for example
-    // FrostHelper's own icecrystal directory) fall back to the theme crystal.
-    if (available.length === 0) {
-      style = resolveSpinnerStyle(theme, record.entity.variant);
-      available = frames(assets, style.foreground);
-    }
-    if (available.length === 0) continue;
-    const seed = pseudo(
-      record.position.x * 0.17 +
-        record.position.y * 0.31 +
-        record.kindIndex * 7.13,
-    );
-    const key =
-      available[Math.floor(seed * available.length) % available.length];
-    const frameEntry = assets.entries[key];
-    if (!frameEntry) continue;
-    const tint =
-      record.entity.tint ??
-      (style.rainbow ? spinnerHue(record.position, frame) : undefined);
-    if (frameEntry.frameWidth === 24 && frameEntry.frameHeight === 24) {
-      const slices = [
-        {
-          checkX: -4,
-          checkY: -4,
-          sourceX: 0,
-          sourceY: 0,
-          originX: 12,
-          originY: 12,
-        },
-        { checkX: 4, checkY: -4, sourceX: 10, sourceY: 0, originX: 2, originY: 12 },
-        { checkX: 4, checkY: 4, sourceX: 10, sourceY: 10, originX: 2, originY: 2 },
-        { checkX: -4, checkY: 4, sourceX: 0, sourceY: 10, originX: 12, originY: 2 },
-      ];
-      for (const slice of slices) {
-        if (
-          pointInSolid(
-            map,
-            record.position.x + slice.checkX,
-            record.position.y + slice.checkY,
-          )
-        )
-          continue;
-        items.push({
-          kind: "slice",
-          key,
-          position: record.position,
-          sourceX: slice.sourceX,
-          sourceY: slice.sourceY,
-          originX: slice.originX,
-          originY: slice.originY,
-          tint,
-        });
-      }
-      continue;
-    }
-    items.push({
-      kind: "entry",
-      key,
-      position: record.position,
-      originX: frameEntry.frameWidth * 0.5,
-      originY: frameEntry.frameHeight * 0.5,
-      tint,
-      rotation: 0,
-    });
+    items.push(...crystalSpinnerItems(assets, map, theme, record, frame));
   }
   return items;
+}
+
+/** One crystal's foreground draw pieces (4 slices for vanilla 24x24 sheets,
+ * one whole entry otherwise). `frame` resolves animated rainbow
+ * tints; pass null to get fixed tints only (used by the static group
+ * pre-render). */
+function crystalSpinnerItems(
+  assets: GameAssets,
+  map: GymMap,
+  theme: VisualTheme,
+  record: {
+    entity: MapEntity;
+    position: Vec2;
+    style: VisualTheme["spinner"];
+    kindIndex: number;
+  },
+  frame: number | null,
+): SpinnerDrawItem[] {
+  let style = record.style;
+  let available = frames(assets, style.foreground);
+  // Custom mod spinners whose texture pack is not loaded (for example
+  // FrostHelper's own icecrystal directory) fall back to the theme crystal.
+  if (available.length === 0) {
+    style = resolveSpinnerStyle(theme, record.entity.variant);
+    available = frames(assets, style.foreground);
+  }
+  if (available.length === 0) return [];
+  const seed = pseudo(
+    record.position.x * 0.17 +
+      record.position.y * 0.31 +
+      record.kindIndex * 7.13,
+  );
+  const key =
+    available[Math.floor(seed * available.length) % available.length];
+  const frameEntry = assets.entries[key];
+  if (!frameEntry) return [];
+  const rainbow = frame !== null && spinnerIsRainbow(record.entity, style);
+  const tint =
+    record.entity.tint ??
+    (rainbow && frame !== null ? spinnerHue(record.position, frame) : undefined);
+  const items: SpinnerDrawItem[] = [];
+  if (frameEntry.frameWidth === 24 && frameEntry.frameHeight === 24) {
+    const slices = [
+      {
+        checkX: -4,
+        checkY: -4,
+        sourceX: 0,
+        sourceY: 0,
+        originX: 12,
+        originY: 12,
+      },
+      { checkX: 4, checkY: -4, sourceX: 10, sourceY: 0, originX: 2, originY: 12 },
+      { checkX: 4, checkY: 4, sourceX: 10, sourceY: 10, originX: 2, originY: 2 },
+      { checkX: -4, checkY: 4, sourceX: 0, sourceY: 10, originX: 12, originY: 2 },
+    ];
+    for (const slice of slices) {
+      if (
+        pointInSolid(
+          map,
+          record.position.x + slice.checkX,
+          record.position.y + slice.checkY,
+        )
+      )
+        continue;
+      items.push({
+        kind: "slice",
+        key,
+        position: record.position,
+        sourceX: slice.sourceX,
+        sourceY: slice.sourceY,
+        originX: slice.originX,
+        originY: slice.originY,
+        tint,
+        rainbow,
+      });
+    }
+    return items;
+  }
+  items.push({
+    kind: "entry",
+    key,
+    position: record.position,
+    originX: frameEntry.frameWidth * 0.5,
+    originY: frameEntry.frameHeight * 0.5,
+    tint,
+    rainbow,
+    rotation: 0,
+  });
+  return items;
+}
+
+/** A connected run of static (non-rainbow) crystal spinners pre-rendered into
+ * one offscreen canvas. Per frame only the canvas is blitted, skipping the
+ * per-frame item collection and the five draw passes per slice. */
+interface SpinnerGroup {
+  /** World-space top-left of the pre-rendered canvas (includes outline pad). */
+  origin: Vec2;
+  width: number;
+  height: number;
+  items: SpinnerDrawItem[];
+  canvases: Map<string, HTMLCanvasElement>;
+}
+
+function spinnerItemExtent(
+  assets: GameAssets,
+  item: SpinnerDrawItem,
+): { x: number; y: number; w: number; h: number } | null {
+  if (item.kind === "slice") {
+    return {
+      x: Math.round(item.position.x) - item.originX,
+      y: Math.round(item.position.y) - item.originY,
+      w: 14,
+      h: 14,
+    };
+  }
+  const entry = assets.entries[item.key];
+  if (!entry) return null;
+  // Tinted entries draw the frame canvas (frameWidth x frameHeight) while
+  // untinted entries draw entry.width x entry.height; take the max so the
+  // pre-rendered canvas always covers both.
+  return {
+    x: item.position.x - item.originX + entry.drawOffsetX,
+    y: item.position.y - item.originY + entry.drawOffsetY,
+    w: Math.max(entry.width, entry.frameWidth),
+    h: Math.max(entry.height, entry.frameHeight),
+  };
+}
+
+function spinnerGroupInView(group: SpinnerGroup, camera: CameraBounds): boolean {
+  return (
+    group.origin.x + group.width >= camera.x - 32 &&
+    group.origin.x <= camera.x + camera.width + 32 &&
+    group.origin.y + group.height >= camera.y - 32 &&
+    group.origin.y <= camera.y + camera.height + 32
+  );
+}
+
+/** Build static spinner groups, or null when any crystal uses the animated
+ * rainbow tint (those maps keep the per-frame path). Positions come from the
+ * entity bounds (CrystalStaticSpinner is static), so groups only depend on
+ * map/theme/assets and are cached across frames. */
+function buildSpinnerGroups(
+  assets: GameAssets,
+  map: GymMap,
+  theme: VisualTheme,
+): SpinnerGroup[] | null {
+  const records: {
+    entity: MapEntity;
+    position: Vec2;
+    style: VisualTheme["spinner"];
+    kindIndex: number;
+  }[] = [];
+  let spinnerIndex = 0;
+  for (const entity of map.entities) {
+    if (entity.kind !== "crystal_static_spinner") continue;
+    const kindIndex = spinnerIndex++;
+    const style =
+      entitySpinnerStyle(entity) ?? resolveSpinnerStyle(theme, entity.variant);
+    if (spinnerIsRainbow(entity, style)) return null;
+    records.push({ entity, position: spinnerCenter(entity), style, kindIndex });
+  }
+  if (records.length === 0) return [];
+  const adjacency: number[][] = records.map(() => []);
+  for (let left = 0; left < records.length; left += 1)
+    for (let right = left + 1; right < records.length; right += 1) {
+      const a = records[left];
+      const b = records[right];
+      if (
+        a.style.background !== b.style.background ||
+        !spinnersConnect(a.entity, b.entity)
+      )
+        continue;
+      adjacency[left].push(right);
+      adjacency[right].push(left);
+    }
+  const visited = new Set<number>();
+  const groups: SpinnerGroup[] = [];
+  for (let start = 0; start < records.length; start += 1) {
+    if (visited.has(start)) continue;
+    const members: number[] = [];
+    const stack = [start];
+    visited.add(start);
+    while (stack.length) {
+      const node = stack.pop() as number;
+      members.push(node);
+      for (const next of adjacency[node])
+        if (!visited.has(next)) {
+          visited.add(next);
+          stack.push(next);
+        }
+    }
+    const items: SpinnerDrawItem[] = [];
+    // Background "filler" at the midpoint of every connected pair, exactly as
+    // CrystalStaticSpinner.CreateSprites does (same background, centers <24px).
+    for (let left = 0; left < members.length; left += 1)
+      for (let right = left + 1; right < members.length; right += 1) {
+        const a = records[members[left]];
+        const b = records[members[right]];
+        if (a.style.background !== b.style.background) continue;
+        const available = frames(assets, a.style.background);
+        if (available.length === 0) continue;
+        const midpoint = {
+          x: (a.position.x + b.position.x) * 0.5,
+          y: (a.position.y + b.position.y) * 0.5,
+        };
+        const seed = pseudo(midpoint.x * 0.23 + midpoint.y * 0.37);
+        const key =
+          available[Math.floor(seed * available.length) % available.length];
+        const entry = assets.entries[key];
+        if (!entry) continue;
+        items.push({
+          kind: "entry",
+          key,
+          position: midpoint,
+          originX: entry.frameWidth * 0.5,
+          originY: entry.frameHeight * 0.5,
+          rotation: Math.floor(seed * 4) * Math.PI * 0.5,
+        });
+      }
+    for (const member of members)
+      items.push(...crystalSpinnerItems(assets, map, theme, records[member], null));
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const item of items) {
+      const extent = spinnerItemExtent(assets, item);
+      if (!extent) continue;
+      minX = Math.min(minX, extent.x);
+      minY = Math.min(minY, extent.y);
+      maxX = Math.max(maxX, extent.x + extent.w);
+      maxY = Math.max(maxY, extent.y + extent.h);
+    }
+    if (!Number.isFinite(minX)) continue;
+    // 1px pad on every side covers the black outline offsets.
+    const origin = { x: Math.floor(minX) - 1, y: Math.floor(minY) - 1 };
+    groups.push({
+      origin,
+      width: Math.ceil(maxX - origin.x) + 1,
+      height: Math.ceil(maxY - origin.y) + 1,
+      items,
+      canvases: new Map(),
+    });
+  }
+  return groups;
+}
+
+function renderSpinnerGroupCanvas(
+  group: SpinnerGroup,
+  assets: GameAssets,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.ceil(group.width));
+  canvas.height = Math.max(1, Math.ceil(group.height));
+  const context = canvas.getContext("2d");
+  if (!context) return canvas;
+  context.translate(-group.origin.x, -group.origin.y);
+  drawSpinnerItems(context, assets, group.items);
+  return canvas;
+}
+
+/** True when every spinner's runtime state matches its static entity bounds
+ * (CrystalStaticSpinner never moves), so pre-rendered groups stay valid. */
+function spinnersAreStatic(map: GymMap, state: SimState): boolean {
+  let spinnerIndex = 0;
+  for (const entity of map.entities) {
+    if (entity.kind !== "crystal_static_spinner") continue;
+    const runtime = state.spinners?.[spinnerIndex];
+    spinnerIndex += 1;
+    if (!runtime) continue;
+    if (!runtime.visible) return false;
+    const center = spinnerCenter(entity);
+    if (
+      Math.abs(runtime.position.x - center.x) > 0.01 ||
+      Math.abs(runtime.position.y - center.y) > 0.01
+    )
+      return false;
+  }
+  return true;
 }
 
 function drawTheoCrystal(
@@ -2976,6 +3207,8 @@ interface GameViewDrawInput {
   stale: boolean;
   camera: CameraBounds;
   tileLayer: HTMLCanvasElement | undefined;
+  /** Static spinner groups pre-rendered per group; null falls back per-frame. */
+  spinnerGroups: SpinnerGroup[] | null;
 }
 
 function paintGame(
@@ -3029,15 +3262,31 @@ function paintGame(
   context.clip();
   drawThemeBackground(context, assets, map, theme, frame, camera);
   if (tileLayer) context.drawImage(tileLayer, map.bounds.x, map.bounds.y);
-  const spinnerItems = collectSpinnerDrawItems(
-    assets,
-    map,
-    frame,
-    state,
-    theme,
-    camera,
-  );
-  drawSpinnerItems(context, assets, spinnerItems);
+  const spinnerGroups = input.spinnerGroups;
+  if (spinnerGroups && spinnersAreStatic(map, state)) {
+    // Static crystals: blit one pre-rendered canvas per connected group
+    // (the five outline passes are baked in), instead of re-collecting items
+    // and re-issuing every drawImage on each frame.
+    for (const group of spinnerGroups) {
+      if (!spinnerGroupInView(group, camera)) continue;
+      let canvas = group.canvases.get("static");
+      if (!canvas) {
+        canvas = renderSpinnerGroupCanvas(group, assets);
+        group.canvases.set("static", canvas);
+      }
+      context.drawImage(canvas, group.origin.x, group.origin.y);
+    }
+  } else {
+    const spinnerItems = collectSpinnerDrawItems(
+      assets,
+      map,
+      frame,
+      state,
+      theme,
+      camera,
+    );
+    drawSpinnerItems(context, assets, spinnerItems);
+  }
   const kindCounts = new Map<EntityKind, number>();
   for (const [entityIndex, entity] of map.entities.entries()) {
     const kindIndex = kindCounts.get(entity.kind) ?? 0;
@@ -3128,6 +3377,10 @@ export const GameView = memo(function GameView({
       mergedAssets ? buildTileLayer(mergedAssets, map, solidGrid, theme) : undefined,
     [mergedAssets, map, solidGrid, theme],
   );
+  const spinnerGroups = useMemo(
+    () => (mergedAssets ? buildSpinnerGroups(mergedAssets, map, theme) : null),
+    [mergedAssets, map, theme],
+  );
   const camera = cameraViewport
     ? clampCameraViewport(map, cameraViewport)
     : cameraBounds(
@@ -3180,6 +3433,7 @@ export const GameView = memo(function GameView({
         stale,
         camera,
         tileLayer,
+        spinnerGroups,
       }
     : null;
 

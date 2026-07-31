@@ -70,20 +70,32 @@ export function spinnersConnect(left: MapEntity, right: MapEntity): boolean {
   return dx * dx + dy * dy < 576;
 }
 
-export function spinnerHue(
+/** Quantized hue bucket (0..47) for a rainbow crystal at a frame.
+ * Mirrors CrystalStaticSpinner.GetHue: 280 px loop, 50 units/second, hue
+ * 0.4..0.8. Exported separately so pre-rendered spinner groups can key their
+ * tinted canvases on a small integer instead of a per-frame hex string. */
+export function spinnerHueBucket(
   position: { x: number; y: number },
   frame: number,
-): string {
-  // Mirrors CrystalStaticSpinner.GetHue: 280 px loop, 50 units/second,
-  // hue 0.4..0.8, saturation 0.4 and value 0.9.
+): number {
   const loop =
     ((((Math.hypot(position.x, position.y) + (frame / 60) * 50) % 280) + 280) %
       280) /
     280;
   const yoYo = loop <= 0.5 ? loop * 2 : (1 - loop) * 2;
-  const hue = 0.4 + yoYo * 0.4;
-  const quantizedHue = Math.round(hue * 48) / 48;
-  return hsvToHex(quantizedHue, 0.4, 0.9);
+  return Math.round((0.4 + yoYo * 0.4) * 48);
+}
+
+/** Hex color for a quantized hue bucket (see {@link spinnerHueBucket}). */
+export function spinnerHueForBucket(bucket: number): string {
+  return hsvToHex(bucket / 48, 0.4, 0.9);
+}
+
+export function spinnerHue(
+  position: { x: number; y: number },
+  frame: number,
+): string {
+  return spinnerHueForBucket(spinnerHueBucket(position, frame));
 }
 
 function hsvToHex(hue: number, saturation: number, value: number): string {
