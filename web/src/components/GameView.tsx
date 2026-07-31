@@ -2421,11 +2421,16 @@ function drawCrystalSpinner(
   const frameEntry = assets.entries[key];
   if (!frameEntry) return;
   // Only vanilla CrystalStaticSpinner sheets are 24x24 corner-slice layouts
-  // (the four 14x14 pieces reassemble the crystal). SJ mod spinners (the gym
-  // Orb, brambles, ...) are full-frame art: VivHelper.CustomSpinner and
-  // FrostHelper.IceSpinner draw the whole sheet centered, so slicing them
-  // would fragment the crystal and inflate it to the full 24px frame.
-  const vanillaSliceLayout = !entity.texture;
+  // (the four 14x14 pieces reassemble the crystal). Vanilla sheets are packed
+  // TRIMMED (19x19 texture inside a 24x24 frame with a draw offset), while SJ
+  // mod spinners (the gym Orb, brambles, ...) are full-frame 24x24 art that
+  // VivHelper.CustomSpinner / FrostHelper.IceSpinner draw whole. Slicing a
+  // full-frame sheet would cut sharp seams straight through the crystal.
+  const vanillaSliceLayout =
+    frameEntry.width < frameEntry.frameWidth ||
+    frameEntry.height < frameEntry.frameHeight ||
+    frameEntry.drawOffsetX !== 0 ||
+    frameEntry.drawOffsetY !== 0;
   if (vanillaSliceLayout && frameEntry.frameWidth === 24 && frameEntry.frameHeight === 24) {
     const slices = [
       {
