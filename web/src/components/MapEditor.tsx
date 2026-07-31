@@ -1593,7 +1593,7 @@ export function MapEditor({
           stale={false}
           theme={theme}
           cameraViewport={experiencing ? undefined : cameraViewport}
-          liveRefs={liveRefs}
+          liveRefs={experiencing ? liveRefs : undefined}
         >
           {(viewport) => (
             <>
