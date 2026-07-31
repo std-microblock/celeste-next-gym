@@ -58,6 +58,12 @@ pub enum EntityKind {
     BadelineBoost,
     Spring,
     Strawberry,
+    /// Vanilla Refill PlayerCollider entity. direction.x stores the
+    /// `twoDash` flag; `single_use` stores `oneUse`.
+    Refill,
+    /// Vanilla FallingBlock Solid. direction.x stores the `climbFall` flag,
+    /// direction.y the `behind` depth flag; width/height come from attributes.
+    FallingBlock,
     Wind,
     /// Vanilla hot-state Core BounceBlock Solid.
     BounceBlock,
@@ -480,6 +486,35 @@ pub(crate) fn encode_celeste_rooms(
                         vec![],
                     ))
                 }
+                EntityKind::Refill => Some(element(
+                    "refill",
+                    [
+                        ("id", BinaryValue::Int(id)),
+                        ("oneUse", BinaryValue::Bool(entity.single_use)),
+                        ("originX", BinaryValue::Int(4)),
+                        ("originY", BinaryValue::Int(4)),
+                        ("twoDash", BinaryValue::Bool(entity.direction.x != 0.0)),
+                        ("x", BinaryValue::Int(x + width / 2)),
+                        ("y", BinaryValue::Int(y + height / 2)),
+                    ],
+                    vec![],
+                )),
+                EntityKind::FallingBlock => Some(element(
+                    "fallingBlock",
+                    [
+                        ("behind", BinaryValue::Bool(entity.direction.y != 0.0)),
+                        ("climbFall", BinaryValue::Bool(entity.direction.x != 0.0)),
+                        ("height", BinaryValue::Int(height)),
+                        ("id", BinaryValue::Int(id)),
+                        ("originX", BinaryValue::Int(0)),
+                        ("originY", BinaryValue::Int(0)),
+                        ("tiletype", BinaryValue::Int(b'3' as i32)),
+                        ("width", BinaryValue::Int(width)),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![],
+                )),
                 EntityKind::Strawberry => Some(element(
                     "strawberry",
                     [
@@ -1053,6 +1088,8 @@ fn map_from_binary_inner(
                 "badelineBoost" => EntityKind::BadelineBoost,
                 "spring" | "wallSpringLeft" | "wallSpringRight" => EntityKind::Spring,
                 "strawberry" => EntityKind::Strawberry,
+                "refill" => EntityKind::Refill,
+                "fallingBlock" => EntityKind::FallingBlock,
                 "windTrigger" => EntityKind::Wind,
                 "bounceBlock" => EntityKind::BounceBlock,
                 "theoCrystal" => EntityKind::TheoCrystal,
@@ -1081,6 +1118,7 @@ fn map_from_binary_inner(
                 EntityKind::Cloud => 32.0,
                 EntityKind::BadelineBoost => 32.0,
                 EntityKind::Strawberry => 14.0,
+                EntityKind::Refill => 16.0,
                 EntityKind::TheoCrystal | EntityKind::Glider | EntityKind::TempleGate => 8.0,
                 EntityKind::CrystalStaticSpinner => 16.0,
                 EntityKind::Lookout => 4.0,
@@ -1124,6 +1162,32 @@ fn map_from_binary_inner(
                 "cloud" => (
                     Rect::new(ex - raw_width * 0.5, ey, raw_width, raw_height),
                     Vec2::default(),
+                ),
+                "refill" => (
+                    Rect::new(ex - 8.0, ey - 8.0, 16.0, 16.0),
+                    Vec2::new(
+                        if attr_bool(el, "twoDash", false) {
+                            1.0
+                        } else {
+                            0.0
+                        },
+                        0.0,
+                    ),
+                ),
+                "fallingBlock" => (
+                    Rect::new(ex, ey, raw_width, raw_height),
+                    Vec2::new(
+                        if attr_bool(el, "climbFall", true) {
+                            1.0
+                        } else {
+                            0.0
+                        },
+                        if attr_bool(el, "behind", false) {
+                            1.0
+                        } else {
+                            0.0
+                        },
+                    ),
                 ),
                 "spring" => (
                     Rect::new(ex - 8.0, ey - 6.0, 16.0, 6.0),
@@ -1192,10 +1256,10 @@ fn map_from_binary_inner(
                 bounds,
                 direction,
                 shielded: attr_bool(el, "shielded", false),
-                single_use: if kind == EntityKind::RisingLava {
-                    attr_bool(el, "intro", false)
-                } else {
-                    attr_bool(el, "singleUse", false)
+                single_use: match kind {
+                    EntityKind::RisingLava => attr_bool(el, "intro", false),
+                    EntityKind::Refill => attr_bool(el, "oneUse", false),
+                    _ => attr_bool(el, "singleUse", false),
                 },
                 nodes: el
                     .children
@@ -1339,6 +1403,7 @@ impl Map {
                     entity.kind,
                     EntityKind::BounceBlock
                         | EntityKind::CassetteBlock
+                        | EntityKind::FallingBlock
                         | EntityKind::MoveBlock
                         | EntityKind::MovingSolid
                         | EntityKind::ZipMover
@@ -1444,6 +1509,48 @@ mod tests {
         let bytes = encode_celeste_map(&map, "CelesteGymPlayground", "berry").unwrap();
         let decoded = decode_map_room(&bytes, Some("berry")).unwrap();
         assert_eq!(decoded.entities, vec![berry]);
+    }
+
+    #[test]
+    fn celeste_refill_round_trips_center_hitbox_and_dash_flags() {
+        let refill = Entity {
+            kind: EntityKind::Refill,
+            bounds: Rect::new(136.0, 88.0, 16.0, 16.0),
+            direction: Vec2::new(1.0, 0.0),
+            shielded: false,
+            single_use: true,
+            nodes: vec![],
+            name: "refill".to_owned(),
+        };
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            entities: vec![refill.clone()],
+            ..Map::default()
+        };
+        let bytes = encode_celeste_map(&map, "CelesteGymPlayground", "refills").unwrap();
+        let decoded = decode_map_room(&bytes, Some("refills")).unwrap();
+        assert_eq!(decoded.entities, vec![refill]);
+    }
+
+    #[test]
+    fn celeste_falling_block_round_trips_its_solid_rect_and_climb_fall_flag() {
+        let block = Entity {
+            kind: EntityKind::FallingBlock,
+            bounds: Rect::new(112.0, 24.0, 24.0, 40.0),
+            direction: Vec2::new(1.0, 0.0),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "fallingBlock".to_owned(),
+        };
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            entities: vec![block.clone()],
+            ..Map::default()
+        };
+        let bytes = encode_celeste_map(&map, "CelesteGymPlayground", "blocks").unwrap();
+        let decoded = decode_map_room(&bytes, Some("blocks")).unwrap();
+        assert_eq!(decoded.entities, vec![block]);
     }
 
     #[test]

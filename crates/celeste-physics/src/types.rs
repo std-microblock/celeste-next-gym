@@ -345,6 +345,54 @@ pub struct LookoutSnapshot {
     pub hud_easer: f32,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct RefillSnapshot {
+    /// Regular diamond (one dash) or pink Farewell diamond (two dashes).
+    pub two_dashes: bool,
+    /// `oneUse` removes the entity instead of respawning after 2.5 seconds.
+    pub one_use: bool,
+    /// Remaining seconds before `Respawn` restores collidability. Touching a
+    /// refill while `UseRefill` succeeds sets this to 2.5.
+    pub respawn_timer: f32,
+    /// Mirrors the entity `Collidable` flag. The 16x16 PlayerCollider only
+    /// fires while this is true.
+    pub collidable: bool,
+    /// One-use refills remove themselves from the room after the shatter
+    /// coroutine; the snapshot stays indexed for split-simulation stability.
+    pub removed: bool,
+}
+
+/// Vanilla `FallingBlock` Solid coroutine state. `position` is the block's
+/// top-left corner, matching both `Entity.Position` and the Solid collider.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct FallingBlockSnapshot {
+    /// 0 waiting for a trigger, 1 shaking, 2 player-wait before the drop,
+    /// 3 falling, 4 impact landing shake, 5 landed permanently (Safe),
+    /// 6 resting on a platform below while waiting to fall again.
+    pub phase: u8,
+    pub position: Vec2,
+    /// Original room position captured before the runtime map is moved.
+    pub start: Vec2,
+    /// Platform movementCounter retained by MoveVCollideSolids across frames.
+    pub remainder_y: f32,
+    /// Current vertical fall speed, approached toward 160 px/s at 500 px/s^2.
+    pub fall_speed: f32,
+    /// Remaining seconds of the pre-drop shake or the impact landing shake.
+    pub shake_timer: f32,
+    /// Remaining seconds of the player-wait window before the drop, or the
+    /// 0.1-second platform-rest tick.
+    pub wait_timer: f32,
+    /// Public `FallDelay` seconds the sequence waits after triggering.
+    pub fall_delay: f32,
+    /// `Triggered` set by OnStaticMoverTrigger; also forces PlayerWaitCheck.
+    pub triggered: bool,
+    pub collidable: bool,
+    pub removed: bool,
+    pub safe: bool,
+}
+
 fn default_stamina() -> f32 {
     110.0
 }
@@ -508,6 +556,10 @@ pub struct PlayerSnapshot {
     pub seekers: Vec<SeekerSnapshot>,
     /// Per-entity CloseBehindPlayerAlways TempleGate state.
     pub temple_gates: Vec<TempleGateSnapshot>,
+    /// Per-entity vanilla Refill state, in map entity order.
+    pub refills: Vec<RefillSnapshot>,
+    /// Per-entity vanilla FallingBlock Solid coroutine state, in map entity order.
+    pub falling_blocks: Vec<FallingBlockSnapshot>,
     /// Map-order TheoCrystal index currently held by Player.
     pub holding_theo: Option<u16>,
     /// Map-order Glider index currently held by Player.
@@ -677,6 +729,8 @@ impl Default for PlayerSnapshot {
             clouds: vec![],
             seekers: vec![],
             temple_gates: vec![],
+            refills: vec![],
+            falling_blocks: vec![],
             holding_theo: None,
             holding_glider: None,
             min_hold_timer: 0.0,

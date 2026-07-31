@@ -35,6 +35,8 @@ pub enum FixtureEntityKind {
     BadelineBoost,
     Spring,
     Strawberry,
+    Refill,
+    FallingBlock,
     Wind,
     BounceBlock,
     TheoCrystal,
@@ -460,6 +462,8 @@ fn validate_entity_fields(entity: &FixtureEntity, room: &str) -> Result<(), MapF
             entity.kind,
             FixtureEntityKind::Spikes
                 | FixtureEntityKind::Spring
+                | FixtureEntityKind::Refill
+                | FixtureEntityKind::FallingBlock
                 | FixtureEntityKind::Wind
                 | FixtureEntityKind::MoveBlock
                 | FixtureEntityKind::CassetteBlock
@@ -625,6 +629,8 @@ fn entity(value: &FixtureEntity) -> Entity {
             FixtureEntityKind::BadelineBoost => EntityKind::BadelineBoost,
             FixtureEntityKind::Spring => EntityKind::Spring,
             FixtureEntityKind::Strawberry => EntityKind::Strawberry,
+            FixtureEntityKind::Refill => EntityKind::Refill,
+            FixtureEntityKind::FallingBlock => EntityKind::FallingBlock,
             FixtureEntityKind::Wind => EntityKind::Wind,
             FixtureEntityKind::BounceBlock => EntityKind::BounceBlock,
             FixtureEntityKind::TheoCrystal => EntityKind::TheoCrystal,
