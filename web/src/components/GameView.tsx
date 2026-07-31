@@ -467,6 +467,111 @@ function drawOutlinedTintedEntry(
   drawEntry(context, assets, key, x, y, originX, originY, 1, 1, tint, rotation);
 }
 
+/** Crop a custom spinner sheet to its opaque blob. The in-game art ships as a
+ * full 24x24 frame, so its transparent padding lets the wall bricks behind the
+ * crystal show through as black grid lines. Drawing only the blob keeps the
+ * crystal clean (the result is cached in the bounded tinted cache). */
+const spinnerTrimCache = new Map<
+  string,
+  { canvas: HTMLCanvasElement; offsetX: number; offsetY: number }
+>();
+
+function trimmedSpinner(
+  assets: GameAssets,
+  key: string,
+  tint?: string,
+): { canvas: HTMLCanvasElement; offsetX: number; offsetY: number } | undefined {
+  const entry = assets.entries[key];
+  if (!entry) return undefined;
+  const cacheKey = `trim:${key}:${tint ?? ""}`;
+  const cached = spinnerTrimCache.get(cacheKey);
+  if (cached) return cached;
+  const frame = framedEntry(assets, key);
+  if (!frame) return undefined;
+  const frameContext = frame.getContext("2d");
+  if (!frameContext) return undefined;
+  const data = frameContext.getImageData(0, 0, frame.width, frame.height).data;
+  let minX = frame.width;
+  let minY = frame.height;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < frame.height; y += 1) {
+    for (let x = 0; x < frame.width; x += 1) {
+      if (data[(y * frame.width + x) * 4 + 3] > 40) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < minX) return undefined;
+  const canvas = document.createElement("canvas");
+  canvas.width = maxX - minX + 1;
+  canvas.height = maxY - minY + 1;
+  const context = canvas.getContext("2d");
+  if (!context) return undefined;
+  context.drawImage(
+    frame,
+    minX,
+    minY,
+    canvas.width,
+    canvas.height,
+    0,
+    0,
+    canvas.width,
+    canvas.height,
+  );
+  if (tint) {
+    context.globalCompositeOperation = "source-in";
+    context.fillStyle = tint;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  const result = {
+    canvas,
+    offsetX: minX + canvas.width / 2 - frame.width / 2,
+    offsetY: minY + canvas.height / 2 - frame.height / 2,
+  };
+  if (spinnerTrimCache.size >= 600) {
+    const oldest = spinnerTrimCache.keys().next().value;
+    if (oldest !== undefined) spinnerTrimCache.delete(oldest);
+  }
+  spinnerTrimCache.set(cacheKey, result);
+  return result;
+}
+
+function drawTrimmedSpinner(
+  context: CanvasRenderingContext2D,
+  assets: GameAssets,
+  key: string,
+  x: number,
+  y: number,
+  tint?: string,
+): void {
+  const trimmed = trimmedSpinner(assets, key, tint);
+  if (!trimmed) return;
+  const cx = Math.round(x + trimmed.offsetX);
+  const cy = Math.round(y + trimmed.offsetY);
+  const originX = Math.floor(trimmed.canvas.width / 2);
+  const originY = Math.floor(trimmed.canvas.height / 2);
+  for (const [dx, dy] of [
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1],
+  ] as const) {
+    const outline = trimmedSpinner(assets, key, "#000000");
+    if (outline) {
+      context.drawImage(
+        outline.canvas,
+        cx + dx - originX,
+        cy + dy - originY,
+      );
+    }
+  }
+  context.drawImage(trimmed.canvas, cx - originX, cy - originY);
+}
+
 function drawCenteredEntry(
   context: CanvasRenderingContext2D,
   assets: GameAssets,
@@ -2352,18 +2457,10 @@ function drawCrystalSpinner(
     }
     return;
   }
-  // Non-24x24 custom sheets (QuantumSpaceman stars, pixelator towers, ...)
-  // are rendered whole at their natural size, like the mod's own entity.
-  drawOutlinedTintedEntry(
-    context,
-    assets,
-    key,
-    position.x,
-    position.y,
-    frameEntry.frameWidth * 0.5,
-    frameEntry.frameHeight * 0.5,
-    tint,
-  );
+  // Custom sheets (the gym Orb, brambles, non-24x24 stars/towers, ...) are
+  // rendered whole like the mod's own entity, cropped to the opaque blob so
+  // wall bricks never show through the frame's transparent padding.
+  drawTrimmedSpinner(context, assets, key, position.x, position.y, tint);
 }
 
 function drawTheoCrystal(
