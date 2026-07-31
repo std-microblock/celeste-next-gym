@@ -113,6 +113,20 @@ pub struct Entity {
     pub name: String,
 }
 
+/// Visual/skin metadata for one decoded entity, kept separate from the physics
+/// model so decode-only extras (mod custom spinners, falling-block tiletype)
+/// never change collision semantics.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct EntityVisual {
+    #[serde(default)]
+    pub texture: Option<String>,
+    #[serde(default)]
+    pub tile: Option<char>,
+    #[serde(default)]
+    pub tint: Option<String>,
+    #[serde(default)]
+    pub variant: Option<String>,
+}
 /// Runtime data for one Celeste room. `Level.LoadLevel` replaces room-local
 /// solids and entities during a transition while the session-wide state
 /// (notably CassetteBlockManager) remains alive.
@@ -152,6 +166,13 @@ pub struct Map {
     pub entities: Vec<Entity>,
     #[serde(default)]
     pub source_package: Option<String>,
+    /// Source per-room solid char grid (one string per row). Decode-only extra
+    /// used by the web renderer to autotile each cell with its own tileset.
+    #[serde(default)]
+    pub tile_grid: Vec<String>,
+    /// Visual/skin metadata aligned by index with entities.
+    #[serde(default)]
+    pub entity_visuals: Vec<EntityVisual>,
 }
 
 impl Default for Map {
@@ -165,6 +186,8 @@ impl Default for Map {
             solids: vec![],
             entities: vec![],
             source_package: None,
+            tile_grid: vec![],
+            entity_visuals: vec![],
         }
     }
 }
@@ -508,7 +531,16 @@ pub(crate) fn encode_celeste_rooms(
                         ("id", BinaryValue::Int(id)),
                         ("originX", BinaryValue::Int(0)),
                         ("originY", BinaryValue::Int(0)),
-                        ("tiletype", BinaryValue::Int(b'3' as i32)),
+                        (
+                            "tiletype",
+                            BinaryValue::Int(
+                                map.entity_visuals
+                                    .get(index)
+                                    .and_then(|visual| visual.tile)
+                                    .map(|tile| tile as i32)
+                                    .unwrap_or(b'3' as i32),
+                            ),
+                        ),
                         ("width", BinaryValue::Int(width)),
                         ("x", BinaryValue::Int(x)),
                         ("y", BinaryValue::Int(y)),
@@ -709,16 +741,22 @@ pub(crate) fn encode_celeste_rooms(
                     ],
                     vec![],
                 )),
-                EntityKind::CrystalStaticSpinner => Some(element(
-                    "spinner",
-                    [
+                EntityKind::CrystalStaticSpinner => {
+                    let mut spinner_attrs = vec![
                         ("attachToSolid", BinaryValue::Bool(false)),
                         ("id", BinaryValue::Int(id)),
                         ("x", BinaryValue::Int(x + width / 2)),
                         ("y", BinaryValue::Int(y + height / 2)),
-                    ],
-                    vec![],
-                )),
+                    ];
+                    if let Some(variant) = map
+                        .entity_visuals
+                        .get(index)
+                        .and_then(|visual| visual.variant.as_ref())
+                    {
+                        spinner_attrs.push(("type", BinaryValue::String(variant.clone())));
+                    }
+                    Some(element_vec("spinner", spinner_attrs, vec![]))
+                }
                 EntityKind::Lookout => Some(element(
                     // `Level.LoadLevel` instantiates the vanilla Lookout under the
                     // map entity name `towerviewer`; `lookout` is only the Rust
@@ -1001,6 +1039,14 @@ fn attr_text<'a>(el: &'a BinaryElement, key: &str) -> Option<&'a str> {
     }
 }
 
+fn attr_char(el: &BinaryElement, key: &str) -> Option<char> {
+    match el.attributes.get(key) {
+        Some(BinaryValue::String(v)) => v.chars().next(),
+        Some(BinaryValue::Int(v)) => char::from_u32(*v as u32),
+        _ => None,
+    }
+}
+
 fn attr_bool(el: &BinaryElement, key: &str, default: bool) -> bool {
     match el.attributes.get(key) {
         Some(BinaryValue::Bool(value)) => *value,
@@ -1101,7 +1147,9 @@ fn map_from_binary_inner(
                 "moveBlock" => EntityKind::MoveBlock,
                 "templeGate" => EntityKind::TempleGate,
                 "cassetteBlock" => EntityKind::CassetteBlock,
-                "spinner" => EntityKind::CrystalStaticSpinner,
+                "spinner" | "VivHelper/CustomSpinner" | "FrostHelper/IceSpinner" => {
+                    EntityKind::CrystalStaticSpinner
+                }
                 "towerviewer" | "lookout" => EntityKind::Lookout,
                 "celesteGymMovingSolid" => EntityKind::MovingSolid,
                 _ => EntityKind::Unknown,
@@ -1251,6 +1299,43 @@ fn map_from_binary_inner(
                 ),
                 _ => (Rect::new(ex, ey, raw_width, raw_height), Vec2::default()),
             };
+            let visual = match el.name.as_str() {
+                "VivHelper/CustomSpinner" => {
+                    let dir = attr_text(el, "Directory").unwrap_or_default();
+                    let sub = attr_text(el, "Subdirectory").unwrap_or_default();
+                    EntityVisual {
+                        texture: (!dir.is_empty()).then(|| {
+                            if sub.is_empty() {
+                                format!("{dir}/fg")
+                            } else {
+                                format!("{dir}/fg_{sub}")
+                            }
+                        }),
+                        ..EntityVisual::default()
+                    }
+                }
+                "FrostHelper/IceSpinner" => {
+                    let dir = attr_text(el, "directory").unwrap_or_default();
+                    EntityVisual {
+                        // "danger/crystal" is the vanilla crystal directory, whose
+                        // fg_blue/fg_red/... sheets the custom entity does not select;
+                        // let the web fall back to the theme's own crystal.
+                        texture: (!dir.is_empty() && dir != "danger/crystal")
+                            .then(|| format!("{dir}/fg")),
+                        tint: attr_text(el, "tint").map(str::to_owned),
+                        ..EntityVisual::default()
+                    }
+                }
+                "spinner" => EntityVisual {
+                    variant: attr_text(el, "type").map(str::to_owned),
+                    ..EntityVisual::default()
+                },
+                _ => EntityVisual {
+                    tile: (kind == EntityKind::FallingBlock)
+                        .then(|| attr_char(el, "tiletype").unwrap_or('3')),
+                    ..EntityVisual::default()
+                },
+            };
             map.entities.push(Entity {
                 kind,
                 bounds,
@@ -1271,6 +1356,7 @@ fn map_from_binary_inner(
                     .collect(),
                 name: el.name.clone(),
             });
+            map.entity_visuals.push(visual);
         }
     }
 
@@ -1314,6 +1400,7 @@ fn map_from_binary_inner(
     if let Some(solids) = level.children.iter().find(|e| e.name == "solids")
         && let Some(text) = attr_text(solids, "innerText")
     {
+        map.tile_grid = text.lines().map(str::to_owned).collect();
         map.solids.extend(tile_rects(text, x, y));
     }
     if include_transition_runtime {
@@ -1755,6 +1842,88 @@ mod tests {
         assert_eq!(decoded.entities[0].direction, Vec2::new(2.0, 1.0));
         assert_eq!(decoded.entities[1].kind, EntityKind::CrystalStaticSpinner);
         assert_eq!(decoded.entities[1].bounds, map.entities[1].bounds);
+    }
+
+    #[test]
+    fn mod_custom_spinners_and_falling_block_tiletype_decode_with_visuals() {
+        let root = BinaryElement {
+            package: Some("StrawberryJam2021".to_owned()),
+            name: "Map".to_owned(),
+            attributes: BTreeMap::new(),
+            children: vec![
+                element("Filler", [], vec![]),
+                element(
+                    "levels",
+                    [],
+                    vec![element(
+                        "level",
+                        [
+                            ("name", BinaryValue::String("a".to_owned())),
+                            ("x", BinaryValue::Int(0)),
+                            ("y", BinaryValue::Int(0)),
+                            ("width", BinaryValue::Int(320)),
+                            ("height", BinaryValue::Int(180)),
+                        ],
+                        vec![
+                            element("solids", [("innerText", BinaryValue::String("........\n........".to_owned()))], vec![]),
+                            element(
+                                "entities",
+                                [],
+                                vec![
+                                    element(
+                                        "VivHelper/CustomSpinner",
+                                        [
+                                            ("x", BinaryValue::Int(128)),
+                                            ("y", BinaryValue::Int(64)),
+                                            ("Directory", BinaryValue::String("danger/SJ2021/Gym/Orb".to_owned())),
+                                            ("Subdirectory", BinaryValue::String("beg".to_owned())),
+                                        ],
+                                        vec![],
+                                    ),
+                                    element(
+                                        "FrostHelper/IceSpinner",
+                                        [
+                                            ("x", BinaryValue::Int(160)),
+                                            ("y", BinaryValue::Int(64)),
+                                            ("directory", BinaryValue::String("danger/SJ2021/Ceph/Spinner".to_owned())),
+                                            ("tint", BinaryValue::String("ffe5e4".to_owned())),
+                                        ],
+                                        vec![],
+                                    ),
+                                    element(
+                                        "fallingBlock",
+                                        [
+                                            ("x", BinaryValue::Int(200)),
+                                            ("y", BinaryValue::Int(64)),
+                                            ("width", BinaryValue::Int(24)),
+                                            ("height", BinaryValue::Int(16)),
+                                            ("tiletype", BinaryValue::String(".".to_owned())),
+                                        ],
+                                        vec![],
+                                    ),
+                                ],
+                            ),
+                        ],
+                    )],
+                ),
+            ],
+        };
+        let bytes = encode_celeste_bin(&root).expect("custom entity map should encode");
+        let decoded = decode_map_room(&bytes, Some("a")).unwrap();
+        assert_eq!(decoded.entities[0].kind, EntityKind::CrystalStaticSpinner);
+        assert_eq!(decoded.entities[1].kind, EntityKind::CrystalStaticSpinner);
+        assert_eq!(decoded.entities[2].kind, EntityKind::FallingBlock);
+        assert_eq!(
+            decoded.entity_visuals[0].texture.as_deref(),
+            Some("danger/SJ2021/Gym/Orb/fg_beg")
+        );
+        assert_eq!(
+            decoded.entity_visuals[1].texture.as_deref(),
+            Some("danger/SJ2021/Ceph/Spinner/fg")
+        );
+        assert_eq!(decoded.entity_visuals[1].tint.as_deref(), Some("ffe5e4"));
+        assert_eq!(decoded.entity_visuals[2].tile, Some('.'));
+        assert_eq!(decoded.tile_grid, vec!["........", "........"]);
     }
 
     #[test]

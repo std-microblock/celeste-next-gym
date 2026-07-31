@@ -238,6 +238,12 @@ export interface MapEntity {
   single_use?: boolean;
   /** Web editor visual override for entities such as crystal spinners. */
   variant?: string;
+  /** Decoded custom-spinner foreground prefix (VivHelper/FrostHelper). */
+  texture?: string;
+  /** Decoded falling-block tiletype char. */
+  tile?: string;
+  /** Decoded custom-spinner tint (hex, FrostHelper). */
+  tint?: string;
   nodes?: Vec2[];
   name: string;
 }
@@ -250,6 +256,8 @@ export interface GymMap {
   solids: { x: number; y: number; width: number; height: number }[];
   entities: MapEntity[];
   source_package: string | null;
+  /** Decoded per-cell solid char grid (one row per line) for theme autotiling. */
+  tile_grid?: string[];
 }
 
 export type KeyBindings = Record<Action, string>;

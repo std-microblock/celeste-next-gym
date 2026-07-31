@@ -11,6 +11,8 @@ pub fn mechanics_playground() -> Map {
         transition_runtime: vec![],
         room_spawns: vec![Vec2::new(64.0, 496.0)],
         spawn: Vec2::new(64.0, 496.0),
+        tile_grid: vec![],
+        entity_visuals: vec![],
         solids: vec![
             Rect::new(0.0, 496.0, 960.0, 48.0),
             Rect::new(0.0, 0.0, 24.0, 496.0),

@@ -66,13 +66,31 @@ self.onmessage = async (event: MessageEvent<Request>) => {
             request.room,
           ),
         ),
-      ) as { map?: Omit<GymMap, "name">; error?: string };
-      if (!response.map)
-        throw new Error(response.error ?? "WASM 无法解码 Celeste 地图");
+      ) as {
+        map?: Omit<GymMap, "name"> & {
+          entity_visuals?: {
+            texture?: string;
+            tile?: string;
+            tint?: string;
+            variant?: string;
+          }[];
+        };
+        error?: string;
+      };
+      const decoded = response.map;
+      if (!decoded) throw new Error(response.error ?? "WASM 无法解码 Celeste 地图");
       self.postMessage({
         id: request.id,
         ok: true,
-        value: { ...response.map, name: request.name },
+        value: {
+          ...decoded,
+          name: request.name,
+          tile_grid: decoded.tile_grid,
+          entities: (decoded.entities ?? []).map((entity, index) => ({
+            ...entity,
+            ...(decoded.entity_visuals?.[index] ?? {}),
+          })),
+        },
       });
       return;
     }
