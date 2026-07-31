@@ -167,6 +167,7 @@ pub fn encode_map_fixture(fixture: &CelesteMapFixture) -> Result<Vec<u8>, MapFix
                 solids: room.solids.iter().copied().map(rect).collect(),
                 entities: room.entities.iter().map(entity).collect(),
                 source_package: Some(fixture.package.clone()),
+            backdrops: vec![],
             };
             (room.name.clone(), map)
         })

@@ -107,6 +107,72 @@ pub struct Entity {
     pub name: String,
 }
 
+/// A parallax image backdrop from the map's Style/Backgrounds element. Only
+/// image ("parallax") backdrops are retained; procedural kinds (snow, rain,
+/// gradients) are skipped by the simulator and the web renderer.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Backdrop {
+    /// Backdrop kind as stored in the map ("parallax").
+    #[serde(default)]
+    pub kind: String,
+    /// Gameplay atlas key for the backdrop image.
+    #[serde(default)]
+    pub texture: String,
+    /// World-space anchor position (screen-space for scroll == 0 layers).
+    #[serde(default)]
+    pub x: f32,
+    #[serde(default)]
+    pub y: f32,
+    /// Camera parallax factors (vanilla Backdrop.Scroll).
+    #[serde(default = "one")]
+    pub scroll_x: f32,
+    #[serde(default = "one")]
+    pub scroll_y: f32,
+    /// Automatic drift in pixels/second (vanilla Backdrop.Speed).
+    #[serde(default)]
+    pub speed_x: f32,
+    #[serde(default)]
+    pub speed_y: f32,
+    /// Tile the texture across the viewport (vanilla defaults to loop).
+    #[serde(default = "true_val")]
+    pub loop_x: bool,
+    #[serde(default = "true_val")]
+    pub loop_y: bool,
+    #[serde(default)]
+    pub flip_x: bool,
+    #[serde(default)]
+    pub flip_y: bool,
+    /// Hex color multiplier ("rrggbb"); "ffffff" is the default.
+    #[serde(default)]
+    pub color: String,
+    /// Opacity multiplier (vanilla folds it into the color).
+    #[serde(default = "one")]
+    pub alpha: f32,
+    /// Blend mode: "alphablend" or "additive".
+    #[serde(default)]
+    pub blend_mode: String,
+    /// Comma-separated room globs where this backdrop is hidden.
+    #[serde(default)]
+    pub exclude: String,
+    /// Comma-separated room globs where this backdrop is shown; empty = all.
+    #[serde(default)]
+    pub only: String,
+    /// Session flag required for the backdrop.
+    #[serde(default)]
+    pub flag: String,
+    /// Session flag that hides the backdrop.
+    #[serde(default)]
+    pub not_flag: String,
+}
+
+fn one() -> f32 {
+    1.0
+}
+
+fn true_val() -> bool {
+    true
+}
+
 /// Runtime data for one Celeste room. `Level.LoadLevel` replaces room-local
 /// solids and entities during a transition while the session-wide state
 /// (notably CassetteBlockManager) remains alive.
@@ -146,6 +212,9 @@ pub struct Map {
     pub entities: Vec<Entity>,
     #[serde(default)]
     pub source_package: Option<String>,
+    /// Image backdrops from the map's Style/Backgrounds element.
+    #[serde(default)]
+    pub backdrops: Vec<Backdrop>,
 }
 
 impl Default for Map {
@@ -159,6 +228,7 @@ impl Default for Map {
             solids: vec![],
             entities: vec![],
             source_package: None,
+            backdrops: vec![],
         }
     }
 }
@@ -1252,6 +1322,7 @@ fn map_from_binary_inner(
     {
         map.solids.extend(tile_rects(text, x, y));
     }
+    map.backdrops = parse_backdrops(&root);
     if include_transition_runtime {
         map.transition_runtime = levels
             .children
@@ -1273,6 +1344,96 @@ fn map_from_binary_inner(
             .collect::<Result<Vec<_>, MapError>>()?;
     }
     Ok(map)
+}
+
+fn parse_backdrops(root: &BinaryElement) -> Vec<Backdrop> {
+    let Some(style) = root.children.iter().find(|child| child.name == "Style") else {
+        return vec![];
+    };
+    let Some(backgrounds) = style
+        .children
+        .iter()
+        .find(|child| child.name.eq_ignore_ascii_case("Backgrounds"))
+    else {
+        return vec![];
+    };
+    let mut backdrops = Vec::new();
+    for child in &backgrounds.children {
+        if child.name.eq_ignore_ascii_case("apply") {
+            for inner in &child.children {
+                parse_backdrop(inner, Some(child), &mut backdrops);
+            }
+        } else {
+            parse_backdrop(child, None, &mut backdrops);
+        }
+    }
+    backdrops
+}
+
+fn parse_backdrop(
+    child: &BinaryElement,
+    above: Option<&BinaryElement>,
+    out: &mut Vec<Backdrop>,
+) {
+    if !child.name.eq_ignore_ascii_case("parallax") {
+        return;
+    }
+    let float = |key: &str, default: f32| match backdrop_attr(child, above, key) {
+        Some(BinaryValue::Byte(value)) => *value as f32,
+        Some(BinaryValue::Short(value)) => *value as f32,
+        Some(BinaryValue::Int(value)) => *value as f32,
+        Some(BinaryValue::Float(value)) => *value,
+        Some(BinaryValue::String(value)) => value.parse().unwrap_or(default),
+        _ => default,
+    };
+    let boolean = |key: &str, default: bool| match backdrop_attr(child, above, key) {
+        Some(BinaryValue::Bool(value)) => *value,
+        Some(BinaryValue::Byte(value)) => *value != 0,
+        Some(BinaryValue::String(value)) => value.parse().unwrap_or(default),
+        _ => default,
+    };
+    let text = |key: &str| match backdrop_attr(child, above, key) {
+        Some(BinaryValue::String(value)) => Some(value.as_str()),
+        _ => None,
+    };
+    let blend_mode = match text("blendmode") {
+        Some("additive") => "additive",
+        _ => "alphablend",
+    };
+    out.push(Backdrop {
+        kind: "parallax".to_owned(),
+        texture: text("texture").unwrap_or_default().to_owned(),
+        x: float("x", 0.0),
+        y: float("y", 0.0),
+        scroll_x: float("scrollx", 1.0),
+        scroll_y: float("scrolly", 1.0),
+        speed_x: float("speedx", 0.0),
+        speed_y: float("speedy", 0.0),
+        loop_x: boolean("loopx", true),
+        loop_y: boolean("loopy", true),
+        flip_x: boolean("flipx", false),
+        flip_y: boolean("flipy", false),
+        color: text("color")
+            .unwrap_or("ffffff")
+            .to_ascii_uppercase(),
+        alpha: float("alpha", 1.0),
+        blend_mode: blend_mode.to_owned(),
+        exclude: text("exclude").unwrap_or_default().to_owned(),
+        only: text("only").unwrap_or_default().to_owned(),
+        flag: text("flag").unwrap_or_default().to_owned(),
+        not_flag: text("notflag").unwrap_or_default().to_owned(),
+    });
+}
+
+fn backdrop_attr<'a>(
+    child: &'a BinaryElement,
+    above: Option<&'a BinaryElement>,
+    key: &str,
+) -> Option<&'a BinaryValue> {
+    child
+        .attributes
+        .get(key)
+        .or_else(|| above.and_then(|parent| parent.attributes.get(key)))
 }
 
 fn tile_rects(text: &str, ox: f32, oy: f32) -> Vec<Rect> {
@@ -1360,6 +1521,63 @@ impl Map {
 mod tests {
     use super::*;
     #[test]
+
+    #[test]
+    fn decodes_style_parallax_backdrops() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            ..Map::default()
+        };
+        let bytes = encode_celeste_map(&map, "TestMap", "a-00").unwrap();
+        let mut root = parse_celeste_bin(&bytes).unwrap();
+        let style = root
+            .children
+            .iter_mut()
+            .find(|child| child.name == "Style")
+            .unwrap();
+        let backgrounds = style
+            .children
+            .iter_mut()
+            .find(|child| child.name == "Backgrounds")
+            .unwrap();
+        backgrounds.children.push(BinaryElement {
+            package: None,
+            name: "parallax".to_owned(),
+            attributes: BTreeMap::from([
+                ("texture".to_owned(), BinaryValue::String("bgs/01/bg0".to_owned())),
+                // Real Celeste maps store numeric and boolean attributes as
+                // typed values, not strings; the parser must honor those.
+                ("scrollx".to_owned(), BinaryValue::Float(0.5)),
+                ("scrolly".to_owned(), BinaryValue::String("0.5".to_owned())),
+                ("loopx".to_owned(), BinaryValue::Bool(false)),
+                ("color".to_owned(), BinaryValue::String("aabbcc".to_owned())),
+                ("alpha".to_owned(), BinaryValue::Float(0.6)),
+                ("blendmode".to_owned(), BinaryValue::String("additive".to_owned())),
+                ("exclude".to_owned(), BinaryValue::String("other-room".to_owned())),
+                ("only".to_owned(), BinaryValue::String("a-*".to_owned())),
+                ("flag".to_owned(), BinaryValue::String("dream".to_owned())),
+                ("notflag".to_owned(), BinaryValue::String("night".to_owned())),
+            ]),
+            children: vec![],
+        });
+        let bytes = encode_celeste_bin(&root).unwrap();
+        let decoded = decode_map_room(&bytes, Some("a-00")).unwrap();
+        assert_eq!(decoded.backdrops.len(), 1);
+        let backdrop = &decoded.backdrops[0];
+        assert_eq!(backdrop.kind, "parallax");
+        assert_eq!(backdrop.texture, "bgs/01/bg0");
+        assert_eq!(backdrop.scroll_x, 0.5);
+        assert_eq!(backdrop.scroll_y, 0.5);
+        assert_eq!(backdrop.color, "AABBCC");
+        assert_eq!(backdrop.alpha, 0.6);
+        assert!(!backdrop.loop_x && backdrop.loop_y);
+        assert_eq!(backdrop.blend_mode, "additive");
+        assert_eq!(backdrop.exclude, "other-room");
+        assert_eq!(backdrop.only, "a-*");
+        assert_eq!(backdrop.flag, "dream");
+        assert_eq!(backdrop.not_flag, "night");
+    }
+
     fn coalesces_solid_tiles() {
         assert_eq!(
             tile_rects("1110\n0010", 0.0, 0.0),

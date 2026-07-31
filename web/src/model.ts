@@ -217,6 +217,41 @@ export interface MapEntity {
   name: string;
 }
 
+export interface GymMapBackdrop {
+  /** Backdrop kind as stored in the map ("parallax"). */
+  kind: string;
+  /** Gameplay atlas key for the backdrop image. */
+  texture: string;
+  /** World-space anchor position (screen-space for scroll == 0 layers). */
+  x: number;
+  y: number;
+  /** Camera parallax factors (vanilla Backdrop.Scroll). */
+  scroll_x: number;
+  scroll_y: number;
+  /** Automatic drift in pixels/second (vanilla Backdrop.Speed). */
+  speed_x: number;
+  speed_y: number;
+  /** Tile the texture across the viewport (vanilla defaults to loop). */
+  loop_x: boolean;
+  loop_y: boolean;
+  flip_x: boolean;
+  flip_y: boolean;
+  /** Hex color multiplier ("rrggbb"); "ffffff" is the default. */
+  color: string;
+  /** Opacity multiplier. */
+  alpha: number;
+  /** "alphablend" or "additive". */
+  blend_mode: string;
+  /** Comma-separated room globs where this backdrop is hidden. */
+  exclude: string;
+  /** Comma-separated room globs where this backdrop is shown; empty = all. */
+  only: string;
+  /** Session flag required for the backdrop. */
+  flag: string;
+  /** Session flag that hides the backdrop. */
+  not_flag: string;
+}
+
 export interface GymMap {
   name: string;
   room?: string;
@@ -225,6 +260,8 @@ export interface GymMap {
   solids: { x: number; y: number; width: number; height: number }[];
   entities: MapEntity[];
   source_package: string | null;
+  /** Image backdrops from the map's Style/Backgrounds element. */
+  backdrops?: GymMapBackdrop[];
 }
 
 export type KeyBindings = Record<Action, string>;
