@@ -1,0 +1,104 @@
+{
+  "entries": {
+    "tilesets/SJ2021/Julia/Skytower": {
+      "x": 2,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/Julia/7_water": {
+      "x": 52,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Julia/bubbles": {
+      "x": 374,
+      "y": 2,
+      "width": 320,
+      "height": 53,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 53
+    },
+    "bgs/SJ2021/Julia/4_volcano": {
+      "x": 696,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Julia/3_ruins": {
+      "x": 2,
+      "y": 184,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Julia/6_fishLeft": {
+      "x": 324,
+      "y": 184,
+      "width": 320,
+      "height": 32,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 32
+    },
+    "bgs/SJ2021/Julia/5_fishRight": {
+      "x": 646,
+      "y": 184,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Julia/vent_lava_b": {
+      "x": 2,
+      "y": 366,
+      "width": 56,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 56,
+      "frameHeight": 48
+    },
+    "bgs/SJ2021/Julia/pillars_single": {
+      "x": 60,
+      "y": 366,
+      "width": 78,
+      "height": 176,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 78,
+      "frameHeight": 176
+    },
+    "bgs/SJ2021/Julia/pillars": {
+      "x": 140,
+      "y": 366,
+      "width": 320,
+      "height": 240,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 240
+    }
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "entries": {
+    "tilesets/SJ2021/Galaksyz/blueSlime": {
+      "x": 2,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "bgs/SJ2021/Galaksyz/slimesky01": {
+      "x": 188,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Galaksyz/rolling_rainbow": {
+      "x": 510,
+      "y": 2,
+      "width": 300,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 300,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Galaksyz/slimeplains02": {
+      "x": 2,
+      "y": 184,
+      "width": 320,
+      "height": 200,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 200
+    },
+    "bgs/SJ2021/Galaksyz/slimeplains01": {
+      "x": 324,
+      "y": 184,
+      "width": 320,
+      "height": 200,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 200
+    },
+    "danger/spikes/SJ2021/Galaksyz/slime_outline_down00": {
+      "x": 646,
+      "y": 184,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/Galaksyz/slime_outline_left00": {
+      "x": 658,
+      "y": 184,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Galaksyz/slime_outline_right00": {
+      "x": 669,
+      "y": 184,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Galaksyz/slime_outline_up00": {
+      "x": 680,
+      "y": 184,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    }
+  }
+}

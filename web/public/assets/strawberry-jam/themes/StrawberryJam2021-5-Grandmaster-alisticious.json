@@ -1,0 +1,74 @@
+{
+  "entries": {
+    "tilesets/SJ2021/alisticious/brain": {
+      "x": 2,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "bgs/SJ2021/Alisticious/mazebars": {
+      "x": 188,
+      "y": 2,
+      "width": 315,
+      "height": 175,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 315,
+      "frameHeight": 175
+    },
+    "bgs/SJ2021/Alisticious/mazelines": {
+      "x": 505,
+      "y": 2,
+      "width": 315,
+      "height": 175,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 315,
+      "frameHeight": 175
+    },
+    "danger/spikes/SJ2021/Alisticious/brainspikes/brain_down00": {
+      "x": 822,
+      "y": 2,
+      "width": 8,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/Alisticious/brainspikes/brain_left00": {
+      "x": 832,
+      "y": 2,
+      "width": 9,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 8
+    },
+    "danger/spikes/SJ2021/Alisticious/brainspikes/brain_right00": {
+      "x": 843,
+      "y": 2,
+      "width": 9,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 8
+    },
+    "danger/spikes/SJ2021/Alisticious/brainspikes/brain_up00": {
+      "x": 854,
+      "y": 2,
+      "width": 8,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 9
+    }
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "entries": {
+    "tilesets/SJ2021/hennyburgr/laboratoryMetal": {
+      "x": 2,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "bgs/SJ2021/hennyburgr/distant/rocks_a": {
+      "x": 188,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/hennyburgr/distant/rocks_b": {
+      "x": 510,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/hennyburgr/distant/rocks_c": {
+      "x": 832,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/hennyburgr/bigrockwall_a": {
+      "x": 2,
+      "y": 184,
+      "width": 1500,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 1500,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/hennyburgr/distant/rocks_d": {
+      "x": 2,
+      "y": 366,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/hennyburgr/bigrockwall_b": {
+      "x": 324,
+      "y": 366,
+      "width": 419,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 419,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/hennyburgr/lava_top": {
+      "x": 745,
+      "y": 366,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/hennyburgr/lava_mid": {
+      "x": 1067,
+      "y": 366,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/hennyburgr/boardwalk": {
+      "x": 2,
+      "y": 548,
+      "width": 320,
+      "height": 500,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 500
+    },
+    "bgs/SJ2021/hennyburgr/fg_rocks": {
+      "x": 324,
+      "y": 548,
+      "width": 620,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 620,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/hennyburgr/lava_rock_pillars_a": {
+      "x": 946,
+      "y": 548,
+      "width": 320,
+      "height": 400,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 400
+    },
+    "bgs/SJ2021/hennyburgr/lab_zero": {
+      "x": 2,
+      "y": 1050,
+      "width": 800,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 800,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/hennyburgr/lavacarrier_a": {
+      "x": 804,
+      "y": 1050,
+      "width": 550,
+      "height": 200,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 550,
+      "frameHeight": 200
+    },
+    "bgs/SJ2021/hennyburgr/glass": {
+      "x": 2,
+      "y": 1252,
+      "width": 1280,
+      "height": 720,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 1280,
+      "frameHeight": 720
+    }
+  }
+}

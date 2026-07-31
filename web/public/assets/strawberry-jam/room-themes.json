@@ -382,7 +382,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-0-Gyms-0-Prologue.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-0-Gyms-0-Prologue.png"
     },
     {
       "id": "StrawberryJam2021-0-Gyms-1-Beginner",
@@ -743,7 +745,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-0-Gyms-1-Beginner.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-0-Gyms-1-Beginner.png"
     },
     {
       "id": "StrawberryJam2021-0-Gyms-2-Intermediate",
@@ -1107,7 +1111,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-0-Gyms-2-Intermediate.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-0-Gyms-2-Intermediate.png"
     },
     {
       "id": "StrawberryJam2021-0-Gyms-3-Advanced",
@@ -1472,7 +1478,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-0-Gyms-3-Advanced.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-0-Gyms-3-Advanced.png"
     },
     {
       "id": "StrawberryJam2021-0-Gyms-4-Expert",
@@ -1839,7 +1847,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-0-Gyms-4-Expert.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-0-Gyms-4-Expert.png"
     },
     {
       "id": "StrawberryJam2021-0-Gyms-5-Grandmaster",
@@ -2210,7 +2220,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-0-Gyms-5-Grandmaster.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-0-Gyms-5-Grandmaster.png"
     },
     {
       "id": "StrawberryJam2021-0-Lobbies-0-Prologue",
@@ -2664,7 +2676,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-0-Lobbies-0-Prologue.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-0-Lobbies-0-Prologue.png"
     },
     {
       "id": "StrawberryJam2021-0-Lobbies-1-Beginner",
@@ -4626,7 +4640,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-0-Lobbies-1-Beginner.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-0-Lobbies-1-Beginner.png"
     },
     {
       "id": "StrawberryJam2021-0-Lobbies-2-Intermediate",
@@ -6078,7 +6094,9 @@
           "speedY": -30,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-0-Lobbies-2-Intermediate.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-0-Lobbies-2-Intermediate.png"
     },
     {
       "id": "StrawberryJam2021-0-Lobbies-3-Advanced",
@@ -8351,7 +8369,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-0-Lobbies-3-Advanced.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-0-Lobbies-3-Advanced.png"
     },
     {
       "id": "StrawberryJam2021-0-Lobbies-4-Expert",
@@ -8873,7 +8893,9 @@
           "speedY": 0,
           "opacity": 0.10000000149011612
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-0-Lobbies-4-Expert.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-0-Lobbies-4-Expert.png"
     },
     {
       "id": "StrawberryJam2021-0-Lobbies-5-Grandmaster",
@@ -10375,7 +10397,9 @@
           "speedY": 0,
           "opacity": 0.5
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-0-Lobbies-5-Grandmaster.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-0-Lobbies-5-Grandmaster.png"
     },
     {
       "id": "StrawberryJam2021-1-Beginner-asteriskblue",
@@ -10731,7 +10755,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-1-Beginner-asteriskblue.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-1-Beginner-asteriskblue.png"
     },
     {
       "id": "StrawberryJam2021-1-Beginner-Bing_Over_Google",
@@ -10801,7 +10827,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-1-Beginner-Bing_Over_Google.png"
     },
     {
       "id": "StrawberryJam2021-1-Beginner-cellularAutomaton",
@@ -11074,7 +11101,9 @@
           "speedY": -5,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-1-Beginner-cellularAutomaton.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-1-Beginner-cellularAutomaton.png"
     },
     {
       "id": "StrawberryJam2021-1-Beginner-Ceph",
@@ -11377,7 +11406,9 @@
           "speedY": 0,
           "opacity": 0.20000000298023224
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-1-Beginner-Ceph.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-1-Beginner-Ceph.png"
     },
     {
       "id": "StrawberryJam2021-1-Beginner-Circumplex",
@@ -11466,7 +11497,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-1-Beginner-Circumplex.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-1-Beginner-Circumplex.png"
     },
     {
       "id": "StrawberryJam2021-1-Beginner-coffe",
@@ -11788,7 +11821,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-1-Beginner-coffe.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-1-Beginner-coffe.png"
     },
     {
       "id": "StrawberryJam2021-1-Beginner-CoupCritik",
@@ -12219,7 +12254,9 @@
           "speedY": 0,
           "opacity": 0.5
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-1-Beginner-CoupCritik.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-1-Beginner-CoupCritik.png"
     },
     {
       "id": "StrawberryJam2021-1-Beginner-Eclipse",
@@ -12309,7 +12346,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-1-Beginner-Eclipse.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-1-Beginner-Eclipse.png"
     },
     {
       "id": "StrawberryJam2021-1-Beginner-Flagpole1up",
@@ -12616,7 +12655,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-1-Beginner-Flagpole1up.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-1-Beginner-Flagpole1up.png"
     },
     {
       "id": "StrawberryJam2021-1-Beginner-frozenflygone",
@@ -12994,7 +13035,9 @@
       "spike": "SJ2021/frozenflygone/vvvvvv",
       "spinner": null,
       "background": "#000000",
-      "layers": []
+      "layers": [],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-1-Beginner-frozenflygone.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-1-Beginner-frozenflygone.png"
     },
     {
       "id": "StrawberryJam2021-1-Beginner-HankyMueller",
@@ -13114,7 +13157,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-1-Beginner-HankyMueller.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-1-Beginner-HankyMueller.png"
     },
     {
       "id": "StrawberryJam2021-1-Beginner-hyperlife",
@@ -13183,7 +13228,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-1-Beginner-hyperlife.png"
     },
     {
       "id": "StrawberryJam2021-1-Beginner-Jadeturtle",
@@ -13317,7 +13363,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-1-Beginner-Jadeturtle.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-1-Beginner-Jadeturtle.png"
     },
     {
       "id": "StrawberryJam2021-1-Beginner-joltik",
@@ -13696,7 +13744,9 @@
           "speedY": 2,
           "opacity": 0.8999999761581421
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-1-Beginner-joltik.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-1-Beginner-joltik.png"
     },
     {
       "id": "StrawberryJam2021-1-Beginner-mosscairn",
@@ -13830,7 +13880,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-1-Beginner-mosscairn.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-1-Beginner-mosscairn.png"
     },
     {
       "id": "StrawberryJam2021-1-Beginner-NotYourBadeline",
@@ -14134,7 +14186,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-1-Beginner-NotYourBadeline.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-1-Beginner-NotYourBadeline.png"
     },
     {
       "id": "StrawberryJam2021-1-Beginner-Owen-Shirrell",
@@ -14547,7 +14601,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-1-Beginner-Owen-Shirrell.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-1-Beginner-Owen-Shirrell.png"
     },
     {
       "id": "StrawberryJam2021-1-Beginner-Quinnigan",
@@ -15044,7 +15100,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-1-Beginner-Quinnigan.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-1-Beginner-Quinnigan.png"
     },
     {
       "id": "StrawberryJam2021-1-Beginner-skeleton",
@@ -15626,7 +15684,9 @@
           "speedY": -10,
           "opacity": 0.4000000059604645
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-1-Beginner-skeleton.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-1-Beginner-skeleton.png"
     },
     {
       "id": "StrawberryJam2021-1-Beginner-snas",
@@ -15915,7 +15975,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-1-Beginner-snas.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-1-Beginner-snas.png"
     },
     {
       "id": "StrawberryJam2021-1-Beginner-voliver9",
@@ -16213,7 +16275,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-1-Beginner-voliver9.png"
     },
     {
       "id": "StrawberryJam2021-1-Beginner-ZZ-HeartSide",
@@ -16719,7 +16782,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-1-Beginner-ZZ-HeartSide.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-1-Beginner-ZZ-HeartSide.png"
     },
     {
       "id": "StrawberryJam2021-2-Intermediate-Arphimigon",
@@ -16783,7 +16848,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-2-Intermediate-Arphimigon.png"
     },
     {
       "id": "StrawberryJam2021-2-Intermediate-bryse0n",
@@ -17301,7 +17367,9 @@
           "speedY": 20,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-2-Intermediate-bryse0n.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-2-Intermediate-bryse0n.png"
     },
     {
       "id": "StrawberryJam2021-2-Intermediate-Dooshii",
@@ -17720,7 +17788,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-2-Intermediate-Dooshii.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-2-Intermediate-Dooshii.png"
     },
     {
       "id": "StrawberryJam2021-2-Intermediate-Emik",
@@ -18083,7 +18153,9 @@
           "speedY": 0,
           "opacity": 0.6000000238418579
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-2-Intermediate-Emik.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-2-Intermediate-Emik.png"
     },
     {
       "id": "StrawberryJam2021-2-Intermediate-Evilleafy",
@@ -18352,7 +18424,9 @@
           "speedY": 15,
           "opacity": 0.3499999940395355
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-2-Intermediate-Evilleafy.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-2-Intermediate-Evilleafy.png"
     },
     {
       "id": "StrawberryJam2021-2-Intermediate-Ezel",
@@ -18720,7 +18794,9 @@
           "speedY": 10,
           "opacity": 0.125
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-2-Intermediate-Ezel.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-2-Intermediate-Ezel.png"
     },
     {
       "id": "StrawberryJam2021-2-Intermediate-GlowWoomii",
@@ -19028,7 +19104,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-2-Intermediate-GlowWoomii.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-2-Intermediate-GlowWoomii.png"
     },
     {
       "id": "StrawberryJam2021-2-Intermediate-Ice",
@@ -19342,7 +19420,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-2-Intermediate-Ice.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-2-Intermediate-Ice.png"
     },
     {
       "id": "StrawberryJam2021-2-Intermediate-Jems",
@@ -19486,7 +19566,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-2-Intermediate-Jems.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-2-Intermediate-Jems.png"
     },
     {
       "id": "StrawberryJam2021-2-Intermediate-LegS",
@@ -19815,7 +19897,9 @@
           "speedY": 0,
           "opacity": 0.800000011920929
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-2-Intermediate-LegS.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-2-Intermediate-LegS.png"
     },
     {
       "id": "StrawberryJam2021-2-Intermediate-Liero",
@@ -20108,7 +20192,9 @@
           "speedY": -30,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-2-Intermediate-Liero.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-2-Intermediate-Liero.png"
     },
     {
       "id": "StrawberryJam2021-2-Intermediate-Luma",
@@ -20457,7 +20543,9 @@
           "speedY": 0,
           "opacity": 0.4000000059604645
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-2-Intermediate-Luma.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-2-Intermediate-Luma.png"
     },
     {
       "id": "StrawberryJam2021-2-Intermediate-marlin",
@@ -20776,7 +20864,9 @@
           "speedY": 4,
           "opacity": 0.10000000149011612
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-2-Intermediate-marlin.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-2-Intermediate-marlin.png"
     },
     {
       "id": "StrawberryJam2021-2-Intermediate-pixelator",
@@ -21137,7 +21227,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-2-Intermediate-pixelator.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-2-Intermediate-pixelator.png"
     },
     {
       "id": "StrawberryJam2021-2-Intermediate-Rocketguy2",
@@ -21520,7 +21612,9 @@
           "speedY": 10,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-2-Intermediate-Rocketguy2.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-2-Intermediate-Rocketguy2.png"
     },
     {
       "id": "StrawberryJam2021-2-Intermediate-SpoopySoup",
@@ -21609,7 +21703,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-2-Intermediate-SpoopySoup.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-2-Intermediate-SpoopySoup.png"
     },
     {
       "id": "StrawberryJam2021-2-Intermediate-thebreadstick1",
@@ -21692,7 +21788,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-2-Intermediate-thebreadstick1.png"
     },
     {
       "id": "StrawberryJam2021-2-Intermediate-vitellary",
@@ -21732,7 +21829,8 @@
       "spike": "outline",
       "spinner": null,
       "background": "#000000",
-      "layers": []
+      "layers": [],
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-2-Intermediate-vitellary.png"
     },
     {
       "id": "StrawberryJam2021-2-Intermediate-ZZ-HeartSide",
@@ -22599,7 +22697,9 @@
           "speedY": 20,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-2-Intermediate-ZZ-HeartSide.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-2-Intermediate-ZZ-HeartSide.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-astraxel",
@@ -22887,7 +22987,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-astraxel.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-astraxel.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-BlueXans",
@@ -23158,7 +23260,9 @@
           "speedY": 2,
           "opacity": 0.5
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-BlueXans.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-BlueXans.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-Citrea",
@@ -23694,7 +23798,9 @@
           "speedY": -2.5,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-Citrea.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-Citrea.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-galaksyz",
@@ -24025,7 +24131,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-galaksyz.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-galaksyz.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-Goldian",
@@ -24345,7 +24453,9 @@
           "speedY": 0,
           "opacity": 0.10999999940395355
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-Goldian.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-Goldian.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-hennyburgr",
@@ -24795,7 +24905,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-hennyburgr.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-hennyburgr.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-Indecx",
@@ -24917,7 +25029,9 @@
           "speedY": 0,
           "opacity": 0.6000000238418579
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-Indecx.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-Indecx.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-JANisEXIST",
@@ -25165,7 +25279,9 @@
           "speedY": 8,
           "opacity": 0.800000011920929
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-JANisEXIST.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-JANisEXIST.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-Jolly",
@@ -25514,7 +25630,9 @@
           "speedY": 0,
           "opacity": 0.20000000298023224
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-Jolly.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-Jolly.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-Julia",
@@ -25858,7 +25976,9 @@
           "speedY": 0,
           "opacity": 0.4000000059604645
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-Julia.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-Julia.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-Maladroit",
@@ -25960,7 +26080,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-Maladroit.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-Meario",
@@ -26287,7 +26408,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-Meario.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-Meario.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-mmm",
@@ -26650,7 +26773,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-mmm.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-mmm.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-MousseMoose",
@@ -26965,7 +27090,9 @@
           "speedY": 1,
           "opacity": 0.07000000029802322
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-MousseMoose.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-MousseMoose.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-Nic",
@@ -27279,7 +27406,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-Nic.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-Nic.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-Oppen",
@@ -27615,7 +27744,9 @@
           "speedY": 15,
           "opacity": 0.4000000059604645
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-Oppen.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-Oppen.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-pugroy",
@@ -27896,7 +28027,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-pugroy.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-pugroy.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-RadleyMcTuneston",
@@ -28158,7 +28291,8 @@
       "spike": "default",
       "spinner": null,
       "background": "#000000",
-      "layers": []
+      "layers": [],
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-RadleyMcTuneston.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-Roborb",
@@ -28503,7 +28637,9 @@
           "speedY": 12,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-Roborb.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-Roborb.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-sp1029",
@@ -28801,7 +28937,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-sp1029.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-sp1029.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-TiltTheStars",
@@ -29091,7 +29229,9 @@
           "speedY": 0,
           "opacity": 0.30000001192092896
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-TiltTheStars.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-TiltTheStars.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-Tortoise",
@@ -29357,7 +29497,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-Tortoise.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-Tortoise.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-Vamp",
@@ -29654,7 +29796,9 @@
           "speedY": 0,
           "opacity": 0.800000011920929
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-Vamp.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-Vamp.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-Viv",
@@ -29944,7 +30088,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-Viv.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-Viv.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-Worldwaker2",
@@ -30046,7 +30192,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-Worldwaker2.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-Worldwaker2.png"
     },
     {
       "id": "StrawberryJam2021-3-Advanced-ZZ-HeartSide",
@@ -30388,7 +30536,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-3-Advanced-ZZ-HeartSide.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-3-Advanced-ZZ-HeartSide.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-Agent",
@@ -30809,7 +30959,9 @@
           "speedY": 0,
           "opacity": 0.30000001192092896
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-Agent.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-Agent.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-alicequasar",
@@ -31230,7 +31382,9 @@
           "speedY": -1,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-alicequasar.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-alicequasar.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-Appels",
@@ -31482,7 +31636,9 @@
       "spike": "outline",
       "spinner": null,
       "background": "#000000",
-      "layers": []
+      "layers": [],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-Appels.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-Appels.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-Archire",
@@ -31839,7 +31995,9 @@
       "spike": "default",
       "spinner": null,
       "background": "#000000",
-      "layers": []
+      "layers": [],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-Archire.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-Archire.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-Aspar",
@@ -32172,7 +32330,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-Aspar.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-Aspar.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-Banana23",
@@ -32451,7 +32611,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-Banana23.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-Cabob",
@@ -32751,7 +32912,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-Cabob.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-Cabob.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-DanTKO",
@@ -33155,7 +33318,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-DanTKO.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-DanTKO.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-Flamecrafter113",
@@ -33583,7 +33748,9 @@
           "speedY": -30,
           "opacity": 0.375
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-Flamecrafter113.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-Flamecrafter113.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-fonda1515",
@@ -33918,7 +34085,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-fonda1515.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-fonda1515.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-hivemindsrule",
@@ -34236,7 +34405,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-hivemindsrule.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-hivemindsrule.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-itsabrody",
@@ -34263,7 +34434,8 @@
       "spike": "outline",
       "spinner": null,
       "background": "#000000",
-      "layers": []
+      "layers": [],
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-itsabrody.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-Jackal",
@@ -34390,7 +34562,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-Jackal.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-Jackal.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-KAERRA",
@@ -34727,7 +34901,9 @@
           "speedY": 7,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-KAERRA.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-KAERRA.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-LethargicDoggo",
@@ -35055,7 +35231,9 @@
           "speedY": 0,
           "opacity": 0.10000000149011612
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-LethargicDoggo.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-LethargicDoggo.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-Linj",
@@ -35487,7 +35665,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-Linj.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-Linj.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-Moladan",
@@ -35857,7 +36037,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-Moladan.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-Moladan.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-nyan",
@@ -35908,7 +36090,9 @@
           "speedY": -18,
           "opacity": 0.20000000298023224
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-nyan.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-nyan.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-pansear",
@@ -36000,7 +36184,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-pansear.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-pansear.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-powerav",
@@ -36377,7 +36563,9 @@
           "speedY": 0,
           "opacity": 0.30000001192092896
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-powerav.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-powerav.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-QuantumSpaceman",
@@ -36482,7 +36670,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-QuantumSpaceman.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-QuantumSpaceman.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-rdoggo8",
@@ -36964,7 +37154,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-rdoggo8.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-rdoggo8.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-RedBoule",
@@ -37285,7 +37477,9 @@
           "speedY": 0,
           "opacity": 0.75
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-RedBoule.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-RedBoule.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-Scroogle",
@@ -37657,7 +37851,9 @@
           "speedY": 0,
           "opacity": 0.6000000238418579
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-Scroogle.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-Scroogle.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-Skunkynator",
@@ -37905,7 +38101,9 @@
       "spike": "default",
       "spinner": null,
       "background": "#000000",
-      "layers": []
+      "layers": [],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-Skunkynator.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-Skunkynator.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-spirialis",
@@ -38206,7 +38404,9 @@
       "spike": "default",
       "spinner": null,
       "background": "#000000",
-      "layers": []
+      "layers": [],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-spirialis.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-spirialis.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-Stotch",
@@ -38487,7 +38687,8 @@
           "speedY": 0,
           "opacity": 0.8999999761581421
         }
-      ]
+      ],
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-Stotch.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-Vina",
@@ -38825,7 +39026,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-Vina.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-Vina.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-Yoshachobi7",
@@ -39100,7 +39303,9 @@
           "speedY": 0,
           "opacity": 0.30000001192092896
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-Yoshachobi7.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-Yoshachobi7.png"
     },
     {
       "id": "StrawberryJam2021-4-Expert-ZZ-HeartSide",
@@ -39549,7 +39754,9 @@
           "speedY": 0,
           "opacity": 0.30000001192092896
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-4-Expert-ZZ-HeartSide.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-4-Expert-ZZ-HeartSide.png"
     },
     {
       "id": "StrawberryJam2021-5-Grandmaster-alisticious",
@@ -39951,7 +40158,9 @@
           "speedY": 0,
           "opacity": 0.6000000238418579
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-5-Grandmaster-alisticious.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-5-Grandmaster-alisticious.png"
     },
     {
       "id": "StrawberryJam2021-5-Grandmaster-CaptainCarpensir",
@@ -40207,7 +40416,9 @@
           "speedY": 0,
           "opacity": 0.4000000059604645
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-5-Grandmaster-CaptainCarpensir.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-5-Grandmaster-CaptainCarpensir.png"
     },
     {
       "id": "StrawberryJam2021-5-Grandmaster-Dav",
@@ -40644,7 +40855,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-5-Grandmaster-Dav.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-5-Grandmaster-Dav.png"
     },
     {
       "id": "StrawberryJam2021-5-Grandmaster-DeathKontrol",
@@ -40718,7 +40931,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-5-Grandmaster-DeathKontrol.png"
     },
     {
       "id": "StrawberryJam2021-5-Grandmaster-Ecl1psed",
@@ -41127,7 +41341,9 @@
           "speedY": -15,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-5-Grandmaster-Ecl1psed.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-5-Grandmaster-Ecl1psed.png"
     },
     {
       "id": "StrawberryJam2021-5-Grandmaster-fishtank",
@@ -41377,7 +41593,8 @@
       "spike": "outline",
       "spinner": null,
       "background": "#000000",
-      "layers": []
+      "layers": [],
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-5-Grandmaster-fishtank.png"
     },
     {
       "id": "StrawberryJam2021-5-Grandmaster-Hydro",
@@ -41844,7 +42061,9 @@
           "speedY": -10,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-5-Grandmaster-Hydro.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-5-Grandmaster-Hydro.png"
     },
     {
       "id": "StrawberryJam2021-5-Grandmaster-Linj",
@@ -42062,7 +42281,9 @@
           "speedY": 0,
           "opacity": 0
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-5-Grandmaster-Linj.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-5-Grandmaster-Linj.png"
     },
     {
       "id": "StrawberryJam2021-5-Grandmaster-math",
@@ -42136,7 +42357,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-5-Grandmaster-math.png"
     },
     {
       "id": "StrawberryJam2021-5-Grandmaster-maya",
@@ -42392,7 +42614,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-5-Grandmaster-maya.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-5-Grandmaster-maya.png"
     },
     {
       "id": "StrawberryJam2021-5-Grandmaster-RedBatNick",
@@ -42632,7 +42856,8 @@
       "spike": "outline",
       "spinner": null,
       "background": "#000000",
-      "layers": []
+      "layers": [],
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-5-Grandmaster-RedBatNick.png"
     },
     {
       "id": "StrawberryJam2021-5-Grandmaster-Soloiini",
@@ -43141,7 +43366,9 @@
           "speedY": 11,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-5-Grandmaster-Soloiini.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-5-Grandmaster-Soloiini.png"
     },
     {
       "id": "StrawberryJam2021-5-Grandmaster-tcookiem",
@@ -43480,7 +43707,9 @@
           "speedY": 0,
           "opacity": 0.800000011920929
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-5-Grandmaster-tcookiem.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-5-Grandmaster-tcookiem.png"
     },
     {
       "id": "StrawberryJam2021-5-Grandmaster-tobyaaa",
@@ -43653,7 +43882,9 @@
       "spike": "default",
       "spinner": null,
       "background": "#000000",
-      "layers": []
+      "layers": [],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-5-Grandmaster-tobyaaa.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-5-Grandmaster-tobyaaa.png"
     },
     {
       "id": "StrawberryJam2021-5-Grandmaster-Todd",
@@ -43924,7 +44155,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-5-Grandmaster-Todd.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-5-Grandmaster-Todd.png"
     },
     {
       "id": "StrawberryJam2021-5-Grandmaster-tofu",
@@ -44267,7 +44500,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-5-Grandmaster-tofu.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-5-Grandmaster-tofu.png"
     },
     {
       "id": "StrawberryJam2021-5-Grandmaster-xlibiza",
@@ -44370,7 +44605,9 @@
           "speedY": -20,
           "opacity": 0.8999999761581421
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-5-Grandmaster-xlibiza.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-5-Grandmaster-xlibiza.png"
     },
     {
       "id": "StrawberryJam2021-5-Grandmaster-xplosives",
@@ -44650,7 +44887,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-5-Grandmaster-xplosives.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-5-Grandmaster-xplosives.png"
     },
     {
       "id": "StrawberryJam2021-5-Grandmaster-ZZ-HeartSide",
@@ -45014,8 +45253,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/strawberry-jam/themes/StrawberryJam2021-5-Grandmaster-ZZ-HeartSide.json",
+      "preview": "assets/strawberry-jam/previews/StrawberryJam2021-5-Grandmaster-ZZ-HeartSide.png"
     }
-  ],
-  "atlas": "assets/original/gameplay/gameplay-selected.json"
+  ]
 }

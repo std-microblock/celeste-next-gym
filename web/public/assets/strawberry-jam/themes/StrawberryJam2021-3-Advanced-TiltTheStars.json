@@ -1,0 +1,454 @@
+{
+  "entries": {
+    "tilesets/SJ2021/TiltTheStars/honeycomb": {
+      "x": 2,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "bgs/SJ2021/TiltTheStars/hive": {
+      "x": 188,
+      "y": 2,
+      "width": 728,
+      "height": 376,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 728,
+      "frameHeight": 376
+    },
+    "bgs/SJ2021/TiltTheStars/honeycomb_bg_c": {
+      "x": 2,
+      "y": 380,
+      "width": 600,
+      "height": 376,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 600,
+      "frameHeight": 376
+    },
+    "bgs/SJ2021/TiltTheStars/honeycomb_bg_b": {
+      "x": 2,
+      "y": 758,
+      "width": 600,
+      "height": 384,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 600,
+      "frameHeight": 384
+    },
+    "bgs/SJ2021/TiltTheStars/honeycomb_bg_a": {
+      "x": 2,
+      "y": 1144,
+      "width": 632,
+      "height": 408,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 632,
+      "frameHeight": 408
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_down00": {
+      "x": 636,
+      "y": 1144,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_down01": {
+      "x": 648,
+      "y": 1144,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_down02": {
+      "x": 660,
+      "y": 1144,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_down03": {
+      "x": 672,
+      "y": 1144,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_down04": {
+      "x": 684,
+      "y": 1144,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_down05": {
+      "x": 696,
+      "y": 1144,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_down06": {
+      "x": 708,
+      "y": 1144,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_down07": {
+      "x": 720,
+      "y": 1144,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_down08": {
+      "x": 732,
+      "y": 1144,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_down09": {
+      "x": 744,
+      "y": 1144,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_left00": {
+      "x": 756,
+      "y": 1144,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_left01": {
+      "x": 767,
+      "y": 1144,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_left02": {
+      "x": 778,
+      "y": 1144,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_left03": {
+      "x": 789,
+      "y": 1144,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_left04": {
+      "x": 800,
+      "y": 1144,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_left05": {
+      "x": 811,
+      "y": 1144,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_left06": {
+      "x": 822,
+      "y": 1144,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_left07": {
+      "x": 833,
+      "y": 1144,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_left08": {
+      "x": 844,
+      "y": 1144,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_left09": {
+      "x": 855,
+      "y": 1144,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_right00": {
+      "x": 866,
+      "y": 1144,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_right01": {
+      "x": 877,
+      "y": 1144,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_right02": {
+      "x": 888,
+      "y": 1144,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_right03": {
+      "x": 899,
+      "y": 1144,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_right04": {
+      "x": 910,
+      "y": 1144,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_right05": {
+      "x": 921,
+      "y": 1144,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_right06": {
+      "x": 932,
+      "y": 1144,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_right07": {
+      "x": 943,
+      "y": 1144,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_right08": {
+      "x": 954,
+      "y": 1144,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_right09": {
+      "x": 965,
+      "y": 1144,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_up00": {
+      "x": 976,
+      "y": 1144,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_up01": {
+      "x": 988,
+      "y": 1144,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_up02": {
+      "x": 1000,
+      "y": 1144,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_up03": {
+      "x": 1012,
+      "y": 1144,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_up04": {
+      "x": 2,
+      "y": 1554,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_up05": {
+      "x": 14,
+      "y": 1554,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_up06": {
+      "x": 26,
+      "y": 1554,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_up07": {
+      "x": 38,
+      "y": 1554,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_up08": {
+      "x": 50,
+      "y": 1554,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/TiltTheStars/honey_outline/honey_outline_up09": {
+      "x": 62,
+      "y": 1554,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    }
+  }
+}

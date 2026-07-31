@@ -1,0 +1,14 @@
+{
+  "entries": {
+    "tilesets/SJ2021/Dooshii/frozenRock": {
+      "x": 2,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    }
+  }
+}

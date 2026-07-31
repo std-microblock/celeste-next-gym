@@ -1,0 +1,134 @@
+{
+  "entries": {
+    "bgs/SJ2021/Ferroshock/bg0": {
+      "x": 2,
+      "y": 2,
+      "width": 320,
+      "height": 184,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 184
+    },
+    "bgs/SJ2021/Ferroshock/bg1": {
+      "x": 324,
+      "y": 2,
+      "width": 320,
+      "height": 184,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 184
+    },
+    "bgs/SJ2021/Ferroshock/bg2": {
+      "x": 646,
+      "y": 2,
+      "width": 320,
+      "height": 184,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 184
+    },
+    "bgs/SJ2021/Ferroshock/bg3": {
+      "x": 2,
+      "y": 188,
+      "width": 320,
+      "height": 184,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 184
+    },
+    "bgs/SJ2021/Ferroshock/bg5": {
+      "x": 324,
+      "y": 188,
+      "width": 320,
+      "height": 184,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 184
+    },
+    "danger/spikes/SJ2021/Jackal/water_down00": {
+      "x": 646,
+      "y": 188,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Jackal/water_down01": {
+      "x": 658,
+      "y": 188,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Jackal/water_left00": {
+      "x": 670,
+      "y": 188,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Jackal/water_left01": {
+      "x": 682,
+      "y": 188,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Jackal/water_right00": {
+      "x": 694,
+      "y": 188,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Jackal/water_right01": {
+      "x": 706,
+      "y": 188,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Jackal/water_up00": {
+      "x": 718,
+      "y": 188,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Jackal/water_up01": {
+      "x": 730,
+      "y": 188,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    }
+  }
+}

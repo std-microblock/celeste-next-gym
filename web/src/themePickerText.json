@@ -1,0 +1,29 @@
+{
+  "ariaLabel": "场景主题",
+  "searchPlaceholder": "搜索主题…",
+  "themeWord": "主题",
+  "groups": {
+    "0-Gyms": "训练场",
+    "0-Lobbies": "大厅",
+    "1-Beginner": "初级",
+    "2-Intermediate": "中级",
+    "3-Advanced": "高级",
+    "4-Expert": "专家级",
+    "5-Grandmaster": "大师级"
+  },
+  "chapters": {
+    "0": "序章",
+    "1": "第一章",
+    "2": "第二章",
+    "3": "第三章",
+    "4": "第四章",
+    "5": "第五章",
+    "6": "第六章",
+    "7": "第七章",
+    "8": "第八章",
+    "9": "第九章"
+  },
+  "chapterFallback": "章节",
+  "mapWord": "地图",
+  "otherWord": "其他"
+}

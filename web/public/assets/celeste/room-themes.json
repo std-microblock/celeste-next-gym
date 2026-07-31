@@ -277,7 +277,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/0-Intro.png"
     },
     {
       "id": "1-ForsakenCity",
@@ -596,7 +597,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/1-ForsakenCity.png"
     },
     {
       "id": "1H-ForsakenCity",
@@ -893,7 +895,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/1H-ForsakenCity.png"
     },
     {
       "id": "1X-ForsakenCity",
@@ -1177,7 +1180,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/1X-ForsakenCity.png"
     },
     {
       "id": "2-OldSite",
@@ -1452,7 +1456,8 @@
       "spike": "default",
       "spinner": null,
       "background": "#000000",
-      "layers": []
+      "layers": [],
+      "preview": "assets/celeste/previews/2-OldSite.png"
     },
     {
       "id": "2H-OldSite",
@@ -1699,7 +1704,8 @@
       "spike": "default",
       "spinner": null,
       "background": "#000000",
-      "layers": []
+      "layers": [],
+      "preview": "assets/celeste/previews/2H-OldSite.png"
     },
     {
       "id": "2X-OldSite",
@@ -1932,7 +1938,8 @@
       "spike": "default",
       "spinner": null,
       "background": "#000000",
-      "layers": []
+      "layers": [],
+      "preview": "assets/celeste/previews/2X-OldSite.png"
     },
     {
       "id": "3-CelestialResort",
@@ -2388,7 +2395,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/3-CelestialResort.png"
     },
     {
       "id": "3H-CelestialResort",
@@ -2803,7 +2811,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/3H-CelestialResort.png"
     },
     {
       "id": "3X-CelestialResort",
@@ -3078,7 +3087,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/3X-CelestialResort.png"
     },
     {
       "id": "4-GoldenRidge",
@@ -3478,7 +3488,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/4-GoldenRidge.png"
     },
     {
       "id": "4H-GoldenRidge",
@@ -3849,7 +3860,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/4H-GoldenRidge.png"
     },
     {
       "id": "4X-GoldenRidge",
@@ -4203,7 +4215,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/4X-GoldenRidge.png"
     },
     {
       "id": "5-MirrorTemple",
@@ -4659,7 +4672,8 @@
           "speedY": 0.30000001192092896,
           "opacity": 0.10000000149011612
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/5-MirrorTemple.png"
     },
     {
       "id": "5H-MirrorTemple",
@@ -5055,7 +5069,8 @@
           "speedY": 0.30000001192092896,
           "opacity": 0.10000000149011612
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/5H-MirrorTemple.png"
     },
     {
       "id": "5X-MirrorTemple",
@@ -5329,7 +5344,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/5X-MirrorTemple.png"
     },
     {
       "id": "6-Reflection",
@@ -5714,7 +5730,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/6-Reflection.png"
     },
     {
       "id": "6H-Reflection",
@@ -6023,7 +6040,8 @@
           "speedY": 0,
           "opacity": 0.15000000596046448
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/6H-Reflection.png"
     },
     {
       "id": "6X-Reflection",
@@ -6307,7 +6325,8 @@
           "speedY": 0,
           "opacity": 0.15000000596046448
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/6X-Reflection.png"
     },
     {
       "id": "7-Summit",
@@ -7035,7 +7054,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/7-Summit.png"
     },
     {
       "id": "7H-Summit",
@@ -7675,7 +7695,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/7H-Summit.png"
     },
     {
       "id": "7X-Summit",
@@ -7959,7 +7980,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/7X-Summit.png"
     },
     {
       "id": "8-Epilogue",
@@ -8234,7 +8256,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/8-Epilogue.png"
     },
     {
       "id": "9-Core",
@@ -8634,7 +8657,8 @@
           "speedY": 4,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/9-Core.png"
     },
     {
       "id": "9H-Core",
@@ -9018,7 +9042,8 @@
           "speedY": 4,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/9H-Core.png"
     },
     {
       "id": "9X-Core",
@@ -9273,7 +9298,8 @@
           "speedY": 4,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/9X-Core.png"
     },
     {
       "id": "LostLevels",
@@ -9887,8 +9913,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/celeste/previews/LostLevels.png"
     }
-  ],
-  "atlas": "assets/original/gameplay/gameplay-selected.json"
+  ]
 }

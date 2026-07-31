@@ -1,0 +1,54 @@
+{
+  "entries": {
+    "tilesets/SJ2021/Flagpole1up/Beginner/PurpleMetallic": {
+      "x": 2,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/Flagpole1up/Beginner/bg00": {
+      "x": 52,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Flagpole1up/Beginner/bg01": {
+      "x": 374,
+      "y": 2,
+      "width": 68,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 68,
+      "frameHeight": 180
+    },
+    "bgs/MaxHelpingHand/animatedParallax/SJ2021/Flagpole1up/bg_waves_3fps00": {
+      "x": 444,
+      "y": 2,
+      "width": 68,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 68,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Flagpole1up/Beginner/bg02": {
+      "x": 514,
+      "y": 2,
+      "width": 175,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 175,
+      "frameHeight": 180
+    }
+  }
+}

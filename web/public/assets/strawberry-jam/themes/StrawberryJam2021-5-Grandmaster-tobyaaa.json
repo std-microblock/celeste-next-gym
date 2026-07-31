@@ -1,0 +1,14 @@
+{
+  "entries": {
+    "tilesets/SJ2021/tobyaaa/castle_brick": {
+      "x": 2,
+      "y": 2,
+      "width": 56,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 56,
+      "frameHeight": 48
+    }
+  }
+}

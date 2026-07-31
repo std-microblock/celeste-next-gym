@@ -1,0 +1,194 @@
+{
+  "entries": {
+    "tilesets/SJ2021/bryse0n/neonBuildings": {
+      "x": 2,
+      "y": 2,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "bgs/SJ2021/bryse0n/vaporwavebgglow": {
+      "x": 28,
+      "y": 2,
+      "width": 320,
+      "height": 88,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 88
+    },
+    "bgs/MaxHelpingHand/animatedParallax/SJ2021/bryse0n/vaporwavebg00": {
+      "x": 350,
+      "y": 2,
+      "width": 320,
+      "height": 92,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 92
+    },
+    "bgs/SJ2021/bryse0n/bg_car5rev": {
+      "x": 672,
+      "y": 2,
+      "width": 164,
+      "height": 16,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 164,
+      "frameHeight": 16
+    },
+    "bgs/SJ2021/bryse0n/BGV2": {
+      "x": 2,
+      "y": 140,
+      "width": 400,
+      "height": 97,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 400,
+      "frameHeight": 97
+    },
+    "bgs/SJ2021/bryse0n/bg_car5": {
+      "x": 404,
+      "y": 140,
+      "width": 164,
+      "height": 16,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 164,
+      "frameHeight": 16
+    },
+    "bgs/SJ2021/bryse0n/MGV2": {
+      "x": 570,
+      "y": 140,
+      "width": 400,
+      "height": 94,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 400,
+      "frameHeight": 94
+    },
+    "bgs/SJ2021/bryse0n/bg_car4rev": {
+      "x": 2,
+      "y": 239,
+      "width": 320,
+      "height": 16,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 16
+    },
+    "bgs/SJ2021/bryse0n/bg_car4": {
+      "x": 324,
+      "y": 239,
+      "width": 320,
+      "height": 16,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 16
+    },
+    "bgs/SJ2021/bryse0n/pinkfg": {
+      "x": 646,
+      "y": 239,
+      "width": 128,
+      "height": 128,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 128,
+      "frameHeight": 128
+    },
+    "bgs/SJ2021/bryse0n/pinkbg": {
+      "x": 776,
+      "y": 239,
+      "width": 128,
+      "height": 128,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 128,
+      "frameHeight": 128
+    },
+    "bgs/SJ2021/bryse0n/yellowfg": {
+      "x": 2,
+      "y": 369,
+      "width": 128,
+      "height": 128,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 128,
+      "frameHeight": 128
+    },
+    "bgs/SJ2021/bryse0n/yellowbg": {
+      "x": 132,
+      "y": 369,
+      "width": 128,
+      "height": 128,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 128,
+      "frameHeight": 128
+    },
+    "bgs/SJ2021/bryse0n/bluefg": {
+      "x": 262,
+      "y": 369,
+      "width": 128,
+      "height": 128,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 128,
+      "frameHeight": 128
+    },
+    "bgs/SJ2021/bryse0n/bluebg": {
+      "x": 392,
+      "y": 369,
+      "width": 128,
+      "height": 128,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 128,
+      "frameHeight": 128
+    },
+    "danger/spikes/SJ2021/bryse0n/tall_down00": {
+      "x": 522,
+      "y": 369,
+      "width": 8,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/bryse0n/tall_left00": {
+      "x": 532,
+      "y": 369,
+      "width": 9,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 8
+    },
+    "danger/spikes/SJ2021/bryse0n/tall_right00": {
+      "x": 543,
+      "y": 369,
+      "width": 9,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 8
+    },
+    "danger/spikes/SJ2021/bryse0n/tall_up00": {
+      "x": 554,
+      "y": 369,
+      "width": 8,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 9
+    }
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "entries": {
+    "tilesets/SJ2021/fonda1515/Brick": {
+      "x": 2,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "bgs/SJ2021/fonda1515/fonda_background": {
+      "x": 100,
+      "y": 2,
+      "width": 400,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 400,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/fonda1515/fonda_clouds2": {
+      "x": 502,
+      "y": 2,
+      "width": 400,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 400,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/fonda1515/fonda_Tower": {
+      "x": 2,
+      "y": 184,
+      "width": 400,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 400,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/fonda1515/fonda_SmolGear": {
+      "x": 404,
+      "y": 184,
+      "width": 400,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 400,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/fonda1515/fonda_BeegGear": {
+      "x": 2,
+      "y": 366,
+      "width": 400,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 400,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/fonda1515/fonda_BeegGear2": {
+      "x": 404,
+      "y": 366,
+      "width": 400,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 400,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/fonda1515/fonda_clouds": {
+      "x": 2,
+      "y": 548,
+      "width": 400,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 400,
+      "frameHeight": 180
+    }
+  }
+}

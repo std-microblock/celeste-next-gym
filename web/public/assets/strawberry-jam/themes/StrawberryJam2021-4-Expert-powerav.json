@@ -1,0 +1,34 @@
+{
+  "entries": {
+    "tilesets/SJ2021/powerav/eletric": {
+      "x": 2,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/powerav/bruhJustworkLol": {
+      "x": 52,
+      "y": 2,
+      "width": 300,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 300,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/powerav/mist": {
+      "x": 2,
+      "y": 184,
+      "width": 3200,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 3200,
+      "frameHeight": 180
+    }
+  }
+}

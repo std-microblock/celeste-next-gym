@@ -1,0 +1,14 @@
+{
+  "entries": {
+    "tilesets/SJ2021/Rocketguy2/bathroomFloor": {
+      "x": 2,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    }
+  }
+}

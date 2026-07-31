@@ -1,0 +1,64 @@
+{
+  "entries": {
+    "tilesets/SJ2021/pixelator/pixelatorTower": {
+      "x": 2,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "bgs/SJ2021/pixelator/bg00": {
+      "x": 100,
+      "y": 2,
+      "width": 368,
+      "height": 960,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 368,
+      "frameHeight": 960
+    },
+    "danger/spikes/SJ2021/pixelator/v_down00": {
+      "x": 470,
+      "y": 2,
+      "width": 8,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/pixelator/v_left00": {
+      "x": 480,
+      "y": 2,
+      "width": 9,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 8
+    },
+    "danger/spikes/SJ2021/pixelator/v_right00": {
+      "x": 491,
+      "y": 2,
+      "width": 9,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 8
+    },
+    "danger/spikes/SJ2021/pixelator/v_up00": {
+      "x": 502,
+      "y": 2,
+      "width": 8,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 9
+    }
+  }
+}

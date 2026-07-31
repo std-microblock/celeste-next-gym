@@ -1,0 +1,24 @@
+{
+  "entries": {
+    "tilesets/ChineseNewYear2024/Aura/mp": {
+      "x": 2,
+      "y": 2,
+      "width": 184,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 184,
+      "frameHeight": 104
+    },
+    "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/Aura/mm.2fps0": {
+      "x": 188,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    }
+  }
+}

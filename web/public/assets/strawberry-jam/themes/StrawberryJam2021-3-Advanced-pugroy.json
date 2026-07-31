@@ -1,0 +1,44 @@
+{
+  "entries": {
+    "tilesets/SJ2021/pugroy/BossArena": {
+      "x": 2,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/pugroy/skybrighter": {
+      "x": 52,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/pugroy/smallPlanets": {
+      "x": 374,
+      "y": 2,
+      "width": 640,
+      "height": 235,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 640,
+      "frameHeight": 235
+    },
+    "bgs/SJ2021/pugroy/bigPlanets": {
+      "x": 2,
+      "y": 239,
+      "width": 640,
+      "height": 235,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 640,
+      "frameHeight": 235
+    }
+  }
+}

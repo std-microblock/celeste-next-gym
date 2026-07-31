@@ -1,0 +1,254 @@
+{
+  "entries": {
+    "tilesets/SJ2021/ExpertLobby/oldtemple": {
+      "x": 2,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/ExpertLobby/space": {
+      "x": 52,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/ExpertLobby/smallplanet": {
+      "x": 374,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/ExpertLobby/smallplanetB": {
+      "x": 696,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/ExpertLobby/BigPlanet": {
+      "x": 1018,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/ExpertLobby/CP2_LYR0": {
+      "x": 1340,
+      "y": 2,
+      "width": 500,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 500,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/ExpertLobby/CP2_LYR1": {
+      "x": 1842,
+      "y": 2,
+      "width": 500,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 500,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/ExpertLobby/CP2_LYR2": {
+      "x": 2344,
+      "y": 2,
+      "width": 500,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 500,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/ExpertLobby/CP2_LYR3": {
+      "x": 2,
+      "y": 184,
+      "width": 500,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 500,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Linj/WATERLINE": {
+      "x": 2,
+      "y": 366,
+      "width": 2880,
+      "height": 80,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 2880,
+      "frameHeight": 80
+    },
+    "bgs/SJ2021/Aspar/aspar_skybox_redux": {
+      "x": 2,
+      "y": 448,
+      "width": 320,
+      "height": 240,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 240
+    },
+    "bgs/SJ2021/Aspar/aspar_very_far": {
+      "x": 324,
+      "y": 448,
+      "width": 320,
+      "height": 240,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 240
+    },
+    "bgs/SJ2021/Aspar/aspar_mist": {
+      "x": 646,
+      "y": 448,
+      "width": 320,
+      "height": 240,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 240
+    },
+    "bgs/SJ2021/Aspar/aspar_far": {
+      "x": 968,
+      "y": 448,
+      "width": 320,
+      "height": 240,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 240
+    },
+    "bgs/SJ2021/Aspar/aspar_midfar": {
+      "x": 1290,
+      "y": 448,
+      "width": 320,
+      "height": 240,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 240
+    },
+    "bgs/SJ2021/Aspar/aspar_middle": {
+      "x": 1612,
+      "y": 448,
+      "width": 320,
+      "height": 240,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 240
+    },
+    "bgs/SJ2021/ExpertLobby/misterious": {
+      "x": 1934,
+      "y": 448,
+      "width": 600,
+      "height": 600,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 600,
+      "frameHeight": 600
+    },
+    "danger/spikes/SJ2021/DanTKO/AquaCopper_down00": {
+      "x": 2536,
+      "y": 448,
+      "width": 8,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/DanTKO/AquaCopper_down01": {
+      "x": 2546,
+      "y": 448,
+      "width": 8,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/DanTKO/AquaCopper_left00": {
+      "x": 2556,
+      "y": 448,
+      "width": 9,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 8
+    },
+    "danger/spikes/SJ2021/DanTKO/AquaCopper_left01": {
+      "x": 2567,
+      "y": 448,
+      "width": 9,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 8
+    },
+    "danger/spikes/SJ2021/DanTKO/AquaCopper_right00": {
+      "x": 2578,
+      "y": 448,
+      "width": 9,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 8
+    },
+    "danger/spikes/SJ2021/DanTKO/AquaCopper_right01": {
+      "x": 2589,
+      "y": 448,
+      "width": 9,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 8
+    },
+    "danger/spikes/SJ2021/DanTKO/AquaCopper_up00": {
+      "x": 2600,
+      "y": 448,
+      "width": 8,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/DanTKO/AquaCopper_up01": {
+      "x": 2610,
+      "y": 448,
+      "width": 8,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 9
+    }
+  }
+}

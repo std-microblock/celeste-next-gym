@@ -1,0 +1,24 @@
+{
+  "entries": {
+    "tilesets/ChineseNewYear2024/iceCream/ABuffZucchini_spike block b": {
+      "x": 2,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/icecream/HazySpaceBG00": {
+      "x": 100,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    }
+  }
+}

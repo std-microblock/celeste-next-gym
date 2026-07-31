@@ -1,0 +1,54 @@
+{
+  "entries": {
+    "tilesets/SJ2021/Luma/dreamSand": {
+      "x": 2,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/Luma/lumacloud2": {
+      "x": 52,
+      "y": 2,
+      "width": 320,
+      "height": 240,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 240
+    },
+    "bgs/SJ2021/Luma/lumacloud3": {
+      "x": 374,
+      "y": 2,
+      "width": 320,
+      "height": 240,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 240
+    },
+    "bgs/SJ2021/Luma/lumabg04": {
+      "x": 696,
+      "y": 2,
+      "width": 320,
+      "height": 244,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 244
+    },
+    "bgs/SJ2021/Luma/lumabg04ref": {
+      "x": 2,
+      "y": 248,
+      "width": 320,
+      "height": 244,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 244
+    }
+  }
+}

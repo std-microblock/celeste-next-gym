@@ -62,6 +62,10 @@ export interface VisualTheme {
   tileRules?: readonly (readonly [string, readonly [number, number]])[];
   /** Interior fill tile for tileRules (the XML's mask="center" set). */
   centerTile?: readonly [number, number];
+  /** Small per-theme atlas fetched when this theme is selected. */
+  atlasUrl?: string;
+  /** Pre-generated thumbnail shown in the theme picker. */
+  previewUrl?: string;
   background: string;
   layers: readonly VisualThemeLayer[];
   stars?: boolean;
@@ -72,23 +76,18 @@ export const VISUAL_THEMES: readonly VisualTheme[] = ROOM_THEMES;
 export const VISUAL_THEME_COLLECTIONS: readonly {
   id: VisualThemeCollectionId;
   label: string;
-  /** URL prefix of the Gameplay atlas JSON/PNG pair this collection uses. */
-  atlas?: string;
 }[] = [
   {
     id: "celeste-rooms",
-    label: "Celeste \u5b98\u65b9",
-    atlas: "assets/original/gameplay/gameplay-selected",
+    label: "Celeste \u5b98\u65b9"
   },
   {
     id: "strawberry-jam-rooms",
-    label: "\u8349\u8393\u9171 2021",
-    atlas: "assets/strawberry-jam/gameplay/room-theme-assets",
+    label: "\u8349\u8393\u9171 2021"
   },
   {
     id: "cny2024-rooms",
-    label: "\u6625\u8282\u5408\u4f5c 2024",
-    atlas: "assets/cny2024/gameplay/room-theme-assets",
+    label: "\u6625\u8282\u5408\u4f5c 2024"
   },
 ];
 

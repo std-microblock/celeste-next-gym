@@ -1,0 +1,234 @@
+{
+  "entries": {
+    "tilesets/SJ2021/Prologue/summitDark": {
+      "x": 2,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/Prologue/island/sky/skybg1": {
+      "x": 52,
+      "y": 2,
+      "width": 480,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 480,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Prologue/island/sky/skybg2": {
+      "x": 534,
+      "y": 2,
+      "width": 480,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 480,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Prologue/island/sky/skybg3": {
+      "x": 2,
+      "y": 184,
+      "width": 480,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 480,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Prologue/island/sky/skybg4": {
+      "x": 484,
+      "y": 184,
+      "width": 480,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 480,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Prologue/island/sky/skybg5": {
+      "x": 2,
+      "y": 366,
+      "width": 480,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 480,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Prologue/island/sun": {
+      "x": 484,
+      "y": 366,
+      "width": 480,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 480,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Prologue/island/mountains": {
+      "x": 2,
+      "y": 548,
+      "width": 480,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 480,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Prologue/island/ocean": {
+      "x": 484,
+      "y": 548,
+      "width": 480,
+      "height": 200,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 480,
+      "frameHeight": 200
+    },
+    "bgs/SJ2021/Prologue/island/reflections/run": {
+      "x": 2,
+      "y": 750,
+      "width": 480,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 480,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Prologue/island/reflections/rountains": {
+      "x": 484,
+      "y": 750,
+      "width": 480,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 480,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Prologue/island/reflections/rrocks": {
+      "x": 2,
+      "y": 932,
+      "width": 480,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 480,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Prologue/island/water_texture": {
+      "x": 484,
+      "y": 932,
+      "width": 480,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 480,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Prologue/island/rocks": {
+      "x": 2,
+      "y": 1114,
+      "width": 480,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 480,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Prologue/rosy_archipelago": {
+      "x": 484,
+      "y": 1114,
+      "width": 480,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 480,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Prologue/temple/bg0": {
+      "x": 2,
+      "y": 1296,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Prologue/temple/farther": {
+      "x": 324,
+      "y": 1296,
+      "width": 256,
+      "height": 192,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 256,
+      "frameHeight": 192
+    },
+    "bgs/SJ2021/Prologue/temple/far": {
+      "x": 582,
+      "y": 1296,
+      "width": 256,
+      "height": 192,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 256,
+      "frameHeight": 192
+    },
+    "bgs/SJ2021/Prologue/temple/sand": {
+      "x": 2,
+      "y": 1490,
+      "width": 256,
+      "height": 192,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 256,
+      "frameHeight": 192
+    },
+    "bgs/SJ2021/Prologue/temple/bigCrystal_c": {
+      "x": 260,
+      "y": 1490,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Prologue/temple/bigCrystal_a": {
+      "x": 582,
+      "y": 1490,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Prologue/temple/bigCrystal_b": {
+      "x": 2,
+      "y": 1684,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Prologue/temple/foreground": {
+      "x": 324,
+      "y": 1684,
+      "width": 256,
+      "height": 300,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 256,
+      "frameHeight": 300
+    }
+  }
+}

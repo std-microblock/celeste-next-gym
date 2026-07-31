@@ -1,0 +1,44 @@
+{
+  "entries": {
+    "bgs/SJ2021/Eclipse/moon_alt": {
+      "x": 2,
+      "y": 2,
+      "width": 128,
+      "height": 128,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 128,
+      "frameHeight": 128
+    },
+    "bgs/SJ2021/Eclipse/moonrings00": {
+      "x": 132,
+      "y": 2,
+      "width": 220,
+      "height": 142,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 220,
+      "frameHeight": 142
+    },
+    "bgs/SJ2021/Eclipse/smol_moon": {
+      "x": 354,
+      "y": 2,
+      "width": 64,
+      "height": 64,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 64,
+      "frameHeight": 64
+    },
+    "bgs/SJ2021/Eclipse/even_smol_moon": {
+      "x": 420,
+      "y": 2,
+      "width": 32,
+      "height": 32,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 32,
+      "frameHeight": 32
+    }
+  }
+}

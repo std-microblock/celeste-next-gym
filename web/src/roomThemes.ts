@@ -22,6 +22,8 @@ interface RoomThemeData {
   spike: string;
   spinner: { foreground: string; background: string } | null;
   background: string;
+  atlas?: string;
+  preview?: string;
   layers: readonly {
     key: string;
     scrollX: number;
@@ -52,6 +54,8 @@ function toTheme(
       background: "danger/crystal/bg_blue",
     },
     background: room.background,
+    ...(room.atlas ? { atlasUrl: room.atlas } : {}),
+    ...(room.preview ? { previewUrl: room.preview } : {}),
     layers: room.layers.map(
       (layer): VisualThemeLayer => ({
         key: layer.key,

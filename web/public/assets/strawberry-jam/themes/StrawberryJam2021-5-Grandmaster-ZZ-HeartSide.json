@@ -1,0 +1,114 @@
+{
+  "entries": {
+    "tilesets/SJ2021/Maya/PinballSlopeLobby": {
+      "x": 2,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/GMHeartside/CP4/sky": {
+      "x": 52,
+      "y": 2,
+      "width": 320,
+      "height": 224,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 224
+    },
+    "bgs/SJ2021/GMHeartside/CP4/starsloop": {
+      "x": 374,
+      "y": 2,
+      "width": 320,
+      "height": 224,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 224
+    },
+    "bgs/SJ2021/GMHeartside/CP4/moonglow": {
+      "x": 696,
+      "y": 2,
+      "width": 320,
+      "height": 224,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 224
+    },
+    "bgs/SJ2021/GMHeartside/CP4/moon": {
+      "x": 2,
+      "y": 228,
+      "width": 320,
+      "height": 224,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 224
+    },
+    "bgs/SJ2021/GMHeartside/CP4/gmvignette": {
+      "x": 324,
+      "y": 228,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/GMHeartside/CP4/cloud-loop-4": {
+      "x": 646,
+      "y": 228,
+      "width": 320,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 104
+    },
+    "bgs/SJ2021/GMHeartside/CP4/cloud-loop-3": {
+      "x": 2,
+      "y": 454,
+      "width": 116,
+      "height": 160,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 116,
+      "frameHeight": 160
+    },
+    "bgs/SJ2021/GMHeartside/CP4/cloud-loop-2": {
+      "x": 120,
+      "y": 454,
+      "width": 116,
+      "height": 160,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 116,
+      "frameHeight": 160
+    },
+    "bgs/SJ2021/GMHeartside/CP4/mountains": {
+      "x": 2,
+      "y": 616,
+      "width": 880,
+      "height": 168,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 880,
+      "frameHeight": 168
+    },
+    "bgs/SJ2021/GMHeartside/CP4/cloud-loop-1": {
+      "x": 2,
+      "y": 786,
+      "width": 320,
+      "height": 110,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 110
+    }
+  }
+}

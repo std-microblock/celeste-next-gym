@@ -1,0 +1,84 @@
+{
+  "entries": {
+    "tilesets/SJ2021/Skeleton/nikkoLeaves": {
+      "x": 2,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "bgs/SJ2021/Skeleton/bg3": {
+      "x": 100,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Skeleton/mountains_sky": {
+      "x": 422,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Skeleton/mountains_cliff0": {
+      "x": 2,
+      "y": 184,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Skeleton/mountains_cliff1": {
+      "x": 324,
+      "y": 184,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Skeleton/mountains_cliff2": {
+      "x": 646,
+      "y": 184,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Skeleton/JungleHelper/TreeBGAB": {
+      "x": 2,
+      "y": 366,
+      "width": 320,
+      "height": 184,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 184
+    },
+    "bgs/SJ2021/Skeleton/JungleHelper/TreeBGAA": {
+      "x": 324,
+      "y": 366,
+      "width": 360,
+      "height": 137,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 360,
+      "frameHeight": 137
+    }
+  }
+}

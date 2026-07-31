@@ -1,0 +1,14 @@
+{
+  "entries": {
+    "bgs/ChineseNewYear2024/LittleV/bg00": {
+      "x": 2,
+      "y": 2,
+      "width": 320,
+      "height": 240,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 240
+    }
+  }
+}

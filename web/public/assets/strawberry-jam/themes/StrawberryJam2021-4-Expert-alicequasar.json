@@ -1,0 +1,94 @@
+{
+  "entries": {
+    "tilesets/SJ2021/Marcossanches/batteryFloor": {
+      "x": 2,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "danger/spikes/SJ2021/Marcossanches/default_down00": {
+      "x": 100,
+      "y": 2,
+      "width": 8,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/Marcossanches/default_down01": {
+      "x": 110,
+      "y": 2,
+      "width": 8,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/Marcossanches/default_left00": {
+      "x": 120,
+      "y": 2,
+      "width": 9,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 8
+    },
+    "danger/spikes/SJ2021/Marcossanches/default_left01": {
+      "x": 131,
+      "y": 2,
+      "width": 9,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 8
+    },
+    "danger/spikes/SJ2021/Marcossanches/default_right00": {
+      "x": 142,
+      "y": 2,
+      "width": 9,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 8
+    },
+    "danger/spikes/SJ2021/Marcossanches/default_right01": {
+      "x": 153,
+      "y": 2,
+      "width": 9,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 8
+    },
+    "danger/spikes/SJ2021/Marcossanches/default_up00": {
+      "x": 164,
+      "y": 2,
+      "width": 8,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/Marcossanches/default_up01": {
+      "x": 174,
+      "y": 2,
+      "width": 8,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 9
+    }
+  }
+}

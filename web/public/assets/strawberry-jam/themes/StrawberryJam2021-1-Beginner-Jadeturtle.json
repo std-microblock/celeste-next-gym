@@ -1,0 +1,104 @@
+{
+  "entries": {
+    "bgs/SJ2021/Jadeturtle/Jadeturtle_dawn_h": {
+      "x": 2,
+      "y": 2,
+      "width": 450,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 450,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Jadeturtle/Jadeturtle_dawn_g": {
+      "x": 454,
+      "y": 2,
+      "width": 450,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 450,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Jadeturtle/Jadeturtle_dawn_f": {
+      "x": 2,
+      "y": 184,
+      "width": 450,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 450,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Jadeturtle/Jadeturtle_dawn_e": {
+      "x": 454,
+      "y": 184,
+      "width": 450,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 450,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Jadeturtle/Jadeturtle_dawn_d": {
+      "x": 2,
+      "y": 366,
+      "width": 450,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 450,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Jadeturtle/Jadeturtle_dawn_c": {
+      "x": 454,
+      "y": 366,
+      "width": 450,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 450,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Jadeturtle/Jadeturtle_dawn_b": {
+      "x": 2,
+      "y": 548,
+      "width": 450,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 450,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Jadeturtle/Jadeturtle_dawn_a": {
+      "x": 454,
+      "y": 548,
+      "width": 450,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 450,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Jadeturtle/Jadeturtle_e": {
+      "x": 2,
+      "y": 730,
+      "width": 450,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 450,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Jadeturtle/Jadeturtle_d": {
+      "x": 454,
+      "y": 730,
+      "width": 450,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 450,
+      "frameHeight": 180
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "entries": {
+    "tilesets/ChineseNewYear2024/RD/orangeLeaves": {
+      "x": 2,
+      "y": 2,
+      "width": 39,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 39,
+      "frameHeight": 120
+    }
+  }
+}

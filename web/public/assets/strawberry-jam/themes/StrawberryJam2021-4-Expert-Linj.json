@@ -1,0 +1,24 @@
+{
+  "entries": {
+    "bgs/SJ2021/Linj/linjwaterreflectiondown": {
+      "x": 2,
+      "y": 2,
+      "width": 320,
+      "height": 244,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 244
+    },
+    "bgs/SJ2021/Linj/WATERLINE": {
+      "x": 2,
+      "y": 248,
+      "width": 2880,
+      "height": 80,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 2880,
+      "frameHeight": 80
+    }
+  }
+}

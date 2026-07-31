@@ -1,0 +1,54 @@
+{
+  "entries": {
+    "tilesets/ChineseNewYear2024/hoshiyakimu/dirtDark": {
+      "x": 2,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/MaxHelpingHand/animatedParallax/ChineseNewYear2024/hoshiyakimu/starscape00": {
+      "x": 52,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/ChineseNewYear2024/hoshiyakimu/moon": {
+      "x": 374,
+      "y": 2,
+      "width": 320,
+      "height": 184,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 184
+    },
+    "bgs/ChineseNewYear2024/hoshiyakimu/clouds": {
+      "x": 696,
+      "y": 2,
+      "width": 320,
+      "height": 184,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 184
+    },
+    "bgs/ChineseNewYear2024/hoshiyakimu/Mountain": {
+      "x": 2,
+      "y": 188,
+      "width": 320,
+      "height": 184,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 184
+    }
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "entries": {
+    "tilesets/SJ2021/LethargicDoggo/Av_MarbleTower": {
+      "x": 2,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/LethargicDoggo/lethargic_cloud 5": {
+      "x": 52,
+      "y": 2,
+      "width": 400,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 400,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/LethargicDoggo/lethargic_cloud 4": {
+      "x": 454,
+      "y": 2,
+      "width": 400,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 400,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/LethargicDoggo/lethargic_pillar 2": {
+      "x": 2,
+      "y": 184,
+      "width": 400,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 400,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/LethargicDoggo/lethargic_cloud 3": {
+      "x": 404,
+      "y": 184,
+      "width": 400,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 400,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/LethargicDoggo/lethargic_cloud 2": {
+      "x": 2,
+      "y": 366,
+      "width": 400,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 400,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/LethargicDoggo/lethargic_pillar 1": {
+      "x": 404,
+      "y": 366,
+      "width": 400,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 400,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/LethargicDoggo/lethargic_cloud 1": {
+      "x": 2,
+      "y": 548,
+      "width": 400,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 400,
+      "frameHeight": 180
+    }
+  }
+}

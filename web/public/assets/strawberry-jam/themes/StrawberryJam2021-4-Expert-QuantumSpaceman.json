@@ -1,0 +1,154 @@
+{
+  "entries": {
+    "bgs/SJ2021/QuantumSpaceman/night sky_1": {
+      "x": 2,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/QuantumSpaceman/bgmoon": {
+      "x": 324,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_down00": {
+      "x": 646,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_down01": {
+      "x": 658,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_down02": {
+      "x": 670,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_left00": {
+      "x": 682,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_left01": {
+      "x": 694,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_left02": {
+      "x": 706,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_right00": {
+      "x": 718,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_right01": {
+      "x": 730,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_right02": {
+      "x": 742,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_up00": {
+      "x": 754,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_up01": {
+      "x": 766,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_up02": {
+      "x": 778,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/QuantumSpaceman/starSpikes_up03": {
+      "x": 790,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    }
+  }
+}

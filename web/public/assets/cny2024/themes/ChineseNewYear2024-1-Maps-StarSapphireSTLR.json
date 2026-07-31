@@ -1,0 +1,44 @@
+{
+  "entries": {
+    "bgs/ChineseNewYear2024/StarSapphireSTLR/erouSpace1": {
+      "x": 2,
+      "y": 2,
+      "width": 200,
+      "height": 200,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 200,
+      "frameHeight": 200
+    },
+    "bgs/ChineseNewYear2024/StarSapphireSTLR/erouSpace2": {
+      "x": 204,
+      "y": 2,
+      "width": 200,
+      "height": 200,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 200,
+      "frameHeight": 200
+    },
+    "bgs/ChineseNewYear2024/StarSapphireSTLR/erouSpace3": {
+      "x": 406,
+      "y": 2,
+      "width": 200,
+      "height": 200,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 200,
+      "frameHeight": 200
+    },
+    "bgs/ChineseNewYear2024/StarSapphireSTLR/erouSpace4": {
+      "x": 608,
+      "y": 2,
+      "width": 200,
+      "height": 200,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 200,
+      "frameHeight": 200
+    }
+  }
+}

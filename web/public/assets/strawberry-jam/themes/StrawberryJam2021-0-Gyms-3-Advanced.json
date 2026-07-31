@@ -1,0 +1,64 @@
+{
+  "entries": {
+    "tilesets/SJ2021/Gym/AdvancedGym": {
+      "x": 2,
+      "y": 2,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "bgs/SJ2021/Gym/advGymDarkBG": {
+      "x": 28,
+      "y": 2,
+      "width": 64,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 64,
+      "frameHeight": 8
+    },
+    "danger/spikes/SJ2021/Gym/adv_down00": {
+      "x": 94,
+      "y": 2,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/Gym/adv_left00": {
+      "x": 106,
+      "y": 2,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Gym/adv_right00": {
+      "x": 117,
+      "y": 2,
+      "width": 9,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Gym/adv_up00": {
+      "x": 128,
+      "y": 2,
+      "width": 10,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 9
+    }
+  }
+}

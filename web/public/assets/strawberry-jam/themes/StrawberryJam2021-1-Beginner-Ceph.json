@@ -1,0 +1,134 @@
+{
+  "entries": {
+    "tilesets/SJ2021/Ceph/brownrock": {
+      "x": 2,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/Ceph/Legacy-Fantasy-VL.3 - Purple Bay/Background/Background-1": {
+      "x": 52,
+      "y": 2,
+      "width": 336,
+      "height": 192,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 336,
+      "frameHeight": 192
+    },
+    "bgs/SJ2021/Ceph/Legacy-Fantasy-VL.3 - Purple Bay/Background/Background-2": {
+      "x": 390,
+      "y": 2,
+      "width": 336,
+      "height": 192,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 336,
+      "frameHeight": 192
+    },
+    "bgs/SJ2021/Ceph/Legacy-Fantasy-VL.3 - Purple Bay/Background/Background-3": {
+      "x": 2,
+      "y": 196,
+      "width": 336,
+      "height": 192,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 336,
+      "frameHeight": 192
+    },
+    "bgs/SJ2021/Ceph/Legacy-Fantasy-VL.3 - Purple Bay/Background/Background-4": {
+      "x": 340,
+      "y": 196,
+      "width": 336,
+      "height": 192,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 336,
+      "frameHeight": 192
+    },
+    "danger/spikes/SJ2021/Ceph/ceph_down00": {
+      "x": 678,
+      "y": 196,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Ceph/ceph_down01": {
+      "x": 690,
+      "y": 196,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Ceph/ceph_left00": {
+      "x": 702,
+      "y": 196,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Ceph/ceph_left01": {
+      "x": 714,
+      "y": 196,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Ceph/ceph_right00": {
+      "x": 726,
+      "y": 196,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Ceph/ceph_right01": {
+      "x": 738,
+      "y": 196,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Ceph/ceph_up00": {
+      "x": 750,
+      "y": 196,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/Ceph/ceph_up01": {
+      "x": 762,
+      "y": 196,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    }
+  }
+}

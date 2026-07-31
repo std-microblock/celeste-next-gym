@@ -1,0 +1,64 @@
+{
+  "entries": {
+    "tilesets/SJ2021/archire/catelinecomplexorang": {
+      "x": 2,
+      "y": 2,
+      "width": 24,
+      "height": 136,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 24,
+      "frameHeight": 136
+    },
+    "bgs/SJ2021/ExpertHeartside/somethin": {
+      "x": 2,
+      "y": 140,
+      "width": 1140,
+      "height": 1228,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 1140,
+      "frameHeight": 1228
+    },
+    "danger/spikes/SJ2021/Archire/red_down00": {
+      "x": 2,
+      "y": 1370,
+      "width": 8,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 9
+    },
+    "danger/spikes/SJ2021/Archire/red_left00": {
+      "x": 12,
+      "y": 1370,
+      "width": 9,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 8
+    },
+    "danger/spikes/SJ2021/Archire/red_right00": {
+      "x": 23,
+      "y": 1370,
+      "width": 9,
+      "height": 8,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 9,
+      "frameHeight": 8
+    },
+    "danger/spikes/SJ2021/Archire/red_up00": {
+      "x": 34,
+      "y": 1370,
+      "width": 8,
+      "height": 9,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 8,
+      "frameHeight": 9
+    }
+  }
+}

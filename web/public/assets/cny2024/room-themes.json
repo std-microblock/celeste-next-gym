@@ -383,7 +383,9 @@
           "speedY": 0,
           "opacity": 0.7999998927116394
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-0-Lobbies-0-Prologue.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-0-Lobbies-0-Prologue.png"
     },
     {
       "id": "ChineseNewYear2024-0-Lobbies-1-Maps",
@@ -1767,7 +1769,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-0-Lobbies-1-Maps.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-0-Lobbies-1-Maps.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-ahayo3",
@@ -1843,7 +1847,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-ahayo3.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-AuraMP",
@@ -2093,7 +2098,9 @@
           "speedY": 0,
           "opacity": 0.14999999105930328
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-1-Maps-AuraMP.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-AuraMP.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-AuraMS",
@@ -2137,7 +2144,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-1-Maps-AuraMS.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-AuraMS.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-B612",
@@ -2407,7 +2416,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-1-Maps-B612.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-B612.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-bitsxiangsu",
@@ -2483,7 +2494,8 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-bitsxiangsu.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-DLK",
@@ -2563,7 +2575,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-1-Maps-DLK.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-DLK.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-DX3906I",
@@ -2620,7 +2634,9 @@
           "speedY": 0,
           "opacity": 0.3499999940395355
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-1-Maps-DX3906I.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-DX3906I.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-fengchen",
@@ -2670,7 +2686,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-1-Maps-fengchen.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-fengchen.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-hoshiyakimu",
@@ -2966,7 +2984,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-1-Maps-hoshiyakimu.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-hoshiyakimu.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-iceCream",
@@ -3219,7 +3239,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-1-Maps-iceCream.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-iceCream.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-LittleV1",
@@ -3512,7 +3534,9 @@
           "speedY": 0,
           "opacity": 0.19999998807907104
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-1-Maps-LittleV1.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-LittleV1.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-LittleV5",
@@ -3771,7 +3795,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-1-Maps-LittleV5.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-LittleV5.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-rd_cny_gf",
@@ -4050,7 +4076,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-1-Maps-rd_cny_gf.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-rd_cny_gf.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-rifsAcetone",
@@ -4072,7 +4100,8 @@
       "spike": "default",
       "spinner": null,
       "background": "#000000",
-      "layers": []
+      "layers": [],
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-rifsAcetone.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-RoCas",
@@ -4324,7 +4353,9 @@
           "speedY": -12,
           "opacity": 0.4229999780654907
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-1-Maps-RoCas.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-RoCas.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-ShadowRo",
@@ -4590,7 +4621,9 @@
       "spike": "outline",
       "spinner": null,
       "background": "#000000",
-      "layers": []
+      "layers": [],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-1-Maps-ShadowRo.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-ShadowRo.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-StarSapphireCyberDance",
@@ -4848,7 +4881,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-1-Maps-StarSapphireCyberDance.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-StarSapphireCyberDance.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-StarSapphireFR",
@@ -5116,7 +5151,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-1-Maps-StarSapphireFR.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-StarSapphireFR.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-StarSapphireGDDN",
@@ -5226,7 +5263,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-1-Maps-StarSapphireGDDN.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-StarSapphireGDDN.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-StarSapphireMADWMY",
@@ -5548,7 +5587,9 @@
           "speedY": 0,
           "opacity": 0.5
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-1-Maps-StarSapphireMADWMY.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-StarSapphireMADWMY.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-StarSapphireSTLR",
@@ -5629,7 +5670,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-1-Maps-StarSapphireSTLR.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-StarSapphireSTLR.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-StarSapphireYHS",
@@ -5783,7 +5826,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-1-Maps-StarSapphireYHS.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-StarSapphireYHS.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-Underdragon1",
@@ -5928,7 +5973,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-1-Maps-Underdragon1.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-Underdragon1.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-yanshi",
@@ -6210,7 +6257,9 @@
           "speedY": -12,
           "opacity": 0.11999999731779099
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-1-Maps-yanshi.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-yanshi.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-youziAfterain",
@@ -6265,7 +6314,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-1-Maps-youziAfterain.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-youziAfterain.png"
     },
     {
       "id": "ChineseNewYear2024-1-Maps-ZZ-HeartSide",
@@ -6747,8 +6798,9 @@
           "speedY": 0,
           "opacity": 1
         }
-      ]
+      ],
+      "atlas": "assets/cny2024/themes/ChineseNewYear2024-1-Maps-ZZ-HeartSide.json",
+      "preview": "assets/cny2024/previews/ChineseNewYear2024-1-Maps-ZZ-HeartSide.png"
     }
-  ],
-  "atlas": "assets/cny2024/gameplay/room-theme-assets.json"
+  ]
 }

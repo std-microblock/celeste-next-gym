@@ -1,0 +1,154 @@
+{
+  "entries": {
+    "tilesets/SJ2021/rdoggo8/avmud": {
+      "x": 2,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    },
+    "bgs/SJ2021/snolls/rdogswamp/sky_a": {
+      "x": 52,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/snolls/rdogswamp/sky_b": {
+      "x": 374,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/snolls/rdogswamp/sky_c": {
+      "x": 696,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/snolls/rdogswamp/bgland_a": {
+      "x": 2,
+      "y": 184,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/snolls/rdogswamp/bgland_b": {
+      "x": 324,
+      "y": 184,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/snolls/rdogswamp/bgland_c": {
+      "x": 646,
+      "y": 184,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/snolls/rdogswamp/water": {
+      "x": 2,
+      "y": 366,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/snolls/rdogswamp/waterbright_a": {
+      "x": 324,
+      "y": 366,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/snolls/rdogswamp/water_log": {
+      "x": 2,
+      "y": 548,
+      "width": 700,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 700,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/snolls/rdogswamp/shoreback": {
+      "x": 2,
+      "y": 730,
+      "width": 480,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 480,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/snolls/rdogswamp/water_islands_back": {
+      "x": 484,
+      "y": 730,
+      "width": 380,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 380,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/snolls/rdogswamp/water_mudisland": {
+      "x": 2,
+      "y": 912,
+      "width": 520,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 520,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/snolls/rdogswamp/water_islands_close": {
+      "x": 524,
+      "y": 912,
+      "width": 380,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 380,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/snolls/rdogswamp/closer_landmass": {
+      "x": 2,
+      "y": 1094,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    }
+  }
+}

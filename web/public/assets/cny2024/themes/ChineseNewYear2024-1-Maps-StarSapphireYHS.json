@@ -1,0 +1,24 @@
+{
+  "entries": {
+    "bgs/ChineseNewYear2024/StarSapphireYHS/YHSbg": {
+      "x": 2,
+      "y": 2,
+      "width": 320,
+      "height": 240,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 240
+    },
+    "bgs/ChineseNewYear2024/StarSapphireYHS/YHSSun": {
+      "x": 324,
+      "y": 2,
+      "width": 70,
+      "height": 71,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 70,
+      "frameHeight": 71
+    }
+  }
+}

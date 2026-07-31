@@ -30,6 +30,7 @@ const filters = filterArg ? filterArg.split(",").filter(Boolean) : null;
 const existingAtlas = takeArg("--atlas");
 const metaPath = takeArg("--meta");
 const sidOverride = takeArg("--sid");
+const baseAtlas = takeArg("--base-atlas");
 
 const modRoot = await resolveModRoot(input);
 const gameplayRoot = path.join(modRoot, "Graphics", "Atlases", "Gameplay");
@@ -318,7 +319,7 @@ for (const mapFile of mapFiles) {
     continue;
   }
   const roomId = mapRelative.replace(/\.bin$/, "").replace(/[^A-Za-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
-  const label = i18nLabel(mapRelative) ?? mapMeta.label ?? mapRelative.replace(/\.bin$/, "");
+  const label = i18nLabel(mapRelative) ?? (mapMeta.label ? mapMeta.label.replace(/\.bin$/i, "") : null) ?? mapRelative.replace(/\.bin$/, "");
   rooms.push({
     id: roomId,
     label,
@@ -337,47 +338,67 @@ for (const mapFile of mapFiles) {
   console.log("extracted " + mapRelative);
 }
 
-let reuseAtlas = null;
-if (existingAtlas) {
-  const atlasEntries = {};
-  for (const file of existingAtlas.split(",")) {
-    Object.assign(atlasEntries, JSON.parse(await readFile(file.trim(), "utf8")).entries);
-  }
-  // Only textures that actually ship as loose PNGs in the mod are required;
-  // procedural references (mist, purplesunset, tentacles) are never packable.
-  const fileExists = async (key) => {
-    try { return (await stat(path.join(gameplayRoot, ...key.split("/")) + ".png")).isFile(); }
-    catch { return false; }
-  };
-  const missing = [];
-  for (const key of referencedTextures) {
-    if (!atlasEntries[key] && (await fileExists(key))) missing.push(key);
-  }
-  if (missing.length === 0) {
-    reuseAtlas = existingAtlas.split(",")[0].trim();
-    console.log("all " + referencedTextures.size + " textures already in " + reuseAtlas + "; reusing it");
-  } else {
-    console.log("missing " + missing.length + " of " + referencedTextures.size + " textures; packing a mod atlas");
+// ---- per-theme on-demand atlases + preview thumbnails ----------------------
+const baseEntries = {};
+if (baseAtlas) {
+  for (const file of baseAtlas.split(",")) {
+    Object.assign(baseEntries, JSON.parse(await readFile(file.trim(), "utf8")).entries);
   }
 }
 
-if (!reuseAtlas) {
-  const packKeys = [];
-  for (const key of referencedTextures) {
-    const input = path.join(gameplayRoot, ...key.split("/")) + ".png";
-    try {
-      if ((await stat(input)).isFile()) packKeys.push(key);
-    } catch {
-      // ignore missing texture files
+async function fileExistsInMod(key) {
+  try {
+    return (await stat(path.join(gameplayRoot, ...key.split("/")) + ".png")).isFile();
+  } catch {
+    return false;
+  }
+}
+
+async function spikeTextureKeys(spike) {
+  const parts = spike.split("/");
+  const base = parts.pop();
+  const dir = path.join(gameplayRoot, "danger", "spikes", ...parts);
+  const keys = [];
+  let files = [];
+  try { files = await readdir(dir); } catch { return keys; }
+  for (const name of files) {
+    if (name.startsWith(base + "_") && name.endsWith(".png")) {
+      keys.push("danger/spikes/" + (parts.length ? parts.join("/") + "/" : "") + name.slice(0, -4));
     }
+  }
+  return keys;
+}
+
+async function themeTextureKeys(room) {
+  const keys = new Set();
+  if (room.tileset) keys.add(room.tileset);
+  for (const layer of room.layers) keys.add(layer.key);
+  if (room.spike && room.spike !== "default") {
+    for (const key of await spikeTextureKeys(room.spike)) keys.add(key);
+  }
+  if (room.spinner) {
+    keys.add(room.spinner.foreground);
+    keys.add(room.spinner.background);
+  }
+  return keys;
+}
+
+const modIdOut = path.basename(outDir);
+const padding = 2;
+for (const room of rooms) {
+  // Pack the theme's own textures (not already in the shared base atlas) into
+  // a small per-theme atlas so the web only fetches what the selected theme
+  // actually needs.
+  const packKeys = [];
+  for (const key of await themeTextureKeys(room)) {
+    if (baseEntries[key]) continue;
+    if (await fileExistsInMod(key)) packKeys.push(key);
   }
   let sheetWidth = 1024;
   for (const key of packKeys) {
-    const probe = path.join(gameplayRoot, ...key.split("/")) + ".png";
-    const probeMeta = await sharp(probe).metadata();
-    sheetWidth = Math.max(sheetWidth, probeMeta.width ?? 0);
+    const probe = await sharp(path.join(gameplayRoot, ...key.split("/")) + ".png").metadata();
+    sheetWidth = Math.max(sheetWidth, probe.width ?? 0);
   }
-  const padding = 2;
   let cursorX = padding;
   let cursorY = padding;
   let rowHeight = 0;
@@ -394,24 +415,98 @@ if (!reuseAtlas) {
     cursorX += metadata.width + padding;
     rowHeight = Math.max(rowHeight, metadata.height);
   }
-  const sheetHeight = cursorY + rowHeight + padding;
-  await mkdir(path.join(outDir, "gameplay"), { recursive: true });
-  await sharp({ create: { width: sheetWidth, height: sheetHeight, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
-    .composite(await Promise.all(placements.map(async (entry) => ({ input: await readFile(entry.input), left: entry.x, top: entry.y }))))
+  const themeDir = path.join(outDir, "themes");
+  await mkdir(themeDir, { recursive: true });
+  if (placements.length > 0) {
+    room.atlas = "assets/" + modIdOut + "/themes/" + room.id + ".json";
+    const sheetHeight = cursorY + rowHeight + padding;
+    await sharp({ create: { width: sheetWidth, height: sheetHeight, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+      .composite(await Promise.all(placements.map(async (entry) => ({ input: await readFile(entry.input), left: entry.x, top: entry.y }))))
+      .png({ compressionLevel: 9 })
+      .toFile(path.join(themeDir, room.id + ".png"));
+    const entries = Object.fromEntries(
+      placements.map((entry) => [entry.key, { x: entry.x, y: entry.y, width: entry.width, height: entry.height, drawOffsetX: 0, drawOffsetY: 0, frameWidth: entry.width, frameHeight: entry.height }]),
+    );
+    await writeFile(path.join(themeDir, room.id + ".json"), JSON.stringify({ entries }, null, 2) + "\n", "utf8");
+  }
+  await renderPreview(room);
+}
+
+// Find a texture either as a loose mod PNG or inside the shared base atlas.
+async function textureSource(key) {
+  const loose = path.join(gameplayRoot, ...key.split("/")) + ".png";
+  try {
+    if ((await stat(loose)).isFile()) return { file: loose, entry: null };
+  } catch {
+    // fall through
+  }
+  const entry = baseEntries[key];
+  if (entry && baseAtlas) {
+    const firstBase = baseAtlas.split(",")[0].trim();
+    return { file: firstBase.replace(".json", ".png"), entry };
+  }
+  return null;
+}
+
+async function renderPreview(room) {
+  const width = 144;
+  const height = 81;
+  const parseHex = (hex) => ({
+    r: parseInt(hex.slice(1, 3), 16),
+    g: parseInt(hex.slice(3, 5), 16),
+    b: parseInt(hex.slice(5, 7), 16),
+    alpha: 1,
+  });
+  const composites = [];
+  const firstLayer = room.layers.find((layer) => layer.key);
+  if (firstLayer) {
+    const source = await textureSource(firstLayer.key);
+    if (source) {
+      if (source.entry) {
+        const cropped = await sharp(source.file)
+          .extract({ left: source.entry.x, top: source.entry.y, width: source.entry.width, height: source.entry.height })
+          .resize(width, height, { fit: "cover" })
+          .png()
+          .toBuffer();
+        composites.push({ input: cropped, left: 0, top: 0 });
+      } else {
+        const resized = await sharp(source.file).resize(width, height, { fit: "cover" }).png().toBuffer();
+        composites.push({ input: resized, left: 0, top: 0 });
+      }
+    }
+  }
+  if (room.tileset) {
+    const source = await textureSource(room.tileset);
+    if (source) {
+      const [tileX, tileY] = room.centerTile ?? [2, 15];
+      const extract = (left, top, w, h) =>
+        source.entry
+          ? sharp(source.file).extract({ left: source.entry.x + left, top: source.entry.y + top, width: w, height: h })
+          : sharp(source.file).extract({ left, top, width: w, height: h });
+      const strip = [];
+      for (let x = 0; x < width; x += 12) {
+        strip.push(
+          extract(tileX * 8, tileY * 8, 8, 8).resize(12, 12).png().toBuffer(),
+        );
+      }
+      const stripBuffers = await Promise.all(strip);
+      const bar = await sharp({ create: { width, height: 18, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0.55 } } })
+        .composite(stripBuffers.map((buf, index) => ({ input: buf, left: index * 12, top: 0 })))
+        .png()
+        .toBuffer();
+      composites.push({ input: bar, left: 0, top: height - 18 });
+    }
+  }
+  const previewDir = path.join(outDir, "previews");
+  await mkdir(previewDir, { recursive: true });
+  room.preview = "assets/" + modIdOut + "/previews/" + room.id + ".png";
+  await sharp({ create: { width, height, channels: 4, background: parseHex(room.background) } })
+    .composite(composites)
     .png({ compressionLevel: 9 })
-    .toFile(path.join(outDir, "gameplay", "room-theme-assets.png"));
-  const entries = Object.fromEntries(
-    placements.map((entry) => [entry.key, { x: entry.x, y: entry.y, width: entry.width, height: entry.height, drawOffsetX: 0, drawOffsetY: 0, frameWidth: entry.width, frameHeight: entry.height }]),
-  );
-  await writeFile(path.join(outDir, "gameplay", "room-theme-assets.json"), JSON.stringify({ entries }, null, 2) + "\n", "utf8");
-  console.log("packed " + placements.length + " textures into " + path.join(outDir, "gameplay", "room-theme-assets"));
+    .toFile(path.join(previewDir, room.id + ".png"));
 }
 
 await mkdir(outDir, { recursive: true });
 const output = path.join(outDir, "room-themes.json");
-const atlasField = reuseAtlas
-  ? reuseAtlas.replace(/^web\/public\//, "").replace(/\\/g, "/")
-  : "assets/" + path.basename(outDir) + "/gameplay/room-theme-assets.json";
-await writeFile(output, JSON.stringify({ modId, rooms, atlas: atlasField }, null, 2) + "\n", "utf8");
-console.log("wrote " + rooms.length + " map themes to " + output);
-
+await writeFile(output, JSON.stringify({ modId, rooms }, null, 2) + "\n", "utf8");
+console.log("wrote " + rooms.length + " map themes (per-theme atlases + previews) to " + output);

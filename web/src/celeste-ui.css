@@ -919,3 +919,115 @@ textarea:focus-visible {
     display: none;
   }
 }
+
+/* Custom theme picker: search + grouped tree + preview. */
+.theme-picker {
+  position: relative;
+  min-width: 0;
+}
+.theme-picker-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 27px;
+  max-width: 220px;
+  padding: 0 7px;
+  color: #eee9f2;
+  border: 1px solid #51456a;
+  border-radius: 0;
+  background: #0a071c;
+  font: 8px Consolas, monospace;
+  cursor: pointer;
+}
+.theme-picker-trigger-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.theme-picker-caret {
+  color: #897e9a;
+  margin-left: auto;
+}
+.theme-picker-swatch {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  border: 1px solid #51456a;
+}
+.theme-picker-panel {
+  position: absolute;
+  top: 32px;
+  left: 0;
+  z-index: 60;
+  width: 320px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #51456a;
+  background: #0a071c;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .6);
+}
+.theme-picker-search {
+  margin: 6px;
+  padding: 5px 7px;
+  color: #eee9f2;
+  border: 1px solid #51456a;
+  border-radius: 0;
+  background: #120b2a;
+  font: 8px Consolas, monospace;
+}
+.theme-picker-list {
+  overflow-y: auto;
+  flex: 1 1 auto;
+  padding: 0 6px 6px;
+}
+.theme-picker-collection-label {
+  margin: 6px 0 2px;
+  color: #9a8fb0;
+  font: 700 8px Consolas, monospace;
+  letter-spacing: .08em;
+}
+.theme-picker-group-label {
+  margin: 4px 0 1px 6px;
+  color: #6f6583;
+  font: 700 7px Consolas, monospace;
+}
+.theme-picker-option {
+  display: block;
+  width: 100%;
+  padding: 3px 6px;
+  text-align: left;
+  color: #d9d2e6;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font: 8px Consolas, monospace;
+  cursor: pointer;
+}
+.theme-picker-option:hover {
+  background: #221641;
+}
+.theme-picker-option.selected {
+  color: #ffd65c;
+  background: #2a1b52;
+}
+.theme-picker-preview {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border-top: 1px solid #3e3455;
+  background: #06040f;
+}
+.theme-picker-preview img {
+  width: 144px;
+  height: 81px;
+  border: 1px solid #51456a;
+  image-rendering: pixelated;
+}
+.theme-picker-preview small {
+  color: #a89cbd;
+  font: 7px Consolas, monospace;
+  max-width: 150px;
+}

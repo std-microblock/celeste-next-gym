@@ -1,0 +1,54 @@
+{
+  "entries": {
+    "tilesets/SJ2021/frozenflygone/spaceStation": {
+      "x": 2,
+      "y": 2,
+      "width": 48,
+      "height": 64,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 64
+    },
+    "danger/spikes/SJ2021/frozenflygone/vvvvvv_down00": {
+      "x": 52,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/frozenflygone/vvvvvv_left00": {
+      "x": 64,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/frozenflygone/vvvvvv_right00": {
+      "x": 76,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    },
+    "danger/spikes/SJ2021/frozenflygone/vvvvvv_up00": {
+      "x": 88,
+      "y": 2,
+      "width": 10,
+      "height": 10,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 10,
+      "frameHeight": 10
+    }
+  }
+}

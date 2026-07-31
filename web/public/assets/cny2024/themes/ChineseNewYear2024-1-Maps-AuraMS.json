@@ -1,0 +1,14 @@
+{
+  "entries": {
+    "bgs/ChineseNewYear2024/Aura/MS/bg": {
+      "x": 2,
+      "y": 2,
+      "width": 400,
+      "height": 215,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 400,
+      "frameHeight": 215
+    }
+  }
+}

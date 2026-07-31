@@ -1,0 +1,14 @@
+{
+  "entries": {
+    "tilesets/SJ2021/Skunkynator/towerNew": {
+      "x": 2,
+      "y": 2,
+      "width": 48,
+      "height": 120,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 48,
+      "frameHeight": 120
+    }
+  }
+}

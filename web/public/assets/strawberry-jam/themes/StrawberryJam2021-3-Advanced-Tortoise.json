@@ -1,0 +1,24 @@
+{
+  "entries": {
+    "tilesets/SJ2021/Tortoise/DungeonPurple": {
+      "x": 2,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "bgs/SJ2021/Tortoise/Aug BGA": {
+      "x": 100,
+      "y": 2,
+      "width": 400,
+      "height": 230,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 400,
+      "frameHeight": 230
+    }
+  }
+}

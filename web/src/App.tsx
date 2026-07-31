@@ -52,6 +52,7 @@ import {
   visualThemeById,
   type VisualThemeId,
 } from "./visualThemes";
+import { ThemePicker } from "./components/ThemePicker";
 
 interface RunDocument {
   version: 2;
@@ -831,25 +832,12 @@ export default function App() {
         </label>
         <label className="visual-theme-picker">
           <small>场景主题</small>
-          <select
-            aria-label="场景主题"
+          <ThemePicker
+            themes={VISUAL_THEMES}
+            collections={VISUAL_THEME_COLLECTIONS}
             value={visualThemeId}
-            onChange={(event) =>
-              selectVisualTheme(event.target.value as VisualThemeId)
-            }
-          >
-            {VISUAL_THEME_COLLECTIONS.map((collection) => (
-              <optgroup label={collection.label} key={collection.id}>
-                {VISUAL_THEMES.filter(
-                  (theme) => theme.collection === collection.id,
-                ).map((theme) => (
-                  <option value={theme.id} key={theme.id}>
-                    {theme.label} · {theme.chapter}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
+            onChange={(id) => selectVisualTheme(id)}
+          />
         </label>
         {mode === "advanced" ? (
           <div className="top-actions">

@@ -1,0 +1,724 @@
+{
+  "entries": {
+    "tilesets/SJ2021/Grandmaster/cliff": {
+      "x": 2,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "bgs/SJ2021/tcookiem/bgsad": {
+      "x": 100,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/tcookiem/bg111": {
+      "x": 422,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/tcookiem/bg112": {
+      "x": 2,
+      "y": 184,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/tcookiem/sun": {
+      "x": 324,
+      "y": 184,
+      "width": 320,
+      "height": 244,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 244
+    },
+    "bgs/SJ2021/tcookiem/bgc0": {
+      "x": 646,
+      "y": 184,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/tcookiem/bgc1": {
+      "x": 2,
+      "y": 430,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/tcookiem/bgc2": {
+      "x": 324,
+      "y": 430,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/tcookiem/bgc3": {
+      "x": 646,
+      "y": 430,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/tcookiem/bgc4": {
+      "x": 2,
+      "y": 612,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Maya/circuitboard": {
+      "x": 324,
+      "y": 612,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/todd/modernOffwhite": {
+      "x": 646,
+      "y": 612,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/todd/modernArrows": {
+      "x": 2,
+      "y": 794,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/todd/modernSquares": {
+      "x": 324,
+      "y": 794,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Dav/BgLayer00": {
+      "x": 646,
+      "y": 794,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/MaxHelpingHand/animatedParallax/SJ2021/Dav/BgLayer01_AnimatedWaterfalls_00": {
+      "x": 2,
+      "y": 976,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Dav/BgLayer02": {
+      "x": 324,
+      "y": 976,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/MaxHelpingHand/animatedParallax/SJ2021/Dav/BgLayer03a_AnimatedWaterfalls_00": {
+      "x": 646,
+      "y": 976,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/MaxHelpingHand/animatedParallax/SJ2021/Dav/BgLayer03b_AnimatedWaterfalls_00": {
+      "x": 2,
+      "y": 1158,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Dav/BgLayer04": {
+      "x": 324,
+      "y": 1158,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Dav/BgLayer05": {
+      "x": 646,
+      "y": 1158,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Ecl1psed/space-planets": {
+      "x": 2,
+      "y": 1340,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Ecl1psed/space-planets2": {
+      "x": 324,
+      "y": 1340,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Ecl1psed/space-planets4": {
+      "x": 646,
+      "y": 1340,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Ecl1psed/space-planets3": {
+      "x": 2,
+      "y": 1522,
+      "width": 80,
+      "height": 46,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 80,
+      "frameHeight": 46
+    },
+    "bgs/SJ2021/Ecl1psed/space-planets7": {
+      "x": 84,
+      "y": 1522,
+      "width": 320,
+      "height": 200,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 200
+    },
+    "bgs/SJ2021/Ecl1psed/space-planets6": {
+      "x": 406,
+      "y": 1522,
+      "width": 60,
+      "height": 60,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 60,
+      "frameHeight": 60
+    },
+    "bgs/SJ2021/xplosives/xplosives_1": {
+      "x": 468,
+      "y": 1522,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/xplosives/xplosives_2": {
+      "x": 2,
+      "y": 1724,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/xplosives/xplosives_4": {
+      "x": 324,
+      "y": 1724,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/xplosives/xplosives_3": {
+      "x": 646,
+      "y": 1724,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/xlibiza/shroomsB": {
+      "x": 2,
+      "y": 1906,
+      "width": 360,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 360,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/xlibiza/shroomsA": {
+      "x": 364,
+      "y": 1906,
+      "width": 320,
+      "height": 182,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 182
+    },
+    "bgs/SJ2021/GMLobby/sky": {
+      "x": 686,
+      "y": 1906,
+      "width": 320,
+      "height": 224,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 224
+    },
+    "bgs/SJ2021/Soloiini/literallyawhitebackground": {
+      "x": 2,
+      "y": 2132,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Soloiini/spacebg": {
+      "x": 324,
+      "y": 2132,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Soloiini/moss-bgglow": {
+      "x": 646,
+      "y": 2132,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/MaxHelpingHand/animatedParallax/SJ2021/Soloiini/moss-star7.7fps00": {
+      "x": 2,
+      "y": 2314,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Soloiini/small00": {
+      "x": 324,
+      "y": 2314,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Soloiini/small02": {
+      "x": 646,
+      "y": 2314,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Soloiini/small01": {
+      "x": 2,
+      "y": 2496,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Soloiini/small03": {
+      "x": 324,
+      "y": 2496,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Soloiini/small05": {
+      "x": 646,
+      "y": 2496,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Soloiini/big00": {
+      "x": 2,
+      "y": 2678,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Soloiini/small06": {
+      "x": 324,
+      "y": 2678,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Soloiini/small04": {
+      "x": 646,
+      "y": 2678,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Soloiini/big01": {
+      "x": 2,
+      "y": 2860,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/GMLobby/sunglow-3": {
+      "x": 324,
+      "y": 2860,
+      "width": 320,
+      "height": 224,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 224
+    },
+    "bgs/SJ2021/GMLobby/sunglow-2": {
+      "x": 646,
+      "y": 2860,
+      "width": 320,
+      "height": 224,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 224
+    },
+    "bgs/SJ2021/GMLobby/sunglow-1": {
+      "x": 2,
+      "y": 3086,
+      "width": 320,
+      "height": 224,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 224
+    },
+    "bgs/SJ2021/GMLobby/sun": {
+      "x": 324,
+      "y": 3086,
+      "width": 320,
+      "height": 224,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 224
+    },
+    "bgs/SJ2021/GMLobby/gmvignette": {
+      "x": 646,
+      "y": 3086,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/GMLobby/cloud-loop-4": {
+      "x": 2,
+      "y": 3312,
+      "width": 320,
+      "height": 104,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 104
+    },
+    "bgs/SJ2021/GMLobby/cloud-loop-3": {
+      "x": 324,
+      "y": 3312,
+      "width": 116,
+      "height": 160,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 116,
+      "frameHeight": 160
+    },
+    "bgs/SJ2021/GMLobby/cloud-loop-2": {
+      "x": 442,
+      "y": 3312,
+      "width": 116,
+      "height": 160,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 116,
+      "frameHeight": 160
+    },
+    "bgs/SJ2021/GMLobby/mountains": {
+      "x": 2,
+      "y": 3474,
+      "width": 880,
+      "height": 168,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 880,
+      "frameHeight": 168
+    },
+    "bgs/SJ2021/GMLobby/cloud-loop-1": {
+      "x": 2,
+      "y": 3644,
+      "width": 320,
+      "height": 110,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 110
+    },
+    "bgs/SJ2021/GMLobby/cloud-group-1": {
+      "x": 324,
+      "y": 3644,
+      "width": 152,
+      "height": 128,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 152,
+      "frameHeight": 128
+    },
+    "bgs/SJ2021/GMLobby/cloud-group-2": {
+      "x": 478,
+      "y": 3644,
+      "width": 136,
+      "height": 160,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 136,
+      "frameHeight": 160
+    },
+    "bgs/SJ2021/tofu/Tofu/tofudusk_backdrop": {
+      "x": 616,
+      "y": 3644,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/tofu/Tofu/tofudusk_moon": {
+      "x": 2,
+      "y": 3826,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/tofu/Tofu/tofudusk_cloudback": {
+      "x": 324,
+      "y": 3826,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/tofu/Tofu/tofudusk_cloudmiddle": {
+      "x": 646,
+      "y": 3826,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/tofu/Tofu/tofudusk_cloudfront": {
+      "x": 2,
+      "y": 4008,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/tofu/Tofu/tofudusk_hills": {
+      "x": 324,
+      "y": 4008,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/tofu/Tofu/tofudusk_hills front": {
+      "x": 646,
+      "y": 4008,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/tofu/Tofu/tofudusk_water": {
+      "x": 2,
+      "y": 4190,
+      "width": 320,
+      "height": 250,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 250
+    },
+    "bgs/SJ2021/tofu/Tofu/tofudusk_lanterns2": {
+      "x": 324,
+      "y": 4190,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/tofu/Tofu/tofudusk_lanterns": {
+      "x": 646,
+      "y": 4190,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/GMLobby/sky2": {
+      "x": 2,
+      "y": 4442,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/GMLobby/heartgatefinal": {
+      "x": 324,
+      "y": 4442,
+      "width": 262,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 262,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/GMLobby/light": {
+      "x": 2,
+      "y": 4624,
+      "width": 640,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 640,
+      "frameHeight": 180
+    }
+  }
+}

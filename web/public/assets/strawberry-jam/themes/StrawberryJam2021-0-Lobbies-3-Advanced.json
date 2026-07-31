@@ -1,0 +1,1164 @@
+{
+  "entries": {
+    "tilesets/SJ2021/Advanced_Lobby/advMesaRockMedium": {
+      "x": 2,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "bgs/SJ2021/Meario/sky": {
+      "x": 100,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Meario/cityBack": {
+      "x": 422,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Meario/cityGradient": {
+      "x": 744,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Meario/cityMid": {
+      "x": 1066,
+      "y": 2,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Meario/cityTop": {
+      "x": 2,
+      "y": 184,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Meario/lake": {
+      "x": 324,
+      "y": 184,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Meario/lakeGradient": {
+      "x": 646,
+      "y": 184,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Advanced Lobby/misterious": {
+      "x": 968,
+      "y": 184,
+      "width": 600,
+      "height": 600,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 600,
+      "frameHeight": 600
+    },
+    "bgs/SJ2021/Advanced Lobby/sky": {
+      "x": 2,
+      "y": 786,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Advanced Lobby/clouds": {
+      "x": 324,
+      "y": 786,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Advanced Lobby/4": {
+      "x": 646,
+      "y": 786,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Advanced Lobby/3": {
+      "x": 968,
+      "y": 786,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Advanced Lobby/2": {
+      "x": 1290,
+      "y": 786,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Advanced Lobby/1": {
+      "x": 2,
+      "y": 968,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Nic/UndergrowthCaveBG1": {
+      "x": 324,
+      "y": 968,
+      "width": 320,
+      "height": 176,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 176
+    },
+    "bgs/SJ2021/Nic/UndergrowthCaveBG2": {
+      "x": 646,
+      "y": 968,
+      "width": 320,
+      "height": 176,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 176
+    },
+    "bgs/SJ2021/Nic/UndergrowthCaveBG3": {
+      "x": 968,
+      "y": 968,
+      "width": 320,
+      "height": 176,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 176
+    },
+    "bgs/SJ2021/Nic/UndergrowthCaveBG4": {
+      "x": 1290,
+      "y": 968,
+      "width": 320,
+      "height": 176,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 176
+    },
+    "bgs/SJ2021/Nic/UndergrowthCaveBG5": {
+      "x": 2,
+      "y": 1150,
+      "width": 320,
+      "height": 176,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 176
+    },
+    "bgs/SJ2021/LordCitrea/sj2021_whitebg": {
+      "x": 324,
+      "y": 1150,
+      "width": 100,
+      "height": 100,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 100,
+      "frameHeight": 100
+    },
+    "bgs/SJ2021/LordCitrea/sj2021_c1": {
+      "x": 426,
+      "y": 1150,
+      "width": 384,
+      "height": 216,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 384,
+      "frameHeight": 216
+    },
+    "bgs/SJ2021/LordCitrea/sj2021_c2": {
+      "x": 812,
+      "y": 1150,
+      "width": 384,
+      "height": 216,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 384,
+      "frameHeight": 216
+    },
+    "bgs/SJ2021/LordCitrea/sj2021_c3": {
+      "x": 1198,
+      "y": 1150,
+      "width": 384,
+      "height": 216,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 384,
+      "frameHeight": 216
+    },
+    "bgs/SJ2021/LordCitrea/sj2021_cc2": {
+      "x": 2,
+      "y": 1368,
+      "width": 384,
+      "height": 216,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 384,
+      "frameHeight": 216
+    },
+    "bgs/SJ2021/LordCitrea/sj2021_r2": {
+      "x": 388,
+      "y": 1368,
+      "width": 384,
+      "height": 216,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 384,
+      "frameHeight": 216
+    },
+    "bgs/SJ2021/LordCitrea/sj2021_r1": {
+      "x": 774,
+      "y": 1368,
+      "width": 384,
+      "height": 216,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 384,
+      "frameHeight": 216
+    },
+    "bgs/SJ2021/LordCitrea/sj2021_cc1": {
+      "x": 1160,
+      "y": 1368,
+      "width": 384,
+      "height": 216,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 384,
+      "frameHeight": 216
+    },
+    "bgs/SJ2021/Julia/7_water": {
+      "x": 2,
+      "y": 1586,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Julia/bubbles": {
+      "x": 324,
+      "y": 1586,
+      "width": 320,
+      "height": 53,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 53
+    },
+    "bgs/SJ2021/Julia/4_volcano": {
+      "x": 646,
+      "y": 1586,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Julia/3_ruins": {
+      "x": 968,
+      "y": 1586,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Julia/6_fishLeft": {
+      "x": 1290,
+      "y": 1586,
+      "width": 320,
+      "height": 32,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 32
+    },
+    "bgs/SJ2021/Julia/5_fishRight": {
+      "x": 2,
+      "y": 1768,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Julia/vent_lava_b": {
+      "x": 324,
+      "y": 1768,
+      "width": 56,
+      "height": 48,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 56,
+      "frameHeight": 48
+    },
+    "bgs/SJ2021/Julia/pillars_single": {
+      "x": 382,
+      "y": 1768,
+      "width": 78,
+      "height": 176,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 78,
+      "frameHeight": 176
+    },
+    "bgs/SJ2021/Julia/pillars": {
+      "x": 462,
+      "y": 1768,
+      "width": 320,
+      "height": 240,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 240
+    },
+    "bgs/MaxHelpingHand/animatedParallax/SJ2021/Julia/smokea00": {
+      "x": 784,
+      "y": 1768,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Julia/vents": {
+      "x": 1106,
+      "y": 1768,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/vamp/white_clouds": {
+      "x": 2,
+      "y": 2010,
+      "width": 320,
+      "height": 200,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 200
+    },
+    "bgs/SJ2021/Indecx/skytransparent": {
+      "x": 324,
+      "y": 2010,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/JAN is EXIST/Tower": {
+      "x": 646,
+      "y": 2010,
+      "width": 316,
+      "height": 427,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 316,
+      "frameHeight": 427
+    },
+    "bgs/SJ2021/hennyburgr/distant/rocks_a": {
+      "x": 964,
+      "y": 2010,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/hennyburgr/distant/rocks_b": {
+      "x": 1286,
+      "y": 2010,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/hennyburgr/distant/rocks_c": {
+      "x": 2,
+      "y": 2439,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/hennyburgr/bigrockwall_a": {
+      "x": 2,
+      "y": 2621,
+      "width": 1500,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 1500,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/hennyburgr/distant/rocks_d": {
+      "x": 2,
+      "y": 2803,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/hennyburgr/bigrockwall_b": {
+      "x": 324,
+      "y": 2803,
+      "width": 419,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 419,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/hennyburgr/lava_top": {
+      "x": 745,
+      "y": 2803,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/hennyburgr/lava_mid": {
+      "x": 1067,
+      "y": 2803,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/hennyburgr/boardwalk": {
+      "x": 2,
+      "y": 2985,
+      "width": 320,
+      "height": 500,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 500
+    },
+    "bgs/SJ2021/hennyburgr/fg_rocks": {
+      "x": 324,
+      "y": 2985,
+      "width": 620,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 620,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/hennyburgr/lava_rock_pillars_a": {
+      "x": 946,
+      "y": 2985,
+      "width": 320,
+      "height": 400,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 400
+    },
+    "bgs/SJ2021/hennyburgr/lab_zero": {
+      "x": 2,
+      "y": 3487,
+      "width": 800,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 800,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/hennyburgr/lavacarrier_a": {
+      "x": 804,
+      "y": 3487,
+      "width": 550,
+      "height": 200,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 550,
+      "frameHeight": 200
+    },
+    "bgs/SJ2021/hennyburgr/glass": {
+      "x": 2,
+      "y": 3689,
+      "width": 1280,
+      "height": 720,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 1280,
+      "frameHeight": 720
+    },
+    "bgs/SJ2021/Tortoise/Aug BGA": {
+      "x": 1284,
+      "y": 3689,
+      "width": 400,
+      "height": 230,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 400,
+      "frameHeight": 230
+    },
+    "bgs/SJ2021/MousseMoose/smallCassette": {
+      "x": 2,
+      "y": 4411,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/MousseMoose/bigCassette": {
+      "x": 324,
+      "y": 4411,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/BlueXans/sky": {
+      "x": 646,
+      "y": 4411,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/asri_1/small00": {
+      "x": 968,
+      "y": 4411,
+      "width": 32,
+      "height": 32,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 32,
+      "frameHeight": 32
+    },
+    "bgs/SJ2021/asri_1/bg0": {
+      "x": 1002,
+      "y": 4411,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/asri_1/bg3": {
+      "x": 1324,
+      "y": 4411,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/asri_1/bg2": {
+      "x": 2,
+      "y": 4593,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/YaGrillRobib/VCdaySG_00_blanksky": {
+      "x": 324,
+      "y": 4593,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/YaGrillRobib/VCdaySG_01_cloudsA": {
+      "x": 646,
+      "y": 4593,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/YaGrillRobib/VCdaySG_02_cloudsB": {
+      "x": 968,
+      "y": 4593,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/YaGrillRobib/VCdaySG_04_bgpaperfalling": {
+      "x": 1290,
+      "y": 4593,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/YaGrillRobib/VCdaySG_04_cardpile": {
+      "x": 2,
+      "y": 4775,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/YaGrillRobib/VCdaySG_06_paperpile": {
+      "x": 2,
+      "y": 4957,
+      "width": 1700,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 1700,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/YaGrillRobib/VCdaySG_07_paperpileB": {
+      "x": 2,
+      "y": 5139,
+      "width": 1700,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 1700,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/YaGrillRobib/VCdaySG_07_cardpileB": {
+      "x": 2,
+      "y": 5321,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/YaGrillRobib/VCdaySG_05_fallingcards": {
+      "x": 324,
+      "y": 5321,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/TiltTheStars/hive": {
+      "x": 646,
+      "y": 5321,
+      "width": 728,
+      "height": 376,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 728,
+      "frameHeight": 376
+    },
+    "bgs/SJ2021/TiltTheStars/honeycomb_bg_c": {
+      "x": 2,
+      "y": 5699,
+      "width": 600,
+      "height": 376,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 600,
+      "frameHeight": 376
+    },
+    "bgs/SJ2021/TiltTheStars/honeycomb_bg_b": {
+      "x": 604,
+      "y": 5699,
+      "width": 600,
+      "height": 384,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 600,
+      "frameHeight": 384
+    },
+    "bgs/SJ2021/TiltTheStars/honeycomb_bg_a": {
+      "x": 2,
+      "y": 6085,
+      "width": 632,
+      "height": 408,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 632,
+      "frameHeight": 408
+    },
+    "bgs/SJ2021/pugroy/skybrighter": {
+      "x": 636,
+      "y": 6085,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/pugroy/smallPlanets": {
+      "x": 958,
+      "y": 6085,
+      "width": 640,
+      "height": 235,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 640,
+      "frameHeight": 235
+    },
+    "bgs/SJ2021/pugroy/bigPlanets": {
+      "x": 2,
+      "y": 6495,
+      "width": 640,
+      "height": 235,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 640,
+      "frameHeight": 235
+    },
+    "bgs/SJ2021/Viv/skyVoid": {
+      "x": 644,
+      "y": 6495,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Worldwaker2/rrbgsky": {
+      "x": 966,
+      "y": 6495,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Worldwaker2/rrbgc2": {
+      "x": 1288,
+      "y": 6495,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Worldwaker2/rrbgc0": {
+      "x": 2,
+      "y": 6732,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Worldwaker2/rrbg0": {
+      "x": 324,
+      "y": 6732,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Worldwaker2/rrbgc1": {
+      "x": 646,
+      "y": 6732,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Worldwaker2/rrbgc3": {
+      "x": 968,
+      "y": 6732,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Worldwaker2/rrbg1": {
+      "x": 1290,
+      "y": 6732,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/MaxHelpingHand/animatedParallax/SJ2021/astraxel/ground layer 00": {
+      "x": 2,
+      "y": 6914,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/MaxHelpingHand/animatedParallax/SJ2021/astraxel/hourglass a00": {
+      "x": 324,
+      "y": 6914,
+      "width": 83,
+      "height": 84,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 83,
+      "frameHeight": 84
+    },
+    "bgs/MaxHelpingHand/animatedParallax/SJ2021/astraxel/hourglass b00": {
+      "x": 409,
+      "y": 6914,
+      "width": 53,
+      "height": 110,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 53,
+      "frameHeight": 110
+    },
+    "bgs/SJ2021/Advanced Lobby/Cave/bg0": {
+      "x": 464,
+      "y": 6914,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Advanced Lobby/Cave/bg1": {
+      "x": 786,
+      "y": 6914,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Advanced Lobby/Cave/bg2": {
+      "x": 1108,
+      "y": 6914,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Advanced Lobby/Cave/bg3": {
+      "x": 2,
+      "y": 7096,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Advanced Lobby/Cave/bg4": {
+      "x": 324,
+      "y": 7096,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Galaksyz/slimesky01": {
+      "x": 646,
+      "y": 7096,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Galaksyz/slimeplains02": {
+      "x": 968,
+      "y": 7096,
+      "width": 320,
+      "height": 200,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 200
+    },
+    "bgs/SJ2021/Galaksyz/slimeplains01": {
+      "x": 1290,
+      "y": 7096,
+      "width": 320,
+      "height": 200,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 200
+    },
+    "bgs/SJ2021/Jolly/Starlight_00": {
+      "x": 2,
+      "y": 7298,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Jolly/Starlight_01": {
+      "x": 324,
+      "y": 7298,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Jolly/Starlight_02": {
+      "x": 646,
+      "y": 7298,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Jolly/Starlight_03": {
+      "x": 968,
+      "y": 7298,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Jolly/Starlight_04": {
+      "x": 1290,
+      "y": 7298,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Jolly/Starlight_05": {
+      "x": 2,
+      "y": 7480,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Jolly/Starlight_06": {
+      "x": 324,
+      "y": 7480,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Goldian/ocean_sky": {
+      "x": 646,
+      "y": 7480,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Goldian/ocean_cloudsmid": {
+      "x": 968,
+      "y": 7480,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Goldian/gradient": {
+      "x": 1290,
+      "y": 7480,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Goldian/sea": {
+      "x": 2,
+      "y": 7662,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/Goldian/ocean_cloudsfront": {
+      "x": 324,
+      "y": 7662,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/sp1029/gradient": {
+      "x": 646,
+      "y": 7662,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/sp1029/buildingsBack": {
+      "x": 968,
+      "y": 7662,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/sp1029/buildingsMid": {
+      "x": 1290,
+      "y": 7662,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/sp1029/buildingsCeiling": {
+      "x": 2,
+      "y": 7844,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    },
+    "bgs/SJ2021/sp1029/buildingsFront": {
+      "x": 324,
+      "y": 7844,
+      "width": 320,
+      "height": 180,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 320,
+      "frameHeight": 180
+    }
+  }
+}

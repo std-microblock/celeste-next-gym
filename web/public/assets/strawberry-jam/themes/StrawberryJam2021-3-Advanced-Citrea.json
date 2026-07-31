@@ -1,0 +1,94 @@
+{
+  "entries": {
+    "tilesets/SJ2021/LordCitrea/fgLordAbstract": {
+      "x": 2,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 96,
+      "frameHeight": 96
+    },
+    "bgs/SJ2021/LordCitrea/sj2021_whitebg": {
+      "x": 100,
+      "y": 2,
+      "width": 100,
+      "height": 100,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 100,
+      "frameHeight": 100
+    },
+    "bgs/SJ2021/LordCitrea/sj2021_c1": {
+      "x": 202,
+      "y": 2,
+      "width": 384,
+      "height": 216,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 384,
+      "frameHeight": 216
+    },
+    "bgs/SJ2021/LordCitrea/sj2021_c2": {
+      "x": 588,
+      "y": 2,
+      "width": 384,
+      "height": 216,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 384,
+      "frameHeight": 216
+    },
+    "bgs/SJ2021/LordCitrea/sj2021_c3": {
+      "x": 2,
+      "y": 220,
+      "width": 384,
+      "height": 216,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 384,
+      "frameHeight": 216
+    },
+    "bgs/SJ2021/LordCitrea/sj2021_cc2": {
+      "x": 388,
+      "y": 220,
+      "width": 384,
+      "height": 216,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 384,
+      "frameHeight": 216
+    },
+    "bgs/SJ2021/LordCitrea/sj2021_r2": {
+      "x": 2,
+      "y": 438,
+      "width": 384,
+      "height": 216,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 384,
+      "frameHeight": 216
+    },
+    "bgs/SJ2021/LordCitrea/sj2021_r1": {
+      "x": 388,
+      "y": 438,
+      "width": 384,
+      "height": 216,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 384,
+      "frameHeight": 216
+    },
+    "bgs/SJ2021/LordCitrea/sj2021_cc1": {
+      "x": 2,
+      "y": 656,
+      "width": 384,
+      "height": 216,
+      "drawOffsetX": 0,
+      "drawOffsetY": 0,
+      "frameWidth": 384,
+      "frameHeight": 216
+    }
+  }
+}
