@@ -350,7 +350,7 @@ describe("MapEditor interactions", () => {
     ).toHaveAttribute("d", expect.stringContaining("L 76 92"));
   });
 
-  it("places solids at 1px resolution by default and on the 8px grid with Ctrl", () => {
+  it("always places solids on the 8px grid, with or without Ctrl", () => {
     const { container, onChange } = editor();
     fireEvent.click(within(container).getByRole("button", { name: "实心块" }));
     const overlay = container.querySelector(".map-editor-overlay")!;
@@ -367,7 +367,7 @@ describe("MapEditor interactions", () => {
       expect.objectContaining({
         solids: [
           expect.objectContaining({ x: 0, y: 152, width: 320, height: 28 }),
-          { x: 11, y: 50, width: 2, height: 1 },
+          { x: 8, y: 48, width: 8, height: 8 },
         ],
       }),
     );
@@ -395,28 +395,84 @@ describe("MapEditor interactions", () => {
     );
   });
 
-  it("snaps to the 8px grid when the grid-snap toggle is enabled", () => {
+  it("places entities at 1px by default and on the 8px grid with Ctrl", () => {
     const { container, onChange } = editor();
-    fireEvent.click(within(container).getByRole("button", { name: "网格吸附" }));
-    fireEvent.click(within(container).getByRole("button", { name: "实心块" }));
+    fireEvent.click(within(container).getByRole("button", { name: "绿泡" }));
     const overlay = container.querySelector(".map-editor-overlay")!;
     const background = container.querySelector(".editor-map-hitarea")!;
+
     fireEvent.pointerDown(background, {
       clientX: 22,
       clientY: 100,
       pointerId: 3,
     });
-    fireEvent.pointerMove(overlay, {
-      clientX: 38,
-      clientY: 116,
-      pointerId: 3,
-    });
     fireEvent.pointerUp(overlay, { pointerId: 3 });
     expect(onChange).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        solids: expect.arrayContaining([
-          { x: 8, y: 48, width: 8, height: 8 },
-        ]),
+        entities: [
+          expect.objectContaining({
+            kind: "booster",
+            bounds: { x: 11, y: 50, width: 16, height: 16 },
+          }),
+        ],
+      }),
+    );
+
+    fireEvent.pointerDown(background, {
+      clientX: 22,
+      clientY: 100,
+      pointerId: 4,
+      ctrlKey: true,
+    });
+    fireEvent.pointerUp(overlay, { pointerId: 4 });
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        entities: [
+          expect.objectContaining({
+            kind: "booster",
+            bounds: { x: 8, y: 48, width: 16, height: 16 },
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("drags an entity at 1px by default and snaps to 8px with Ctrl", () => {
+    const map = createBlankGymMap();
+    map.entities.push({
+      kind: "booster",
+      bounds: { x: 10, y: 10, width: 16, height: 16 },
+      direction: { x: 0, y: 0 },
+      name: "booster",
+    });
+    const { container, onChange } = editor(map);
+    const overlay = container.querySelector(".map-editor-overlay")!;
+    const entity = container.querySelector(".editor-object.entity")!;
+
+    fireEvent.pointerDown(entity, { clientX: 36, clientY: 36, pointerId: 5 });
+    fireEvent.pointerMove(overlay, { clientX: 40, clientY: 44, pointerId: 5 });
+    fireEvent.pointerUp(overlay, { pointerId: 5 });
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        entities: [
+          expect.objectContaining({ bounds: { x: 12, y: 14, width: 16, height: 16 } }),
+        ],
+      }),
+    );
+
+    fireEvent.pointerDown(entity, { clientX: 36, clientY: 36, pointerId: 6 });
+    fireEvent.pointerMove(overlay, {
+      clientX: 48,
+      clientY: 52,
+      pointerId: 6,
+      ctrlKey: true,
+    });
+    fireEvent.pointerUp(overlay, { pointerId: 6 });
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        entities: [
+          expect.objectContaining({ bounds: { x: 16, y: 16, width: 16, height: 16 } }),
+        ],
       }),
     );
   });
@@ -471,8 +527,8 @@ describe("MapEditor interactions", () => {
     expect(onChange).toHaveBeenLastCalledWith(
       expect.objectContaining({
         solids: [
-          { x: 30, y: 20, width: 20, height: 20 },
-          { x: 80, y: 20, width: 20, height: 20 },
+          { x: 32, y: 24, width: 20, height: 20 },
+          { x: 80, y: 24, width: 20, height: 20 },
           { x: 200, y: 100, width: 20, height: 20 },
         ],
       }),

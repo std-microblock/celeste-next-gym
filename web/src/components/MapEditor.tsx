@@ -16,7 +16,6 @@ import {
   FiCircle,
   FiEye,
   FiEyeOff,
-  FiGrid,
   FiMapPin,
   FiMaximize,
   FiMousePointer,
@@ -698,10 +697,8 @@ function normalizedRegion(
   };
 }
 
-function clampMovedBounds(
+function clampToMap(
   bounds: EditableBounds,
-  dx: number,
-  dy: number,
   map: GymMap,
 ): EditableBounds {
   return {
@@ -710,14 +707,14 @@ function clampMovedBounds(
       map.bounds.x,
       Math.min(
         map.bounds.x + map.bounds.width - bounds.width,
-        bounds.x + dx,
+        bounds.x,
       ),
     ),
     y: Math.max(
       map.bounds.y,
       Math.min(
         map.bounds.y + map.bounds.height - bounds.height,
-        bounds.y + dy,
+        bounds.y,
       ),
     ),
   };
@@ -728,18 +725,44 @@ function moveSelections(
   selections: EditorSelectionList,
   dx: number,
   dy: number,
+  entityGrid: boolean,
 ): GymMap {
   const keys = new Set(selections.map(selectionKey));
   return {
     ...map,
     solids: map.solids.map((solid, index) =>
       keys.has(selectionKey({ type: "solid", index }))
-        ? clampMovedBounds(solid, dx, dy, map)
+        ? clampToMap(
+            {
+              ...solid,
+              x: snapToGrid(solid.x + dx, map.bounds.x),
+              y: snapToGrid(solid.y + dy, map.bounds.y),
+            },
+            map,
+          )
         : solid,
     ),
     entities: map.entities.map((entity, index) =>
       keys.has(selectionKey({ type: "entity", index }))
-        ? { ...entity, bounds: clampMovedBounds(entity.bounds, dx, dy, map) }
+        ? {
+            ...entity,
+            bounds: clampToMap(
+              {
+                ...entity.bounds,
+                x: snapCoordinate(
+                  entity.bounds.x + dx,
+                  map.bounds.x,
+                  entityGrid,
+                ),
+                y: snapCoordinate(
+                  entity.bounds.y + dy,
+                  map.bounds.y,
+                  entityGrid,
+                ),
+              },
+              map,
+            ),
+          }
         : entity,
     ),
   };
@@ -772,7 +795,6 @@ export function MapEditor({
 }: MapEditorProps) {
   const [tool, setTool] = useState<EditorTool>("select");
   const [selected, setSelected] = useState<EditorSelection[]>([]);
-  const [gridSnap, setGridSnap] = useState(false);
   const [marquee, setMarquee] = useState<EditableBounds | null>(null);
   const [draft, setDraft] = useState<EditableBounds | null>(null);
   const [cameraViewport, setCameraViewport] = useState<CameraBounds>(() =>
@@ -1085,14 +1107,14 @@ export function MapEditor({
         start: point,
         originalMap: structuredClone(map),
       };
-      setDraft(normalizedRect(point, point, map, event.ctrlKey || gridSnap));
+      setDraft(normalizedRect(point, point, map, true));
       event.currentTarget.setPointerCapture(event.pointerId);
     } else if (tool === "spawn") {
       rememberAndChange({
         ...map,
         spawn: {
-          x: snapCoordinate(point.x, map.bounds.x, event.ctrlKey || gridSnap),
-          y: snapCoordinate(point.y, map.bounds.y, event.ctrlKey || gridSnap),
+          x: snapCoordinate(point.x, map.bounds.x, event.ctrlKey),
+          y: snapCoordinate(point.y, map.bounds.y, event.ctrlKey),
         },
       });
     } else if (tool.startsWith("entity:")) {
@@ -1107,8 +1129,8 @@ export function MapEditor({
       };
       const entity = createEditorBrushEntity(
         templateId,
-        snapCoordinate(point.x, map.bounds.x, event.ctrlKey || gridSnap),
-        snapCoordinate(point.y, map.bounds.y, event.ctrlKey || gridSnap),
+        snapCoordinate(point.x, map.bounds.x, event.ctrlKey),
+        snapCoordinate(point.y, map.bounds.y, event.ctrlKey),
         spinnerBrushVariant,
       );
       if (!entity) {
@@ -1161,9 +1183,8 @@ export function MapEditor({
       setMarquee(normalizedRegion(currentDrag.start, point));
       return;
     }
-    const useGrid = event.ctrlKey || gridSnap;
     if (currentDrag.kind === "create-solid") {
-      setDraft(normalizedRect(currentDrag.start, point, map, useGrid));
+      setDraft(normalizedRect(currentDrag.start, point, map, true));
       return;
     }
     if (
@@ -1179,7 +1200,7 @@ export function MapEditor({
         currentDrag.lastPaintPoint,
         point,
         map,
-        useGrid,
+        event.ctrlKey,
       )) {
         const entity = createEditorBrushEntity(
           currentDrag.templateId,
@@ -1205,22 +1226,13 @@ export function MapEditor({
       return;
     }
     if (currentDrag.kind === "move-selection") {
-      const dx = snapCoordinate(
-        point.x - currentDrag.start.x,
-        0,
-        useGrid,
-      );
-      const dy = snapCoordinate(
-        point.y - currentDrag.start.y,
-        0,
-        useGrid,
-      );
       onChange(
         moveSelections(
           currentDrag.originalMap,
           currentDrag.selections ?? [],
-          dx,
-          dy,
+          point.x - currentDrag.start.x,
+          point.y - currentDrag.start.y,
+          event.ctrlKey,
         ),
       );
       return;
@@ -1240,7 +1252,7 @@ export function MapEditor({
             currentDrag.corner,
             point,
             map,
-            useGrid,
+            currentDrag.selection.type === "solid" ? true : event.ctrlKey,
           ),
         ),
       );
@@ -1258,12 +1270,12 @@ export function MapEditor({
           x: snapCoordinate(
             point.x - entity.bounds.width / 2,
             map.bounds.x,
-            useGrid,
+            event.ctrlKey,
           ),
           y: snapCoordinate(
             point.y - entity.bounds.height / 2,
             map.bounds.y,
-            useGrid,
+            event.ctrlKey,
           ),
         };
         return { ...entity, nodes };
@@ -1405,17 +1417,6 @@ export function MapEditor({
             </button>
           ))}
         </div>
-        <div className="editor-tool-group">
-          <button
-            className={gridSnap ? "active" : ""}
-            onClick={() => setGridSnap((value) => !value)}
-            aria-pressed={gridSnap}
-            title="开启后放置与移动默认对齐 8px 网格；按住 Ctrl 可临时切换"
-          >
-            <EditorIcon><FiGrid /></EditorIcon>
-            网格吸附
-          </button>
-        </div>
         <div className="editor-tool-section">
           <small>实体</small>
           <div className="editor-entity-tools">
@@ -1466,7 +1467,7 @@ export function MapEditor({
           </button>
         </div>
         <p className="editor-hint">
-          1 px 精细对齐 · 按住 Ctrl 或开启“网格吸附”对齐 8 px 网格
+          实心块始终对齐 8 px 网格 · 实体默认 1 px 精细，按住 Ctrl 对齐 8 px
           <br />
           Ctrl+拖拽框选区域 · Ctrl+点击多选 · 空白处拖拽平移 · 滚轮缩放
         </p>
