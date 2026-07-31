@@ -2315,13 +2315,7 @@ function drawCrystalSpinner(
   const tint = entity.tint ?? (style.rainbow ? spinnerHue(position, frame) : undefined);
   const frameEntry = assets.entries[key];
   if (!frameEntry) return;
-  // Only vanilla CrystalStaticSpinner sheets are 24x24 corner-slice layouts
-  // (the four 14x14 pieces reassemble the crystal). SJ mod spinners (the gym
-  // Orb, brambles, ...) are full-frame art: VivHelper.CustomSpinner and
-  // FrostHelper.IceSpinner draw the whole sheet centered, so slicing them
-  // would fragment the crystal and inflate it to the full 24px frame.
-  const vanillaSliceLayout = !entity.texture;
-  if (vanillaSliceLayout && frameEntry.frameWidth === 24 && frameEntry.frameHeight === 24) {
+  if (frameEntry.frameWidth === 24 && frameEntry.frameHeight === 24) {
     const slices = [
       {
         checkX: -4,
