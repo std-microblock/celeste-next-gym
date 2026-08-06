@@ -29,6 +29,12 @@ The first conditional aliases are:
 - `MaxHelpingHand/CustomizableRefill` -> vanilla refill only with the vanilla
   2.5 second respawn; one-use and two-dash variants are retained;
 - `JungleHelper/InvisibleJumpthruPlatform` -> vanilla `JumpThru`.
+- default `NerdHelper/DashThroughSpikes*` -> directional spikes that suppress
+  their normal lethal callback during a non-zero live or lingering dash
+  attack; non-default inversion/direction filters remain unknown;
+- `FancyTileEntities/FancySolidTiles` -> exact 8 px solid rectangles decoded
+  from its comma-separated `tileData`; `loadGlobally` remains unsupported;
+- `CherryHelper/AssistRect` -> presentation-only decoration.
 
 Stateful flag systems, seekers/barriers, sideways or upside-down jumpthroughs,
 trigger spikes, crumble blocks, and custom moving solids intentionally remain
@@ -51,3 +57,10 @@ increased from 142 to 271. All 481 resulting `supported` or `terrain` rooms
 completed the deterministic native runtime smoke sequence without a failure.
 This catalog result is a compatibility filter, not a claim of real
 Celeste/Everest frame-perfect equivalence.
+
+The second registry batch did not change the room verdict totals because every
+affected room still had at least one other unsupported gameplay dependency. It
+did remove silent-ignore status from 1,890 default DashThroughSpikes across 806
+rooms, 454 FancySolidTiles across 106 rooms, and 1,601 AssistRect decorations
+across 498 rooms. Fourteen rooms with non-default DashThroughSpikes parameters
+correctly remain unknown.

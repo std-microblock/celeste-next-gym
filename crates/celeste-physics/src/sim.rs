@@ -6519,7 +6519,10 @@ fn interact(
             continue;
         }
         match entity.kind {
-            EntityKind::Spikes if spike_is_lethal(p, entity.direction, entity.bounds) => {
+            EntityKind::Spikes
+                if (!entity.shielded || !dash_through_spikes_pass(p))
+                    && spike_is_lethal(p, entity.direction, entity.bounds) =>
+            {
                 p.dead = true;
                 p.speed = Vec2::default();
                 p.death_freeze_pending = true;
@@ -7526,6 +7529,14 @@ fn spike_is_lethal(p: &PlayerSnapshot, direction: Vec2, bounds: Rect) -> bool {
     } else {
         false
     }
+}
+
+fn dash_through_spikes_pass(p: &PlayerSnapshot) -> bool {
+    p.dash_dir != Vec2::default()
+        && (matches!(
+            p.state,
+            PlayerState::Dash | PlayerState::DreamDash | PlayerState::RedDash
+        ) || (p.dash_attack_timer > 0.0 && p.state != PlayerState::RedDash))
 }
 
 fn approach(value: f32, target: f32, max_move: f32) -> f32 {
@@ -11943,6 +11954,48 @@ mod tests {
                 .unwrap()
                 .dead
         );
+    }
+
+    #[test]
+    fn default_dash_through_spikes_ignore_live_and_lingering_dash_attacks() {
+        let map = Map {
+            entities: vec![crate::Entity {
+                kind: EntityKind::Spikes,
+                bounds: Rect::new(40.0, 80.0, 3.0, 16.0),
+                direction: Vec2::new(-1.0, 0.0),
+                shielded: true,
+                single_use: false,
+                nodes: vec![],
+                name: "NerdHelper/DashThroughSpikesLeft".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let into = PlayerSnapshot {
+            pos: Vec2::new(44.0, 92.0),
+            speed: Vec2::new(60.0, 0.0),
+            ..PlayerSnapshot::default()
+        };
+
+        let mut ordinary = into.clone();
+        interact(&mut ordinary, &map, InputState::default(), None);
+        assert!(ordinary.dead);
+
+        let mut dash = into.clone();
+        dash.state = PlayerState::Dash;
+        dash.dash_dir = Vec2::new(1.0, 0.0);
+        interact(&mut dash, &map, InputState::default(), None);
+        assert!(!dash.dead);
+
+        let mut lingering = into.clone();
+        lingering.dash_dir = Vec2::new(1.0, 0.0);
+        lingering.dash_attack_timer = 0.02;
+        interact(&mut lingering, &map, InputState::default(), None);
+        assert!(!lingering.dead);
+
+        let mut zero_direction = into;
+        zero_direction.state = PlayerState::Dash;
+        interact(&mut zero_direction, &map, InputState::default(), None);
+        assert!(zero_direction.dead);
     }
     #[test]
     fn upward_motion_flush_with_directional_spikes_applies_gravity_on_frame_one() {

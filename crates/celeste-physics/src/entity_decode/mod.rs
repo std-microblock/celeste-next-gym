@@ -30,6 +30,7 @@ pub(crate) struct Registration {
     pub placement: Placement,
     pub default_width: f32,
     pub default_height: f32,
+    pub shielded: bool,
 }
 
 impl Registration {
@@ -57,6 +58,13 @@ impl Registration {
         Self::new(EntityKind::Spikes, placement, 8.0, 8.0)
     }
 
+    pub(crate) const fn dash_through_spike(placement: Placement) -> Self {
+        Self {
+            shielded: true,
+            ..Self::spike(placement)
+        }
+    }
+
     pub(crate) const fn spring(placement: Placement) -> Self {
         let (width, height) = match placement {
             Placement::SpringFloor => (16.0, 6.0),
@@ -77,6 +85,7 @@ impl Registration {
             placement,
             default_width,
             default_height,
+            shielded: false,
         }
     }
 
@@ -113,6 +122,10 @@ pub(crate) fn lookup(entity: &BinaryElement) -> Option<Registration> {
     vanilla::lookup(&entity.name)
         .or_else(|| mods::lookup(&entity.name))
         .filter(|_| mods::compatible(entity))
+}
+
+pub(crate) fn additional_solids(entity: &BinaryElement, x: f32, y: f32) -> Vec<Rect> {
+    mods::additional_solids(entity, x, y)
 }
 
 pub(super) fn attr_f32(entity: &BinaryElement, key: &str, default: f32) -> f32 {
@@ -167,6 +180,10 @@ mod tests {
         let spikes = lookup(&raw("VivHelper/RainbowSpikesUp")).unwrap();
         assert_eq!(spikes.kind, EntityKind::Spikes);
         assert_eq!(spikes.placement, Placement::SpikeUp);
+
+        let dash_spikes = lookup(&raw("NerdHelper/DashThroughSpikesLeft")).unwrap();
+        assert_eq!(dash_spikes.kind, EntityKind::Spikes);
+        assert!(dash_spikes.shielded);
     }
 
     #[test]

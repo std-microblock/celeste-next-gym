@@ -1205,6 +1205,8 @@ fn map_from_binary_inner(
                 continue;
             }
             let registered = crate::entity_decode::lookup(el);
+            map.solids
+                .extend(crate::entity_decode::additional_solids(el, ex, ey));
             let kind = match el.name.as_str() {
                 "jumpThru" => EntityKind::JumpThru,
                 "dreamBlock" => EntityKind::DreamBlock,
@@ -1448,7 +1450,8 @@ fn map_from_binary_inner(
                 kind,
                 bounds,
                 direction,
-                shielded: attr_bool(el, "shielded", false),
+                shielded: registered.is_some_and(|entry| entry.shielded)
+                    || attr_bool(el, "shielded", false),
                 single_use: match kind {
                     EntityKind::RisingLava => attr_bool(el, "intro", false),
                     EntityKind::Refill => attr_bool(el, "oneUse", false),
@@ -2212,6 +2215,106 @@ mod tests {
         assert_eq!(decoded.entities[7].kind, EntityKind::Unknown);
         assert_eq!(decoded.entities[8].kind, EntityKind::Unknown);
         assert!(!decoded.solid_at(decoded.entities[3].bounds));
+    }
+
+    #[test]
+    fn fancy_tiles_and_default_dash_through_spikes_keep_exact_collision_semantics() {
+        let root = BinaryElement {
+            package: Some("CompatibilityFixture".to_owned()),
+            name: "Map".to_owned(),
+            attributes: BTreeMap::new(),
+            children: vec![
+                element("Filler", [], vec![]),
+                element(
+                    "levels",
+                    [],
+                    vec![element(
+                        "level",
+                        [
+                            ("name", BinaryValue::String("tiles-hazards".to_owned())),
+                            ("x", BinaryValue::Int(320)),
+                            ("y", BinaryValue::Int(-180)),
+                            ("width", BinaryValue::Int(320)),
+                            ("height", BinaryValue::Int(180)),
+                        ],
+                        vec![
+                            element(
+                                "solids",
+                                [("innerText", BinaryValue::String("........".to_owned()))],
+                                vec![],
+                            ),
+                            element(
+                                "entities",
+                                [],
+                                vec![
+                                    element(
+                                        "player",
+                                        [("x", BinaryValue::Int(16)), ("y", BinaryValue::Int(160))],
+                                        vec![],
+                                    ),
+                                    element(
+                                        "FancyTileEntities/FancySolidTiles",
+                                        [
+                                            ("x", BinaryValue::Int(16)),
+                                            ("y", BinaryValue::Int(24)),
+                                            ("width", BinaryValue::Int(24)),
+                                            ("height", BinaryValue::Int(16)),
+                                            ("tileData", BinaryValue::String("110,010".to_owned())),
+                                        ],
+                                        vec![],
+                                    ),
+                                    element(
+                                        "NerdHelper/DashThroughSpikesUp",
+                                        [
+                                            ("x", BinaryValue::Int(80)),
+                                            ("y", BinaryValue::Int(80)),
+                                            ("width", BinaryValue::Int(24)),
+                                        ],
+                                        vec![],
+                                    ),
+                                    element(
+                                        "NerdHelper/DashThroughSpikesDown",
+                                        [
+                                            ("x", BinaryValue::Int(120)),
+                                            ("y", BinaryValue::Int(80)),
+                                            ("width", BinaryValue::Int(24)),
+                                            ("invert", BinaryValue::Bool(true)),
+                                        ],
+                                        vec![],
+                                    ),
+                                    element(
+                                        "CherryHelper/AssistRect",
+                                        [
+                                            ("x", BinaryValue::Int(160)),
+                                            ("y", BinaryValue::Int(40)),
+                                            ("width", BinaryValue::Int(32)),
+                                            ("height", BinaryValue::Int(24)),
+                                        ],
+                                        vec![],
+                                    ),
+                                ],
+                            ),
+                        ],
+                    )],
+                ),
+            ],
+        };
+
+        let bytes = encode_celeste_bin(&root).expect("compatibility map should encode");
+        let decoded = decode_map_room(&bytes, Some("tiles-hazards")).unwrap();
+
+        assert!(
+            decoded
+                .solids
+                .contains(&Rect::new(336.0, -156.0, 16.0, 8.0))
+        );
+        assert!(decoded.solids.contains(&Rect::new(344.0, -148.0, 8.0, 8.0)));
+        assert!(!decoded.solid_at(Rect::new(336.0, -148.0, 8.0, 8.0)));
+        assert_eq!(decoded.entities[0].kind, EntityKind::Decoration);
+        assert_eq!(decoded.entities[1].kind, EntityKind::Spikes);
+        assert!(decoded.entities[1].shielded);
+        assert_eq!(decoded.entities[2].kind, EntityKind::Unknown);
+        assert_eq!(decoded.entities[3].kind, EntityKind::Decoration);
     }
 
     #[test]
