@@ -41,6 +41,10 @@ impl Rect {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EntityKind {
+    /// Presentation-only entity or a non-solid reveal sensor. It is retained
+    /// so room compatibility scans do not report it as silently ignored, but
+    /// it deliberately has no physics interaction.
+    Decoration,
     JumpThru,
     DreamBlock,
     Spikes,
@@ -127,6 +131,7 @@ pub struct EntityVisual {
     #[serde(default)]
     pub variant: Option<String>,
 }
+
 /// Runtime data for one Celeste room. `Level.LoadLevel` replaces room-local
 /// solids and entities during a transition while the session-wide state
 /// (notably CassetteBlockManager) remains alive.
@@ -819,7 +824,7 @@ pub(crate) fn encode_celeste_rooms(
                     ],
                     vec![],
                 )),
-                EntityKind::Unknown => None,
+                EntityKind::Decoration | EntityKind::Unknown => None,
             };
             if let Some(encoded) = encoded {
                 entities.push(encoded);
@@ -1199,6 +1204,7 @@ fn map_from_binary_inner(
                 map.room_spawns.push(spawn);
                 continue;
             }
+            let registered = crate::entity_decode::lookup(el);
             let kind = match el.name.as_str() {
                 "jumpThru" => EntityKind::JumpThru,
                 "dreamBlock" => EntityKind::DreamBlock,
@@ -1236,152 +1242,170 @@ fn map_from_binary_inner(
                 }
                 "towerviewer" | "lookout" => EntityKind::Lookout,
                 "celesteGymMovingSolid" => EntityKind::MovingSolid,
-                _ => EntityKind::Unknown,
+                _ => registered.map_or(EntityKind::Unknown, |entry| entry.kind),
             };
-            let default_w = match kind {
-                EntityKind::Booster | EntityKind::RedBooster => 16.0,
-                EntityKind::FlyFeather => 20.0,
-                EntityKind::Bumper => 24.0,
-                EntityKind::IceBall => 12.0,
-                EntityKind::Puffer => 12.0,
-                EntityKind::AngryOshiro => 28.0,
-                EntityKind::Seeker => 12.0,
-                EntityKind::Snowball => 12.0,
-                EntityKind::Cloud => 32.0,
-                EntityKind::BadelineBoost => 32.0,
-                EntityKind::Strawberry => 14.0,
-                EntityKind::Refill => 16.0,
-                EntityKind::TheoCrystal | EntityKind::Glider | EntityKind::TempleGate => 8.0,
-                EntityKind::CrystalStaticSpinner => 16.0,
-                EntityKind::Lookout => 4.0,
-                EntityKind::HeartGem => 16.0,
-                EntityKind::RisingLava | EntityKind::SandwichLava => 340.0,
-                _ => 8.0,
-            };
-            let default_h = match kind {
-                EntityKind::TheoCrystal | EntityKind::Glider | EntityKind::Puffer => 10.0,
-                EntityKind::Snowball => 9.0,
-                EntityKind::Cloud => 5.0,
-                EntityKind::RisingLava | EntityKind::SandwichLava => 120.0,
-                EntityKind::CrystalStaticSpinner => 12.0,
-                EntityKind::Lookout => 4.0,
-                _ => default_w,
-            };
+            let default_w = registered.map_or_else(
+                || match kind {
+                    EntityKind::Booster | EntityKind::RedBooster => 16.0,
+                    EntityKind::FlyFeather => 20.0,
+                    EntityKind::Bumper => 24.0,
+                    EntityKind::IceBall => 12.0,
+                    EntityKind::Puffer => 12.0,
+                    EntityKind::AngryOshiro => 28.0,
+                    EntityKind::Seeker => 12.0,
+                    EntityKind::Snowball => 12.0,
+                    EntityKind::Cloud => 32.0,
+                    EntityKind::BadelineBoost => 32.0,
+                    EntityKind::Strawberry => 14.0,
+                    EntityKind::Refill => 16.0,
+                    EntityKind::TheoCrystal | EntityKind::Glider | EntityKind::TempleGate => 8.0,
+                    EntityKind::CrystalStaticSpinner => 16.0,
+                    EntityKind::Lookout => 4.0,
+                    EntityKind::HeartGem => 16.0,
+                    EntityKind::RisingLava | EntityKind::SandwichLava => 340.0,
+                    _ => 8.0,
+                },
+                |entry| entry.default_width,
+            );
+            let default_h = registered.map_or_else(
+                || match kind {
+                    EntityKind::TheoCrystal | EntityKind::Glider | EntityKind::Puffer => 10.0,
+                    EntityKind::Snowball => 9.0,
+                    EntityKind::Cloud => 5.0,
+                    EntityKind::RisingLava | EntityKind::SandwichLava => 120.0,
+                    EntityKind::CrystalStaticSpinner => 12.0,
+                    EntityKind::Lookout => 4.0,
+                    _ => default_w,
+                },
+                |entry| entry.default_height,
+            );
             let raw_width = attr_f32(el, "width", default_w);
             let raw_height = attr_f32(el, "height", default_h);
-            let (bounds, direction) = match el.name.as_str() {
-                "spikesUp" => (
-                    Rect::new(ex, ey - 3.0, raw_width, 3.0),
-                    Vec2::new(0.0, -1.0),
-                ),
-                "spikesDown" => (Rect::new(ex, ey, raw_width, 3.0), Vec2::new(0.0, 1.0)),
-                "spikesLeft" => (
-                    Rect::new(ex - 3.0, ey, 3.0, raw_height),
-                    Vec2::new(-1.0, 0.0),
-                ),
-                "spikesRight" => (Rect::new(ex, ey, 3.0, raw_height), Vec2::new(1.0, 0.0)),
-                "booster" | "redBooster" | "infiniteStar" | "flyFeather" | "bigSpinner"
-                | "fireBall" | "badelineBoost" | "strawberry" | "puffer" | "oshiroBoss"
-                | "seeker" | "snowball" => (
-                    Rect::new(
-                        ex - raw_width * 0.5,
-                        ey - raw_height * 0.5,
-                        raw_width,
-                        raw_height,
+            let (bounds, direction) = if let Some(entry) = registered {
+                entry.bounds_and_direction(
+                    ex,
+                    ey,
+                    raw_width,
+                    raw_height,
+                    attr_bool(el, "twoDash", false),
+                )
+            } else {
+                match el.name.as_str() {
+                    "spikesUp" => (
+                        Rect::new(ex, ey - 3.0, raw_width, 3.0),
+                        Vec2::new(0.0, -1.0),
                     ),
-                    Vec2::default(),
-                ),
-                "cloud" => (
-                    Rect::new(ex - raw_width * 0.5, ey, raw_width, raw_height),
-                    Vec2::default(),
-                ),
-                "refill" => (
-                    Rect::new(ex - 8.0, ey - 8.0, 16.0, 16.0),
-                    Vec2::new(
-                        if attr_bool(el, "twoDash", false) {
-                            1.0
-                        } else {
-                            0.0
-                        },
-                        0.0,
+                    "spikesDown" => (Rect::new(ex, ey, raw_width, 3.0), Vec2::new(0.0, 1.0)),
+                    "spikesLeft" => (
+                        Rect::new(ex - 3.0, ey, 3.0, raw_height),
+                        Vec2::new(-1.0, 0.0),
                     ),
-                ),
-                "fallingBlock" => (
-                    Rect::new(ex, ey, raw_width, raw_height),
-                    Vec2::new(
-                        if attr_bool(el, "climbFall", true) {
-                            1.0
-                        } else {
-                            0.0
-                        },
-                        if attr_bool(el, "behind", false) {
-                            1.0
-                        } else {
-                            0.0
-                        },
+                    "spikesRight" => (Rect::new(ex, ey, 3.0, raw_height), Vec2::new(1.0, 0.0)),
+                    "booster" | "redBooster" | "infiniteStar" | "flyFeather" | "bigSpinner"
+                    | "fireBall" | "badelineBoost" | "strawberry" | "puffer" | "oshiroBoss"
+                    | "seeker" | "snowball" => (
+                        Rect::new(
+                            ex - raw_width * 0.5,
+                            ey - raw_height * 0.5,
+                            raw_width,
+                            raw_height,
+                        ),
+                        Vec2::default(),
                     ),
-                ),
-                "spring" => (
-                    Rect::new(ex - 8.0, ey - 6.0, 16.0, 6.0),
-                    Vec2::new(0.0, -1.0),
-                ),
-                "wallSpringLeft" => (Rect::new(ex, ey - 8.0, 6.0, 16.0), Vec2::new(1.0, 0.0)),
-                "wallSpringRight" => (
-                    Rect::new(ex - 6.0, ey - 8.0, 6.0, 16.0),
-                    Vec2::new(-1.0, 0.0),
-                ),
-                "bounceBlock" | "zipMover" | "templeGate" => {
-                    (Rect::new(ex, ey, raw_width, raw_height), Vec2::default())
+                    "cloud" => (
+                        Rect::new(ex - raw_width * 0.5, ey, raw_width, raw_height),
+                        Vec2::default(),
+                    ),
+                    "refill" => (
+                        Rect::new(ex - 8.0, ey - 8.0, 16.0, 16.0),
+                        Vec2::new(
+                            if attr_bool(el, "twoDash", false) {
+                                1.0
+                            } else {
+                                0.0
+                            },
+                            0.0,
+                        ),
+                    ),
+                    "fallingBlock" => (
+                        Rect::new(ex, ey, raw_width, raw_height),
+                        Vec2::new(
+                            if attr_bool(el, "climbFall", true) {
+                                1.0
+                            } else {
+                                0.0
+                            },
+                            if attr_bool(el, "behind", false) {
+                                1.0
+                            } else {
+                                0.0
+                            },
+                        ),
+                    ),
+                    "spring" => (
+                        Rect::new(ex - 8.0, ey - 6.0, 16.0, 6.0),
+                        Vec2::new(0.0, -1.0),
+                    ),
+                    "wallSpringLeft" => (Rect::new(ex, ey - 8.0, 6.0, 16.0), Vec2::new(1.0, 0.0)),
+                    "wallSpringRight" => (
+                        Rect::new(ex - 6.0, ey - 8.0, 6.0, 16.0),
+                        Vec2::new(-1.0, 0.0),
+                    ),
+                    "bounceBlock" | "zipMover" | "templeGate" => {
+                        (Rect::new(ex, ey, raw_width, raw_height), Vec2::default())
+                    }
+                    "cassetteBlock" => (
+                        Rect::new(ex, ey, raw_width, raw_height),
+                        Vec2::new(attr_f32(el, "index", 0.0), attr_f32(el, "tempo", 1.0)),
+                    ),
+                    "spinner" => (
+                        Rect::new(
+                            ex - raw_width * 0.5,
+                            ey - raw_height * 0.5,
+                            raw_width,
+                            raw_height,
+                        ),
+                        Vec2::default(),
+                    ),
+                    "towerviewer" | "lookout" => (
+                        Rect::new(ex - 2.0, ey - 4.0, 4.0, 4.0),
+                        Vec2::new(
+                            if attr_bool(el, "onlyY", false) {
+                                1.0
+                            } else {
+                                0.0
+                            },
+                            if attr_bool(el, "summit", false) {
+                                1.0
+                            } else {
+                                0.0
+                            },
+                        ),
+                    ),
+                    "moveBlock" => {
+                        let direction = match attr_text(el, "direction").unwrap_or("Right") {
+                            "Left" => Vec2::new(-1.0, 0.0),
+                            "Up" => Vec2::new(0.0, -1.0),
+                            "Down" => Vec2::new(0.0, 1.0),
+                            _ => Vec2::new(1.0, 0.0),
+                        };
+                        (Rect::new(ex, ey, raw_width, raw_height), direction)
+                    }
+                    "theoCrystal" | "glider" => {
+                        (Rect::new(ex - 4.0, ey - 10.0, 8.0, 10.0), Vec2::default())
+                    }
+                    "blackGem" | "heartGem" => {
+                        (Rect::new(ex - 8.0, ey - 8.0, 16.0, 16.0), Vec2::default())
+                    }
+                    "risingLava" | "sandwichLava" => {
+                        (Rect::new(ex, ey, 340.0, 120.0), Vec2::default())
+                    }
+                    "celesteGymMovingSolid" => (
+                        Rect::new(ex, ey, raw_width, raw_height),
+                        Vec2::new(attr_f32(el, "speedX", 0.0), attr_f32(el, "speedY", 0.0)),
+                    ),
+                    _ => (Rect::new(ex, ey, raw_width, raw_height), Vec2::default()),
                 }
-                "cassetteBlock" => (
-                    Rect::new(ex, ey, raw_width, raw_height),
-                    Vec2::new(attr_f32(el, "index", 0.0), attr_f32(el, "tempo", 1.0)),
-                ),
-                "spinner" => (
-                    Rect::new(
-                        ex - raw_width * 0.5,
-                        ey - raw_height * 0.5,
-                        raw_width,
-                        raw_height,
-                    ),
-                    Vec2::default(),
-                ),
-                "towerviewer" | "lookout" => (
-                    Rect::new(ex - 2.0, ey - 4.0, 4.0, 4.0),
-                    Vec2::new(
-                        if attr_bool(el, "onlyY", false) {
-                            1.0
-                        } else {
-                            0.0
-                        },
-                        if attr_bool(el, "summit", false) {
-                            1.0
-                        } else {
-                            0.0
-                        },
-                    ),
-                ),
-                "moveBlock" => {
-                    let direction = match attr_text(el, "direction").unwrap_or("Right") {
-                        "Left" => Vec2::new(-1.0, 0.0),
-                        "Up" => Vec2::new(0.0, -1.0),
-                        "Down" => Vec2::new(0.0, 1.0),
-                        _ => Vec2::new(1.0, 0.0),
-                    };
-                    (Rect::new(ex, ey, raw_width, raw_height), direction)
-                }
-                "theoCrystal" | "glider" => {
-                    (Rect::new(ex - 4.0, ey - 10.0, 8.0, 10.0), Vec2::default())
-                }
-                "blackGem" | "heartGem" => {
-                    (Rect::new(ex - 8.0, ey - 8.0, 16.0, 16.0), Vec2::default())
-                }
-                "risingLava" | "sandwichLava" => (Rect::new(ex, ey, 340.0, 120.0), Vec2::default()),
-                "celesteGymMovingSolid" => (
-                    Rect::new(ex, ey, raw_width, raw_height),
-                    Vec2::new(attr_f32(el, "speedX", 0.0), attr_f32(el, "speedY", 0.0)),
-                ),
-                _ => (Rect::new(ex, ey, raw_width, raw_height), Vec2::default()),
             };
             let visual = match el.name.as_str() {
                 "VivHelper/CustomSpinner" => {
@@ -2025,6 +2049,169 @@ mod tests {
         assert_eq!(decoded.entity_visuals[1].tint.as_deref(), Some("ffe5e4"));
         assert_eq!(decoded.entity_visuals[2].tile, Some('.'));
         assert_eq!(decoded.tile_grid, vec!["........", "........"]);
+    }
+
+    #[test]
+    fn low_complexity_mod_entities_decode_to_existing_physics_primitives() {
+        let root = BinaryElement {
+            package: Some("CompatibilityFixture".to_owned()),
+            name: "Map".to_owned(),
+            attributes: BTreeMap::new(),
+            children: vec![
+                element("Filler", [], vec![]),
+                element(
+                    "levels",
+                    [],
+                    vec![element(
+                        "level",
+                        [
+                            ("name", BinaryValue::String("aliases".to_owned())),
+                            ("x", BinaryValue::Int(320)),
+                            ("y", BinaryValue::Int(-180)),
+                            ("width", BinaryValue::Int(320)),
+                            ("height", BinaryValue::Int(180)),
+                        ],
+                        vec![
+                            element(
+                                "solids",
+                                [("innerText", BinaryValue::String("........".to_owned()))],
+                                vec![],
+                            ),
+                            element(
+                                "entities",
+                                [],
+                                vec![
+                                    element(
+                                        "player",
+                                        [("x", BinaryValue::Int(16)), ("y", BinaryValue::Int(160))],
+                                        vec![],
+                                    ),
+                                    element(
+                                        "pandorasBox/coloredWater",
+                                        [
+                                            ("x", BinaryValue::Int(24)),
+                                            ("y", BinaryValue::Int(80)),
+                                            ("width", BinaryValue::Int(40)),
+                                            ("height", BinaryValue::Int(24)),
+                                        ],
+                                        vec![],
+                                    ),
+                                    element(
+                                        "FrostHelper/SpringRight",
+                                        [
+                                            ("x", BinaryValue::Int(100)),
+                                            ("y", BinaryValue::Int(100)),
+                                        ],
+                                        vec![],
+                                    ),
+                                    element(
+                                        "VivHelper/RainbowSpikesUp",
+                                        [
+                                            ("x", BinaryValue::Int(128)),
+                                            ("y", BinaryValue::Int(120)),
+                                            ("width", BinaryValue::Int(24)),
+                                        ],
+                                        vec![],
+                                    ),
+                                    element(
+                                        "MaxHelpingHand/Comment",
+                                        [("x", BinaryValue::Int(180)), ("y", BinaryValue::Int(40))],
+                                        vec![],
+                                    ),
+                                    element(
+                                        "MaxHelpingHand/CustomizableRefill",
+                                        [
+                                            ("x", BinaryValue::Int(200)),
+                                            ("y", BinaryValue::Int(56)),
+                                            ("twoDash", BinaryValue::Bool(true)),
+                                        ],
+                                        vec![],
+                                    ),
+                                    element(
+                                        "FrostHelper/CustomDreamBlock",
+                                        [
+                                            ("x", BinaryValue::Int(208)),
+                                            ("y", BinaryValue::Int(96)),
+                                            ("width", BinaryValue::Int(24)),
+                                            ("height", BinaryValue::Int(16)),
+                                        ],
+                                        vec![],
+                                    ),
+                                    element(
+                                        "JungleHelper/InvisibleJumpthruPlatform",
+                                        [
+                                            ("x", BinaryValue::Int(240)),
+                                            ("y", BinaryValue::Int(128)),
+                                            ("width", BinaryValue::Int(32)),
+                                        ],
+                                        vec![],
+                                    ),
+                                    element(
+                                        "MaxHelpingHand/CustomizableRefill",
+                                        [
+                                            ("x", BinaryValue::Int(280)),
+                                            ("y", BinaryValue::Int(56)),
+                                            ("respawnTime", BinaryValue::Float(1.0)),
+                                        ],
+                                        vec![],
+                                    ),
+                                    element(
+                                        "MaxHelpingHand/SidewaysJumpThru",
+                                        [
+                                            ("x", BinaryValue::Int(220)),
+                                            ("y", BinaryValue::Int(80)),
+                                            ("height", BinaryValue::Int(32)),
+                                        ],
+                                        vec![],
+                                    ),
+                                ],
+                            ),
+                        ],
+                    )],
+                ),
+            ],
+        };
+
+        let bytes = encode_celeste_bin(&root).expect("compatibility map should encode");
+        let decoded = decode_map_room(&bytes, Some("aliases")).unwrap();
+
+        assert_eq!(decoded.entities[0].kind, EntityKind::Water);
+        assert_eq!(
+            decoded.entities[0].bounds,
+            Rect::new(344.0, -100.0, 40.0, 24.0)
+        );
+        assert_eq!(decoded.entities[1].kind, EntityKind::Spring);
+        assert_eq!(
+            decoded.entities[1].bounds,
+            Rect::new(414.0, -88.0, 6.0, 16.0)
+        );
+        assert_eq!(decoded.entities[1].direction, Vec2::new(-1.0, 0.0));
+        assert_eq!(decoded.entities[2].kind, EntityKind::Spikes);
+        assert_eq!(
+            decoded.entities[2].bounds,
+            Rect::new(448.0, -63.0, 24.0, 3.0)
+        );
+        assert_eq!(decoded.entities[2].direction, Vec2::new(0.0, -1.0));
+        assert_eq!(decoded.entities[3].kind, EntityKind::Decoration);
+        assert_eq!(decoded.entities[4].kind, EntityKind::Refill);
+        assert_eq!(
+            decoded.entities[4].bounds,
+            Rect::new(512.0, -132.0, 16.0, 16.0)
+        );
+        assert_eq!(decoded.entities[4].direction, Vec2::new(1.0, 0.0));
+        assert_eq!(decoded.entities[5].kind, EntityKind::DreamBlock);
+        assert_eq!(
+            decoded.entities[5].bounds,
+            Rect::new(528.0, -84.0, 24.0, 16.0)
+        );
+        assert_eq!(decoded.entities[6].kind, EntityKind::JumpThru);
+        assert_eq!(
+            decoded.entities[6].bounds,
+            Rect::new(560.0, -52.0, 32.0, 8.0)
+        );
+        assert_eq!(decoded.entities[7].kind, EntityKind::Unknown);
+        assert_eq!(decoded.entities[8].kind, EntityKind::Unknown);
+        assert!(!decoded.solid_at(decoded.entities[3].bounds));
     }
 
     #[test]

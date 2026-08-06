@@ -4,6 +4,7 @@
 //! source-informed, but is not yet a bit-identical replacement for every `Player.cs` state.
 
 mod binary_packer;
+mod entity_decode;
 mod ffi;
 mod map;
 mod map_fixture;
