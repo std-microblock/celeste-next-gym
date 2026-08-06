@@ -7026,10 +7026,53 @@ fn load_transition_room(p: &mut PlayerSnapshot, map: &mut Map, next: Rect) {
     map.solids = room.solids;
     map.entities = room.entities;
     map.room_spawns = room.spawns;
+
+    // Level.LoadLevel constructs every destination room entity before the
+    // transition coroutine yields (Level.cs:468+). Their Added/Awake state is
+    // therefore live on the next Scene update. All vectors below are indexed
+    // by the current room's entity order, so retaining the source room vectors
+    // can either associate state with the wrong entity or panic when the
+    // destination contains more entities of a kind.
+    p.zip_movers.clear();
+    p.bounce_blocks.clear();
+    p.move_blocks.clear();
+    p.theo_crystals.clear();
+    p.heart_gems.clear();
+    p.rising_lavas.clear();
+    p.sandwich_lavas.clear();
+    p.gliders.clear();
+    p.clouds.clear();
+    p.seekers.clear();
+    p.temple_gates.clear();
     p.cassette_blocks.clear();
     p.spinners.clear();
+    p.bumpers.clear();
+    p.refills.clear();
+    p.falling_blocks.clear();
+    // A held actor is a follower that vanilla LoadLevel omits from the new
+    // room's EntityData loop. The portable map-order representation cannot yet
+    // carry that persistent actor across rooms, so clear the stale index rather
+    // than aliasing it to an unrelated destination entity.
+    p.holding_theo = None;
+    p.holding_glider = None;
+
+    initialize_zip_movers(p, map);
+    initialize_bounce_blocks(p, map);
+    initialize_move_blocks(p, map);
+    initialize_theo_crystals(p, map);
+    initialize_heart_gems(p, map);
+    initialize_rising_lavas(p, map);
+    initialize_sandwich_lavas(p, map);
+    initialize_gliders(p, map);
+    initialize_clouds(p, map);
+    initialize_seekers(p, map);
+    initialize_temple_gates(p, map);
     initialize_cassette_blocks(p, map);
     initialize_spinners(p, map);
+    initialize_bumpers(p, map);
+    initialize_refills(p, map);
+    initialize_falling_blocks(p, map);
+    position_moving_solids(map, p.moving_solid_time);
 }
 
 fn begin_transition(p: &mut PlayerSnapshot, map: &mut Map, next: Rect, direction: Vec2) {
@@ -14460,6 +14503,54 @@ mod tests {
         assert_eq!(trace.states[completed].stamina, 110.0);
         assert_eq!(trace.states[completed].wall_slide_timer, WALL_SLIDE_TIME);
         assert_eq!(trace.states[completed].jump_grace_timer, 0.0);
+    }
+
+    #[test]
+    fn transition_initializes_destination_falling_block_runtime_before_next_entity_update() {
+        let lower = Rect::new(0.0, 0.0, 320.0, 184.0);
+        let upper = Rect::new(0.0, -184.0, 320.0, 184.0);
+        let falling_block = crate::Entity {
+            kind: crate::EntityKind::FallingBlock,
+            bounds: Rect::new(240.0, -80.0, 24.0, 16.0),
+            direction: Vec2::new(1.0, 0.0),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "fallingBlock".to_owned(),
+        };
+        let map = Map {
+            bounds: lower,
+            transition_rooms: vec![upper],
+            transition_runtime: vec![
+                crate::RoomRuntime {
+                    bounds: lower,
+                    spawns: vec![Vec2::new(160.0, 160.0)],
+                    solids: vec![],
+                    entities: vec![],
+                },
+                crate::RoomRuntime {
+                    bounds: upper,
+                    spawns: vec![Vec2::new(160.0, -24.0)],
+                    solids: vec![],
+                    entities: vec![falling_block.clone()],
+                },
+            ],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(160.0, 4.0),
+            speed: Vec2::new(0.0, -160.0),
+            ..PlayerSnapshot::default()
+        };
+
+        let trace = simulate_trace(player, &[InputState::default(); 3], &map, 3).unwrap();
+
+        assert_eq!(trace.states[1].falling_blocks.len(), 1);
+        assert_eq!(
+            trace.states[1].falling_blocks[0].position,
+            Vec2::new(falling_block.bounds.x, falling_block.bounds.y)
+        );
+        assert_eq!(trace.states[3].falling_blocks.len(), 1);
     }
 
     #[test]
