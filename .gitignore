@@ -12,6 +12,7 @@ dist/
 /celeste-win.zip
 /1.4.0.0 itch.io FNA 代码.zip
 *.log
+/web/public/ai-demo-live.json
 **/bin/
 **/obj/
 /mods/CelesteGymTraining/Build/*.dll

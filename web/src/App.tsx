@@ -53,6 +53,7 @@ import {
   type VisualThemeId,
 } from "./visualThemes";
 import { ThemePicker } from "./components/ThemePicker";
+import { AIViewer } from "./components/AIViewer";
 
 interface RunDocument {
   version: 2;
@@ -70,7 +71,7 @@ const LIVE_RENDER_HISTORY_FRAMES = 240;
 const LIVE_UI_UPDATE_INTERVAL_MS = 100;
 const VISUAL_THEME_STORAGE_KEY = "celeste-gym-visual-theme";
 
-type AppMode = "play" | "training" | "editor" | "advanced";
+type AppMode = "play" | "training" | "editor" | "ai" | "advanced";
 
 const MODE_OPTIONS: readonly {
   id: AppMode;
@@ -80,6 +81,7 @@ const MODE_OPTIONS: readonly {
   { id: "play", label: "自由攀登", subtitle: "PLAY" },
   { id: "training", label: "技巧训练", subtitle: "TRAIN" },
   { id: "editor", label: "地图工坊", subtitle: "BUILD" },
+  { id: "ai", label: "AI 观察", subtitle: "AGENT" },
   { id: "advanced", label: "逐帧研究", subtitle: "LAB" },
 ];
 
@@ -855,7 +857,7 @@ export default function App() {
 
   return (
     <div
-      className={`app-shell ${mode === "play" ? "play-mode" : mode === "training" ? "training-mode" : mode === "editor" ? "editor-mode" : "advanced-mode"}`}
+      className={`app-shell ${mode === "play" ? "play-mode" : mode === "training" ? "training-mode" : mode === "editor" ? "editor-mode" : mode === "ai" ? "ai-mode" : "advanced-mode"}`}
       data-visual-theme={visualTheme.id}
     >
       {mode === "advanced" && <div className="mountain-backdrop" />}
@@ -1001,6 +1003,14 @@ export default function App() {
               <button onClick={() => setBindingsOpen(true)}>控制</button>
             </div>
           </div>
+        ) : mode === "ai" ? (
+          <div className="play-quick-actions ai-context">
+            <div className="play-room">
+              <small>RL AGENT</small>
+              <strong>策略轨迹与地图感知</strong>
+              <span>路径 · 局部 tile 视野 · 全局实体注意力</span>
+            </div>
+          </div>
         ) : (
           <div className="play-quick-actions">
             <div className="play-room">
@@ -1059,6 +1069,8 @@ export default function App() {
           onExperienceChange={toggleEditorExperience}
           onResetExperience={resetLiveMap}
         />
+      ) : mode === "ai" ? (
+        <AIViewer theme={visualTheme} />
       ) : (
         <>
           <main className="workspace">
