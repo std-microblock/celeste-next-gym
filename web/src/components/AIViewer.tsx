@@ -121,6 +121,7 @@ export function AIViewer({ theme }: { theme: VisualTheme }) {
   const [switchingRoom, setSwitchingRoom] = useState(false);
   const [speed, setSpeed] = useState(1);
   const frameRef = useRef(0);
+  const switchingRoomRef = useRef(false);
 
   const loadLatest = useCallback(async (autoplay: boolean) => {
     setLoading(true);
@@ -142,6 +143,8 @@ export function AIViewer({ theme }: { theme: VisualTheme }) {
   }, []);
 
   const switchToRandomRoom = useCallback(async () => {
+    if (switchingRoomRef.current) return;
+    switchingRoomRef.current = true;
     setSwitchingRoom(true);
     setPlaying(false);
     setError("");
@@ -165,6 +168,7 @@ export function AIViewer({ theme }: { theme: VisualTheme }) {
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
+      switchingRoomRef.current = false;
       setSwitchingRoom(false);
     }
   }, []);
@@ -172,6 +176,12 @@ export function AIViewer({ theme }: { theme: VisualTheme }) {
   useEffect(() => {
     void loadLatest(true);
   }, [loadLatest]);
+
+  useEffect(() => {
+    if (!demo?.live) return;
+    const timeout = window.setTimeout(() => void switchToRandomRoom(), 4 * 60 * 1000);
+    return () => window.clearTimeout(timeout);
+  }, [demo?.live, demo?.room_revision, switchToRandomRoom]);
 
   useEffect(() => {
     if (!demo || !playing) return;
@@ -312,7 +322,11 @@ export function AIViewer({ theme }: { theme: VisualTheme }) {
           >
             重播当前
           </button>
-          <button disabled={switchingRoom} onClick={() => void switchToRandomRoom()}>
+          <button
+            title="无操作时每 4 分钟也会自动随机换 Room"
+            disabled={switchingRoom}
+            onClick={() => void switchToRandomRoom()}
+          >
             {switchingRoom ? "换图推理中…" : "随机换 Room"}
           </button>
           <select value={speed} onChange={(event) => setSpeed(Number(event.target.value))}>
@@ -341,7 +355,7 @@ export function AIViewer({ theme }: { theme: VisualTheme }) {
       <aside className="ai-perception panel-frame">
         <header>
           <small>
-            {demo.live ? "LIVE · ROOM FIXED" : "REPLAY"} · CHECKPOINT {demo.checkpoint_step.toLocaleString()} · {generatedAt}
+            {demo.live ? "LIVE · ROOM FIXED · AUTO 4MIN" : "REPLAY"} · CHECKPOINT {demo.checkpoint_step.toLocaleString()} · {generatedAt}
           </small>
           <h1>AI 地图感知</h1>
           <p>{demo.map.name}</p>
