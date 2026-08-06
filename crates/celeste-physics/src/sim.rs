@@ -125,6 +125,7 @@ pub enum SimulationError {
 pub struct Simulator {
     snapshot: PlayerSnapshot,
     runtime_map: Map,
+    spike_attachments: Vec<Option<StaticMoverAttachment>>,
 }
 
 impl Simulator {
@@ -135,6 +136,7 @@ impl Simulator {
             snapshot.player_on_ground_initialized = true;
         }
         let mut runtime_map = map.clone();
+        let spike_attachments = initialize_spike_attachments(&runtime_map);
         initialize_zip_movers(&mut snapshot, &mut runtime_map);
         initialize_bounce_blocks(&mut snapshot, &mut runtime_map);
         initialize_move_blocks(&mut snapshot, &mut runtime_map);
@@ -154,9 +156,11 @@ impl Simulator {
         initialize_falling_blocks(&mut snapshot, &mut runtime_map);
         initialize_lookouts(&mut snapshot, &runtime_map);
         position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
+        sync_all_platform_spikes(&snapshot, &mut runtime_map, &spike_attachments);
         Ok(Self {
             snapshot,
             runtime_map,
+            spike_attachments,
         })
     }
 
@@ -178,6 +182,7 @@ impl Simulator {
             &mut self.snapshot,
             input.normalized(),
             &mut self.runtime_map,
+            &mut self.spike_attachments,
         )?;
         Ok(&self.snapshot)
     }
@@ -932,6 +937,143 @@ fn initialize_lookouts(p: &mut PlayerSnapshot, map: &Map) {
                 ..crate::LookoutSnapshot::default()
             });
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct StaticMoverAttachment {
+    platform_index: usize,
+    offset: Vec2,
+}
+
+fn spike_rides_platform(spike: &crate::Entity, platform: &crate::Entity) -> bool {
+    let spike_bounds = spike.bounds;
+    let platform_bounds = platform.bounds;
+    if spike.direction.y < 0.0 {
+        spike_bounds.bottom() == platform_bounds.y
+            && spike_bounds.x < platform_bounds.right()
+            && spike_bounds.right() > platform_bounds.x
+    } else if spike.direction.y > 0.0 {
+        spike_bounds.y == platform_bounds.bottom()
+            && spike_bounds.x < platform_bounds.right()
+            && spike_bounds.right() > platform_bounds.x
+    } else if spike.direction.x < 0.0 {
+        spike_bounds.right() == platform_bounds.x
+            && spike_bounds.y < platform_bounds.bottom()
+            && spike_bounds.bottom() > platform_bounds.y
+    } else if spike.direction.x > 0.0 {
+        spike_bounds.x == platform_bounds.right()
+            && spike_bounds.y < platform_bounds.bottom()
+            && spike_bounds.bottom() > platform_bounds.y
+    } else {
+        false
+    }
+}
+
+fn supports_spike_static_movers(kind: EntityKind) -> bool {
+    matches!(
+        kind,
+        EntityKind::CassetteBlock
+            | EntityKind::FallingBlock
+            | EntityKind::MoveBlock
+            | EntityKind::MovingSolid
+            | EntityKind::ZipMover
+    )
+}
+
+// Spikes.cs installs a StaticMover whose SolidChecker is Spikes.IsRiding.
+// Solid.Awake claims each mover for the first compatible Platform, and
+// Solid.MoveHExact/MoveVExact calls MoveStaticMovers with the exact integer
+// displacement before actor push/carry resolution. Keep the source offset so
+// segmented Simulator construction restores the same attached position.
+fn initialize_spike_attachments(map: &Map) -> Vec<Option<StaticMoverAttachment>> {
+    let mut attachments = vec![None; map.entities.len()];
+    for (spike_index, spike) in map.entities.iter().enumerate() {
+        if spike.kind != EntityKind::Spikes {
+            continue;
+        }
+        let Some((platform_index, platform)) =
+            map.entities.iter().enumerate().find(|(_, platform)| {
+                supports_spike_static_movers(platform.kind) && spike_rides_platform(spike, platform)
+            })
+        else {
+            continue;
+        };
+        attachments[spike_index] = Some(StaticMoverAttachment {
+            platform_index,
+            offset: Vec2::new(
+                spike.bounds.x - platform.bounds.x,
+                spike.bounds.y - platform.bounds.y,
+            ),
+        });
+    }
+    attachments
+}
+
+fn sync_platform_spikes(
+    map: &mut Map,
+    attachments: &[Option<StaticMoverAttachment>],
+    platform_index: usize,
+    enabled: bool,
+) {
+    let platform = map.entities[platform_index].bounds;
+    for (spike_index, attachment) in attachments.iter().enumerate() {
+        let Some(attachment) = attachment else {
+            continue;
+        };
+        if attachment.platform_index != platform_index {
+            continue;
+        }
+        let spike = &mut map.entities[spike_index];
+        if enabled {
+            spike.bounds.x = platform.x + attachment.offset.x;
+            spike.bounds.y = platform.y + attachment.offset.y;
+        } else {
+            spike.bounds.x = -1_000_000.0;
+            spike.bounds.y = -1_000_000.0;
+        }
+    }
+}
+
+fn sync_all_platform_spikes(
+    p: &PlayerSnapshot,
+    map: &mut Map,
+    attachments: &[Option<StaticMoverAttachment>],
+) {
+    let mut move_block_index = 0usize;
+    let mut falling_block_index = 0usize;
+    let mut cassette_block_index = 0usize;
+    for platform_index in 0..map.entities.len() {
+        let kind = map.entities[platform_index].kind;
+        let enabled = match kind {
+            EntityKind::MoveBlock => {
+                let enabled = p
+                    .move_blocks
+                    .get(move_block_index)
+                    .map_or(true, |state| state.static_movers_enabled);
+                move_block_index += 1;
+                enabled
+            }
+            EntityKind::FallingBlock => {
+                let enabled = p
+                    .falling_blocks
+                    .get(falling_block_index)
+                    .map_or(true, |state| !state.removed);
+                falling_block_index += 1;
+                enabled
+            }
+            EntityKind::CassetteBlock => {
+                let enabled = p
+                    .cassette_blocks
+                    .get(cassette_block_index)
+                    .map_or(true, |state| state.collidable);
+                cassette_block_index += 1;
+                enabled
+            }
+            EntityKind::MovingSolid | EntityKind::ZipMover => true,
+            _ => continue,
+        };
+        sync_platform_spikes(map, attachments, platform_index, enabled);
     }
 }
 
@@ -2415,7 +2557,12 @@ fn move_move_block_axis(
     false
 }
 
-fn advance_move_blocks(p: &mut PlayerSnapshot, map: &mut Map, input: InputState) {
+fn advance_move_blocks(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    input: InputState,
+    attachments: &[Option<StaticMoverAttachment>],
+) {
     let block_indices: Vec<usize> = map
         .entities
         .iter()
@@ -2623,7 +2770,9 @@ fn advance_move_blocks(p: &mut PlayerSnapshot, map: &mut Map, input: InputState)
                 map.entities[entity_index].bounds.y = state.start.y;
             }
         }
+        let static_movers_enabled = state.static_movers_enabled;
         p.move_blocks[block_index] = state;
+        sync_platform_spikes(map, attachments, entity_index, static_movers_enabled);
     }
 }
 
@@ -3664,7 +3813,11 @@ fn advance_gliders(p: &mut PlayerSnapshot, map: &mut Map) {
     }
 }
 
-fn advance_zip_movers(p: &mut PlayerSnapshot, map: &mut Map) {
+fn advance_zip_movers(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    attachments: &[Option<StaticMoverAttachment>],
+) {
     let zip_indices: Vec<usize> = map
         .entities
         .iter()
@@ -3742,62 +3895,74 @@ fn advance_zip_movers(p: &mut PlayerSnapshot, map: &mut Map) {
             }
         }
         p.zip_movers[zip_index] = state;
+        sync_platform_spikes(map, attachments, entity_index, true);
     }
 }
 
-fn advance_moving_solids(p: &mut PlayerSnapshot, map: &mut Map) {
+fn advance_moving_solids(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    attachments: &[Option<StaticMoverAttachment>],
+) {
     let old_time = p.moving_solid_time;
     let new_time = old_time + p.frame_delta_time;
-    for entity in &mut map.entities {
-        if entity.kind != EntityKind::MovingSolid {
-            continue;
-        }
-        let old_offset = Vec2::new(
-            (entity.direction.x * old_time).round_ties_even(),
-            (entity.direction.y * old_time).round_ties_even(),
-        );
-        let new_offset = Vec2::new(
-            (entity.direction.x * new_time).round_ties_even(),
-            (entity.direction.y * new_time).round_ties_even(),
-        );
-        let delta = Vec2::new(new_offset.x - old_offset.x, new_offset.y - old_offset.y);
-        let riding = entity
-            .bounds
-            .intersects(current_player_rect(p, p.pos.x, p.pos.y + 1.0));
-        if riding {
-            set_lift_speed(p, entity.direction);
-        }
+    let moving_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::MovingSolid).then_some(index))
+        .collect();
+    for entity_index in moving_indices {
+        {
+            let entity = &mut map.entities[entity_index];
+            let old_offset = Vec2::new(
+                (entity.direction.x * old_time).round_ties_even(),
+                (entity.direction.y * old_time).round_ties_even(),
+            );
+            let new_offset = Vec2::new(
+                (entity.direction.x * new_time).round_ties_even(),
+                (entity.direction.y * new_time).round_ties_even(),
+            );
+            let delta = Vec2::new(new_offset.x - old_offset.x, new_offset.y - old_offset.y);
+            let riding = entity
+                .bounds
+                .intersects(current_player_rect(p, p.pos.x, p.pos.y + 1.0));
+            if riding {
+                set_lift_speed(p, entity.direction);
+            }
 
-        if delta.x != 0.0 {
-            entity.bounds.x += delta.x;
-            if riding {
-                p.pos.x += delta.x;
-            } else {
-                let player = current_player_rect(p, p.pos.x, p.pos.y);
-                if entity.bounds.intersects(player) {
-                    if delta.x > 0.0 {
-                        p.pos.x += entity.bounds.right() - player.x;
-                    } else {
-                        p.pos.x -= player.right() - entity.bounds.x;
+            if delta.x != 0.0 {
+                entity.bounds.x += delta.x;
+                if riding {
+                    p.pos.x += delta.x;
+                } else {
+                    let player = current_player_rect(p, p.pos.x, p.pos.y);
+                    if entity.bounds.intersects(player) {
+                        if delta.x > 0.0 {
+                            p.pos.x += entity.bounds.right() - player.x;
+                        } else {
+                            p.pos.x -= player.right() - entity.bounds.x;
+                        }
+                    }
+                }
+            }
+            if delta.y != 0.0 {
+                entity.bounds.y += delta.y;
+                if riding {
+                    p.pos.y += delta.y;
+                } else {
+                    let player = current_player_rect(p, p.pos.x, p.pos.y);
+                    if entity.bounds.intersects(player) {
+                        if delta.y > 0.0 {
+                            p.pos.y += entity.bounds.bottom() - player.y;
+                        } else {
+                            p.pos.y -= player.bottom() - entity.bounds.y;
+                        }
                     }
                 }
             }
         }
-        if delta.y != 0.0 {
-            entity.bounds.y += delta.y;
-            if riding {
-                p.pos.y += delta.y;
-            } else {
-                let player = current_player_rect(p, p.pos.x, p.pos.y);
-                if entity.bounds.intersects(player) {
-                    if delta.y > 0.0 {
-                        p.pos.y += entity.bounds.bottom() - player.y;
-                    } else {
-                        p.pos.y -= player.bottom() - entity.bounds.y;
-                    }
-                }
-            }
-        }
+        sync_platform_spikes(map, attachments, entity_index, true);
     }
     p.moving_solid_time = new_time;
 }
@@ -3887,7 +4052,11 @@ fn try_cassette_player_wiggle_up(
     false
 }
 
-fn advance_cassette_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
+fn advance_cassette_blocks(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    attachments: &[Option<StaticMoverAttachment>],
+) {
     let entity_indices = cassette_entity_indices(map);
     for (block_index, entity_index) in entity_indices.iter().copied().enumerate() {
         let mut state = p.cassette_blocks[block_index].clone();
@@ -3903,11 +4072,17 @@ fn advance_cassette_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
             state.collidable = false;
         }
         sync_cassette_entity(&mut map.entities[entity_index], &state);
+        let collidable = state.collidable;
         p.cassette_blocks[block_index] = state;
+        sync_platform_spikes(map, attachments, entity_index, collidable);
     }
 }
 
-fn advance_cassette_manager(p: &mut PlayerSnapshot, map: &mut Map) {
+fn advance_cassette_manager(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    attachments: &[Option<StaticMoverAttachment>],
+) {
     if !p.cassette_manager.initialized || p.cassette_manager.max_beat == 0 {
         return;
     }
@@ -3937,7 +4112,9 @@ fn advance_cassette_manager(p: &mut PlayerSnapshot, map: &mut Map) {
                 let amount = if state.collidable { 1.0 } else { -1.0 };
                 shift_cassette_block(p, map, entity_index, &mut state, amount);
                 sync_cassette_entity(&mut map.entities[entity_index], &state);
+                let collidable = state.collidable;
                 p.cassette_blocks[block_index] = state;
+                sync_platform_spikes(map, attachments, entity_index, collidable);
             }
         }
     }
@@ -4105,11 +4282,16 @@ fn move_falling_block_down(
     moved < amount
 }
 
-fn advance_falling_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
+fn advance_falling_blocks(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    attachments: &[Option<StaticMoverAttachment>],
+) {
     for (block_index, entity_index) in falling_block_entity_indices(map).into_iter().enumerate() {
         let mut state = p.falling_blocks[block_index].clone();
         if state.removed {
             p.falling_blocks[block_index] = state;
+            sync_platform_spikes(map, attachments, entity_index, false);
             continue;
         }
         let climb_fall = map.entities[entity_index].direction.x != 0.0;
@@ -4234,10 +4416,17 @@ fn advance_falling_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
                 state.phase = 0;
             }
         }
+        let enabled = !state.removed;
         p.falling_blocks[block_index] = state;
+        sync_platform_spikes(map, attachments, entity_index, enabled);
     }
 }
-fn advance_post_player_entities(p: &mut PlayerSnapshot, map: &mut Map, input: InputState) {
+fn advance_post_player_entities(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    input: InputState,
+    attachments: &[Option<StaticMoverAttachment>],
+) {
     // Booster.BoostRoutine runs after Player.Update. It retains
     // BoostingPlayer throughout Dash/RedDash, then releases the player and
     // starts the one-second respawn timer on the first later state.
@@ -4245,10 +4434,10 @@ fn advance_post_player_entities(p: &mut PlayerSnapshot, map: &mut Map, input: In
         p.booster_boosting = false;
         p.booster_reuse_timer = p.booster_reuse_timer.max(1.0);
     }
-    advance_zip_movers(p, map);
+    advance_zip_movers(p, map, attachments);
     advance_bounce_blocks(p, map);
-    advance_move_blocks(p, map, input);
-    advance_falling_blocks(p, map);
+    advance_move_blocks(p, map, input, attachments);
+    advance_falling_blocks(p, map, attachments);
     advance_theo_crystals(p, map);
     advance_heart_gems(p);
     advance_rising_lavas(p, map);
@@ -4260,7 +4449,7 @@ fn advance_post_player_entities(p: &mut PlayerSnapshot, map: &mut Map, input: In
     // CassetteBlockManager writes Activated after Player.Update. The block
     // itself runs before the next Player update so its reform MoveV records
     // LiftSpeed for that frame's grounded StarFly Jump.
-    advance_cassette_manager(p, map);
+    advance_cassette_manager(p, map, attachments);
     advance_spinners(p, map);
 }
 
@@ -4268,6 +4457,7 @@ fn step(
     p: &mut PlayerSnapshot,
     mut input: InputState,
     map: &mut Map,
+    attachments: &mut Vec<Option<StaticMoverAttachment>>,
 ) -> Result<(), SimulationError> {
     // Engine computes DeltaTime once at the beginning of the raw frame. A
     // HeartGem can write TimeRate during Scene.Update, but that write only
@@ -4351,12 +4541,12 @@ fn step(
         p.just_respawned = false;
     }
     p.scene_time_active += raw_delta_time;
-    advance_moving_solids(p, map);
+    advance_moving_solids(p, map, attachments);
     if p.transition_timer > 0.0 {
         update_transition(p, map);
         advance_sandwich_lavas(p, map);
-        advance_cassette_blocks(p, map);
-        advance_cassette_manager(p, map);
+        advance_cassette_blocks(p, map, attachments);
+        advance_cassette_manager(p, map, attachments);
         advance_spinners(p, map);
         // `Actor.OnGround()` is a live collision probe. A screen transition
         // pauses Player.Update, but it does not make a player standing on a
@@ -4370,7 +4560,7 @@ fn step(
     // frame; WindTrigger interaction below selects the target for next frame.
     advance_wind_controller(p);
     apply_wind_movement(p, map);
-    advance_cassette_blocks(p, map);
+    advance_cassette_blocks(p, map, attachments);
     // Player.Update checks the force-move timer before subtracting DeltaTime,
     // and keeps the forced direction for that whole frame even when the
     // subtraction reaches zero.
@@ -4459,7 +4649,7 @@ fn step(
 
     if p.badeline_boost_active {
         update_badeline_boost(p, map);
-        advance_post_player_entities(p, map, input);
+        advance_post_player_entities(p, map, input, attachments);
         p.on_ground = grounded(p, map);
         return Ok(());
     }
@@ -4485,7 +4675,7 @@ fn step(
         PlayerState::ReflectionFall => reflection_fall_update(p, map),
         PlayerState::IntroRespawn => {
             p.state_timer -= p.frame_delta_time;
-            advance_post_player_entities(p, map, input);
+            advance_post_player_entities(p, map, input, attachments);
             p.on_ground = grounded(p, map);
             if p.state_timer <= 0.0 {
                 p.state_timer = 0.0;
@@ -4562,12 +4752,12 @@ fn step(
     advance_lookouts(p, map, input, menu_cancel_pressed);
     update_strawberry_train(p);
     try_begin_badeline_boost(p, map);
-    enforce_level_bounds(p, map);
+    enforce_level_bounds(p, map, attachments);
     // The map loader adds Player before vanilla room entities, so ZipMover's
     // coroutine and Solid carry/push run after Player.Update. A lift speed
     // written by the previous ZipMover update is therefore visible to the
     // player's next action before the platform advances again.
-    advance_post_player_entities(p, map, input);
+    advance_post_player_entities(p, map, input, attachments);
     p.on_ground = grounded(p, map);
     Ok(())
 }
@@ -6937,7 +7127,11 @@ fn point_bounce(p: &mut PlayerSnapshot, from: Vec2) {
     }
 }
 
-fn enforce_level_bounds(p: &mut PlayerSnapshot, map: &mut Map) {
+fn enforce_level_bounds(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    attachments: &mut Vec<Option<StaticMoverAttachment>>,
+) {
     if p.dead || p.state == PlayerState::DreamDash || !player_in_control(p.state) {
         return;
     }
@@ -6946,7 +7140,7 @@ fn enforce_level_bounds(p: &mut PlayerSnapshot, map: &mut Map) {
     if collider.x < bounds.x {
         let center = Vec2::new(p.pos.x, collider.y + collider.height * 0.5);
         if let Some(next) = transition_room_at(map, p, Vec2::new(center.x - 8.0, center.y)) {
-            begin_transition(p, map, next, Vec2::new(-1.0, 0.0));
+            begin_transition(p, map, next, Vec2::new(-1.0, 0.0), attachments);
             return;
         }
         p.pos.x += bounds.x - collider.x;
@@ -6957,7 +7151,7 @@ fn enforce_level_bounds(p: &mut PlayerSnapshot, map: &mut Map) {
     if collider.x + collider.width > right {
         let center = Vec2::new(p.pos.x, collider.y + collider.height * 0.5);
         if let Some(next) = transition_room_at(map, p, Vec2::new(center.x + 8.0, center.y)) {
-            begin_transition(p, map, next, Vec2::new(1.0, 0.0));
+            begin_transition(p, map, next, Vec2::new(1.0, 0.0), attachments);
             return;
         }
         p.pos.x -= collider.x + collider.width - right;
@@ -6970,7 +7164,7 @@ fn enforce_level_bounds(p: &mut PlayerSnapshot, map: &mut Map) {
     if center_y < top {
         let center = Vec2::new(p.pos.x, center_y);
         if let Some(next) = transition_room_at(map, p, Vec2::new(center.x, center.y - 12.0)) {
-            begin_transition(p, map, next, Vec2::new(0.0, -1.0));
+            begin_transition(p, map, next, Vec2::new(0.0, -1.0), attachments);
             return;
         }
     }
@@ -6984,7 +7178,7 @@ fn enforce_level_bounds(p: &mut PlayerSnapshot, map: &mut Map) {
     if collider.bottom() > bottom {
         let center = Vec2::new(p.pos.x, collider.y + collider.height * 0.5);
         if let Some(next) = transition_room_at(map, p, Vec2::new(center.x, center.y + 12.0)) {
-            begin_transition(p, map, next, Vec2::new(0.0, 1.0));
+            begin_transition(p, map, next, Vec2::new(0.0, 1.0), attachments);
             return;
         }
     }
@@ -7009,7 +7203,12 @@ fn transition_room_at(map: &Map, p: &PlayerSnapshot, point: Vec2) -> Option<Rect
         })
 }
 
-fn load_transition_room(p: &mut PlayerSnapshot, map: &mut Map, next: Rect) {
+fn load_transition_room(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    next: Rect,
+    attachments: &mut Vec<Option<StaticMoverAttachment>>,
+) {
     let Some(room) = map
         .transition_runtime
         .iter()
@@ -7026,6 +7225,7 @@ fn load_transition_room(p: &mut PlayerSnapshot, map: &mut Map, next: Rect) {
     map.solids = room.solids;
     map.entities = room.entities;
     map.room_spawns = room.spawns;
+    *attachments = initialize_spike_attachments(map);
 
     // Level.LoadLevel constructs every destination room entity before the
     // transition coroutine yields (Level.cs:468+). Their Added/Awake state is
@@ -7073,9 +7273,16 @@ fn load_transition_room(p: &mut PlayerSnapshot, map: &mut Map, next: Rect) {
     initialize_refills(p, map);
     initialize_falling_blocks(p, map);
     position_moving_solids(map, p.moving_solid_time);
+    sync_all_platform_spikes(p, map, attachments);
 }
 
-fn begin_transition(p: &mut PlayerSnapshot, map: &mut Map, next: Rect, direction: Vec2) {
+fn begin_transition(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    next: Rect,
+    direction: Vec2,
+    attachments: &mut Vec<Option<StaticMoverAttachment>>,
+) {
     if direction.y > 0.0
         && !matches!(
             p.state,
@@ -7115,7 +7322,7 @@ fn begin_transition(p: &mut PlayerSnapshot, map: &mut Map, next: Rect, direction
     p.transition_room_bounds = Some(next);
     p.transition_direction = direction;
     p.transition_target = target;
-    load_transition_room(p, map, next);
+    load_transition_room(p, map, next, attachments);
     // TransitionRoutine updates cameraAt after yielding, then resumes once
     // more to observe cameraAt == 1 and run OnTransition. Preserve that final
     // coroutine-resume frame in addition to the 0.65-second camera duration.
@@ -8007,6 +8214,98 @@ mod tests {
 
         assert_eq!(split, direct);
         assert_eq!(direct.pos.x, 34.0);
+    }
+    #[test]
+    fn moving_solid_moves_attached_spikes_and_restores_them_from_snapshot() {
+        let map = Map {
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::MovingSolid,
+                    bounds: Rect::new(16.0, 100.0, 64.0, 8.0),
+                    direction: Vec2::new(60.0, 0.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "celesteGymMovingSolid".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::Spikes,
+                    bounds: Rect::new(80.0, 100.0, 3.0, 8.0),
+                    direction: Vec2::new(1.0, 0.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "spikesRight".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let mut simulator = Simulator::new(
+            PlayerSnapshot {
+                pos: Vec2::new(200.0, 80.0),
+                state: PlayerState::Frozen,
+                ..PlayerSnapshot::default()
+            },
+            &map,
+        )
+        .unwrap();
+
+        simulator.step(InputState::default()).unwrap();
+        assert_eq!(simulator.runtime_map.entities[0].bounds.x, 17.0);
+        assert_eq!(simulator.runtime_map.entities[1].bounds.x, 81.0);
+
+        let resumed = Simulator::new(simulator.snapshot().clone(), &map).unwrap();
+        assert_eq!(resumed.runtime_map.entities[0].bounds.x, 17.0);
+        assert_eq!(resumed.runtime_map.entities[1].bounds.x, 81.0);
+    }
+    #[test]
+    fn move_block_moves_its_attached_top_spikes() {
+        let map = Map {
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::MoveBlock,
+                    bounds: Rect::new(64.0, 160.0, 32.0, 16.0),
+                    direction: Vec2::new(1.0, 0.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "moveBlock".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::Spikes,
+                    bounds: Rect::new(64.0, 157.0, 32.0, 3.0),
+                    direction: Vec2::new(0.0, -1.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "spikesUp".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let mut simulator = Simulator::new(
+            PlayerSnapshot {
+                pos: Vec2::new(200.0, 100.0),
+                state: PlayerState::Frozen,
+                move_blocks: vec![crate::MoveBlockSnapshot {
+                    phase: 2,
+                    speed: 60.0,
+                    position: Vec2::new(64.0, 160.0),
+                    start: Vec2::new(64.0, 160.0),
+                    visible: true,
+                    static_movers_enabled: true,
+                    ..crate::MoveBlockSnapshot::default()
+                }],
+                ..PlayerSnapshot::default()
+            },
+            &map,
+        )
+        .unwrap();
+
+        simulator.step(InputState::default()).unwrap();
+        assert_eq!(simulator.runtime_map.entities[0].bounds.x, 65.0);
+        assert_eq!(simulator.runtime_map.entities[1].bounds.x, 65.0);
+        assert_eq!(simulator.runtime_map.entities[1].bounds.y, 157.0);
     }
     #[test]
     fn moving_solid_pushes_an_actor_without_granting_rider_lift_speed() {
@@ -15215,7 +15514,14 @@ mod tests {
             },
             ..PlayerSnapshot::default()
         };
-        begin_transition(&mut p, &mut map, next, Vec2::new(0.0, -1.0));
+        let mut attachments = initialize_spike_attachments(&map);
+        begin_transition(
+            &mut p,
+            &mut map,
+            next,
+            Vec2::new(0.0, -1.0),
+            &mut attachments,
+        );
 
         // LoadLevel's OnLevelStart is silent: the new index-0 block begins
         // inactive at +2 px while the destination block matching the retained
@@ -15226,7 +15532,7 @@ mod tests {
         assert_eq!(p.cassette_blocks[1].position.y, -48.0);
         assert!(p.cassette_blocks[1].collidable);
 
-        step(&mut p, InputState::default(), &mut map).unwrap();
+        step(&mut p, InputState::default(), &mut map, &mut attachments).unwrap();
         assert_eq!(p.cassette_manager.beat_index, 7);
         // The same scene frame now runs CassetteBlockManager.WillToggle:
         // inactive index 0 moves up one pixel, while active index 1 moves

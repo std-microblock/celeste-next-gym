@@ -1623,6 +1623,93 @@ export function runtimeEntityBounds(
   return { ...box };
 }
 
+const SPIKE_STATIC_MOVER_KINDS = new Set<EntityKind>([
+  "cassette_block",
+  "falling_block",
+  "move_block",
+  "moving_solid",
+  "zip_mover",
+]);
+
+function spikeRidesPlatform(spike: MapEntity, platform: MapEntity): boolean {
+  const spikeBox = spike.bounds;
+  const platformBox = platform.bounds;
+  if (spike.direction.y < 0)
+    return (
+      spikeBox.y + spikeBox.height === platformBox.y &&
+      spikeBox.x < platformBox.x + platformBox.width &&
+      spikeBox.x + spikeBox.width > platformBox.x
+    );
+  if (spike.direction.y > 0)
+    return (
+      spikeBox.y === platformBox.y + platformBox.height &&
+      spikeBox.x < platformBox.x + platformBox.width &&
+      spikeBox.x + spikeBox.width > platformBox.x
+    );
+  if (spike.direction.x < 0)
+    return (
+      spikeBox.x + spikeBox.width === platformBox.x &&
+      spikeBox.y < platformBox.y + platformBox.height &&
+      spikeBox.y + spikeBox.height > platformBox.y
+    );
+  return (
+    spike.direction.x > 0 &&
+    spikeBox.x === platformBox.x + platformBox.width &&
+    spikeBox.y < platformBox.y + platformBox.height &&
+    spikeBox.y + spikeBox.height > platformBox.y
+  );
+}
+
+function platformStaticMoversEnabled(
+  entity: MapEntity,
+  state: SimState,
+  kindIndex: number,
+): boolean {
+  if (entity.kind === "move_block")
+    return state.move_blocks?.[kindIndex]?.static_movers_enabled ?? true;
+  if (entity.kind === "falling_block")
+    return !(state.falling_blocks?.[kindIndex]?.removed ?? false);
+  if (entity.kind === "cassette_block")
+    return state.cassette_blocks?.[kindIndex]?.collidable ?? true;
+  return true;
+}
+
+export function runtimeAttachedSpikeBounds(
+  map: GymMap,
+  state: SimState,
+): Map<number, MapEntity["bounds"]> {
+  const kindCounts = new Map<EntityKind, number>();
+  const kindIndices: number[] = [];
+  const runtimeBounds = map.entities.map((entity) => {
+    const kindIndex = kindCounts.get(entity.kind) ?? 0;
+    kindIndices.push(kindIndex);
+    kindCounts.set(entity.kind, kindIndex + 1);
+    return runtimeEntityBounds(entity, state, kindIndex);
+  });
+  const result = new Map<number, MapEntity["bounds"]>();
+  for (const [spikeIndex, spike] of map.entities.entries()) {
+    if (spike.kind !== "spikes") continue;
+    const platformIndex = map.entities.findIndex(
+      (platform) =>
+        SPIKE_STATIC_MOVER_KINDS.has(platform.kind) && spikeRidesPlatform(spike, platform),
+    );
+    if (platformIndex < 0) continue;
+    const platform = map.entities[platformIndex];
+    const platformBox = runtimeBounds[platformIndex];
+    const enabled = platformStaticMoversEnabled(
+      platform,
+      state,
+      kindIndices[platformIndex],
+    );
+    result.set(spikeIndex, {
+      ...spike.bounds,
+      x: enabled ? platformBox.x + spike.bounds.x - platform.bounds.x : -1_000_000,
+      y: enabled ? platformBox.y + spike.bounds.y - platform.bounds.y : -1_000_000,
+    });
+  }
+  return result;
+}
+
 export function strawberryIsPicked(
   state: SimState,
   entityIndex: number,
@@ -3288,12 +3375,16 @@ function paintGame(
     drawSpinnerItems(context, assets, spinnerItems);
   }
   const kindCounts = new Map<EntityKind, number>();
+  const attachedSpikeBounds = runtimeAttachedSpikeBounds(map, state);
   for (const [entityIndex, entity] of map.entities.entries()) {
     const kindIndex = kindCounts.get(entity.kind) ?? 0;
+    const renderedEntity = attachedSpikeBounds.has(entityIndex)
+      ? { ...entity, bounds: attachedSpikeBounds.get(entityIndex)! }
+      : entity;
     drawEntity(
       context,
       assets,
-      entity,
+      renderedEntity,
       frame,
       state,
       kindIndex,
