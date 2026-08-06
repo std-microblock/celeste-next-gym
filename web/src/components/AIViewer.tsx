@@ -46,6 +46,7 @@ interface AIDemo {
   decisions: AIDecision[];
   frame_skip: number;
   local_grid_size: number;
+  local_grid_cell_size?: number;
   local_channels: string[];
 }
 
@@ -241,6 +242,7 @@ export function AIViewer({ theme }: { theme: VisualTheme }) {
   const state = demo.states[Math.min(frame, demo.states.length - 1)];
   const path = demo.states.slice(0, frame + 1);
   const localCells = decision.local_cells.filter((cell) => cell.channel !== "visited");
+  const localCellSize = demo.local_grid_cell_size ?? 8;
   const visibleAttention = decision.attention.slice(0, 12);
   const generatedAt = demo.generated_at ? new Date(demo.generated_at).toLocaleTimeString() : "静态";
 
@@ -275,8 +277,8 @@ export function AIViewer({ theme }: { theme: VisualTheme }) {
                     key={`${cell.channel}-${cell.x}-${cell.y}-${index}`}
                     x={sx(cell.x)}
                     y={sy(cell.y)}
-                    width={8 * scale}
-                    height={8 * scale}
+                    width={localCellSize * scale}
+                    height={localCellSize * scale}
                     fill={CHANNEL_COLORS[cell.channel] ?? "#ffffff"}
                     opacity={cell.channel === "solid" ? 0.14 : 0.26}
                   />
@@ -371,8 +373,16 @@ export function AIViewer({ theme }: { theme: VisualTheme }) {
           </span>
         </section>
         <section>
-          <h2>局部 25×25 Tile 视野</h2>
-          <div className="ai-local-grid">
+          <h2>
+            局部 {demo.local_grid_size}×{demo.local_grid_size} · {localCellSize}px 精细视野
+          </h2>
+          <div
+            className="ai-local-grid"
+            style={{
+              gridTemplateColumns: `repeat(${demo.local_grid_size}, 1fr)`,
+              gridTemplateRows: `repeat(${demo.local_grid_size}, 1fr)`,
+            }}
+          >
             {decision.local_cells.map((cell, index) => (
               <i
                 key={`${cell.channel}-${cell.row}-${cell.col}-${index}`}

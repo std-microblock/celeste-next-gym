@@ -168,6 +168,14 @@ impl Simulator {
         &self.snapshot
     }
 
+    /// Current entity rectangles after all runtime movement, visibility, and
+    /// StaticMover attachment updates have been applied. The order is stable
+    /// and matches the decoded room entity order, which lets hot-path clients
+    /// update spatial observations without serializing a full snapshot.
+    pub(crate) fn runtime_entities(&self) -> &[crate::Entity] {
+        &self.runtime_map.entities
+    }
+
     /// Branch this already-initialized simulation context.
     ///
     /// Searchers use this at divergent input prefixes so entity runtime state

@@ -13,12 +13,13 @@ mod sim;
 mod types;
 
 pub use ffi::{
-    CelesteInputPod, CelesteMapHandle, CelestePlayerPod, CelesteSimulatorHandle,
-    celeste_input_pod_size, celeste_map_create, celeste_map_create_room, celeste_map_destroy,
-    celeste_player_pod_from_msgpack, celeste_player_pod_size, celeste_player_pod_to_msgpack,
-    celeste_simulator_clone, celeste_simulator_create_at_spawn, celeste_simulator_create_msgpack,
+    CelesteInputPod, CelesteMapHandle, CelestePlayerPod, CelesteRuntimeEntityPod,
+    CelesteSimulatorHandle, celeste_input_pod_size, celeste_map_create, celeste_map_create_room,
+    celeste_map_destroy, celeste_player_pod_from_msgpack, celeste_player_pod_size,
+    celeste_player_pod_to_msgpack, celeste_runtime_entity_pod_size, celeste_simulator_clone,
+    celeste_simulator_create_at_spawn, celeste_simulator_create_msgpack,
     celeste_simulator_create_pod, celeste_simulator_destroy, celeste_simulator_run_pod,
-    celeste_simulator_snapshot_msgpack,
+    celeste_simulator_runtime_entities, celeste_simulator_snapshot_msgpack,
 };
 
 pub use binary_packer::{

@@ -98,8 +98,6 @@
 
 .ai-local-grid {
   display: grid;
-  grid-template-columns: repeat(25, 1fr);
-  grid-template-rows: repeat(25, 1fr);
   aspect-ratio: 1;
   background: #02050a;
   border: 1px solid #26384e;

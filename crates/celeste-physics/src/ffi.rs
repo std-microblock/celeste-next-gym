@@ -36,6 +36,18 @@ pub struct CelestePlayerPod {
     pub respawn_frames: u16,
 }
 
+/// Current world-space rectangle for one decoded map entity. Entries are
+/// written in the original room entity order. Runtime-disabled entities are
+/// parked outside the room by the simulator, matching collision behavior.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct CelesteRuntimeEntityPod {
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+}
+
 const FLAG_ON_GROUND: u8 = 1 << 0;
 const FLAG_PLAYER_ON_GROUND: u8 = 1 << 1;
 const FLAG_DUCKING: u8 = 1 << 2;
@@ -172,6 +184,11 @@ pub extern "C" fn celeste_input_pod_size() -> u32 {
 #[unsafe(no_mangle)]
 pub extern "C" fn celeste_player_pod_size() -> u32 {
     size_of::<CelestePlayerPod>() as u32
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn celeste_runtime_entity_pod_size() -> u32 {
+    size_of::<CelesteRuntimeEntityPod>() as u32
 }
 
 /// Decode a MessagePack or Celeste BinaryPacker map once and retain it behind
@@ -364,6 +381,38 @@ pub unsafe extern "C" fn celeste_simulator_run_pod(
     .unwrap_or(0)
 }
 
+/// Export the current runtime entity rectangles without allocating or
+/// serializing. Returns the required entity count; when `out_capacity` is too
+/// small, the prefix that fits is written and callers can ignore it or retry.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn celeste_simulator_runtime_entities(
+    handle: *const CelesteSimulatorHandle,
+    out_entities: *mut CelesteRuntimeEntityPod,
+    out_capacity: u32,
+) -> u32 {
+    if handle.is_null() {
+        return 0;
+    }
+    catch_unwind(|| {
+        let simulator = unsafe { &*handle };
+        let entities = simulator.simulator.runtime_entities();
+        if !out_entities.is_null() && out_capacity > 0 {
+            let writable = entities.len().min(out_capacity as usize);
+            let output = unsafe { slice::from_raw_parts_mut(out_entities, writable) };
+            for (target, entity) in output.iter_mut().zip(entities.iter()) {
+                *target = CelesteRuntimeEntityPod {
+                    x: entity.bounds.x,
+                    y: entity.bounds.y,
+                    width: entity.bounds.width,
+                    height: entity.bounds.height,
+                };
+            }
+        }
+        entities.len() as u32
+    })
+    .unwrap_or(0)
+}
+
 /// Encode the simulator's complete state for persistence or inter-process
 /// transport. This conversion is deliberately outside the stepping hot path.
 #[unsafe(no_mangle)]
@@ -511,7 +560,47 @@ pub unsafe extern "C" fn celeste_simulate(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Map, Rect, Vec2, encode_celeste_map, encode_map};
+    use crate::{Entity, EntityKind, Map, Rect, Vec2, encode_celeste_map, encode_map};
+
+    #[test]
+    fn runtime_entity_pod_exports_live_map_order_rectangles() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            spawn: Vec2::new(24.0, 160.0),
+            entities: vec![Entity {
+                kind: EntityKind::MovingSolid,
+                bounds: Rect::new(40.0, 120.0, 16.0, 8.0),
+                direction: Vec2::new(60.0, 0.0),
+                shielded: false,
+                single_use: false,
+                nodes: Vec::new(),
+                name: "movingSolid".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let map_bytes = encode_map(&map).unwrap();
+        let map_handle = unsafe { celeste_map_create(map_bytes.as_ptr(), map_bytes.len() as u32) };
+        let simulator = unsafe { celeste_simulator_create_at_spawn(map_handle) };
+        let input = CelesteInputPod::default();
+        let mut player = [CelestePlayerPod::default(); 2];
+        assert_eq!(
+            unsafe { celeste_simulator_run_pod(simulator, &input, 1, player.as_mut_ptr(), 2) },
+            2
+        );
+        let mut entities = [CelesteRuntimeEntityPod::default(); 1];
+        assert_eq!(
+            unsafe { celeste_simulator_runtime_entities(simulator, entities.as_mut_ptr(), 1) },
+            1
+        );
+        assert_eq!(entities[0].x, 41.0);
+        assert_eq!(entities[0].y, 120.0);
+        assert_eq!(entities[0].width, 16.0);
+        assert_eq!(celeste_runtime_entity_pod_size(), 16);
+        unsafe {
+            celeste_simulator_destroy(simulator);
+            celeste_map_destroy(map_handle);
+        }
+    }
 
     #[test]
     fn named_room_spawn_and_clone_are_independent() {
