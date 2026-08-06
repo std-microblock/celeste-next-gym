@@ -1,4 +1,7 @@
-use crate::{InputState, Map, PlayerSnapshot, PlayerState, Simulator, Vec2, decode_map, simulate};
+use crate::{
+    InputState, Map, PlayerSnapshot, PlayerState, Simulator, Vec2, decode_map, decode_map_room,
+    simulate,
+};
 use std::{mem::size_of, panic::catch_unwind, ptr, slice};
 
 /// Compact, C-compatible action. `flags` uses bit 0=jump pressed, bit 1=jump
@@ -193,6 +196,30 @@ pub unsafe extern "C" fn celeste_map_create(
     .unwrap_or(ptr::null_mut())
 }
 
+/// Decode one named room from a Celeste BinaryPacker map. `room_ptr` is UTF-8
+/// and does not need a trailing NUL.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn celeste_map_create_room(
+    map_ptr: *const u8,
+    map_len: u32,
+    room_ptr: *const u8,
+    room_len: u32,
+) -> *mut CelesteMapHandle {
+    if map_ptr.is_null() || map_len == 0 || room_ptr.is_null() || room_len == 0 {
+        return ptr::null_mut();
+    }
+    catch_unwind(|| {
+        let bytes = unsafe { slice::from_raw_parts(map_ptr, map_len as usize) };
+        let room_bytes = unsafe { slice::from_raw_parts(room_ptr, room_len as usize) };
+        let room = std::str::from_utf8(room_bytes).ok()?;
+        let map = decode_map_room(bytes, Some(room)).ok()?;
+        Some(Box::into_raw(Box::new(CelesteMapHandle { map })))
+    })
+    .ok()
+    .flatten()
+    .unwrap_or(ptr::null_mut())
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn celeste_map_destroy(handle: *mut CelesteMapHandle) {
     if !handle.is_null() {
@@ -249,6 +276,46 @@ pub unsafe extern "C" fn celeste_simulator_create_msgpack(
     })
     .ok()
     .flatten()
+    .unwrap_or(ptr::null_mut())
+}
+
+/// Construct a fresh episode at the selected room's first player spawn.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn celeste_simulator_create_at_spawn(
+    map: *const CelesteMapHandle,
+) -> *mut CelesteSimulatorHandle {
+    if map.is_null() {
+        return ptr::null_mut();
+    }
+    catch_unwind(|| {
+        let map = unsafe { &*map };
+        let snapshot = PlayerSnapshot {
+            pos: map.map.spawn,
+            current_room_bounds: Some(map.map.bounds),
+            ..PlayerSnapshot::default()
+        };
+        let simulator = Simulator::new(snapshot, &map.map).ok()?;
+        Some(Box::into_raw(Box::new(CelesteSimulatorHandle {
+            simulator,
+        })))
+    })
+    .ok()
+    .flatten()
+    .unwrap_or(ptr::null_mut())
+}
+
+/// Clone an initialized context for exact state rewind or branching search.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn celeste_simulator_clone(
+    handle: *const CelesteSimulatorHandle,
+) -> *mut CelesteSimulatorHandle {
+    if handle.is_null() {
+        return ptr::null_mut();
+    }
+    catch_unwind(|| {
+        let simulator = unsafe { &*handle }.simulator.fork();
+        Box::into_raw(Box::new(CelesteSimulatorHandle { simulator }))
+    })
     .unwrap_or(ptr::null_mut())
 }
 
@@ -444,7 +511,53 @@ pub unsafe extern "C" fn celeste_simulate(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Map, Vec2, encode_map};
+    use crate::{Map, Rect, Vec2, encode_celeste_map, encode_map};
+
+    #[test]
+    fn named_room_spawn_and_clone_are_independent() {
+        let map = Map {
+            bounds: Rect::new(320.0, -184.0, 320.0, 184.0),
+            spawn: Vec2::new(344.0, -24.0),
+            room_spawns: vec![Vec2::new(344.0, -24.0)],
+            solids: vec![Rect::new(320.0, -8.0, 320.0, 8.0)],
+            ..Map::default()
+        };
+        let bytes = encode_celeste_map(&map, "CelesteGymFfi", "chosen").unwrap();
+        let room = b"chosen";
+        let map_handle = unsafe {
+            celeste_map_create_room(
+                bytes.as_ptr(),
+                bytes.len() as u32,
+                room.as_ptr(),
+                room.len() as u32,
+            )
+        };
+        assert!(!map_handle.is_null());
+        let original = unsafe { celeste_simulator_create_at_spawn(map_handle) };
+        assert!(!original.is_null());
+        assert_eq!(unsafe { &*original }.simulator.snapshot().pos, map.spawn);
+
+        let branch = unsafe { celeste_simulator_clone(original) };
+        assert!(!branch.is_null());
+        let input = CelesteInputPod {
+            move_x: 1,
+            move_y: 0,
+            flags: 0,
+        };
+        let mut states = [CelestePlayerPod::default(); 2];
+        assert_eq!(
+            unsafe { celeste_simulator_run_pod(branch, &input, 1, states.as_mut_ptr(), 2) },
+            2
+        );
+        assert_eq!(unsafe { &*original }.simulator.snapshot().pos, map.spawn);
+
+        unsafe {
+            celeste_simulator_destroy(branch);
+            celeste_simulator_destroy(original);
+            celeste_map_destroy(map_handle);
+        }
+    }
+
     #[test]
     fn ffi_round_trip() {
         let snapshot = rmp_serde::to_vec_named(&PlayerSnapshot::default()).unwrap();

@@ -13,18 +13,20 @@ mod types;
 
 pub use ffi::{
     CelesteInputPod, CelesteMapHandle, CelestePlayerPod, CelesteSimulatorHandle,
-    celeste_input_pod_size, celeste_map_create, celeste_map_destroy,
+    celeste_input_pod_size, celeste_map_create, celeste_map_create_room, celeste_map_destroy,
     celeste_player_pod_from_msgpack, celeste_player_pod_size, celeste_player_pod_to_msgpack,
-    celeste_simulator_create_msgpack, celeste_simulator_create_pod, celeste_simulator_destroy,
-    celeste_simulator_run_pod, celeste_simulator_snapshot_msgpack,
+    celeste_simulator_clone, celeste_simulator_create_at_spawn, celeste_simulator_create_msgpack,
+    celeste_simulator_create_pod, celeste_simulator_destroy, celeste_simulator_run_pod,
+    celeste_simulator_snapshot_msgpack,
 };
 
 pub use binary_packer::{
     BinaryElement, BinaryPackerWriteError, BinaryValue, encode_celeste_bin, parse_celeste_bin,
 };
 pub use map::{
-    Entity, EntityKind, Map, MapEncodeError, Rect, RoomRuntime, celeste_map_rooms, decode_map,
-    decode_map_room, encode_celeste_map, encode_map,
+    CelesteRoomAudit, Entity, EntityKind, Map, MapEncodeError, Rect, RoomRuntime,
+    audit_celeste_map, celeste_map_rooms, decode_map, decode_map_room, decode_map_room_local,
+    encode_celeste_map, encode_map,
 };
 pub use map_fixture::{
     CelesteMapFixture, FixtureEntity, FixtureEntityKind, FixtureRect, FixtureRoom, FixtureVec2,

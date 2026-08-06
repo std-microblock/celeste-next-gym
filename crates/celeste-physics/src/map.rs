@@ -175,6 +175,21 @@ pub struct Map {
     pub entity_visuals: Vec<EntityVisual>,
 }
 
+/// Raw per-room contents used by offline compatibility scanners. Unlike
+/// [`Map`], this preserves every original entity and trigger name so callers
+/// can reject rooms whose gameplay depends on something the simulator ignores.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct CelesteRoomAudit {
+    pub name: String,
+    pub bounds: Rect,
+    #[serde(default)]
+    pub spawns: Vec<Vec2>,
+    #[serde(default)]
+    pub entity_names: BTreeMap<String, u32>,
+    #[serde(default)]
+    pub trigger_names: BTreeMap<String, u32>,
+}
+
 impl Default for Map {
     fn default() -> Self {
         Self {
@@ -1013,12 +1028,81 @@ pub fn celeste_map_rooms(bytes: &[u8]) -> Result<Vec<String>, MapError> {
     Ok(rooms)
 }
 
+/// Enumerate raw room contents without discarding unsupported BinaryPacker
+/// elements. This is intentionally separate from decoding: `EntityKind::Unknown`
+/// is sufficient for simulation, while dataset builders need the original names
+/// to make a conservative compatibility decision.
+pub fn audit_celeste_map(bytes: &[u8]) -> Result<Vec<CelesteRoomAudit>, MapError> {
+    let root = parse_celeste_bin(bytes).map_err(|e| MapError::Unsupported(e.to_string()))?;
+    let levels = root
+        .children
+        .iter()
+        .find(|element| element.name == "levels")
+        .ok_or(MapError::NoLevel)?;
+    let rooms = levels
+        .children
+        .iter()
+        .map(|level| {
+            let raw_name = attr_text(level, "name").ok_or(MapError::NoLevel)?;
+            let name = raw_name.strip_prefix("lvl_").unwrap_or(raw_name).to_owned();
+            let x = attr_f32(level, "x", 0.0);
+            let y = attr_f32(level, "y", 0.0);
+            let mut spawns = Vec::new();
+            let mut entity_names = BTreeMap::new();
+            if let Some(entities) = level.children.iter().find(|e| e.name == "entities") {
+                for entity in &entities.children {
+                    *entity_names.entry(entity.name.clone()).or_insert(0) += 1;
+                    if entity.name == "player" {
+                        spawns.push(Vec2::new(
+                            x + attr_f32(entity, "x", 0.0),
+                            y + attr_f32(entity, "y", 0.0),
+                        ));
+                    }
+                }
+            }
+            let mut trigger_names = BTreeMap::new();
+            if let Some(triggers) = level.children.iter().find(|e| e.name == "triggers") {
+                for trigger in &triggers.children {
+                    *trigger_names.entry(trigger.name.clone()).or_insert(0) += 1;
+                }
+            }
+            Ok(CelesteRoomAudit {
+                name,
+                bounds: Rect::new(
+                    x,
+                    y,
+                    attr_f32(level, "width", 320.0),
+                    attr_f32(level, "height", 180.0),
+                ),
+                spawns,
+                entity_names,
+                trigger_names,
+            })
+        })
+        .collect::<Result<Vec<_>, MapError>>()?;
+    if rooms.is_empty() {
+        return Err(MapError::NoLevel);
+    }
+    Ok(rooms)
+}
+
 pub fn decode_map_room(bytes: &[u8], room: Option<&str>) -> Result<Map, MapError> {
     if let Ok(map) = rmp_serde::from_slice::<Map>(bytes) {
         return Ok(map);
     }
     let root = parse_celeste_bin(bytes).map_err(|e| MapError::Unsupported(e.to_string()))?;
     map_from_binary(root, room)
+}
+
+/// Decode only the selected room. Adjacent room bounds are retained, but their
+/// full runtime geometry is omitted to keep offline room catalogs linear in
+/// map size rather than duplicating every room into every record.
+pub fn decode_map_room_local(bytes: &[u8], room: Option<&str>) -> Result<Map, MapError> {
+    if let Ok(map) = rmp_serde::from_slice::<Map>(bytes) {
+        return Ok(map);
+    }
+    let root = parse_celeste_bin(bytes).map_err(|e| MapError::Unsupported(e.to_string()))?;
+    map_from_binary_inner(root, room, false)
 }
 
 fn attr_f32(el: &BinaryElement, key: &str, default: f32) -> f32 {
@@ -1865,7 +1949,14 @@ mod tests {
                             ("height", BinaryValue::Int(180)),
                         ],
                         vec![
-                            element("solids", [("innerText", BinaryValue::String("........\n........".to_owned()))], vec![]),
+                            element(
+                                "solids",
+                                [(
+                                    "innerText",
+                                    BinaryValue::String("........\n........".to_owned()),
+                                )],
+                                vec![],
+                            ),
                             element(
                                 "entities",
                                 [],
@@ -1875,7 +1966,12 @@ mod tests {
                                         [
                                             ("x", BinaryValue::Int(128)),
                                             ("y", BinaryValue::Int(64)),
-                                            ("Directory", BinaryValue::String("danger/SJ2021/Gym/Orb".to_owned())),
+                                            (
+                                                "Directory",
+                                                BinaryValue::String(
+                                                    "danger/SJ2021/Gym/Orb".to_owned(),
+                                                ),
+                                            ),
                                             ("Subdirectory", BinaryValue::String("beg".to_owned())),
                                         ],
                                         vec![],
@@ -1885,7 +1981,12 @@ mod tests {
                                         [
                                             ("x", BinaryValue::Int(160)),
                                             ("y", BinaryValue::Int(64)),
-                                            ("directory", BinaryValue::String("danger/SJ2021/Ceph/Spinner".to_owned())),
+                                            (
+                                                "directory",
+                                                BinaryValue::String(
+                                                    "danger/SJ2021/Ceph/Spinner".to_owned(),
+                                                ),
+                                            ),
                                             ("tint", BinaryValue::String("ffe5e4".to_owned())),
                                         ],
                                         vec![],
