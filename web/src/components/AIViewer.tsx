@@ -77,6 +77,20 @@ async function fetchLatestDemo(): Promise<AIDemo> {
   throw latestError ?? new Error("AI demo unavailable");
 }
 
+async function fetchRandomRoomDemo(): Promise<AIDemo> {
+  const response = await fetch(`${LIVE_API}/api/ai-demo/random-room`, {
+    method: "POST",
+  });
+  if (!response.ok) throw new Error(`随机换 Room HTTP ${response.status}`);
+  const queued = (await response.json()) as RoomSwitchResponse;
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    await new Promise((resolve) => window.setTimeout(resolve, 500));
+    const document = await fetchLatestDemo();
+    if (document.room_revision === queued.room_revision) return document;
+  }
+  throw new Error(`等待 ${queued.room_name} 的推理轨迹超时`);
+}
+
 const CHANNEL_COLORS: Record<string, string> = {
   solid: "#5b7cfa",
   jump_thru: "#74e0c1",
@@ -120,9 +134,13 @@ export function AIViewer({ theme }: { theme: VisualTheme }) {
   const [playing, setPlaying] = useState(true);
   const [loading, setLoading] = useState(true);
   const [switchingRoom, setSwitchingRoom] = useState(false);
+  const [preloadingRoom, setPreloadingRoom] = useState(false);
   const [speed, setSpeed] = useState(1);
+  const demoRef = useRef<AIDemo | null>(null);
   const frameRef = useRef(0);
   const switchingRoomRef = useRef(false);
+  const preloadedDemoRef = useRef<AIDemo | null>(null);
+  const preloadPromiseRef = useRef<Promise<AIDemo> | null>(null);
 
   const loadLatest = useCallback(async (autoplay: boolean) => {
     setLoading(true);
@@ -131,6 +149,9 @@ export function AIViewer({ theme }: { theme: VisualTheme }) {
       const document = await fetchLatestDemo();
       if (!document.states.length || !document.decisions.length)
         throw new Error("最近一次 AI 轨迹为空");
+      if (preloadedDemoRef.current?.room_revision === document.room_revision)
+        preloadedDemoRef.current = null;
+      demoRef.current = document;
       setDemo(document);
       setFrame(0);
       frameRef.current = 0;
@@ -143,40 +164,71 @@ export function AIViewer({ theme }: { theme: VisualTheme }) {
     }
   }, []);
 
+  const preloadNextRoom = useCallback((): Promise<AIDemo> => {
+    if (preloadedDemoRef.current) return Promise.resolve(preloadedDemoRef.current);
+    if (preloadPromiseRef.current) return preloadPromiseRef.current;
+
+    setPreloadingRoom(true);
+    const promise = fetchRandomRoomDemo()
+      .then((document) => {
+        if (!document.states.length || !document.decisions.length)
+          throw new Error("预加载的 AI 轨迹为空");
+        if (
+          document.room_revision === undefined ||
+          demoRef.current?.room_revision !== document.room_revision
+        ) {
+          preloadedDemoRef.current = document;
+        }
+        return document;
+      })
+      .finally(() => {
+        if (preloadPromiseRef.current === promise) {
+          preloadPromiseRef.current = null;
+          setPreloadingRoom(false);
+        }
+      });
+    preloadPromiseRef.current = promise;
+    return promise;
+  }, []);
+
   const switchToRandomRoom = useCallback(async () => {
     if (switchingRoomRef.current) return;
     switchingRoomRef.current = true;
     setSwitchingRoom(true);
-    setPlaying(false);
     setError("");
     try {
-      const response = await fetch(`${LIVE_API}/api/ai-demo/random-room`, {
-        method: "POST",
-      });
-      if (!response.ok) throw new Error(`随机换 Room HTTP ${response.status}`);
-      const queued = (await response.json()) as RoomSwitchResponse;
-      for (let attempt = 0; attempt < 120; attempt += 1) {
-        await new Promise((resolve) => window.setTimeout(resolve, 500));
-        const document = await fetchLatestDemo();
-        if (document.room_revision !== queued.room_revision) continue;
-        setDemo(document);
-        setFrame(0);
-        frameRef.current = 0;
-        setPlaying(true);
-        return;
+      let document = preloadedDemoRef.current ?? (await preloadNextRoom());
+      while (
+        document.room_revision !== undefined &&
+        demoRef.current?.room_revision === document.room_revision
+      ) {
+        if (preloadedDemoRef.current === document) preloadedDemoRef.current = null;
+        document = await preloadNextRoom();
       }
-      throw new Error(`等待 ${queued.room_name} 的推理轨迹超时`);
+      if (preloadedDemoRef.current === document) preloadedDemoRef.current = null;
+      demoRef.current = document;
+      setDemo(document);
+      setFrame(0);
+      frameRef.current = 0;
+      setPlaying(true);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
       switchingRoomRef.current = false;
       setSwitchingRoom(false);
     }
-  }, []);
+  }, [preloadNextRoom]);
 
   useEffect(() => {
     void loadLatest(true);
   }, [loadLatest]);
+
+  useEffect(() => {
+    if (!demo?.live || preloadingRoom || preloadedDemoRef.current) return;
+    void preloadNextRoom().catch((reason) => {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    });
+  }, [demo?.live, demo?.room_revision, preloadingRoom, preloadNextRoom]);
 
   useEffect(() => {
     if (!demo?.live) return;
@@ -201,7 +253,7 @@ export function AIViewer({ theme }: { theme: VisualTheme }) {
           frameRef.current = demo.states.length - 1;
           setFrame(frameRef.current);
           setPlaying(false);
-          void loadLatest(true);
+          void switchToRandomRoom();
           return;
         }
         frameRef.current = next;
@@ -211,7 +263,7 @@ export function AIViewer({ theme }: { theme: VisualTheme }) {
     };
     animation = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animation);
-  }, [demo, loadLatest, playing, speed]);
+  }, [demo, playing, speed, switchToRandomRoom]);
 
   const decision = useMemo(() => {
     if (!demo) return undefined;
@@ -329,7 +381,11 @@ export function AIViewer({ theme }: { theme: VisualTheme }) {
             disabled={switchingRoom}
             onClick={() => void switchToRandomRoom()}
           >
-            {switchingRoom ? "换图推理中…" : "随机换 Room"}
+            {switchingRoom
+              ? "切换 Room…"
+              : preloadingRoom
+                ? "下一 Room 预加载中…"
+                : "随机换 Room"}
           </button>
           <select value={speed} onChange={(event) => setSpeed(Number(event.target.value))}>
             <option value={0.25}>0.25×</option>
