@@ -55,6 +55,10 @@ const FLAG_CAN_DREAM_DASH: u8 = 1 << 3;
 const FLAG_DEAD: u8 = 1 << 4;
 const FLAG_DEATH_FREEZE_PENDING: u8 = 1 << 5;
 const FLAG_BOOST_RED: u8 = 1 << 6;
+/// The simulator has entered Celeste's room-transition coroutine. This is
+/// distinct from merely moving above `Level.Bounds.Top`, which vanilla allows
+/// by up to 24 pixels when no adjacent room accepts the transition probe.
+const FLAG_TRANSITIONING: u8 = 1 << 7;
 
 impl CelesteInputPod {
     fn input(self) -> InputState {
@@ -95,6 +99,9 @@ impl From<&PlayerSnapshot> for CelestePlayerPod {
         }
         if snapshot.boost_red {
             flags |= FLAG_BOOST_RED;
+        }
+        if snapshot.transition_room_bounds.is_some() {
+            flags |= FLAG_TRANSITIONING;
         }
         Self {
             pos: snapshot.pos,
@@ -767,5 +774,27 @@ mod tests {
         let decoded: PlayerSnapshot =
             rmp_serde::from_slice(&encoded[..encoded_len as usize]).unwrap();
         assert_eq!(CelestePlayerPod::from(&decoded), pod);
+    }
+
+    #[test]
+    fn player_pod_distinguishes_a_real_room_transition_from_top_headroom() {
+        let headroom = PlayerSnapshot {
+            pos: Vec2::new(160.0, -8.0),
+            current_room_bounds: Some(crate::Rect::new(0.0, 0.0, 320.0, 184.0)),
+            ..PlayerSnapshot::default()
+        };
+        let transitioning = PlayerSnapshot {
+            transition_room_bounds: Some(crate::Rect::new(0.0, -184.0, 320.0, 184.0)),
+            ..headroom.clone()
+        };
+
+        assert_eq!(
+            CelestePlayerPod::from(&headroom).flags & FLAG_TRANSITIONING,
+            0
+        );
+        assert_ne!(
+            CelestePlayerPod::from(&transitioning).flags & FLAG_TRANSITIONING,
+            0
+        );
     }
 }
