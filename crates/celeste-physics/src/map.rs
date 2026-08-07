@@ -68,6 +68,9 @@ pub enum EntityKind {
     /// Vanilla FallingBlock Solid. direction.x stores the `climbFall` flag,
     /// direction.y the `behind` depth flag; width/height come from attributes.
     FallingBlock,
+    /// Vanilla passage that is disabled when the player starts inside it and
+    /// becomes a permanent Solid after the player leaves.
+    ExitBlock,
     Wind,
     /// Vanilla hot-state Core BounceBlock Solid.
     BounceBlock,
@@ -559,6 +562,29 @@ pub(crate) fn encode_celeste_rooms(
                                     .and_then(|visual| visual.tile)
                                     .map(|tile| tile as i32)
                                     .unwrap_or(b'3' as i32),
+                            ),
+                        ),
+                        ("width", BinaryValue::Int(width)),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![],
+                )),
+                EntityKind::ExitBlock => Some(element(
+                    "exitBlock",
+                    [
+                        ("height", BinaryValue::Int(height)),
+                        ("id", BinaryValue::Int(id)),
+                        ("originX", BinaryValue::Int(0)),
+                        ("originY", BinaryValue::Int(0)),
+                        (
+                            "tileType",
+                            BinaryValue::String(
+                                map.entity_visuals
+                                    .get(index)
+                                    .and_then(|visual| visual.tile)
+                                    .unwrap_or('3')
+                                    .to_string(),
                             ),
                         ),
                         ("width", BinaryValue::Int(width)),
@@ -1228,6 +1254,7 @@ fn map_from_binary_inner(
                 "strawberry" => EntityKind::Strawberry,
                 "refill" => EntityKind::Refill,
                 "fallingBlock" => EntityKind::FallingBlock,
+                "exitBlock" => EntityKind::ExitBlock,
                 "windTrigger" => EntityKind::Wind,
                 "bounceBlock" => EntityKind::BounceBlock,
                 "theoCrystal" => EntityKind::TheoCrystal,
@@ -1353,7 +1380,7 @@ fn map_from_binary_inner(
                         Rect::new(ex - 6.0, ey - 8.0, 6.0, 16.0),
                         Vec2::new(-1.0, 0.0),
                     ),
-                    "bounceBlock" | "zipMover" | "templeGate" => {
+                    "bounceBlock" | "zipMover" | "templeGate" | "exitBlock" => {
                         (Rect::new(ex, ey, raw_width, raw_height), Vec2::default())
                     }
                     "cassetteBlock" => (
@@ -1441,8 +1468,11 @@ fn map_from_binary_inner(
                     ..EntityVisual::default()
                 },
                 _ => EntityVisual {
-                    tile: (kind == EntityKind::FallingBlock)
-                        .then(|| attr_char(el, "tiletype").unwrap_or('3')),
+                    tile: match kind {
+                        EntityKind::FallingBlock => Some(attr_char(el, "tiletype").unwrap_or('3')),
+                        EntityKind::ExitBlock => Some(attr_char(el, "tileType").unwrap_or('3')),
+                        _ => None,
+                    },
                     ..EntityVisual::default()
                 },
             };
@@ -1602,6 +1632,7 @@ impl Map {
                     EntityKind::BounceBlock
                         | EntityKind::CassetteBlock
                         | EntityKind::FallingBlock
+                        | EntityKind::ExitBlock
                         | EntityKind::MoveBlock
                         | EntityKind::MovingSolid
                         | EntityKind::ZipMover
@@ -1749,6 +1780,32 @@ mod tests {
         let bytes = encode_celeste_map(&map, "CelesteGymPlayground", "blocks").unwrap();
         let decoded = decode_map_room(&bytes, Some("blocks")).unwrap();
         assert_eq!(decoded.entities, vec![block]);
+    }
+
+    #[test]
+    fn vanilla_exit_block_round_trips_its_solid_rect_and_tiletype() {
+        let block = Entity {
+            kind: EntityKind::ExitBlock,
+            bounds: Rect::new(112.0, 24.0, 24.0, 40.0),
+            direction: Vec2::default(),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "exitBlock".to_owned(),
+        };
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            entities: vec![block.clone()],
+            entity_visuals: vec![EntityVisual {
+                tile: Some('9'),
+                ..EntityVisual::default()
+            }],
+            ..Map::default()
+        };
+        let bytes = encode_celeste_map(&map, "CelesteGymPlayground", "exit-block").unwrap();
+        let decoded = decode_map_room(&bytes, Some("exit-block")).unwrap();
+        assert_eq!(decoded.entities, vec![block]);
+        assert_eq!(decoded.entity_visuals[0].tile, Some('9'));
     }
 
     #[test]

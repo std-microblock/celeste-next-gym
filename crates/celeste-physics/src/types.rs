@@ -393,6 +393,16 @@ pub struct FallingBlockSnapshot {
     pub safe: bool,
 }
 
+/// Vanilla `ExitBlock` state. The Solid starts collidable unless `Awake`
+/// finds the player inside it, then closes permanently after the player has
+/// cleared its original rectangle.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ExitBlockSnapshot {
+    pub position: Vec2,
+    pub collidable: bool,
+}
+
 fn default_stamina() -> f32 {
     110.0
 }
@@ -560,6 +570,8 @@ pub struct PlayerSnapshot {
     pub refills: Vec<RefillSnapshot>,
     /// Per-entity vanilla FallingBlock Solid coroutine state, in map entity order.
     pub falling_blocks: Vec<FallingBlockSnapshot>,
+    /// Per-entity vanilla ExitBlock collidability, in map entity order.
+    pub exit_blocks: Vec<ExitBlockSnapshot>,
     /// Map-order TheoCrystal index currently held by Player.
     pub holding_theo: Option<u16>,
     /// Map-order Glider index currently held by Player.
@@ -731,6 +743,7 @@ impl Default for PlayerSnapshot {
             temple_gates: vec![],
             refills: vec![],
             falling_blocks: vec![],
+            exit_blocks: vec![],
             holding_theo: None,
             holding_glider: None,
             min_hold_timer: 0.0,

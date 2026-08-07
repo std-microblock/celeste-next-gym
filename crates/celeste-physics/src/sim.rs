@@ -154,6 +154,7 @@ impl Simulator {
         initialize_bumpers(&mut snapshot, &mut runtime_map);
         initialize_refills(&mut snapshot, &mut runtime_map);
         initialize_falling_blocks(&mut snapshot, &mut runtime_map);
+        initialize_exit_blocks(&mut snapshot, &mut runtime_map);
         initialize_lookouts(&mut snapshot, &runtime_map);
         position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
         sync_all_platform_spikes(&snapshot, &mut runtime_map, &spike_attachments);
@@ -524,6 +525,10 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         .iter()
         .all(|value| value.is_finite())
     });
+    let exit_blocks_are_finite = s
+        .exit_blocks
+        .iter()
+        .all(|block| block.position.x.is_finite() && block.position.y.is_finite());
     let lookouts_are_finite = s.lookouts.iter().all(|lookout| {
         [
             lookout.timer,
@@ -559,6 +564,7 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         && lookouts_are_finite
         && refills_are_finite
         && falling_blocks_are_finite
+        && exit_blocks_are_finite
     {
         Ok(())
     } else {
@@ -897,6 +903,61 @@ fn initialize_falling_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
             );
         } else {
             park_entity(entity);
+        }
+    }
+}
+
+fn initialize_exit_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
+    let indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::ExitBlock).then_some(index))
+        .collect();
+    p.exit_blocks.truncate(indices.len());
+    let player = current_player_rect(p, p.pos.x, p.pos.y);
+    for (block_index, entity_index) in indices.into_iter().enumerate() {
+        let entity = &mut map.entities[entity_index];
+        if block_index == p.exit_blocks.len() {
+            p.exit_blocks.push(crate::ExitBlockSnapshot {
+                position: Vec2::new(entity.bounds.x, entity.bounds.y),
+                collidable: !entity.bounds.intersects(player),
+            });
+        }
+        let state = &p.exit_blocks[block_index];
+        if state.collidable {
+            entity.bounds.x = state.position.x;
+            entity.bounds.y = state.position.y;
+        } else {
+            park_entity(entity);
+        }
+    }
+}
+
+fn advance_exit_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
+    let player = current_player_rect(p, p.pos.x, p.pos.y);
+    let indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::ExitBlock).then_some(index))
+        .collect();
+    for (block_index, entity_index) in indices.into_iter().enumerate() {
+        let state = &mut p.exit_blocks[block_index];
+        if state.collidable {
+            continue;
+        }
+        let entity = &mut map.entities[entity_index];
+        let original = Rect::new(
+            state.position.x,
+            state.position.y,
+            entity.bounds.width,
+            entity.bounds.height,
+        );
+        if !original.intersects(player) {
+            state.collidable = true;
+            entity.bounds.x = state.position.x;
+            entity.bounds.y = state.position.y;
         }
     }
 }
@@ -1530,6 +1591,7 @@ fn solid_at_with_gate(map: &Map, rect: Rect, pusher_index: usize, pusher_collida
                     | EntityKind::MovingSolid
                     | EntityKind::ZipMover
                     | EntityKind::TempleGate
+                    | EntityKind::ExitBlock
             );
             solid && (index != pusher_index || pusher_collidable) && entity.bounds.intersects(rect)
         })
@@ -1945,6 +2007,7 @@ fn solid_collision_env(map: &Map, pusher_index: usize) -> SolidCollisionEnv {
                 | EntityKind::MoveBlock
                 | EntityKind::MovingSolid
                 | EntityKind::ZipMover
+                | EntityKind::ExitBlock
         ) {
             solids.push(entity.bounds);
         } else if matches!(entity.kind, EntityKind::JumpThru | EntityKind::Cloud) {
@@ -2280,6 +2343,7 @@ fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
                                     | EntityKind::MoveBlock
                                     | EntityKind::MovingSolid
                                     | EntityKind::ZipMover
+                                    | EntityKind::ExitBlock
                             )
                             && other.bounds.intersects(restored)
                     }),
@@ -2463,6 +2527,7 @@ fn runtime_solid_collision(map: &Map, skip_index: usize, rect: Rect) -> bool {
                         | EntityKind::MoveBlock
                         | EntityKind::MovingSolid
                         | EntityKind::ZipMover
+                        | EntityKind::ExitBlock
                 )
                 && entity.bounds.intersects(rect)
         })
@@ -4238,6 +4303,7 @@ fn falling_block_platform_below(map: &Map, entity_index: usize, below: Rect) -> 
                         | EntityKind::MovingSolid
                         | EntityKind::ZipMover
                         | EntityKind::TempleGate
+                        | EntityKind::ExitBlock
                 )
                 && entity.bounds.intersects(below)
         })
@@ -4446,6 +4512,7 @@ fn advance_post_player_entities(
     advance_bounce_blocks(p, map);
     advance_move_blocks(p, map, input, attachments);
     advance_falling_blocks(p, map, attachments);
+    advance_exit_blocks(p, map);
     advance_theo_crystals(p, map);
     advance_heart_gems(p);
     advance_rising_lavas(p, map);
@@ -7260,6 +7327,7 @@ fn load_transition_room(
     p.bumpers.clear();
     p.refills.clear();
     p.falling_blocks.clear();
+    p.exit_blocks.clear();
     // A held actor is a follower that vanilla LoadLevel omits from the new
     // room's EntityData loop. The portable map-order representation cannot yet
     // carry that persistent actor across rooms, so clear the stale index rather
@@ -7283,6 +7351,7 @@ fn load_transition_room(
     initialize_bumpers(p, map);
     initialize_refills(p, map);
     initialize_falling_blocks(p, map);
+    initialize_exit_blocks(p, map);
     position_moving_solids(map, p.moving_solid_time);
     sync_all_platform_spikes(p, map, attachments);
 }
@@ -11962,6 +12031,72 @@ mod tests {
                 .unwrap()
                 .dead
         );
+    }
+
+    #[test]
+    fn exit_block_awake_allows_overlap_then_closes_permanently_after_clear() {
+        let source = Map {
+            entities: vec![crate::Entity {
+                kind: EntityKind::ExitBlock,
+                bounds: Rect::new(40.0, 80.0, 16.0, 32.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "exitBlock".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let mut map = source.clone();
+        let mut player = PlayerSnapshot {
+            pos: Vec2::new(44.0, 92.0),
+            ..PlayerSnapshot::default()
+        };
+
+        initialize_exit_blocks(&mut player, &mut map);
+        assert!(!player.exit_blocks[0].collidable);
+        assert!(!map.non_dream_solid_at(Rect::new(44.0, 88.0, 1.0, 1.0)));
+
+        player.pos.x = 80.0;
+        advance_exit_blocks(&mut player, &mut map);
+        assert!(player.exit_blocks[0].collidable);
+        assert_eq!(map.entities[0].bounds, source.entities[0].bounds);
+        assert!(map.non_dream_solid_at(Rect::new(44.0, 88.0, 1.0, 1.0)));
+
+        player.pos.x = 44.0;
+        advance_exit_blocks(&mut player, &mut map);
+        assert!(player.exit_blocks[0].collidable);
+    }
+
+    #[test]
+    fn exit_block_runtime_is_split_simulation_composable() {
+        let map = Map {
+            entities: vec![crate::Entity {
+                kind: EntityKind::ExitBlock,
+                bounds: Rect::new(40.0, 80.0, 16.0, 32.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "exitBlock".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let inside = PlayerSnapshot {
+            pos: Vec2::new(44.0, 92.0),
+            ..PlayerSnapshot::default()
+        };
+        let mut first = Simulator::new(inside, &map).unwrap();
+        first.step(InputState::default()).unwrap();
+        let mut saved = first.into_snapshot();
+        assert!(!saved.exit_blocks[0].collidable);
+
+        saved.pos.x = 80.0;
+        let closed = simulate(saved, &[InputState::default()], &map, 1).unwrap();
+        assert!(closed.exit_blocks[0].collidable);
+
+        let resumed = Simulator::new(closed, &map).unwrap();
+        assert_eq!(resumed.runtime_entities()[0].bounds, map.entities[0].bounds);
     }
 
     #[test]

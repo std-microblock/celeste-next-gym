@@ -35,12 +35,14 @@ The first conditional aliases are:
 - `FancyTileEntities/FancySolidTiles` -> exact 8 px solid rectangles decoded
   from its comma-separated `tileData`; `loadGlobally` remains unsupported;
 - `CherryHelper/AssistRect` -> presentation-only decoration.
+- vanilla `exitBlock` -> source `Awake` overlap pass-through followed by the
+  permanent Solid close once the player clears the original rectangle.
 
 Stateful flag systems, seekers/barriers, sideways or upside-down jumpthroughs,
 trigger spikes, crumble blocks, and custom moving solids intentionally remain
 unknown until their update and collision order is implemented.
 
-## 2026-08-06 catalog measurement
+## 2026-08-07 catalog measurement
 
 The pinned `../celeste-next-gym-ai` catalog contains 10,785 rooms from 480
 decoded maps. Re-scanning the same sources after this registry changed the
@@ -48,12 +50,12 @@ compatibility totals as follows:
 
 | Verdict | Before | After |
 | --- | ---: | ---: |
-| supported | 198 | 397 |
-| terrain | 224 | 84 |
-| unsupported | 10,363 | 10,304 |
+| supported | 198 | 416 |
+| terrain | 224 | 86 |
+| unsupported | 10,363 | 10,283 |
 
-Official supported rooms increased from 56 to 126; Mod supported rooms
-increased from 142 to 271. All 481 resulting `supported` or `terrain` rooms
+Official supported rooms increased from 56 to 130; Mod supported rooms
+increased from 142 to 286. All 502 resulting `supported` or `terrain` rooms
 completed the deterministic native runtime smoke sequence without a failure.
 This catalog result is a compatibility filter, not a claim of real
 Celeste/Everest frame-perfect equivalence.
@@ -64,3 +66,8 @@ did remove silent-ignore status from 1,890 default DashThroughSpikes across 806
 rooms, 454 FancySolidTiles across 106 rooms, and 1,601 AssistRect decorations
 across 498 rooms. Fourteen rooms with non-default DashThroughSpikes parameters
 correctly remain unknown.
+
+The ExitBlock batch directly added 19 supported rooms and 2 terrain rooms.
+Its map-order runtime state remains composable across split simulation, and
+the AI geometry consumes the exported parked/restored rectangle rather than
+assuming the block is always closed.
