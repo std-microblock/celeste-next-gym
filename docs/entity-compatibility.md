@@ -41,6 +41,9 @@ The first conditional aliases are:
   first `Update` either enables it permanently or deactivates it forever when
   the player overlaps it; its edge `ClimbBlocker` also rejects grabs, wall
   slides, and wall-jump probes.
+- vanilla `killbox` -> fixed 32 px PlayerCollider with the source vertical
+  hysteresis: it enables once the player is more than 32 px above its top and
+  disables once the player is more than 32 px below its bottom.
 
 Stateful flag systems, seekers/barriers, sideways or upside-down jumpthroughs,
 trigger spikes, crumble blocks, and custom moving solids intentionally remain
@@ -55,11 +58,11 @@ compatibility totals as follows:
 | Verdict | Before | After |
 | --- | ---: | ---: |
 | supported | 198 | 422 |
-| terrain | 224 | 92 |
-| unsupported | 10,363 | 10,271 |
+| terrain | 224 | 93 |
+| unsupported | 10,363 | 10,270 |
 
 Official supported rooms increased from 56 to 132; Mod supported rooms
-increased from 142 to 290. All 514 resulting `supported` or `terrain` rooms
+increased from 142 to 290. All 515 resulting `supported` or `terrain` rooms
 completed the deterministic native runtime smoke sequence without a failure.
 This catalog result is a compatibility filter, not a claim of real
 Celeste/Everest frame-perfect equivalence.
@@ -82,3 +85,8 @@ have other unknown dependencies remain unsupported. The first-update state is
 portable across split simulation and room transitions, and the AI fine grid
 uses the live parked/restored runtime rectangle instead of painting every
 barrier as permanently solid.
+
+The Killbox batch decoded 1,292 hazards across 552 rooms and directly added
+one official terrain room; the other affected rooms still contain unsupported
+entities or triggers. Its enabled/disabled hysteresis survives split
+simulation, and the AI hazard grid follows the live parked/restored collider.

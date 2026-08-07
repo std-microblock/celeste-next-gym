@@ -414,6 +414,15 @@ pub struct InvisibleBarrierSnapshot {
     pub collidable: bool,
 }
 
+/// Vanilla `Killbox` hysteresis state. The entity collider is parked while
+/// non-collidable, so its source position is retained for later reactivation.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct KillboxSnapshot {
+    pub position: Vec2,
+    pub collidable: bool,
+}
+
 fn default_stamina() -> f32 {
     110.0
 }
@@ -585,6 +594,8 @@ pub struct PlayerSnapshot {
     pub exit_blocks: Vec<ExitBlockSnapshot>,
     /// Per-entity vanilla InvisibleBarrier first-update state.
     pub invisible_barriers: Vec<InvisibleBarrierSnapshot>,
+    /// Per-entity vanilla Killbox collidability, in map entity order.
+    pub killboxes: Vec<KillboxSnapshot>,
     /// Map-order TheoCrystal index currently held by Player.
     pub holding_theo: Option<u16>,
     /// Map-order Glider index currently held by Player.
@@ -758,6 +769,7 @@ impl Default for PlayerSnapshot {
             falling_blocks: vec![],
             exit_blocks: vec![],
             invisible_barriers: vec![],
+            killboxes: vec![],
             holding_theo: None,
             holding_glider: None,
             min_hold_timer: 0.0,

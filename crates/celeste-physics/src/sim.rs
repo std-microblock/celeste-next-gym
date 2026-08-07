@@ -156,6 +156,7 @@ impl Simulator {
         initialize_falling_blocks(&mut snapshot, &mut runtime_map);
         initialize_exit_blocks(&mut snapshot, &mut runtime_map);
         initialize_invisible_barriers(&mut snapshot, &mut runtime_map);
+        initialize_killboxes(&mut snapshot, &mut runtime_map);
         initialize_lookouts(&mut snapshot, &runtime_map);
         position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
         sync_all_platform_spikes(&snapshot, &mut runtime_map, &spike_attachments);
@@ -534,6 +535,10 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         .invisible_barriers
         .iter()
         .all(|barrier| barrier.position.x.is_finite() && barrier.position.y.is_finite());
+    let killboxes_are_finite = s
+        .killboxes
+        .iter()
+        .all(|killbox| killbox.position.x.is_finite() && killbox.position.y.is_finite());
     let lookouts_are_finite = s.lookouts.iter().all(|lookout| {
         [
             lookout.timer,
@@ -571,6 +576,7 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         && falling_blocks_are_finite
         && exit_blocks_are_finite
         && invisible_barriers_are_finite
+        && killboxes_are_finite
     {
         Ok(())
     } else {
@@ -1023,6 +1029,59 @@ fn advance_invisible_barriers(p: &mut PlayerSnapshot, map: &mut Map) {
         state.collidable = !original.intersects(player);
         if state.collidable {
             entity.bounds = original;
+        }
+    }
+}
+
+fn initialize_killboxes(p: &mut PlayerSnapshot, map: &mut Map) {
+    let indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::Killbox).then_some(index))
+        .collect();
+    p.killboxes.truncate(indices.len());
+    for (killbox_index, entity_index) in indices.into_iter().enumerate() {
+        let entity = &mut map.entities[entity_index];
+        if killbox_index == p.killboxes.len() {
+            p.killboxes.push(crate::KillboxSnapshot {
+                position: Vec2::new(entity.bounds.x, entity.bounds.y),
+                collidable: false,
+            });
+        }
+        let state = &p.killboxes[killbox_index];
+        if state.collidable {
+            entity.bounds.x = state.position.x;
+            entity.bounds.y = state.position.y;
+        } else {
+            park_entity(entity);
+        }
+    }
+}
+
+fn advance_killboxes(p: &mut PlayerSnapshot, map: &mut Map) {
+    let player = current_player_rect(p, p.pos.x, p.pos.y);
+    let indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::Killbox).then_some(index))
+        .collect();
+    for (killbox_index, entity_index) in indices.into_iter().enumerate() {
+        let state = &mut p.killboxes[killbox_index];
+        let entity = &mut map.entities[entity_index];
+        let original = Rect::new(
+            state.position.x,
+            state.position.y,
+            entity.bounds.width,
+            entity.bounds.height,
+        );
+        if !state.collidable && player.bottom() < original.y - 32.0 {
+            state.collidable = true;
+            entity.bounds = original;
+        } else if state.collidable && player.y > original.bottom() + 32.0 {
+            state.collidable = false;
+            park_entity(entity);
         }
     }
 }
@@ -4703,6 +4762,10 @@ fn step(
         p.on_ground = grounded(p, map);
         return Ok(());
     }
+    // Killbox has no TransitionUpdate tag. On ordinary frames its room-entity
+    // Update runs before Player.Update and applies the source 32 px hysteresis
+    // thresholds before its PlayerCollider can fire later in the frame.
+    advance_killboxes(p, map);
     advance_badeline_boost_relocation(p);
     // WindController is updated before Player in the level entity order. It
     // advances and invokes WindMover using the state from the start of the
@@ -6617,6 +6680,7 @@ fn interact(
                 | EntityKind::RisingLava
                 | EntityKind::SandwichLava
                 | EntityKind::CrystalStaticSpinner
+                | EntityKind::Killbox
         ) {
             current_player_hurt_rect(p)
         } else {
@@ -6709,7 +6773,8 @@ fn interact(
             }
             EntityKind::RisingLava
             | EntityKind::SandwichLava
-            | EntityKind::CrystalStaticSpinner => {
+            | EntityKind::CrystalStaticSpinner
+            | EntityKind::Killbox => {
                 p.dead = true;
                 p.speed = Vec2::default();
                 p.death_freeze_pending = true;
@@ -7432,6 +7497,7 @@ fn load_transition_room(
     p.falling_blocks.clear();
     p.exit_blocks.clear();
     p.invisible_barriers.clear();
+    p.killboxes.clear();
     // A held actor is a follower that vanilla LoadLevel omits from the new
     // room's EntityData loop. The portable map-order representation cannot yet
     // carry that persistent actor across rooms, so clear the stale index rather
@@ -7457,6 +7523,7 @@ fn load_transition_room(
     initialize_falling_blocks(p, map);
     initialize_exit_blocks(p, map);
     initialize_invisible_barriers(p, map);
+    initialize_killboxes(p, map);
     position_moving_solids(map, p.moving_solid_time);
     sync_all_platform_spikes(p, map, attachments);
 }
@@ -12333,6 +12400,83 @@ mod tests {
         .unwrap();
         assert!(player.invisible_barriers[0].initialized);
         assert!(!player.invisible_barriers[0].collidable);
+    }
+
+    fn killbox_map() -> Map {
+        Map {
+            entities: vec![crate::Entity {
+                kind: EntityKind::Killbox,
+                bounds: Rect::new(16.0, 160.0, 288.0, 32.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "killbox".to_owned(),
+            }],
+            ..Map::default()
+        }
+    }
+
+    #[test]
+    fn killbox_uses_source_vertical_hysteresis_and_kills_on_contact() {
+        let source = killbox_map();
+        let mut map = source.clone();
+        let mut player = PlayerSnapshot {
+            pos: Vec2::new(80.0, 128.0),
+            ..PlayerSnapshot::default()
+        };
+        initialize_killboxes(&mut player, &mut map);
+        assert!(!player.killboxes[0].collidable);
+
+        // Player.Bottom must be strictly above Top - 32.
+        advance_killboxes(&mut player, &mut map);
+        assert!(!player.killboxes[0].collidable);
+        player.pos.y = 127.0;
+        advance_killboxes(&mut player, &mut map);
+        assert!(player.killboxes[0].collidable);
+        assert_eq!(map.entities[0].bounds, source.entities[0].bounds);
+
+        player.pos.y = 170.0;
+        interact(&mut player, &map, InputState::default(), None);
+        assert!(player.dead);
+    }
+
+    #[test]
+    fn killbox_disables_after_player_falls_thirty_two_pixels_below() {
+        let source = killbox_map();
+        let mut map = source.clone();
+        let mut player = PlayerSnapshot {
+            pos: Vec2::new(80.0, 100.0),
+            ..PlayerSnapshot::default()
+        };
+        initialize_killboxes(&mut player, &mut map);
+        advance_killboxes(&mut player, &mut map);
+        assert!(player.killboxes[0].collidable);
+
+        // Player.Top must be strictly below Bottom + 32.
+        player.pos.y = 235.0;
+        advance_killboxes(&mut player, &mut map);
+        assert!(player.killboxes[0].collidable);
+        player.pos.y = 236.0;
+        advance_killboxes(&mut player, &mut map);
+        assert!(!player.killboxes[0].collidable);
+        assert_ne!(map.entities[0].bounds, source.entities[0].bounds);
+    }
+
+    #[test]
+    fn killbox_runtime_is_split_simulation_composable() {
+        let map = killbox_map();
+        let above = PlayerSnapshot {
+            pos: Vec2::new(80.0, 100.0),
+            ..PlayerSnapshot::default()
+        };
+        let mut first = Simulator::new(above, &map).unwrap();
+        first.step(InputState::default()).unwrap();
+        let saved = first.into_snapshot();
+        assert!(saved.killboxes[0].collidable);
+
+        let resumed = Simulator::new(saved, &map).unwrap();
+        assert_eq!(resumed.runtime_entities()[0].bounds, map.entities[0].bounds);
     }
 
     #[test]

@@ -58,6 +58,10 @@ pub enum EntityKind {
     AngryOshiro,
     Seeker,
     Snowball,
+    /// Vanilla bottom-of-room hazard with a fixed 32 px PlayerCollider. It
+    /// enables only after the player is sufficiently above it and disables
+    /// again after the player has fallen sufficiently below it.
+    Killbox,
     Cloud,
     BadelineBoost,
     Spring,
@@ -600,6 +604,19 @@ pub(crate) fn encode_celeste_rooms(
                 )),
                 EntityKind::InvisibleBarrier => Some(element(
                     "invisibleBarrier",
+                    [
+                        ("height", BinaryValue::Int(height)),
+                        ("id", BinaryValue::Int(id)),
+                        ("originX", BinaryValue::Int(0)),
+                        ("originY", BinaryValue::Int(0)),
+                        ("width", BinaryValue::Int(width)),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![],
+                )),
+                EntityKind::Killbox => Some(element(
+                    "killbox",
                     [
                         ("height", BinaryValue::Int(height)),
                         ("id", BinaryValue::Int(id)),
@@ -1266,6 +1283,7 @@ fn map_from_binary_inner(
                 "oshiroBoss" => EntityKind::AngryOshiro,
                 "seeker" => EntityKind::Seeker,
                 "snowball" => EntityKind::Snowball,
+                "killbox" => EntityKind::Killbox,
                 "cloud" if !attr_bool(el, "fragile", false) => EntityKind::Cloud,
                 "badelineBoost" => EntityKind::BadelineBoost,
                 "spring" | "wallSpringLeft" | "wallSpringRight" => EntityKind::Spring,
@@ -1302,6 +1320,7 @@ fn map_from_binary_inner(
                     EntityKind::AngryOshiro => 28.0,
                     EntityKind::Seeker => 12.0,
                     EntityKind::Snowball => 12.0,
+                    EntityKind::Killbox => 32.0,
                     EntityKind::Cloud => 32.0,
                     EntityKind::BadelineBoost => 32.0,
                     EntityKind::Strawberry => 14.0,
@@ -1319,6 +1338,7 @@ fn map_from_binary_inner(
                 || match kind {
                     EntityKind::TheoCrystal | EntityKind::Glider | EntityKind::Puffer => 10.0,
                     EntityKind::Snowball => 9.0,
+                    EntityKind::Killbox => 32.0,
                     EntityKind::Cloud => 5.0,
                     EntityKind::RisingLava | EntityKind::SandwichLava => 120.0,
                     EntityKind::CrystalStaticSpinner => 12.0,
@@ -1403,6 +1423,7 @@ fn map_from_binary_inner(
                     | "invisibleBarrier" => {
                         (Rect::new(ex, ey, raw_width, raw_height), Vec2::default())
                     }
+                    "killbox" => (Rect::new(ex, ey, raw_width, 32.0), Vec2::default()),
                     "cassetteBlock" => (
                         Rect::new(ex, ey, raw_width, raw_height),
                         Vec2::new(attr_f32(el, "index", 0.0), attr_f32(el, "tempo", 1.0)),
@@ -1848,6 +1869,27 @@ mod tests {
         let bytes = encode_celeste_map(&map, "CelesteGymPlayground", "invisible-barrier").unwrap();
         let decoded = decode_map_room(&bytes, Some("invisible-barrier")).unwrap();
         assert_eq!(decoded.entities, vec![barrier]);
+    }
+
+    #[test]
+    fn vanilla_killbox_round_trips_its_fixed_thirty_two_pixel_collider() {
+        let killbox = Entity {
+            kind: EntityKind::Killbox,
+            bounds: Rect::new(16.0, 184.0, 288.0, 32.0),
+            direction: Vec2::default(),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "killbox".to_owned(),
+        };
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            entities: vec![killbox.clone()],
+            ..Map::default()
+        };
+        let bytes = encode_celeste_map(&map, "CelesteGymPlayground", "killbox").unwrap();
+        let decoded = decode_map_room(&bytes, Some("killbox")).unwrap();
+        assert_eq!(decoded.entities, vec![killbox]);
     }
 
     #[test]
