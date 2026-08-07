@@ -37,6 +37,10 @@ The first conditional aliases are:
 - `CherryHelper/AssistRect` -> presentation-only decoration.
 - vanilla `exitBlock` -> source `Awake` overlap pass-through followed by the
   permanent Solid close once the player clears the original rectangle.
+- vanilla `invisibleBarrier` -> constructor-time non-collidable Solid whose
+  first `Update` either enables it permanently or deactivates it forever when
+  the player overlaps it; its edge `ClimbBlocker` also rejects grabs, wall
+  slides, and wall-jump probes.
 
 Stateful flag systems, seekers/barriers, sideways or upside-down jumpthroughs,
 trigger spikes, crumble blocks, and custom moving solids intentionally remain
@@ -50,12 +54,12 @@ compatibility totals as follows:
 
 | Verdict | Before | After |
 | --- | ---: | ---: |
-| supported | 198 | 416 |
-| terrain | 224 | 86 |
-| unsupported | 10,363 | 10,283 |
+| supported | 198 | 422 |
+| terrain | 224 | 92 |
+| unsupported | 10,363 | 10,271 |
 
-Official supported rooms increased from 56 to 130; Mod supported rooms
-increased from 142 to 286. All 502 resulting `supported` or `terrain` rooms
+Official supported rooms increased from 56 to 132; Mod supported rooms
+increased from 142 to 290. All 514 resulting `supported` or `terrain` rooms
 completed the deterministic native runtime smoke sequence without a failure.
 This catalog result is a compatibility filter, not a claim of real
 Celeste/Everest frame-perfect equivalence.
@@ -71,3 +75,10 @@ The ExitBlock batch directly added 19 supported rooms and 2 terrain rooms.
 Its map-order runtime state remains composable across split simulation, and
 the AI geometry consumes the exported parked/restored rectangle rather than
 assuming the block is always closed.
+
+The InvisibleBarrier batch directly added 6 supported rooms and 6 terrain
+rooms. The catalog contains 2,797 barriers across 1,241 rooms; rooms that still
+have other unknown dependencies remain unsupported. The first-update state is
+portable across split simulation and room transitions, and the AI fine grid
+uses the live parked/restored runtime rectangle instead of painting every
+barrier as permanently solid.

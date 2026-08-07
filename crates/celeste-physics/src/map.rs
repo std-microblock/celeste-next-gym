@@ -71,6 +71,11 @@ pub enum EntityKind {
     /// Vanilla passage that is disabled when the player starts inside it and
     /// becomes a permanent Solid after the player leaves.
     ExitBlock,
+    /// Vanilla invisible safe Solid. It starts non-collidable, then either
+    /// becomes permanent on its first Update or disables itself forever when
+    /// that first update finds the player overlapping it. Its edge
+    /// ClimbBlocker prevents grabs, wall slides, and wall jumps.
+    InvisibleBarrier,
     Wind,
     /// Vanilla hot-state Core BounceBlock Solid.
     BounceBlock,
@@ -587,6 +592,19 @@ pub(crate) fn encode_celeste_rooms(
                                     .to_string(),
                             ),
                         ),
+                        ("width", BinaryValue::Int(width)),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![],
+                )),
+                EntityKind::InvisibleBarrier => Some(element(
+                    "invisibleBarrier",
+                    [
+                        ("height", BinaryValue::Int(height)),
+                        ("id", BinaryValue::Int(id)),
+                        ("originX", BinaryValue::Int(0)),
+                        ("originY", BinaryValue::Int(0)),
                         ("width", BinaryValue::Int(width)),
                         ("x", BinaryValue::Int(x)),
                         ("y", BinaryValue::Int(y)),
@@ -1255,6 +1273,7 @@ fn map_from_binary_inner(
                 "refill" => EntityKind::Refill,
                 "fallingBlock" => EntityKind::FallingBlock,
                 "exitBlock" => EntityKind::ExitBlock,
+                "invisibleBarrier" => EntityKind::InvisibleBarrier,
                 "windTrigger" => EntityKind::Wind,
                 "bounceBlock" => EntityKind::BounceBlock,
                 "theoCrystal" => EntityKind::TheoCrystal,
@@ -1380,7 +1399,8 @@ fn map_from_binary_inner(
                         Rect::new(ex - 6.0, ey - 8.0, 6.0, 16.0),
                         Vec2::new(-1.0, 0.0),
                     ),
-                    "bounceBlock" | "zipMover" | "templeGate" | "exitBlock" => {
+                    "bounceBlock" | "zipMover" | "templeGate" | "exitBlock"
+                    | "invisibleBarrier" => {
                         (Rect::new(ex, ey, raw_width, raw_height), Vec2::default())
                     }
                     "cassetteBlock" => (
@@ -1633,6 +1653,7 @@ impl Map {
                         | EntityKind::CassetteBlock
                         | EntityKind::FallingBlock
                         | EntityKind::ExitBlock
+                        | EntityKind::InvisibleBarrier
                         | EntityKind::MoveBlock
                         | EntityKind::MovingSolid
                         | EntityKind::ZipMover
@@ -1806,6 +1827,27 @@ mod tests {
         let decoded = decode_map_room(&bytes, Some("exit-block")).unwrap();
         assert_eq!(decoded.entities, vec![block]);
         assert_eq!(decoded.entity_visuals[0].tile, Some('9'));
+    }
+
+    #[test]
+    fn vanilla_invisible_barrier_round_trips_its_solid_rect() {
+        let barrier = Entity {
+            kind: EntityKind::InvisibleBarrier,
+            bounds: Rect::new(112.0, 24.0, 24.0, 40.0),
+            direction: Vec2::default(),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "invisibleBarrier".to_owned(),
+        };
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            entities: vec![barrier.clone()],
+            ..Map::default()
+        };
+        let bytes = encode_celeste_map(&map, "CelesteGymPlayground", "invisible-barrier").unwrap();
+        let decoded = decode_map_room(&bytes, Some("invisible-barrier")).unwrap();
+        assert_eq!(decoded.entities, vec![barrier]);
     }
 
     #[test]

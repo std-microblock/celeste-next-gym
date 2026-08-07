@@ -403,6 +403,17 @@ pub struct ExitBlockSnapshot {
     pub collidable: bool,
 }
 
+/// Vanilla `InvisibleBarrier` state. The constructor starts non-collidable;
+/// its first Update either enables the Solid permanently or, when the player
+/// overlaps it, leaves it non-collidable and deactivates the entity forever.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct InvisibleBarrierSnapshot {
+    pub position: Vec2,
+    pub initialized: bool,
+    pub collidable: bool,
+}
+
 fn default_stamina() -> f32 {
     110.0
 }
@@ -572,6 +583,8 @@ pub struct PlayerSnapshot {
     pub falling_blocks: Vec<FallingBlockSnapshot>,
     /// Per-entity vanilla ExitBlock collidability, in map entity order.
     pub exit_blocks: Vec<ExitBlockSnapshot>,
+    /// Per-entity vanilla InvisibleBarrier first-update state.
+    pub invisible_barriers: Vec<InvisibleBarrierSnapshot>,
     /// Map-order TheoCrystal index currently held by Player.
     pub holding_theo: Option<u16>,
     /// Map-order Glider index currently held by Player.
@@ -744,6 +757,7 @@ impl Default for PlayerSnapshot {
             refills: vec![],
             falling_blocks: vec![],
             exit_blocks: vec![],
+            invisible_barriers: vec![],
             holding_theo: None,
             holding_glider: None,
             min_hold_timer: 0.0,

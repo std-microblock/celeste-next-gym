@@ -155,6 +155,7 @@ impl Simulator {
         initialize_refills(&mut snapshot, &mut runtime_map);
         initialize_falling_blocks(&mut snapshot, &mut runtime_map);
         initialize_exit_blocks(&mut snapshot, &mut runtime_map);
+        initialize_invisible_barriers(&mut snapshot, &mut runtime_map);
         initialize_lookouts(&mut snapshot, &runtime_map);
         position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
         sync_all_platform_spikes(&snapshot, &mut runtime_map, &spike_attachments);
@@ -529,6 +530,10 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         .exit_blocks
         .iter()
         .all(|block| block.position.x.is_finite() && block.position.y.is_finite());
+    let invisible_barriers_are_finite = s
+        .invisible_barriers
+        .iter()
+        .all(|barrier| barrier.position.x.is_finite() && barrier.position.y.is_finite());
     let lookouts_are_finite = s.lookouts.iter().all(|lookout| {
         [
             lookout.timer,
@@ -565,6 +570,7 @@ fn validate_snapshot(s: &PlayerSnapshot) -> Result<(), SimulationError> {
         && refills_are_finite
         && falling_blocks_are_finite
         && exit_blocks_are_finite
+        && invisible_barriers_are_finite
     {
         Ok(())
     } else {
@@ -958,6 +964,65 @@ fn advance_exit_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
             state.collidable = true;
             entity.bounds.x = state.position.x;
             entity.bounds.y = state.position.y;
+        }
+    }
+}
+
+fn initialize_invisible_barriers(p: &mut PlayerSnapshot, map: &mut Map) {
+    let indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| {
+            (entity.kind == EntityKind::InvisibleBarrier).then_some(index)
+        })
+        .collect();
+    p.invisible_barriers.truncate(indices.len());
+    for (barrier_index, entity_index) in indices.into_iter().enumerate() {
+        let entity = &mut map.entities[entity_index];
+        if barrier_index == p.invisible_barriers.len() {
+            p.invisible_barriers.push(crate::InvisibleBarrierSnapshot {
+                position: Vec2::new(entity.bounds.x, entity.bounds.y),
+                initialized: false,
+                collidable: false,
+            });
+        }
+        let state = &p.invisible_barriers[barrier_index];
+        if state.initialized && state.collidable {
+            entity.bounds.x = state.position.x;
+            entity.bounds.y = state.position.y;
+        } else {
+            park_entity(entity);
+        }
+    }
+}
+
+fn advance_invisible_barriers(p: &mut PlayerSnapshot, map: &mut Map) {
+    let player = current_player_rect(p, p.pos.x, p.pos.y);
+    let indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| {
+            (entity.kind == EntityKind::InvisibleBarrier).then_some(index)
+        })
+        .collect();
+    for (barrier_index, entity_index) in indices.into_iter().enumerate() {
+        let state = &mut p.invisible_barriers[barrier_index];
+        if state.initialized {
+            continue;
+        }
+        let entity = &mut map.entities[entity_index];
+        let original = Rect::new(
+            state.position.x,
+            state.position.y,
+            entity.bounds.width,
+            entity.bounds.height,
+        );
+        state.initialized = true;
+        state.collidable = !original.intersects(player);
+        if state.collidable {
+            entity.bounds = original;
         }
     }
 }
@@ -1592,6 +1657,7 @@ fn solid_at_with_gate(map: &Map, rect: Rect, pusher_index: usize, pusher_collida
                     | EntityKind::ZipMover
                     | EntityKind::TempleGate
                     | EntityKind::ExitBlock
+                    | EntityKind::InvisibleBarrier
             );
             solid && (index != pusher_index || pusher_collidable) && entity.bounds.intersects(rect)
         })
@@ -2008,6 +2074,7 @@ fn solid_collision_env(map: &Map, pusher_index: usize) -> SolidCollisionEnv {
                 | EntityKind::MovingSolid
                 | EntityKind::ZipMover
                 | EntityKind::ExitBlock
+                | EntityKind::InvisibleBarrier
         ) {
             solids.push(entity.bounds);
         } else if matches!(entity.kind, EntityKind::JumpThru | EntityKind::Cloud) {
@@ -2344,6 +2411,7 @@ fn advance_bounce_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
                                     | EntityKind::MovingSolid
                                     | EntityKind::ZipMover
                                     | EntityKind::ExitBlock
+                                    | EntityKind::InvisibleBarrier
                             )
                             && other.bounds.intersects(restored)
                     }),
@@ -2528,6 +2596,7 @@ fn runtime_solid_collision(map: &Map, skip_index: usize, rect: Rect) -> bool {
                         | EntityKind::MovingSolid
                         | EntityKind::ZipMover
                         | EntityKind::ExitBlock
+                        | EntityKind::InvisibleBarrier
                 )
                 && entity.bounds.intersects(rect)
         })
@@ -4304,6 +4373,7 @@ fn falling_block_platform_below(map: &Map, entity_index: usize, below: Rect) -> 
                         | EntityKind::ZipMover
                         | EntityKind::TempleGate
                         | EntityKind::ExitBlock
+                        | EntityKind::InvisibleBarrier
                 )
                 && entity.bounds.intersects(below)
         })
@@ -4617,6 +4687,10 @@ fn step(
     }
     p.scene_time_active += raw_delta_time;
     advance_moving_solids(p, map, attachments);
+    // InvisibleBarrier has TransitionUpdate and room entities update before
+    // Player on an ordinary frame. Its only active Update is therefore run
+    // before either Player.Update or the transition coroutine moves Player.
+    advance_invisible_barriers(p, map);
     if p.transition_timer > 0.0 {
         update_transition(p, map);
         advance_sandwich_lavas(p, map);
@@ -4950,7 +5024,7 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
         return;
     }
 
-    let wall = wall_dir(p, map);
+    let wall = wall_slide_dir(p, map);
     let facing_dir = if p.facing { 1 } else { -1 };
     if !holding_holdable(p)
         && input.grab_held
@@ -5412,7 +5486,9 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     let mut target = 0.0;
     let mut try_slip = false;
     if p.climb_no_move_timer <= 0.0 {
-        if input.move_y == -1 {
+        if climb_blocker_check(p, map, wall as f32, 0.0) {
+            try_slip = true;
+        } else if input.move_y == -1 {
             target = CLIMB_UP_SPEED;
             if map.solid_at(current_player_rect(p, p.pos.x, p.pos.y - 1.0))
                 || (climb_hop_blocked_check(p, map) && slip_check(p, map, -1.0))
@@ -5964,8 +6040,12 @@ fn star_fly_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     }
 
     if input.grab_held {
-        let right = input.move_x != -1 && touching_wall(p, map, 1);
-        let left = input.move_x != 1 && touching_wall(p, map, -1);
+        let right = input.move_x != -1
+            && touching_wall(p, map, 1)
+            && !climb_blocker_check(p, map, 3.0, 0.0);
+        let left = input.move_x != 1
+            && touching_wall(p, map, -1)
+            && !climb_blocker_check(p, map, -3.0, 0.0);
         if right || left {
             let wall = if right { 1 } else { -1 };
             end_star_fly(p, map);
@@ -6162,6 +6242,7 @@ fn climb_bounds_check(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
 
 fn climb_check(p: &PlayerSnapshot, map: &Map, dir: i8, y_add: f32) -> bool {
     climb_bounds_check(p, map, dir)
+        && !climb_blocker_check(p, map, dir as f32 * CLIMB_CHECK_DIST, y_add)
         && map.solid_at(current_player_rect(
             p,
             p.pos.x + dir as f32 * CLIMB_CHECK_DIST,
@@ -6175,11 +6256,23 @@ fn climb_hop_blocked_check(p: &PlayerSnapshot, map: &Map) -> bool {
 
 fn wall_jump_check(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
     climb_bounds_check(p, map, dir)
+        && !climb_blocker_edge_check(p, map, dir as f32 * WALL_JUMP_CHECK_DIST)
         && map.solid_at(current_player_rect(
             p,
             p.pos.x + dir as f32 * WALL_JUMP_CHECK_DIST,
             p.pos.y,
         ))
+}
+
+fn climb_blocker_check(p: &PlayerSnapshot, map: &Map, x_add: f32, y_add: f32) -> bool {
+    let player = current_player_rect(p, p.pos.x + x_add, p.pos.y + y_add);
+    map.entities.iter().any(|entity| {
+        entity.kind == EntityKind::InvisibleBarrier && entity.bounds.intersects(player)
+    })
+}
+
+fn climb_blocker_edge_check(p: &PlayerSnapshot, map: &Map, x_add: f32) -> bool {
+    climb_blocker_check(p, map, x_add, 0.0)
 }
 
 fn slip_check(p: &PlayerSnapshot, map: &Map, add_y: f32) -> bool {
@@ -6223,6 +6316,16 @@ fn wall_dir(p: &PlayerSnapshot, map: &Map) -> i8 {
     if touching_wall(p, map, -1) {
         -1
     } else if touching_wall(p, map, 1) {
+        1
+    } else {
+        0
+    }
+}
+
+fn wall_slide_dir(p: &PlayerSnapshot, map: &Map) -> i8 {
+    if touching_wall(p, map, -1) && !climb_blocker_edge_check(p, map, -1.0) {
+        -1
+    } else if touching_wall(p, map, 1) && !climb_blocker_edge_check(p, map, 1.0) {
         1
     } else {
         0
@@ -7328,6 +7431,7 @@ fn load_transition_room(
     p.refills.clear();
     p.falling_blocks.clear();
     p.exit_blocks.clear();
+    p.invisible_barriers.clear();
     // A held actor is a follower that vanilla LoadLevel omits from the new
     // room's EntityData loop. The portable map-order representation cannot yet
     // carry that persistent actor across rooms, so clear the stale index rather
@@ -7352,6 +7456,7 @@ fn load_transition_room(
     initialize_refills(p, map);
     initialize_falling_blocks(p, map);
     initialize_exit_blocks(p, map);
+    initialize_invisible_barriers(p, map);
     position_moving_solids(map, p.moving_solid_time);
     sync_all_platform_spikes(p, map, attachments);
 }
@@ -12097,6 +12202,137 @@ mod tests {
 
         let resumed = Simulator::new(closed, &map).unwrap();
         assert_eq!(resumed.runtime_entities()[0].bounds, map.entities[0].bounds);
+    }
+
+    fn invisible_barrier_map() -> Map {
+        Map {
+            entities: vec![crate::Entity {
+                kind: EntityKind::InvisibleBarrier,
+                bounds: Rect::new(40.0, 80.0, 16.0, 32.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "invisibleBarrier".to_owned(),
+            }],
+            ..Map::default()
+        }
+    }
+
+    #[test]
+    fn invisible_barrier_first_update_disables_forever_when_player_overlaps() {
+        let source = invisible_barrier_map();
+        let mut map = source.clone();
+        let mut player = PlayerSnapshot {
+            pos: Vec2::new(44.0, 92.0),
+            ..PlayerSnapshot::default()
+        };
+
+        initialize_invisible_barriers(&mut player, &mut map);
+        assert!(!player.invisible_barriers[0].initialized);
+        assert!(!player.invisible_barriers[0].collidable);
+        assert!(!map.non_dream_solid_at(Rect::new(44.0, 88.0, 1.0, 1.0)));
+
+        advance_invisible_barriers(&mut player, &mut map);
+        assert!(player.invisible_barriers[0].initialized);
+        assert!(!player.invisible_barriers[0].collidable);
+
+        player.pos.x = 80.0;
+        advance_invisible_barriers(&mut player, &mut map);
+        assert!(!player.invisible_barriers[0].collidable);
+        assert_ne!(map.entities[0].bounds, source.entities[0].bounds);
+    }
+
+    #[test]
+    fn invisible_barrier_enables_permanently_and_blocks_climbing_probes() {
+        let source = invisible_barrier_map();
+        let mut map = source.clone();
+        let mut player = PlayerSnapshot {
+            pos: Vec2::new(80.0, 92.0),
+            ..PlayerSnapshot::default()
+        };
+
+        initialize_invisible_barriers(&mut player, &mut map);
+        advance_invisible_barriers(&mut player, &mut map);
+        assert!(player.invisible_barriers[0].initialized);
+        assert!(player.invisible_barriers[0].collidable);
+        assert_eq!(map.entities[0].bounds, source.entities[0].bounds);
+
+        player.pos.x = 36.0;
+        assert!(touching_wall(&player, &map, 1));
+        assert!(!climb_check(&player, &map, 1, 0.0));
+        assert!(!wall_jump_check(&player, &map, 1));
+        assert_eq!(wall_slide_dir(&player, &map), 0);
+    }
+
+    #[test]
+    fn invisible_barrier_runtime_is_split_simulation_composable() {
+        let map = invisible_barrier_map();
+        let inside = PlayerSnapshot {
+            pos: Vec2::new(44.0, 92.0),
+            ..PlayerSnapshot::default()
+        };
+        let mut first = Simulator::new(inside, &map).unwrap();
+        first.step(InputState::default()).unwrap();
+        let mut saved = first.into_snapshot();
+        assert!(saved.invisible_barriers[0].initialized);
+        assert!(!saved.invisible_barriers[0].collidable);
+
+        saved.pos.x = 80.0;
+        let resumed = Simulator::new(saved, &map).unwrap();
+        assert_ne!(resumed.runtime_entities()[0].bounds, map.entities[0].bounds);
+        assert!(!resumed.snapshot().invisible_barriers[0].collidable);
+    }
+
+    #[test]
+    fn transition_updates_new_invisible_barrier_before_moving_player() {
+        let lower = Rect::new(0.0, 0.0, 320.0, 184.0);
+        let upper = Rect::new(0.0, -184.0, 320.0, 184.0);
+        let barrier = crate::Entity {
+            kind: EntityKind::InvisibleBarrier,
+            bounds: Rect::new(152.0, -8.0, 16.0, 16.0),
+            direction: Vec2::default(),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "invisibleBarrier".to_owned(),
+        };
+        let mut map = Map {
+            bounds: lower,
+            transition_rooms: vec![upper],
+            transition_runtime: vec![crate::RoomRuntime {
+                bounds: upper,
+                spawns: vec![Vec2::new(160.0, -24.0)],
+                solids: vec![],
+                entities: vec![barrier],
+            }],
+            ..Map::default()
+        };
+        let mut player = PlayerSnapshot {
+            pos: Vec2::new(160.0, 4.0),
+            speed: Vec2::new(0.0, -160.0),
+            current_room_bounds: Some(lower),
+            ..PlayerSnapshot::default()
+        };
+        let mut attachments = initialize_spike_attachments(&map);
+        begin_transition(
+            &mut player,
+            &mut map,
+            upper,
+            Vec2::new(0.0, -1.0),
+            &mut attachments,
+        );
+        assert!(!player.invisible_barriers[0].initialized);
+
+        step(
+            &mut player,
+            InputState::default(),
+            &mut map,
+            &mut attachments,
+        )
+        .unwrap();
+        assert!(player.invisible_barriers[0].initialized);
+        assert!(!player.invisible_barriers[0].collidable);
     }
 
     #[test]
