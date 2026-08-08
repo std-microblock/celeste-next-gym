@@ -15,6 +15,20 @@ interface SimulationBody {
   readonly states?: unknown;
 }
 
+interface GymBody {
+  readonly success?: boolean;
+  readonly error?: unknown;
+  readonly observation?: unknown;
+  readonly player_states?: unknown;
+  readonly frames_executed?: unknown;
+}
+
+export interface GymResult {
+  readonly observation?: Record<string, unknown>;
+  readonly player_states: readonly Record<string, unknown>[];
+  readonly frames_executed: number;
+}
+
 export type RecordingState =
   | "active"
   | "ready"
@@ -57,6 +71,10 @@ export interface CollectorClient {
   health(): Promise<Record<string, unknown>>;
   waitUntilReady(timeoutMs?: number): Promise<Record<string, unknown>>;
   simulate(request: SimulateRequest): Promise<unknown>;
+  gymReset(request: Record<string, unknown>): Promise<GymResult>;
+  gymStep(request: Record<string, unknown>): Promise<GymResult>;
+  gymObserve(request: Record<string, unknown>): Promise<GymResult>;
+  gymClose(request: Record<string, unknown>): Promise<GymResult>;
   recordingStart(request: RecordingStartRequest): Promise<RecordingStatus>;
   recordingStatus(request: RecordingControlRequest): Promise<RecordingStatus>;
   recordingStop(request: RecordingControlRequest): Promise<RecordingStatus>;
@@ -105,6 +123,10 @@ export function createCollectorClient(
         throw new Error(`simulation failed: ${JSON.stringify(body)}`);
       return body.states;
     },
+    gymReset: async (request) => await postGym("reset", request),
+    gymStep: async (request) => await postGym("step", request),
+    gymObserve: async (request) => await postGym("observe", request),
+    gymClose: async (request) => await postGym("close", request),
     recordingStart: async (request) => await postRecording("start", request),
     recordingStatus: async (request) => await postRecording("status", request),
     recordingStop: async (request) => await postRecording("stop", request),
@@ -129,6 +151,41 @@ export function createCollectorClient(
     if (!response.ok || body.success !== true)
       throw new Error(`recording ${action} failed: ${JSON.stringify(decoded)}`);
     return validateRecordingStatus(body.recording);
+  }
+
+  async function postGym(
+    action: string,
+    request: Record<string, unknown>,
+  ): Promise<GymResult> {
+    const response = await fetch(`http://127.0.0.1:${port}/api/gym/${action}`, {
+      method: "POST",
+      headers: { "content-type": "application/octet-stream" },
+      body: Buffer.from(codec.encode(request)),
+    });
+    const decoded = codec.decode(
+      new Uint8Array(await response.arrayBuffer()),
+    ) as GymBody;
+    if (!response.ok || decoded.success !== true) {
+      throw new Error(`gym ${action} failed: ${JSON.stringify(decoded)}`);
+    }
+    const observation =
+      decoded.observation === undefined
+        ? undefined
+        : requireRecord(decoded.observation, "gym observation");
+    const playerStates = decoded.player_states ?? [];
+    if (!Array.isArray(playerStates))
+      throw new Error("gym player_states is not an array");
+    const framesExecuted = requireUnsignedInteger(
+      decoded.frames_executed ?? 0,
+      "gym frames_executed",
+    );
+    return {
+      ...(observation === undefined ? {} : { observation }),
+      player_states: playerStates.map((state, index) =>
+        requireRecord(state, `gym player state ${index}`),
+      ),
+      frames_executed: framesExecuted,
+    };
   }
 }
 

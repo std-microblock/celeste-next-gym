@@ -21,7 +21,7 @@ npm start
 | `COLLECTOR_HOST`         | `127.0.0.1` | 监听地址                                          |
 | `COLLECTOR_PORT`         | `4318`      | 监听端口                                          |
 | `COLLECTOR_TIMEOUT_MS`   | `30000`     | 单次后端采集超时                                  |
-| `COLLECTOR_BACKEND`      | `none`      | `none` 或 `mock`                                  |
+| `COLLECTOR_BACKEND`      | `none`      | `none`、`mock` 或 `everest`                       |
 | `EVEREST_COLLECTOR_HOST` | `127.0.0.1` | Mod TCP 地址                                      |
 | `EVEREST_COLLECTOR_PORT` | `32270`     | Mod TCP 端口                                      |
 | `EVEREST_AREA_ID`        | `1`         | 当前真实采集使用的原版区域 ID                     |
@@ -136,6 +136,91 @@ interface CollectorBackend {
 
 服务边界会再次校验返回数组长度及快照核心字段，因此不合规的 Mod 输出不会被当作成功数据返回。未知快照字段会保留，以便逐步扩展完整的 `Player.cs` 字段集合。
 
+## 持久真实游戏 Gym API
+
+`COLLECTOR_BACKEND=everest` 时还提供单进程、单活动 episode 的 Gym 风格接口。它与 `/api/simulate` 的区别是：`reset` 只加载一次房间，后续 `step` 在同一个真实 Level、实体和 coroutine 上继续执行，不会为每批输入重载房间。
+
+所有请求和响应仍为 MessagePack，`Content-Type` 为 `application/octet-stream`。
+
+### `POST /api/gym/reset`
+
+```text
+{
+  area_id?: u32,                 // area_id 或 area_sid 至少一个
+  area_sid?: string,
+  room?: string,
+  dream_dash?: bool,             // 默认 false
+  initial_snapshot?: Snapshot|null,
+  skip_transitions?: bool,       // 默认 true
+  max_episode_frames?: u32,      // 默认 36000
+  include_entities?: bool        // 默认 true
+}
+```
+
+成功响应：
+
+```text
+{
+  success: true,
+  observation: GymObservation,
+  player_states: [Snapshot],     // reset 后的 state 0
+  frames_executed: 0
+}
+```
+
+`observation.room_geometry` 在 reset 时必定存在，使用原生房间坐标和无损 8px solid grid：
+
+```text
+{
+  tile_size: 8,
+  bounds: [x_px, y_px, width_px, height_px],
+  tile_origin: [x_tile, y_tile],
+  width: u32,
+  height: u32,
+  solids: string[]               // 每行仅含 0/1
+}
+```
+
+### `POST /api/gym/step`
+
+```text
+{
+  episode_id: string,
+  inputs: InputState[]           // 1..4096 个物理帧
+}
+```
+
+响应中的 `player_states` 是每个实际执行帧结束后的玩家状态；`observation` 是批次最后一帧的完整观测。若中途死亡、切换房间或达到 episode 帧上限，批次会提前结束，因此应以 `frames_executed` 为准。
+
+```text
+GymObservation = {
+  episode_id,
+  episode_frame,
+  area_id,
+  area_sid,
+  room,
+  player: Snapshot,
+  room_geometry?: RoomGeometry,  // reset、observe、成功切房时返回
+  entities: EntityFrame[],       // 当前批次末尾的运行时实体
+  terminated: bool,
+  truncated: bool,
+  success: bool,
+  termination_reason?: "death" | "room_transition" | "max_episode_frames"
+}
+```
+
+每个 `EntityFrame` 包含 episode 内稳定的实例 ID、完整 CLR 类型名、连续像素位置、Collider 类型和局部几何、可用的 `speed/lift_speed`、active/visible/collidable/depth/tag，以及最多 64 个可安全序列化的实体字段。数组和列表最多导出 64 项；引用图、delegate、纹理和其他大型对象不会进入协议。
+
+### `POST /api/gym/observe` / `close`
+
+```text
+{ episode_id: string }
+```
+
+`observe` 不推进物理帧，并重新返回完整静态几何与当前实体。`close` 释放活动 episode 的协议所有权；它不会按进程名终止游戏。
+
+Python 调用示例和完整契约见 [`docs/real-game-gym.md`](../../docs/real-game-gym.md)。
+
 ## 测试
 
 ```bash
@@ -144,3 +229,13 @@ npm run typecheck
 ```
 
 测试不依赖 Celeste，覆盖 MessagePack 往返、未配置状态、Content-Type、畸形请求、字段校验、超时和无效后端输出。
+
+真实游戏 Gym smoke：
+
+```powershell
+$env:E2E_GYM_SMOKE = '1'
+$env:E2E_COLLECT_ONLY = '1'
+node scripts/e2e-real-collector.mjs --target playground --scenario playground-load
+```
+
+该路径仍通过 repository-owned `vendor/celeste-game`、per-run save/tmp、动态端口、nonce 和精确子进程 PID 验证，不接受既有监听器。

@@ -4,10 +4,11 @@ Everest 代码 Mod，为真实游戏 E2E 提供本地 TCP 采集端点。
 
 - 监听 `127.0.0.1:32270`。
 - 网络线程只负责 JSON 行协议；场景切换和玩家操作在游戏主线程执行。
-- 支持 `ping`、`simulate_area`、受认证的 `capture_start/status/stop/finalize`，以及 `interactive_start/status/stop` 原生游玩逐 Update 录制。
+- 支持 `ping`、`simulate_area`、持久 `gym_reset/step/observe/close`、受认证的 `capture_start/status/stop/finalize`，以及 `interactive_start/status/stop` 原生游玩逐 Update 录制。
 - 按帧替换 MoveX、MoveY、Jump、Dash、CrouchDash、Grab 输入。
 - 返回起始状态及每帧结束后的状态，并反射采集 Player/Actor/Entity 的可序列化字段。
 - 当前每帧稳定导出 126 个字段。
+- Gym reset 会创建全新的真实 `Level`，随后多个 step 批次在同一个 Level 和实体状态上继续。reset/observe 导出房间的无损 8px solid grid；step 返回逐帧玩家状态和批次末尾的连续坐标实体状态。实体 ID 仅在当前 episode 内稳定。
 - interactive 模式自动进入随仓库生成的 Playground；每次 `Player.Update` 前读取真实输入、整帧结束后抓取状态，停止时写出 `celeste-next-gym-trace` v1。它不替换 VirtualInput，也不把渲染帧当成物理帧。
 - `CELESTE_GYM_COLLECTOR_PORT` 可为隔离测试选择 Mod TCP 端口；默认仍为 `32270`。
 - `CELESTE_GYM_RUN_NONCE` 会随 `ping` 一并返回，同时返回游戏进程 PID 和实际监听端口，供 runner 验证自己连接的是本次启动的子进程。
@@ -25,3 +26,5 @@ node scripts/e2e-real-collector.mjs
 测试脚本会把 Mod 安装进忽略提交的 `vendor/celeste-game/Mods/CelesteGymCollector`，原始游戏 zip 和 Everest 的 `orig` 备份不会被修改。
 
 真实 E2E runner 只使用仓库自己的物理 vendor 安装，并为每次运行生成独立 save/tmp 目录和 manifest。不得按 `Celeste.exe` 进程名或人工观察到的 PID 清理游戏。
+
+Gym 命令有意只允许一个活动 episode。`gym_step` 最多接受 4096 个输入帧，死亡、房间切换或 `max_episode_frames` 会提前结束批次。它不提供任意帧 clone/restore，也不绕过 Mod 的 C# 更新逻辑。

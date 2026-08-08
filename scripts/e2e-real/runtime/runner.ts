@@ -272,7 +272,24 @@ async function runHarnessLifecycle(
       paths.serviceRoot,
       httpPortReservation.port,
     );
-    const health = await client.waitUntilReady();
+    const baseHealth = await client.waitUntilReady();
+    const gymSmokeRoom = config.room ?? scenarios[0]?.room;
+    const gymSmoke =
+      process.env.E2E_GYM_SMOKE === "1"
+        ? await runGymSmoke(client, {
+            areaId: scenarioTarget.areaId,
+            ...(scenarioTarget.kind === "playground"
+              ? { areaSid: scenarioTarget.areaSid }
+              : config.areaSid
+                ? { areaSid: config.areaSid }
+                : {}),
+            ...(gymSmokeRoom ? { room: gymSmokeRoom } : {}),
+          })
+        : undefined;
+    const health = Object.freeze({
+      ...baseHealth,
+      ...(gymSmoke === undefined ? {} : { gym_smoke: gymSmoke }),
+    });
     const mapPath =
       materializedMap?.mapPath ?? resolveMapPath(config, paths, scenarioTarget);
     const map = readFileSync(mapPath);
@@ -413,6 +430,74 @@ async function runHarnessLifecycle(
       cleanup,
     });
   }
+}
+
+async function runGymSmoke(
+  client: ReturnType<typeof createCollectorClient>,
+  target: { readonly areaId: number; readonly areaSid?: string; readonly room?: string },
+): Promise<Readonly<Record<string, unknown>>> {
+  const resetStarted = performance.now();
+  const reset = await client.gymReset({
+    area_id: target.areaId,
+    ...(target.areaSid ? { area_sid: target.areaSid } : {}),
+    ...(target.room ? { room: target.room } : {}),
+    skip_transitions: true,
+    max_episode_frames: 600,
+    include_entities: true,
+  });
+  const resetMs = performance.now() - resetStarted;
+  const initial = requireGymObservation(reset.observation, "gym reset");
+  const episodeId = initial.episode_id;
+  if (typeof episodeId !== "string")
+    throw new Error("gym reset observation has no episode_id");
+  const geometry = initial.room_geometry;
+  if (!geometry || typeof geometry !== "object" || Array.isArray(geometry))
+    throw new Error("gym reset observation has no room_geometry");
+  if ((geometry as Record<string, unknown>).tile_size !== 8)
+    throw new Error("gym room geometry is not 8px aligned");
+  if (!Array.isArray(initial.entities))
+    throw new Error("gym reset observation has no entity array");
+
+  const inputs = Array.from({ length: 16 }, () => ({
+    move_x: 0,
+    move_y: 0,
+    jump_pressed: false,
+    jump_held: false,
+    dash_pressed: false,
+    crouch_dash_pressed: false,
+    grab_held: false,
+    talk_pressed: false,
+  }));
+  const stepStarted = performance.now();
+  const stepped = await client.gymStep({ episode_id: episodeId, inputs });
+  const stepMs = performance.now() - stepStarted;
+  const final = requireGymObservation(stepped.observation, "gym step");
+  if (stepped.frames_executed <= 0)
+    throw new Error("gym step executed no frames");
+  await client.gymObserve({ episode_id: episodeId });
+  await client.gymClose({ episode_id: episodeId });
+  return Object.freeze({
+    episode_id: episodeId,
+    room: initial.room,
+    tile_width: (geometry as Record<string, unknown>).width,
+    tile_height: (geometry as Record<string, unknown>).height,
+    entity_count: initial.entities.length,
+    frames_executed: stepped.frames_executed,
+    episode_frame: final.episode_frame,
+    reset_ms: Number(resetMs.toFixed(1)),
+    step_ms: Number(stepMs.toFixed(1)),
+    effective_fps: Number(
+      ((stepped.frames_executed * 1000) / Math.max(stepMs, 0.001)).toFixed(1),
+    ),
+  });
+}
+
+function requireGymObservation(
+  value: Record<string, unknown> | undefined,
+  label: string,
+): Record<string, unknown> {
+  if (value === undefined) throw new Error(`${label} returned no observation`);
+  return value;
 }
 
 export function collectorOwnershipEnvironment(
