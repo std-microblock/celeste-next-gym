@@ -204,7 +204,9 @@ export function decodeSimulateRequest(
   if (!Array.isArray(root.inputs)) {
     throw new ProtocolValidationError("inputs must be an array");
   }
-  const inputs = root.inputs.map((input, index) => validateInput(input, index));
+  const inputs = root.inputs.map((input, index) =>
+    validateInputState(input, `inputs[${index}]`),
+  );
 
   const frames = requireUnsignedInteger(root.frames, "frames");
   if (frames > limits.maxFrames) {
@@ -218,7 +220,7 @@ export function decodeSimulateRequest(
 
   const initial = root.initial_snapshot;
   if (initial !== null && initial !== undefined) {
-    validateSnapshot(initial, "initial_snapshot");
+    validatePlayerSnapshot(initial, "initial_snapshot");
   }
 
   const room =
@@ -262,7 +264,9 @@ export function validateBackendStates(
       `Collector backend returned ${states.length} states; expected ${frames + 1}`,
     );
   }
-  states.forEach((state, index) => validateSnapshot(state, `states[${index}]`));
+  states.forEach((state, index) =>
+    validatePlayerSnapshot(state, `states[${index}]`),
+  );
 }
 
 export function createDefaultSnapshot(): PlayerSnapshot {
@@ -278,36 +282,36 @@ export function createDefaultSnapshot(): PlayerSnapshot {
   };
 }
 
-function validateInput(value: unknown, index: number): InputState {
-  const input = requireRecord(value, `inputs[${index}]`);
+export function validateInputState(value: unknown, path: string): InputState {
+  const input = requireRecord(value, path);
   return {
-    move_x: requireAxis(input.move_x, `inputs[${index}].move_x`),
-    move_y: requireAxis(input.move_y, `inputs[${index}].move_y`),
+    move_x: requireAxis(input.move_x, `${path}.move_x`),
+    move_y: requireAxis(input.move_y, `${path}.move_y`),
     jump_pressed: requireBoolean(
       input.jump_pressed,
-      `inputs[${index}].jump_pressed`,
+      `${path}.jump_pressed`,
     ),
-    jump_held: requireBoolean(input.jump_held, `inputs[${index}].jump_held`),
+    jump_held: requireBoolean(input.jump_held, `${path}.jump_held`),
     dash_pressed: requireBoolean(
       input.dash_pressed,
-      `inputs[${index}].dash_pressed`,
+      `${path}.dash_pressed`,
     ),
     crouch_dash_pressed:
       input.crouch_dash_pressed === undefined
         ? false
         : requireBoolean(
             input.crouch_dash_pressed,
-            `inputs[${index}].crouch_dash_pressed`,
+            `${path}.crouch_dash_pressed`,
           ),
-    grab_held: requireBoolean(input.grab_held, `inputs[${index}].grab_held`),
+    grab_held: requireBoolean(input.grab_held, `${path}.grab_held`),
     talk_pressed:
       input.talk_pressed === undefined
         ? false
-        : requireBoolean(input.talk_pressed, `inputs[${index}].talk_pressed`),
+        : requireBoolean(input.talk_pressed, `${path}.talk_pressed`),
   };
 }
 
-function validateSnapshot(
+export function validatePlayerSnapshot(
   value: unknown,
   path: string,
 ): asserts value is PlayerSnapshot {

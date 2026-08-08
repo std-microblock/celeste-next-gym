@@ -128,7 +128,115 @@ describe("Everest TCP backend", () => {
       /authenticated runNonce and exact processId/,
     );
   });
+
+  it("keeps a persistent gym episode and converts its observation", async () => {
+    const episodeId = "a".repeat(32);
+    let calls = 0;
+    const { port } = await startFakeEverest((request) => {
+      calls++;
+      if (calls === 1) {
+        assert.equal(request.command, "gym_reset");
+        assert.equal(request.area_sid, "Example/Map");
+        assert.equal(request.room, "start");
+        assert.equal(request.skip_transitions, true);
+        return gymResponse(episodeId, 0, true);
+      }
+      assert.equal(request.command, "gym_step");
+      assert.equal(request.episode_id, episodeId);
+      assert.equal(request.inputs.length, 2);
+      return gymResponse(episodeId, 2, false);
+    });
+    const backend = new EverestTcpBackend({ port });
+    const reset = await backend.gymReset(
+      {
+        area_sid: "Example/Map",
+        room: "start",
+        dream_dash: false,
+        initial_snapshot: null,
+        skip_transitions: true,
+        max_episode_frames: 10_000,
+        include_entities: true,
+      },
+      new AbortController().signal,
+    );
+    assert.equal(reset.observation?.room_geometry?.tile_size, 8);
+    assert.equal(reset.observation?.entities[0]?.type, "Example.CustomEntity");
+    assert.equal(reset.observation?.player.dead, false);
+
+    const step = await backend.gymStep(
+      { episode_id: episodeId, inputs: [validInput(), validInput()] },
+      new AbortController().signal,
+    );
+    assert.equal(step.frames_executed, 2);
+    assert.equal(step.observation?.episode_frame, 2);
+    assert.equal(step.player_states.length, 1);
+  });
 });
+
+function validInput() {
+  return validRequest().inputs[0]!;
+}
+
+function gymResponse(episodeId: string, frame: number, geometry: boolean) {
+  const player = {
+    frame,
+    pos: [16, 24],
+    speed: [0, 0],
+    state: 0,
+    facing: 1,
+    dashes: 1,
+    stamina: 110,
+    on_ground: true,
+    ducking: false,
+    can_dream_dash: false,
+    holding_theo: false,
+    holding_glider: false,
+    dead: false,
+    freeze_timer: 0,
+    fields: {},
+  };
+  return {
+    success: true,
+    observation: {
+      episode_id: episodeId,
+      episode_frame: frame,
+      area_id: 1,
+      area_sid: "Example/Map",
+      room: "start",
+      player,
+      ...(geometry
+        ? {
+            room_geometry: {
+              tile_size: 8,
+              bounds: [0, 0, 16, 8],
+              tile_origin: [0, 0],
+              width: 2,
+              height: 1,
+              solids: ["10"],
+            },
+          }
+        : {}),
+      entities: [
+        {
+          id: 1,
+          type: "Example.CustomEntity",
+          position: [4.5, 7.25],
+          active: true,
+          visible: true,
+          collidable: true,
+          depth: 0,
+          tag: 0,
+          fields: { phase: 0.5 },
+        },
+      ],
+      terminated: false,
+      truncated: false,
+      success: false,
+    },
+    player_states: frame === 0 ? [player] : [player],
+    frames_executed: frame,
+  };
+}
 
 function validRequest(): SimulateRequest {
   return {

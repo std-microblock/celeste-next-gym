@@ -211,7 +211,7 @@ internal static class SnapshotCapture {
         _ => null
     };
 
-    private static float[] ColliderGeometry(Collider collider) => [
+    internal static float[] ColliderGeometry(Collider collider) => [
         collider.Left,
         collider.Top,
         collider.Width,

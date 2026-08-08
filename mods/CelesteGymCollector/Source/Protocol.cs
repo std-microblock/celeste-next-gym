@@ -56,6 +56,15 @@ public sealed class CollectorRequest {
 
     [JsonPropertyName("max_frames")]
     public int MaxFrames { get; set; } = 36_000;
+
+    [JsonPropertyName("episode_id")]
+    public string? EpisodeId { get; set; }
+
+    [JsonPropertyName("max_episode_frames")]
+    public int MaxEpisodeFrames { get; set; } = 36_000;
+
+    [JsonPropertyName("include_entities")]
+    public bool? IncludeEntities { get; set; }
 }
 
 public sealed class CaptureStartRequest {
@@ -150,6 +159,123 @@ public sealed class CollectorResponse {
     [JsonPropertyName("interactive_recording")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public InteractiveRecordingStatus? InteractiveRecording { get; set; }
+
+    [JsonPropertyName("observation")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public GymObservation? Observation { get; set; }
+
+    [JsonPropertyName("player_states")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<PlayerFrame>? PlayerStates { get; set; }
+
+    [JsonPropertyName("frames_executed")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? FramesExecuted { get; set; }
+}
+
+public sealed class GymObservation {
+    [JsonPropertyName("episode_id")]
+    public string EpisodeId { get; set; } = "";
+
+    [JsonPropertyName("episode_frame")]
+    public int EpisodeFrame { get; set; }
+
+    [JsonPropertyName("area_id")]
+    public int AreaId { get; set; }
+
+    [JsonPropertyName("area_sid")]
+    public string AreaSid { get; set; } = "";
+
+    [JsonPropertyName("room")]
+    public string Room { get; set; } = "";
+
+    [JsonPropertyName("player")]
+    public PlayerFrame Player { get; set; } = new();
+
+    [JsonPropertyName("room_geometry")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public GymRoomGeometry? RoomGeometry { get; set; }
+
+    [JsonPropertyName("entities")]
+    public List<GymEntityFrame> Entities { get; set; } = [];
+
+    [JsonPropertyName("terminated")]
+    public bool Terminated { get; set; }
+
+    [JsonPropertyName("truncated")]
+    public bool Truncated { get; set; }
+
+    [JsonPropertyName("success")]
+    public bool Success { get; set; }
+
+    [JsonPropertyName("termination_reason")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? TerminationReason { get; set; }
+}
+
+public sealed class GymRoomGeometry {
+    [JsonPropertyName("tile_size")]
+    public int TileSize { get; set; } = 8;
+
+    [JsonPropertyName("bounds")]
+    public int[] Bounds { get; set; } = [0, 0, 0, 0];
+
+    [JsonPropertyName("tile_origin")]
+    public int[] TileOrigin { get; set; } = [0, 0];
+
+    [JsonPropertyName("width")]
+    public int Width { get; set; }
+
+    [JsonPropertyName("height")]
+    public int Height { get; set; }
+
+    [JsonPropertyName("solids")]
+    public List<string> Solids { get; set; } = [];
+}
+
+public sealed class GymEntityFrame {
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = "";
+
+    [JsonPropertyName("position")]
+    public float[] Position { get; set; } = [0, 0];
+
+    [JsonPropertyName("collider")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public float[]? Collider { get; set; }
+
+    [JsonPropertyName("collider_type")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ColliderType { get; set; }
+
+    [JsonPropertyName("speed")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public float[]? Speed { get; set; }
+
+    [JsonPropertyName("lift_speed")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public float[]? LiftSpeed { get; set; }
+
+    [JsonPropertyName("active")]
+    public bool Active { get; set; }
+
+    [JsonPropertyName("visible")]
+    public bool Visible { get; set; }
+
+    [JsonPropertyName("collidable")]
+    public bool Collidable { get; set; }
+
+    [JsonPropertyName("depth")]
+    public int Depth { get; set; }
+
+    [JsonPropertyName("tag")]
+    public int Tag { get; set; }
+
+    [JsonPropertyName("fields")]
+    public Dictionary<string, object?> Fields { get; set; } = [];
 }
 
 public sealed class InteractiveRecordingStatus {

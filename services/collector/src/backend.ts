@@ -8,6 +8,12 @@ import type {
   RecordingStartRequest,
   RecordingStatus,
 } from "./recording.js";
+import type {
+  GymControlRequest,
+  GymResetRequest,
+  GymResult,
+  GymStepRequest,
+} from "./gym.js";
 
 export interface BackendHealth {
   ready: boolean;
@@ -38,6 +44,16 @@ export interface CollectorBackend {
     request: RecordingControlRequest,
     signal: AbortSignal,
   ): Promise<RecordingStatus>;
+  gymReset?(request: GymResetRequest, signal: AbortSignal): Promise<GymResult>;
+  gymStep?(request: GymStepRequest, signal: AbortSignal): Promise<GymResult>;
+  gymObserve?(
+    request: GymControlRequest,
+    signal: AbortSignal,
+  ): Promise<GymResult>;
+  gymClose?(
+    request: GymControlRequest,
+    signal: AbortSignal,
+  ): Promise<GymResult>;
 }
 
 export class BackendNotConfiguredError extends Error {

@@ -24,6 +24,7 @@ import type {
   RecordingStartRequest,
   RecordingStatus,
 } from "../src/recording.js";
+import type { GymObservation } from "../src/gym.js";
 
 const runningServers: RunningCollectorServer[] = [];
 
@@ -210,7 +211,90 @@ describe("collector HTTP service", () => {
     assert.equal(response.status, 503);
     assert.equal(body.code, "RECORDING_NOT_CONFIGURED");
   });
+
+  it("exposes reset and batched step for a persistent gym backend", async () => {
+    const episodeId = "b".repeat(32);
+    const observation = gymObservation(episodeId);
+    const backend: CollectorBackend = {
+      name: "gym-test-backend",
+      async collect() {
+        return [createDefaultSnapshot()];
+      },
+      async gymReset(request) {
+        assert.equal(request.area_sid, "Example/Map");
+        assert.equal(request.skip_transitions, true);
+        return {
+          observation,
+          player_states: [observation.player],
+          frames_executed: 0,
+        };
+      },
+      async gymStep(request) {
+        assert.equal(request.episode_id, episodeId);
+        assert.equal(request.inputs.length, 2);
+        return {
+          observation: { ...observation, episode_frame: 2 },
+          player_states: [observation.player, observation.player],
+          frames_executed: 2,
+        };
+      },
+    };
+    const running = await start(backend);
+    const reset = await postGym(running, "reset", {
+      area_sid: "Example/Map",
+      room: "start",
+    });
+    const resetBody = (await decodeResponse(reset)) as any;
+    assert.equal(reset.status, 200);
+    assert.equal(resetBody.observation.room_geometry.tile_size, 8);
+
+    const step = await postGym(running, "step", {
+      episode_id: episodeId,
+      inputs: [validRequest(1).inputs[0], validRequest(1).inputs[0]],
+    });
+    const stepBody = (await decodeResponse(step)) as any;
+    assert.equal(step.status, 200);
+    assert.equal(stepBody.frames_executed, 2);
+    assert.equal(stepBody.observation.episode_frame, 2);
+  });
+
+  it("rejects malformed gym ids and unsupported gym backends", async () => {
+    const running = await start(new MockCollectorBackend());
+    const malformed = await postGym(running, "step", {
+      episode_id: "bad",
+      inputs: [validRequest(1).inputs[0]],
+    });
+    assert.equal(malformed.status, 400);
+
+    const unsupported = await postGym(running, "reset", { area_id: 1 });
+    const body = (await decodeResponse(unsupported)) as SimulateFailure;
+    assert.equal(unsupported.status, 503);
+    assert.equal(body.code, "GYM_NOT_CONFIGURED");
+  });
 });
+
+function gymObservation(episodeId: string): GymObservation {
+  return {
+    episode_id: episodeId,
+    episode_frame: 0,
+    area_id: 1,
+    area_sid: "Example/Map",
+    room: "start",
+    player: createDefaultSnapshot(),
+    room_geometry: {
+      tile_size: 8,
+      bounds: [0, 0, 16, 8],
+      tile_origin: [0, 0],
+      width: 2,
+      height: 1,
+      solids: ["10"],
+    },
+    entities: [],
+    terminated: false,
+    truncated: false,
+    success: false,
+  };
+}
 
 function recordingStatus(): RecordingStatus {
   return {
@@ -272,6 +356,18 @@ async function postRecording(
   request: Record<string, unknown>,
 ): Promise<Response> {
   return await fetch(`${running.url}/api/recording/${action}`, {
+    method: "POST",
+    headers: { "content-type": CONTENT_TYPE },
+    body: encode(request),
+  });
+}
+
+async function postGym(
+  running: RunningCollectorServer,
+  action: "reset" | "step" | "observe" | "close",
+  request: Record<string, unknown>,
+): Promise<Response> {
+  return await fetch(`${running.url}/api/gym/${action}`, {
     method: "POST",
     headers: { "content-type": CONTENT_TYPE },
     body: encode(request),

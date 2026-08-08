@@ -25,6 +25,15 @@ import {
   type RecordingStartRequest,
   type RecordingStatus,
 } from "./recording.js";
+import {
+  decodeGymRequest,
+  validateGymResult,
+  type GymAction,
+  type GymControlRequest,
+  type GymResetRequest,
+  type GymResult,
+  type GymStepRequest,
+} from "./gym.js";
 
 export interface CollectorServerOptions {
   backend: CollectorBackend;
@@ -130,6 +139,14 @@ async function route(
     return;
   }
 
+  const gymMatch = /^\/api\/gym\/(reset|step|observe|close)$/.exec(
+    url.pathname,
+  );
+  if (request.method === "POST" && gymMatch) {
+    await routeGym(gymMatch[1] as GymAction, request, response, config);
+    return;
+  }
+
   if (request.method !== "POST" || url.pathname !== "/api/simulate") {
     sendMessagePackError(response, 404, "NOT_FOUND", "Route not found");
     return;
@@ -192,6 +209,92 @@ async function route(
       502,
       "BACKEND_ERROR",
       error instanceof Error ? error.message : "Collector backend failed",
+    );
+  }
+}
+
+async function routeGym(
+  action: GymAction,
+  request: IncomingMessage,
+  response: ServerResponse,
+  config: Required<
+    Pick<
+      CollectorServerOptions,
+      "backend" | "timeoutMs" | "maxBodyBytes" | "maxMapBytes" | "maxFrames"
+    >
+  > &
+    Pick<CollectorServerOptions, "logger">,
+): Promise<void> {
+  const mediaType = request.headers["content-type"]
+    ?.split(";", 1)[0]
+    ?.trim()
+    .toLowerCase();
+  if (mediaType !== CONTENT_TYPE) {
+    sendMessagePackError(
+      response,
+      415,
+      "UNSUPPORTED_MEDIA_TYPE",
+      `Content-Type must be ${CONTENT_TYPE}`,
+    );
+    return;
+  }
+
+  try {
+    const body = await readBody(request, Math.min(config.maxBodyBytes, 4 * 1024 * 1024));
+    const decoded = decodeGymRequest(body, action, config.maxFrames);
+    const signal = AbortSignal.timeout(config.timeoutMs);
+    let result: GymResult;
+    switch (action) {
+      case "reset":
+        if (!config.backend.gymReset) throw new GymNotConfiguredError();
+        result = await config.backend.gymReset(
+          decoded as GymResetRequest,
+          signal,
+        );
+        break;
+      case "step":
+        if (!config.backend.gymStep) throw new GymNotConfiguredError();
+        result = await config.backend.gymStep(
+          decoded as GymStepRequest,
+          signal,
+        );
+        break;
+      case "observe":
+        if (!config.backend.gymObserve) throw new GymNotConfiguredError();
+        result = await config.backend.gymObserve(
+          decoded as GymControlRequest,
+          signal,
+        );
+        break;
+      case "close":
+        if (!config.backend.gymClose) throw new GymNotConfiguredError();
+        result = await config.backend.gymClose(
+          decoded as GymControlRequest,
+          signal,
+        );
+        break;
+    }
+    validateGymResult(result, action !== "close");
+    sendMessagePack(response, 200, { success: true, ...result });
+  } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      sendMessagePackError(response, 413, error.code, error.message);
+      return;
+    }
+    if (error instanceof ProtocolValidationError) {
+      sendMessagePackError(response, 400, error.code, error.message);
+      return;
+    }
+    if (error instanceof GymNotConfiguredError) {
+      sendMessagePackError(response, 503, error.code, error.message);
+      return;
+    }
+    config.logger?.error(error);
+    sendMessagePackError(
+      response,
+      502,
+      "GYM_BACKEND_ERROR",
+      error instanceof Error ? error.message : "Gym backend failed",
     );
   }
 }
@@ -328,6 +431,15 @@ class RecordingNotConfiguredError extends Error {
       "Collector backend does not support authenticated presentation recording",
     );
     this.name = "RecordingNotConfiguredError";
+  }
+}
+
+class GymNotConfiguredError extends Error {
+  readonly code = "GYM_NOT_CONFIGURED";
+
+  constructor() {
+    super("Collector backend does not support persistent real-game gym sessions");
+    this.name = "GymNotConfiguredError";
   }
 }
 

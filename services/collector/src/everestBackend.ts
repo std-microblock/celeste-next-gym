@@ -11,6 +11,14 @@ import type {
   RecordingStartRequest,
   RecordingStatus,
 } from "./recording.js";
+import {
+  toEverestInitialSnapshot,
+  type GymControlRequest,
+  type GymObservation,
+  type GymResetRequest,
+  type GymResult,
+  type GymStepRequest,
+} from "./gym.js";
 
 interface EverestFrame {
   frame: number;
@@ -38,6 +46,9 @@ interface EverestResponse {
   run_nonce?: string;
   process_id?: number;
   recording?: RecordingStatus;
+  observation?: Omit<GymObservation, "player"> & { player: EverestFrame };
+  player_states?: EverestFrame[];
+  frames_executed?: number;
 }
 
 export interface EverestTcpBackendOptions {
@@ -105,23 +116,52 @@ export class EverestTcpBackend implements CollectorBackend {
     if (!response.success || !response.states) {
       throw new Error(response.error ?? "Everest collector returned no states");
     }
-    return response.states.map((frame) => ({
-      pos: frame.pos,
-      speed: frame.speed,
-      state: frame.state,
-      facing: frame.facing > 0,
-      dashes: frame.dashes,
-      stamina: frame.stamina,
-      on_ground: frame.on_ground,
-      ducking: frame.ducking,
-      can_dream_dash: frame.can_dream_dash,
-      holding_theo: frame.holding_theo,
-      holding_glider: frame.holding_glider,
-      dead: frame.dead,
-      freeze_timer: frame.freeze_timer,
-      _frame: frame.frame,
-      _everest_fields: frame.fields,
-    }));
+    return response.states.map(convertFrame);
+  }
+
+  async gymReset(
+    request: GymResetRequest,
+    signal: AbortSignal,
+  ): Promise<GymResult> {
+    const areaSid =
+      request.area_sid ??
+      (request.area_id === undefined ? this.areaSid : undefined);
+    return await this.sendGym(
+      "reset",
+      {
+        area_id: request.area_id ?? this.areaId,
+        ...(areaSid === undefined ? {} : { area_sid: areaSid }),
+        room: request.room,
+        dream_dash: request.dream_dash,
+        initial_snapshot: toEverestInitialSnapshot(request.initial_snapshot),
+        skip_transitions: request.skip_transitions,
+        max_episode_frames: request.max_episode_frames,
+        include_entities: request.include_entities,
+      },
+      signal,
+      true,
+    );
+  }
+
+  async gymStep(
+    request: GymStepRequest,
+    signal: AbortSignal,
+  ): Promise<GymResult> {
+    return await this.sendGym("step", request, signal, true);
+  }
+
+  async gymObserve(
+    request: GymControlRequest,
+    signal: AbortSignal,
+  ): Promise<GymResult> {
+    return await this.sendGym("observe", request, signal, true);
+  }
+
+  async gymClose(
+    request: GymControlRequest,
+    signal: AbortSignal,
+  ): Promise<GymResult> {
+    return await this.sendGym("close", request, signal, false);
   }
 
   async health(): Promise<BackendHealth> {
@@ -211,6 +251,36 @@ export class EverestTcpBackend implements CollectorBackend {
     return response.recording;
   }
 
+  private async sendGym(
+    action: "reset" | "step" | "observe" | "close",
+    request: object,
+    signal: AbortSignal,
+    requireObservation: boolean,
+  ): Promise<GymResult> {
+    const response = await this.send(
+      { command: `gym_${action}`, ...request },
+      signal,
+    );
+    if (!response.success) {
+      throw new Error(response.error ?? `Everest gym ${action} failed`);
+    }
+    if (requireObservation && response.observation === undefined) {
+      throw new Error(`Everest gym ${action} returned no observation`);
+    }
+    return {
+      ...(response.observation === undefined
+        ? {}
+        : {
+            observation: {
+              ...response.observation,
+              player: convertFrame(response.observation.player),
+            },
+          }),
+      player_states: (response.player_states ?? []).map(convertFrame),
+      frames_executed: response.frames_executed ?? 0,
+    };
+  }
+
   private async send(
     payload: unknown,
     signal: AbortSignal,
@@ -259,4 +329,24 @@ export class EverestTcpBackend implements CollectorBackend {
       );
     });
   }
+}
+
+function convertFrame(frame: EverestFrame): PlayerSnapshot {
+  return {
+    pos: frame.pos,
+    speed: frame.speed,
+    state: frame.state,
+    facing: frame.facing > 0,
+    dashes: frame.dashes,
+    stamina: frame.stamina,
+    on_ground: frame.on_ground,
+    ducking: frame.ducking,
+    can_dream_dash: frame.can_dream_dash,
+    holding_theo: frame.holding_theo,
+    holding_glider: frame.holding_glider,
+    dead: frame.dead,
+    freeze_timer: frame.freeze_timer,
+    _frame: frame.frame,
+    _everest_fields: frame.fields,
+  };
 }

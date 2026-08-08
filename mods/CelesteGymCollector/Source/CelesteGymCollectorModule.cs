@@ -12,6 +12,9 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         Environment.GetEnvironmentVariable("CELESTE_GYM_RECORDING_ROOT");
     private readonly HashSet<string> usedCaptureTokens = new(StringComparer.Ordinal);
     private SimulationJob? job;
+    private GymResetJob? gymResetJob;
+    private GymStepJob? gymStepJob;
+    private GymEpisode? gymEpisode;
     private PresentationCaptureSession? captureSession;
     private InteractiveRecordingSession? interactiveSession;
     private readonly Dictionary<VirtualButton, List<VirtualButton.Node>> originalButtonNodes = [];
@@ -61,7 +64,8 @@ public sealed class CelesteGymCollectorModule : EverestModule {
     }
 
     private void ProcessRequests() {
-        if (job is null && server.TryDequeue(out PendingRequest? pending) && pending is not null) {
+        if (job is null && gymResetJob is null && gymStepJob is null
+            && server.TryDequeue(out PendingRequest? pending) && pending is not null) {
             if (pending.Request.Command == "ping") {
                 bool ready = Celeste.LoadTimer is null
                     && Engine.Scene is not null
@@ -85,6 +89,10 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                 HandleInteractiveCommand(pending);
                 return;
             }
+            if (pending.Request.Command.StartsWith("gym_", StringComparison.Ordinal)) {
+                HandleGymCommand(pending);
+                return;
+            }
             if (pending.Request.Command != "simulate_area") {
                 pending.Completion.SetResult(new CollectorResponse { Success = false, Error = "unknown command" });
                 return;
@@ -94,6 +102,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                     throw new InvalidOperationException("cannot inject a simulation while interactive recording is active");
                 }
                 BindCaptureToSimulation(pending.Request);
+                gymEpisode = null;
                 if (SaveData.Instance is null) SaveData.InitializeDebugMode(loadExisting: false);
                 int areaId = ResolveAreaId(pending.Request);
                 job = new SimulationJob(pending, Engine.Scene, areaId);
@@ -119,6 +128,107 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                 pending.Completion.SetResult(new CollectorResponse { Success = false, Error = error.ToString() });
             }
         }
+    }
+
+    private void HandleGymCommand(PendingRequest pending) {
+        try {
+            if (interactiveSession?.IsRunning == true || captureSession?.IsCapturing == true) {
+                throw new InvalidOperationException("cannot use the gym backend while recording is active");
+            }
+            CollectorRequest request = pending.Request;
+            switch (request.Command) {
+                case "gym_reset": {
+                    if (request.MaxEpisodeFrames is <= 0 or > 10_000_000) {
+                        throw new InvalidOperationException(
+                            "max_episode_frames must be between 1 and 10000000"
+                        );
+                    }
+                    if (SaveData.Instance is null) SaveData.InitializeDebugMode(loadExisting: false);
+                    int areaId = ResolveAreaId(request);
+                    gymEpisode = null;
+                    gymResetJob = new GymResetJob(pending, Engine.Scene, areaId);
+                    Session session = new(new AreaKey(areaId));
+                    if (request.DreamDash) session.Inventory.DreamDash = true;
+                    if (!string.IsNullOrWhiteSpace(request.Room)) {
+                        session.Level = request.Room;
+                        session.RespawnPoint = null;
+                    }
+                    if (request.SkipTransitions) {
+                        Engine.Scene = new LevelLoader(session) {
+                            PlayerIntroTypeOverride = Player.IntroTypes.None
+                        };
+                    } else {
+                        LevelEnter.Go(session, fromSaveData: true);
+                    }
+                    break;
+                }
+                case "gym_step": {
+                    GymEpisode episode = RequireGymEpisode(request.EpisodeId);
+                    if (episode.Done) {
+                        throw new InvalidOperationException("gym episode is done; call gym_reset");
+                    }
+                    if (request.Inputs.Count is <= 0 or > 4096) {
+                        throw new InvalidOperationException("gym_step inputs must contain 1 to 4096 frames");
+                    }
+                    if (Engine.Scene is not Level level || level.Session.Area.ID != episode.AreaId) {
+                        throw new InvalidOperationException("gym episode level is no longer active");
+                    }
+                    gymStepJob = new GymStepJob(pending, episode, level);
+                    InstallScriptedButtons();
+                    break;
+                }
+                case "gym_observe": {
+                    GymEpisode episode = RequireGymEpisode(request.EpisodeId);
+                    if (Engine.Scene is not Level level) {
+                        throw new InvalidOperationException("gym episode level is no longer active");
+                    }
+                    PlayerFrame player = CaptureGymPlayer(level, episode, episode.Frame);
+                    pending.Completion.SetResult(new CollectorResponse {
+                        Success = true,
+                        Observation = GymCapture.Capture(
+                            level,
+                            episode,
+                            player,
+                            includeGeometry: true,
+                            terminated: episode.Terminated,
+                            truncated: episode.Truncated,
+                            success: episode.Success,
+                            terminationReason: episode.TerminationReason
+                        ),
+                        FramesExecuted = 0
+                    });
+                    break;
+                }
+                case "gym_close":
+                    if (gymEpisode is not null && request.EpisodeId is not null) {
+                        RequireGymEpisode(request.EpisodeId);
+                    }
+                    gymEpisode = null;
+                    pending.Completion.SetResult(new CollectorResponse {
+                        Success = true,
+                        FramesExecuted = 0
+                    });
+                    break;
+                default:
+                    throw new InvalidOperationException("unknown gym command");
+            }
+        } catch (Exception error) {
+            gymResetJob = null;
+            gymStepJob = null;
+            RestoreButtons();
+            pending.Completion.SetResult(new CollectorResponse {
+                Success = false,
+                Error = error.Message
+            });
+        }
+    }
+
+    private GymEpisode RequireGymEpisode(string? episodeId) {
+        if (gymEpisode is null || string.IsNullOrWhiteSpace(episodeId)
+            || !string.Equals(gymEpisode.Id, episodeId, StringComparison.Ordinal)) {
+            throw new InvalidOperationException("episode_id does not identify the active gym episode");
+        }
+        return gymEpisode;
     }
 
     private void HandleCaptureCommand(PendingRequest pending) {
@@ -282,7 +392,8 @@ public sealed class CelesteGymCollectorModule : EverestModule {
 
     private void PlayerUpdate(On.Celeste.Player.orig_Update orig, Player self) {
         interactiveSession?.BeginPlayerFrame(self);
-        FrameInput? input = job?.CurrentInput;
+        IScriptedInputJob? inputJob = ActiveInputJob;
+        FrameInput? input = inputJob?.CurrentInput;
         if (input is not null) {
             Input.MoveX.Value = Math.Clamp(input.MoveX, -1, 1);
             Input.MoveY.Value = Math.Clamp(input.MoveY, -1, 1);
@@ -302,21 +413,21 @@ public sealed class CelesteGymCollectorModule : EverestModule {
             && MathF.Abs(self.Speed.Y - -105f) < 0.001f
             && MathF.Abs(beforeSpeedY - self.Speed.Y) > 0.001f;
         bool climbJumpCostPaid = beforeStamina - self.Stamina >= 27.49f;
-        if (job is { JumpBufferFrames: > 0 }
+        if (inputJob is { JumpBufferFrames: > 0 }
             && self.Speed.Y < 0f
             && (beforeSpeedY >= 0f
                 || (beforeState != Player.StNormal && self.StateMachine.State == Player.StNormal)
                 || normalJumpStarted
                 || climbJumpCostPaid)) {
-            job.JumpBufferFrames = 0;
+            inputJob.JumpBufferFrames = 0;
         }
     }
 
     private int PlayerStartDash(On.Celeste.Player.orig_StartDash orig, Player self) {
         int nextState = orig(self);
-        if (job is not null) {
-            job.DashBufferFrames = 0;
-            job.CrouchDashBufferFrames = 0;
+        if (ActiveInputJob is { } inputJob) {
+            inputJob.DashBufferFrames = 0;
+            inputJob.CrouchDashBufferFrames = 0;
         }
         return nextState;
     }
@@ -328,8 +439,8 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         bool playSfx
     ) {
         orig(self, particles, playSfx);
-        if (job is not null) {
-            job.JumpBufferFrames = ScriptedInputBuffer.Consume(job.JumpBufferFrames);
+        if (ActiveInputJob is { } inputJob) {
+            inputJob.JumpBufferFrames = ScriptedInputBuffer.Consume(inputJob.JumpBufferFrames);
         }
     }
 
@@ -343,6 +454,9 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         PlayerDeadBody? body = orig(self, direction, evenIfInvincible, registerDeathInStats);
         if (body is not null && job is { Started: true, CurrentInput: not null }) {
             job.DeathFrame = SnapshotCapture.Capture(self, job.Index + 1);
+        }
+        if (body is not null && gymStepJob is { CurrentInput: not null } gymJob) {
+            gymJob.DeathFrame = SnapshotCapture.Capture(self, gymJob.Episode.Frame + 1);
         }
         if (body is not null) interactiveSession?.CaptureDeath(self);
         return body;
@@ -361,7 +475,12 @@ public sealed class CelesteGymCollectorModule : EverestModule {
     }
 
     private void PrepareSimulationFrame() {
+        if (gymResetJob is not null) {
+            PrepareGymReset();
+            return;
+        }
         if (job is null) {
+            if (gymStepJob is not null) PrepareGymStepFrame();
             if (interactiveSession?.IsRunning == true && Engine.Scene is Level interactiveLevel) {
                 interactiveSession.TryBegin(interactiveLevel);
             }
@@ -413,6 +532,10 @@ public sealed class CelesteGymCollectorModule : EverestModule {
     }
 
     private void FinishSimulationFrame() {
+        if (gymStepJob is not null) {
+            FinishGymStepFrame();
+            return;
+        }
         if (job is null || !job.Started || job.CurrentInput is null) return;
         job.Index++;
         Player? player = ActivePlayer(job.AreaId);
@@ -428,6 +551,159 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         if (job.DashBufferFrames > 0) job.DashBufferFrames--;
         if (job.CrouchDashBufferFrames > 0) job.CrouchDashBufferFrames--;
         if (job.Index >= job.Pending.Request.Inputs.Count) CompleteJob();
+    }
+
+    private void PrepareGymReset() {
+        GymResetJob reset = gymResetJob!;
+        if (ReferenceEquals(Engine.Scene, reset.SceneAtRequest)) return;
+        if (Engine.Scene is not Level level || level.Session.Area.ID != reset.AreaId) return;
+        Player? player = level.Tracker.GetEntity<Player>();
+        if (player is null) return;
+
+        SnapshotCapture.ResetLookoutLifecycleObservation();
+        ApplyInitialSnapshot(player, reset.Pending.Request.InitialSnapshot);
+        if (reset.Pending.Request.InitialSnapshot?.Pos is { Length: >= 2 }) {
+            level.Camera.Position = player.CameraTarget;
+        }
+        GymEpisode episode = new(
+            reset.AreaId,
+            level.Session.Area.SID,
+            level.Session.Level,
+            reset.Pending.Request.MaxEpisodeFrames,
+            reset.Pending.Request.IncludeEntities != false
+        );
+        PlayerFrame frame = SnapshotCapture.Capture(player, 0);
+        episode.LastPlayer = frame;
+        gymEpisode = episode;
+        gymResetJob = null;
+        reset.Pending.Completion.SetResult(new CollectorResponse {
+            Success = true,
+            Observation = GymCapture.Capture(
+                level,
+                episode,
+                frame,
+                includeGeometry: true,
+                terminated: false,
+                truncated: false,
+                success: false,
+                terminationReason: null
+            ),
+            PlayerStates = [frame],
+            FramesExecuted = 0
+        });
+    }
+
+    private void PrepareGymStepFrame() {
+        GymStepJob step = gymStepJob!;
+        if (step.Index >= step.Pending.Request.Inputs.Count) {
+            CompleteGymStep(
+                step.LevelAtStart,
+                step.Episode.LastPlayer
+                    ?? throw new InvalidOperationException("gym episode has no player snapshot"),
+                terminated: false,
+                truncated: false,
+                success: false,
+                terminationReason: null
+            );
+            return;
+        }
+        step.PreviousInput = step.LastInput;
+        step.CurrentInput = step.Pending.Request.Inputs[step.Index];
+        if (step.CurrentInput.JumpPressed) step.JumpBufferFrames = 5;
+        if (step.CurrentInput.DashPressed) step.DashBufferFrames = 5;
+        if (step.CurrentInput.CrouchDashPressed) step.CrouchDashBufferFrames = 5;
+    }
+
+    private void FinishGymStepFrame() {
+        GymStepJob step = gymStepJob!;
+        if (step.CurrentInput is null) return;
+        step.Index++;
+        step.Episode.Frame++;
+
+        Level level = Engine.Scene as Level ?? step.LevelAtStart;
+        bool sceneChanged = Engine.Scene is not Level;
+        bool roomChanged = sceneChanged
+            || level.Session.Area.ID != step.Episode.AreaId
+            || !string.Equals(level.Session.Level, step.Episode.StartRoom, StringComparison.Ordinal);
+        Player? player = sceneChanged ? null : level.Tracker.GetEntity<Player>();
+        PlayerFrame frame = step.DeathFrame
+            ?? (player is null
+                ? SnapshotCapture.CaptureMissing(
+                    step.Episode.LastPlayer
+                        ?? throw new InvalidOperationException("gym episode has no player snapshot"),
+                    step.Episode.Frame
+                )
+                : SnapshotCapture.Capture(player, step.Episode.Frame));
+        bool dead = step.DeathFrame is not null || (!roomChanged && (player is null || frame.Dead));
+        bool truncated = !dead && !roomChanged && step.Episode.Frame >= step.Episode.MaxFrames;
+        bool terminated = dead || roomChanged;
+        bool success = roomChanged && !dead;
+        string? reason = dead
+            ? "death"
+            : roomChanged
+                ? "room_transition"
+                : truncated
+                    ? "max_episode_frames"
+                    : null;
+
+        step.DeathFrame = null;
+        step.PlayerStates.Add(frame);
+        step.Episode.LastPlayer = frame;
+        step.LastInput = step.CurrentInput;
+        step.CurrentInput = null;
+        if (step.JumpBufferFrames > 0) step.JumpBufferFrames--;
+        if (step.DashBufferFrames > 0) step.DashBufferFrames--;
+        if (step.CrouchDashBufferFrames > 0) step.CrouchDashBufferFrames--;
+
+        if (terminated || truncated || step.Index >= step.Pending.Request.Inputs.Count) {
+            CompleteGymStep(level, frame, terminated, truncated, success, reason);
+        }
+    }
+
+    private void CompleteGymStep(
+        Level level,
+        PlayerFrame frame,
+        bool terminated,
+        bool truncated,
+        bool success,
+        string? terminationReason
+    ) {
+        GymStepJob completed = gymStepJob!;
+        gymStepJob = null;
+        RestoreButtons();
+        completed.Episode.Done |= terminated || truncated;
+        completed.Episode.Terminated = terminated;
+        completed.Episode.Truncated = truncated;
+        completed.Episode.Success = success;
+        completed.Episode.TerminationReason = terminationReason;
+        completed.Pending.Completion.SetResult(new CollectorResponse {
+            Success = true,
+            Observation = GymCapture.Capture(
+                level,
+                completed.Episode,
+                frame,
+                includeGeometry: success,
+                terminated,
+                truncated,
+                success,
+                terminationReason
+            ),
+            PlayerStates = completed.PlayerStates,
+            FramesExecuted = completed.Index
+        });
+    }
+
+    private static PlayerFrame CaptureGymPlayer(Level level, GymEpisode episode, int frame) {
+        Player? player = level.Tracker.GetEntity<Player>();
+        PlayerFrame captured = player is null
+            ? SnapshotCapture.CaptureMissing(
+                episode.LastPlayer
+                    ?? throw new InvalidOperationException("gym episode has no player snapshot"),
+                frame
+            )
+            : SnapshotCapture.Capture(player, frame);
+        episode.LastPlayer = captured;
+        return captured;
     }
 
     private static Player? ActivePlayer(int areaId) {
@@ -466,34 +742,42 @@ public sealed class CelesteGymCollectorModule : EverestModule {
 
     private void InstallScriptedButtons() {
         ReplaceNodes(Input.Jump,
-            () => job?.CurrentInput?.JumpHeld ?? false,
-            () => job?.JumpBufferFrames > 0,
-            () => job?.PreviousInput?.JumpHeld == true && job?.CurrentInput?.JumpHeld != true);
+            () => ActiveInputJob?.CurrentInput?.JumpHeld ?? false,
+            () => ActiveInputJob?.JumpBufferFrames > 0,
+            () => ActiveInputJob?.PreviousInput?.JumpHeld == true
+                && ActiveInputJob?.CurrentInput?.JumpHeld != true);
         // Lookout.LookRoutine exits through MenuCancel. In the portable
         // protocol a jump press represents that shared confirm/cancel action,
         // so it must drive both virtual buttons. Unlike Jump, MenuCancel must
         // use the raw frame press: Player.Jump can consume the shared jump
         // buffer before LookRoutine reaches its own MenuCancel check.
         ReplaceNodes(Input.MenuCancel,
-            () => job?.CurrentInput?.JumpHeld ?? false,
-            () => job?.CurrentInput?.JumpPressed ?? false,
-            () => job?.PreviousInput?.JumpHeld == true && job?.CurrentInput?.JumpHeld != true);
+            () => ActiveInputJob?.CurrentInput?.JumpHeld ?? false,
+            () => ActiveInputJob?.CurrentInput?.JumpPressed ?? false,
+            () => ActiveInputJob?.PreviousInput?.JumpHeld == true
+                && ActiveInputJob?.CurrentInput?.JumpHeld != true);
         ReplaceNodes(Input.Dash,
-            () => job?.CurrentInput?.DashPressed ?? false,
-            () => job?.DashBufferFrames > 0,
-            () => job?.PreviousInput?.DashPressed == true && job?.CurrentInput?.DashPressed != true);
+            () => ActiveInputJob?.CurrentInput?.DashPressed ?? false,
+            () => ActiveInputJob?.DashBufferFrames > 0,
+            () => ActiveInputJob?.PreviousInput?.DashPressed == true
+                && ActiveInputJob?.CurrentInput?.DashPressed != true);
         ReplaceNodes(Input.CrouchDash,
-            () => job?.CurrentInput?.CrouchDashPressed ?? false,
-            () => job?.CrouchDashBufferFrames > 0,
-            () => job?.PreviousInput?.CrouchDashPressed == true && job?.CurrentInput?.CrouchDashPressed != true);
+            () => ActiveInputJob?.CurrentInput?.CrouchDashPressed ?? false,
+            () => ActiveInputJob?.CrouchDashBufferFrames > 0,
+            () => ActiveInputJob?.PreviousInput?.CrouchDashPressed == true
+                && ActiveInputJob?.CurrentInput?.CrouchDashPressed != true);
         ReplaceNodes(Input.Grab,
-            () => job?.CurrentInput?.GrabHeld ?? false,
-            () => job?.PreviousInput?.GrabHeld != true && job?.CurrentInput?.GrabHeld == true,
-            () => job?.PreviousInput?.GrabHeld == true && job?.CurrentInput?.GrabHeld != true);
+            () => ActiveInputJob?.CurrentInput?.GrabHeld ?? false,
+            () => ActiveInputJob?.PreviousInput?.GrabHeld != true
+                && ActiveInputJob?.CurrentInput?.GrabHeld == true,
+            () => ActiveInputJob?.PreviousInput?.GrabHeld == true
+                && ActiveInputJob?.CurrentInput?.GrabHeld != true);
         ReplaceNodes(Input.Talk,
-            () => job?.CurrentInput?.TalkPressed ?? false,
-            () => job?.PreviousInput?.TalkPressed != true && job?.CurrentInput?.TalkPressed == true,
-            () => job?.PreviousInput?.TalkPressed == true && job?.CurrentInput?.TalkPressed != true);
+            () => ActiveInputJob?.CurrentInput?.TalkPressed ?? false,
+            () => ActiveInputJob?.PreviousInput?.TalkPressed != true
+                && ActiveInputJob?.CurrentInput?.TalkPressed == true,
+            () => ActiveInputJob?.PreviousInput?.TalkPressed == true
+                && ActiveInputJob?.CurrentInput?.TalkPressed != true);
     }
 
     private void ReplaceNodes(VirtualButton button, Func<bool> check, Func<bool> pressed, Func<bool> released) {
@@ -517,7 +801,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
     }
 
     private Vector2 GetAimVector(On.Celeste.Input.orig_GetAimVector orig, Facings defaultFacing) {
-        FrameInput? input = job?.CurrentInput;
+        FrameInput? input = ActiveInputJob?.CurrentInput;
         if (input is null) return orig(defaultFacing);
         Vector2 aim = new(input.MoveX, input.MoveY);
         return aim == Vector2.Zero ? Vector2.UnitX * (float) defaultFacing : aim.SafeNormalize();
@@ -534,12 +818,46 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         if (snapshot.Ducking is bool ducking) player.Ducking = ducking;
     }
 
-    private sealed class SimulationJob(PendingRequest pending, Scene? sceneAtRequest, int areaId) {
+    private IScriptedInputJob? ActiveInputJob => job ?? (IScriptedInputJob?) gymStepJob;
+
+    private interface IScriptedInputJob {
+        FrameInput? CurrentInput { get; set; }
+        FrameInput? PreviousInput { get; set; }
+        FrameInput? LastInput { get; set; }
+        int JumpBufferFrames { get; set; }
+        int DashBufferFrames { get; set; }
+        int CrouchDashBufferFrames { get; set; }
+    }
+
+    private sealed class SimulationJob(PendingRequest pending, Scene? sceneAtRequest, int areaId)
+        : IScriptedInputJob {
         public PendingRequest Pending { get; } = pending;
         public Scene? SceneAtRequest { get; } = sceneAtRequest;
         public int AreaId { get; } = areaId;
         public List<PlayerFrame> States { get; } = [];
         public bool Started { get; set; }
+        public int Index { get; set; }
+        public FrameInput? CurrentInput { get; set; }
+        public FrameInput? PreviousInput { get; set; }
+        public FrameInput? LastInput { get; set; }
+        public PlayerFrame? DeathFrame { get; set; }
+        public int JumpBufferFrames { get; set; }
+        public int DashBufferFrames { get; set; }
+        public int CrouchDashBufferFrames { get; set; }
+    }
+
+    private sealed class GymResetJob(PendingRequest pending, Scene? sceneAtRequest, int areaId) {
+        public PendingRequest Pending { get; } = pending;
+        public Scene? SceneAtRequest { get; } = sceneAtRequest;
+        public int AreaId { get; } = areaId;
+    }
+
+    private sealed class GymStepJob(PendingRequest pending, GymEpisode episode, Level levelAtStart)
+        : IScriptedInputJob {
+        public PendingRequest Pending { get; } = pending;
+        public GymEpisode Episode { get; } = episode;
+        public Level LevelAtStart { get; } = levelAtStart;
+        public List<PlayerFrame> PlayerStates { get; } = [];
         public int Index { get; set; }
         public FrameInput? CurrentInput { get; set; }
         public FrameInput? PreviousInput { get; set; }
