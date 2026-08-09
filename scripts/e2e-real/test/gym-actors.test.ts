@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   createPolicySoakBatch,
+  createFirstActionProbe,
   createSeedTrajectoryInputs,
   createSeededRandom,
   parseActorOptions,
@@ -17,6 +18,8 @@ describe("persistent gym actor launcher", () => {
       smoke: false,
       seedSmoke: false,
       seedSmokeSeed: 8675309,
+      inputLifecycleSmoke: false,
+      inputLifecycleRounds: 100,
       soakResets: 0,
       soakRoom: "2",
       soakFrames: 1536,
@@ -42,6 +45,9 @@ describe("persistent gym actor launcher", () => {
         "--seed-smoke",
         "--seed-smoke-seed",
         "-2147483648",
+        "--input-lifecycle-smoke",
+        "--input-lifecycle-rounds",
+        "250",
         "--soak-resets",
         "10",
         "--soak-room",
@@ -65,6 +71,8 @@ describe("persistent gym actor launcher", () => {
         smoke: true,
         seedSmoke: true,
         seedSmokeSeed: -2147483648,
+        inputLifecycleSmoke: true,
+        inputLifecycleRounds: 250,
         soakResets: 10,
         soakRoom: "2",
         soakFrames: 1536,
@@ -105,6 +113,17 @@ describe("persistent gym actor launcher", () => {
     assert.ok(inputs.some((input) => input.dash_pressed));
     assert.ok(inputs.some((input) => input.crouch_dash_pressed));
     assert.ok(inputs.some((input) => input.grab_held));
+  });
+
+  it("builds distinct first-action probes for persistent reset lifecycle checks", () => {
+    const right = createFirstActionProbe("right");
+    const jump = createFirstActionProbe("jump");
+    const dash = createFirstActionProbe("dash");
+    assert.equal(right.length, 4);
+    assert.ok(right.every((input) => input.move_x === 1));
+    assert.deepEqual(jump.map((input) => input.jump_pressed), [true, false, false, false]);
+    assert.ok(jump.every((input) => input.jump_held));
+    assert.deepEqual(dash.map((input) => input.dash_pressed), [true, false, false, false]);
   });
 
   it("rejects unsafe actor counts and unknown flags", () => {

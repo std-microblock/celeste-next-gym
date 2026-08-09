@@ -10,6 +10,7 @@ Everest 代码 Mod，为真实游戏 E2E 提供本地 TCP 采集端点。
 - 当前每帧稳定导出 126 个字段。
 - Gym reset 会创建全新的真实 `Level`，随后多个 step 批次在同一个 Level 和实体状态上继续。reset/observe 导出房间的无损 8px solid grid；step 返回逐帧玩家状态和批次末尾的连续坐标实体状态。实体 ID 仅在当前 episode 内稳定。
 - `gym_reset.seed` 是可选的有符号 32 位整数。显式提供时会在创建 `Session` 或原地 `Level.Reload` 前重置 `Monocle.Calc.Random` 并清空其嵌套 RNG 栈；省略时保留游戏原有 RNG 行为。
+- 原地 reset 会取消尚未结束的房间切换 coroutine，并清除 hit-stop、Dash Assist freeze 和暂停状态，避免新 Player 在 tracker 中存在但永远收不到 `Player.Update`。
 - interactive 模式自动进入随仓库生成的 Playground；每次 `Player.Update` 前读取真实输入、整帧结束后抓取状态，停止时写出 `celeste-next-gym-trace` v1。它不替换 VirtualInput，也不把渲染帧当成物理帧。
 - `CELESTE_GYM_COLLECTOR_PORT` 可为隔离测试选择 Mod TCP 端口；默认仍为 `32270`。
 - `CELESTE_GYM_RUN_NONCE` 会随 `ping` 一并返回，同时返回游戏进程 PID 和实际监听端口，供 runner 验证自己连接的是本次启动的子进程。
@@ -23,6 +24,7 @@ Everest 代码 Mod，为真实游戏 E2E 提供本地 TCP 采集端点。
 dotnet build mods/CelesteGymCollector/Source/CelesteGymCollector.csproj -c Release
 node scripts/e2e-real-collector.mjs
 node scripts/gym-actors.mjs --actors 1 --direct-tcp --seed-smoke --soak-room 2
+node scripts/gym-actors.mjs --actors 1 --direct-tcp --input-lifecycle-smoke --input-lifecycle-rounds 100 --soak-room 2
 ```
 
 测试脚本会把 Mod 安装进忽略提交的 `vendor/celeste-game/Mods/CelesteGymCollector`，原始游戏 zip 和 Everest 的 `orig` 备份不会被修改。

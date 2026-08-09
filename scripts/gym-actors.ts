@@ -36,6 +36,8 @@ interface ActorOptions {
   readonly smoke: boolean;
   readonly seedSmoke: boolean;
   readonly seedSmokeSeed: number;
+  readonly inputLifecycleSmoke: boolean;
+  readonly inputLifecycleRounds: number;
   readonly soakResets: number;
   readonly soakRoom: string;
   readonly soakFrames: number;
@@ -96,6 +98,8 @@ export function parseActorOptions(argv: readonly string[]): ActorOptions {
   let smoke = false;
   let seedSmoke = false;
   let seedSmokeSeed = 8_675_309;
+  let inputLifecycleSmoke = false;
+  let inputLifecycleRounds = 100;
   let soakResets = 0;
   let soakRoom = "2";
   let soakFrames = 1536;
@@ -118,6 +122,13 @@ export function parseActorOptions(argv: readonly string[]): ActorOptions {
       -0x8000_0000,
       0x7fff_ffff,
     );
+    else if (argument === "--input-lifecycle-smoke") inputLifecycleSmoke = true;
+    else if (argument === "--input-lifecycle-rounds") inputLifecycleRounds = boundedInteger(
+      argv[++index],
+      argument,
+      1,
+      10_000,
+    );
     else if (argument === "--soak-resets") soakResets = boundedInteger(argv[++index], argument, 1, 1_000_000);
     else if (argument === "--soak-room") soakRoom = requiredValue(argv[++index], argument);
     else if (argument === "--soak-frames") soakFrames = boundedInteger(argv[++index], argument, 1, 4096);
@@ -136,6 +147,8 @@ export function parseActorOptions(argv: readonly string[]): ActorOptions {
     smoke,
     seedSmoke,
     seedSmokeSeed,
+    inputLifecycleSmoke,
+    inputLifecycleRounds,
     soakResets,
     soakRoom,
     soakFrames,
@@ -321,6 +334,11 @@ export async function runActorLauncher(): Promise<void> {
     };
     process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
 
+    if (options.inputLifecycleSmoke) {
+      await runInputLifecycleGate(actors, paths.serviceRoot, options);
+      await cleanup("input-lifecycle-smoke-complete");
+      return;
+    }
     if (options.seedSmoke) {
       await runSeedTrajectoryGate(actors, paths.serviceRoot, options);
       await cleanup("seed-smoke-complete");
@@ -352,6 +370,118 @@ export async function runActorLauncher(): Promise<void> {
     await cleanup("error");
     throw error;
   }
+}
+
+async function runInputLifecycleGate(
+  actors: readonly RunningActor[],
+  serviceRoot: string,
+  options: ActorOptions,
+): Promise<void> {
+  const started = performance.now();
+  const results = await Promise.all(actors.map(async (actor) => {
+    const client = createActorGymClient(actor, serviceRoot);
+    for (let round = 0; round < options.inputLifecycleRounds; round++) {
+      await assertFirstActionChangesState(client, options, round, "right");
+      await assertFirstActionChangesState(client, options, round, "jump");
+      // Dash is last on purpose: it leaves hit-stop behind for the next round's
+      // reset/right probe, reproducing the long-lived actor failure this gate owns.
+      await assertFirstActionChangesState(client, options, round, "dash");
+    }
+    return {
+      actor: actor.index,
+      rounds: options.inputLifecycleRounds,
+      resets: options.inputLifecycleRounds * 3,
+      probes: ["right", "jump", "dash"],
+    };
+  }));
+  process.stdout.write(`${JSON.stringify({
+    input_lifecycle_gate: "strict-pass",
+    room: options.soakRoom,
+    actors: results,
+    elapsed_seconds: Number(((performance.now() - started) / 1000).toFixed(2)),
+  })}\n`);
+}
+
+type InputLifecycleProbe = "right" | "jump" | "dash";
+
+async function assertFirstActionChangesState(
+  client: ActorGymClient,
+  options: ActorOptions,
+  round: number,
+  probe: InputLifecycleProbe,
+): Promise<void> {
+  const reset = await client.gymReset({
+    area_id: options.areaId,
+    ...(options.areaSid ? { area_sid: options.areaSid } : {}),
+    room: options.soakRoom,
+    seed: round * 3 + (probe === "right" ? 0 : probe === "jump" ? 1 : 2),
+    skip_transitions: true,
+    max_episode_frames: 32,
+    include_entities: false,
+    include_player_states: true,
+    fast_mode: true,
+  });
+  const episodeId = reset.observation?.episode_id;
+  const before = reset.observation?.player;
+  if (typeof episodeId !== "string" || !isRecord(before)) {
+    throw new Error(`input lifecycle ${probe} reset returned no player episode`);
+  }
+  const inputs = createFirstActionProbe(probe);
+  const step = await client.gymStep({ episode_id: episodeId, inputs });
+  const after = step.observation?.player;
+  if (!isRecord(after) || step.frames_executed !== inputs.length) {
+    throw new Error(
+      `input lifecycle ${probe} round ${round} returned malformed step: ` +
+      `frames=${step.frames_executed}`,
+    );
+  }
+  const beforePos = requirePair(before.pos, "reset player.pos");
+  const afterPos = requirePair(after.pos, "step player.pos");
+  const afterSpeed = requirePair(after.speed, "step player.speed");
+  const changed = probe === "right"
+    ? afterPos[0] > beforePos[0] || afterSpeed[0] > 0
+    : probe === "jump"
+      ? afterPos[1] < beforePos[1] || afterSpeed[1] < 0
+      : after.state === 2
+        || (typeof before.dashes === "number"
+          && typeof after.dashes === "number"
+          && after.dashes < before.dashes)
+        || Math.abs(afterSpeed[0]) >= 100;
+  if (!changed) {
+    const detail = {
+      before: canonicalizePlayerState(before),
+      after: canonicalizePlayerState(after),
+    };
+    throw new Error(
+      `input lifecycle ${probe} round ${round} did not affect the real player: ` +
+      JSON.stringify(detail),
+    );
+  }
+}
+
+export function createFirstActionProbe(probe: InputLifecycleProbe): SoakInput[] {
+  return Array.from({ length: 4 }, (_, frame): SoakInput => ({
+    move_x: probe === "right" || probe === "dash" ? 1 : 0,
+    move_y: 0,
+    jump_pressed: probe === "jump" && frame === 0,
+    jump_held: probe === "jump",
+    dash_pressed: probe === "dash" && frame === 0,
+    crouch_dash_pressed: false,
+    grab_held: false,
+    talk_pressed: false,
+  }));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function requirePair(value: unknown, path: string): readonly [number, number] {
+  if (!Array.isArray(value) || value.length < 2
+      || typeof value[0] !== "number" || typeof value[1] !== "number") {
+    throw new Error(`${path} is not a numeric pair`);
+  }
+  return [value[0], value[1]];
 }
 
 async function runSeedTrajectoryGate(

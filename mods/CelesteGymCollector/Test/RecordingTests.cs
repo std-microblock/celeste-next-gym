@@ -1,5 +1,7 @@
 using Xunit;
 using Monocle;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace Celeste.Mod.CelesteGymCollector;
 
@@ -267,6 +269,39 @@ public sealed class RecordingTests : IDisposable {
 
         request.Seed = int.MinValue;
         Assert.Equal(int.MinValue, request.Seed);
+    }
+
+    [Fact]
+    public void GymResetClearsGlobalEngineStatesThatSkipPlayerUpdates() {
+        Engine.FreezeTimer = 0.5f;
+        Engine.DashAssistFreeze = true;
+        Engine.DashAssistFreezePress = true;
+
+        GymResetPolicy.ClearEngineUpdateBlockers();
+
+        Assert.Equal(0f, Engine.FreezeTimer);
+        Assert.False(Engine.DashAssistFreeze);
+        Assert.False(Engine.DashAssistFreezePress);
+    }
+
+    [Fact]
+    public void InPlaceGymResetCancelsTheRoomTransitionThatOwnsLevelUpdates() {
+        Level level = (Level) RuntimeHelpers.GetUninitializedObject(typeof(Level));
+        FieldInfo transition = typeof(Level).GetField(
+            "transition",
+            BindingFlags.Instance | BindingFlags.NonPublic
+        ) ?? throw new MissingFieldException(typeof(Level).FullName, "transition");
+        transition.SetValue(
+            level,
+            RuntimeHelpers.GetUninitializedObject(transition.FieldType)
+        );
+        level.Paused = true;
+
+        Assert.True(level.Transitioning);
+        GymResetPolicy.PrepareInPlaceLevel(level);
+
+        Assert.False(level.Transitioning);
+        Assert.False(level.Paused);
     }
 
     public void Dispose() {

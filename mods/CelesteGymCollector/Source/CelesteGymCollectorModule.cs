@@ -168,6 +168,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                     int areaId = ResolveAreaId(request);
                     gymEpisode = null;
                     gymResetJob = new GymResetJob(pending, Engine.Scene, areaId);
+                    GymResetPolicy.ClearEngineUpdateBlockers();
                     if (request.Seed is int seed) GymRandomPolicy.Reset(seed);
                     Session session = new(new AreaKey(areaId));
                     if (request.DreamDash) session.Inventory.DreamDash = true;
@@ -185,6 +186,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                         // For the same area, keep that infrastructure and perform
                         // Celeste's authoritative room reload against a fresh
                         // Session, so gameplay entities/coroutines are rebuilt.
+                        GymResetPolicy.PrepareInPlaceLevel(activeLevel);
                         gymResetJob = new GymResetJob(
                             pending,
                             Engine.Scene,
