@@ -2,6 +2,8 @@ using Xunit;
 using Monocle;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Net;
+using System.Net.Sockets;
 
 namespace Celeste.Mod.CelesteGymCollector;
 
@@ -302,6 +304,38 @@ public sealed class RecordingTests : IDisposable {
 
         Assert.False(level.Transitioning);
         Assert.False(level.Paused);
+    }
+
+    [Fact]
+    public void DefaultCollectorPortFallsBackWhenThePreferredPortIsOccupied() {
+        using TcpListener occupied = new(IPAddress.Loopback, 0);
+        occupied.Start();
+        int preferredPort = ((IPEndPoint) occupied.LocalEndpoint).Port;
+
+        using CollectorListenerBinding binding = CollectorListenerBinder.Bind(
+            preferredPort,
+            allowFallback: true
+        );
+
+        Assert.True(binding.FellBack);
+        Assert.Equal(SocketError.AddressAlreadyInUse, binding.PreferredPortFailure);
+        Assert.NotEqual(preferredPort, binding.Port);
+        Assert.InRange(binding.Port, 1, 65535);
+    }
+
+    [Fact]
+    public void ExplicitCollectorPortDoesNotFallBackWhenItIsOccupied() {
+        using TcpListener occupied = new(IPAddress.Loopback, 0);
+        occupied.Start();
+        int explicitPort = ((IPEndPoint) occupied.LocalEndpoint).Port;
+
+        InvalidOperationException error = Assert.Throws<InvalidOperationException>(
+            () => CollectorListenerBinder.Bind(explicitPort, allowFallback: false)
+        );
+
+        Assert.Contains($"127.0.0.1:{explicitPort}", error.Message);
+        SocketException socketError = Assert.IsType<SocketException>(error.InnerException);
+        Assert.Equal(SocketError.AddressAlreadyInUse, socketError.SocketErrorCode);
     }
 
     public void Dispose() {

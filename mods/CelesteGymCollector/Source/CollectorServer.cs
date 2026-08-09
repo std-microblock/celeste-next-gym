@@ -22,11 +22,27 @@ internal sealed class CollectorServer : IDisposable {
     public bool TryDequeue(out PendingRequest? request) => pending.TryDequeue(out request);
     public bool TryPeek(out PendingRequest? request) => pending.TryPeek(out request);
 
-    public void Start(int port = 32270) {
-        listener = new TcpListener(IPAddress.Loopback, port);
-        listener.Start();
+    public int Start(int preferredPort = 32270, bool allowFallback = false) {
+        CollectorListenerBinding binding = CollectorListenerBinder.Bind(
+            preferredPort,
+            allowFallback
+        );
+        listener = binding.Listener;
         acceptLoop = Task.Run(AcceptLoopAsync);
-        Logger.Log(LogLevel.Info, "CelesteGymCollector", $"Collector TCP server listening on 127.0.0.1:{port}");
+        if (binding.FellBack) {
+            Logger.Log(
+                LogLevel.Warn,
+                "CelesteGymCollector",
+                $"Default collector port 127.0.0.1:{preferredPort} failed with " +
+                $"{binding.PreferredPortFailure}; using 127.0.0.1:{binding.Port}"
+            );
+        }
+        Logger.Log(
+            LogLevel.Info,
+            "CelesteGymCollector",
+            $"Collector TCP server listening on 127.0.0.1:{binding.Port}"
+        );
+        return binding.Port;
     }
 
     private async Task AcceptLoopAsync() {

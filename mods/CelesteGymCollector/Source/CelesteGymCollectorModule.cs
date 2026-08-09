@@ -6,7 +6,8 @@ namespace Celeste.Mod.CelesteGymCollector;
 
 public sealed class CelesteGymCollectorModule : EverestModule {
     private readonly CollectorServer server = new();
-    private readonly int collectorPort = ReadCollectorPort();
+    private readonly CollectorPortConfiguration collectorPortConfiguration = ReadCollectorPort();
+    private int collectorPort;
     private readonly string runNonce = Environment.GetEnvironmentVariable("CELESTE_GYM_RUN_NONCE") ?? "";
     private readonly bool headlessActor = string.Equals(
         Environment.GetEnvironmentVariable("CELESTE_GYM_HEADLESS"),
@@ -44,7 +45,10 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         On.Celeste.Player.Die += PlayerDie;
         On.Celeste.Lookout.Removed += LookoutRemoved;
         On.Celeste.Input.GetAimVector += GetAimVector;
-        server.Start(collectorPort);
+        collectorPort = server.Start(
+            collectorPortConfiguration.PreferredPort,
+            collectorPortConfiguration.AllowFallback
+        );
     }
 
     public override void Unload() {
@@ -438,14 +442,18 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         RequireCaptureSession(token).BindToSimulation(request.Inputs.Count);
     }
 
-    private static int ReadCollectorPort() {
+    private static CollectorPortConfiguration ReadCollectorPort() {
         string? raw = Environment.GetEnvironmentVariable("CELESTE_GYM_COLLECTOR_PORT");
-        if (string.IsNullOrWhiteSpace(raw)) return 32270;
+        if (string.IsNullOrWhiteSpace(raw)) {
+            return new CollectorPortConfiguration(32270, AllowFallback: true);
+        }
         if (!int.TryParse(raw, out int port) || port is <= 0 or > 65535) {
             throw new InvalidOperationException($"CELESTE_GYM_COLLECTOR_PORT must be between 1 and 65535, got {raw}");
         }
-        return port;
+        return new CollectorPortConfiguration(port, AllowFallback: false);
     }
+
+    private readonly record struct CollectorPortConfiguration(int PreferredPort, bool AllowFallback);
 
     private void PlayerUpdate(On.Celeste.Player.orig_Update orig, Player self) {
         interactiveSession?.BeginPlayerFrame(self);

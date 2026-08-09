@@ -2,7 +2,7 @@
 
 Everest 代码 Mod，为真实游戏 E2E 提供本地 TCP 采集端点。
 
-- 监听 `127.0.0.1:32270`。
+- 默认优先监听 `127.0.0.1:32270`。若用户手工启动游戏且该默认端口被占用或被系统拒绝，Mod 会回退到 loopback 临时端口，并在日志与 `ping.collector_port` 中报告实际端口。
 - 网络线程只负责 JSON 行协议；场景切换和玩家操作在游戏主线程执行。
 - 支持 `ping`、`simulate_area`、持久 `gym_reset/step/observe/close`、受认证的 `capture_start/status/stop/finalize`，以及 `interactive_start/status/stop` 原生游玩逐 Update 录制。
 - 按帧替换 MoveX、MoveY、Jump、Dash、CrouchDash、Grab 输入。
@@ -12,7 +12,7 @@ Everest 代码 Mod，为真实游戏 E2E 提供本地 TCP 采集端点。
 - `gym_reset.seed` 是可选的有符号 32 位整数。显式提供时会在创建 `Session` 或原地 `Level.Reload` 前重置 `Monocle.Calc.Random` 并清空其嵌套 RNG 栈；省略时保留游戏原有 RNG 行为。
 - 原地 reset 会取消尚未结束的房间切换 coroutine，并清除 hit-stop、Dash Assist freeze 和暂停状态，避免新 Player 在 tracker 中存在但永远收不到 `Player.Update`。
 - interactive 模式自动进入随仓库生成的 Playground；每次 `Player.Update` 前读取真实输入、整帧结束后抓取状态，停止时写出 `celeste-next-gym-trace` v1。它不替换 VirtualInput，也不把渲染帧当成物理帧。
-- `CELESTE_GYM_COLLECTOR_PORT` 可为隔离测试选择 Mod TCP 端口；默认仍为 `32270`。
+- `CELESTE_GYM_COLLECTOR_PORT` 可为隔离测试和 direct actor 指定固定 Mod TCP 端口。显式配置的端口保持 fail-fast，绝不静默回退，绑定异常会明确包含 `127.0.0.1:<port>`；只有未设置环境变量时，默认 `32270` 才允许在 AccessDenied/AddressAlreadyInUse 后回退。
 - `CELESTE_GYM_RUN_NONCE` 会随 `ping` 一并返回，同时返回游戏进程 PID 和实际监听端口，供 runner 验证自己连接的是本次启动的子进程。
 - `CELESTE_GYM_RECORDING_ROOT` 是 runner 创建的固定 per-run 录制根目录。协议不接受调用者提供输出路径；scenario、一次性 capture token 和所有派生路径都必须留在该物理目录内。
 

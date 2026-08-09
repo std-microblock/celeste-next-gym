@@ -30,5 +30,6 @@
     <Compile Include="..\Source\GymRandomPolicy.cs" Link="GymRandomPolicy.cs" />
     <Compile Include="..\Source\GymResetPolicy.cs" Link="GymResetPolicy.cs" />
     <Compile Include="..\Source\CollectorConnectionProtocol.cs" Link="CollectorConnectionProtocol.cs" />
+    <Compile Include="..\Source\CollectorListenerBinder.cs" Link="CollectorListenerBinder.cs" />
   </ItemGroup>
 </Project>
