@@ -23,6 +23,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
     private GymStepJob? gymStepJob;
     private RandomizerGenerationJob? randomizerGenerationJob;
     private GymEpisode? gymEpisode;
+    private string? activeGymAreaSid;
     private string[] gymOverlayLines = [];
     private GymFastLoopPatch? gymFastLoopPatch;
     private PresentationCaptureSession? captureSession;
@@ -244,8 +245,15 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                     int areaId = ResolveAreaId(request);
                     int areaMode = request.AreaMode;
                     AreaKey areaKey = GymAreaIdentity.CreateKey(areaId, areaMode);
+                    string areaSid = GymAreaIdentity.Sid(areaKey);
                     gymEpisode = null;
-                    gymResetJob = new GymResetJob(pending, Engine.Scene, areaId, areaMode);
+                    gymResetJob = new GymResetJob(
+                        pending,
+                        Engine.Scene,
+                        areaId,
+                        areaMode,
+                        areaSid
+                    );
                     GymResetPolicy.ClearEngineUpdateBlockers();
                     if (request.Seed is int seed) GymRandomPolicy.Reset(seed);
                     Session session = new(areaKey);
@@ -256,7 +264,12 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                     }
                     if (request.SkipTransitions
                         && Engine.Scene is Level activeLevel
-                        && GymAreaIdentity.Matches(activeLevel.Session.Area, areaId, areaMode)) {
+                        && GymAreaIdentity.CanResetInPlace(
+                            activeLevel.Session.Area,
+                            activeGymAreaSid,
+                            areaKey,
+                            areaSid
+                        )) {
                         // A new LevelLoader allocates the entire area's renderer,
                         // backdrop, particle and graphics infrastructure. Repeating
                         // that hundreds of times in a long-running RL actor grows
@@ -270,6 +283,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                             Engine.Scene,
                             areaId,
                             areaMode,
+                            areaSid,
                             inPlace: true
                         );
                         activeLevel.Completed = false;
@@ -308,9 +322,12 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                     }
                     if (Engine.Scene is not Level level
                         || !GymAreaIdentity.Matches(
-                            level.Session.Area,
+                            level.Session.Area.ID,
+                            (int) level.Session.Area.Mode,
+                            activeGymAreaSid ?? "",
                             episode.AreaId,
-                            episode.AreaMode
+                            episode.AreaMode,
+                            episode.AreaSid
                         )) {
                         throw new InvalidOperationException("gym episode level is no longer active");
                     }
@@ -322,9 +339,12 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                     GymEpisode episode = RequireGymEpisode(request.EpisodeId);
                     if (Engine.Scene is not Level level
                         || !GymAreaIdentity.Matches(
-                            level.Session.Area,
+                            level.Session.Area.ID,
+                            (int) level.Session.Area.Mode,
+                            activeGymAreaSid ?? "",
                             episode.AreaId,
-                            episode.AreaMode
+                            episode.AreaMode,
+                            episode.AreaSid
                         )) {
                         throw new InvalidOperationException("gym episode level is no longer active");
                     }
@@ -755,7 +775,16 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         GymResetJob reset = gymResetJob!;
         if (!reset.InPlace && ReferenceEquals(Engine.Scene, reset.SceneAtRequest)) return;
         if (Engine.Scene is not Level level
-            || !GymAreaIdentity.Matches(level.Session.Area, reset.AreaId, reset.AreaMode)) return;
+            || level.Session.Area.ID != reset.AreaId
+            || (int) level.Session.Area.Mode != reset.AreaMode) return;
+        if (reset.InPlace
+            && !string.Equals(activeGymAreaSid, reset.AreaSid, StringComparison.Ordinal)) return;
+        if (!reset.InPlace
+            && !string.Equals(
+                GymAreaIdentity.Sid(level.Session.Area),
+                reset.AreaSid,
+                StringComparison.Ordinal
+            )) return;
         if (reset.Pending.Request.SkipTransitions) level.Wipe?.Cancel();
         Player? player = level.Tracker.GetEntity<Player>();
         if (player is null) return;
@@ -784,6 +813,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         );
         PlayerFrame frame = SnapshotCapture.Capture(player, 0);
         episode.LastPlayer = frame;
+        activeGymAreaSid = reset.AreaSid;
         gymEpisode = episode;
         gymResetJob = null;
         reset.Pending.Completion.SetResult(new CollectorResponse {
@@ -836,9 +866,12 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         bool sceneChanged = Engine.Scene is not Level;
         bool roomChanged = sceneChanged
             || !GymAreaIdentity.Matches(
-                level.Session.Area,
+                level.Session.Area.ID,
+                (int) level.Session.Area.Mode,
+                activeGymAreaSid ?? "",
                 step.Episode.AreaId,
-                step.Episode.AreaMode
+                step.Episode.AreaMode,
+                step.Episode.AreaSid
             )
             || !string.Equals(level.Session.Level, step.Episode.StartRoom, StringComparison.Ordinal);
         Player? player = sceneChanged ? null : level.Tracker.GetEntity<Player>();
@@ -1101,12 +1134,14 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         Scene? sceneAtRequest,
         int areaId,
         int areaMode,
+        string areaSid,
         bool inPlace = false
     ) {
         public PendingRequest Pending { get; } = pending;
         public Scene? SceneAtRequest { get; } = sceneAtRequest;
         public int AreaId { get; } = areaId;
         public int AreaMode { get; } = areaMode;
+        public string AreaSid { get; } = areaSid;
         public bool InPlace { get; } = inPlace;
     }
 

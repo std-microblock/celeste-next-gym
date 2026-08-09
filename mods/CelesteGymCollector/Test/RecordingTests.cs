@@ -293,6 +293,47 @@ public sealed class RecordingTests : IDisposable {
         Assert.Throws<InvalidOperationException>(() => GymAreaIdentity.CreateKey(4, 3));
     }
 
+    [Fact]
+    public void GymAreaIdentityRejectsSameNumericAreaWithDifferentSid() {
+        AreaKey reusedKey = GymAreaIdentity.CreateKey(42, 0);
+        Assert.False(
+            GymAreaIdentity.CanResetInPlace(
+                reusedKey,
+                "randomizer/old-seed",
+                reusedKey,
+                "randomizer/new-seed"
+            )
+        );
+        Assert.True(
+            GymAreaIdentity.CanResetInPlace(
+                reusedKey,
+                "randomizer/new-seed",
+                reusedKey,
+                "randomizer/new-seed"
+            )
+        );
+        Assert.True(
+            GymAreaIdentity.Matches(
+                42,
+                0,
+                "randomizer/new-seed",
+                42,
+                0,
+                "randomizer/new-seed"
+            )
+        );
+        Assert.False(
+            GymAreaIdentity.Matches(
+                42,
+                0,
+                "randomizer/old-seed",
+                42,
+                0,
+                "randomizer/new-seed"
+            )
+        );
+    }
+
     [Theory]
     [InlineData("seed_42", null, null, "seed_42", "Short", "Normal")]
     [InlineData(" abc-123 ", "Medium", "Hard", "abc-123", "Medium", "Hard")]
