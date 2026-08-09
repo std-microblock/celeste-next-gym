@@ -145,6 +145,12 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                 throw new InvalidOperationException("cannot use the gym backend while recording is active");
             }
             CollectorRequest request = pending.Request;
+            RecordingSecurity.Authenticate(
+                runNonce,
+                Environment.ProcessId,
+                request.RunNonce,
+                request.ProcessId
+            );
             switch (request.Command) {
                 case "gym_reset": {
                     if (request.MaxEpisodeFrames is <= 0 or > 10_000_000) {

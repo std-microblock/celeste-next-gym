@@ -119,6 +119,29 @@ public sealed class RecordingTests : IDisposable {
         Assert.Throws<ArgumentOutOfRangeException>(() => ScriptedInputBuffer.Consume(-1));
     }
 
+    [Fact]
+    public async Task TcpConnectionProtocolProcessesMultipleJsonLinesInOrder() {
+        using StringReader reader = new("{\"request\":1}\n{\"request\":2}\n");
+        using StringWriter writer = new();
+        int sequence = 0;
+        await CollectorConnectionProtocol.RunAsync(
+            reader,
+            writer,
+            (line, _) => Task.FromResult($"{{\"sequence\":{++sequence},\"echo\":{line}}}"),
+            CancellationToken.None
+        );
+
+        string[] responses = writer.ToString().Split(
+            Environment.NewLine,
+            StringSplitOptions.RemoveEmptyEntries
+        );
+        Assert.Equal(2, responses.Length);
+        Assert.Contains("\"sequence\":1", responses[0]);
+        Assert.Contains("\"request\":1", responses[0]);
+        Assert.Contains("\"sequence\":2", responses[1]);
+        Assert.Contains("\"request\":2", responses[1]);
+    }
+
     [Theory]
     [InlineData(1)]
     [InlineData(16)]

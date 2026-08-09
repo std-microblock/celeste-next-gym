@@ -260,7 +260,12 @@ export class EverestTcpBackend implements CollectorBackend {
     requireObservation: boolean,
   ): Promise<GymResult> {
     const response = await this.send(
-      { command: `gym_${action}`, ...request },
+      {
+        command: `gym_${action}`,
+        run_nonce: this.runNonce,
+        process_id: this.processId,
+        ...request,
+      },
       signal,
     );
     if (!response.success) {

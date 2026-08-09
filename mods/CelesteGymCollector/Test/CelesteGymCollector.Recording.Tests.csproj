@@ -22,5 +22,6 @@
     <Compile Include="..\Source\ScriptedInputBuffer.cs" Link="ScriptedInputBuffer.cs" />
     <Compile Include="..\Source\Protocol.cs" Link="Protocol.cs" />
     <Compile Include="..\Source\GymFastLoopPolicy.cs" Link="GymFastLoopPolicy.cs" />
+    <Compile Include="..\Source\CollectorConnectionProtocol.cs" Link="CollectorConnectionProtocol.cs" />
   </ItemGroup>
 </Project>

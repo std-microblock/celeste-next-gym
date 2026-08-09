@@ -136,6 +136,8 @@ describe("Everest TCP backend", () => {
       calls++;
       if (calls === 1) {
         assert.equal(request.command, "gym_reset");
+        assert.equal(request.run_nonce, "run-nonce");
+        assert.equal(request.process_id, 4242);
         assert.equal(request.area_sid, "Example/Map");
         assert.equal(request.room, "start");
         assert.equal(request.skip_transitions, true);
@@ -144,11 +146,17 @@ describe("Everest TCP backend", () => {
         return gymResponse(episodeId, 0, true);
       }
       assert.equal(request.command, "gym_step");
+      assert.equal(request.run_nonce, "run-nonce");
+      assert.equal(request.process_id, 4242);
       assert.equal(request.episode_id, episodeId);
       assert.equal(request.inputs.length, 2);
       return gymResponse(episodeId, 2, false);
     });
-    const backend = new EverestTcpBackend({ port });
+    const backend = new EverestTcpBackend({
+      port,
+      runNonce: "run-nonce",
+      processId: 4242,
+    });
     const reset = await backend.gymReset(
       {
         area_sid: "Example/Map",

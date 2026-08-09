@@ -152,6 +152,18 @@ node scripts/gym-actors.mjs --actors 4 --area-id 1
 node scripts/gym-actors.mjs --actors 2 --area-id 0 --area-sid MyMod/MyMap
 ```
 
+训练器不需要 HTTP facade 时，可直接启动 Mod TCP actors：
+
+```powershell
+node scripts/gym-actors.mjs --actors 4 --area-id 1 --direct-tcp
+```
+
+Supervisor manifest 会为每个 slot 输出稳定的 `tcp_endpoint` / `tcp_host` / `tcp_port`，以及当前 generation 的 `auth.run_nonce` 和 `auth.process_id`。Generation restart 会复用相同 TCP port，但 nonce 和 PID 必然更新；客户端必须重新读取 supervisor manifest，并在恢复 rollout 前发送 `ping` 验证三元组 `run_nonce + process_id + collector_port`。
+
+Direct protocol 是 UTF-8 newline-delimited JSON：连接 loopback port，发送一个 JSON object 加 `\n`，读取对应的 `\n` 结尾 JSON response。Connection 可按顺序复用任意多次，从而避免每个短 action batch 的 TCP handshake；仍兼容发送一次后立即关闭的旧客户端。同一 connection 当前只允许一个 in-flight request，request/response 顺序严格一致。Gym 命令为 `gym_reset`、`gym_step`、`gym_observe`、`gym_close`；每个命令都必须携带当前 generation 的 `run_nonce` 和 `process_id`。`ping` 不需要认证，并返回用于 ownership handshake 的 nonce、PID 和 port。
+
+2026-08-09 的 4-actor persistent-connection gate 在每个 actor 复用单一 socket，完成 12 episodes、1,237 个短 action batches 和 5,526 physics frames，聚合 869.9 physics FPS，所有 slot 的 `restart_count` 均为 0。另一个 forced-generation gate 验证 TCP port 保持不变，而 nonce 和 PID 同时轮换。
+
 每个 actor 都有：
 
 - 独立动态 Mod TCP port 和 HTTP port；

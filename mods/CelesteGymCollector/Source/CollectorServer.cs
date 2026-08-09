@@ -46,20 +46,43 @@ internal sealed class CollectorServer : IDisposable {
         using (client)
         using (NetworkStream stream = client.GetStream())
         using (StreamReader reader = new(stream, Encoding.UTF8, leaveOpen: true))
-        using (StreamWriter writer = new(stream, new UTF8Encoding(false), leaveOpen: true) { AutoFlush = true }) {
+        using (StreamWriter writer = new(stream, new UTF8Encoding(false), leaveOpen: true)) {
             try {
-                string? line = await reader.ReadLineAsync(cancellation.Token);
-                CollectorRequest? request = line is null ? null : JsonSerializer.Deserialize<CollectorRequest>(line, json);
-                if (request is null) {
-                    await writer.WriteLineAsync(JsonSerializer.Serialize(new CollectorResponse { Success = false, Error = "invalid request" }, json));
-                    return;
-                }
-                PendingRequest pendingRequest = new(request);
-                pending.Enqueue(pendingRequest);
-                CollectorResponse response = await pendingRequest.Completion.Task.WaitAsync(TimeSpan.FromSeconds(60), cancellation.Token);
-                await writer.WriteLineAsync(JsonSerializer.Serialize(response, json));
-            } catch (Exception error) {
-                await writer.WriteLineAsync(JsonSerializer.Serialize(new CollectorResponse { Success = false, Error = error.Message }, json));
+                await CollectorConnectionProtocol.RunAsync(
+                    reader,
+                    writer,
+                    async (line, cancellationToken) => {
+                        CollectorResponse response;
+                        try {
+                            CollectorRequest? request =
+                                JsonSerializer.Deserialize<CollectorRequest>(line, json);
+                            if (request is null) {
+                                response = new CollectorResponse {
+                                    Success = false,
+                                    Error = "invalid request"
+                                };
+                            } else {
+                                PendingRequest pendingRequest = new(request);
+                                pending.Enqueue(pendingRequest);
+                                response = await pendingRequest.Completion.Task.WaitAsync(
+                                    TimeSpan.FromSeconds(60),
+                                    cancellationToken
+                                );
+                            }
+                        } catch (OperationCanceledException) {
+                            throw;
+                        } catch (Exception error) {
+                            response = new CollectorResponse {
+                                Success = false,
+                                Error = error.Message
+                            };
+                        }
+                        return JsonSerializer.Serialize(response, json);
+                    },
+                    cancellation.Token
+                );
+            } catch (OperationCanceledException) {
+            } catch (IOException) {
             }
         }
     }

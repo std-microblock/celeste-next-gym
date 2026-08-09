@@ -21,6 +21,7 @@ describe("persistent gym actor launcher", () => {
       soakPolicy: false,
       soakSeed: 1,
       soakActionFrames: 8,
+      directTcp: false,
     });
   });
 
@@ -48,6 +49,7 @@ describe("persistent gym actor launcher", () => {
         "12345",
         "--soak-action-frames",
         "12",
+        "--direct-tcp",
       ]),
       {
         count: 4,
@@ -62,6 +64,7 @@ describe("persistent gym actor launcher", () => {
         soakPolicy: true,
         soakSeed: 12345,
         soakActionFrames: 12,
+        directTcp: true,
       },
     );
   });

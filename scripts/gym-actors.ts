@@ -3,7 +3,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { closeSync, mkdirSync, openSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createServer } from "node:net";
+import { createConnection, createServer, type Socket } from "node:net";
 
 import {
   createRunContext,
@@ -40,6 +40,7 @@ interface ActorOptions {
   readonly soakPolicy: boolean;
   readonly soakSeed: number;
   readonly soakActionFrames: number;
+  readonly directTcp: boolean;
 }
 
 interface SoakInput {
@@ -53,14 +54,25 @@ interface SoakInput {
   readonly talk_pressed: boolean;
 }
 
+interface ActorGymResult {
+  readonly observation?: Record<string, unknown>;
+  readonly player_states: readonly Record<string, unknown>[];
+  readonly frames_executed: number;
+}
+
+interface ActorGymClient {
+  gymReset(request: Record<string, unknown>): Promise<ActorGymResult>;
+  gymStep(request: Record<string, unknown>): Promise<ActorGymResult>;
+}
+
 interface RunningActor {
   readonly index: number;
   readonly context: RunContext;
-  readonly gymUrl: string;
+  readonly gymUrl?: string;
   readonly game: ChildProcess;
   readonly gameIdentity: ProcessIdentity;
-  readonly service: ChildProcess;
-  readonly serviceIdentity: ProcessIdentity;
+  readonly service?: ChildProcess;
+  readonly serviceIdentity?: ProcessIdentity;
   readonly gameStdoutPath: string;
   readonly gameStderrPath: string;
   readonly serviceStdoutPath: string;
@@ -85,6 +97,7 @@ export function parseActorOptions(argv: readonly string[]): ActorOptions {
   let soakPolicy = false;
   let soakSeed = 1;
   let soakActionFrames = 8;
+  let directTcp = false;
   for (let index = 0; index < argv.length; index++) {
     const argument = argv[index];
     if (argument === "--actors") count = boundedInteger(argv[++index], argument, 1, 32);
@@ -99,6 +112,7 @@ export function parseActorOptions(argv: readonly string[]): ActorOptions {
     else if (argument === "--soak-policy") soakPolicy = true;
     else if (argument === "--soak-seed") soakSeed = boundedInteger(argv[++index], argument, 0, 0xffff_ffff);
     else if (argument === "--soak-action-frames") soakActionFrames = boundedInteger(argv[++index], argument, 1, 64);
+    else if (argument === "--direct-tcp") directTcp = true;
     else throw new Error(`unknown gym actor argument: ${argument}`);
   }
   return Object.freeze({
@@ -114,6 +128,7 @@ export function parseActorOptions(argv: readonly string[]): ActorOptions {
     soakPolicy,
     soakSeed,
     soakActionFrames,
+    directTcp,
   });
 }
 
@@ -157,17 +172,26 @@ export async function runActorLauncher(): Promise<void> {
         updated_at: new Date().toISOString(),
         actors: actors.map((actor) => ({
           index: actor.index,
-          gym_url: actor.gymUrl,
+          tcp_endpoint: `tcp://127.0.0.1:${actor.modPort}`,
+          tcp_host: "127.0.0.1",
+          tcp_port: actor.modPort,
+          auth: {
+            run_nonce: actor.context.runNonce,
+            process_id: actor.gameIdentity.processId,
+          },
+          ...(actor.gymUrl ? { gym_url: actor.gymUrl } : {}),
           manifest: actor.context.manifestPath,
           game_pid: actor.gameIdentity.processId,
-          service_pid: actor.serviceIdentity.processId,
+          ...(actor.serviceIdentity ? { service_pid: actor.serviceIdentity.processId } : {}),
           restart_count: restartCounts.get(actor.index) ?? 0,
           generation: actor.generation,
           logs: {
             game_stdout: actor.gameStdoutPath,
             game_stderr: actor.gameStderrPath,
-            service_stdout: actor.serviceStdoutPath,
-            service_stderr: actor.serviceStderrPath,
+            ...(actor.serviceIdentity ? {
+              service_stdout: actor.serviceStdoutPath,
+              service_stderr: actor.serviceStderrPath,
+            } : {}),
           },
         })),
       }, null, 2)}\n`,
@@ -182,7 +206,9 @@ export async function runActorLauncher(): Promise<void> {
     writeSupervisor(`stopping:${reason}`);
     await Promise.allSettled(
       actors.flatMap((actor) => [
-        cleanupOwned("collector", actor.service, actor.serviceIdentity),
+        ...(actor.serviceIdentity
+          ? [cleanupOwned("collector", actor.service, actor.serviceIdentity)]
+          : []),
         cleanupOwned("Celeste", actor.game, actor.gameIdentity),
       ]),
     );
@@ -200,12 +226,14 @@ export async function runActorLauncher(): Promise<void> {
       restart_reason: reason,
     });
     await Promise.allSettled([
-      cleanupOwned("collector", previous.service, previous.serviceIdentity),
+      ...(previous.serviceIdentity
+        ? [cleanupOwned("collector", previous.service, previous.serviceIdentity)]
+        : []),
       cleanupOwned("Celeste", previous.game, previous.gameIdentity),
     ]);
     await Promise.all([
       waitForLoopbackPortFree(previous.modPort),
-      waitForLoopbackPortFree(previous.httpPort),
+      ...(previous.httpPort ? [waitForLoopbackPortFree(previous.httpPort)] : []),
     ]);
     const replacement = await startActor(
       index,
@@ -227,7 +255,12 @@ export async function runActorLauncher(): Promise<void> {
       reason,
       restart_count: restartCounts.get(index),
       generation: replacement.generation,
-      gym_url: replacement.gymUrl,
+      tcp_endpoint: `tcp://127.0.0.1:${replacement.modPort}`,
+      auth: {
+        run_nonce: replacement.context.runNonce,
+        process_id: replacement.gameIdentity.processId,
+      },
+      ...(replacement.gymUrl ? { gym_url: replacement.gymUrl } : {}),
       manifest: replacement.context.manifestPath,
     })}\n`);
     return replacement;
@@ -248,15 +281,24 @@ export async function runActorLauncher(): Promise<void> {
       manifest: supervisorManifest,
       actors: actors.map((actor) => ({
         index: actor.index,
-        gym_url: actor.gymUrl,
+        tcp_endpoint: `tcp://127.0.0.1:${actor.modPort}`,
+        tcp_host: "127.0.0.1",
+        tcp_port: actor.modPort,
+        auth: {
+          run_nonce: actor.context.runNonce,
+          process_id: actor.gameIdentity.processId,
+        },
+        ...(actor.gymUrl ? { gym_url: actor.gymUrl } : {}),
         manifest: actor.context.manifestPath,
         game_pid: actor.gameIdentity.processId,
-        service_pid: actor.serviceIdentity.processId,
+        ...(actor.serviceIdentity ? { service_pid: actor.serviceIdentity.processId } : {}),
         logs: {
           game_stdout: actor.gameStdoutPath,
           game_stderr: actor.gameStderrPath,
-          service_stdout: actor.serviceStdoutPath,
-          service_stderr: actor.serviceStderrPath,
+          ...(actor.serviceIdentity ? {
+            service_stdout: actor.serviceStdoutPath,
+            service_stderr: actor.serviceStderrPath,
+          } : {}),
         },
       })),
     };
@@ -275,10 +317,10 @@ export async function runActorLauncher(): Promise<void> {
     while (!shuttingDown) {
       for (let index = 0; index < actors.length && !shuttingDown; index++) {
         const actor = actors[index]!;
-        if (actor.game.exitCode !== null || actor.service.exitCode !== null) {
+        if (actor.game.exitCode !== null || actor.service?.exitCode !== null && actor.service?.exitCode !== undefined) {
           await restartActor(
             index,
-            `child-exit:game=${actor.game.exitCode}:service=${actor.service.exitCode}`,
+            `child-exit:game=${actor.game.exitCode}:service=${actor.service?.exitCode ?? "none"}`,
           );
         }
       }
@@ -367,6 +409,37 @@ async function startActor(
       EVEREST_READY_TIMEOUT_MS,
     );
     updateRunManifest(context, { status: "persistent-actor-game-authenticated", everest_ping: ping });
+
+    if (options.directTcp) {
+      updateRunManifest(context, {
+        status: "persistent-actor-ready",
+        transport: "direct-tcp",
+        tcp_endpoint: `tcp://127.0.0.1:${modPort.port}`,
+        tcp_host: "127.0.0.1",
+        tcp_port: modPort.port,
+        auth: {
+          run_nonce: context.runNonce,
+          process_id: gameIdentity.processId,
+        },
+        logs: {
+          game_stdout: gameStdoutPath,
+          game_stderr: gameStderrPath,
+        },
+      });
+      return {
+        index,
+        context,
+        game,
+        gameIdentity,
+        gameStdoutPath,
+        gameStderrPath,
+        serviceStdoutPath,
+        serviceStderrPath,
+        httpPort: httpPort.port,
+        modPort: modPort.port,
+        generation,
+      };
+    }
 
     await httpPort.release();
     const serviceStdoutFd = openSync(serviceStdoutPath, "a");
@@ -495,8 +568,23 @@ async function runSoak(
     if (options.soakRestartAt === resetIndex + 1) {
       for (let actorIndex = 0; actorIndex < actors.length; actorIndex++) {
         const previousUrl = actors[actorIndex]!.gymUrl;
+        const previousPort = actors[actorIndex]!.modPort;
+        const previousNonce = actors[actorIndex]!.context.runNonce;
+        const previousProcessId = actors[actorIndex]!.gameIdentity.processId;
         const replacement = await restartActor(actorIndex, "forced-soak-restart");
-        if (replacement.gymUrl !== previousUrl) {
+        if (replacement.modPort !== previousPort) {
+          throw new Error(
+            `actor ${actorIndex} public Mod TCP port changed across restart: ` +
+            `${previousPort} -> ${replacement.modPort}`
+          );
+        }
+        if (replacement.context.runNonce === previousNonce
+            || replacement.gameIdentity.processId === previousProcessId) {
+          throw new Error(
+            `actor ${actorIndex} did not rotate TCP generation ownership across restart`
+          );
+        }
+        if (!options.directTcp && replacement.gymUrl !== previousUrl) {
           throw new Error(
             `actor ${actorIndex} public Gym URL changed across restart: ` +
             `${previousUrl} -> ${replacement.gymUrl}`
@@ -507,7 +595,7 @@ async function runSoak(
     await Promise.all(actors.map(async (_, actorIndex) => {
       if (options.soakPolicy) {
         const actor = actors[actorIndex]!;
-        const client = createCollectorClient(serviceRoot, actor.httpPort);
+        const client = createActorGymClient(actor, serviceRoot);
         const reset = await client.gymReset({
           area_id: options.areaId,
           ...(options.areaSid ? { area_sid: options.areaSid } : {}),
@@ -531,7 +619,7 @@ async function runSoak(
         let episodeFrames = 0;
         let batchIndex = 0;
         while (episodeFrames < options.soakFrames) {
-          if (actor.game.exitCode !== null || actor.service.exitCode !== null) {
+          if (actor.game.exitCode !== null || (actor.service?.exitCode ?? null) !== null) {
             throw new Error(
               `actor ${actorIndex} exited during strict policy soak: ` +
               `game=${actor.game.exitCode}:service=${actor.service.exitCode}`
@@ -572,7 +660,7 @@ async function runSoak(
       for (let attempt = 0; ; attempt++) {
         const actor = actors[actorIndex]!;
         try {
-          const client = createCollectorClient(serviceRoot, actor.httpPort);
+          const client = createActorGymClient(actor, serviceRoot);
           const reset = await client.gymReset({
             area_id: options.areaId,
             ...(options.areaSid ? { area_sid: options.areaSid } : {}),
@@ -623,6 +711,154 @@ async function runSoak(
       );
     }
   }
+}
+
+const directGymClients = new WeakMap<RunningActor, ActorGymClient>();
+
+function createActorGymClient(actor: RunningActor, serviceRoot: string): ActorGymClient {
+  if (actor.serviceIdentity) {
+    return createCollectorClient(serviceRoot, actor.httpPort);
+  }
+  const existing = directGymClients.get(actor);
+  if (existing) return existing;
+  const transport = new PersistentDirectGymTransport(actor);
+  const client: ActorGymClient = {
+    gymReset: async (request) => await transport.send({
+      command: "gym_reset",
+      ...request,
+    }),
+    gymStep: async (request) => await transport.send({
+      command: "gym_step",
+      ...request,
+    }),
+  };
+  directGymClients.set(actor, client);
+  return client;
+}
+
+class PersistentDirectGymTransport {
+  private socket?: Socket;
+  private buffer = "";
+  private connecting?: Promise<void>;
+  private pending?: {
+    readonly resolve: (response: Record<string, unknown>) => void;
+    readonly reject: (error: unknown) => void;
+    readonly timer: ReturnType<typeof setTimeout>;
+  };
+
+  public constructor(private readonly actor: RunningActor) {}
+
+  public async send(request: Record<string, unknown>): Promise<ActorGymResult> {
+    if (this.pending) throw new Error("direct Gym TCP permits one in-flight request per actor");
+    await this.ensureConnected();
+    const payload = {
+      ...request,
+      run_nonce: this.actor.context.runNonce,
+      process_id: this.actor.gameIdentity.processId,
+    };
+    const response = await new Promise<Record<string, unknown>>((resolveResponse, reject) => {
+      const timer = setTimeout(() => {
+        this.failPending(new Error("direct Gym TCP request timed out after 60000 ms"));
+        this.resetSocket();
+      }, 60_000);
+      timer.unref();
+      this.pending = { resolve: resolveResponse, reject, timer };
+      this.socket!.write(`${JSON.stringify(payload)}\n`);
+    });
+    return validateDirectGymResponse(response);
+  }
+
+  private async ensureConnected(): Promise<void> {
+    if (this.socket && !this.socket.destroyed) return;
+    if (this.connecting) return await this.connecting;
+    this.connecting = new Promise<void>((resolveConnected, reject) => {
+      const socket = createConnection({ host: "127.0.0.1", port: this.actor.modPort });
+      this.socket = socket;
+      socket.setEncoding("utf8");
+      socket.setNoDelay(true);
+      socket.once("connect", resolveConnected);
+      socket.on("data", (chunk: string) => this.receive(chunk));
+      socket.on("error", (error) => {
+        this.failPending(error);
+        if (!socket.connecting) this.resetSocket(socket);
+        else reject(error);
+      });
+      socket.on("close", () => {
+        this.failPending(new Error("direct Gym TCP connection closed"));
+        this.resetSocket(socket);
+      });
+    }).finally(() => {
+      this.connecting = undefined;
+    });
+    return await this.connecting;
+  }
+
+  private receive(chunk: string): void {
+    this.buffer += chunk;
+    const newline = this.buffer.indexOf("\n");
+    if (newline < 0) return;
+    const line = this.buffer.slice(0, newline);
+    this.buffer = this.buffer.slice(newline + 1);
+    const pending = this.pending;
+    if (!pending) {
+      this.resetSocket();
+      return;
+    }
+    this.pending = undefined;
+    clearTimeout(pending.timer);
+    try {
+      const decoded = JSON.parse(line);
+      if (!decoded || typeof decoded !== "object" || Array.isArray(decoded)) {
+        throw new Error("response is not an object");
+      }
+      pending.resolve(decoded as Record<string, unknown>);
+    } catch (error) {
+      pending.reject(new Error(`invalid direct Gym TCP response: ${String(error)}`));
+      this.resetSocket();
+    }
+  }
+
+  private failPending(error: unknown): void {
+    const pending = this.pending;
+    if (!pending) return;
+    this.pending = undefined;
+    clearTimeout(pending.timer);
+    pending.reject(error);
+  }
+
+  private resetSocket(expected?: Socket): void {
+    if (expected && this.socket !== expected) return;
+    const socket = this.socket;
+    this.socket = undefined;
+    this.buffer = "";
+    socket?.destroy();
+  }
+}
+
+function validateDirectGymResponse(response: Record<string, unknown>): ActorGymResult {
+  if (response.success !== true) {
+    throw new Error(`direct Gym TCP failed: ${String(response.error ?? "unknown error")}`);
+  }
+  const observation = response.observation;
+  if (observation !== undefined
+      && (!observation || typeof observation !== "object" || Array.isArray(observation))) {
+    throw new Error("direct Gym TCP observation is not an object");
+  }
+  const framesExecuted = response.frames_executed ?? 0;
+  if (!Number.isSafeInteger(framesExecuted) || (framesExecuted as number) < 0) {
+    throw new Error("direct Gym TCP frames_executed is invalid");
+  }
+  const playerStates = response.player_states ?? [];
+  if (!Array.isArray(playerStates)) {
+    throw new Error("direct Gym TCP player_states is not an array");
+  }
+  return {
+    ...(observation === undefined
+      ? {}
+      : { observation: observation as Record<string, unknown> }),
+    player_states: playerStates as Record<string, unknown>[],
+    frames_executed: framesExecuted as number,
+  };
 }
 
 export function createSeededRandom(seed: number): () => number {
