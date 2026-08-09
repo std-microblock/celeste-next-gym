@@ -294,6 +294,14 @@ public sealed class RecordingTests : IDisposable {
     }
 
     [Fact]
+    public void RandomizerSameAreaResetUsesSessionLoaderInsteadOfLevelReload() {
+        Assert.True(GymResetPolicy.UseSessionLoaderForSameArea("randomizer/generated-seed"));
+        Assert.True(GymResetPolicy.UseSessionLoaderForSameArea("Randomizer/generated-seed"));
+        Assert.False(GymResetPolicy.UseSessionLoaderForSameArea("Celeste/1-ForsakenCity"));
+        Assert.False(GymResetPolicy.UseSessionLoaderForSameArea("CelesteGymPlayground/Playground"));
+    }
+
+    [Fact]
     public void GymAreaIdentityRejectsSameNumericAreaWithDifferentSid() {
         AreaKey reusedKey = GymAreaIdentity.CreateKey(42, 0);
         Assert.False(

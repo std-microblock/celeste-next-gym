@@ -19,6 +19,9 @@ internal static class GymResetPolicy {
         Engine.DashAssistFreezePress = false;
     }
 
+    public static bool UseSessionLoaderForSameArea(string areaSid) =>
+        areaSid.StartsWith("randomizer/", StringComparison.OrdinalIgnoreCase);
+
     public static void PrepareInPlaceLevel(Level level) {
         // A gym episode terminates as soon as Session.Level changes. At that
         // point Level's private room-transition coroutine is deliberately still

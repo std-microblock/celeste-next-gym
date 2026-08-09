@@ -281,6 +281,25 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                             areaKey,
                             areaSid
                         )) {
+                        if (GymResetPolicy.UseSessionLoaderForSameArea(areaSid)) {
+                            // Randomizer's LevelEnter initializes flags and
+                            // inventory on this Session. Keep that initialized
+                            // Session, but never call Level.Reload: some baked
+                            // rooms contain loader state that Reload cannot
+                            // reconstruct and crash with a NullReference.
+                            Session initializedSession = activeLevel.Session;
+                            if (request.DreamDash) {
+                                initializedSession.Inventory.DreamDash = true;
+                            }
+                            if (!string.IsNullOrWhiteSpace(request.Room)) {
+                                initializedSession.Level = request.Room;
+                                initializedSession.RespawnPoint = null;
+                            }
+                            Engine.Scene = new LevelLoader(initializedSession) {
+                                PlayerIntroTypeOverride = Player.IntroTypes.None
+                            };
+                            break;
+                        }
                         // A new LevelLoader allocates the entire area's renderer,
                         // backdrop, particle and graphics infrastructure. Repeating
                         // that hundreds of times in a long-running RL actor grows
