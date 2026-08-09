@@ -14,9 +14,12 @@ import { afterEach, describe, it } from "node:test";
 
 import {
   createRunContext,
+  isPortInRanges,
   isOutsidePortRange,
+  parseWindowsExcludedTcpPortRanges,
   pingEverest,
   readSystemDynamicTcpPortRange,
+  readSystemExcludedTcpPortRanges,
   reserveLongLivedLoopbackPort,
   reserveLoopbackPort,
   terminateOwnedProcess,
@@ -51,10 +54,39 @@ describe("E2E isolation", () => {
 
   it("reserves long-lived server ports outside the system TCP dynamic range", async () => {
     const dynamicRange = readSystemDynamicTcpPortRange();
-    const reservation = await reserveLongLivedLoopbackPort(dynamicRange);
+    const excludedRanges = readSystemExcludedTcpPortRanges();
+    const reservation = await reserveLongLivedLoopbackPort(dynamicRange, excludedRanges);
     assert.ok(reservation.port >= 20_000 && reservation.port <= 40_000);
     assert.equal(isOutsidePortRange(reservation.port, dynamicRange), true);
+    assert.equal(isPortInRanges(reservation.port, excludedRanges), false);
     await reservation.release();
+  });
+
+  it("never allocates the historical Windows ephemeral port that caused bind 10013", async () => {
+    const windowsEphemeralRange = { start: 49_152, end: 65_535 };
+    assert.equal(isOutsidePortRange(58_041, windowsEphemeralRange), false);
+    const reservation = await reserveLongLivedLoopbackPort(windowsEphemeralRange, []);
+    assert.ok(reservation.port >= 20_000 && reservation.port <= 40_000);
+    assert.equal(isOutsidePortRange(reservation.port, windowsEphemeralRange), true);
+    await reservation.release();
+  });
+
+  it("parses and rejects Windows administered and automatic TCP exclusions", () => {
+    const ranges = parseWindowsExcludedTcpPortRanges(`
+Protocol tcp Port Exclusion Ranges
+
+Start Port    End Port
+----------    --------
+     22000       22099
+     32100       32149       *
+`);
+    assert.deepEqual(ranges, [
+      { start: 22_000, end: 22_099 },
+      { start: 32_100, end: 32_149 },
+    ]);
+    assert.equal(isPortInRanges(22_050, ranges), true);
+    assert.equal(isPortInRanges(30_000, ranges), false);
+    assert.equal(isPortInRanges(32_149, ranges), true);
   });
 
   it("skips a configured dynamic range even when it overlaps the low port pool", async () => {

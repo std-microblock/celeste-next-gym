@@ -39,18 +39,21 @@ export async function reserveLoopbackPort(): Promise<PortReservation> {
 
 export async function reserveLongLivedLoopbackPort(
   dynamicRange = readSystemDynamicTcpPortRange(),
+  excludedRanges = readSystemExcludedTcpPortRanges(),
 ): Promise<PortReservation> {
   const candidateCount = LONG_LIVED_PORT_MAX - LONG_LIVED_PORT_MIN + 1;
   const first = randomInt(candidateCount);
   for (let offset = 0; offset < candidateCount; offset++) {
     const port = LONG_LIVED_PORT_MIN + ((first + offset) % candidateCount);
     if (port >= dynamicRange.start && port <= dynamicRange.end) continue;
+    if (isPortInRanges(port, excludedRanges)) continue;
     const reservation = await tryReservePort(port);
     if (reservation) return reservation;
   }
   throw new Error(
     `no long-lived loopback TCP port is available outside dynamic range ` +
-    `${dynamicRange.start}-${dynamicRange.end}`,
+    `${dynamicRange.start}-${dynamicRange.end} and excluded ranges ` +
+    `${formatPortRanges(excludedRanges)}`,
   );
 }
 
@@ -75,8 +78,40 @@ export function readSystemDynamicTcpPortRange(): TcpPortRange {
   return { start: 49_152, end: 65_535 };
 }
 
+export function readSystemExcludedTcpPortRanges(): TcpPortRange[] {
+  if (process.platform !== "win32") return [];
+  try {
+    const output = execFileSync(
+      "netsh",
+      ["int", "ipv4", "show", "excludedportrange", "protocol=tcp"],
+      { encoding: "utf8", windowsHide: true },
+    );
+    return parseWindowsExcludedTcpPortRanges(output);
+  } catch {
+    return [];
+  }
+}
+
+export function parseWindowsExcludedTcpPortRanges(output: string): TcpPortRange[] {
+  return [...output.matchAll(/^\s*(\d+)\s+(\d+)(?:\s+\*)?\s*$/gm)]
+    .map((match) => ({
+      start: Number.parseInt(match[1]!, 10),
+      end: Number.parseInt(match[2]!, 10),
+    }))
+    .filter((range) => range.start > 0 && range.end >= range.start && range.end <= 65_535);
+}
+
+export function isPortInRanges(port: number, ranges: readonly TcpPortRange[]): boolean {
+  return ranges.some((range) => port >= range.start && port <= range.end);
+}
+
 export function isOutsidePortRange(port: number, range: TcpPortRange): boolean {
   return port < range.start || port > range.end;
+}
+
+function formatPortRanges(ranges: readonly TcpPortRange[]): string {
+  if (ranges.length === 0) return "(none)";
+  return ranges.map((range) => `${range.start}-${range.end}`).join(",");
 }
 
 async function tryReservePort(port: number): Promise<PortReservation | undefined> {

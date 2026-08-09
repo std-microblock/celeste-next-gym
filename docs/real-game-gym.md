@@ -160,7 +160,7 @@ node scripts/gym-actors.mjs --actors 4 --area-id 1 --direct-tcp
 
 Supervisor manifest 会为每个 slot 输出稳定的 `tcp_endpoint` / `tcp_host` / `tcp_port`，以及当前 generation 的 `auth.run_nonce` 和 `auth.process_id`。Generation restart 会复用相同 TCP port，但 nonce 和 PID 必然更新；客户端必须重新读取 supervisor manifest，并在恢复 rollout 前发送 `ping` 验证三元组 `run_nonce + process_id + collector_port`。
 
-长期 actor 的 Mod TCP 与可选 HTTP listener 不使用 `bind(0)` 返回的 Windows ephemeral port。Launcher 会读取系统 TCP dynamic range（`netsh int ipv4 show dynamicport tcp`），在 `20000..40000` 中排除该范围并逐端口进行 exclusive bind reservation。这样 generation restart 复用 server port 时，不会与 persistent client 连接产生的本地 ephemeral/TIME_WAIT 端口冲突。
+长期 actor 的 Mod TCP 与可选 HTTP listener 不使用 `bind(0)` 返回的 Windows ephemeral port。Launcher 会读取系统 TCP dynamic range（`netsh int ipv4 show dynamicport tcp`）和 excluded port ranges（`netsh int ipv4 show excludedportrange protocol=tcp`），在 `20000..40000` 中同时排除这些范围并逐端口进行 exclusive bind reservation。这样既不会踩到 Hyper-V/WinNAT 等系统保留端口，也不会在 generation restart 复用 server port 时与 persistent client 连接产生的本地 ephemeral/TIME_WAIT 端口冲突。
 
 每个 generation 还通过 `EVEREST_LOG_FILENAME` 使用独立的 `celeste-gym-<nonce>.txt`，并把路径写入 manifest 的 `logs.everest_log`。多个 repository-owned Celeste 进程不会再轮换、移动或截断同一个 game-root `log.txt`，同步退出时也能保留每个进程自己的完整 Everest 错误记录。
 
