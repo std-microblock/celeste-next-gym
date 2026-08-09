@@ -34,6 +34,7 @@ interface ActorOptions {
   readonly areaMode: number;
   readonly areaSid?: string;
   readonly showWindows: boolean;
+  readonly skipPrepareMods: boolean;
   readonly smoke: boolean;
   readonly seedSmoke: boolean;
   readonly seedSmokeSeed: number;
@@ -106,6 +107,7 @@ export function parseActorOptions(argv: readonly string[]): ActorOptions {
   let areaMode = 0;
   let areaSid: string | undefined;
   let showWindows = false;
+  let skipPrepareMods = false;
   let smoke = false;
   let seedSmoke = false;
   let seedSmokeSeed = 8_675_309;
@@ -128,6 +130,7 @@ export function parseActorOptions(argv: readonly string[]): ActorOptions {
     else if (argument === "--area-mode") areaMode = boundedInteger(argv[++index], argument, 0, 2);
     else if (argument === "--area-sid") areaSid = requiredValue(argv[++index], argument);
     else if (argument === "--show-windows") showWindows = true;
+    else if (argument === "--skip-prepare-mods") skipPrepareMods = true;
     else if (argument === "--smoke") smoke = true;
     else if (argument === "--seed-smoke") seedSmoke = true;
     else if (argument === "--seed-smoke-seed") seedSmokeSeed = boundedInteger(
@@ -166,6 +169,7 @@ export function parseActorOptions(argv: readonly string[]): ActorOptions {
     areaMode,
     ...(areaSid ? { areaSid } : {}),
     showWindows,
+    skipPrepareMods,
     smoke,
     seedSmoke,
     seedSmokeSeed,
@@ -199,7 +203,7 @@ export async function runActorLauncher(): Promise<void> {
 
   // The physical repository-owned Mods directory is shared by actors, so build
   // and install once before any Celeste child starts reading it.
-  prepareMods(paths, gameInstall);
+  if (!options.skipPrepareMods) prepareMods(paths, gameInstall);
 
   const supervisorRoot = resolve(
     repoRoot,
