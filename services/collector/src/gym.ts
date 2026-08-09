@@ -17,6 +17,8 @@ export interface GymResetRequest {
   skip_transitions: boolean;
   max_episode_frames: number;
   include_entities: boolean;
+  include_player_states: boolean;
+  fast_mode: boolean;
 }
 
 export interface GymStepRequest {
@@ -59,6 +61,7 @@ export interface GymObservation {
   area_id: number;
   area_sid: string;
   room: string;
+  fast_mode: boolean;
   player: PlayerSnapshot;
   room_geometry?: GymRoomGeometry | null;
   entities: GymEntityFrame[];
@@ -179,6 +182,14 @@ function decodeReset(root: Record<string, unknown>): GymResetRequest {
       root.include_entities === undefined
         ? true
         : requireBoolean(root.include_entities, "include_entities"),
+    include_player_states:
+      root.include_player_states === undefined
+        ? true
+        : requireBoolean(root.include_player_states, "include_player_states"),
+    fast_mode:
+      root.fast_mode === undefined
+        ? false
+        : requireBoolean(root.fast_mode, "fast_mode"),
   };
 }
 
@@ -187,6 +198,9 @@ function validateObservation(observation: GymObservation): void {
   requireUnsignedInteger(observation.episode_frame, "observation.episode_frame");
   requireUnsignedInteger(observation.area_id, "observation.area_id");
   requireNonEmptyString(observation.room, "observation.room");
+  if (typeof observation.fast_mode !== "boolean") {
+    throw new Error("Collector backend returned invalid observation.fast_mode");
+  }
   validatePlayerSnapshot(observation.player, "observation.player");
   if (!Array.isArray(observation.entities)) {
     throw new Error("Collector backend returned invalid observation.entities");

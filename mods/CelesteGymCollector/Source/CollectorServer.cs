@@ -20,6 +20,7 @@ internal sealed class CollectorServer : IDisposable {
     private Task? acceptLoop;
 
     public bool TryDequeue(out PendingRequest? request) => pending.TryDequeue(out request);
+    public bool TryPeek(out PendingRequest? request) => pending.TryPeek(out request);
 
     public void Start(int port = 32270) {
         listener = new TcpListener(IPAddress.Loopback, port);
@@ -70,4 +71,3 @@ internal sealed class CollectorServer : IDisposable {
         cancellation.Dispose();
     }
 }
-

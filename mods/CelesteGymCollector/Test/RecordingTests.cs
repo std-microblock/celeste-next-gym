@@ -119,6 +119,61 @@ public sealed class RecordingTests : IDisposable {
         Assert.Throws<ArgumentOutOfRangeException>(() => ScriptedInputBuffer.Consume(-1));
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(16)]
+    [InlineData(4096)]
+    public void FastLoopAcceptsTheEntireSupportedGymBatch(int frameCount) {
+        string episodeId = new('a', 32);
+        CollectorRequest request = new() {
+            Command = "gym_step",
+            EpisodeId = episodeId,
+            Inputs = Enumerable.Range(0, frameCount).Select(_ => new FrameInput()).ToList()
+        };
+
+        Assert.Equal(
+            frameCount,
+            GymFastLoopPolicy.SelectFrameCount(true, false, episodeId, request)
+        );
+    }
+
+    [Fact]
+    public void FastLoopCannotAffectDefaultOrUnrelatedGameRequests() {
+        string episodeId = new('a', 32);
+        CollectorRequest step = new() {
+            Command = "gym_step",
+            EpisodeId = episodeId,
+            Inputs = [new FrameInput()]
+        };
+        CollectorRequest observe = new() {
+            Command = "gym_observe",
+            EpisodeId = episodeId
+        };
+
+        Assert.Equal(0, GymFastLoopPolicy.SelectFrameCount(false, false, episodeId, step));
+        Assert.Equal(0, GymFastLoopPolicy.SelectFrameCount(true, true, episodeId, step));
+        Assert.Equal(0, GymFastLoopPolicy.SelectFrameCount(true, false, "different", step));
+        Assert.Equal(0, GymFastLoopPolicy.SelectFrameCount(true, false, episodeId, observe));
+        Assert.Equal(0, GymFastLoopPolicy.SelectFrameCount(true, false, episodeId, null));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(4097)]
+    public void FastLoopRejectsUnsupportedBatchSizes(int frameCount) {
+        string episodeId = new('a', 32);
+        CollectorRequest request = new() {
+            Command = "gym_step",
+            EpisodeId = episodeId,
+            Inputs = Enumerable.Range(0, frameCount).Select(_ => new FrameInput()).ToList()
+        };
+
+        Assert.Equal(
+            0,
+            GymFastLoopPolicy.SelectFrameCount(true, false, episodeId, request)
+        );
+    }
+
     public void Dispose() {
         if (Directory.Exists(temporaryRoot)) Directory.Delete(temporaryRoot, recursive: true);
     }

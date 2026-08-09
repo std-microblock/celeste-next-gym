@@ -137,6 +137,8 @@ export class EverestTcpBackend implements CollectorBackend {
         skip_transitions: request.skip_transitions,
         max_episode_frames: request.max_episode_frames,
         include_entities: request.include_entities,
+        include_player_states: request.include_player_states,
+        fast_mode: request.fast_mode,
       },
       signal,
       true,

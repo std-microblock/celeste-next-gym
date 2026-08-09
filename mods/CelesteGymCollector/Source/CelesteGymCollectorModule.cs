@@ -15,6 +15,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
     private GymResetJob? gymResetJob;
     private GymStepJob? gymStepJob;
     private GymEpisode? gymEpisode;
+    private GymFastLoopPatch? gymFastLoopPatch;
     private PresentationCaptureSession? captureSession;
     private InteractiveRecordingSession? interactiveSession;
     private readonly Dictionary<VirtualButton, List<VirtualButton.Node>> originalButtonNodes = [];
@@ -24,6 +25,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         .GetProperty(nameof(VirtualJoystick.Value), BindingFlags.Instance | BindingFlags.Public)!;
 
     public override void Load() {
+        gymFastLoopPatch = new GymFastLoopPatch(SelectFastLoopFrameCount, () => gymStepJob is not null);
         On.Monocle.Engine.Update += EngineUpdate;
         On.Celeste.Celeste.RenderCore += CelesteRenderCore;
         On.Celeste.Player.Update += PlayerUpdate;
@@ -45,9 +47,12 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         On.Celeste.Player.Die -= PlayerDie;
         On.Celeste.Lookout.Removed -= LookoutRemoved;
         On.Celeste.Input.GetAimVector -= GetAimVector;
+        gymFastLoopPatch?.Dispose();
+        gymFastLoopPatch = null;
     }
 
     private void EngineUpdate(On.Monocle.Engine.orig_Update orig, Engine self, GameTime gameTime) {
+        if (gymEpisode?.FastMode == true) self.SuppressDraw();
         ProcessRequests();
         PrepareSimulationFrame();
         orig(self, gameTime);
@@ -570,7 +575,9 @@ public sealed class CelesteGymCollectorModule : EverestModule {
             level.Session.Area.SID,
             level.Session.Level,
             reset.Pending.Request.MaxEpisodeFrames,
-            reset.Pending.Request.IncludeEntities != false
+            reset.Pending.Request.IncludeEntities != false,
+            reset.Pending.Request.IncludePlayerStates != false,
+            reset.Pending.Request.FastMode
         );
         PlayerFrame frame = SnapshotCapture.Capture(player, 0);
         episode.LastPlayer = frame;
@@ -626,15 +633,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
             || level.Session.Area.ID != step.Episode.AreaId
             || !string.Equals(level.Session.Level, step.Episode.StartRoom, StringComparison.Ordinal);
         Player? player = sceneChanged ? null : level.Tracker.GetEntity<Player>();
-        PlayerFrame frame = step.DeathFrame
-            ?? (player is null
-                ? SnapshotCapture.CaptureMissing(
-                    step.Episode.LastPlayer
-                        ?? throw new InvalidOperationException("gym episode has no player snapshot"),
-                    step.Episode.Frame
-                )
-                : SnapshotCapture.Capture(player, step.Episode.Frame));
-        bool dead = step.DeathFrame is not null || (!roomChanged && (player is null || frame.Dead));
+        bool dead = step.DeathFrame is not null || (!roomChanged && (player is null || player.Dead));
         bool truncated = !dead && !roomChanged && step.Episode.Frame >= step.Episode.MaxFrames;
         bool terminated = dead || roomChanged;
         bool success = roomChanged && !dead;
@@ -646,17 +645,38 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                     ? "max_episode_frames"
                     : null;
 
+        bool completes = terminated
+            || truncated
+            || step.Index >= step.Pending.Request.Inputs.Count;
+        PlayerFrame? frame = null;
+        if (step.Episode.IncludePlayerStates || completes) {
+            frame = step.DeathFrame
+                ?? (player is null
+                    ? SnapshotCapture.CaptureMissing(
+                        step.Episode.LastPlayer
+                            ?? throw new InvalidOperationException("gym episode has no player snapshot"),
+                        step.Episode.Frame
+                    )
+                    : SnapshotCapture.Capture(player, step.Episode.Frame));
+            step.Episode.LastPlayer = frame;
+            if (step.Episode.IncludePlayerStates) step.PlayerStates.Add(frame);
+        }
         step.DeathFrame = null;
-        step.PlayerStates.Add(frame);
-        step.Episode.LastPlayer = frame;
         step.LastInput = step.CurrentInput;
         step.CurrentInput = null;
         if (step.JumpBufferFrames > 0) step.JumpBufferFrames--;
         if (step.DashBufferFrames > 0) step.DashBufferFrames--;
         if (step.CrouchDashBufferFrames > 0) step.CrouchDashBufferFrames--;
 
-        if (terminated || truncated || step.Index >= step.Pending.Request.Inputs.Count) {
-            CompleteGymStep(level, frame, terminated, truncated, success, reason);
+        if (completes) {
+            CompleteGymStep(
+                level,
+                frame ?? throw new InvalidOperationException("gym step completed without a snapshot"),
+                terminated,
+                truncated,
+                success,
+                reason
+            );
         }
     }
 
@@ -816,6 +836,16 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         if (snapshot.Facing is bool facing) player.Facing = facing ? Facings.Right : Facings.Left;
         if (snapshot.State is int state && state >= 0 && state < 26) player.StateMachine.State = state;
         if (snapshot.Ducking is bool ducking) player.Ducking = ducking;
+    }
+
+    private int SelectFastLoopFrameCount() {
+        if (gymEpisode is null || !server.TryPeek(out PendingRequest? pending)) return 0;
+        return GymFastLoopPolicy.SelectFrameCount(
+            gymEpisode.FastMode,
+            gymStepJob is not null,
+            gymEpisode.Id,
+            pending?.Request
+        );
     }
 
     private IScriptedInputJob? ActiveInputJob => job ?? (IScriptedInputJob?) gymStepJob;

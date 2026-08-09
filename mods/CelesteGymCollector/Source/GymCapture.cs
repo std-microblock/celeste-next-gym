@@ -11,7 +11,9 @@ internal sealed class GymEpisode(
     string areaSid,
     string startRoom,
     int maxFrames,
-    bool includeEntities
+    bool includeEntities,
+    bool includePlayerStates,
+    bool fastMode
 ) {
     private readonly Dictionary<Entity, int> entityIds = new(ReferenceEqualityComparer.Instance);
     private int nextEntityId = 1;
@@ -22,6 +24,8 @@ internal sealed class GymEpisode(
     public string StartRoom { get; } = startRoom;
     public int MaxFrames { get; } = maxFrames;
     public bool IncludeEntities { get; } = includeEntities;
+    public bool IncludePlayerStates { get; } = includePlayerStates;
+    public bool FastMode { get; } = fastMode;
     public int Frame { get; set; }
     public PlayerFrame? LastPlayer { get; set; }
     public bool Done { get; set; }
@@ -58,6 +62,7 @@ internal static class GymCapture {
         AreaId = level.Session.Area.ID,
         AreaSid = level.Session.Area.SID,
         Room = level.Session.Level,
+        FastMode = episode.FastMode,
         Player = player,
         RoomGeometry = includeGeometry ? CaptureGeometry(level) : null,
         Entities = episode.IncludeEntities ? CaptureEntities(level, episode) : [],

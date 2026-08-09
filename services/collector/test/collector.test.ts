@@ -223,6 +223,8 @@ describe("collector HTTP service", () => {
       async gymReset(request) {
         assert.equal(request.area_sid, "Example/Map");
         assert.equal(request.skip_transitions, true);
+        assert.equal(request.fast_mode, true);
+        assert.equal(request.include_player_states, false);
         return {
           observation,
           player_states: [observation.player],
@@ -243,6 +245,8 @@ describe("collector HTTP service", () => {
     const reset = await postGym(running, "reset", {
       area_sid: "Example/Map",
       room: "start",
+      fast_mode: true,
+      include_player_states: false,
     });
     const resetBody = (await decodeResponse(reset)) as any;
     assert.equal(reset.status, 200);
@@ -280,6 +284,7 @@ function gymObservation(episodeId: string): GymObservation {
     area_id: 1,
     area_sid: "Example/Map",
     room: "start",
+    fast_mode: false,
     player: createDefaultSnapshot(),
     room_geometry: {
       tile_size: 8,

@@ -65,6 +65,12 @@ public sealed class CollectorRequest {
 
     [JsonPropertyName("include_entities")]
     public bool? IncludeEntities { get; set; }
+
+    [JsonPropertyName("include_player_states")]
+    public bool? IncludePlayerStates { get; set; }
+
+    [JsonPropertyName("fast_mode")]
+    public bool FastMode { get; set; }
 }
 
 public sealed class CaptureStartRequest {
@@ -188,6 +194,9 @@ public sealed class GymObservation {
 
     [JsonPropertyName("room")]
     public string Room { get; set; } = "";
+
+    [JsonPropertyName("fast_mode")]
+    public bool FastMode { get; set; }
 
     [JsonPropertyName("player")]
     public PlayerFrame Player { get; set; } = new();

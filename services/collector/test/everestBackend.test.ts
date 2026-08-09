@@ -139,6 +139,8 @@ describe("Everest TCP backend", () => {
         assert.equal(request.area_sid, "Example/Map");
         assert.equal(request.room, "start");
         assert.equal(request.skip_transitions, true);
+        assert.equal(request.fast_mode, true);
+        assert.equal(request.include_player_states, false);
         return gymResponse(episodeId, 0, true);
       }
       assert.equal(request.command, "gym_step");
@@ -156,6 +158,8 @@ describe("Everest TCP backend", () => {
         skip_transitions: true,
         max_episode_frames: 10_000,
         include_entities: true,
+        include_player_states: false,
+        fast_mode: true,
       },
       new AbortController().signal,
     );
@@ -202,7 +206,8 @@ function gymResponse(episodeId: string, frame: number, geometry: boolean) {
       episode_frame: frame,
       area_id: 1,
       area_sid: "Example/Map",
-      room: "start",
+    room: "start",
+    fast_mode: frame > 0,
       player,
       ...(geometry
         ? {

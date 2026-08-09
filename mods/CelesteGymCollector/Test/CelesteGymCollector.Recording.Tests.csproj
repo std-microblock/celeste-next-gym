@@ -20,5 +20,7 @@
     <Compile Include="..\Source\RecordingLifecycle.cs" Link="RecordingLifecycle.cs" />
     <Compile Include="..\Source\RecordingTimeline.cs" Link="RecordingTimeline.cs" />
     <Compile Include="..\Source\ScriptedInputBuffer.cs" Link="ScriptedInputBuffer.cs" />
+    <Compile Include="..\Source\Protocol.cs" Link="Protocol.cs" />
+    <Compile Include="..\Source\GymFastLoopPolicy.cs" Link="GymFastLoopPolicy.cs" />
   </ItemGroup>
 </Project>
