@@ -1623,7 +1623,7 @@ export function runtimeEntityBounds(
   return { ...box };
 }
 
-const SPIKE_STATIC_MOVER_KINDS = new Set<EntityKind>([
+const STATIC_MOVER_PLATFORM_KINDS = new Set<EntityKind>([
   "cassette_block",
   "falling_block",
   "move_block",
@@ -1631,32 +1631,32 @@ const SPIKE_STATIC_MOVER_KINDS = new Set<EntityKind>([
   "zip_mover",
 ]);
 
-function spikeRidesPlatform(spike: MapEntity, platform: MapEntity): boolean {
-  const spikeBox = spike.bounds;
+function entityRidesPlatform(entity: MapEntity, platform: MapEntity): boolean {
+  const entityBox = entity.bounds;
   const platformBox = platform.bounds;
-  if (spike.direction.y < 0)
+  if (entity.direction.y < 0)
     return (
-      spikeBox.y + spikeBox.height === platformBox.y &&
-      spikeBox.x < platformBox.x + platformBox.width &&
-      spikeBox.x + spikeBox.width > platformBox.x
+      entityBox.y + entityBox.height === platformBox.y &&
+      entityBox.x < platformBox.x + platformBox.width &&
+      entityBox.x + entityBox.width > platformBox.x
     );
-  if (spike.direction.y > 0)
+  if (entity.direction.y > 0)
     return (
-      spikeBox.y === platformBox.y + platformBox.height &&
-      spikeBox.x < platformBox.x + platformBox.width &&
-      spikeBox.x + spikeBox.width > platformBox.x
+      entityBox.y === platformBox.y + platformBox.height &&
+      entityBox.x < platformBox.x + platformBox.width &&
+      entityBox.x + entityBox.width > platformBox.x
     );
-  if (spike.direction.x < 0)
+  if (entity.direction.x < 0)
     return (
-      spikeBox.x + spikeBox.width === platformBox.x &&
-      spikeBox.y < platformBox.y + platformBox.height &&
-      spikeBox.y + spikeBox.height > platformBox.y
+      entityBox.x + entityBox.width === platformBox.x &&
+      entityBox.y < platformBox.y + platformBox.height &&
+      entityBox.y + entityBox.height > platformBox.y
     );
   return (
-    spike.direction.x > 0 &&
-    spikeBox.x === platformBox.x + platformBox.width &&
-    spikeBox.y < platformBox.y + platformBox.height &&
-    spikeBox.y + spikeBox.height > platformBox.y
+    entity.direction.x > 0 &&
+    entityBox.x === platformBox.x + platformBox.width &&
+    entityBox.y < platformBox.y + platformBox.height &&
+    entityBox.y + entityBox.height > platformBox.y
   );
 }
 
@@ -1674,7 +1674,7 @@ function platformStaticMoversEnabled(
   return true;
 }
 
-export function runtimeAttachedSpikeBounds(
+export function runtimeAttachedEntityBounds(
   map: GymMap,
   state: SimState,
 ): Map<number, MapEntity["bounds"]> {
@@ -1687,11 +1687,12 @@ export function runtimeAttachedSpikeBounds(
     return runtimeEntityBounds(entity, state, kindIndex);
   });
   const result = new Map<number, MapEntity["bounds"]>();
-  for (const [spikeIndex, spike] of map.entities.entries()) {
-    if (spike.kind !== "spikes") continue;
+  for (const [entityIndex, entity] of map.entities.entries()) {
+    if (entity.kind !== "spikes" && entity.kind !== "spring") continue;
     const platformIndex = map.entities.findIndex(
       (platform) =>
-        SPIKE_STATIC_MOVER_KINDS.has(platform.kind) && spikeRidesPlatform(spike, platform),
+        STATIC_MOVER_PLATFORM_KINDS.has(platform.kind) &&
+        entityRidesPlatform(entity, platform),
     );
     if (platformIndex < 0) continue;
     const platform = map.entities[platformIndex];
@@ -1701,10 +1702,10 @@ export function runtimeAttachedSpikeBounds(
       state,
       kindIndices[platformIndex],
     );
-    result.set(spikeIndex, {
-      ...spike.bounds,
-      x: enabled ? platformBox.x + spike.bounds.x - platform.bounds.x : -1_000_000,
-      y: enabled ? platformBox.y + spike.bounds.y - platform.bounds.y : -1_000_000,
+    result.set(entityIndex, {
+      ...entity.bounds,
+      x: enabled ? platformBox.x + entity.bounds.x - platform.bounds.x : -1_000_000,
+      y: enabled ? platformBox.y + entity.bounds.y - platform.bounds.y : -1_000_000,
     });
   }
   return result;
@@ -3054,16 +3055,21 @@ function drawRefill(
   const drawCentered = (key: string, yOffset = 0) => {
     const entry = assets.entries[key];
     if (!entry) return false;
+    const destination = centeredAtlasEntryDestination(
+      entry,
+      centerX,
+      centerY + bob + yOffset,
+    );
     context.drawImage(
       assets.image,
       entry.x,
       entry.y,
       entry.width,
       entry.height,
-      Math.round(centerX - entry.frameWidth / 2),
-      Math.round(centerY + bob - entry.frameHeight / 2 + yOffset),
-      entry.frameWidth,
-      entry.frameHeight,
+      destination.x,
+      destination.y,
+      destination.width,
+      destination.height,
     );
     return true;
   };
@@ -3086,6 +3092,22 @@ function drawRefill(
     const flashKey = flashes[flashTicks % flashes.length];
     if (flashKey) drawCentered(flashKey);
   }
+}
+
+export function centeredAtlasEntryDestination(
+  entry: Pick<
+    AtlasEntry,
+    "width" | "height" | "drawOffsetX" | "drawOffsetY" | "frameWidth" | "frameHeight"
+  >,
+  centerX: number,
+  centerY: number,
+): { x: number; y: number; width: number; height: number } {
+  return {
+    x: Math.round(centerX - entry.frameWidth / 2 + entry.drawOffsetX),
+    y: Math.round(centerY - entry.frameHeight / 2 + entry.drawOffsetY),
+    width: entry.width,
+    height: entry.height,
+  };
 }
 
 function drawFallingBlock(
@@ -3375,11 +3397,11 @@ function paintGame(
     drawSpinnerItems(context, assets, spinnerItems);
   }
   const kindCounts = new Map<EntityKind, number>();
-  const attachedSpikeBounds = runtimeAttachedSpikeBounds(map, state);
+  const attachedEntityBounds = runtimeAttachedEntityBounds(map, state);
   for (const [entityIndex, entity] of map.entities.entries()) {
     const kindIndex = kindCounts.get(entity.kind) ?? 0;
-    const renderedEntity = attachedSpikeBounds.has(entityIndex)
-      ? { ...entity, bounds: attachedSpikeBounds.get(entityIndex)! }
+    const renderedEntity = attachedEntityBounds.has(entityIndex)
+      ? { ...entity, bounds: attachedEntityBounds.get(entityIndex)! }
       : entity;
     drawEntity(
       context,

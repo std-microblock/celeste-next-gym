@@ -125,7 +125,7 @@ pub enum SimulationError {
 pub struct Simulator {
     snapshot: PlayerSnapshot,
     runtime_map: Map,
-    spike_attachments: Vec<Option<StaticMoverAttachment>>,
+    static_mover_attachments: Vec<Option<StaticMoverAttachment>>,
 }
 
 impl Simulator {
@@ -136,7 +136,7 @@ impl Simulator {
             snapshot.player_on_ground_initialized = true;
         }
         let mut runtime_map = map.clone();
-        let spike_attachments = initialize_spike_attachments(&runtime_map);
+        let static_mover_attachments = initialize_static_mover_attachments(&runtime_map);
         initialize_zip_movers(&mut snapshot, &mut runtime_map);
         initialize_bounce_blocks(&mut snapshot, &mut runtime_map);
         initialize_move_blocks(&mut snapshot, &mut runtime_map);
@@ -159,11 +159,11 @@ impl Simulator {
         initialize_killboxes(&mut snapshot, &mut runtime_map);
         initialize_lookouts(&mut snapshot, &runtime_map);
         position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
-        sync_all_platform_spikes(&snapshot, &mut runtime_map, &spike_attachments);
+        sync_all_platform_static_movers(&snapshot, &mut runtime_map, &static_mover_attachments);
         Ok(Self {
             snapshot,
             runtime_map,
-            spike_attachments,
+            static_mover_attachments,
         })
     }
 
@@ -193,7 +193,7 @@ impl Simulator {
             &mut self.snapshot,
             input.normalized(),
             &mut self.runtime_map,
-            &mut self.spike_attachments,
+            &mut self.static_mover_attachments,
         )?;
         Ok(&self.snapshot)
     }
@@ -1139,31 +1139,31 @@ struct StaticMoverAttachment {
     offset: Vec2,
 }
 
-fn spike_rides_platform(spike: &crate::Entity, platform: &crate::Entity) -> bool {
-    let spike_bounds = spike.bounds;
+fn static_mover_rides_platform(entity: &crate::Entity, platform: &crate::Entity) -> bool {
+    let entity_bounds = entity.bounds;
     let platform_bounds = platform.bounds;
-    if spike.direction.y < 0.0 {
-        spike_bounds.bottom() == platform_bounds.y
-            && spike_bounds.x < platform_bounds.right()
-            && spike_bounds.right() > platform_bounds.x
-    } else if spike.direction.y > 0.0 {
-        spike_bounds.y == platform_bounds.bottom()
-            && spike_bounds.x < platform_bounds.right()
-            && spike_bounds.right() > platform_bounds.x
-    } else if spike.direction.x < 0.0 {
-        spike_bounds.right() == platform_bounds.x
-            && spike_bounds.y < platform_bounds.bottom()
-            && spike_bounds.bottom() > platform_bounds.y
-    } else if spike.direction.x > 0.0 {
-        spike_bounds.x == platform_bounds.right()
-            && spike_bounds.y < platform_bounds.bottom()
-            && spike_bounds.bottom() > platform_bounds.y
+    if entity.direction.y < 0.0 {
+        entity_bounds.bottom() == platform_bounds.y
+            && entity_bounds.x < platform_bounds.right()
+            && entity_bounds.right() > platform_bounds.x
+    } else if entity.direction.y > 0.0 {
+        entity_bounds.y == platform_bounds.bottom()
+            && entity_bounds.x < platform_bounds.right()
+            && entity_bounds.right() > platform_bounds.x
+    } else if entity.direction.x < 0.0 {
+        entity_bounds.right() == platform_bounds.x
+            && entity_bounds.y < platform_bounds.bottom()
+            && entity_bounds.bottom() > platform_bounds.y
+    } else if entity.direction.x > 0.0 {
+        entity_bounds.x == platform_bounds.right()
+            && entity_bounds.y < platform_bounds.bottom()
+            && entity_bounds.bottom() > platform_bounds.y
     } else {
         false
     }
 }
 
-fn supports_spike_static_movers(kind: EntityKind) -> bool {
+fn supports_static_mover_platform(kind: EntityKind) -> bool {
     matches!(
         kind,
         EntityKind::CassetteBlock
@@ -1174,61 +1174,63 @@ fn supports_spike_static_movers(kind: EntityKind) -> bool {
     )
 }
 
-// Spikes.cs installs a StaticMover whose SolidChecker is Spikes.IsRiding.
-// Solid.Awake claims each mover for the first compatible Platform, and
-// Solid.MoveHExact/MoveVExact calls MoveStaticMovers with the exact integer
-// displacement before actor push/carry resolution. Keep the source offset so
-// segmented Simulator construction restores the same attached position.
-fn initialize_spike_attachments(map: &Map) -> Vec<Option<StaticMoverAttachment>> {
+// Spikes.cs and Spring.cs install StaticMovers whose SolidChecker tests the
+// entity one pixel toward its supporting platform. Solid.Awake claims each
+// mover for the first compatible Platform, and Solid.MoveHExact/MoveVExact
+// calls MoveStaticMovers with the exact integer displacement before actor
+// push/carry resolution. Keep the source offset so segmented Simulator
+// construction restores the same attached position.
+fn initialize_static_mover_attachments(map: &Map) -> Vec<Option<StaticMoverAttachment>> {
     let mut attachments = vec![None; map.entities.len()];
-    for (spike_index, spike) in map.entities.iter().enumerate() {
-        if spike.kind != EntityKind::Spikes {
+    for (entity_index, entity) in map.entities.iter().enumerate() {
+        if !matches!(entity.kind, EntityKind::Spikes | EntityKind::Spring) {
             continue;
         }
         let Some((platform_index, platform)) =
             map.entities.iter().enumerate().find(|(_, platform)| {
-                supports_spike_static_movers(platform.kind) && spike_rides_platform(spike, platform)
+                supports_static_mover_platform(platform.kind)
+                    && static_mover_rides_platform(entity, platform)
             })
         else {
             continue;
         };
-        attachments[spike_index] = Some(StaticMoverAttachment {
+        attachments[entity_index] = Some(StaticMoverAttachment {
             platform_index,
             offset: Vec2::new(
-                spike.bounds.x - platform.bounds.x,
-                spike.bounds.y - platform.bounds.y,
+                entity.bounds.x - platform.bounds.x,
+                entity.bounds.y - platform.bounds.y,
             ),
         });
     }
     attachments
 }
 
-fn sync_platform_spikes(
+fn sync_platform_static_movers(
     map: &mut Map,
     attachments: &[Option<StaticMoverAttachment>],
     platform_index: usize,
     enabled: bool,
 ) {
     let platform = map.entities[platform_index].bounds;
-    for (spike_index, attachment) in attachments.iter().enumerate() {
+    for (entity_index, attachment) in attachments.iter().enumerate() {
         let Some(attachment) = attachment else {
             continue;
         };
         if attachment.platform_index != platform_index {
             continue;
         }
-        let spike = &mut map.entities[spike_index];
+        let entity = &mut map.entities[entity_index];
         if enabled {
-            spike.bounds.x = platform.x + attachment.offset.x;
-            spike.bounds.y = platform.y + attachment.offset.y;
+            entity.bounds.x = platform.x + attachment.offset.x;
+            entity.bounds.y = platform.y + attachment.offset.y;
         } else {
-            spike.bounds.x = -1_000_000.0;
-            spike.bounds.y = -1_000_000.0;
+            entity.bounds.x = -1_000_000.0;
+            entity.bounds.y = -1_000_000.0;
         }
     }
 }
 
-fn sync_all_platform_spikes(
+fn sync_all_platform_static_movers(
     p: &PlayerSnapshot,
     map: &mut Map,
     attachments: &[Option<StaticMoverAttachment>],
@@ -1266,7 +1268,7 @@ fn sync_all_platform_spikes(
             EntityKind::MovingSolid | EntityKind::ZipMover => true,
             _ => continue,
         };
-        sync_platform_spikes(map, attachments, platform_index, enabled);
+        sync_platform_static_movers(map, attachments, platform_index, enabled);
     }
 }
 
@@ -2973,7 +2975,7 @@ fn advance_move_blocks(
         }
         let static_movers_enabled = state.static_movers_enabled;
         p.move_blocks[block_index] = state;
-        sync_platform_spikes(map, attachments, entity_index, static_movers_enabled);
+        sync_platform_static_movers(map, attachments, entity_index, static_movers_enabled);
     }
 }
 
@@ -4096,7 +4098,7 @@ fn advance_zip_movers(
             }
         }
         p.zip_movers[zip_index] = state;
-        sync_platform_spikes(map, attachments, entity_index, true);
+        sync_platform_static_movers(map, attachments, entity_index, true);
     }
 }
 
@@ -4163,7 +4165,7 @@ fn advance_moving_solids(
                 }
             }
         }
-        sync_platform_spikes(map, attachments, entity_index, true);
+        sync_platform_static_movers(map, attachments, entity_index, true);
     }
     p.moving_solid_time = new_time;
 }
@@ -4275,7 +4277,7 @@ fn advance_cassette_blocks(
         sync_cassette_entity(&mut map.entities[entity_index], &state);
         let collidable = state.collidable;
         p.cassette_blocks[block_index] = state;
-        sync_platform_spikes(map, attachments, entity_index, collidable);
+        sync_platform_static_movers(map, attachments, entity_index, collidable);
     }
 }
 
@@ -4315,7 +4317,7 @@ fn advance_cassette_manager(
                 sync_cassette_entity(&mut map.entities[entity_index], &state);
                 let collidable = state.collidable;
                 p.cassette_blocks[block_index] = state;
-                sync_platform_spikes(map, attachments, entity_index, collidable);
+                sync_platform_static_movers(map, attachments, entity_index, collidable);
             }
         }
     }
@@ -4494,7 +4496,7 @@ fn advance_falling_blocks(
         let mut state = p.falling_blocks[block_index].clone();
         if state.removed {
             p.falling_blocks[block_index] = state;
-            sync_platform_spikes(map, attachments, entity_index, false);
+            sync_platform_static_movers(map, attachments, entity_index, false);
             continue;
         }
         let climb_fall = map.entities[entity_index].direction.x != 0.0;
@@ -4621,7 +4623,7 @@ fn advance_falling_blocks(
         }
         let enabled = !state.removed;
         p.falling_blocks[block_index] = state;
-        sync_platform_spikes(map, attachments, entity_index, enabled);
+        sync_platform_static_movers(map, attachments, entity_index, enabled);
     }
 }
 fn advance_post_player_entities(
@@ -7471,7 +7473,7 @@ fn load_transition_room(
     map.solids = room.solids;
     map.entities = room.entities;
     map.room_spawns = room.spawns;
-    *attachments = initialize_spike_attachments(map);
+    *attachments = initialize_static_mover_attachments(map);
 
     // Level.LoadLevel constructs every destination room entity before the
     // transition coroutine yields (Level.cs:468+). Their Added/Awake state is
@@ -7525,7 +7527,7 @@ fn load_transition_room(
     initialize_invisible_barriers(p, map);
     initialize_killboxes(p, map);
     position_moving_solids(map, p.moving_solid_time);
-    sync_all_platform_spikes(p, map, attachments);
+    sync_all_platform_static_movers(p, map, attachments);
 }
 
 fn begin_transition(
@@ -8566,6 +8568,55 @@ mod tests {
         assert_eq!(simulator.runtime_map.entities[0].bounds.x, 65.0);
         assert_eq!(simulator.runtime_map.entities[1].bounds.x, 65.0);
         assert_eq!(simulator.runtime_map.entities[1].bounds.y, 157.0);
+    }
+    #[test]
+    fn move_block_moves_its_attached_spring() {
+        let map = Map {
+            entities: vec![
+                crate::Entity {
+                    kind: EntityKind::MoveBlock,
+                    bounds: Rect::new(64.0, 160.0, 32.0, 16.0),
+                    direction: Vec2::new(1.0, 0.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "moveBlock".to_owned(),
+                },
+                crate::Entity {
+                    kind: EntityKind::Spring,
+                    bounds: Rect::new(72.0, 154.0, 16.0, 6.0),
+                    direction: Vec2::new(0.0, -1.0),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "spring".to_owned(),
+                },
+            ],
+            ..Map::default()
+        };
+        let mut simulator = Simulator::new(
+            PlayerSnapshot {
+                pos: Vec2::new(200.0, 100.0),
+                state: PlayerState::Frozen,
+                move_blocks: vec![crate::MoveBlockSnapshot {
+                    phase: 2,
+                    speed: 60.0,
+                    position: Vec2::new(64.0, 160.0),
+                    start: Vec2::new(64.0, 160.0),
+                    visible: true,
+                    static_movers_enabled: true,
+                    ..crate::MoveBlockSnapshot::default()
+                }],
+                ..PlayerSnapshot::default()
+            },
+            &map,
+        )
+        .unwrap();
+
+        simulator.step(InputState::default()).unwrap();
+        assert_eq!(simulator.runtime_map.entities[0].bounds.x, 65.0);
+        assert_eq!(simulator.runtime_map.entities[1].bounds.x, 73.0);
+        assert_eq!(simulator.runtime_map.entities[1].bounds.y, 154.0);
     }
     #[test]
     fn moving_solid_pushes_an_actor_without_granting_rider_lift_speed() {
@@ -12381,7 +12432,7 @@ mod tests {
             current_room_bounds: Some(lower),
             ..PlayerSnapshot::default()
         };
-        let mut attachments = initialize_spike_attachments(&map);
+        let mut attachments = initialize_static_mover_attachments(&map);
         begin_transition(
             &mut player,
             &mut map,
@@ -16090,7 +16141,7 @@ mod tests {
             },
             ..PlayerSnapshot::default()
         };
-        let mut attachments = initialize_spike_attachments(&map);
+        let mut attachments = initialize_static_mover_attachments(&map);
         begin_transition(
             &mut p,
             &mut map,
