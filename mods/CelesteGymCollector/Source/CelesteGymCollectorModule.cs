@@ -158,6 +158,28 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                         session.Level = request.Room;
                         session.RespawnPoint = null;
                     }
+                    if (request.SkipTransitions
+                        && Engine.Scene is Level activeLevel
+                        && activeLevel.Session.Area.ID == areaId) {
+                        // A new LevelLoader allocates the entire area's renderer,
+                        // backdrop, particle and graphics infrastructure. Repeating
+                        // that hundreds of times in a long-running RL actor grows
+                        // native FNA/FMOD resources until the process terminates.
+                        // For the same area, keep that infrastructure and perform
+                        // Celeste's authoritative room reload against a fresh
+                        // Session, so gameplay entities/coroutines are rebuilt.
+                        gymResetJob = new GymResetJob(
+                            pending,
+                            Engine.Scene,
+                            areaId,
+                            inPlace: true
+                        );
+                        activeLevel.Completed = false;
+                        activeLevel.Session = session;
+                        SaveData.Instance!.StartSession(session);
+                        activeLevel.Reload();
+                        break;
+                    }
                     if (request.SkipTransitions) {
                         Engine.Scene = new LevelLoader(session) {
                             PlayerIntroTypeOverride = Player.IntroTypes.None
@@ -560,7 +582,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
 
     private void PrepareGymReset() {
         GymResetJob reset = gymResetJob!;
-        if (ReferenceEquals(Engine.Scene, reset.SceneAtRequest)) return;
+        if (!reset.InPlace && ReferenceEquals(Engine.Scene, reset.SceneAtRequest)) return;
         if (Engine.Scene is not Level level || level.Session.Area.ID != reset.AreaId) return;
         Player? player = level.Tracker.GetEntity<Player>();
         if (player is null) return;
@@ -839,10 +861,17 @@ public sealed class CelesteGymCollectorModule : EverestModule {
     }
 
     private int SelectFastLoopFrameCount() {
-        if (gymEpisode is null || !server.TryPeek(out PendingRequest? pending)) return 0;
+        if (gymEpisode is null) return 0;
+        if (gymStepJob is not null) {
+            return GymFastLoopPolicy.SelectActiveStepFrameCount(
+                gymEpisode.FastMode,
+                gymStepJob.Pending.Request.Inputs.Count - gymStepJob.Index
+            );
+        }
+        if (!server.TryPeek(out PendingRequest? pending)) return 0;
         return GymFastLoopPolicy.SelectFrameCount(
             gymEpisode.FastMode,
-            gymStepJob is not null,
+            stepAlreadyActive: false,
             gymEpisode.Id,
             pending?.Request
         );
@@ -876,10 +905,16 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         public int CrouchDashBufferFrames { get; set; }
     }
 
-    private sealed class GymResetJob(PendingRequest pending, Scene? sceneAtRequest, int areaId) {
+    private sealed class GymResetJob(
+        PendingRequest pending,
+        Scene? sceneAtRequest,
+        int areaId,
+        bool inPlace = false
+    ) {
         public PendingRequest Pending { get; } = pending;
         public Scene? SceneAtRequest { get; } = sceneAtRequest;
         public int AreaId { get; } = areaId;
+        public bool InPlace { get; } = inPlace;
     }
 
     private sealed class GymStepJob(PendingRequest pending, GymEpisode episode, Level levelAtStart)

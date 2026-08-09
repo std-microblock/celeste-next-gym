@@ -123,7 +123,7 @@ public sealed class RecordingTests : IDisposable {
     [InlineData(1)]
     [InlineData(16)]
     [InlineData(4096)]
-    public void FastLoopAcceptsTheEntireSupportedGymBatch(int frameCount) {
+    public void FastLoopAcceptsSupportedGymBatchesInBoundedOuterTickBursts(int frameCount) {
         string episodeId = new('a', 32);
         CollectorRequest request = new() {
             Command = "gym_step",
@@ -132,9 +132,22 @@ public sealed class RecordingTests : IDisposable {
         };
 
         Assert.Equal(
-            frameCount,
+            Math.Min(frameCount, GymFastLoopPolicy.MaximumUpdatesPerOuterTick),
             GymFastLoopPolicy.SelectFrameCount(true, false, episodeId, request)
         );
+    }
+
+    [Theory]
+    [InlineData(1, 1)]
+    [InlineData(256, 256)]
+    [InlineData(257, 256)]
+    [InlineData(4096, 256)]
+    public void FastLoopContinuesAnActiveStepInBoundedBursts(int remaining, int expected) {
+        Assert.Equal(
+            expected,
+            GymFastLoopPolicy.SelectActiveStepFrameCount(true, remaining)
+        );
+        Assert.Equal(0, GymFastLoopPolicy.SelectActiveStepFrameCount(false, remaining));
     }
 
     [Fact]
@@ -172,6 +185,19 @@ public sealed class RecordingTests : IDisposable {
             0,
             GymFastLoopPolicy.SelectFrameCount(true, false, episodeId, request)
         );
+    }
+
+    [Fact]
+    public void FastLoopServicesWallClockSubsystemsOncePerOuterTick() {
+        bool consumed = false;
+        Assert.True(GymFastLoopPolicy.ConsumeOuterTickService(true, ref consumed));
+        Assert.True(consumed);
+        Assert.False(GymFastLoopPolicy.ConsumeOuterTickService(true, ref consumed));
+
+        // Outside an accelerated Tick the policy must not modify normal game behavior.
+        consumed = true;
+        Assert.True(GymFastLoopPolicy.ConsumeOuterTickService(false, ref consumed));
+        Assert.True(consumed);
     }
 
     public void Dispose() {

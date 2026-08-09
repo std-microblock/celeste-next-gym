@@ -10,6 +10,10 @@ describe("persistent gym actor launcher", () => {
       areaId: 1,
       showWindows: false,
       smoke: false,
+      soakResets: 0,
+      soakRoom: "2",
+      soakFrames: 1536,
+      soakRestartAt: 0,
     });
   });
 
@@ -24,6 +28,14 @@ describe("persistent gym actor launcher", () => {
         "Example/TrainingMap",
         "--show-windows",
         "--smoke",
+        "--soak-resets",
+        "10",
+        "--soak-room",
+        "2",
+        "--soak-frames",
+        "1536",
+        "--soak-restart-at",
+        "5",
       ]),
       {
         count: 4,
@@ -31,6 +43,10 @@ describe("persistent gym actor launcher", () => {
         areaSid: "Example/TrainingMap",
         showWindows: true,
         smoke: true,
+        soakResets: 10,
+        soakRoom: "2",
+        soakFrames: 1536,
+        soakRestartAt: 5,
       },
     );
   });

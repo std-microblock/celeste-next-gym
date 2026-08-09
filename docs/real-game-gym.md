@@ -90,6 +90,10 @@ observation = transition["observation"]
 3. 每帧仍由 Collector 主线程安装输入和检查死亡/换房；提前终止时清零剩余合成时间，不会在已返回 terminal state 后偷跑；
 4. batch 结束后清理 FNA 的渲染 lag 标志，并在 `fast_mode` episode 中 `SuppressDraw`。
 
+为保证长期 actor 稳定，单个外层 FNA Tick 最多执行 256 个 physics updates；1～4096 帧 API batch 会自动跨多个 outer Tick 完成，但仍只返回一个 Gym response。FMOD 和 AutoSplitter 属于 wall-clock 外部子系统：fast batch 中每个 outer Tick 最多更新一次，且不会为 synthetic physics frame 创建新的 FMOD event instance。游戏实体、StateMachine、Coroutine、碰撞和 Mod Update 仍逐 physics frame 执行。
+
+同一 Area 的 `skip_transitions` reset 使用 fresh `Session` 加原生 `Level.Reload()`，重建 room gameplay state，同时复用 LevelLoader 创建的 renderer/backdrop/particle/graphics 基础设施。跨 Area reset 仍创建新的 `LevelLoader`。
+
 合成物理时间不依赖 wall clock；wall clock 只决定请求何时进入下一次主线程 Tick。单帧 request 仍会受到一次外层 Tick/IPC 延迟，训练时应使用合适的 action repeat 或技能 batch。
 
 ## 观测坐标
@@ -158,10 +162,24 @@ node scripts/gym-actors.mjs --actors 2 --area-id 0 --area-sid MyMod/MyMap
 
 Ctrl+C/进程错误清理只会处理启动器记录的 child PID，并在终止前重新核对 executable path 和 creation time。无法证明 ownership 时会报警并保留进程，不会按进程名清理。`--smoke` 可用于 CI：所有 actor ready 后立即走同一 ownership-safe cleanup。
 
+每个 generation 的 Celeste/collector stdout、stderr、exit code 和 signal 都写入 actor manifest。若 child 异常退出，supervisor 会先验证并清理旧 generation，等待原 Mod/HTTP ports 确实释放，再以新 nonce、PID 和隔离 save/tmp 重启；**同一 actor slot 的公开 `gym_url` 和两个 port 不变**。Supervisor manifest 记录当前 `generation`、`restart_count` 和最新 generation manifest。
+
+长期压力 gate：
+
+```powershell
+node scripts/gym-actors.mjs `
+  --actors 1 --area-id 1 `
+  --soak-resets 1000 --soak-room 2 --soak-frames 1536
+```
+
+2026-08-09 的 repository-owned Celeste 实测完成 1,000 次 room 2 fresh reset、1,536,000 physics frames，耗时 141.0 秒，有效 10,891.8 physics FPS；观测实体数稳定为 45，最大 47。另一个 50-reset gate 在第 25 次强制 generation restart：重启前后公开 URL 均为 `http://127.0.0.1:59570/api/gym`，generation 从 0 变为 1，随后继续完成剩余 reset。
+
 ## 当前限制
 
 - 单个 Celeste 进程只有一个活动 episode；并行训练需要多个各自隔离端口/save/tmp 的游戏进程。
 - 高速模式以 batch 为调度单位；大量单帧 HTTP requests 仍可能接近外层 60 Hz latency。推荐把重复 action 或技能序列打成小 batch。
+- Fast mode 有意禁用 synthetic physics frame 的音频 event 创建；依赖 FMOD playback position 作为 gameplay state 的非标准 Mod 需要单独适配，不能把声音播放状态当作 fast Gym ABI。
+- 同 Area in-place reset 遵循 Celeste `Level.Reload()` 的 Global-tag 生命周期。把关键关卡状态藏在跨死亡 Global entity、且不从 fresh Session 恢复的 Mod，应提供自己的 reset hook 或选择进程 generation restart。
 - `include_player_states=true` 会对每帧抓取完整反射状态并放大 JSON/MessagePack payload；追求吞吐时使用 `false`，按需用短 batch 或 `observe` 取样。
 - 不支持任意帧完整 clone/restore。`reset` 会重新创建 Level；跨死亡探索应保存动作轨迹、archive 或检查点重放信息。
 - area/SID 必须已安装到该 Everest 实例。`/api/gym/reset` 不会动态热挂载请求体中的 `.bin`。

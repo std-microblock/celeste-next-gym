@@ -22,7 +22,26 @@ internal sealed class GymFastLoopPatch : IDisposable {
     private readonly Func<int> selectFrameCount;
     private readonly Func<bool> isStepActive;
     private readonly ILHook tickHook;
+    private readonly ILHook audioUpdateHook;
+    private readonly ILHook audioCreateInstanceHook;
+    private readonly ILHook autoSplitterUpdateHook;
     private bool acceleratedTickActive;
+    private bool audioUpdatedThisTick;
+    private bool autoSplitterUpdatedThisTick;
+
+    private bool ShouldRunAudioUpdate() {
+        return GymFastLoopPolicy.ConsumeOuterTickService(
+            acceleratedTickActive,
+            ref audioUpdatedThisTick
+        );
+    }
+
+    private bool ShouldRunAutoSplitterUpdate() {
+        return GymFastLoopPolicy.ConsumeOuterTickService(
+            acceleratedTickActive,
+            ref autoSplitterUpdatedThisTick
+        );
+    }
 
     public GymFastLoopPatch(Func<int> selectFrameCount, Func<bool> isStepActive) {
         this.selectFrameCount = selectFrameCount;
@@ -32,9 +51,62 @@ internal sealed class GymFastLoopPatch : IDisposable {
             BindingFlags.Instance | BindingFlags.Public
         ) ?? throw new MissingMethodException(typeof(Game).FullName, nameof(Game.Tick));
         tickHook = new ILHook(tick, PatchTick);
+        MethodInfo audioUpdate = typeof(Audio).GetMethod(
+            nameof(Audio.Update),
+            BindingFlags.Static | BindingFlags.Public
+        ) ?? throw new MissingMethodException(typeof(Audio).FullName, nameof(Audio.Update));
+        audioUpdateHook = new ILHook(audioUpdate, PatchAudioUpdate);
+        MethodInfo audioCreateInstance = typeof(Audio).GetMethod(
+            nameof(Audio.CreateInstance),
+            BindingFlags.Static | BindingFlags.Public
+        ) ?? throw new MissingMethodException(
+            typeof(Audio).FullName,
+            nameof(Audio.CreateInstance)
+        );
+        audioCreateInstanceHook = new ILHook(audioCreateInstance, PatchAudioCreateInstance);
+        MethodInfo autoSplitterUpdate = typeof(AutoSplitterInfo).GetMethod(
+            nameof(AutoSplitterInfo.Update),
+            BindingFlags.Instance | BindingFlags.Public
+        ) ?? throw new MissingMethodException(
+            typeof(AutoSplitterInfo).FullName,
+            nameof(AutoSplitterInfo.Update)
+        );
+        autoSplitterUpdateHook = new ILHook(autoSplitterUpdate, PatchAutoSplitterUpdate);
     }
 
-    public void Dispose() => tickHook.Dispose();
+    public void Dispose() {
+        autoSplitterUpdateHook.Dispose();
+        audioCreateInstanceHook.Dispose();
+        audioUpdateHook.Dispose();
+        tickHook.Dispose();
+    }
+
+    private void PatchAudioUpdate(ILContext context) {
+        PatchOuterTickService(context, ShouldRunAudioUpdate);
+    }
+
+    private void PatchAutoSplitterUpdate(ILContext context) {
+        PatchOuterTickService(context, ShouldRunAutoSplitterUpdate);
+    }
+
+    private void PatchAudioCreateInstance(ILContext context) {
+        ILCursor cursor = new(context);
+        Instruction originalStart = cursor.Next
+            ?? throw new InvalidOperationException("Audio.CreateInstance has no IL body");
+        cursor.EmitDelegate<Func<bool>>(() => !acceleratedTickActive);
+        cursor.Emit(OpCodes.Brtrue, originalStart);
+        cursor.Emit(OpCodes.Ldnull);
+        cursor.Emit(OpCodes.Ret);
+    }
+
+    private static void PatchOuterTickService(ILContext context, Func<bool> shouldRun) {
+        ILCursor cursor = new(context);
+        Instruction originalStart = cursor.Next
+            ?? throw new InvalidOperationException("external service Update has no IL body");
+        cursor.EmitDelegate(shouldRun);
+        cursor.Emit(OpCodes.Brtrue, originalStart);
+        cursor.Emit(OpCodes.Ret);
+    }
 
     private void PatchTick(ILContext context) {
         ILCursor cursor = new(context);
@@ -98,6 +170,8 @@ internal sealed class GymFastLoopPatch : IDisposable {
 
     private void PrepareTick(Game game) {
         acceleratedTickActive = false;
+        audioUpdatedThisTick = false;
+        autoSplitterUpdatedThisTick = false;
         int frames = selectFrameCount();
         if (frames is < 1 or > GymFastLoopPolicy.MaximumBatchFrames) return;
         TimeSpan fixedStep = game.TargetElapsedTime;
@@ -124,6 +198,8 @@ internal sealed class GymFastLoopPatch : IDisposable {
             ElapsedGameTime.SetValue(gameTime, game.TargetElapsedTime);
         }
         acceleratedTickActive = false;
+        audioUpdatedThisTick = false;
+        autoSplitterUpdatedThisTick = false;
     }
 
     private static FieldInfo RequireField(string name) => typeof(Game).GetField(
