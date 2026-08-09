@@ -230,9 +230,20 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                         request.RandomizerLength,
                         request.RandomizerDifficulty
                     );
-                    RandomizerReflectionApi api = RandomizerReflectionApi.Discover();
-                    api.Start(options);
-                    randomizerGenerationJob = new RandomizerGenerationJob(pending, api);
+                    // AreaKey only stores numeric ID/mode. Randomizer can reuse
+                    // those numbers while replacing AreaData, so the old Level
+                    // must stop updating before generation mutates the registry.
+                    // Engine.Scene is deferred until the end of this Update;
+                    // FinishRandomizerGeneration starts the API only after the
+                    // empty staging scene has actually become active.
+                    Scene stagingScene = new();
+                    Engine.Scene = stagingScene;
+                    activeGymAreaSid = null;
+                    randomizerGenerationJob = new RandomizerGenerationJob(
+                        pending,
+                        options,
+                        stagingScene
+                    );
                     break;
                 }
                 case "gym_reset": {
@@ -408,13 +419,25 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         RandomizerGenerationJob? generation = randomizerGenerationJob;
         if (generation is null) return;
         try {
+            if (RandomizerGenerationStagingPolicy.ShouldStart(
+                    Engine.Scene,
+                    generation.StagingScene,
+                    generation.Api is not null
+                )) {
+                RandomizerReflectionApi api = RandomizerReflectionApi.Discover();
+                api.Start(generation.Options);
+                generation.Api = api;
+                return;
+            }
+            RandomizerReflectionApi? activeApi = generation.Api;
+            if (activeApi is null) return;
             // Randomizer normally services these fields from AutoSplitterInfo.Update.
             // Gym actors may be parked in scenes without that entity, so service the
             // same handoff explicitly on this real Engine.Update main thread.
-            generation.Api.PumpMainThreadHandoff();
-            if (generation.Api.ReadyToLaunch()) {
+            activeApi.PumpMainThreadHandoff();
+            if (activeApi.ReadyToLaunch()) {
                 RandomizerAreaManifest manifest = RandomizerManifestCapture.Capture(
-                    generation.Api.GetGeneratedArea()
+                    activeApi.GetGeneratedArea()
                 );
                 randomizerGenerationJob = null;
                 generation.Pending.Completion.SetResult(new CollectorResponse {
@@ -432,7 +455,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                 });
                 return;
             }
-            if (!generation.Api.GenerationInProgress()) {
+            if (!activeApi.GenerationInProgress()) {
                 throw new InvalidOperationException("Randomizer generation failed or was aborted");
             }
         } catch (Exception error) {
@@ -1163,10 +1186,13 @@ public sealed class CelesteGymCollectorModule : EverestModule {
 
     private sealed class RandomizerGenerationJob(
         PendingRequest pending,
-        RandomizerReflectionApi api
+        RandomizerGenerationOptions options,
+        Scene stagingScene
     ) {
         public PendingRequest Pending { get; } = pending;
-        public RandomizerReflectionApi Api { get; } = api;
+        public RandomizerGenerationOptions Options { get; } = options;
+        public Scene StagingScene { get; } = stagingScene;
+        public RandomizerReflectionApi? Api { get; set; }
     }
 
     private sealed class ScriptedButtonNode(Func<bool> check, Func<bool> pressed, Func<bool> released) : VirtualButton.Node {

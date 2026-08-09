@@ -3,6 +3,11 @@ using Microsoft.Xna.Framework;
 
 namespace Celeste.Mod.CelesteGymCollector;
 
+internal static class RandomizerGenerationStagingPolicy {
+    public static bool ShouldStart(object? active, object staging, bool started) =>
+        !started && ReferenceEquals(active, staging);
+}
+
 internal sealed record RandomizerGenerationOptions(
     string Seed,
     string Length = "Short",

@@ -384,6 +384,22 @@ public sealed class RecordingTests : IDisposable {
     }
 
     [Fact]
+    public void RandomizerGenerationWaitsUntilEmptyStagingSceneIsActive() {
+        object oldGameplay = new();
+        object staging = new();
+
+        Assert.False(
+            RandomizerGenerationStagingPolicy.ShouldStart(oldGameplay, staging, started: false)
+        );
+        Assert.True(
+            RandomizerGenerationStagingPolicy.ShouldStart(staging, staging, started: false)
+        );
+        Assert.False(
+            RandomizerGenerationStagingPolicy.ShouldStart(staging, staging, started: true)
+        );
+    }
+
+    [Fact]
     public void GymExitGoalRequiresTheSelectedBoundaryAndAperture() {
         Rectangle bounds = new(100, 200, 320, 180);
         PlayerFrame selected = new() {
