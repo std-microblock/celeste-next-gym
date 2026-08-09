@@ -69,6 +69,14 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         if (headlessActor || gymEpisode?.FastMode == true) self.SuppressDraw();
         ProcessRequests();
         PrepareSimulationFrame();
+        if (GymIdlePolicy.ShouldPark(
+                gymEpisode is not null,
+                gymResetJob is not null,
+                gymStepJob is not null,
+                job is not null
+            )) {
+            return;
+        }
         orig(self, gameTime);
         FinishSimulationFrame();
         interactiveSession?.FinishPlayerFrame();
@@ -361,7 +369,8 @@ public sealed class CelesteGymCollectorModule : EverestModule {
             string token = RecordingSecurity.ValidateToken(request.CaptureToken);
             switch (request.Command) {
                 case "interactive_start":
-                    if (job is not null || captureSession?.IsCapturing == true) {
+                    if (job is not null || gymEpisode is not null
+                        || captureSession?.IsCapturing == true) {
                         throw new InvalidOperationException("another collector job is active");
                     }
                     if (interactiveSession?.IsRunning == true) {

@@ -198,6 +198,15 @@ public sealed class RecordingTests : IDisposable {
         Assert.Equal(0, GymFastLoopPolicy.SelectFrameCount(true, false, episodeId, null));
     }
 
+    [Fact]
+    public void ActiveGymEpisodeParksBetweenExplicitResetAndStepWork() {
+        Assert.False(GymIdlePolicy.ShouldPark(false, false, false, false));
+        Assert.True(GymIdlePolicy.ShouldPark(true, false, false, false));
+        Assert.False(GymIdlePolicy.ShouldPark(true, true, false, false));
+        Assert.False(GymIdlePolicy.ShouldPark(true, false, true, false));
+        Assert.False(GymIdlePolicy.ShouldPark(true, false, false, true));
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(4097)]

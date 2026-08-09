@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
-import { closeSync, mkdirSync, openSync, renameSync, writeFileSync } from "node:fs";
+import { closeSync, mkdirSync, openSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createConnection, createServer, type Socket } from "node:net";
@@ -38,6 +38,8 @@ interface ActorOptions {
   readonly seedSmokeSeed: number;
   readonly inputLifecycleSmoke: boolean;
   readonly inputLifecycleRounds: number;
+  readonly expertReplaySmoke: boolean;
+  readonly expertReplayRounds: number;
   readonly soakResets: number;
   readonly soakRoom: string;
   readonly soakFrames: number;
@@ -89,6 +91,13 @@ interface RunningActor {
 }
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const city2ExpertActionsPath = resolve(
+  repoRoot,
+  "scripts",
+  "e2e-real",
+  "fixtures",
+  "city2-expert-actions.json",
+);
 
 export function parseActorOptions(argv: readonly string[]): ActorOptions {
   let count = 1;
@@ -100,6 +109,8 @@ export function parseActorOptions(argv: readonly string[]): ActorOptions {
   let seedSmokeSeed = 8_675_309;
   let inputLifecycleSmoke = false;
   let inputLifecycleRounds = 100;
+  let expertReplaySmoke = false;
+  let expertReplayRounds = 5;
   let soakResets = 0;
   let soakRoom = "2";
   let soakFrames = 1536;
@@ -129,6 +140,13 @@ export function parseActorOptions(argv: readonly string[]): ActorOptions {
       1,
       10_000,
     );
+    else if (argument === "--expert-replay-smoke") expertReplaySmoke = true;
+    else if (argument === "--expert-replay-rounds") expertReplayRounds = boundedInteger(
+      argv[++index],
+      argument,
+      2,
+      1_000,
+    );
     else if (argument === "--soak-resets") soakResets = boundedInteger(argv[++index], argument, 1, 1_000_000);
     else if (argument === "--soak-room") soakRoom = requiredValue(argv[++index], argument);
     else if (argument === "--soak-frames") soakFrames = boundedInteger(argv[++index], argument, 1, 4096);
@@ -149,6 +167,8 @@ export function parseActorOptions(argv: readonly string[]): ActorOptions {
     seedSmokeSeed,
     inputLifecycleSmoke,
     inputLifecycleRounds,
+    expertReplaySmoke,
+    expertReplayRounds,
     soakResets,
     soakRoom,
     soakFrames,
@@ -334,6 +354,11 @@ export async function runActorLauncher(): Promise<void> {
     };
     process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
 
+    if (options.expertReplaySmoke) {
+      await runExpertReplayGate(actors, paths.serviceRoot, options);
+      await cleanup("expert-replay-smoke-complete");
+      return;
+    }
     if (options.inputLifecycleSmoke) {
       await runInputLifecycleGate(actors, paths.serviceRoot, options);
       await cleanup("input-lifecycle-smoke-complete");
@@ -370,6 +395,189 @@ export async function runActorLauncher(): Promise<void> {
     await cleanup("error");
     throw error;
   }
+}
+
+interface ExpertReplayCapture {
+  readonly decisions: number;
+  readonly frames: number;
+  readonly reason: unknown;
+  readonly success: boolean;
+  readonly playerStates: readonly Record<string, unknown>[];
+  readonly finalPlayer: unknown;
+}
+
+type ExpertDecision = readonly [number, number, number, number, number];
+
+async function runExpertReplayGate(
+  actors: readonly RunningActor[],
+  serviceRoot: string,
+  options: ActorOptions,
+): Promise<void> {
+  if (options.areaSid || options.areaId !== 1 || options.soakRoom !== "2") {
+    throw new Error("--expert-replay-smoke requires vanilla area_id=1 room=2");
+  }
+  const actions = loadCity2ExpertActions();
+  const started = performance.now();
+  const results = await Promise.all(actors.map(async (actor) => {
+    const client = createActorGymClient(actor, serviceRoot);
+    let baseline: ExpertReplayCapture | undefined;
+    for (let round = 0; round < options.expertReplayRounds; round++) {
+      const capture = await captureExpertReplay(client, options, actions, 31);
+      if (capture.success !== true
+          || capture.reason !== "room_transition"
+          || capture.decisions !== 69
+          || capture.frames !== 273) {
+        throw new Error(
+          `actor ${actor.index} expert replay round ${round} changed outcome: ` +
+          JSON.stringify({
+            success: capture.success,
+            reason: capture.reason,
+            decisions: capture.decisions,
+            frames: capture.frames,
+            final_player: canonicalizePlayerState(capture.finalPlayer),
+          }),
+        );
+      }
+      if (baseline) {
+        const expected = canonicalizeExpertReplay(baseline);
+        const actual = canonicalizeExpertReplay(capture);
+        if (!isDeepStrictEqual(expected, actual)) {
+          throw new Error(
+            `actor ${actor.index} expert replay round ${round} drifted: ` +
+            describeTrajectoryMismatch(expected.playerStates, actual.playerStates),
+          );
+        }
+      } else {
+        baseline = capture;
+      }
+    }
+    return {
+      actor: actor.index,
+      seed: 31,
+      rounds: options.expertReplayRounds,
+      decisions: baseline!.decisions,
+      physics_frames: baseline!.frames,
+      termination_reason: baseline!.reason,
+    };
+  }));
+  process.stdout.write(`${JSON.stringify({
+    expert_replay_gate: "exact-pass",
+    fixture: city2ExpertActionsPath,
+    inter_decision_idle_ms: 20,
+    actors: results,
+    elapsed_seconds: Number(((performance.now() - started) / 1000).toFixed(2)),
+  })}\n`);
+}
+
+async function captureExpertReplay(
+  client: ActorGymClient,
+  options: ActorOptions,
+  actions: readonly ExpertDecision[],
+  seed: number,
+): Promise<ExpertReplayCapture> {
+  const reset = await client.gymReset({
+    area_id: 1,
+    room: "2",
+    seed,
+    initial_snapshot: options.directTcp ? { state: 0 } : null,
+    skip_transitions: true,
+    max_episode_frames: 1536,
+    include_entities: true,
+    include_player_states: true,
+    fast_mode: true,
+  });
+  const episodeId = reset.observation?.episode_id;
+  if (typeof episodeId !== "string") throw new Error("expert replay reset returned no episode id");
+  const playerStates = [...reset.player_states];
+  let previousJump = false;
+  let frames = 0;
+  let finalPlayer = reset.observation?.player;
+  let reason: unknown;
+  let success = false;
+  for (let decision = 0; decision < actions.length; decision++) {
+    const action = actions[decision]!;
+    const inputs = createExpertDecisionInputs(action, previousJump);
+    previousJump = action[2] === 1;
+    const step = await client.gymStep({ episode_id: episodeId, inputs });
+    frames += step.frames_executed;
+    playerStates.push(...step.player_states);
+    finalPlayer = step.observation?.player;
+    reason = step.observation?.termination_reason;
+    success = step.observation?.success === true;
+    if (step.observation?.terminated === true || step.observation?.truncated === true) {
+      return {
+        decisions: decision + 1,
+        frames,
+        reason,
+        success,
+        playerStates,
+        finalPlayer,
+      };
+    }
+    // The old backend advanced Level/Player here while no gym_step was active.
+    // A deliberate wall-clock gap makes that lifecycle bug deterministic.
+    await new Promise<void>((resolveWait) => setTimeout(resolveWait, 20));
+  }
+  return {
+    decisions: actions.length,
+    frames,
+    reason,
+    success,
+    playerStates,
+    finalPlayer,
+  };
+}
+
+function canonicalizeExpertReplay(capture: ExpertReplayCapture): ExpertReplayCapture {
+  return {
+    ...capture,
+    playerStates: capture.playerStates.map((state) =>
+      canonicalizePlayerState(state) as Record<string, unknown>),
+    finalPlayer: canonicalizePlayerState(capture.finalPlayer),
+  };
+}
+
+export function createExpertDecisionInputs(
+  action: ExpertDecision,
+  previousJump: boolean,
+): SoakInput[] {
+  const moveX = action[0] - 1;
+  const moveY = action[1] - 1;
+  const jump = action[2] === 1;
+  const dash = action[3];
+  const grab = action[4] === 1;
+  return Array.from({ length: 4 }, (_, frame): SoakInput => ({
+    move_x: moveX,
+    move_y: moveY,
+    jump_pressed: jump && frame === 0 && !previousJump,
+    jump_held: jump,
+    dash_pressed: dash === 1 && frame === 0,
+    crouch_dash_pressed: dash === 2 && frame === 0,
+    grab_held: grab,
+    talk_pressed: false,
+  }));
+}
+
+function loadCity2ExpertActions(): ExpertDecision[] {
+  const decoded: unknown = JSON.parse(readFileSync(city2ExpertActionsPath, "utf8"));
+  if (!isRecord(decoded) || !Array.isArray(decoded.actions)) {
+    throw new Error("city2 expert action fixture is malformed");
+  }
+  return decoded.actions.map((value, index) => {
+    if (!Array.isArray(value) || value.length !== 5
+        || value.some((component) => !Number.isSafeInteger(component))) {
+      throw new Error(`city2 expert action ${index} is malformed`);
+    }
+    const action = value as number[];
+    if (action[0]! < 0 || action[0]! > 2
+        || action[1]! < 0 || action[1]! > 2
+        || action[2]! < 0 || action[2]! > 1
+        || action[3]! < 0 || action[3]! > 2
+        || action[4]! < 0 || action[4]! > 1) {
+      throw new Error(`city2 expert action ${index} is outside the action space`);
+    }
+    return action as unknown as ExpertDecision;
+  });
 }
 
 async function runInputLifecycleGate(

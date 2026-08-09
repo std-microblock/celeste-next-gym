@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   createPolicySoakBatch,
   createFirstActionProbe,
+  createExpertDecisionInputs,
   createSeedTrajectoryInputs,
   createSeededRandom,
   parseActorOptions,
@@ -20,6 +21,8 @@ describe("persistent gym actor launcher", () => {
       seedSmokeSeed: 8675309,
       inputLifecycleSmoke: false,
       inputLifecycleRounds: 100,
+      expertReplaySmoke: false,
+      expertReplayRounds: 5,
       soakResets: 0,
       soakRoom: "2",
       soakFrames: 1536,
@@ -48,6 +51,9 @@ describe("persistent gym actor launcher", () => {
         "--input-lifecycle-smoke",
         "--input-lifecycle-rounds",
         "250",
+        "--expert-replay-smoke",
+        "--expert-replay-rounds",
+        "7",
         "--soak-resets",
         "10",
         "--soak-room",
@@ -73,6 +79,8 @@ describe("persistent gym actor launcher", () => {
         seedSmokeSeed: -2147483648,
         inputLifecycleSmoke: true,
         inputLifecycleRounds: 250,
+        expertReplaySmoke: true,
+        expertReplayRounds: 7,
         soakResets: 10,
         soakRoom: "2",
         soakFrames: 1536,
@@ -124,6 +132,18 @@ describe("persistent gym actor launcher", () => {
     assert.deepEqual(jump.map((input) => input.jump_pressed), [true, false, false, false]);
     assert.ok(jump.every((input) => input.jump_held));
     assert.deepEqual(dash.map((input) => input.dash_pressed), [true, false, false, false]);
+  });
+
+  it("maps expert decisions to four held-input physics frames", () => {
+    const first = createExpertDecisionInputs([2, 0, 1, 2, 1], false);
+    assert.equal(first.length, 4);
+    assert.deepEqual(first.map((input) => input.move_x), [1, 1, 1, 1]);
+    assert.deepEqual(first.map((input) => input.move_y), [-1, -1, -1, -1]);
+    assert.deepEqual(first.map((input) => input.jump_pressed), [true, false, false, false]);
+    assert.deepEqual(first.map((input) => input.crouch_dash_pressed), [true, false, false, false]);
+    assert.ok(first.every((input) => input.jump_held && input.grab_held));
+    const repeatedJump = createExpertDecisionInputs([1, 1, 1, 0, 0], true);
+    assert.ok(repeatedJump.every((input) => !input.jump_pressed));
   });
 
   it("rejects unsafe actor counts and unknown flags", () => {
