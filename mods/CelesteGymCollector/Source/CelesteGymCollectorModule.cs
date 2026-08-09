@@ -25,7 +25,11 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         .GetProperty(nameof(VirtualJoystick.Value), BindingFlags.Instance | BindingFlags.Public)!;
 
     public override void Load() {
-        gymFastLoopPatch = new GymFastLoopPatch(SelectFastLoopFrameCount, () => gymStepJob is not null);
+        gymFastLoopPatch = new GymFastLoopPatch(
+            SelectFastLoopFrameCount,
+            () => gymStepJob is not null,
+            () => gymResetJob is not null || gymStepJob is not null || gymEpisode is not null
+        );
         On.Monocle.Engine.Update += EngineUpdate;
         On.Celeste.Celeste.RenderCore += CelesteRenderCore;
         On.Celeste.Player.Update += PlayerUpdate;

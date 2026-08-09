@@ -29,4 +29,21 @@ internal static class GymFastLoopPolicy {
         consumed = true;
         return true;
     }
+
+    public static bool ShouldRunAutoSplitter(
+        bool gymActive,
+        bool accelerated,
+        ref bool consumed
+    ) {
+        // AutoSplitter reads SaveData.LevelSetStats through AreaKey.LevelSet.
+        // Gym reset intentionally swaps Session while the current Level is
+        // reloading; allowing that global observer to run in this window has
+        // produced both duplicate-level-set-key and null-reference crashes.
+        // A headless Gym episode has no autosplitting use, so isolate it for
+        // the complete episode rather than merely reducing its update rate.
+        if (gymActive) return false;
+        return ConsumeOuterTickService(accelerated, ref consumed);
+    }
+
+    public static bool ShouldRunRumble(bool gymActive) => !gymActive;
 }

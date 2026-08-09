@@ -200,6 +200,25 @@ public sealed class RecordingTests : IDisposable {
         Assert.True(consumed);
     }
 
+    [Fact]
+    public void GymEpisodeSuppressesAutoSplitterAcrossAllTicks() {
+        bool consumed = false;
+        Assert.False(GymFastLoopPolicy.ShouldRunAutoSplitter(true, false, ref consumed));
+        Assert.False(consumed);
+        Assert.False(GymFastLoopPolicy.ShouldRunAutoSplitter(true, true, ref consumed));
+        Assert.False(consumed);
+
+        Assert.True(GymFastLoopPolicy.ShouldRunAutoSplitter(false, true, ref consumed));
+        Assert.True(consumed);
+        Assert.False(GymFastLoopPolicy.ShouldRunAutoSplitter(false, true, ref consumed));
+    }
+
+    [Fact]
+    public void GymEpisodeSuppressesNativeControllerRumble() {
+        Assert.False(GymFastLoopPolicy.ShouldRunRumble(true));
+        Assert.True(GymFastLoopPolicy.ShouldRunRumble(false));
+    }
+
     public void Dispose() {
         if (Directory.Exists(temporaryRoot)) Directory.Delete(temporaryRoot, recursive: true);
     }

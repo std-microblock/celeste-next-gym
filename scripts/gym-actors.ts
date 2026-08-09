@@ -37,6 +37,20 @@ interface ActorOptions {
   readonly soakRoom: string;
   readonly soakFrames: number;
   readonly soakRestartAt: number;
+  readonly soakPolicy: boolean;
+  readonly soakSeed: number;
+  readonly soakActionFrames: number;
+}
+
+interface SoakInput {
+  readonly move_x: number;
+  readonly move_y: number;
+  readonly jump_pressed: boolean;
+  readonly jump_held: boolean;
+  readonly dash_pressed: boolean;
+  readonly crouch_dash_pressed: boolean;
+  readonly grab_held: boolean;
+  readonly talk_pressed: boolean;
 }
 
 interface RunningActor {
@@ -68,6 +82,9 @@ export function parseActorOptions(argv: readonly string[]): ActorOptions {
   let soakRoom = "2";
   let soakFrames = 1536;
   let soakRestartAt = 0;
+  let soakPolicy = false;
+  let soakSeed = 1;
+  let soakActionFrames = 8;
   for (let index = 0; index < argv.length; index++) {
     const argument = argv[index];
     if (argument === "--actors") count = boundedInteger(argv[++index], argument, 1, 32);
@@ -79,6 +96,9 @@ export function parseActorOptions(argv: readonly string[]): ActorOptions {
     else if (argument === "--soak-room") soakRoom = requiredValue(argv[++index], argument);
     else if (argument === "--soak-frames") soakFrames = boundedInteger(argv[++index], argument, 1, 4096);
     else if (argument === "--soak-restart-at") soakRestartAt = boundedInteger(argv[++index], argument, 1, 1_000_000);
+    else if (argument === "--soak-policy") soakPolicy = true;
+    else if (argument === "--soak-seed") soakSeed = boundedInteger(argv[++index], argument, 0, 0xffff_ffff);
+    else if (argument === "--soak-action-frames") soakActionFrames = boundedInteger(argv[++index], argument, 1, 64);
     else throw new Error(`unknown gym actor argument: ${argument}`);
   }
   return Object.freeze({
@@ -91,6 +111,9 @@ export function parseActorOptions(argv: readonly string[]): ActorOptions {
     soakRoom,
     soakFrames,
     soakRestartAt,
+    soakPolicy,
+    soakSeed,
+    soakActionFrames,
   });
 }
 
@@ -457,6 +480,17 @@ async function runSoak(
   let physicsFrames = 0;
   let latestEntityCount = 0;
   let maximumEntityCount = 0;
+  let episodes = 0;
+  let actionBatches = 0;
+  let deaths = 0;
+  let roomTransitions = 0;
+  let truncations = 0;
+  const randoms = actors.map((_, actorIndex) =>
+    createSeededRandom((options.soakSeed + actorIndex) >>> 0)
+  );
+  if (options.soakPolicy && options.soakRestartAt > 0) {
+    throw new Error("--soak-policy cannot be combined with --soak-restart-at");
+  }
   for (let resetIndex = 0; resetIndex < options.soakResets; resetIndex++) {
     if (options.soakRestartAt === resetIndex + 1) {
       for (let actorIndex = 0; actorIndex < actors.length; actorIndex++) {
@@ -471,6 +505,70 @@ async function runSoak(
       }
     }
     await Promise.all(actors.map(async (_, actorIndex) => {
+      if (options.soakPolicy) {
+        const actor = actors[actorIndex]!;
+        const client = createCollectorClient(serviceRoot, actor.httpPort);
+        const reset = await client.gymReset({
+          area_id: options.areaId,
+          ...(options.areaSid ? { area_sid: options.areaSid } : {}),
+          room: options.soakRoom,
+          skip_transitions: true,
+          max_episode_frames: options.soakFrames,
+          include_entities: true,
+          include_player_states: false,
+          fast_mode: true,
+        });
+        const episodeId = reset.observation?.episode_id;
+        if (typeof episodeId !== "string") {
+          throw new Error("policy soak reset returned no episode id");
+        }
+        const entityCount = Array.isArray(reset.observation?.entities)
+          ? reset.observation.entities.length
+          : 0;
+        latestEntityCount = entityCount;
+        maximumEntityCount = Math.max(maximumEntityCount, entityCount);
+        episodes++;
+        let episodeFrames = 0;
+        let batchIndex = 0;
+        while (episodeFrames < options.soakFrames) {
+          if (actor.game.exitCode !== null || actor.service.exitCode !== null) {
+            throw new Error(
+              `actor ${actorIndex} exited during strict policy soak: ` +
+              `game=${actor.game.exitCode}:service=${actor.service.exitCode}`
+            );
+          }
+          const inputs = createPolicySoakBatch(
+            randoms[actorIndex]!,
+            Math.min(options.soakActionFrames, options.soakFrames - episodeFrames),
+            batchIndex++,
+          );
+          let step;
+          try {
+            step = await client.gymStep({ episode_id: episodeId, inputs });
+          } catch (error) {
+            throw new Error(
+              `policy soak failed at episode=${resetIndex + 1} ` +
+              `batch=${batchIndex} frame=${episodeFrames} ` +
+              `inputs=${JSON.stringify(inputs)}: ${String(error)}`
+            );
+          }
+          actionBatches++;
+          episodeFrames += step.frames_executed;
+          physicsFrames += step.frames_executed;
+          const observation = step.observation;
+          if (observation?.terminated === true || observation?.truncated === true) {
+            const reason = observation.termination_reason;
+            if (reason === "death") deaths++;
+            else if (reason === "room_transition") roomTransitions++;
+            else if (reason === "max_episode_frames") truncations++;
+            break;
+          }
+          if (step.frames_executed === 0) {
+            throw new Error("policy soak step executed zero frames before episode completion");
+          }
+        }
+        return;
+      }
       for (let attempt = 0; ; attempt++) {
         const actor = actors[actorIndex]!;
         try {
@@ -512,10 +610,52 @@ async function runSoak(
           effective_fps: Number((physicsFrames / Math.max(elapsedSeconds, 0.001)).toFixed(1)),
           entity_count: latestEntityCount,
           maximum_entity_count: maximumEntityCount,
+          ...(options.soakPolicy ? {
+            soak_mode: "policy",
+            soak_seed: options.soakSeed,
+            episodes,
+            action_batches: actionBatches,
+            deaths,
+            room_transitions: roomTransitions,
+            truncations,
+          } : { soak_mode: "neutral" }),
         })}\n`,
       );
     }
   }
+}
+
+export function createSeededRandom(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 0x1_0000_0000;
+  };
+}
+
+export function createPolicySoakBatch(
+  random: () => number,
+  maximumFrames: number,
+  batchIndex: number,
+): SoakInput[] {
+  const forcedAction = batchIndex % 16;
+  const action = forcedAction < 8 ? forcedAction : Math.floor(random() * 8);
+  const duration = Math.max(1, Math.min(maximumFrames, 1 + Math.floor(random() * maximumFrames)));
+  const horizontal = random() < 0.5 ? -1 : 1;
+  const vertical = random() < 0.34 ? -1 : random() < 0.5 ? 0 : 1;
+  return Array.from({ length: duration }, (_, frame): SoakInput => ({
+    move_x: action === 1 ? -1 : action === 2 ? 1 : action >= 3 ? horizontal : 0,
+    move_y: action >= 5 ? vertical : 0,
+    jump_pressed: action === 3 && frame === 0,
+    jump_held: action === 3,
+    dash_pressed: action === 4 && frame === 0,
+    crouch_dash_pressed: action === 5 && frame === 0,
+    grab_held: action === 6,
+    talk_pressed: action === 7 && frame === 0,
+  }));
 }
 
 async function cleanupOwned(

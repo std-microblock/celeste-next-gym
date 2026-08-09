@@ -21,10 +21,13 @@ internal sealed class GymFastLoopPatch : IDisposable {
 
     private readonly Func<int> selectFrameCount;
     private readonly Func<bool> isStepActive;
+    private readonly Func<bool> isGymActive;
     private readonly ILHook tickHook;
     private readonly ILHook audioUpdateHook;
     private readonly ILHook audioCreateInstanceHook;
     private readonly ILHook autoSplitterUpdateHook;
+    private readonly ILHook rumbleHook;
+    private readonly ILHook rumbleSpecificHook;
     private bool acceleratedTickActive;
     private bool audioUpdatedThisTick;
     private bool autoSplitterUpdatedThisTick;
@@ -37,15 +40,21 @@ internal sealed class GymFastLoopPatch : IDisposable {
     }
 
     private bool ShouldRunAutoSplitterUpdate() {
-        return GymFastLoopPolicy.ConsumeOuterTickService(
+        return GymFastLoopPolicy.ShouldRunAutoSplitter(
+            isGymActive(),
             acceleratedTickActive,
             ref autoSplitterUpdatedThisTick
         );
     }
 
-    public GymFastLoopPatch(Func<int> selectFrameCount, Func<bool> isStepActive) {
+    public GymFastLoopPatch(
+        Func<int> selectFrameCount,
+        Func<bool> isStepActive,
+        Func<bool> isGymActive
+    ) {
         this.selectFrameCount = selectFrameCount;
         this.isStepActive = isStepActive;
+        this.isGymActive = isGymActive;
         MethodInfo tick = typeof(Game).GetMethod(
             nameof(Game.Tick),
             BindingFlags.Instance | BindingFlags.Public
@@ -72,9 +81,24 @@ internal sealed class GymFastLoopPatch : IDisposable {
             nameof(AutoSplitterInfo.Update)
         );
         autoSplitterUpdateHook = new ILHook(autoSplitterUpdate, PatchAutoSplitterUpdate);
+        MethodInfo rumble = typeof(Input).GetMethod(
+            nameof(Input.Rumble),
+            BindingFlags.Static | BindingFlags.Public
+        ) ?? throw new MissingMethodException(typeof(Input).FullName, nameof(Input.Rumble));
+        rumbleHook = new ILHook(rumble, PatchRumble);
+        MethodInfo rumbleSpecific = typeof(Input).GetMethod(
+            nameof(Input.RumbleSpecific),
+            BindingFlags.Static | BindingFlags.Public
+        ) ?? throw new MissingMethodException(
+            typeof(Input).FullName,
+            nameof(Input.RumbleSpecific)
+        );
+        rumbleSpecificHook = new ILHook(rumbleSpecific, PatchRumble);
     }
 
     public void Dispose() {
+        rumbleSpecificHook.Dispose();
+        rumbleHook.Dispose();
         autoSplitterUpdateHook.Dispose();
         audioCreateInstanceHook.Dispose();
         audioUpdateHook.Dispose();
@@ -87,6 +111,17 @@ internal sealed class GymFastLoopPatch : IDisposable {
 
     private void PatchAutoSplitterUpdate(ILContext context) {
         PatchOuterTickService(context, ShouldRunAutoSplitterUpdate);
+    }
+
+    private void PatchRumble(ILContext context) {
+        ILCursor cursor = new(context);
+        Instruction originalStart = cursor.Next
+            ?? throw new InvalidOperationException("Input rumble method has no IL body");
+        cursor.EmitDelegate<Func<bool>>(
+            () => GymFastLoopPolicy.ShouldRunRumble(isGymActive())
+        );
+        cursor.Emit(OpCodes.Brtrue, originalStart);
+        cursor.Emit(OpCodes.Ret);
     }
 
     private void PatchAudioCreateInstance(ILContext context) {

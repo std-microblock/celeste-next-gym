@@ -172,13 +172,25 @@ node scripts/gym-actors.mjs `
   --soak-resets 1000 --soak-room 2 --soak-frames 1536
 ```
 
+Neutral reset gate 之外，还应运行 seeded policy-action gate。它用短 batch 确定性覆盖左右移动、跳跃按住/释放、dash、crouch dash、grab、死亡后的 fresh reset，以及可能的 room transition；任一 child exit 都会立即失败，不会用 supervisor restart 掩盖问题：
+
+```powershell
+node scripts/gym-actors.mjs `
+  --actors 1 --area-id 1 `
+  --soak-policy --soak-seed 20260809 --soak-action-frames 8 `
+  --soak-resets 20 --soak-room 2 --soak-frames 1536
+```
+
 2026-08-09 的 repository-owned Celeste 实测完成 1,000 次 room 2 fresh reset、1,536,000 physics frames，耗时 141.0 秒，有效 10,891.8 physics FPS；观测实体数稳定为 45，最大 47。另一个 50-reset gate 在第 25 次强制 generation restart：重启前后公开 URL 均为 `http://127.0.0.1:59570/api/gym`，generation 从 0 变为 1，随后继续完成剩余 reset。
 
 ## 当前限制
 
 - 单个 Celeste 进程只有一个活动 episode；并行训练需要多个各自隔离端口/save/tmp 的游戏进程。
+- 同一个 actor URL 不能同时交给训练器和评估器；第二个客户端的 `reset` 会使第一个客户端的 episode id 失效。并发评估应使用另一个 actor slot。
 - 高速模式以 batch 为调度单位；大量单帧 HTTP requests 仍可能接近外层 60 Hz latency。推荐把重复 action 或技能序列打成小 batch。
 - Fast mode 有意禁用 synthetic physics frame 的音频 event 创建；依赖 FMOD playback position 作为 gameplay state 的非标准 Mod 需要单独适配，不能把声音播放状态当作 fast Gym ABI。
+- Gym episode 活跃期间会禁用 controller rumble。Dash、死亡和攀爬等动作会高频调用 `GamePad.SetVibration`；headless actor 不消费震动反馈，而且无手柄/隐藏窗口下的原生 vibration backend 不适合作为训练所需的 gameplay side effect。
+- Gym episode 活跃期间会禁用 `AutoSplitterInfo.Update`。Autosplitter 会遍历全局 SaveData/AreaKey，而 Gym reset 正在原地替换 fresh Session；headless 训练不使用分段计时，隔离该 observer 可避免加载窗口读取到不一致的 level-set 状态。
 - 同 Area in-place reset 遵循 Celeste `Level.Reload()` 的 Global-tag 生命周期。把关键关卡状态藏在跨死亡 Global entity、且不从 fresh Session 恢复的 Mod，应提供自己的 reset hook 或选择进程 generation restart。
 - `include_player_states=true` 会对每帧抓取完整反射状态并放大 JSON/MessagePack payload；追求吞吐时使用 `false`，按需用短 batch 或 `observe` 取样。
 - 不支持任意帧完整 clone/restore。`reset` 会重新创建 Level；跨死亡探索应保存动作轨迹、archive 或检查点重放信息。
