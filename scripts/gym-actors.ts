@@ -373,6 +373,15 @@ async function startActor(
   const everestLogPath = resolve(gameInstall.gameRoot, everestLogFilename);
   const serviceStdoutPath = resolve(logRoot, "collector.stdout.log");
   const serviceStderrPath = resolve(logRoot, "collector.stderr.log");
+  if (!options.showWindows) {
+    const savesRoot = resolve(context.saveRoot, "Saves");
+    mkdirSync(savesRoot, { recursive: true });
+    writeFileSync(
+      resolve(savesRoot, "modsettings-Everest.celeste"),
+      "DiscordRichPresence: false\nAutoUpdateModsOnStartup: false\n",
+      "utf8",
+    );
+  }
   try {
     await modPort.release();
     updateRunManifest(context, {
@@ -392,6 +401,7 @@ async function startActor(
           ...process.env,
           CELESTE_GYM_COLLECTOR_PORT: String(modPort.port),
           CELESTE_GYM_RUN_NONCE: context.runNonce,
+          CELESTE_GYM_HEADLESS: options.showWindows ? "0" : "1",
           EVEREST_LOG_FILENAME: everestLogFilename,
           EVEREST_SAVEPATH: context.saveRoot,
           EVEREST_TMPDIR: context.tempRoot,

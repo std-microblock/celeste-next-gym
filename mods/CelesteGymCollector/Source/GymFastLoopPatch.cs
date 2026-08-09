@@ -22,6 +22,7 @@ internal sealed class GymFastLoopPatch : IDisposable {
     private readonly Func<int> selectFrameCount;
     private readonly Func<bool> isStepActive;
     private readonly Func<bool> isGymActive;
+    private readonly Func<bool> isHeadlessActor;
     private readonly ILHook tickHook;
     private readonly ILHook audioUpdateHook;
     private readonly ILHook audioCreateInstanceHook;
@@ -33,6 +34,7 @@ internal sealed class GymFastLoopPatch : IDisposable {
     private bool autoSplitterUpdatedThisTick;
 
     private bool ShouldRunAudioUpdate() {
+        if (isHeadlessActor()) return false;
         return GymFastLoopPolicy.ConsumeOuterTickService(
             acceleratedTickActive,
             ref audioUpdatedThisTick
@@ -50,11 +52,13 @@ internal sealed class GymFastLoopPatch : IDisposable {
     public GymFastLoopPatch(
         Func<int> selectFrameCount,
         Func<bool> isStepActive,
-        Func<bool> isGymActive
+        Func<bool> isGymActive,
+        Func<bool> isHeadlessActor
     ) {
         this.selectFrameCount = selectFrameCount;
         this.isStepActive = isStepActive;
         this.isGymActive = isGymActive;
+        this.isHeadlessActor = isHeadlessActor;
         MethodInfo tick = typeof(Game).GetMethod(
             nameof(Game.Tick),
             BindingFlags.Instance | BindingFlags.Public
@@ -118,7 +122,7 @@ internal sealed class GymFastLoopPatch : IDisposable {
         Instruction originalStart = cursor.Next
             ?? throw new InvalidOperationException("Input rumble method has no IL body");
         cursor.EmitDelegate<Func<bool>>(
-            () => GymFastLoopPolicy.ShouldRunRumble(isGymActive())
+            () => GymFastLoopPolicy.ShouldRunRumble(isGymActive() || isHeadlessActor())
         );
         cursor.Emit(OpCodes.Brtrue, originalStart);
         cursor.Emit(OpCodes.Ret);
@@ -128,7 +132,9 @@ internal sealed class GymFastLoopPatch : IDisposable {
         ILCursor cursor = new(context);
         Instruction originalStart = cursor.Next
             ?? throw new InvalidOperationException("Audio.CreateInstance has no IL body");
-        cursor.EmitDelegate<Func<bool>>(() => !acceleratedTickActive);
+        cursor.EmitDelegate<Func<bool>>(
+            () => !acceleratedTickActive && !isHeadlessActor()
+        );
         cursor.Emit(OpCodes.Brtrue, originalStart);
         cursor.Emit(OpCodes.Ldnull);
         cursor.Emit(OpCodes.Ret);

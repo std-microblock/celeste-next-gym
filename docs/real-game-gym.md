@@ -164,6 +164,10 @@ Supervisor manifest 会为每个 slot 输出稳定的 `tcp_endpoint` / `tcp_host
 
 每个 generation 还通过 `EVEREST_LOG_FILENAME` 使用独立的 `celeste-gym-<nonce>.txt`，并把路径写入 manifest 的 `logs.everest_log`。多个 repository-owned Celeste 进程不会再轮换、移动或截断同一个 game-root `log.txt`，同步退出时也能保留每个进程自己的完整 Everest 错误记录。
 
+默认隐藏窗口的长期 actor 会设置 `CELESTE_GYM_HEADLESS=1`：从 Mod 加载后持续 suppress draw，并禁用该进程的 FMOD event 创建/更新、controller rumble 和 autosplitter。Launcher 还会在 actor 的隔离 save root 预写 Everest settings，关闭 Discord rich presence 和启动时 Mod 更新。这样 actors 在训练器连接前也不会运行无关的 presentation/rich-presence side effects。`--show-windows` 会关闭此 headless parking 配置，供人工调试。
+
+当前 Windows/NVIDIA repository-owned install 的稳定并行配置为 2 actors。4 个完整 D3D11 Celeste 进程在 idle/长训中仍可能无 managed stack 地同步 code 1 退出；非 headless Everest build 强制使用 FNA `Headless` driver 又会间歇性在 Mod boot 前退出，因此 launcher 不伪装成真正的 headless game build。2026-08-09 的 2-actor persistent-socket gate 连续完成 13,502 aggregate decisions、53,963 physics frames 和 120 episodes，持续 118.1 秒，两个 slot 均为零 restart。需要更高并行度时应跨主机分片，或改用正式的 Everest headless build。
+
 Direct protocol 是 UTF-8 newline-delimited JSON：连接 loopback port，发送一个 JSON object 加 `\n`，读取对应的 `\n` 结尾 JSON response。Connection 可按顺序复用任意多次，从而避免每个短 action batch 的 TCP handshake；仍兼容发送一次后立即关闭的旧客户端。同一 connection 当前只允许一个 in-flight request，request/response 顺序严格一致。Gym 命令为 `gym_reset`、`gym_step`、`gym_observe`、`gym_close`；每个命令都必须携带当前 generation 的 `run_nonce` 和 `process_id`。`ping` 不需要认证，并返回用于 ownership handshake 的 nonce、PID 和 port。
 
 2026-08-09 的 4-actor persistent-connection gate 在每个 actor 复用单一 socket，完成 12 episodes、1,237 个短 action batches 和 5,526 physics frames，聚合 869.9 physics FPS，所有 slot 的 `restart_count` 均为 0。另一个 forced-generation gate 验证 TCP port 保持不变，而 nonce 和 PID 同时轮换。

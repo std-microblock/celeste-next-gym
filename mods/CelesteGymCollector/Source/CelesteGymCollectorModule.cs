@@ -8,6 +8,11 @@ public sealed class CelesteGymCollectorModule : EverestModule {
     private readonly CollectorServer server = new();
     private readonly int collectorPort = ReadCollectorPort();
     private readonly string runNonce = Environment.GetEnvironmentVariable("CELESTE_GYM_RUN_NONCE") ?? "";
+    private readonly bool headlessActor = string.Equals(
+        Environment.GetEnvironmentVariable("CELESTE_GYM_HEADLESS"),
+        "1",
+        StringComparison.Ordinal
+    );
     private readonly string? configuredRecordingRoot =
         Environment.GetEnvironmentVariable("CELESTE_GYM_RECORDING_ROOT");
     private readonly HashSet<string> usedCaptureTokens = new(StringComparer.Ordinal);
@@ -28,7 +33,8 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         gymFastLoopPatch = new GymFastLoopPatch(
             SelectFastLoopFrameCount,
             () => gymStepJob is not null,
-            () => gymResetJob is not null || gymStepJob is not null || gymEpisode is not null
+            () => gymResetJob is not null || gymStepJob is not null || gymEpisode is not null,
+            () => headlessActor
         );
         On.Monocle.Engine.Update += EngineUpdate;
         On.Celeste.Celeste.RenderCore += CelesteRenderCore;
@@ -56,7 +62,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
     }
 
     private void EngineUpdate(On.Monocle.Engine.orig_Update orig, Engine self, GameTime gameTime) {
-        if (gymEpisode?.FastMode == true) self.SuppressDraw();
+        if (headlessActor || gymEpisode?.FastMode == true) self.SuppressDraw();
         ProcessRequests();
         PrepareSimulationFrame();
         orig(self, gameTime);
