@@ -51,6 +51,15 @@ internal sealed class GymFastLoopPatch : IDisposable {
                 "CelesteGymCollector could not locate FNA Tick elapsed-time clamp"
             );
         }
+        if (!cursor.TryGotoNext(
+                MoveType.AfterLabel,
+                instruction => instruction.MatchLdarg(0),
+                instruction => instruction.MatchCallvirt<Game>("get_IsFixedTimeStep")
+            )) {
+            throw new InvalidOperationException(
+                "CelesteGymCollector could not locate FNA Tick fixed-step branch"
+            );
+        }
         cursor.Emit(OpCodes.Ldarg_0);
         cursor.EmitDelegate<Action<Game>>(PrepareTick);
 
@@ -75,7 +84,7 @@ internal sealed class GymFastLoopPatch : IDisposable {
         // lag. The gym batch is intentional, so do not leak a thousands-frame
         // IsRunningSlowly debt into later game logic.
         if (!cursor.TryGotoNext(
-                MoveType.Before,
+                MoveType.AfterLabel,
                 instruction => instruction.MatchLdarg(0),
                 instruction => instruction.MatchLdfld<Game>("suppressDraw")
             )) {

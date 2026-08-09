@@ -274,8 +274,9 @@ async function runHarnessLifecycle(
     );
     const baseHealth = await client.waitUntilReady();
     const gymSmokeRoom = config.room ?? scenarios[0]?.room;
+    const fastGymSmoke = process.env.E2E_GYM_FAST_SMOKE === "1";
     const gymSmoke =
-      process.env.E2E_GYM_SMOKE === "1"
+      process.env.E2E_GYM_SMOKE === "1" || fastGymSmoke
         ? await runGymSmoke(client, {
             areaId: scenarioTarget.areaId,
             ...(scenarioTarget.kind === "playground"
@@ -284,7 +285,7 @@ async function runHarnessLifecycle(
                 ? { areaSid: config.areaSid }
                 : {}),
             ...(gymSmokeRoom ? { room: gymSmokeRoom } : {}),
-          })
+          }, fastGymSmoke)
         : undefined;
     const health = Object.freeze({
       ...baseHealth,
@@ -435,7 +436,9 @@ async function runHarnessLifecycle(
 async function runGymSmoke(
   client: ReturnType<typeof createCollectorClient>,
   target: { readonly areaId: number; readonly areaSid?: string; readonly room?: string },
+  fastMode: boolean,
 ): Promise<Readonly<Record<string, unknown>>> {
+  if (fastMode) return await runFastGymSmoke(client, target);
   const resetStarted = performance.now();
   const reset = await client.gymReset({
     area_id: target.areaId,
@@ -444,6 +447,8 @@ async function runGymSmoke(
     skip_transitions: true,
     max_episode_frames: 600,
     include_entities: true,
+    include_player_states: true,
+    fast_mode: false,
   });
   const resetMs = performance.now() - resetStarted;
   const initial = requireGymObservation(reset.observation, "gym reset");
@@ -490,6 +495,186 @@ async function runGymSmoke(
       ((stepped.frames_executed * 1000) / Math.max(stepMs, 0.001)).toFixed(1),
     ),
   });
+}
+
+async function runFastGymSmoke(
+  client: ReturnType<typeof createCollectorClient>,
+  target: { readonly areaId: number; readonly areaSid?: string; readonly room?: string },
+): Promise<Readonly<Record<string, unknown>>> {
+  const deterministicInputs = neutralGymInputs(120);
+  const baseline = await runMeasuredGymBatch(client, target, {
+    fastMode: false,
+    inputs: deterministicInputs,
+    includeEntities: false,
+  });
+  const accelerated = await runMeasuredGymBatch(client, target, {
+    fastMode: true,
+    inputs: deterministicInputs,
+    includeEntities: false,
+  });
+  if (baseline.framesExecuted !== deterministicInputs.length) {
+    throw new Error(
+      `normal gym determinism run stopped after ${baseline.framesExecuted} frames`,
+    );
+  }
+  if (accelerated.framesExecuted !== deterministicInputs.length) {
+    throw new Error(
+      `fast gym determinism run stopped after ${accelerated.framesExecuted} frames`,
+    );
+  }
+  compareGymPlayers(baseline.final.player, accelerated.final.player);
+
+  const throughputInputs = neutralGymInputs(1024);
+  const throughput = await runMeasuredGymBatch(client, target, {
+    fastMode: true,
+    inputs: throughputInputs,
+    includeEntities: false,
+  });
+  if (throughput.framesExecuted !== throughputInputs.length) {
+    throw new Error(
+      `fast gym throughput run stopped after ${throughput.framesExecuted} frames`,
+    );
+  }
+  if (throughput.effectiveFps <= 60) {
+    throw new Error(
+      `fast gym loop did not exceed 60 physics FPS: ${throughput.effectiveFps}`,
+    );
+  }
+
+  return Object.freeze({
+    mode: "fast",
+    deterministic_frames: deterministicInputs.length,
+    deterministic_match: true,
+    normal_step_ms: Number(baseline.stepMs.toFixed(1)),
+    normal_effective_fps: Number(baseline.effectiveFps.toFixed(1)),
+    fast_step_ms: Number(accelerated.stepMs.toFixed(1)),
+    fast_effective_fps: Number(accelerated.effectiveFps.toFixed(1)),
+    throughput_frames: throughput.framesExecuted,
+    throughput_step_ms: Number(throughput.stepMs.toFixed(1)),
+    throughput_effective_fps: Number(throughput.effectiveFps.toFixed(1)),
+    speedup_over_normal: Number(
+      (throughput.effectiveFps / Math.max(baseline.effectiveFps, 0.001)).toFixed(2),
+    ),
+  });
+}
+
+async function runMeasuredGymBatch(
+  client: ReturnType<typeof createCollectorClient>,
+  target: { readonly areaId: number; readonly areaSid?: string; readonly room?: string },
+  options: {
+    readonly fastMode: boolean;
+    readonly inputs: readonly Record<string, unknown>[];
+    readonly includeEntities: boolean;
+  },
+): Promise<{
+  readonly final: Record<string, unknown>;
+  readonly framesExecuted: number;
+  readonly stepMs: number;
+  readonly effectiveFps: number;
+}> {
+  const reset = await client.gymReset({
+    area_id: target.areaId,
+    ...(target.areaSid ? { area_sid: target.areaSid } : {}),
+    ...(target.room ? { room: target.room } : {}),
+    skip_transitions: true,
+    max_episode_frames: Math.max(options.inputs.length + 60, 600),
+    include_entities: options.includeEntities,
+    include_player_states: false,
+    fast_mode: options.fastMode,
+  });
+  const initial = requireGymObservation(reset.observation, "gym reset");
+  if (initial.fast_mode !== options.fastMode) {
+    throw new Error("gym reset did not preserve the requested fast_mode");
+  }
+  const episodeId = initial.episode_id;
+  if (typeof episodeId !== "string") {
+    throw new Error("gym reset observation has no episode_id");
+  }
+
+  const started = performance.now();
+  const stepped = await client.gymStep({
+    episode_id: episodeId,
+    inputs: [...options.inputs],
+  });
+  const stepMs = performance.now() - started;
+  const final = requireGymObservation(stepped.observation, "gym step");
+  await client.gymClose({ episode_id: episodeId });
+  return {
+    final,
+    framesExecuted: stepped.frames_executed,
+    stepMs,
+    effectiveFps: (stepped.frames_executed * 1000) / Math.max(stepMs, 0.001),
+  };
+}
+
+function neutralGymInputs(count: number): readonly Record<string, unknown>[] {
+  return Array.from({ length: count }, () => ({
+    move_x: 0,
+    move_y: 0,
+    jump_pressed: false,
+    jump_held: false,
+    dash_pressed: false,
+    crouch_dash_pressed: false,
+    grab_held: false,
+    talk_pressed: false,
+  }));
+}
+
+function compareGymPlayers(
+  expectedValue: unknown,
+  actualValue: unknown,
+): void {
+  if (
+    typeof expectedValue !== "object" ||
+    expectedValue === null ||
+    Array.isArray(expectedValue) ||
+    typeof actualValue !== "object" ||
+    actualValue === null ||
+    Array.isArray(actualValue)
+  ) {
+    throw new Error("gym determinism comparison requires player objects");
+  }
+  const expected = expectedValue as Record<string, unknown>;
+  const actual = actualValue as Record<string, unknown>;
+  for (const field of ["pos", "speed"] as const) {
+    const left = expected[field];
+    const right = actual[field];
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length < 2 || right.length < 2) {
+      throw new Error(`gym determinism comparison has invalid ${field}`);
+    }
+    for (let axis = 0; axis < 2; axis++) {
+      if (
+        typeof left[axis] !== "number" ||
+        typeof right[axis] !== "number" ||
+        Math.abs(left[axis] - right[axis]) > 0.01
+      ) {
+        throw new Error(
+          `fast gym ${field}[${axis}] differs: normal=${left[axis]} fast=${right[axis]}`,
+        );
+      }
+    }
+  }
+  for (const field of [
+    "state",
+    "facing",
+    "dashes",
+    "stamina",
+    "on_ground",
+    "ducking",
+    "dead",
+  ] as const) {
+    const difference =
+      typeof expected[field] === "number" && typeof actual[field] === "number"
+        ? Math.abs(expected[field] - actual[field])
+        : expected[field] === actual[field]
+          ? 0
+          : Number.POSITIVE_INFINITY;
+    if (difference > 0.01) {
+      throw new Error(
+        `fast gym ${field} differs: normal=${String(expected[field])} fast=${String(actual[field])}`,
+      );
+    }
+  }
 }
 
 function requireGymObservation(
