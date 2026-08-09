@@ -10,6 +10,7 @@ import {
 
 export interface GymResetRequest {
   area_id?: number;
+  area_mode?: number;
   area_sid?: string;
   room?: string;
   seed?: number;
@@ -20,6 +21,9 @@ export interface GymResetRequest {
   include_entities: boolean;
   include_player_states: boolean;
   fast_mode: boolean;
+  goal_boundary?: "up" | "down" | "left" | "right";
+  goal_aperture?: [number, number];
+  goal_world?: [number, number];
 }
 
 export interface GymStepRequest {
@@ -154,6 +158,10 @@ function decodeReset(root: Record<string, unknown>): GymResetRequest {
   }
   return {
     ...(areaId === undefined ? {} : { area_id: areaId }),
+    area_mode:
+      root.area_mode === undefined
+        ? 0
+        : requireBoundedInteger(root.area_mode, "area_mode", 0, 2),
     ...(areaSid === undefined ? {} : { area_sid: areaSid }),
     ...(root.room === undefined
       ? {}
@@ -201,6 +209,15 @@ function decodeReset(root: Record<string, unknown>): GymResetRequest {
       root.fast_mode === undefined
         ? false
         : requireBoolean(root.fast_mode, "fast_mode"),
+    ...(root.goal_boundary === undefined
+      ? {}
+      : { goal_boundary: requireGoalBoundary(root.goal_boundary) }),
+    ...(root.goal_aperture === undefined
+      ? {}
+      : { goal_aperture: requireFinitePair(root.goal_aperture, "goal_aperture", true) }),
+    ...(root.goal_world === undefined
+      ? {}
+      : { goal_world: requireFinitePair(root.goal_world, "goal_world", false) }),
   };
 }
 
@@ -279,6 +296,36 @@ function requireBoolean(value: unknown, path: string): boolean {
     throw new ProtocolValidationError(`${path} must be a boolean`);
   }
   return value;
+}
+
+function requireGoalBoundary(value: unknown): "up" | "down" | "left" | "right" {
+  if (value !== "up" && value !== "down" && value !== "left" && value !== "right") {
+    throw new ProtocolValidationError(
+      "goal_boundary must be one of up, down, left, or right",
+    );
+  }
+  return value;
+}
+
+function requireFinitePair(
+  value: unknown,
+  path: string,
+  ordered: boolean,
+): [number, number] {
+  if (
+    !Array.isArray(value) ||
+    value.length !== 2 ||
+    typeof value[0] !== "number" ||
+    typeof value[1] !== "number" ||
+    !Number.isFinite(value[0]) ||
+    !Number.isFinite(value[1]) ||
+    (ordered && value[1] <= value[0])
+  ) {
+    throw new ProtocolValidationError(
+      `${path} must contain two finite numbers${ordered ? " in increasing order" : ""}`,
+    );
+  }
+  return [value[0], value[1]];
 }
 
 function requireUnsignedInteger(value: unknown, path: string): number {

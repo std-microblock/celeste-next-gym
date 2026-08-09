@@ -130,6 +130,7 @@ export class EverestTcpBackend implements CollectorBackend {
       "reset",
       {
         area_id: request.area_id ?? this.areaId,
+        area_mode: request.area_mode ?? 0,
         ...(areaSid === undefined ? {} : { area_sid: areaSid }),
         room: request.room,
         ...(request.seed === undefined ? {} : { seed: request.seed }),
@@ -140,6 +141,15 @@ export class EverestTcpBackend implements CollectorBackend {
         include_entities: request.include_entities,
         include_player_states: request.include_player_states,
         fast_mode: request.fast_mode,
+        ...(request.goal_boundary === undefined
+          ? {}
+          : { goal_boundary: request.goal_boundary }),
+        ...(request.goal_aperture === undefined
+          ? {}
+          : { goal_aperture: request.goal_aperture }),
+        ...(request.goal_world === undefined
+          ? {}
+          : { goal_world: request.goal_world }),
       },
       signal,
       true,

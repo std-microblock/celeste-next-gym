@@ -222,10 +222,14 @@ describe("collector HTTP service", () => {
       },
       async gymReset(request) {
         assert.equal(request.area_sid, "Example/Map");
+        assert.equal(request.area_mode, 2);
         assert.equal(request.seed, 123456789);
         assert.equal(request.skip_transitions, true);
         assert.equal(request.fast_mode, true);
         assert.equal(request.include_player_states, false);
+        assert.equal(request.goal_boundary, "up");
+        assert.deepEqual(request.goal_aperture, [120, 136]);
+        assert.deepEqual(request.goal_world, [128, -5]);
         return {
           observation,
           player_states: [observation.player],
@@ -245,10 +249,14 @@ describe("collector HTTP service", () => {
     const running = await start(backend);
     const reset = await postGym(running, "reset", {
       area_sid: "Example/Map",
+      area_mode: 2,
       room: "start",
       seed: 123456789,
       fast_mode: true,
       include_player_states: false,
+      goal_boundary: "up",
+      goal_aperture: [120, 136],
+      goal_world: [128, -5],
     });
     const resetBody = (await decodeResponse(reset)) as any;
     assert.equal(reset.status, 200);

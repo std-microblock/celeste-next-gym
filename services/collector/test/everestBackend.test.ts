@@ -139,11 +139,15 @@ describe("Everest TCP backend", () => {
         assert.equal(request.run_nonce, "run-nonce");
         assert.equal(request.process_id, 4242);
         assert.equal(request.area_sid, "Example/Map");
+        assert.equal(request.area_mode, 1);
         assert.equal(request.room, "start");
         assert.equal(request.seed, -123456789);
         assert.equal(request.skip_transitions, true);
         assert.equal(request.fast_mode, true);
         assert.equal(request.include_player_states, false);
+        assert.equal(request.goal_boundary, "right");
+        assert.deepEqual(request.goal_aperture, [64, 80]);
+        assert.deepEqual(request.goal_world, [324, 72]);
         return gymResponse(episodeId, 0, true);
       }
       assert.equal(request.command, "gym_step");
@@ -161,6 +165,7 @@ describe("Everest TCP backend", () => {
     const reset = await backend.gymReset(
       {
         area_sid: "Example/Map",
+        area_mode: 1,
         room: "start",
         seed: -123456789,
         dream_dash: false,
@@ -170,6 +175,9 @@ describe("Everest TCP backend", () => {
         include_entities: true,
         include_player_states: false,
         fast_mode: true,
+        goal_boundary: "right",
+        goal_aperture: [64, 80],
+        goal_world: [324, 72],
       },
       new AbortController().signal,
     );

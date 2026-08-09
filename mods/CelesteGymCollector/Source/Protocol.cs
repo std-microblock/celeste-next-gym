@@ -78,6 +78,15 @@ public sealed class CollectorRequest {
     [JsonPropertyName("fast_mode")]
     public bool FastMode { get; set; }
 
+    [JsonPropertyName("goal_boundary")]
+    public string? GoalBoundary { get; set; }
+
+    [JsonPropertyName("goal_aperture")]
+    public float[]? GoalAperture { get; set; }
+
+    [JsonPropertyName("goal_world")]
+    public float[]? GoalWorld { get; set; }
+
     [JsonPropertyName("overlay_lines")]
     public List<string>? OverlayLines { get; set; }
 }

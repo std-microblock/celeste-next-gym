@@ -14,7 +14,11 @@ internal sealed class GymEpisode(
     int maxFrames,
     bool includeEntities,
     bool includePlayerStates,
-    bool fastMode
+    bool fastMode,
+    Rectangle startRoomBounds,
+    string? goalBoundary,
+    float[]? goalAperture,
+    float[]? goalWorld
 ) {
     private readonly Dictionary<Entity, int> entityIds = new(ReferenceEqualityComparer.Instance);
     private int nextEntityId = 1;
@@ -28,6 +32,10 @@ internal sealed class GymEpisode(
     public bool IncludeEntities { get; } = includeEntities;
     public bool IncludePlayerStates { get; } = includePlayerStates;
     public bool FastMode { get; } = fastMode;
+    public Rectangle StartRoomBounds { get; } = startRoomBounds;
+    public string? GoalBoundary { get; } = goalBoundary;
+    public float[]? GoalAperture { get; } = goalAperture;
+    public float[]? GoalWorld { get; } = goalWorld;
     public int Frame { get; set; }
     public PlayerFrame? LastPlayer { get; set; }
     public bool Done { get; set; }

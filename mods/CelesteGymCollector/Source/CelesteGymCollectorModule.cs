@@ -714,7 +714,14 @@ public sealed class CelesteGymCollectorModule : EverestModule {
             reset.Pending.Request.MaxEpisodeFrames,
             reset.Pending.Request.IncludeEntities != false,
             reset.Pending.Request.IncludePlayerStates != false,
-            reset.Pending.Request.FastMode
+            reset.Pending.Request.FastMode,
+            level.Bounds,
+            GymExitGoalPolicy.NormalizeBoundary(reset.Pending.Request.GoalBoundary),
+            GymExitGoalPolicy.NormalizePair(
+                reset.Pending.Request.GoalAperture,
+                "goal_aperture"
+            ),
+            GymExitGoalPolicy.NormalizePair(reset.Pending.Request.GoalWorld, "goal_world")
         );
         PlayerFrame frame = SnapshotCapture.Capture(player, 0);
         episode.LastPlayer = frame;
@@ -764,6 +771,8 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         step.Index++;
         step.Episode.Frame++;
 
+        PlayerFrame transitionOrigin = step.Episode.LastPlayer
+            ?? throw new InvalidOperationException("gym episode has no player snapshot");
         Level level = Engine.Scene as Level ?? step.LevelAtStart;
         bool sceneChanged = Engine.Scene is not Level;
         bool roomChanged = sceneChanged
@@ -777,11 +786,22 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         bool dead = step.DeathFrame is not null || (!roomChanged && (player is null || player.Dead));
         bool truncated = !dead && !roomChanged && step.Episode.Frame >= step.Episode.MaxFrames;
         bool terminated = dead || roomChanged;
-        bool success = roomChanged && !dead;
+        bool correctExit = roomChanged
+            && !dead
+            && GymExitGoalPolicy.Matches(
+                step.Episode.GoalBoundary,
+                step.Episode.GoalAperture,
+                step.Episode.GoalWorld,
+                step.Episode.StartRoomBounds,
+                transitionOrigin
+            );
+        bool success = correctExit;
         string? reason = dead
             ? "death"
             : roomChanged
-                ? "room_transition"
+                ? correctExit
+                    ? "room_transition"
+                    : "wrong_exit"
                 : truncated
                     ? "max_episode_frames"
                     : null;
@@ -789,19 +809,12 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         bool completes = terminated
             || truncated
             || step.Index >= step.Pending.Request.Inputs.Count;
-        PlayerFrame? frame = null;
-        if (step.Episode.IncludePlayerStates || completes) {
-            frame = step.DeathFrame
-                ?? (player is null
-                    ? SnapshotCapture.CaptureMissing(
-                        step.Episode.LastPlayer
-                            ?? throw new InvalidOperationException("gym episode has no player snapshot"),
-                        step.Episode.Frame
-                    )
-                    : SnapshotCapture.Capture(player, step.Episode.Frame));
-            step.Episode.LastPlayer = frame;
-            if (step.Episode.IncludePlayerStates) step.PlayerStates.Add(frame);
-        }
+        PlayerFrame frame = step.DeathFrame
+            ?? (player is null
+                ? SnapshotCapture.CaptureMissing(transitionOrigin, step.Episode.Frame)
+                : SnapshotCapture.Capture(player, step.Episode.Frame));
+        step.Episode.LastPlayer = frame;
+        if (step.Episode.IncludePlayerStates) step.PlayerStates.Add(frame);
         step.DeathFrame = null;
         step.LastInput = step.CurrentInput;
         step.CurrentInput = null;
@@ -812,7 +825,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         if (completes) {
             CompleteGymStep(
                 level,
-                frame ?? throw new InvalidOperationException("gym step completed without a snapshot"),
+                frame,
                 terminated,
                 truncated,
                 success,
