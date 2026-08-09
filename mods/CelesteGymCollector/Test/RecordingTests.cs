@@ -183,6 +183,28 @@ public sealed class RecordingTests : IDisposable {
         Assert.Equal(0, GymFastLoopPolicy.SelectActiveStepFrameCount(false, remaining));
     }
 
+    [Theory]
+    [InlineData(true, false, 0, true)]
+    [InlineData(true, false, 63, true)]
+    [InlineData(true, false, 64, false)]
+    [InlineData(true, true, 0, false)]
+    [InlineData(false, false, 0, false)]
+    public void FastLoopOnlyBridgesAfterAnAcceleratedStepCompletes(
+        bool accelerated,
+        bool stepActive,
+        int bridgedSteps,
+        bool expected
+    ) {
+        Assert.Equal(
+            expected,
+            GymFastLoopPolicy.ShouldBridgeSynchronousStep(
+                accelerated,
+                stepActive,
+                bridgedSteps
+            )
+        );
+    }
+
     [Fact]
     public void FastLoopCannotAffectDefaultOrUnrelatedGameRequests() {
         string episodeId = new('a', 32);

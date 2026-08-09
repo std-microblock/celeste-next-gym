@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reflection;
 using Microsoft.Xna.Framework;
 using Mono.Cecil.Cil;
@@ -32,6 +33,7 @@ internal sealed class GymFastLoopPatch : IDisposable {
     private bool acceleratedTickActive;
     private bool audioUpdatedThisTick;
     private bool autoSplitterUpdatedThisTick;
+    private int bridgedStepsThisTick;
 
     private bool ShouldRunAudioUpdate() {
         if (isHeadlessActor()) return false;
@@ -213,6 +215,7 @@ internal sealed class GymFastLoopPatch : IDisposable {
         acceleratedTickActive = false;
         audioUpdatedThisTick = false;
         autoSplitterUpdatedThisTick = false;
+        bridgedStepsThisTick = 0;
         int frames = selectFrameCount();
         if (frames is < 1 or > GymFastLoopPolicy.MaximumBatchFrames) return;
         TimeSpan fixedStep = game.TargetElapsedTime;
@@ -226,9 +229,35 @@ internal sealed class GymFastLoopPatch : IDisposable {
     }
 
     private void AfterFixedUpdate(Game game) {
-        if (acceleratedTickActive && !isStepActive()) {
-            AccumulatedElapsedTime.SetValue(game, TimeSpan.Zero);
-        }
+        if (!GymFastLoopPolicy.ShouldBridgeSynchronousStep(
+                acceleratedTickActive,
+                isStepActive(),
+                bridgedStepsThisTick
+            )) return;
+        AccumulatedElapsedTime.SetValue(game, TimeSpan.Zero);
+
+        // Completing a synchronous request wakes the TCP worker, which writes
+        // the observation and normally receives the client's next action in
+        // well under one display frame. Keep this same outer Tick alive for a
+        // short bounded hand-off so the next decision can enter FNA's existing
+        // fixed-update loop immediately instead of waiting for the platform's
+        // next 60 Hz Tick callback.
+        long deadline = Stopwatch.GetTimestamp()
+            + Stopwatch.Frequency * GymFastLoopPolicy.SynchronousStepBridgeMilliseconds / 1000;
+        int frames;
+        do {
+            frames = selectFrameCount();
+            if (frames > 0) {
+                bridgedStepsThisTick++;
+                TimeSpan fixedStep = game.TargetElapsedTime;
+                AccumulatedElapsedTime.SetValue(
+                    game,
+                    TimeSpan.FromTicks(checked(fixedStep.Ticks * frames))
+                );
+                return;
+            }
+            Thread.SpinWait(32);
+        } while (Stopwatch.GetTimestamp() < deadline);
     }
 
     private void FinishTick(Game game) {
@@ -241,6 +270,7 @@ internal sealed class GymFastLoopPatch : IDisposable {
         acceleratedTickActive = false;
         audioUpdatedThisTick = false;
         autoSplitterUpdatedThisTick = false;
+        bridgedStepsThisTick = 0;
     }
 
     private static FieldInfo RequireField(string name) => typeof(Game).GetField(

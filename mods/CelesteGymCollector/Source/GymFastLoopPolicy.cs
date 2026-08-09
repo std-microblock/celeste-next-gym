@@ -3,6 +3,8 @@ namespace Celeste.Mod.CelesteGymCollector;
 internal static class GymFastLoopPolicy {
     public const int MaximumBatchFrames = 4096;
     public const int MaximumUpdatesPerOuterTick = 256;
+    public const int SynchronousStepBridgeMilliseconds = 8;
+    public const int MaximumBridgedStepsPerOuterTick = 64;
 
     public static int SelectFrameCount(
         bool fastMode,
@@ -22,6 +24,14 @@ internal static class GymFastLoopPolicy {
         if (!fastMode || remainingFrames <= 0) return 0;
         return Math.Min(remainingFrames, MaximumUpdatesPerOuterTick);
     }
+
+    public static bool ShouldBridgeSynchronousStep(
+        bool accelerated,
+        bool stepActive,
+        int bridgedSteps
+    ) => accelerated
+        && !stepActive
+        && bridgedSteps < MaximumBridgedStepsPerOuterTick;
 
     public static bool ConsumeOuterTickService(bool accelerated, ref bool consumed) {
         if (!accelerated) return true;
