@@ -37,7 +37,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
     public override void Load() {
         gymFastLoopPatch = new GymFastLoopPatch(
             SelectFastLoopFrameCount,
-            () => gymStepJob is not null,
+            () => gymResetJob is not null || gymStepJob is not null,
             () => gymResetJob is not null || gymStepJob is not null || gymEpisode is not null,
             () => headlessActor
         );
@@ -319,7 +319,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                         activeLevel.Completed = false;
                         activeLevel.Session = session;
                         SaveData.Instance!.StartSession(session);
-                        activeLevel.Reload();
+                        GymResetPolicy.ReloadInPlace(activeLevel);
                         Player? reloadedPlayer = activeLevel.Tracker.GetEntity<Player>();
                         if (reloadedPlayer?.StateMachine.State == Player.StIntroRespawn) {
                             // Level.Reload always creates the player with the
@@ -1127,19 +1127,32 @@ public sealed class CelesteGymCollectorModule : EverestModule {
     }
 
     private int SelectFastLoopFrameCount() {
-        if (gymEpisode is null) return 0;
+        if (gymResetJob is not null) {
+            return GymFastLoopPolicy.SelectResetFrameCount(
+                gymResetJob.Pending.Request.FastMode
+            );
+        }
         if (gymStepJob is not null) {
             return GymFastLoopPolicy.SelectActiveStepFrameCount(
-                gymEpisode.FastMode,
+                gymStepJob.Episode.FastMode,
                 gymStepJob.Pending.Request.Inputs.Count - gymStepJob.Index
             );
         }
         if (!server.TryPeek(out PendingRequest? pending)) return 0;
+        CollectorRequest? request = pending?.Request;
+        if (request is not null
+            && string.Equals(request.Command, "gym_reset", StringComparison.Ordinal)) {
+            return GymFastLoopPolicy.SelectResetFrameCount(
+                request.FastMode,
+                request
+            );
+        }
+        if (gymEpisode is null) return 0;
         return GymFastLoopPolicy.SelectFrameCount(
             gymEpisode.FastMode,
             stepAlreadyActive: false,
             gymEpisode.Id,
-            pending?.Request
+            request
         );
     }
 

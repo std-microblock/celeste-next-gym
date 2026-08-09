@@ -21,7 +21,7 @@ internal sealed class GymFastLoopPatch : IDisposable {
     private static readonly PropertyInfo IsRunningSlowly = RequireGameTimeProperty("IsRunningSlowly");
 
     private readonly Func<int> selectFrameCount;
-    private readonly Func<bool> isStepActive;
+    private readonly Func<bool> isRequestActive;
     private readonly Func<bool> isGymActive;
     private readonly Func<bool> isHeadlessActor;
     private readonly ILHook tickHook;
@@ -53,12 +53,12 @@ internal sealed class GymFastLoopPatch : IDisposable {
 
     public GymFastLoopPatch(
         Func<int> selectFrameCount,
-        Func<bool> isStepActive,
+        Func<bool> isRequestActive,
         Func<bool> isGymActive,
         Func<bool> isHeadlessActor
     ) {
         this.selectFrameCount = selectFrameCount;
-        this.isStepActive = isStepActive;
+        this.isRequestActive = isRequestActive;
         this.isGymActive = isGymActive;
         this.isHeadlessActor = isHeadlessActor;
         MethodInfo tick = typeof(Game).GetMethod(
@@ -229,14 +229,14 @@ internal sealed class GymFastLoopPatch : IDisposable {
     }
 
     private void AfterFixedUpdate(Game game) {
-        if (!GymFastLoopPolicy.ShouldBridgeSynchronousStep(
+        if (!GymFastLoopPolicy.ShouldBridgeSynchronousRequest(
                 acceleratedTickActive,
-                isStepActive(),
+                isRequestActive(),
                 bridgedStepsThisTick
             )) return;
         AccumulatedElapsedTime.SetValue(game, TimeSpan.Zero);
 
-        // Completing a synchronous request wakes the TCP worker, which writes
+        // Completing a synchronous step or reset wakes the TCP worker, which writes
         // the observation and normally receives the client's next action in
         // well under one display frame. Keep this same outer Tick alive for a
         // short bounded hand-off so the next decision can enter FNA's existing

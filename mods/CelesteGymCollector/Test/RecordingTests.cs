@@ -183,23 +183,46 @@ public sealed class RecordingTests : IDisposable {
         Assert.Equal(0, GymFastLoopPolicy.SelectActiveStepFrameCount(false, remaining));
     }
 
+    [Fact]
+    public void FastLoopAcceleratesPendingAndActiveFastResets() {
+        CollectorRequest reset = new() {
+            Command = "gym_reset",
+            FastMode = true
+        };
+        CollectorRequest observe = new() {
+            Command = "gym_observe",
+            FastMode = true
+        };
+
+        Assert.Equal(
+            GymFastLoopPolicy.MaximumUpdatesPerOuterTick,
+            GymFastLoopPolicy.SelectResetFrameCount(true, reset)
+        );
+        Assert.Equal(
+            GymFastLoopPolicy.MaximumUpdatesPerOuterTick,
+            GymFastLoopPolicy.SelectResetFrameCount(true)
+        );
+        Assert.Equal(0, GymFastLoopPolicy.SelectResetFrameCount(false, reset));
+        Assert.Equal(0, GymFastLoopPolicy.SelectResetFrameCount(true, observe));
+    }
+
     [Theory]
     [InlineData(true, false, 0, true)]
     [InlineData(true, false, 63, true)]
     [InlineData(true, false, 64, false)]
     [InlineData(true, true, 0, false)]
     [InlineData(false, false, 0, false)]
-    public void FastLoopOnlyBridgesAfterAnAcceleratedStepCompletes(
+    public void FastLoopOnlyBridgesAfterAnAcceleratedRequestCompletes(
         bool accelerated,
-        bool stepActive,
+        bool requestActive,
         int bridgedSteps,
         bool expected
     ) {
         Assert.Equal(
             expected,
-            GymFastLoopPolicy.ShouldBridgeSynchronousStep(
+            GymFastLoopPolicy.ShouldBridgeSynchronousRequest(
                 accelerated,
-                stepActive,
+                requestActive,
                 bridgedSteps
             )
         );
@@ -523,6 +546,20 @@ public sealed class RecordingTests : IDisposable {
 
         Assert.False(level.Transitioning);
         Assert.False(level.Paused);
+    }
+
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(1, false)]
+    [InlineData(255, false)]
+    [InlineData(256, true)]
+    [InlineData(257, false)]
+    [InlineData(512, true)]
+    public void InPlaceGymResetAmortizesBlockingGarbageCollection(
+        int completedReloads,
+        bool expected
+    ) {
+        Assert.Equal(expected, GymResetPolicy.ShouldCollectGarbage(completedReloads));
     }
 
     [Fact]

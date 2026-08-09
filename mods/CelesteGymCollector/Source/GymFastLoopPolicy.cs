@@ -25,12 +25,19 @@ internal static class GymFastLoopPolicy {
         return Math.Min(remainingFrames, MaximumUpdatesPerOuterTick);
     }
 
-    public static bool ShouldBridgeSynchronousStep(
+    public static int SelectResetFrameCount(bool fastMode, CollectorRequest? request = null) {
+        if (!fastMode) return 0;
+        if (request is not null
+            && !string.Equals(request.Command, "gym_reset", StringComparison.Ordinal)) return 0;
+        return MaximumUpdatesPerOuterTick;
+    }
+
+    public static bool ShouldBridgeSynchronousRequest(
         bool accelerated,
-        bool stepActive,
+        bool requestActive,
         int bridgedSteps
     ) => accelerated
-        && !stepActive
+        && !requestActive
         && bridgedSteps < MaximumBridgedStepsPerOuterTick;
 
     public static bool ConsumeOuterTickService(bool accelerated, ref bool consumed) {
