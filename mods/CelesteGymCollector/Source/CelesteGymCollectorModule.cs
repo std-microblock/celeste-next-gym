@@ -168,6 +168,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                     int areaId = ResolveAreaId(request);
                     gymEpisode = null;
                     gymResetJob = new GymResetJob(pending, Engine.Scene, areaId);
+                    if (request.Seed is int seed) GymRandomPolicy.Reset(seed);
                     Session session = new(new AreaKey(areaId));
                     if (request.DreamDash) session.Inventory.DreamDash = true;
                     if (!string.IsNullOrWhiteSpace(request.Room)) {
@@ -194,6 +195,17 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                         activeLevel.Session = session;
                         SaveData.Instance!.StartSession(session);
                         activeLevel.Reload();
+                        Player? reloadedPlayer = activeLevel.Tracker.GetEntity<Player>();
+                        if (reloadedPlayer?.StateMachine.State == Player.StIntroRespawn) {
+                            // Level.Reload always creates the player with the
+                            // 0.6 s respawn presentation. Wall-clock latency
+                            // between reset and step would then change the
+                            // physics state reached by identical input batches.
+                            // Gym reset is already transition-free, so finish
+                            // that presentation immediately and deterministically.
+                            reloadedPlayer.StateMachine.State = Player.StNormal;
+                            reloadedPlayer.JustRespawned = false;
+                        }
                         break;
                     }
                     if (request.SkipTransitions) {

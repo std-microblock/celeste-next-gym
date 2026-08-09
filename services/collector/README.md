@@ -149,6 +149,7 @@ interface CollectorBackend {
   area_id?: u32,                 // area_id 或 area_sid 至少一个
   area_sid?: string,
   room?: string,
+  seed?: i32,                    // 可选；在 Session/Reload 前重置游戏权威 RNG
   dream_dash?: bool,             // 默认 false
   initial_snapshot?: Snapshot|null,
   skip_transitions?: bool,       // 默认 true
@@ -156,6 +157,9 @@ interface CollectorBackend {
   include_entities?: bool        // 默认 true
 }
 ```
+
+显式提供同一个 `seed`、相同房间和相同输入序列时，真实游戏逐帧
+`player_states` 必须精确一致。省略 `seed` 时不会改写普通游戏的全局 RNG 状态。
 
 成功响应：
 

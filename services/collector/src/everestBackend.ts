@@ -132,6 +132,7 @@ export class EverestTcpBackend implements CollectorBackend {
         area_id: request.area_id ?? this.areaId,
         ...(areaSid === undefined ? {} : { area_sid: areaSid }),
         room: request.room,
+        ...(request.seed === undefined ? {} : { seed: request.seed }),
         dream_dash: request.dream_dash,
         initial_snapshot: toEverestInitialSnapshot(request.initial_snapshot),
         skip_transitions: request.skip_transitions,

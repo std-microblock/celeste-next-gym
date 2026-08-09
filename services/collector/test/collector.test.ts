@@ -222,6 +222,7 @@ describe("collector HTTP service", () => {
       },
       async gymReset(request) {
         assert.equal(request.area_sid, "Example/Map");
+        assert.equal(request.seed, 123456789);
         assert.equal(request.skip_transitions, true);
         assert.equal(request.fast_mode, true);
         assert.equal(request.include_player_states, false);
@@ -245,6 +246,7 @@ describe("collector HTTP service", () => {
     const reset = await postGym(running, "reset", {
       area_sid: "Example/Map",
       room: "start",
+      seed: 123456789,
       fast_mode: true,
       include_player_states: false,
     });
@@ -274,6 +276,16 @@ describe("collector HTTP service", () => {
     const body = (await decodeResponse(unsupported)) as SimulateFailure;
     assert.equal(unsupported.status, 503);
     assert.equal(body.code, "GYM_NOT_CONFIGURED");
+  });
+
+  it("rejects reset seeds outside the signed 32-bit protocol range", async () => {
+    const running = await start(new MockCollectorBackend());
+    for (const seed of [0x8000_0000, -0x8000_0001, 1.5, "1"]) {
+      const response = await postGym(running, "reset", { area_id: 1, seed });
+      const body = (await decodeResponse(response)) as SimulateFailure;
+      assert.equal(response.status, 400);
+      assert.equal(body.code, "INVALID_REQUEST");
+    }
   });
 });
 

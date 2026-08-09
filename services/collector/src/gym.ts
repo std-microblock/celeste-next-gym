@@ -12,6 +12,7 @@ export interface GymResetRequest {
   area_id?: number;
   area_sid?: string;
   room?: string;
+  seed?: number;
   dream_dash?: boolean;
   initial_snapshot: PlayerSnapshot | null;
   skip_transitions: boolean;
@@ -157,6 +158,16 @@ function decodeReset(root: Record<string, unknown>): GymResetRequest {
     ...(root.room === undefined
       ? {}
       : { room: requireNonEmptyString(root.room, "room") }),
+    ...(root.seed === undefined
+      ? {}
+      : {
+          seed: requireBoundedInteger(
+            root.seed,
+            "seed",
+            -0x8000_0000,
+            0x7fff_ffff,
+          ),
+        }),
     dream_dash:
       root.dream_dash === undefined
         ? false

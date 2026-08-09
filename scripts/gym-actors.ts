@@ -4,6 +4,7 @@ import { closeSync, mkdirSync, openSync, renameSync, writeFileSync } from "node:
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createConnection, createServer, type Socket } from "node:net";
+import { isDeepStrictEqual } from "node:util";
 
 import {
   createRunContext,
@@ -33,6 +34,8 @@ interface ActorOptions {
   readonly areaSid?: string;
   readonly showWindows: boolean;
   readonly smoke: boolean;
+  readonly seedSmoke: boolean;
+  readonly seedSmokeSeed: number;
   readonly soakResets: number;
   readonly soakRoom: string;
   readonly soakFrames: number;
@@ -91,6 +94,8 @@ export function parseActorOptions(argv: readonly string[]): ActorOptions {
   let areaSid: string | undefined;
   let showWindows = false;
   let smoke = false;
+  let seedSmoke = false;
+  let seedSmokeSeed = 8_675_309;
   let soakResets = 0;
   let soakRoom = "2";
   let soakFrames = 1536;
@@ -106,6 +111,13 @@ export function parseActorOptions(argv: readonly string[]): ActorOptions {
     else if (argument === "--area-sid") areaSid = requiredValue(argv[++index], argument);
     else if (argument === "--show-windows") showWindows = true;
     else if (argument === "--smoke") smoke = true;
+    else if (argument === "--seed-smoke") seedSmoke = true;
+    else if (argument === "--seed-smoke-seed") seedSmokeSeed = boundedInteger(
+      argv[++index],
+      argument,
+      -0x8000_0000,
+      0x7fff_ffff,
+    );
     else if (argument === "--soak-resets") soakResets = boundedInteger(argv[++index], argument, 1, 1_000_000);
     else if (argument === "--soak-room") soakRoom = requiredValue(argv[++index], argument);
     else if (argument === "--soak-frames") soakFrames = boundedInteger(argv[++index], argument, 1, 4096);
@@ -122,6 +134,8 @@ export function parseActorOptions(argv: readonly string[]): ActorOptions {
     ...(areaSid ? { areaSid } : {}),
     showWindows,
     smoke,
+    seedSmoke,
+    seedSmokeSeed,
     soakResets,
     soakRoom,
     soakFrames,
@@ -307,6 +321,11 @@ export async function runActorLauncher(): Promise<void> {
     };
     process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
 
+    if (options.seedSmoke) {
+      await runSeedTrajectoryGate(actors, paths.serviceRoot, options);
+      await cleanup("seed-smoke-complete");
+      return;
+    }
     if (options.smoke) {
       await cleanup("smoke-complete");
       return;
@@ -333,6 +352,163 @@ export async function runActorLauncher(): Promise<void> {
     await cleanup("error");
     throw error;
   }
+}
+
+async function runSeedTrajectoryGate(
+  actors: readonly RunningActor[],
+  serviceRoot: string,
+  options: ActorOptions,
+): Promise<void> {
+  const inputs = createSeedTrajectoryInputs();
+  const started = performance.now();
+  const results = await Promise.all(actors.map(async (actor) => {
+    const client = createActorGymClient(actor, serviceRoot);
+    const perturbSeed = options.seedSmokeSeed === 0x7fff_ffff
+      ? -0x8000_0000
+      : options.seedSmokeSeed + 1;
+
+    // Put the actor on the requested map first so both compared resets exercise
+    // the long-lived in-place Reload path used by training after actor startup.
+    await captureSeededTrajectory(client, options, perturbSeed, inputs.slice().reverse());
+    const first = await captureSeededTrajectory(
+      client,
+      options,
+      options.seedSmokeSeed,
+      inputs,
+    );
+
+    // Deliberately replace and consume the authoritative stream between the
+    // two target runs. The second reset must still reproduce the first run.
+    await captureSeededTrajectory(client, options, perturbSeed, inputs.slice().reverse());
+
+    const second = await captureSeededTrajectory(
+      client,
+      options,
+      options.seedSmokeSeed,
+      inputs,
+    );
+    const firstComparable = canonicalizeSeedTrajectory(first);
+    const secondComparable = canonicalizeSeedTrajectory(second);
+    if (!isDeepStrictEqual(firstComparable, secondComparable)) {
+      throw new Error(
+        `actor ${actor.index} same-seed trajectory mismatch: ` +
+        `${describeTrajectoryMismatch(
+          firstComparable.playerStates,
+          secondComparable.playerStates,
+        )}`,
+      );
+    }
+    return {
+      actor: actor.index,
+      seed: options.seedSmokeSeed,
+      frames: first.playerStates.length - 1,
+      terminal: first.terminal,
+      final_player: canonicalizePlayerState(first.finalPlayer),
+    };
+  }));
+  process.stdout.write(`${JSON.stringify({
+    seed_trajectory_gate: "exact-pass",
+    room: options.soakRoom,
+    input_frames: inputs.length,
+    actors: results,
+    elapsed_seconds: Number(((performance.now() - started) / 1000).toFixed(2)),
+  })}\n`);
+}
+
+function canonicalizeSeedTrajectory(
+  trajectory: CapturedSeedTrajectory,
+): CapturedSeedTrajectory {
+  return {
+    playerStates: trajectory.playerStates.map((state) =>
+      canonicalizePlayerState(state) as Record<string, unknown>),
+    finalPlayer: canonicalizePlayerState(trajectory.finalPlayer),
+    terminal: trajectory.terminal,
+  };
+}
+
+function canonicalizePlayerState(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const state = value as Record<string, unknown>;
+  // Reflected internals include presentation-only values driven by continuous
+  // Scene.Time (for example Player.flash) and Monocle's entity insertion epsilon
+  // (actualDepth). The authoritative trajectory is the complete top-level
+  // PlayerFrame: position, speed, state, facing, resources, contacts and death.
+  const {
+    fields: _directReflectedInternals,
+    _everest_fields: _httpReflectedInternals,
+    ...trajectoryState
+  } = state;
+  return trajectoryState;
+}
+
+interface CapturedSeedTrajectory {
+  readonly playerStates: readonly Record<string, unknown>[];
+  readonly finalPlayer: unknown;
+  readonly terminal: boolean;
+}
+
+async function captureSeededTrajectory(
+  client: ActorGymClient,
+  options: ActorOptions,
+  seed: number,
+  inputs: readonly SoakInput[],
+): Promise<CapturedSeedTrajectory> {
+  const reset = await client.gymReset({
+    area_id: options.areaId,
+    ...(options.areaSid ? { area_sid: options.areaSid } : {}),
+    room: options.soakRoom,
+    seed,
+    skip_transitions: true,
+    max_episode_frames: inputs.length + 60,
+    include_entities: true,
+    include_player_states: true,
+    fast_mode: true,
+  });
+  const episodeId = reset.observation?.episode_id;
+  if (typeof episodeId !== "string") {
+    throw new Error("seed trajectory reset returned no episode id");
+  }
+  const playerStates = [...reset.player_states];
+  let finalPlayer = reset.observation?.player;
+  let terminal = false;
+  const step = await client.gymStep({ episode_id: episodeId, inputs });
+  playerStates.push(...step.player_states);
+  finalPlayer = step.observation?.player;
+  terminal = step.observation?.terminated === true || step.observation?.truncated === true;
+  if (step.frames_executed === 0 && !terminal) {
+    throw new Error("seed trajectory step executed zero frames before episode completion");
+  }
+  return { playerStates, finalPlayer, terminal };
+}
+
+export function createSeedTrajectoryInputs(): SoakInput[] {
+  return Array.from({ length: 128 }, (_, frame): SoakInput => {
+    const jumpStart = frame === 16 || frame === 72;
+    const jumpHeld = (frame >= 16 && frame < 28) || (frame >= 72 && frame < 84);
+    const dashStart = frame === 40 || frame === 96;
+    return {
+      move_x: frame < 64 ? 1 : -1,
+      move_y: frame >= 36 && frame < 52 ? -1 : frame >= 92 && frame < 108 ? 1 : 0,
+      jump_pressed: jumpStart,
+      jump_held: jumpHeld,
+      dash_pressed: dashStart,
+      crouch_dash_pressed: frame === 112,
+      grab_held: frame >= 56 && frame < 68,
+      talk_pressed: false,
+    };
+  });
+}
+
+function describeTrajectoryMismatch(
+  first: readonly Record<string, unknown>[],
+  second: readonly Record<string, unknown>[],
+): string {
+  if (first.length !== second.length) return `length ${first.length} != ${second.length}`;
+  const index = first.findIndex((state, stateIndex) =>
+    !isDeepStrictEqual(state, second[stateIndex]));
+  if (index < 0) return "final observation differs";
+  return `first different player state at frame index ${index}: ` +
+    `${JSON.stringify(first[index])} != ${JSON.stringify(second[index])}`;
 }
 
 async function startActor(

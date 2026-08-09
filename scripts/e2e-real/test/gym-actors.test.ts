@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   createPolicySoakBatch,
+  createSeedTrajectoryInputs,
   createSeededRandom,
   parseActorOptions,
 } from "../../gym-actors.js";
@@ -14,6 +15,8 @@ describe("persistent gym actor launcher", () => {
       areaId: 1,
       showWindows: false,
       smoke: false,
+      seedSmoke: false,
+      seedSmokeSeed: 8675309,
       soakResets: 0,
       soakRoom: "2",
       soakFrames: 1536,
@@ -36,6 +39,9 @@ describe("persistent gym actor launcher", () => {
         "Example/TrainingMap",
         "--show-windows",
         "--smoke",
+        "--seed-smoke",
+        "--seed-smoke-seed",
+        "-2147483648",
         "--soak-resets",
         "10",
         "--soak-room",
@@ -57,6 +63,8 @@ describe("persistent gym actor launcher", () => {
         areaSid: "Example/TrainingMap",
         showWindows: true,
         smoke: true,
+        seedSmoke: true,
+        seedSmokeSeed: -2147483648,
         soakResets: 10,
         soakRoom: "2",
         soakFrames: 1536,
@@ -88,9 +96,24 @@ describe("persistent gym actor launcher", () => {
     assert.ok(firstBatches.flat().some((input) => input.grab_held));
   });
 
+  it("builds a fixed action-heavy trajectory for the exact seed gate", () => {
+    const inputs = createSeedTrajectoryInputs();
+    assert.equal(inputs.length, 128);
+    assert.ok(inputs.some((input) => input.move_x === -1));
+    assert.ok(inputs.some((input) => input.move_x === 1));
+    assert.ok(inputs.some((input) => input.jump_pressed));
+    assert.ok(inputs.some((input) => input.dash_pressed));
+    assert.ok(inputs.some((input) => input.crouch_dash_pressed));
+    assert.ok(inputs.some((input) => input.grab_held));
+  });
+
   it("rejects unsafe actor counts and unknown flags", () => {
     assert.throws(() => parseActorOptions(["--actors", "0"]), /1 through 32/);
     assert.throws(() => parseActorOptions(["--actors", "33"]), /1 through 32/);
+    assert.throws(
+      () => parseActorOptions(["--seed-smoke-seed", "2147483648"]),
+      /-2147483648 through 2147483647/,
+    );
     assert.throws(() => parseActorOptions(["--unknown"]), /unknown gym actor/);
   });
 });

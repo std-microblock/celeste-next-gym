@@ -140,6 +140,7 @@ describe("Everest TCP backend", () => {
         assert.equal(request.process_id, 4242);
         assert.equal(request.area_sid, "Example/Map");
         assert.equal(request.room, "start");
+        assert.equal(request.seed, -123456789);
         assert.equal(request.skip_transitions, true);
         assert.equal(request.fast_mode, true);
         assert.equal(request.include_player_states, false);
@@ -161,6 +162,7 @@ describe("Everest TCP backend", () => {
       {
         area_sid: "Example/Map",
         room: "start",
+        seed: -123456789,
         dream_dash: false,
         initial_snapshot: null,
         skip_transitions: true,

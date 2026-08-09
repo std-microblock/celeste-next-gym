@@ -16,12 +16,18 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="Celeste"><HintPath>..\..\..\vendor\celeste-game\Celeste.dll</HintPath><Private>true</Private></Reference>
+    <Reference Include="FNA"><HintPath>..\..\..\vendor\celeste-game\FNA.dll</HintPath><Private>true</Private></Reference>
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Include="..\Source\RecordingSecurity.cs" Link="RecordingSecurity.cs" />
     <Compile Include="..\Source\RecordingLifecycle.cs" Link="RecordingLifecycle.cs" />
     <Compile Include="..\Source\RecordingTimeline.cs" Link="RecordingTimeline.cs" />
     <Compile Include="..\Source\ScriptedInputBuffer.cs" Link="ScriptedInputBuffer.cs" />
     <Compile Include="..\Source\Protocol.cs" Link="Protocol.cs" />
     <Compile Include="..\Source\GymFastLoopPolicy.cs" Link="GymFastLoopPolicy.cs" />
+    <Compile Include="..\Source\GymRandomPolicy.cs" Link="GymRandomPolicy.cs" />
     <Compile Include="..\Source\CollectorConnectionProtocol.cs" Link="CollectorConnectionProtocol.cs" />
   </ItemGroup>
 </Project>

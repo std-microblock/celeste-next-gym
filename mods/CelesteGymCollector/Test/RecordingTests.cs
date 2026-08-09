@@ -1,4 +1,5 @@
 using Xunit;
+using Monocle;
 
 namespace Celeste.Mod.CelesteGymCollector;
 
@@ -240,6 +241,32 @@ public sealed class RecordingTests : IDisposable {
     public void GymEpisodeSuppressesNativeControllerRumble() {
         Assert.False(GymFastLoopPolicy.ShouldRunRumble(true));
         Assert.True(GymFastLoopPolicy.ShouldRunRumble(false));
+    }
+
+    [Fact]
+    public void GymRandomResetRestoresTheAuthoritativeSequenceAndClearsNestedState() {
+        const int seed = 8675309;
+        Calc.PushRandom(1234);
+
+        GymRandomPolicy.Reset(seed);
+        int[] first = Enumerable.Range(0, 8).Select(_ => Calc.Random.Next()).ToArray();
+
+        Calc.PushRandom(4321);
+        _ = Calc.Random.Next();
+        GymRandomPolicy.Reset(seed);
+        int[] second = Enumerable.Range(0, 8).Select(_ => Calc.Random.Next()).ToArray();
+
+        Assert.Equal(first, second);
+        Assert.Throws<InvalidOperationException>(() => Calc.PopRandom());
+    }
+
+    [Fact]
+    public void CollectorRequestSeedIsOptional() {
+        CollectorRequest request = new();
+        Assert.Null(request.Seed);
+
+        request.Seed = int.MinValue;
+        Assert.Equal(int.MinValue, request.Seed);
     }
 
     public void Dispose() {

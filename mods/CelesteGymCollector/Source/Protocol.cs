@@ -63,6 +63,9 @@ public sealed class CollectorRequest {
     [JsonPropertyName("max_episode_frames")]
     public int MaxEpisodeFrames { get; set; } = 36_000;
 
+    [JsonPropertyName("seed")]
+    public int? Seed { get; set; }
+
     [JsonPropertyName("include_entities")]
     public bool? IncludeEntities { get; set; }
 
