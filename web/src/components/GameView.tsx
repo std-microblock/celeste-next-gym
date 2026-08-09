@@ -1631,6 +1631,13 @@ const STATIC_MOVER_PLATFORM_KINDS = new Set<EntityKind>([
   "zip_mover",
 ]);
 
+interface StaticMoverAttachment {
+  entityIndex: number;
+  platformIndex: number;
+  platformKindIndex: number;
+  offset: Vec2;
+}
+
 function entityRidesPlatform(entity: MapEntity, platform: MapEntity): boolean {
   const entityBox = entity.bounds;
   const platformBox = platform.bounds;
@@ -1677,16 +1684,44 @@ function platformStaticMoversEnabled(
 export function runtimeAttachedEntityBounds(
   map: GymMap,
   state: SimState,
+  attachments: readonly StaticMoverAttachment[] =
+    buildStaticMoverAttachments(map),
 ): Map<number, MapEntity["bounds"]> {
-  const kindCounts = new Map<EntityKind, number>();
-  const kindIndices: number[] = [];
-  const runtimeBounds = map.entities.map((entity) => {
-    const kindIndex = kindCounts.get(entity.kind) ?? 0;
-    kindIndices.push(kindIndex);
-    kindCounts.set(entity.kind, kindIndex + 1);
-    return runtimeEntityBounds(entity, state, kindIndex);
-  });
   const result = new Map<number, MapEntity["bounds"]>();
+  for (const attachment of attachments) {
+    const entity = map.entities[attachment.entityIndex];
+    const platform = map.entities[attachment.platformIndex];
+    const platformBox = runtimeEntityBounds(
+      platform,
+      state,
+      attachment.platformKindIndex,
+    );
+    const enabled = platformStaticMoversEnabled(
+      platform,
+      state,
+      attachment.platformKindIndex,
+    );
+    result.set(attachment.entityIndex, {
+      ...entity.bounds,
+      x: enabled ? platformBox.x + attachment.offset.x : -1_000_000,
+      y: enabled ? platformBox.y + attachment.offset.y : -1_000_000,
+    });
+  }
+  return result;
+}
+
+function entityKindIndices(map: GymMap): number[] {
+  const kindCounts = new Map<EntityKind, number>();
+  return map.entities.map((entity) => {
+    const kindIndex = kindCounts.get(entity.kind) ?? 0;
+    kindCounts.set(entity.kind, kindIndex + 1);
+    return kindIndex;
+  });
+}
+
+function buildStaticMoverAttachments(map: GymMap): StaticMoverAttachment[] {
+  const kindIndices = entityKindIndices(map);
+  const attachments: StaticMoverAttachment[] = [];
   for (const [entityIndex, entity] of map.entities.entries()) {
     if (entity.kind !== "spikes" && entity.kind !== "spring") continue;
     const platformIndex = map.entities.findIndex(
@@ -1696,19 +1731,17 @@ export function runtimeAttachedEntityBounds(
     );
     if (platformIndex < 0) continue;
     const platform = map.entities[platformIndex];
-    const platformBox = runtimeBounds[platformIndex];
-    const enabled = platformStaticMoversEnabled(
-      platform,
-      state,
-      kindIndices[platformIndex],
-    );
-    result.set(entityIndex, {
-      ...entity.bounds,
-      x: enabled ? platformBox.x + entity.bounds.x - platform.bounds.x : -1_000_000,
-      y: enabled ? platformBox.y + entity.bounds.y - platform.bounds.y : -1_000_000,
+    attachments.push({
+      entityIndex,
+      platformIndex,
+      platformKindIndex: kindIndices[platformIndex],
+      offset: {
+        x: entity.bounds.x - platform.bounds.x,
+        y: entity.bounds.y - platform.bounds.y,
+      },
     });
   }
-  return result;
+  return attachments;
 }
 
 export function strawberryIsPicked(
@@ -3315,9 +3348,14 @@ interface GameViewDrawInput {
   stateFrameOffset: number;
   stale: boolean;
   camera: CameraBounds;
+  cameraPosition?: Vec2;
+  cameraViewport?: CameraBounds;
   tileLayer: HTMLCanvasElement | undefined;
   /** Static spinner groups pre-rendered per group; null falls back per-frame. */
   spinnerGroups: SpinnerGroup[] | null;
+  entityKindIndices: readonly number[];
+  staticMoverAttachments: readonly StaticMoverAttachment[];
+  viewportRevision: number;
 }
 
 function paintGame(
@@ -3396,10 +3434,13 @@ function paintGame(
     );
     drawSpinnerItems(context, assets, spinnerItems);
   }
-  const kindCounts = new Map<EntityKind, number>();
-  const attachedEntityBounds = runtimeAttachedEntityBounds(map, state);
+  const attachedEntityBounds = runtimeAttachedEntityBounds(
+    map,
+    state,
+    input.staticMoverAttachments,
+  );
   for (const [entityIndex, entity] of map.entities.entries()) {
-    const kindIndex = kindCounts.get(entity.kind) ?? 0;
+    const kindIndex = input.entityKindIndices[entityIndex] ?? 0;
     const renderedEntity = attachedEntityBounds.has(entityIndex)
       ? { ...entity, bounds: attachedEntityBounds.get(entityIndex)! }
       : entity;
@@ -3413,7 +3454,6 @@ function paintGame(
       entityIndex,
       theme,
     );
-    kindCounts.set(entity.kind, kindIndex + 1);
   }
   context.globalAlpha = stale ? 0.45 : 1;
   drawPlayerParticles(context, assets, states, frame, stateFrameOffset);
@@ -3437,7 +3477,13 @@ function gameViewDrawChanged(
     next.states !== last.states ||
     next.stateFrameOffset !== last.stateFrameOffset ||
     next.stale !== last.stale ||
+    next.cameraPosition !== last.cameraPosition ||
+    next.cameraViewport !== last.cameraViewport ||
     next.tileLayer !== last.tileLayer ||
+    next.spinnerGroups !== last.spinnerGroups ||
+    next.entityKindIndices !== last.entityKindIndices ||
+    next.staticMoverAttachments !== last.staticMoverAttachments ||
+    next.viewportRevision !== last.viewportRevision ||
     next.camera.x !== last.camera.x ||
     next.camera.y !== last.camera.y ||
     next.camera.width !== last.camera.width ||
@@ -3494,6 +3540,11 @@ export const GameView = memo(function GameView({
     () => (mergedAssets ? buildSpinnerGroups(mergedAssets, map, theme) : null),
     [mergedAssets, map, theme],
   );
+  const kindIndices = useMemo(() => entityKindIndices(map), [map]);
+  const staticMoverAttachments = useMemo(
+    () => buildStaticMoverAttachments(map),
+    [map],
+  );
   const camera = cameraViewport
     ? clampCameraViewport(map, cameraViewport)
     : cameraBounds(
@@ -3545,30 +3596,58 @@ export const GameView = memo(function GameView({
         stateFrameOffset,
         stale,
         camera,
+        cameraPosition,
+        cameraViewport,
         tileLayer,
         spinnerGroups,
+        entityKindIndices: kindIndices,
+        staticMoverAttachments,
+        viewportRevision,
       }
     : null;
 
-  const drawSnapshotForFrame = (): GameViewDrawInput | null => {
+  const drawSnapshotForFrame = (
+    last: GameViewDrawInput | null,
+  ): GameViewDrawInput | null => {
     const base = drawInputRef.current;
     if (!base) return null;
     if (!liveRefs) return base;
     const liveState = liveRefs.state.current;
     const history = liveRefs.history.current;
+    const liveFrame = liveRefs.frame.current;
+    const liveStale = liveRefs.stale?.current ?? base.stale;
+    if (
+      last &&
+      base.assets === last.assets &&
+      base.map === last.map &&
+      base.theme === last.theme &&
+      base.tileLayer === last.tileLayer &&
+      base.spinnerGroups === last.spinnerGroups &&
+      base.entityKindIndices === last.entityKindIndices &&
+      base.staticMoverAttachments === last.staticMoverAttachments &&
+      base.viewportRevision === last.viewportRevision &&
+      base.cameraPosition === last.cameraPosition &&
+      base.cameraViewport === last.cameraViewport &&
+      liveState === last.state &&
+      liveFrame === last.frame &&
+      history.states === last.states &&
+      history.startFrame === last.stateFrameOffset &&
+      liveStale === last.stale
+    )
+      return last;
     return {
       ...base,
       state: liveState,
-      frame: liveRefs.frame.current,
+      frame: liveFrame,
       states: history.states,
       stateFrameOffset: history.startFrame,
-      stale: liveRefs.stale?.current ?? base.stale,
-      camera: cameraViewport
-        ? clampCameraViewport(map, cameraViewport)
+      stale: liveStale,
+      camera: base.cameraViewport
+        ? clampCameraViewport(base.map, base.cameraViewport)
         : cameraBounds(
-            cameraPosition
-              ? clampCameraPosition(map, cameraPosition)
-              : stateCameraPosition(map, liveState),
+            base.cameraPosition
+              ? clampCameraPosition(base.map, base.cameraPosition)
+              : stateCameraPosition(base.map, liveState),
           ),
     };
   };
@@ -3584,8 +3663,9 @@ export const GameView = memo(function GameView({
     let last: GameViewDrawInput | null = null;
     const tick = () => {
       animation = requestAnimationFrame(tick);
-      const snapshot = drawSnapshotForFrame();
+      const snapshot = drawSnapshotForFrame(last);
       if (!snapshot) return;
+      if (snapshot === last) return;
       if (!gameViewDrawChanged(snapshot, last)) return;
       paintGame(canvas, context, dpr, snapshot);
       last = snapshot;

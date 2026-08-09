@@ -71,7 +71,7 @@ export function TrainingPrompt({
   const position = useRef<Vec2>(target);
   const velocity = useRef<Vec2>({ x: 0, y: 0 });
   const targetRef = useRef(target);
-  const [renderedPosition, setRenderedPosition] = useState(target);
+  const promptRef = useRef<HTMLDivElement>(null);
   const [visibleLength, setVisibleLength] = useState(0);
 
   targetRef.current = target;
@@ -92,6 +92,11 @@ export function TrainingPrompt({
   }, [hidden, text]);
 
   useEffect(() => {
+    if (hidden) {
+      position.current = targetRef.current;
+      velocity.current = { x: 0, y: 0 };
+      return;
+    }
     let animation = 0;
     let last = performance.now();
     const tick = (now: number) => {
@@ -120,25 +125,31 @@ export function TrainingPrompt({
           ACCELERATION * delta,
         ),
       };
-      position.current = {
-        x: position.current.x + velocity.current.x * delta,
-        y: position.current.y + velocity.current.y * delta,
-      };
-      setRenderedPosition(position.current);
+      position.current.x += velocity.current.x * delta;
+      position.current.y += velocity.current.y * delta;
+      promptRef.current?.style.setProperty(
+        "--prompt-x",
+        `${position.current.x}%`,
+      );
+      promptRef.current?.style.setProperty(
+        "--prompt-y",
+        `${position.current.y}%`,
+      );
       animation = requestAnimationFrame(tick);
     };
     animation = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animation);
-  }, []);
+  }, [hidden]);
 
   if (hidden) return null;
   return (
     <div
+      ref={promptRef}
       className="training-prompt"
       style={
         {
-          "--prompt-x": `${renderedPosition.x}%`,
-          "--prompt-y": `${renderedPosition.y}%`,
+          "--prompt-x": `${position.current.x}%`,
+          "--prompt-y": `${position.current.y}%`,
         } as CSSProperties
       }
     >

@@ -404,11 +404,11 @@ export default function App() {
     if (!gamepadSupported) return;
     let animation = 0;
 
-    const poll = () => {
-      const gamepad =
-        Array.from(navigator.getGamepads()).find(
-          (candidate) => candidate?.connected,
-        ) ?? null;
+    const connectedGamepad = () =>
+      Array.from(navigator.getGamepads()).find(
+        (candidate) => candidate?.connected,
+      ) ?? null;
+    const updateGamepad = (gamepad: Gamepad | null) => {
       const next = gamepad
         ? buttonsFromGamepad(gamepad, gamepadDirectionSource)
         : makeEmptyButtons();
@@ -428,11 +428,33 @@ export default function App() {
       setLiveButtons((current) =>
         buttonsEqual(current, combined) ? current : combined,
       );
-      animation = requestAnimationFrame(poll);
+    };
+    const poll = () => {
+      const gamepad = connectedGamepad();
+      updateGamepad(gamepad);
+      animation = gamepad ? requestAnimationFrame(poll) : 0;
+    };
+    const startPolling = () => {
+      if (animation === 0) animation = requestAnimationFrame(poll);
+    };
+    const handleDisconnect = () => {
+      if (connectedGamepad()) {
+        startPolling();
+        return;
+      }
+      cancelAnimationFrame(animation);
+      animation = 0;
+      updateGamepad(null);
     };
 
-    animation = requestAnimationFrame(poll);
-    return () => cancelAnimationFrame(animation);
+    startPolling();
+    window.addEventListener("gamepadconnected", startPolling);
+    window.addEventListener("gamepaddisconnected", handleDisconnect);
+    return () => {
+      cancelAnimationFrame(animation);
+      window.removeEventListener("gamepadconnected", startPolling);
+      window.removeEventListener("gamepaddisconnected", handleDisconnect);
+    };
   }, [bindings, gamepadDirectionSource, gamepadSupported]);
 
   const seek = useCallback(
