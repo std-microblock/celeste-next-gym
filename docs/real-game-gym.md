@@ -49,6 +49,8 @@ reset = post("reset", {
     "skip_transitions": True,
     "max_episode_frames": 36_000,
     "include_entities": True,
+    "include_player_states": False,
+    "fast_mode": True,
 })
 observation = reset["observation"]
 episode_id = observation["episode_id"]
@@ -71,7 +73,24 @@ transition = post("step", {
 observation = transition["observation"]
 ```
 
-对普通逐帧 RL，提交一个 input 即可。对 frame-skip 或技能控制器，可批量提交相同或预先规划的 input；`player_states` 保留实际执行的每个物理帧，而实体列表只抓取批次末尾一次，以避免 payload 随 `frames × entities` 膨胀。
+对普通逐帧 RL，提交一个 input 即可。对 frame-skip 或技能控制器，可批量提交相同或预先规划的 input。`gym_step.inputs` 支持 1～4096 帧。
+
+- `fast_mode` 默认为 `false`。只有 reset 显式传入 `true` 的 episode 才 patch FNA 固定步长循环，并在隐藏窗口下禁止 Draw；普通游戏、`simulate_area`、录制 E2E 和默认 Gym 行为不变。
+- `include_player_states` 默认为 `true`，会返回每一物理帧的完整玩家快照。长期 RL 通常应设为 `false`：每个 batch 只抓取并返回终态，避免 134 个反射字段随 batch 长度膨胀。
+- `include_entities` 控制 batch 终态的实体反射快照；即使关闭，Celeste/Everest 仍会真实更新所有 Mod 实体，只是不序列化它们。
+
+`observation.fast_mode` 会回显实际 episode 模式，训练端应检查它而不是假设加速已启用。
+
+## 高速固定步长实现
+
+加速不是跳过更新、修改 `Engine.DeltaTime`，也不是仅合并 HTTP/TCP。Collector 对 repository-owned FNA `Game.Tick` 做运行时 IL patch：
+
+1. 在固定步长分支开始前，把一个已认证 Gym batch 映射为精确的 `N × TargetElapsedTime`；
+2. 由 FNA 原始循环调用完整虚拟 `Update` N 次，因此 Celeste、Everest hook、Mod entity、StateMachine、Coroutine、Alarm 和 Tween 都按原本的 1/60 秒顺序执行；
+3. 每帧仍由 Collector 主线程安装输入和检查死亡/换房；提前终止时清零剩余合成时间，不会在已返回 terminal state 后偷跑；
+4. batch 结束后清理 FNA 的渲染 lag 标志，并在 `fast_mode` episode 中 `SuppressDraw`。
+
+合成物理时间不依赖 wall clock；wall clock 只决定请求何时进入下一次主线程 Tick。单帧 request 仍会受到一次外层 Tick/IPC 延迟，训练时应使用合适的 action repeat 或技能 batch。
 
 ## 观测坐标
 
@@ -103,12 +122,47 @@ $env:E2E_COLLECT_ONLY = '1'
 node scripts/e2e-real-collector.mjs --target playground --scenario playground-load
 ```
 
-2026-08-08 在 bundled Playground 的一次隐藏窗口 smoke 结果：reset 约 316 ms；16 帧 batch 约 270 ms；有效约 59.2 物理帧/秒；room grid 为 120×68，reset 时抓到 18 个运行时实体。这个数字是单个完整游戏进程的原生固定时间步表现，不代表多进程总吞吐。
+高速确定性和吞吐 gate：
+
+```powershell
+$env:E2E_GYM_FAST_SMOKE = '1'
+$env:E2E_COLLECT_ONLY = '1'
+node scripts/e2e-real-collector.mjs --target playground --scenario playground-load
+```
+
+该 gate 先用普通 loop 与 fast loop 各执行同一段 120 帧输入，并以最多 `0.01` 的 tolerance 比较 position、speed、state、facing、dashes、stamina、grounded、ducking 和 death；随后要求 1024 帧 batch 实测严格超过 60 physics FPS。
+
+2026-08-09 在 bundled Playground、隐藏窗口、RTX 4070 Ti SUPER 主机的实测：普通 loop 59.8 physics FPS；fast 120 帧为 6640.7 physics FPS；fast 1024 帧为 20365.9 physics FPS；普通/高速九类玩家状态一致。具体吞吐随 Room、Mod 和实体量变化，这不是对任意 Mod 的固定保证。
+
+## 长期训练 actor
+
+下面的命令不会在 smoke 完成后退出。它会构建并安装 Collector，启动 N 个隔离 Celeste + HTTP collector，输出每个 actor 的 Gym URL 和 manifest，然后一直运行到 Ctrl+C：
+
+```powershell
+node scripts/gym-actors.mjs --actors 4 --area-id 1
+```
+
+自定义已安装 Mod SID：
+
+```powershell
+node scripts/gym-actors.mjs --actors 2 --area-id 0 --area-sid MyMod/MyMap
+```
+
+每个 actor 都有：
+
+- 独立动态 Mod TCP port 和 HTTP port；
+- 独立 `EVEREST_SAVEPATH` / `EVEREST_TMPDIR`；
+- 独立 nonce，并要求 Mod handshake 同时匹配 nonce、精确 spawned Celeste PID 和 port；
+- 单独的 immutable run manifest，以及 supervisor manifest；
+- 默认隐藏窗口；需要调试时可加 `--show-windows`。
+
+Ctrl+C/进程错误清理只会处理启动器记录的 child PID，并在终止前重新核对 executable path 和 creation time。无法证明 ownership 时会报警并保留进程，不会按进程名清理。`--smoke` 可用于 CI：所有 actor ready 后立即走同一 ownership-safe cleanup。
 
 ## 当前限制
 
 - 单个 Celeste 进程只有一个活动 episode；并行训练需要多个各自隔离端口/save/tmp 的游戏进程。
-- 当前按原生固定时间步约 60 FPS 推进；batch step 只减少 HTTP/TCP 往返，不会跳过 Mod 更新。
+- 高速模式以 batch 为调度单位；大量单帧 HTTP requests 仍可能接近外层 60 Hz latency。推荐把重复 action 或技能序列打成小 batch。
+- `include_player_states=true` 会对每帧抓取完整反射状态并放大 JSON/MessagePack payload；追求吞吐时使用 `false`，按需用短 batch 或 `observe` 取样。
 - 不支持任意帧完整 clone/restore。`reset` 会重新创建 Level；跨死亡探索应保存动作轨迹、archive 或检查点重放信息。
 - area/SID 必须已安装到该 Everest 实例。`/api/gym/reset` 不会动态热挂载请求体中的 `.bin`。
 - `entities` 是批次末尾快照；若需要每帧实体轨迹，请用单帧 step，或由训练端根据多个短 batch 采样。

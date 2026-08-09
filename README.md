@@ -36,6 +36,14 @@ node scripts\e2e-real-collector.mjs
 - `services/collector`：Celeste/Everest 采集服务协议与可替换后端。
 - `mods/CelesteGymCollector`：真实游戏逐帧输入注入和 126 字段快照采集 Mod。
 - `mods/CelesteGymPlayground`：由 Rust 写入器生成的标准 Celeste `.bin` 机制训练场 Mod。
+
+真实游戏长期训练 actor（默认隐藏窗口、Ctrl+C ownership-safe cleanup）：
+
+```powershell
+node scripts/gym-actors.mjs --actors 4 --area-id 1
+```
+
+Gym reset 显式传入 `fast_mode: true` 后，repository-owned FNA 固定步长 loop 会无渲染地批量执行 1～4096 个完整 Celeste/Everest physics updates；详见 `docs/real-game-gym.md`。
 - `interactive-recorder`：网页/真实游戏双端游玩逐帧录制、统一 trace 对比器、参考数据及自带地图包。
 - `docs`：架构、原版源码审计和保真边界。
 
