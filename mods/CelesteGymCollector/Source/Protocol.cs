@@ -78,6 +78,15 @@ public sealed class CollectorRequest {
     [JsonPropertyName("fast_mode")]
     public bool FastMode { get; set; }
 
+    [JsonPropertyName("randomizer_seed")]
+    public string? RandomizerSeed { get; set; }
+
+    [JsonPropertyName("randomizer_length")]
+    public string? RandomizerLength { get; set; }
+
+    [JsonPropertyName("randomizer_difficulty")]
+    public string? RandomizerDifficulty { get; set; }
+
     [JsonPropertyName("goal_boundary")]
     public string? GoalBoundary { get; set; }
 
@@ -195,6 +204,35 @@ public sealed class CollectorResponse {
     [JsonPropertyName("frames_executed")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? FramesExecuted { get; set; }
+
+    [JsonPropertyName("randomizer_area")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public RandomizerAreaResponse? RandomizerArea { get; set; }
+}
+
+public sealed class RandomizerAreaResponse {
+    [JsonPropertyName("area_id")]
+    public int AreaId { get; set; }
+
+    [JsonPropertyName("area_mode")]
+    public int AreaMode { get; set; }
+
+    [JsonPropertyName("area_sid")]
+    public string AreaSid { get; set; } = "";
+
+    [JsonPropertyName("start_room")]
+    public string StartRoom { get; set; } = "";
+
+    [JsonPropertyName("rooms")]
+    public List<RandomizerRoomResponse> Rooms { get; set; } = [];
+}
+
+public sealed class RandomizerRoomResponse {
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
+
+    [JsonPropertyName("bounds")]
+    public int[] Bounds { get; set; } = [0, 0, 0, 0];
 }
 
 public sealed class GymObservation {

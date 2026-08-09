@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
-import { removeValidatedTarget } from "../runtime/prepare-mods.js";
+import {
+  removeValidatedTarget,
+  resolveRandomizerArchive,
+} from "../runtime/prepare-mods.js";
 
 describe("validated Mod replacement", () => {
   it("bounds transient Windows handle retries to the exact validated target", () => {
@@ -22,5 +25,25 @@ describe("validated Mod replacement", () => {
     });
     assert.equal(attempts, 3);
     assert.equal(waits, 200);
+  });
+});
+
+describe("Randomizer mod discovery", () => {
+  it("prefers the explicit Randomizer archive without mutating other mods", () => {
+    const configured = resolve("D:\\mods\\Randomizer.zip");
+    const lookedUp: string[] = [];
+    const result = resolveRandomizerArchive(
+      { CELESTE_GYM_RANDOMIZER_ZIP: configured },
+      (path) => {
+        lookedUp.push(path);
+        return path === configured;
+      },
+    );
+    assert.equal(result, configured);
+    assert.deepEqual(lookedUp, [configured]);
+  });
+
+  it("returns null when no known Randomizer archive exists", () => {
+    assert.equal(resolveRandomizerArchive({}, () => false), null);
   });
 });

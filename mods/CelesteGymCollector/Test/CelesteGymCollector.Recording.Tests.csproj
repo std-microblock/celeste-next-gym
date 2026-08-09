@@ -32,6 +32,8 @@
     <Compile Include="..\Source\GymResetPolicy.cs" Link="GymResetPolicy.cs" />
     <Compile Include="..\Source\GymAreaIdentity.cs" Link="GymAreaIdentity.cs" />
     <Compile Include="..\Source\GymOverlayPolicy.cs" Link="GymOverlayPolicy.cs" />
+    <Compile Include="..\Source\GymExitGoalPolicy.cs" Link="GymExitGoalPolicy.cs" />
+    <Compile Include="..\Source\RandomizerInterop.cs" Link="RandomizerInterop.cs" />
     <Compile Include="..\Source\CollectorConnectionProtocol.cs" Link="CollectorConnectionProtocol.cs" />
     <Compile Include="..\Source\CollectorListenerBinder.cs" Link="CollectorListenerBinder.cs" />
   </ItemGroup>

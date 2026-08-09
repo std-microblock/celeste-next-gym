@@ -148,6 +148,7 @@ export function prepareMods(
     ),
     installedAssembly,
   );
+  installRandomizerArchive(gameModsRoot);
 
   const installedPlaygroundMod = resolve(gameModsRoot, "CelesteGymPlayground");
   const installedPlaygroundZip = resolve(
@@ -180,6 +181,36 @@ export function prepareMods(
     ],
     paths.serviceRoot,
   );
+}
+
+export function resolveRandomizerArchive(
+  environment: NodeJS.ProcessEnv = process.env,
+  fileExists: (path: string) => boolean = existsSync,
+): string | null {
+  const candidates = [
+    environment.CELESTE_GYM_RANDOMIZER_ZIP,
+    process.platform === "win32"
+      ? "C:\\SteamLibrary\\steamapps\\common\\Celeste\\Mods\\Randomizer.zip"
+      : undefined,
+  ];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const archive = resolve(candidate);
+    if (fileExists(archive)) return archive;
+  }
+  return null;
+}
+
+function installRandomizerArchive(gameModsRoot: string): void {
+  const source = resolveRandomizerArchive();
+  if (source === null) return;
+  const destination = resolve(gameModsRoot, "Randomizer.zip");
+  assertUnlinkedTarget(destination, gameModsRoot);
+  if (comparablePath(source) === comparablePath(destination)) return;
+  if (!lstatSync(source).isFile()) {
+    throw new Error(`Randomizer archive is not a file: ${source}`);
+  }
+  copyFileSync(source, destination);
 }
 
 export function removeValidatedTarget(

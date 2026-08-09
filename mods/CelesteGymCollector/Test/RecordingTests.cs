@@ -4,10 +4,15 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Net;
 using System.Net.Sockets;
+using Microsoft.Xna.Framework;
 
 namespace Celeste.Mod.CelesteGymCollector;
 
 public sealed class RecordingTests : IDisposable {
+    private static class FakeRandomizerInterop {
+        public static bool Generate(object settings) => settings is not null;
+    }
+
     private readonly string temporaryRoot = Path.Combine(
         Path.GetTempPath(),
         "celeste-gym-recording-tests",
@@ -286,6 +291,87 @@ public sealed class RecordingTests : IDisposable {
         Assert.False(GymAreaIdentity.Matches(bSide, 2, 1));
         Assert.Throws<InvalidOperationException>(() => GymAreaIdentity.CreateKey(4, -1));
         Assert.Throws<InvalidOperationException>(() => GymAreaIdentity.CreateKey(4, 3));
+    }
+
+    [Theory]
+    [InlineData("seed_42", null, null, "seed_42", "Short", "Normal")]
+    [InlineData(" abc-123 ", "Medium", "Hard", "abc-123", "Medium", "Hard")]
+    public void RandomizerRequestPolicyNormalizesSafeSettings(
+        string seed,
+        string? length,
+        string? difficulty,
+        string expectedSeed,
+        string expectedLength,
+        string expectedDifficulty
+    ) {
+        RandomizerGenerationOptions result = RandomizerRequestPolicy.Validate(
+            seed,
+            length,
+            difficulty
+        );
+        Assert.Equal(expectedSeed, result.Seed);
+        Assert.Equal(expectedLength, result.Length);
+        Assert.Equal(expectedDifficulty, result.Difficulty);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("../escape")]
+    [InlineData("contains space")]
+    [InlineData("seed.with.dot")]
+    public void RandomizerRequestPolicyRejectsUnsafeSeeds(string seed) {
+        Assert.Throws<InvalidOperationException>(
+            () => RandomizerRequestPolicy.Validate(seed, null, null)
+        );
+    }
+
+    [Fact]
+    public void RandomizerReflectionContractRequiresExactStaticArity() {
+        MethodInfo method = RandomizerReflectionApi.RequireMethod(
+            typeof(FakeRandomizerInterop),
+            "Generate",
+            1
+        );
+        Assert.Equal(nameof(FakeRandomizerInterop.Generate), method.Name);
+        Assert.Throws<InvalidOperationException>(
+            () => RandomizerReflectionApi.RequireMethod(
+                typeof(FakeRandomizerInterop),
+                "Generate",
+                0
+            )
+        );
+    }
+
+    [Fact]
+    public void GymExitGoalRequiresTheSelectedBoundaryAndAperture() {
+        Rectangle bounds = new(100, 200, 320, 180);
+        PlayerFrame selected = new() {
+            Pos = [260, 199],
+            Speed = [0, -90]
+        };
+        PlayerFrame wrongHole = new() {
+            Pos = [300, 199],
+            Speed = [0, -90]
+        };
+        PlayerFrame wrongSide = new() {
+            Pos = [421, 260],
+            Speed = [90, 0]
+        };
+
+        Assert.True(GymExitGoalPolicy.Matches("up", [252, 268], [260, 195], bounds, selected));
+        Assert.False(GymExitGoalPolicy.Matches("up", [252, 268], [260, 195], bounds, wrongHole));
+        Assert.False(GymExitGoalPolicy.Matches("up", [252, 268], [260, 195], bounds, wrongSide));
+        Assert.True(GymExitGoalPolicy.Matches(null, null, null, bounds, wrongSide));
+    }
+
+    [Fact]
+    public void GymExitGoalWorldSelectsOneEightPixelHoleWithoutAnAperture() {
+        Rectangle bounds = new(0, 0, 320, 180);
+        PlayerFrame centered = new() { Pos = [324, 84], Speed = [120, 0] };
+        PlayerFrame adjacent = new() { Pos = [324, 92], Speed = [120, 0] };
+
+        Assert.True(GymExitGoalPolicy.Matches("right", null, [324, 84], bounds, centered));
+        Assert.False(GymExitGoalPolicy.Matches("right", null, [324, 84], bounds, adjacent));
     }
 
     [Fact]

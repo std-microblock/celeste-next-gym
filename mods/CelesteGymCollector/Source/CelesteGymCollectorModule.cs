@@ -21,6 +21,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
     private SimulationJob? job;
     private GymResetJob? gymResetJob;
     private GymStepJob? gymStepJob;
+    private RandomizerGenerationJob? randomizerGenerationJob;
     private GymEpisode? gymEpisode;
     private string[] gymOverlayLines = [];
     private GymFastLoopPatch? gymFastLoopPatch;
@@ -75,12 +76,13 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                 gymEpisode is not null,
                 gymResetJob is not null,
                 gymStepJob is not null,
-                job is not null
+                job is not null || randomizerGenerationJob is not null
             )) {
             return;
         }
         orig(self, gameTime);
         FinishSimulationFrame();
+        FinishRandomizerGeneration();
         interactiveSession?.FinishPlayerFrame();
     }
 
@@ -137,6 +139,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
 
     private void ProcessRequests() {
         if (job is null && gymResetJob is null && gymStepJob is null
+            && randomizerGenerationJob is null
             && server.TryDequeue(out PendingRequest? pending) && pending is not null) {
             if (pending.Request.Command == "ping") {
                 bool ready = Celeste.LoadTimer is null
@@ -215,6 +218,22 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                 request.ProcessId
             );
             switch (request.Command) {
+                case "gym_rando_generate": {
+                    if (gymEpisode is not null) {
+                        throw new InvalidOperationException(
+                            "close the active gym episode before generating a randomizer area"
+                        );
+                    }
+                    RandomizerGenerationOptions options = RandomizerRequestPolicy.Validate(
+                        request.RandomizerSeed,
+                        request.RandomizerLength,
+                        request.RandomizerDifficulty
+                    );
+                    RandomizerReflectionApi api = RandomizerReflectionApi.Discover();
+                    api.Start(options);
+                    randomizerGenerationJob = new RandomizerGenerationJob(pending, api);
+                    break;
+                }
                 case "gym_reset": {
                     if (request.MaxEpisodeFrames is <= 0 or > 10_000_000) {
                         throw new InvalidOperationException(
@@ -363,6 +382,46 @@ public sealed class CelesteGymCollectorModule : EverestModule {
             throw new InvalidOperationException("episode_id does not identify the active gym episode");
         }
         return gymEpisode;
+    }
+
+    private void FinishRandomizerGeneration() {
+        RandomizerGenerationJob? generation = randomizerGenerationJob;
+        if (generation is null) return;
+        try {
+            // Randomizer normally services these fields from AutoSplitterInfo.Update.
+            // Gym actors may be parked in scenes without that entity, so service the
+            // same handoff explicitly on this real Engine.Update main thread.
+            generation.Api.PumpMainThreadHandoff();
+            if (generation.Api.ReadyToLaunch()) {
+                RandomizerAreaManifest manifest = RandomizerManifestCapture.Capture(
+                    generation.Api.GetGeneratedArea()
+                );
+                randomizerGenerationJob = null;
+                generation.Pending.Completion.SetResult(new CollectorResponse {
+                    Success = true,
+                    RandomizerArea = new RandomizerAreaResponse {
+                        AreaId = manifest.AreaId,
+                        AreaMode = manifest.AreaMode,
+                        AreaSid = manifest.AreaSid,
+                        StartRoom = manifest.StartRoom,
+                        Rooms = manifest.Rooms.Select(room => new RandomizerRoomResponse {
+                            Name = room.Name,
+                            Bounds = room.Bounds
+                        }).ToList()
+                    }
+                });
+                return;
+            }
+            if (!generation.Api.GenerationInProgress()) {
+                throw new InvalidOperationException("Randomizer generation failed or was aborted");
+            }
+        } catch (Exception error) {
+            randomizerGenerationJob = null;
+            generation.Pending.Completion.SetResult(new CollectorResponse {
+                Success = false,
+                Error = error.Message
+            });
+        }
     }
 
     private void HandleCaptureCommand(PendingRequest pending) {
@@ -1065,6 +1124,14 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         public int JumpBufferFrames { get; set; }
         public int DashBufferFrames { get; set; }
         public int CrouchDashBufferFrames { get; set; }
+    }
+
+    private sealed class RandomizerGenerationJob(
+        PendingRequest pending,
+        RandomizerReflectionApi api
+    ) {
+        public PendingRequest Pending { get; } = pending;
+        public RandomizerReflectionApi Api { get; } = api;
     }
 
     private sealed class ScriptedButtonNode(Func<bool> check, Func<bool> pressed, Func<bool> released) : VirtualButton.Node {
