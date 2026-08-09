@@ -274,6 +274,43 @@ public sealed class RecordingTests : IDisposable {
     }
 
     [Fact]
+    public void GymAreaModeDefaultsToAAndMatchesBothIdAndMode() {
+        CollectorRequest request = new();
+        Assert.Equal(0, request.AreaMode);
+
+        AreaKey bSide = GymAreaIdentity.CreateKey(4, 1);
+        Assert.Equal(4, bSide.ID);
+        Assert.Equal(1, (int) bSide.Mode);
+        Assert.True(GymAreaIdentity.Matches(bSide, 4, 1));
+        Assert.False(GymAreaIdentity.Matches(bSide, 4, 0));
+        Assert.False(GymAreaIdentity.Matches(bSide, 2, 1));
+        Assert.Throws<InvalidOperationException>(() => GymAreaIdentity.CreateKey(4, -1));
+        Assert.Throws<InvalidOperationException>(() => GymAreaIdentity.CreateKey(4, 3));
+    }
+
+    [Fact]
+    public void GymOverlayIsBoundedAndOnlyRendersForVisibleActors() {
+        string[] lines = GymOverlayPolicy.Normalize([
+            "map=4H-GoldenRidge room=a-00",
+            "checkpoint=12 targets=40",
+            "attempted=12 passed=8 failed=4 pending=28",
+            "outcome=retry"
+        ]);
+
+        Assert.Equal(4, lines.Length);
+        Assert.True(GymOverlayPolicy.ShouldRender(headlessActor: false, lines));
+        Assert.False(GymOverlayPolicy.ShouldRender(headlessActor: true, lines));
+        Assert.False(GymOverlayPolicy.ShouldRender(false, []));
+        Assert.Throws<InvalidOperationException>(() => GymOverlayPolicy.Normalize(
+            Enumerable.Repeat("line", GymOverlayPolicy.MaximumLines + 1).ToArray()
+        ));
+        Assert.Throws<InvalidOperationException>(() => GymOverlayPolicy.Normalize(["bad\nline"]));
+        Assert.Throws<InvalidOperationException>(() => GymOverlayPolicy.Normalize([
+            new string('x', GymOverlayPolicy.MaximumCharactersPerLine + 1)
+        ]));
+    }
+
+    [Fact]
     public void CollectorRequestSeedIsOptional() {
         CollectorRequest request = new();
         Assert.Null(request.Seed);

@@ -8,6 +8,7 @@ namespace Celeste.Mod.CelesteGymCollector;
 
 internal sealed class GymEpisode(
     int areaId,
+    int areaMode,
     string areaSid,
     string startRoom,
     int maxFrames,
@@ -20,6 +21,7 @@ internal sealed class GymEpisode(
 
     public string Id { get; } = Guid.NewGuid().ToString("N");
     public int AreaId { get; } = areaId;
+    public int AreaMode { get; } = areaMode;
     public string AreaSid { get; } = areaSid;
     public string StartRoom { get; } = startRoom;
     public int MaxFrames { get; } = maxFrames;
@@ -60,6 +62,7 @@ internal static class GymCapture {
         EpisodeId = episode.Id,
         EpisodeFrame = episode.Frame,
         AreaId = level.Session.Area.ID,
+        AreaMode = (int) level.Session.Area.Mode,
         AreaSid = level.Session.Area.SID,
         Room = level.Session.Level,
         FastMode = episode.FastMode,

@@ -8,6 +8,7 @@ import {
   createSeedTrajectoryInputs,
   createSeededRandom,
   parseActorOptions,
+  validateDirectGymResponse,
 } from "../../gym-actors.js";
 
 describe("persistent gym actor launcher", () => {
@@ -15,6 +16,7 @@ describe("persistent gym actor launcher", () => {
     assert.deepEqual(parseActorOptions([]), {
       count: 1,
       areaId: 1,
+      areaMode: 0,
       showWindows: false,
       smoke: false,
       seedSmoke: false,
@@ -41,6 +43,8 @@ describe("persistent gym actor launcher", () => {
         "4",
         "--area-id",
         "7",
+        "--area-mode",
+        "2",
         "--area-sid",
         "Example/TrainingMap",
         "--show-windows",
@@ -72,6 +76,7 @@ describe("persistent gym actor launcher", () => {
       {
         count: 4,
         areaId: 7,
+        areaMode: 2,
         areaSid: "Example/TrainingMap",
         showWindows: true,
         smoke: true,
@@ -146,9 +151,35 @@ describe("persistent gym actor launcher", () => {
     assert.ok(repeatedJump.every((input) => !input.jump_pressed));
   });
 
+  it("requires Direct TCP gym observations to report an official area mode", () => {
+    const result = validateDirectGymResponse({
+      success: true,
+      observation: { area_id: 4, area_mode: 1, room: "a-00" },
+      frames_executed: 0,
+      player_states: [],
+    });
+    assert.equal(result.observation?.area_mode, 1);
+    assert.throws(
+      () => validateDirectGymResponse({
+        success: true,
+        observation: { area_id: 4, room: "a-00" },
+      }),
+      /area_mode is invalid/,
+    );
+    assert.throws(
+      () => validateDirectGymResponse({
+        success: true,
+        observation: { area_id: 4, area_mode: 3, room: "a-00" },
+      }),
+      /area_mode is invalid/,
+    );
+  });
+
   it("rejects unsafe actor counts and unknown flags", () => {
     assert.throws(() => parseActorOptions(["--actors", "0"]), /1 through 32/);
     assert.throws(() => parseActorOptions(["--actors", "33"]), /1 through 32/);
+    assert.throws(() => parseActorOptions(["--area-mode", "-1"]), /0 through 2/);
+    assert.throws(() => parseActorOptions(["--area-mode", "3"]), /0 through 2/);
     assert.throws(
       () => parseActorOptions(["--seed-smoke-seed", "2147483648"]),
       /-2147483648 through 2147483647/,

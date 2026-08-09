@@ -170,6 +170,8 @@ Supervisor manifest 会为每个 slot 输出稳定的 `tcp_endpoint` / `tcp_host
 
 Direct protocol 是 UTF-8 newline-delimited JSON：连接 loopback port，发送一个 JSON object 加 `\n`，读取对应的 `\n` 结尾 JSON response。Connection 可按顺序复用任意多次，从而避免每个短 action batch 的 TCP handshake；仍兼容发送一次后立即关闭的旧客户端。同一 connection 当前只允许一个 in-flight request，request/response 顺序严格一致。Gym 命令为 `gym_reset`、`gym_step`、`gym_observe`、`gym_close`；每个命令都必须携带当前 generation 的 `run_nonce` 和 `process_id`。`ping` 不需要认证，并返回用于 ownership handshake 的 nonce、PID 和 port。
 
+`gym_reset.area_mode` accepts `0/1/2` for the official A/B/C sides and defaults to A for backward compatibility. Gym observations report both `area_id` and `area_mode`. Authenticated `gym_overlay` requests replace up to eight in-window HUD lines without advancing the active episode; headless actors never render the overlay.
+
 活动 Gym episode 在请求间是严格 parked 的：只有显式 `gym_step` 才推进真实 Engine/Level/Player/实体更新。模型推理、HTTP/TCP 往返、并行蒸馏负载或调用方 sleep 不会产生未计入 `episode_frame` 的隐藏物理帧。`--expert-replay-smoke` 使用固定 City room 2 的 76-decision 序列，在每个 decision 间故意等待 20ms，并要求多次同 seed replay 的逐帧 Player 轨迹完全一致且固定在 decision 69 / physics frame 273 触发 room transition。
 
 2026-08-09 的 4-actor persistent-connection gate 在每个 actor 复用单一 socket，完成 12 episodes、1,237 个短 action batches 和 5,526 physics frames，聚合 869.9 physics FPS，所有 slot 的 `restart_count` 均为 0。另一个 forced-generation gate 验证 TCP port 保持不变，而 nonce 和 PID 同时轮换。

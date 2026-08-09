@@ -9,6 +9,9 @@ public sealed class CollectorRequest {
     [JsonPropertyName("area_id")]
     public int AreaId { get; set; }
 
+    [JsonPropertyName("area_mode")]
+    public int AreaMode { get; set; }
+
     [JsonPropertyName("area_sid")]
     public string? AreaSid { get; set; }
 
@@ -74,6 +77,9 @@ public sealed class CollectorRequest {
 
     [JsonPropertyName("fast_mode")]
     public bool FastMode { get; set; }
+
+    [JsonPropertyName("overlay_lines")]
+    public List<string>? OverlayLines { get; set; }
 }
 
 public sealed class CaptureStartRequest {
@@ -191,6 +197,9 @@ public sealed class GymObservation {
 
     [JsonPropertyName("area_id")]
     public int AreaId { get; set; }
+
+    [JsonPropertyName("area_mode")]
+    public int AreaMode { get; set; }
 
     [JsonPropertyName("area_sid")]
     public string AreaSid { get; set; } = "";

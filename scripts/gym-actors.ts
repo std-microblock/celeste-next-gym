@@ -31,6 +31,7 @@ import { createCollectorClient } from "./e2e-real/runtime/collector-client.js";
 interface ActorOptions {
   readonly count: number;
   readonly areaId: number;
+  readonly areaMode: number;
   readonly areaSid?: string;
   readonly showWindows: boolean;
   readonly smoke: boolean;
@@ -102,6 +103,7 @@ const city2ExpertActionsPath = resolve(
 export function parseActorOptions(argv: readonly string[]): ActorOptions {
   let count = 1;
   let areaId = 1;
+  let areaMode = 0;
   let areaSid: string | undefined;
   let showWindows = false;
   let smoke = false;
@@ -123,6 +125,7 @@ export function parseActorOptions(argv: readonly string[]): ActorOptions {
     const argument = argv[index];
     if (argument === "--actors") count = boundedInteger(argv[++index], argument, 1, 32);
     else if (argument === "--area-id") areaId = boundedInteger(argv[++index], argument, 0, 10_000);
+    else if (argument === "--area-mode") areaMode = boundedInteger(argv[++index], argument, 0, 2);
     else if (argument === "--area-sid") areaSid = requiredValue(argv[++index], argument);
     else if (argument === "--show-windows") showWindows = true;
     else if (argument === "--smoke") smoke = true;
@@ -160,6 +163,7 @@ export function parseActorOptions(argv: readonly string[]): ActorOptions {
   return Object.freeze({
     count,
     areaId,
+    areaMode,
     ...(areaSid ? { areaSid } : {}),
     showWindows,
     smoke,
@@ -413,7 +417,7 @@ async function runExpertReplayGate(
   serviceRoot: string,
   options: ActorOptions,
 ): Promise<void> {
-  if (options.areaSid || options.areaId !== 1 || options.soakRoom !== "2") {
+  if (options.areaSid || options.areaId !== 1 || options.areaMode !== 0 || options.soakRoom !== "2") {
     throw new Error("--expert-replay-smoke requires vanilla area_id=1 room=2");
   }
   const actions = loadCity2ExpertActions();
@@ -477,6 +481,7 @@ async function captureExpertReplay(
 ): Promise<ExpertReplayCapture> {
   const reset = await client.gymReset({
     area_id: 1,
+    area_mode: 0,
     room: "2",
     seed,
     initial_snapshot: options.directTcp ? { state: 0 } : null,
@@ -620,6 +625,7 @@ async function assertFirstActionChangesState(
 ): Promise<void> {
   const reset = await client.gymReset({
     area_id: options.areaId,
+    area_mode: options.areaMode,
     ...(options.areaSid ? { area_sid: options.areaSid } : {}),
     room: options.soakRoom,
     seed: round * 3 + (probe === "right" ? 0 : probe === "jump" ? 1 : 2),
@@ -793,6 +799,7 @@ async function captureSeededTrajectory(
 ): Promise<CapturedSeedTrajectory> {
   const reset = await client.gymReset({
     area_id: options.areaId,
+    area_mode: options.areaMode,
     ...(options.areaSid ? { area_sid: options.areaSid } : {}),
     room: options.soakRoom,
     seed,
@@ -991,6 +998,7 @@ async function startActor(
           EVEREST_RUN_NONCE: context.runNonce,
           EVEREST_PROCESS_ID: String(gameIdentity.processId),
           EVEREST_AREA_ID: String(options.areaId),
+          EVEREST_AREA_MODE: String(options.areaMode),
           ...(options.areaSid ? { EVEREST_AREA_SID: options.areaSid } : {}),
         },
       });
@@ -1132,6 +1140,7 @@ async function runSoak(
         const client = createActorGymClient(actor, serviceRoot);
         const reset = await client.gymReset({
           area_id: options.areaId,
+          area_mode: options.areaMode,
           ...(options.areaSid ? { area_sid: options.areaSid } : {}),
           room: options.soakRoom,
           skip_transitions: true,
@@ -1197,6 +1206,7 @@ async function runSoak(
           const client = createActorGymClient(actor, serviceRoot);
           const reset = await client.gymReset({
             area_id: options.areaId,
+            area_mode: options.areaMode,
             ...(options.areaSid ? { area_sid: options.areaSid } : {}),
             room: options.soakRoom,
             skip_transitions: true,
@@ -1369,7 +1379,7 @@ class PersistentDirectGymTransport {
   }
 }
 
-function validateDirectGymResponse(response: Record<string, unknown>): ActorGymResult {
+export function validateDirectGymResponse(response: Record<string, unknown>): ActorGymResult {
   if (response.success !== true) {
     throw new Error(`direct Gym TCP failed: ${String(response.error ?? "unknown error")}`);
   }
@@ -1377,6 +1387,12 @@ function validateDirectGymResponse(response: Record<string, unknown>): ActorGymR
   if (observation !== undefined
       && (!observation || typeof observation !== "object" || Array.isArray(observation))) {
     throw new Error("direct Gym TCP observation is not an object");
+  }
+  if (observation !== undefined) {
+    const areaMode = (observation as Record<string, unknown>).area_mode;
+    if (!Number.isSafeInteger(areaMode) || (areaMode as number) < 0 || (areaMode as number) > 2) {
+      throw new Error("direct Gym TCP observation area_mode is invalid");
+    }
   }
   const framesExecuted = response.frames_executed ?? 0;
   if (!Number.isSafeInteger(framesExecuted) || (framesExecuted as number) < 0) {

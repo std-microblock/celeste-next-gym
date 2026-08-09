@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Monocle;
 using System.Reflection;
 
@@ -21,6 +22,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
     private GymResetJob? gymResetJob;
     private GymStepJob? gymStepJob;
     private GymEpisode? gymEpisode;
+    private string[] gymOverlayLines = [];
     private GymFastLoopPatch? gymFastLoopPatch;
     private PresentationCaptureSession? captureSession;
     private InteractiveRecordingSession? interactiveSession;
@@ -87,7 +89,50 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         global::Celeste.Celeste self
     ) {
         orig(self);
+        RenderGymOverlay();
         captureSession?.CapturePresentation(self.GraphicsDevice, Engine.Viewport.Bounds);
+    }
+
+    private void RenderGymOverlay() {
+        string[] lines = gymOverlayLines;
+        if (!GymOverlayPolicy.ShouldRender(headlessActor, lines)) return;
+
+        const float scale = 0.55f;
+        const float x = 24f;
+        const float y = 24f;
+        const float padding = 14f;
+        float lineHeight = ActiveFont.LineHeight * scale;
+        float width = 0f;
+        foreach (string line in lines) {
+            width = Math.Max(width, ActiveFont.Measure(line).X * scale);
+        }
+
+        Draw.SpriteBatch.Begin(
+            SpriteSortMode.Deferred,
+            BlendState.AlphaBlend,
+            SamplerState.LinearClamp,
+            DepthStencilState.None,
+            RasterizerState.CullNone
+        );
+        Draw.Rect(
+            x - padding,
+            y - padding,
+            width + padding * 2f,
+            lineHeight * lines.Length + padding * 2f,
+            Color.Black * 0.78f
+        );
+        for (int index = 0; index < lines.Length; index++) {
+            ActiveFont.DrawOutline(
+                lines[index],
+                new Vector2(x, y + lineHeight * index),
+                Vector2.Zero,
+                Vector2.One * scale,
+                Color.White,
+                2f,
+                Color.Black
+            );
+        }
+        Draw.SpriteBatch.End();
     }
 
     private void ProcessRequests() {
@@ -178,11 +223,13 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                     }
                     if (SaveData.Instance is null) SaveData.InitializeDebugMode(loadExisting: false);
                     int areaId = ResolveAreaId(request);
+                    int areaMode = request.AreaMode;
+                    AreaKey areaKey = GymAreaIdentity.CreateKey(areaId, areaMode);
                     gymEpisode = null;
-                    gymResetJob = new GymResetJob(pending, Engine.Scene, areaId);
+                    gymResetJob = new GymResetJob(pending, Engine.Scene, areaId, areaMode);
                     GymResetPolicy.ClearEngineUpdateBlockers();
                     if (request.Seed is int seed) GymRandomPolicy.Reset(seed);
-                    Session session = new(new AreaKey(areaId));
+                    Session session = new(areaKey);
                     if (request.DreamDash) session.Inventory.DreamDash = true;
                     if (!string.IsNullOrWhiteSpace(request.Room)) {
                         session.Level = request.Room;
@@ -190,7 +237,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                     }
                     if (request.SkipTransitions
                         && Engine.Scene is Level activeLevel
-                        && activeLevel.Session.Area.ID == areaId) {
+                        && GymAreaIdentity.Matches(activeLevel.Session.Area, areaId, areaMode)) {
                         // A new LevelLoader allocates the entire area's renderer,
                         // backdrop, particle and graphics infrastructure. Repeating
                         // that hundreds of times in a long-running RL actor grows
@@ -203,6 +250,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                             pending,
                             Engine.Scene,
                             areaId,
+                            areaMode,
                             inPlace: true
                         );
                         activeLevel.Completed = false;
@@ -239,7 +287,12 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                     if (request.Inputs.Count is <= 0 or > 4096) {
                         throw new InvalidOperationException("gym_step inputs must contain 1 to 4096 frames");
                     }
-                    if (Engine.Scene is not Level level || level.Session.Area.ID != episode.AreaId) {
+                    if (Engine.Scene is not Level level
+                        || !GymAreaIdentity.Matches(
+                            level.Session.Area,
+                            episode.AreaId,
+                            episode.AreaMode
+                        )) {
                         throw new InvalidOperationException("gym episode level is no longer active");
                     }
                     gymStepJob = new GymStepJob(pending, episode, level);
@@ -248,7 +301,12 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                 }
                 case "gym_observe": {
                     GymEpisode episode = RequireGymEpisode(request.EpisodeId);
-                    if (Engine.Scene is not Level level) {
+                    if (Engine.Scene is not Level level
+                        || !GymAreaIdentity.Matches(
+                            level.Session.Area,
+                            episode.AreaId,
+                            episode.AreaMode
+                        )) {
                         throw new InvalidOperationException("gym episode level is no longer active");
                     }
                     PlayerFrame player = CaptureGymPlayer(level, episode, episode.Frame);
@@ -268,6 +326,13 @@ public sealed class CelesteGymCollectorModule : EverestModule {
                     });
                     break;
                 }
+                case "gym_overlay":
+                    gymOverlayLines = GymOverlayPolicy.Normalize(request.OverlayLines);
+                    pending.Completion.SetResult(new CollectorResponse {
+                        Success = true,
+                        FramesExecuted = 0
+                    });
+                    break;
                 case "gym_close":
                     if (gymEpisode is not null && request.EpisodeId is not null) {
                         RequireGymEpisode(request.EpisodeId);
@@ -630,7 +695,9 @@ public sealed class CelesteGymCollectorModule : EverestModule {
     private void PrepareGymReset() {
         GymResetJob reset = gymResetJob!;
         if (!reset.InPlace && ReferenceEquals(Engine.Scene, reset.SceneAtRequest)) return;
-        if (Engine.Scene is not Level level || level.Session.Area.ID != reset.AreaId) return;
+        if (Engine.Scene is not Level level
+            || !GymAreaIdentity.Matches(level.Session.Area, reset.AreaId, reset.AreaMode)) return;
+        if (reset.Pending.Request.SkipTransitions) level.Wipe?.Cancel();
         Player? player = level.Tracker.GetEntity<Player>();
         if (player is null) return;
 
@@ -641,6 +708,7 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         }
         GymEpisode episode = new(
             reset.AreaId,
+            reset.AreaMode,
             level.Session.Area.SID,
             level.Session.Level,
             reset.Pending.Request.MaxEpisodeFrames,
@@ -699,7 +767,11 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         Level level = Engine.Scene as Level ?? step.LevelAtStart;
         bool sceneChanged = Engine.Scene is not Level;
         bool roomChanged = sceneChanged
-            || level.Session.Area.ID != step.Episode.AreaId
+            || !GymAreaIdentity.Matches(
+                level.Session.Area,
+                step.Episode.AreaId,
+                step.Episode.AreaMode
+            )
             || !string.Equals(level.Session.Level, step.Episode.StartRoom, StringComparison.Ordinal);
         Player? player = sceneChanged ? null : level.Tracker.GetEntity<Player>();
         bool dead = step.DeathFrame is not null || (!roomChanged && (player is null || player.Dead));
@@ -956,11 +1028,13 @@ public sealed class CelesteGymCollectorModule : EverestModule {
         PendingRequest pending,
         Scene? sceneAtRequest,
         int areaId,
+        int areaMode,
         bool inPlace = false
     ) {
         public PendingRequest Pending { get; } = pending;
         public Scene? SceneAtRequest { get; } = sceneAtRequest;
         public int AreaId { get; } = areaId;
+        public int AreaMode { get; } = areaMode;
         public bool InPlace { get; } = inPlace;
     }
 
