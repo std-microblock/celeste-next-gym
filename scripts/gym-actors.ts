@@ -7,7 +7,7 @@ import { createConnection, createServer, type Socket } from "node:net";
 
 import {
   createRunContext,
-  reserveLoopbackPort,
+  reserveLongLivedLoopbackPort,
   terminateOwnedProcess,
   updateRunManifest,
   validateGameInstall,
@@ -75,6 +75,7 @@ interface RunningActor {
   readonly serviceIdentity?: ProcessIdentity;
   readonly gameStdoutPath: string;
   readonly gameStderrPath: string;
+  readonly everestLogPath: string;
   readonly serviceStdoutPath: string;
   readonly serviceStderrPath: string;
   readonly httpPort: number;
@@ -188,6 +189,7 @@ export async function runActorLauncher(): Promise<void> {
           logs: {
             game_stdout: actor.gameStdoutPath,
             game_stderr: actor.gameStderrPath,
+            everest_log: actor.everestLogPath,
             ...(actor.serviceIdentity ? {
               service_stdout: actor.serviceStdoutPath,
               service_stderr: actor.serviceStderrPath,
@@ -295,6 +297,7 @@ export async function runActorLauncher(): Promise<void> {
         logs: {
           game_stdout: actor.gameStdoutPath,
           game_stderr: actor.gameStderrPath,
+          everest_log: actor.everestLogPath,
           ...(actor.serviceIdentity ? {
             service_stdout: actor.serviceStdoutPath,
             service_stderr: actor.serviceStderrPath,
@@ -346,10 +349,10 @@ async function startActor(
 ): Promise<RunningActor> {
   const modPort = fixed
     ? { port: fixed.modPort, release: async () => {} }
-    : await reserveLoopbackPort();
+    : await reserveLongLivedLoopbackPort();
   const httpPort = fixed
     ? { port: fixed.httpPort, release: async () => {} }
-    : await reserveLoopbackPort();
+    : await reserveLongLivedLoopbackPort();
   const generation = fixed?.generation ?? 0;
   const context = createRunContext({
     repoRoot,
@@ -366,6 +369,8 @@ async function startActor(
   mkdirSync(logRoot, { recursive: true });
   const gameStdoutPath = resolve(logRoot, "celeste.stdout.log");
   const gameStderrPath = resolve(logRoot, "celeste.stderr.log");
+  const everestLogFilename = `celeste-gym-${context.runNonce}.txt`;
+  const everestLogPath = resolve(gameInstall.gameRoot, everestLogFilename);
   const serviceStdoutPath = resolve(logRoot, "collector.stdout.log");
   const serviceStderrPath = resolve(logRoot, "collector.stderr.log");
   try {
@@ -387,6 +392,7 @@ async function startActor(
           ...process.env,
           CELESTE_GYM_COLLECTOR_PORT: String(modPort.port),
           CELESTE_GYM_RUN_NONCE: context.runNonce,
+          EVEREST_LOG_FILENAME: everestLogFilename,
           EVEREST_SAVEPATH: context.saveRoot,
           EVEREST_TMPDIR: context.tempRoot,
         },
@@ -424,6 +430,7 @@ async function startActor(
         logs: {
           game_stdout: gameStdoutPath,
           game_stderr: gameStderrPath,
+          everest_log: everestLogPath,
         },
       });
       return {
@@ -433,6 +440,7 @@ async function startActor(
         gameIdentity,
         gameStdoutPath,
         gameStderrPath,
+        everestLogPath,
         serviceStdoutPath,
         serviceStderrPath,
         httpPort: httpPort.port,
@@ -484,6 +492,7 @@ async function startActor(
       logs: {
         game_stdout: gameStdoutPath,
         game_stderr: gameStderrPath,
+        everest_log: everestLogPath,
         service_stdout: serviceStdoutPath,
         service_stderr: serviceStderrPath,
       },
@@ -498,6 +507,7 @@ async function startActor(
       serviceIdentity,
       gameStdoutPath,
       gameStderrPath,
+      everestLogPath,
       serviceStdoutPath,
       serviceStderrPath,
       httpPort: httpPort.port,
@@ -558,9 +568,9 @@ async function runSoak(
   let deaths = 0;
   let roomTransitions = 0;
   let truncations = 0;
-  const randoms = actors.map((_, actorIndex) =>
-    createSeededRandom((options.soakSeed + actorIndex) >>> 0)
-  );
+  // Use the same stream in every actor to stress synchronized policy actions,
+  // which is common before vectorized environments diverge.
+  const randoms = actors.map(() => createSeededRandom(options.soakSeed));
   if (options.soakPolicy && options.soakRestartAt > 0) {
     throw new Error("--soak-policy cannot be combined with --soak-restart-at");
   }
@@ -879,7 +889,7 @@ export function createPolicySoakBatch(
 ): SoakInput[] {
   const forcedAction = batchIndex % 16;
   const action = forcedAction < 8 ? forcedAction : Math.floor(random() * 8);
-  const duration = Math.max(1, Math.min(maximumFrames, 1 + Math.floor(random() * maximumFrames)));
+  const duration = Math.max(1, maximumFrames);
   const horizontal = random() < 0.5 ? -1 : 1;
   const vertical = random() < 0.34 ? -1 : random() < 0.5 ? 0 : 1;
   return Array.from({ length: duration }, (_, frame): SoakInput => ({

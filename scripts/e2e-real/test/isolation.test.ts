@@ -14,7 +14,10 @@ import { afterEach, describe, it } from "node:test";
 
 import {
   createRunContext,
+  isOutsidePortRange,
   pingEverest,
+  readSystemDynamicTcpPortRange,
+  reserveLongLivedLoopbackPort,
   reserveLoopbackPort,
   terminateOwnedProcess,
   updateRunManifest,
@@ -43,6 +46,21 @@ describe("E2E isolation", () => {
         }),
       /EADDRINUSE/,
     );
+    await reservation.release();
+  });
+
+  it("reserves long-lived server ports outside the system TCP dynamic range", async () => {
+    const dynamicRange = readSystemDynamicTcpPortRange();
+    const reservation = await reserveLongLivedLoopbackPort(dynamicRange);
+    assert.ok(reservation.port >= 20_000 && reservation.port <= 40_000);
+    assert.equal(isOutsidePortRange(reservation.port, dynamicRange), true);
+    await reservation.release();
+  });
+
+  it("skips a configured dynamic range even when it overlaps the low port pool", async () => {
+    const dynamicRange = { start: 20_000, end: 35_000 };
+    const reservation = await reserveLongLivedLoopbackPort(dynamicRange);
+    assert.ok(reservation.port > dynamicRange.end);
     await reservation.release();
   });
 
