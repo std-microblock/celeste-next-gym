@@ -42,12 +42,37 @@ public static class NativeCaptureBridge {
     }
 
     public static NativeCaptureSession Start(string windowTitle, int fps, int queueCapacity = 3) {
+        return StartCore(windowTitle, fps, queueCapacity, null, "auto", 12_000);
+    }
+
+    public static NativeCaptureSession StartRecording(
+        string windowTitle,
+        int fps,
+        string outputPath,
+        string encoder,
+        int bitrateKbps,
+        int queueCapacity = 3
+    ) {
+        return StartCore(windowTitle, fps, queueCapacity, Path.GetFullPath(outputPath), encoder, bitrateKbps);
+    }
+
+    private static NativeCaptureSession StartCore(
+        string windowTitle,
+        int fps,
+        int queueCapacity,
+        string? outputPath,
+        string encoder,
+        int bitrateKbps
+    ) {
         EnsureAvailable();
         byte[] json = JsonSerializer.SerializeToUtf8Bytes(new {
             window_title = windowTitle,
             fps,
             queue_capacity = queueCapacity,
-            show_cursor = false
+            show_cursor = false,
+            output_path = outputPath,
+            encoder,
+            bitrate_kbps = bitrateKbps
         });
         int status = CaptureCreate(json, (nuint)json.Length, out ulong handle);
         ThrowIfFailed(status, "create");
@@ -58,6 +83,18 @@ public static class NativeCaptureBridge {
             CaptureDestroy(handle);
             throw;
         }
+    }
+
+    public static Task FinalizeRecordingAsync(IReadOnlyList<RecordingClip> clips, string outputPath) {
+        EnsureAvailable();
+        byte[] json = JsonSerializer.SerializeToUtf8Bytes(new {
+            clips = clips.Select(clip => new {
+                source = Path.GetFullPath(clip.Source),
+                duration_seconds = clip.DurationSeconds
+            }),
+            output_path = Path.GetFullPath(outputPath)
+        });
+        return Task.Run(() => ThrowIfFailed(RecordingFinalize(json, (nuint)json.Length), "finalize"));
     }
 
     private static void EnsureAvailable() {
@@ -161,6 +198,9 @@ public static class NativeCaptureBridge {
 
     [DllImport(LibraryName, EntryPoint = "mqol_capture_last_error", CallingConvention = CallingConvention.Cdecl)]
     private static extern nuint CaptureLastError(IntPtr buffer, nuint capacity);
+
+    [DllImport(LibraryName, EntryPoint = "mqol_recording_finalize", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int RecordingFinalize(byte[] plan, nuint planLength);
 }
 
 public sealed class NativeCaptureSession : IDisposable {
@@ -197,4 +237,3 @@ public readonly record struct CaptureStatistics(
     ulong BytesCaptured,
     ulong LastFrameUnixNanos
 );
-

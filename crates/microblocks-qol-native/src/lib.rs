@@ -12,6 +12,11 @@ use std::time::{Duration, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+#[cfg(all(windows, feature = "ffmpeg"))]
+mod encoder;
+#[cfg(all(windows, feature = "ffmpeg"))]
+mod finalizer;
+
 const ABI_VERSION: u32 = 1;
 const OK: i32 = 0;
 const ERR_INVALID_ARGUMENT: i32 = -1;
@@ -33,6 +38,9 @@ pub struct CaptureConfig {
     pub fps: u32,
     pub queue_capacity: usize,
     pub show_cursor: bool,
+    pub output_path: Option<String>,
+    pub encoder: String,
+    pub bitrate_kbps: u32,
 }
 
 impl Default for CaptureConfig {
@@ -42,6 +50,9 @@ impl Default for CaptureConfig {
             fps: 60,
             queue_capacity: 3,
             show_cursor: false,
+            output_path: None,
+            encoder: "auto".to_owned(),
+            bitrate_kbps: 12_000,
         }
     }
 }
@@ -58,6 +69,21 @@ impl CaptureConfig {
         if !(1..=16).contains(&self.queue_capacity) {
             return Err(CaptureError::InvalidConfig(
                 "queue_capacity must be between 1 and 16",
+            ));
+        }
+        if let Some(path) = self.output_path.as_mut() {
+            *path = path.trim().to_owned();
+            if path.is_empty() {
+                return Err(CaptureError::InvalidConfig("output_path is empty"));
+            }
+        }
+        self.encoder = self.encoder.trim().to_owned();
+        if self.encoder.is_empty() {
+            self.encoder = "auto".to_owned();
+        }
+        if !(100..=200_000).contains(&self.bitrate_kbps) {
+            return Err(CaptureError::InvalidConfig(
+                "bitrate_kbps must be between 100 and 200000",
             ));
         }
         Ok(self)
@@ -247,21 +273,15 @@ impl CaptureSession {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(capture);
 
-        let queue = Arc::clone(&self.queue);
-        let stats = Arc::clone(&self.stats);
+        let consumer_session = Arc::clone(self);
         let consumer = thread::Builder::new()
             .name("microblocks-qol-encoder-feed".to_owned())
             .spawn(move || {
-                // This is deliberately a fast drain stage. The FFmpeg encoder replaces this
-                // sink without changing the capture callback or queue semantics.
-                while let Some(frame) = queue.pop() {
-                    let _ = (
-                        frame.width,
-                        frame.height,
-                        frame.captured_at_unix_nanos,
-                        frame.bgra.len(),
-                    );
-                    stats.frames_consumed.fetch_add(1, Ordering::Relaxed);
+                if let Err(error) = run_consumer(&consumer_session) {
+                    set_last_error(error);
+                    consumer_session
+                        .stop_requested
+                        .store(true, Ordering::Release);
                 }
             })
             .map_err(|error| {
@@ -330,6 +350,40 @@ impl CaptureSession {
             last_frame_unix_nanos: self.stats.last_frame_unix_nanos.load(Ordering::Relaxed),
         }
     }
+}
+
+fn run_consumer(session: &Arc<CaptureSession>) -> Result<(), String> {
+    #[cfg(all(windows, not(feature = "ffmpeg")))]
+    if session.config.output_path.is_some() {
+        return Err("this native library was built without FFmpeg encoding support".to_owned());
+    }
+    #[cfg(all(windows, feature = "ffmpeg"))]
+    let mut encoder = None;
+    while let Some(frame) = session.queue.pop() {
+        #[cfg(all(windows, feature = "ffmpeg"))]
+        if session.config.output_path.is_some() {
+            if encoder.is_none() {
+                encoder = Some(
+                    encoder::VideoFileEncoder::create(&session.config, &frame)
+                        .map_err(|error| error.to_string())?,
+                );
+            }
+            encoder
+                .as_mut()
+                .expect("encoder initialized above")
+                .encode(&frame)
+                .map_err(|error| error.to_string())?;
+        }
+        session
+            .stats
+            .frames_consumed
+            .fetch_add(1, Ordering::Relaxed);
+    }
+    #[cfg(all(windows, feature = "ffmpeg"))]
+    if let Some(mut encoder) = encoder {
+        encoder.finish().map_err(|error| error.to_string())?;
+    }
+    Ok(())
 }
 
 impl Drop for CaptureSession {
@@ -575,6 +629,32 @@ pub unsafe extern "C" fn mqol_capture_last_error(buffer: *mut c_char, capacity: 
         ptr::write(buffer.add(copied), 0);
     }
     required
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn mqol_recording_finalize(plan_json: *const u8, plan_length: usize) -> i32 {
+    ffi_status(|| {
+        #[cfg(all(windows, feature = "ffmpeg"))]
+        {
+            // SAFETY: The exported ABI requires a readable UTF-8 buffer for this call.
+            let json = unsafe { utf8_from_raw(plan_json, plan_length)? };
+            let plan = serde_json::from_str::<finalizer::FinalizePlan>(json).map_err(|error| {
+                set_last_error(format!("invalid finalize plan JSON: {error}"));
+                ERR_INVALID_ARGUMENT
+            })?;
+            finalizer::finalize(&plan).map_err(|error| {
+                set_last_error(error.to_string());
+                ERR_CAPTURE
+            })?;
+            Ok(OK)
+        }
+        #[cfg(not(all(windows, feature = "ffmpeg")))]
+        {
+            let _ = (plan_json, plan_length);
+            set_last_error("native FFmpeg finalization is unavailable in this build");
+            Err(ERR_PLATFORM)
+        }
+    })
 }
 
 #[unsafe(no_mangle)]

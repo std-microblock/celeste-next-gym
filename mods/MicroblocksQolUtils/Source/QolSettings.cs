@@ -108,19 +108,13 @@ public sealed class QolSettings : EverestModuleSettings {
     public int RecordingBitrateKbps { get; set; } = 12000;
 
     [DefaultValue("")]
-    public string FfmpegPath { get; set; } = "";
-
-    [DefaultValue("")]
     public string RecordingDirectory { get; set; } = "";
 
     [DefaultValue("Celeste")]
     public string RecordingWindowTitle { get; set; } = "Celeste";
 
-    [DefaultValue("h264_nvenc")]
-    public string RecordingEncoder { get; set; } = "h264_nvenc";
-
-    [DefaultValue("")]
-    public string RecordingAudioDevice { get; set; } = "";
+    [DefaultValue("auto")]
+    public string RecordingEncoder { get; set; } = "auto";
 
     [DefaultValue("")]
     public string BgmEventMapFile { get; set; } = "";

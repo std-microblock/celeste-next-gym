@@ -7,17 +7,16 @@ public static class AutoRecorder {
     private static readonly List<Task> PendingStops = [];
     private static readonly HashSet<string> TemporaryFiles = new(StringComparer.OrdinalIgnoreCase);
     private static readonly HashSet<string> ProtectedSources = new(StringComparer.OrdinalIgnoreCase);
-    private static FfmpegCaptureSession? current;
+    private static NativeRecordingSegment? current;
     private static RecordingTimelineSnapshot? respawnAnchor;
     private static Vector2? observedRespawnPoint;
     private static string roomKey = "";
     private static string roomName = "";
     private static string areaSid = "";
     private static bool completing;
-    private static string modDirectory = "";
 
     public static void Load(string directory) {
-        modDirectory = directory;
+        _ = directory;
         On.Celeste.Player.Die += PlayerDie;
         On.Celeste.Level.TransitionTo += LevelTransitionTo;
         On.Celeste.Level.RegisterAreaComplete += RegisterAreaComplete;
@@ -115,16 +114,15 @@ public static class AutoRecorder {
     }
 
     private static void StartSegment() {
-        string ffmpeg = ResolveFfmpeg();
         string tempRoot = Path.Combine(ResolveRecordingRoot(), ".working", Sanitize(roomKey));
         Directory.CreateDirectory(tempRoot);
         string path = Path.Combine(tempRoot, $"segment-{DateTime.UtcNow:yyyyMMdd-HHmmss-fff}-{Guid.NewGuid():N}.mkv");
-        current = FfmpegCaptureSession.Start(ffmpeg, path);
+        current = NativeRecordingSegment.Start(path);
         if (current is not null) TemporaryFiles.Add(path);
     }
 
     private static void StopCurrent(bool deleteIfUnprotected) {
-        FfmpegCaptureSession? session = current;
+        NativeRecordingSegment? session = current;
         current = null;
         if (session is null) return;
         Task stop = session.StopAsync();
@@ -148,26 +146,19 @@ public static class AutoRecorder {
             Sanitize(areaSid),
             $"{DateTime.Now:yyyyMMdd-HHmmss}-{Sanitize(roomName)}.mp4"
         );
-        string ffmpeg = ResolveFfmpeg();
         List<Task> stops = [.. PendingStops];
         string[] temporary = TemporaryFiles.ToArray();
-        bool audio = !string.IsNullOrWhiteSpace(MicroblocksQolUtilsModule.Settings.RecordingAudioDevice);
-        QolSettings settings = MicroblocksQolUtilsModule.Settings;
-        _ = FfmpegFinalizer.FinishAsync(
-            ffmpeg,
+        _ = NativeRecordingFinalizer.FinishAsync(
             clips,
             stops,
             temporary,
-            output,
-            audio,
-            settings.BgmMode,
-            Environment.ExpandEnvironmentVariables(settings.BgmEventMapFile)
+            output
         );
         ResetStateWithoutDeleting();
     }
 
     private static RecordingClip CurrentClip() {
-        FfmpegCaptureSession session = current ?? throw new InvalidOperationException("No active recording segment.");
+        NativeRecordingSegment session = current ?? throw new InvalidOperationException("No active recording segment.");
         return new RecordingClip(
             session.Path,
             Math.Max(0.05, session.ElapsedSeconds),
@@ -183,13 +174,6 @@ public static class AutoRecorder {
 
     private static void Protect(RecordingTimelineSnapshot snapshot) {
         foreach (RecordingClip clip in snapshot.Clips) ProtectedSources.Add(clip.Source);
-    }
-
-    private static string ResolveFfmpeg() {
-        string configured = Environment.ExpandEnvironmentVariables(MicroblocksQolUtilsModule.Settings.FfmpegPath.Trim());
-        if (configured.Length > 0) return configured;
-        string bundled = Path.Combine(modDirectory, "Native", "win-x64", "ffmpeg.exe");
-        return File.Exists(bundled) ? bundled : "ffmpeg";
     }
 
     private static string ResolveRecordingRoot() {

@@ -121,7 +121,9 @@ impl GraphicsCaptureApiHandler for Capturer {
             None => {
                 // get raw frame buffer
                 let mut frame_buffer = frame.buffer().unwrap();
-                let raw_frame_buffer = frame_buffer.as_raw_buffer();
+                let raw_frame_buffer = frame_buffer
+                    .as_nopadding_buffer()
+                    .expect("Failed to remove frame row padding");
                 let frame_data = raw_frame_buffer.to_vec();
                 let current_time = SystemTime::now()
                     .duration_since(UNIX_EPOCH)

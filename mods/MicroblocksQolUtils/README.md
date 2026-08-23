@@ -1,8 +1,7 @@
 # microblock's QoL Utils
 
-Windows-first Everest utility mod. The implementation is intentionally split
-into optional subsystems so MiaoNet+, SpeedrunTool and FFmpeg are not hard
-dependencies.
+Windows-first Everest utility mod. Optional integrations are detected at
+runtime; MiaoNet+ and SpeedrunTool are not hard dependencies.
 
 Implemented:
 
@@ -20,31 +19,43 @@ Implemented:
 - Near-instant room transitions (camera/player/light interpolation removed).
 - Opt-in frame-spike sampling grouped by owning assembly for entity Update and
   Render, with an on-screen top offender and CSV logs under LocalAppData.
-- A Rust `cdylib` capture backend built on `scap`/WGC. Captured BGRA frames stay
-  outside managed memory and pass through a fixed-capacity latest-frame queue;
-  a slow encoder cannot grow memory without bound.
+- A Rust `cdylib` capture backend built directly on `scap`/WGC. Captured BGRA
+  frames use an intentional CPU copy, stay outside managed memory, and pass
+  through a fixed-capacity latest-frame queue; a slow encoder cannot grow
+  memory without bound.
+- Streaming H.264 encoding through FFmpeg shared libraries, with automatic
+  NVENC, QSV, AMF, Media Foundation, then OpenH264 fallback. No `ffmpeg.exe`,
+  `gdigrab`, managed frame buffer, or subprocess is used.
+- Native packet-level finalization of the retained successful segments into an
+  MP4. Failed-attempt files are deleted after their timeline is no longer
+  referenced.
 - Timeline cuts for SpeedrunTool save/load and respawn-point triggers. A saved
   prefix is trimmed at its exact timestamp, so deaths and load freezes are not
   included in the final video.
-- Optional SFX-only capture plus BGM post-mix. A JSON event map resolves FMOD
-  event names to audio files and each retained clip records the FMOD timeline
-  position used for alignment.
 
 Planned/in progress:
+
+- Keep one WGC capture alive for the whole room and represent deaths,
+  SpeedrunTool loads, and respawn changes entirely as logical time ranges.
+- FMOD DSP taps for gameplay/UI SFX, plus automatic BGM reconstruction from
+  event and timeline metadata.
 
 ## Recorder setup
 
 The native capture bridge selects the window configured by
 `RecordingWindowTitle` (default `Celeste`). During development, the Everest
 commands `qol_capture_probe_start`, `qol_capture_probe_stats`, and
-`qol_capture_probe_stop` exercise the real scap/WGC backend without enabling
-automatic recording. FFmpeg shared-library encoding is the next stage of this
-same native pipeline; the old `gdigrab` process backend is being removed.
+`qol_capture_probe_stop` exercise scap/WGC without enabling automatic
+recording.
 
-FFmpeg cannot isolate FMOD buses by itself. `RecordingAudioDevice` therefore
-names a DirectShow audio capture device. For automatic BGM reconstruction,
-route an SFX-only Celeste mix to that device, choose `SfxOnlyWithPostMix`, and
-provide a JSON file like:
+`scripts/build-qol-mod.mjs` downloads the current FFmpeg 8.1 LGPL shared build
+from BtbN, verifies GitHub's SHA-256 digest, links the Rust encoder against its
+import libraries, and packages only the required DLLs and license beside the
+mod's native DLL. The FFmpeg executable in the development archive is not
+packaged or invoked.
+
+For the planned automatic BGM reconstruction, a JSON event map will resolve
+FMOD event paths to clean music files, for example:
 
 ```json
 {
@@ -52,5 +63,6 @@ provide a JSON file like:
 }
 ```
 
-The finalizer concatenates the successful timeline, cuts each mapped BGM file
-from the captured FMOD timeline position, and mixes it with the SFX track.
+Each retained clip already records the FMOD event path and timeline position so
+the future audio finalizer can align these files without recording the gameplay
+music bus.
