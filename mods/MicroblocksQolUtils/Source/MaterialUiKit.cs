@@ -13,7 +13,91 @@ internal enum MaterialTextRole {
 
 internal readonly record struct MaterialRect(float X, float Y, float Width, float Height) {
     public Vector2 Center => new(X + Width / 2f, Y + Height / 2f);
+    public float Right => X + Width;
+    public float Bottom => Y + Height;
     public bool Contains(Vector2 point) => MaterialUi.Contains(point, X, Y, Width, Height);
+
+    public MaterialRect Inset(float all) => Inset(all, all, all, all);
+
+    public MaterialRect Inset(float horizontal, float vertical) =>
+        Inset(horizontal, vertical, horizontal, vertical);
+
+    public MaterialRect Inset(float left, float top, float right, float bottom) => new(
+        X + left,
+        Y + top,
+        Math.Max(0f, Width - left - right),
+        Math.Max(0f, Height - top - bottom)
+    );
+
+    public MaterialRect Offset(float x, float y) => new(X + x, Y + y, Width, Height);
+}
+
+internal enum MaterialAxis {
+    Horizontal,
+    Vertical
+}
+
+internal readonly record struct MaterialTrack(float Value, bool Flexible) {
+    public static MaterialTrack Fixed(float pixels) => new(Math.Max(0f, pixels), false);
+    public static MaterialTrack Flex(float weight = 1f) => new(Math.Max(0.001f, weight), true);
+}
+
+internal static class MaterialSpacing {
+    public const float Xs = 8f;
+    public const float Sm = 12f;
+    public const float Md = 16f;
+    public const float Lg = 24f;
+    public const float Xl = 32f;
+    public const float Xxl = 40f;
+}
+
+internal static class MaterialLayout {
+    public static MaterialRect[] Split(
+        MaterialRect bounds,
+        MaterialAxis axis,
+        float gap,
+        params MaterialTrack[] tracks
+    ) {
+        if (tracks.Length == 0) return [];
+        float available = (axis == MaterialAxis.Horizontal ? bounds.Width : bounds.Height)
+            - gap * Math.Max(0, tracks.Length - 1);
+        float fixedSize = tracks.Where(track => !track.Flexible).Sum(track => track.Value);
+        float totalWeight = tracks.Where(track => track.Flexible).Sum(track => track.Value);
+        float flexibleSize = Math.Max(0f, available - fixedSize);
+        MaterialRect[] result = new MaterialRect[tracks.Length];
+        float cursor = axis == MaterialAxis.Horizontal ? bounds.X : bounds.Y;
+        for (int index = 0; index < tracks.Length; index++) {
+            MaterialTrack track = tracks[index];
+            float size = track.Flexible ? flexibleSize * track.Value / totalWeight : track.Value;
+            result[index] = axis == MaterialAxis.Horizontal
+                ? new MaterialRect(cursor, bounds.Y, size, bounds.Height)
+                : new MaterialRect(bounds.X, cursor, bounds.Width, size);
+            cursor += size + gap;
+        }
+        return result;
+    }
+
+    public static MaterialRect GridCell(
+        MaterialRect bounds,
+        int columns,
+        int rows,
+        float columnGap,
+        float rowGap,
+        int index
+    ) {
+        columns = Math.Max(1, columns);
+        rows = Math.Max(1, rows);
+        int column = Math.Clamp(index % columns, 0, columns - 1);
+        int row = Math.Clamp(index / columns, 0, rows - 1);
+        float width = Math.Max(0f, (bounds.Width - columnGap * (columns - 1)) / columns);
+        float height = Math.Max(0f, (bounds.Height - rowGap * (rows - 1)) / rows);
+        return new MaterialRect(
+            bounds.X + column * (width + columnGap),
+            bounds.Y + row * (height + rowGap),
+            width,
+            height
+        );
+    }
 }
 
 /// <summary>

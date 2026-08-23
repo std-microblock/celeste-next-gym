@@ -10,17 +10,6 @@ namespace Celeste.Mod.MicroblocksQolUtils;
 public sealed class MaterialChapterSelect : Oui {
     private const float ScreenWidth = 1920f;
     private const float ScreenHeight = 1080f;
-    private const float SidebarX = 42f;
-    private const float SidebarY = 146f;
-    private const float SidebarWidth = 310f;
-    private const float SidebarItemHeight = 62f;
-    private const int SidebarVisibleItems = 13;
-    private const float ContentX = 394f;
-    private const float ContentY = 166f;
-    private const float CardWidth = 466f;
-    private const float CardHeight = 230f;
-    private const float CardGapX = 26f;
-    private const float CardGapY = 24f;
     private const int Columns = 3;
     private const int VisibleRows = 3;
 
@@ -122,21 +111,22 @@ public sealed class MaterialChapterSelect : Oui {
         Draw.Rect(0f, 0f, ScreenWidth, ScreenHeight, palette.Scrim * eased);
 
         float rise = (1f - eased) * 34f;
-        MaterialUiKit.Surface(new MaterialRect(28f, 24f + rise, 1864f, 1030f), 42f,
+        ChapterLayout layout = ChapterLayout.Create(rise);
+        MaterialUiKit.Surface(layout.Frame, 42f,
             palette with { SurfaceHigh = palette.Surface * (acrylicActive ? 0.78f : 0.94f) }, eased);
 
         MaterialUiKit.Text(UiText("microblocks_qol_chapter_title", "选择章节"),
-            new Vector2(70f, 58f + rise), Vector2.Zero, MaterialTextRole.Display,
+            new Vector2(layout.Header.X, layout.Header.Y), Vector2.Zero, MaterialTextRole.Display,
             palette.OnSurface, eased);
         string subtitle = CollabUtils2Bridge.Available
             ? UiText("microblocks_qol_chapter_subtitle_collab", "Material You  ·  键盘 / 鼠标  ·  CollabUtils2")
             : UiText("microblocks_qol_chapter_subtitle", "Material You  ·  键盘 / 鼠标");
-        MaterialUiKit.Text(subtitle, new Vector2(72f, 111f + rise), Vector2.Zero,
+        MaterialUiKit.Text(subtitle, new Vector2(layout.Header.X + 2f, layout.Header.Y + 55f), Vector2.Zero,
             MaterialTextRole.Body, palette.OnSurfaceVariant, eased);
 
-        RenderLevelSets(palette, rise, eased);
-        RenderCards(palette, rise, eased);
-        RenderFooter(palette, selected, rise, eased);
+        RenderLevelSets(palette, layout, eased);
+        RenderCards(palette, layout, eased);
+        RenderFooter(palette, selected, layout, eased);
         RenderMouseCursor(palette, eased);
     }
 
@@ -162,13 +152,14 @@ public sealed class MaterialChapterSelect : Oui {
         }
 
         Vector2 mouse = MInput.Mouse.Position;
-        bool inSidebar = MaterialUi.Contains(mouse, SidebarX, SidebarY, SidebarWidth, 850f);
+        ChapterLayout layout = ChapterLayout.Create(0f);
+        bool inSidebar = layout.Sidebar.Contains(mouse);
         if (MInput.Mouse.WheelDelta != 0) {
             if (inSidebar) {
                 levelSetScroll = Math.Clamp(
                     levelSetScroll - Math.Sign(MInput.Mouse.WheelDelta),
                     0,
-                    Math.Max(0, levelSets.Count - SidebarVisibleItems)
+                    Math.Max(0, levelSets.Count - layout.SidebarVisibleItems)
                 );
             } else {
                 cardScrollRow = Math.Clamp(
@@ -180,12 +171,12 @@ public sealed class MaterialChapterSelect : Oui {
         }
 
         if (MInput.Mouse.WasMoved || MInput.Mouse.PressedLeftButton) {
-            int sidebar = SidebarIndexAt(mouse);
+            int sidebar = SidebarIndexAt(mouse, layout);
             if (sidebar >= 0) {
                 if (MInput.Mouse.PressedLeftButton) SelectLevelSet(sidebar);
                 return;
             }
-            int card = CardIndexAt(mouse);
+            int card = CardIndexAt(mouse, layout);
             if (card >= 0) {
                 if (selectedIndex != card) {
                     selectedIndex = card;
@@ -272,10 +263,11 @@ public sealed class MaterialChapterSelect : Oui {
     }
 
     private void EnsureLevelSetVisible() {
+        int visibleItems = ChapterLayout.Create(0f).SidebarVisibleItems;
         if (selectedLevelSet < levelSetScroll) levelSetScroll = selectedLevelSet;
-        if (selectedLevelSet >= levelSetScroll + SidebarVisibleItems)
-            levelSetScroll = selectedLevelSet - SidebarVisibleItems + 1;
-        levelSetScroll = Math.Clamp(levelSetScroll, 0, Math.Max(0, levelSets.Count - SidebarVisibleItems));
+        if (selectedLevelSet >= levelSetScroll + visibleItems)
+            levelSetScroll = selectedLevelSet - visibleItems + 1;
+        levelSetScroll = Math.Clamp(levelSetScroll, 0, Math.Max(0, levelSets.Count - visibleItems));
     }
 
     private void ActivateSelected() {
@@ -291,22 +283,21 @@ public sealed class MaterialChapterSelect : Oui {
         Overworld.Goto<OuiChapterPanel>();
     }
 
-    private void RenderLevelSets(MaterialPalette palette, float rise, float alpha) {
-        MaterialUiKit.Surface(new MaterialRect(SidebarX, SidebarY + rise, SidebarWidth, 850f),
+    private void RenderLevelSets(MaterialPalette palette, ChapterLayout layout, float alpha) {
+        MaterialUiKit.Surface(layout.Sidebar,
             28f, palette with { SurfaceHigh = palette.SurfaceHigh * 0.82f }, alpha);
         MaterialUiKit.Text(UiText("microblocks_qol_chapter_level_sets", "地图集"),
-            new Vector2(SidebarX + 26f, SidebarY + 20f + rise), Vector2.Zero,
+            new Vector2(layout.Sidebar.X + MaterialSpacing.Lg, layout.Sidebar.Y + MaterialSpacing.Md), Vector2.Zero,
             MaterialTextRole.Section, palette.OnSurface, alpha);
-        for (int visible = 0; visible < SidebarVisibleItems; visible++) {
+        for (int visible = 0; visible < layout.SidebarVisibleItems; visible++) {
             int index = levelSetScroll + visible;
             if (index >= levelSets.Count) break;
-            float y = SidebarY + 70f + visible * SidebarItemHeight + rise;
+            MaterialRect item = layout.SidebarItem(visible);
             bool selected = index == selectedLevelSet;
-            MaterialUiKit.NavigationPill(new MaterialRect(SidebarX + 14f, y, SidebarWidth - 28f, 52f),
-                palette, selected, alpha);
+            MaterialUiKit.NavigationPill(item, palette, selected, alpha);
             SystemTtfFont.Draw(
                 Trim(levelSets[index].Title, 20),
-                new Vector2(SidebarX + 34f, y + 11f),
+                new Vector2(item.X + 20f, item.Y + 11f),
                 Vector2.Zero,
                 0.39f,
                 (selected ? palette.OnPrimary : palette.OnSurfaceVariant) * alpha,
@@ -315,49 +306,52 @@ public sealed class MaterialChapterSelect : Oui {
         }
     }
 
-    private void RenderCards(MaterialPalette palette, float rise, float alpha) {
+    private void RenderCards(MaterialPalette palette, ChapterLayout layout, float alpha) {
         int first = cardScrollRow * Columns;
         int last = Math.Min(entries.Count, first + VisibleRows * Columns);
         for (int index = first; index < last; index++) {
             int visible = index - first;
-            int column = visible % Columns;
-            int row = visible / Columns;
-            float x = ContentX + column * (CardWidth + CardGapX);
-            float y = ContentY + row * (CardHeight + CardGapY) + rise;
+            MaterialRect card = layout.Card(visible);
             bool selected = index == selectedIndex;
             Color surface = selected ? palette.SurfaceHighest : palette.SurfaceHigh;
-            MaterialUiKit.Card(new MaterialRect(x, y, CardWidth, CardHeight),
+            MaterialUiKit.Card(card,
                 palette with { SurfaceHigh = surface * (selected ? 0.98f : 0.85f) }, selected, alpha);
             if (selected)
-                MaterialUi.RoundedRect(x + 18f, y + 18f, 8f, CardHeight - 36f, 4f,
+                MaterialUi.RoundedRect(card.X + 16f, card.Y + 18f, 7f, card.Height - 36f, 3.5f,
                     palette.Primary * alpha);
-            RenderCard(entries[index], x, y, selected, palette, alpha);
+            RenderCard(entries[index], card, selected, palette, alpha);
         }
         if (entries.Count == 0) {
             SystemTtfFont.Draw(UiText("microblocks_qol_chapter_empty", "这个地图集中没有可选章节"),
-                new Vector2(1110f, 500f + rise),
+                layout.Cards.Center,
                 new Vector2(0.5f), 0.62f, palette.OnSurfaceVariant * alpha);
         }
     }
 
     private static void RenderCard(
         ChapterEntry entry,
-        float x,
-        float y,
+        MaterialRect card,
         bool selected,
         MaterialPalette palette,
         float alpha
     ) {
+        float x = card.X;
+        float y = card.Y;
+        MaterialRect content = card.Inset(MaterialSpacing.Lg);
+        float iconSize = Math.Min(76f, card.Height * 0.31f);
         if (!string.IsNullOrWhiteSpace(entry.Area.Icon) && GFX.Gui.Has(entry.Area.Icon)) {
             MTexture icon = GFX.Gui[entry.Area.Icon];
-            float scale = Math.Min(1f, 78f / Math.Max(icon.Width, icon.Height));
-            icon.DrawCentered(new Vector2(x + 76f, y + 77f), Color.White * alpha, scale);
+            float scale = Math.Min(1f, iconSize / Math.Max(icon.Width, icon.Height));
+            icon.DrawCentered(new Vector2(content.X + iconSize / 2f, content.Y + iconSize / 2f),
+                Color.White * alpha, scale);
         } else {
-            MaterialUi.RoundedRect(x + 38f, y + 39f, 76f, 76f, 24f, palette.Primary * 0.42f * alpha);
+            MaterialUi.RoundedRect(content.X, content.Y, iconSize, iconSize, 22f,
+                palette.Primary * 0.42f * alpha);
         }
-        SystemTtfFont.Draw(Trim(entry.Title, 22), new Vector2(x + 132f, y + 33f),
+        float textX = content.X + iconSize + MaterialSpacing.Md;
+        SystemTtfFont.Draw(Trim(entry.Title, 22), new Vector2(textX, content.Y - 5f),
             Vector2.Zero, 0.48f, palette.OnSurface * alpha, weight: UiFontWeight.Bold);
-        SystemTtfFont.Draw(Trim(entry.LevelSetTitle, 27), new Vector2(x + 132f, y + 79f),
+        SystemTtfFont.Draw(Trim(entry.LevelSetTitle, 27), new Vector2(textX, content.Y + 42f),
             Vector2.Zero, 0.31f, palette.OnSurfaceVariant * alpha);
 
         AreaStats? stats = SaveData.Instance?.GetAreaStatsFor(entry.Area.ToKey());
@@ -367,28 +361,27 @@ public sealed class MaterialChapterSelect : Oui {
             : $"{UiText(mode.Completed ? "microblocks_qol_chapter_cleared" : "microblocks_qol_chapter_uncleared", mode.Completed ? "已完成" : "进行中")}  ·  "
                 + $"{mode.TotalStrawberries} {UiText("microblocks_qol_chapter_berries", "草莓")}  ·  "
                 + $"{mode.Deaths} {UiText("microblocks_qol_chapter_deaths", "死亡")}";
-        SystemTtfFont.Draw(progress, new Vector2(x + 38f, y + 145f), Vector2.Zero, 0.31f,
+        SystemTtfFont.Draw(progress, new Vector2(content.X, y + card.Height - 82f), Vector2.Zero, 0.31f,
             palette.OnSurfaceVariant * alpha);
 
         MaterialUiKit.Chip(entry.Badge,
-            new Vector2(x + CardWidth - 22f, y + CardHeight - 52f), palette, selected, alpha);
+            new Vector2(card.Right - MaterialSpacing.Lg, card.Bottom - 48f), palette, selected, alpha);
     }
 
     private static void RenderFooter(
         MaterialPalette palette,
         ChapterEntry? selected,
-        float rise,
+        ChapterLayout layout,
         float alpha
     ) {
-        float y = 954f + rise;
         string detail = selected is null
             ? UiText("microblocks_qol_chapter_no_available", "没有可用章节")
             : selected.Sid;
-        SystemTtfFont.Draw(Trim(detail, 72), new Vector2(72f, y), Vector2.Zero, 0.31f,
+        SystemTtfFont.Draw(Trim(detail, 72), new Vector2(layout.Footer.X, layout.Footer.Y), Vector2.Zero, 0.31f,
             palette.OnSurfaceVariant * alpha);
         SystemTtfFont.Draw(UiText("microblocks_qol_chapter_controls",
                 "Enter / 左键：打开   Esc：返回   Tab：切换地图集   滚轮：滚动"),
-            new Vector2(1844f, y), new Vector2(1f, 0f), 0.31f,
+            new Vector2(layout.Footer.Right, layout.Footer.Y), new Vector2(1f, 0f), 0.31f,
             palette.OnSurfaceVariant * alpha);
     }
 
@@ -398,25 +391,22 @@ public sealed class MaterialChapterSelect : Oui {
         MaterialUiKit.Cursor(mouse, palette, alpha);
     }
 
-    private int SidebarIndexAt(Vector2 mouse) {
-        if (!MaterialUi.Contains(mouse, SidebarX + 12f, SidebarY + 66f, SidebarWidth - 24f,
-                SidebarVisibleItems * SidebarItemHeight)) return -1;
-        int visible = (int)((mouse.Y - SidebarY - 66f) / SidebarItemHeight);
-        int index = levelSetScroll + visible;
-        return index >= 0 && index < levelSets.Count ? index : -1;
+    private int SidebarIndexAt(Vector2 mouse, ChapterLayout layout) {
+        for (int visible = 0; visible < layout.SidebarVisibleItems; visible++) {
+            if (!layout.SidebarItem(visible).Contains(mouse)) continue;
+            int index = levelSetScroll + visible;
+            return index >= 0 && index < levelSets.Count ? index : -1;
+        }
+        return -1;
     }
 
-    private int CardIndexAt(Vector2 mouse) {
-        float localX = mouse.X - ContentX;
-        float localY = mouse.Y - ContentY;
-        if (localX < 0f || localY < 0f) return -1;
-        int column = (int)(localX / (CardWidth + CardGapX));
-        int row = (int)(localY / (CardHeight + CardGapY));
-        if (column < 0 || column >= Columns || row < 0 || row >= VisibleRows) return -1;
-        if (localX % (CardWidth + CardGapX) > CardWidth || localY % (CardHeight + CardGapY) > CardHeight)
-            return -1;
-        int index = (cardScrollRow + row) * Columns + column;
-        return index < entries.Count ? index : -1;
+    private int CardIndexAt(Vector2 mouse, ChapterLayout layout) {
+        for (int visible = 0; visible < Columns * VisibleRows; visible++) {
+            if (!layout.Card(visible).Contains(mouse)) continue;
+            int index = cardScrollRow * Columns + visible;
+            return index < entries.Count ? index : -1;
+        }
+        return -1;
     }
 
     private int MaxCardScrollRow() => Math.Max(0, (entries.Count + Columns - 1) / Columns - VisibleRows);
@@ -471,6 +461,60 @@ public sealed class MaterialChapterSelect : Oui {
 
     private delegate IEnumerator GotoRoutineOrig(Overworld self, Oui next);
     private delegate IEnumerator GotoRoutineDetour(GotoRoutineOrig orig, Overworld self, Oui next);
+
+    private readonly record struct ChapterLayout(
+        MaterialRect Frame,
+        MaterialRect Header,
+        MaterialRect Sidebar,
+        MaterialRect Cards,
+        MaterialRect Footer,
+        int SidebarVisibleItems
+    ) {
+        private const float SidebarHeaderHeight = 64f;
+        private const float SidebarItemHeight = 50f;
+        private const float SidebarItemGap = MaterialSpacing.Xs;
+
+        public static ChapterLayout Create(float rise) {
+            MaterialRect frame = new(28f, 24f + rise, 1864f, 1030f);
+            MaterialRect inner = frame.Inset(MaterialSpacing.Xxl, 30f, MaterialSpacing.Xxl, 28f);
+            MaterialRect[] rows = MaterialLayout.Split(
+                inner,
+                MaterialAxis.Vertical,
+                18f,
+                MaterialTrack.Fixed(95f),
+                MaterialTrack.Flex(),
+                MaterialTrack.Fixed(44f)
+            );
+            MaterialRect[] body = MaterialLayout.Split(
+                rows[1],
+                MaterialAxis.Horizontal,
+                MaterialSpacing.Lg,
+                MaterialTrack.Fixed(296f),
+                MaterialTrack.Flex()
+            );
+            int visibleItems = Math.Max(1, (int)MathF.Floor(
+                (body[0].Height - SidebarHeaderHeight - MaterialSpacing.Md + SidebarItemGap)
+                / (SidebarItemHeight + SidebarItemGap)
+            ));
+            return new ChapterLayout(frame, rows[0], body[0], body[1], rows[2], visibleItems);
+        }
+
+        public MaterialRect SidebarItem(int visibleIndex) => new(
+            Sidebar.X + MaterialSpacing.Sm,
+            Sidebar.Y + SidebarHeaderHeight + visibleIndex * (SidebarItemHeight + SidebarItemGap),
+            Sidebar.Width - MaterialSpacing.Lg,
+            SidebarItemHeight
+        );
+
+        public MaterialRect Card(int visibleIndex) => MaterialLayout.GridCell(
+            Cards,
+            Columns,
+            VisibleRows,
+            20f,
+            20f,
+            visibleIndex
+        );
+    }
 
     private sealed record ChapterEntry(
         AreaData Area,
