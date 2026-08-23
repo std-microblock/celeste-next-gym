@@ -96,8 +96,11 @@ public sealed class QolSettings : EverestModuleSettings {
     [DefaultValue(RecordingPolicy.EveryRoom)]
     public RecordingPolicy RecordingPolicy { get; set; } = RecordingPolicy.EveryRoom;
 
-    [DefaultValue(BgmRecordingMode.CaptureGameMix)]
-    public BgmRecordingMode BgmMode { get; set; } = BgmRecordingMode.CaptureGameMix;
+    [DefaultValue(BgmRecordingMode.SfxOnlyWithPostMix)]
+    public BgmRecordingMode BgmMode { get; set; } = BgmRecordingMode.SfxOnlyWithPostMix;
+
+    [DefaultValue(true)]
+    public bool RecordingIncludeUiSfx { get; set; } = true;
 
     [DefaultValue(60)]
     [SettingRange(30, 120)]

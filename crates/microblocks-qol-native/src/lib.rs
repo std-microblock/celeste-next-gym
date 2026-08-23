@@ -2,7 +2,10 @@
 
 use std::collections::{HashMap, VecDeque};
 use std::ffi::{c_char, c_void};
+use std::fs::File;
+use std::io::{BufWriter, Write};
 use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::path::PathBuf;
 use std::ptr;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex, OnceLock};
@@ -17,7 +20,7 @@ mod encoder;
 #[cfg(all(windows, feature = "ffmpeg"))]
 mod finalizer;
 
-const ABI_VERSION: u32 = 2;
+const ABI_VERSION: u32 = 3;
 const OK: i32 = 0;
 const ERR_INVALID_ARGUMENT: i32 = -1;
 const ERR_NOT_FOUND: i32 = -2;
@@ -26,6 +29,9 @@ const ERR_NOT_RUNNING: i32 = -4;
 const ERR_PLATFORM: i32 = -5;
 const ERR_CAPTURE: i32 = -6;
 const ERR_PANIC: i32 = -127;
+const AUDIO_QUEUE_CAPACITY: usize = 32;
+const AUDIO_MAX_SAMPLES_PER_CHUNK: usize = 16_384;
+const AUDIO_BUS_COUNT: usize = 2;
 
 static NEXT_HANDLE: AtomicU64 = AtomicU64::new(1);
 static SESSIONS: OnceLock<Mutex<HashMap<u64, Arc<CaptureSession>>>> = OnceLock::new();
@@ -118,6 +124,8 @@ pub struct CaptureStats {
     pub bytes_captured: u64,
     pub last_frame_unix_nanos: u64,
     pub media_time_nanos: u64,
+    pub audio_frames_captured: u64,
+    pub audio_chunks_dropped: u64,
 }
 
 #[derive(Debug)]
@@ -139,6 +147,150 @@ struct LatestFrameQueue {
     capacity: usize,
     state: Mutex<QueueState>,
     available: Condvar,
+}
+
+#[derive(Debug)]
+struct AudioChunk {
+    media_time_nanos: u64,
+    sample_rate: u32,
+    channels: u16,
+    bus_id: u16,
+    samples: Vec<f32>,
+}
+
+#[derive(Debug)]
+struct AudioQueueState {
+    chunks: VecDeque<AudioChunk>,
+    free_buffers: Vec<Vec<f32>>,
+    closed: bool,
+}
+
+#[derive(Debug)]
+struct AudioChunkQueue {
+    state: Mutex<AudioQueueState>,
+    available: Condvar,
+}
+
+#[derive(Debug)]
+struct AudioBusClock {
+    origin_nanos: AtomicU64,
+    frames: AtomicU64,
+}
+
+impl AudioBusClock {
+    const fn new() -> Self {
+        Self {
+            origin_nanos: AtomicU64::new(u64::MAX),
+            frames: AtomicU64::new(0),
+        }
+    }
+
+    fn reserve(&self, frame_count: u64, sample_rate: u32, fallback_nanos: u64) -> u64 {
+        let origin = match self.origin_nanos.compare_exchange(
+            u64::MAX,
+            fallback_nanos,
+            Ordering::AcqRel,
+            Ordering::Acquire,
+        ) {
+            Ok(_) => fallback_nanos,
+            Err(existing) => existing,
+        };
+        let start_frame = self.frames.fetch_add(frame_count, Ordering::Relaxed);
+        origin.saturating_add(
+            start_frame
+                .saturating_mul(1_000_000_000)
+                .checked_div(u64::from(sample_rate))
+                .unwrap_or(0),
+        )
+    }
+}
+
+impl AudioChunkQueue {
+    fn new() -> Self {
+        let free_buffers = (0..AUDIO_QUEUE_CAPACITY)
+            .map(|_| Vec::with_capacity(AUDIO_MAX_SAMPLES_PER_CHUNK))
+            .collect();
+        Self {
+            state: Mutex::new(AudioQueueState {
+                chunks: VecDeque::with_capacity(AUDIO_QUEUE_CAPACITY),
+                free_buffers,
+                closed: false,
+            }),
+            available: Condvar::new(),
+        }
+    }
+
+    fn try_push(
+        &self,
+        media_time_nanos: u64,
+        sample_rate: u32,
+        channels: u16,
+        bus_id: u16,
+        samples: &[f32],
+    ) -> bool {
+        if samples.len() > AUDIO_MAX_SAMPLES_PER_CHUNK {
+            return false;
+        }
+        let Ok(mut state) = self.state.try_lock() else {
+            return false;
+        };
+        if state.closed {
+            return false;
+        }
+        let Some(mut buffer) = state.free_buffers.pop() else {
+            return false;
+        };
+        buffer.clear();
+        buffer.extend_from_slice(samples);
+        state.chunks.push_back(AudioChunk {
+            media_time_nanos,
+            sample_rate,
+            channels,
+            bus_id,
+            samples: buffer,
+        });
+        self.available.notify_one();
+        true
+    }
+
+    fn pop(&self) -> Option<AudioChunk> {
+        let mut state = self
+            .state
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        loop {
+            if let Some(chunk) = state.chunks.pop_front() {
+                return Some(chunk);
+            }
+            if state.closed {
+                return None;
+            }
+            state = self
+                .available
+                .wait(state)
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+        }
+    }
+
+    fn recycle(&self, mut chunk: AudioChunk) {
+        chunk.samples.clear();
+        let mut state = self
+            .state
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if state.free_buffers.len() < AUDIO_QUEUE_CAPACITY {
+            state.free_buffers.push(chunk.samples);
+        }
+    }
+
+    fn close(&self) {
+        let mut state = self
+            .state
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        state.closed = true;
+        self.available.notify_all();
+    }
 }
 
 impl LatestFrameQueue {
@@ -219,6 +371,8 @@ struct AtomicStats {
     bytes_captured: AtomicU64,
     last_frame_unix_nanos: AtomicU64,
     media_time_nanos: AtomicU64,
+    audio_frames_captured: AtomicU64,
+    audio_chunks_dropped: AtomicU64,
 }
 
 #[derive(Debug)]
@@ -228,15 +382,20 @@ struct CaptureSession {
     stop_requested: AtomicBool,
     capture_finished: AtomicBool,
     queue: Arc<LatestFrameQueue>,
+    audio_queue: Arc<AudioChunkQueue>,
+    audio_clocks: [AudioBusClock; AUDIO_BUS_COUNT],
     stats: Arc<AtomicStats>,
     capture_thread: Mutex<Option<JoinHandle<()>>>,
     consumer_thread: Mutex<Option<JoinHandle<()>>>,
+    audio_thread: Mutex<Option<JoinHandle<()>>>,
 }
 
 impl CaptureSession {
     fn new(config: CaptureConfig) -> Self {
         Self {
             queue: Arc::new(LatestFrameQueue::new(config.queue_capacity)),
+            audio_queue: Arc::new(AudioChunkQueue::new()),
+            audio_clocks: [AudioBusClock::new(), AudioBusClock::new()],
             config,
             running: AtomicBool::new(false),
             stop_requested: AtomicBool::new(false),
@@ -244,6 +403,7 @@ impl CaptureSession {
             stats: Arc::new(AtomicStats::default()),
             capture_thread: Mutex::new(None),
             consumer_thread: Mutex::new(None),
+            audio_thread: Mutex::new(None),
         }
     }
 
@@ -270,6 +430,7 @@ impl CaptureSession {
                     .capture_finished
                     .store(true, Ordering::Release);
                 capture_session.queue.close();
+                capture_session.audio_queue.close();
                 capture_session.running.store(false, Ordering::Release);
             })
             .map_err(|error| {
@@ -314,6 +475,25 @@ impl CaptureSession {
             .consumer_thread
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(consumer);
+
+        let audio_session = Arc::clone(self);
+        let audio = thread::Builder::new()
+            .name("microblocks-qol-audio-writer".to_owned())
+            .spawn(move || {
+                if let Err(error) = run_audio_writer(&audio_session) {
+                    set_last_error(error);
+                    audio_session.stop_requested.store(true, Ordering::Release);
+                }
+            })
+            .map_err(|error| {
+                self.stop_requested.store(true, Ordering::Release);
+                set_last_error(format!("failed to spawn audio-writer thread: {error}"));
+                ERR_CAPTURE
+            })?;
+        *self
+            .audio_thread
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(audio);
         Ok(())
     }
 
@@ -347,8 +527,17 @@ impl CaptureSession {
             let _ = thread.join();
         }
         self.queue.close();
+        self.audio_queue.close();
         if let Some(thread) = self
             .consumer_thread
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .take()
+        {
+            let _ = thread.join();
+        }
+        if let Some(thread) = self
+            .audio_thread
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .take()
@@ -370,6 +559,8 @@ impl CaptureSession {
             bytes_captured: self.stats.bytes_captured.load(Ordering::Relaxed),
             last_frame_unix_nanos: self.stats.last_frame_unix_nanos.load(Ordering::Relaxed),
             media_time_nanos: self.stats.media_time_nanos.load(Ordering::Relaxed),
+            audio_frames_captured: self.stats.audio_frames_captured.load(Ordering::Relaxed),
+            audio_chunks_dropped: self.stats.audio_chunks_dropped.load(Ordering::Relaxed),
         }
     }
 }
@@ -408,10 +599,71 @@ fn run_consumer(session: &Arc<CaptureSession>) -> Result<(), String> {
     Ok(())
 }
 
+fn run_audio_writer(session: &Arc<CaptureSession>) -> Result<(), String> {
+    let mut writer = if let Some(path) = audio_sidecar_path(&session.config) {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|error| format!("cannot create audio sidecar directory: {error}"))?;
+        }
+        let file = File::create(&path)
+            .map_err(|error| format!("cannot create audio sidecar {}: {error}", path.display()))?;
+        let mut writer = BufWriter::with_capacity(1024 * 1024, file);
+        writer
+            .write_all(b"MQOLAUD1")
+            .map_err(|error| format!("cannot write audio sidecar header: {error}"))?;
+        Some(writer)
+    } else {
+        None
+    };
+
+    while let Some(chunk) = session.audio_queue.pop() {
+        if let Some(writer) = writer.as_mut() {
+            write_audio_chunk(writer, &chunk)?;
+        }
+        session.audio_queue.recycle(chunk);
+    }
+    if let Some(writer) = writer.as_mut() {
+        writer
+            .flush()
+            .map_err(|error| format!("cannot flush audio sidecar: {error}"))?;
+    }
+    Ok(())
+}
+
+fn audio_sidecar_path(config: &CaptureConfig) -> Option<PathBuf> {
+    config
+        .output_path
+        .as_ref()
+        .map(|path| PathBuf::from(format!("{path}.sfxchunks")))
+}
+
+fn write_audio_chunk(writer: &mut impl Write, chunk: &AudioChunk) -> Result<(), String> {
+    let frames = chunk.samples.len() / chunk.channels as usize;
+    writer
+        .write_all(&chunk.media_time_nanos.to_le_bytes())
+        .and_then(|_| writer.write_all(&chunk.sample_rate.to_le_bytes()))
+        .and_then(|_| writer.write_all(&chunk.channels.to_le_bytes()))
+        .and_then(|_| writer.write_all(&chunk.bus_id.to_le_bytes()))
+        .and_then(|_| writer.write_all(&(frames as u32).to_le_bytes()))
+        .and_then(|_| writer.write_all(&(chunk.samples.len() as u32).to_le_bytes()))
+        .map_err(|error| format!("cannot write audio chunk header: {error}"))?;
+    // SAFETY: f32 has no padding and the slice remains alive for this write call.
+    let bytes = unsafe {
+        std::slice::from_raw_parts(
+            chunk.samples.as_ptr().cast::<u8>(),
+            chunk.samples.len() * std::mem::size_of::<f32>(),
+        )
+    };
+    writer
+        .write_all(bytes)
+        .map_err(|error| format!("cannot write audio chunk samples: {error}"))
+}
+
 impl Drop for CaptureSession {
     fn drop(&mut self) {
         self.stop_requested.store(true, Ordering::Release);
         self.queue.close();
+        self.audio_queue.close();
     }
 }
 
@@ -736,6 +988,69 @@ pub extern "C" fn mqol_capture_destroy(handle: u64) -> i32 {
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn mqol_capture_push_audio(
+    handle: u64,
+    samples: *const f32,
+    sample_count: usize,
+    sample_rate: u32,
+    channels: u16,
+    bus_id: u16,
+) -> i32 {
+    ffi_status(|| {
+        if samples.is_null()
+            || sample_count == 0
+            || !(8_000..=384_000).contains(&sample_rate)
+            || !(1..=32).contains(&channels)
+            || bus_id == 0
+            || usize::from(bus_id) > AUDIO_BUS_COUNT
+            || !sample_count.is_multiple_of(channels as usize)
+        {
+            set_last_error("invalid audio chunk");
+            return Err(ERR_INVALID_ARGUMENT);
+        }
+        // FMOD calls this function on its real-time mixer thread. If session bookkeeping is
+        // momentarily contended by stop/destroy, drop this chunk rather than block audio.
+        let Ok(guard) = sessions().try_lock() else {
+            return Ok(OK);
+        };
+        let session = guard.get(&handle).cloned().ok_or(ERR_NOT_FOUND)?;
+        drop(guard);
+        if session.config.output_path.is_none() || !session.running.load(Ordering::Acquire) {
+            return Ok(OK);
+        }
+        // SAFETY: The caller guarantees `sample_count` readable f32 samples for this call.
+        let values = unsafe { std::slice::from_raw_parts(samples, sample_count) };
+        let frame_count = (sample_count / channels as usize) as u64;
+        let media_time_nanos = session.audio_clocks[usize::from(bus_id) - 1].reserve(
+            frame_count,
+            sample_rate,
+            session.stats.media_time_nanos.load(Ordering::Relaxed),
+        );
+        // Locked FMOD buses continue producing zero-filled blocks while idle. Advance the bus
+        // clock above, but do not spend queue or disk bandwidth on silence; the finalizer fills
+        // timestamp gaps explicitly.
+        if !values.iter().any(|sample| *sample != 0.0) {
+            return Ok(OK);
+        }
+        if session
+            .audio_queue
+            .try_push(media_time_nanos, sample_rate, channels, bus_id, values)
+        {
+            session
+                .stats
+                .audio_frames_captured
+                .fetch_add(frame_count, Ordering::Relaxed);
+        } else {
+            session
+                .stats
+                .audio_chunks_dropped
+                .fetch_add(1, Ordering::Relaxed);
+        }
+        Ok(OK)
+    })
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn mqol_capture_last_error(buffer: *mut c_char, capacity: usize) -> usize {
     let message = LAST_ERROR
         .get_or_init(|| Mutex::new(String::new()))
@@ -828,6 +1143,52 @@ mod tests {
             .validate()
             .is_err()
         );
+    }
+
+    #[test]
+    fn audio_queue_is_bounded_and_reuses_buffers() {
+        let queue = AudioChunkQueue::new();
+        let samples = [0.25_f32, -0.25];
+        for index in 0..AUDIO_QUEUE_CAPACITY {
+            assert!(queue.try_push(index as u64, 48_000, 2, 1, &samples));
+        }
+        assert!(!queue.try_push(999, 48_000, 2, 1, &samples));
+
+        let chunk = queue.pop().unwrap();
+        assert_eq!(chunk.samples, samples);
+        queue.recycle(chunk);
+        assert!(queue.try_push(1_000, 48_000, 2, 1, &samples));
+        queue.close();
+    }
+
+    #[test]
+    fn audio_bus_clock_advances_even_when_a_chunk_would_be_dropped() {
+        let clock = AudioBusClock::new();
+        assert_eq!(clock.reserve(480, 48_000, 2_000_000_000), 2_000_000_000);
+        assert_eq!(clock.reserve(960, 48_000, 9_000_000_000), 2_010_000_000);
+        assert_eq!(clock.reserve(480, 48_000, 9_000_000_000), 2_030_000_000);
+    }
+
+    #[test]
+    fn audio_sidecar_chunk_has_stable_little_endian_layout() {
+        let chunk = AudioChunk {
+            media_time_nanos: 123,
+            sample_rate: 48_000,
+            channels: 2,
+            bus_id: 1,
+            samples: vec![0.5, -0.25, 1.0, -1.0],
+        };
+        let mut bytes = Vec::new();
+        write_audio_chunk(&mut bytes, &chunk).unwrap();
+
+        assert_eq!(bytes.len(), 24 + 4 * size_of::<f32>());
+        assert_eq!(u64::from_le_bytes(bytes[0..8].try_into().unwrap()), 123);
+        assert_eq!(u32::from_le_bytes(bytes[8..12].try_into().unwrap()), 48_000);
+        assert_eq!(u16::from_le_bytes(bytes[12..14].try_into().unwrap()), 2);
+        assert_eq!(u16::from_le_bytes(bytes[14..16].try_into().unwrap()), 1);
+        assert_eq!(u32::from_le_bytes(bytes[16..20].try_into().unwrap()), 2);
+        assert_eq!(u32::from_le_bytes(bytes[20..24].try_into().unwrap()), 4);
+        assert_eq!(f32::from_le_bytes(bytes[24..28].try_into().unwrap()), 0.5);
     }
 
     #[test]

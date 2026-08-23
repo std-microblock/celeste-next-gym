@@ -9,7 +9,7 @@ namespace Celeste.Mod.MicroblocksQolUtils;
 
 public static class NativeCaptureBridge {
     private const string LibraryName = "microblocks_qol_native";
-    private const uint ExpectedAbiVersion = 2;
+    private const uint ExpectedAbiVersion = 3;
     private static bool resolverInstalled;
     private static IntPtr nativeHandle;
     private static string? configuredNativeDirectory;
@@ -172,7 +172,9 @@ public static class NativeCaptureBridge {
             stats.FramesDropped,
             stats.BytesCaptured,
             stats.LastFrameUnixNanos,
-            stats.MediaTimeNanos
+            stats.MediaTimeNanos,
+            stats.AudioFramesCaptured,
+            stats.AudioChunksDropped
         );
     }
 
@@ -199,6 +201,8 @@ public static class NativeCaptureBridge {
         public ulong BytesCaptured;
         public ulong LastFrameUnixNanos;
         public ulong MediaTimeNanos;
+        public ulong AudioFramesCaptured;
+        public ulong AudioChunksDropped;
     }
 
     [DllImport(LibraryName, EntryPoint = "mqol_capture_abi_version", CallingConvention = CallingConvention.Cdecl)]
@@ -218,6 +222,16 @@ public static class NativeCaptureBridge {
 
     [DllImport(LibraryName, EntryPoint = "mqol_capture_destroy", CallingConvention = CallingConvention.Cdecl)]
     private static extern int CaptureDestroy(ulong handle);
+
+    [DllImport(LibraryName, EntryPoint = "mqol_capture_push_audio", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern unsafe int CapturePushAudio(
+        ulong handle,
+        float* samples,
+        nuint sampleCount,
+        uint sampleRate,
+        ushort channels,
+        ushort busId
+    );
 
     [DllImport(LibraryName, EntryPoint = "mqol_capture_last_error", CallingConvention = CallingConvention.Cdecl)]
     private static extern nuint CaptureLastError(IntPtr buffer, nuint capacity);
@@ -241,6 +255,19 @@ public sealed class NativeCaptureSession : IDisposable {
         if (handle != 0) NativeCaptureBridge.Stop(handle);
     }
 
+    internal unsafe void PushAudio(float* samples, int sampleCount, int sampleRate, int channels, int busId) {
+        ulong owned = handle;
+        if (owned == 0 || samples is null || sampleCount <= 0) return;
+        _ = NativeCaptureBridge.CapturePushAudio(
+            owned,
+            samples,
+            (nuint)sampleCount,
+            (uint)sampleRate,
+            (ushort)channels,
+            (ushort)busId
+        );
+    }
+
     public void Dispose() {
         ulong owned = Interlocked.Exchange(ref handle, 0);
         if (owned == 0) return;
@@ -259,7 +286,9 @@ public readonly record struct CaptureStatistics(
     ulong FramesDropped,
     ulong BytesCaptured,
     ulong LastFrameUnixNanos,
-    ulong MediaTimeNanos
+    ulong MediaTimeNanos,
+    ulong AudioFramesCaptured,
+    ulong AudioChunksDropped
 ) {
     public double MediaTimeSeconds => MediaTimeNanos / 1_000_000_000.0;
 }

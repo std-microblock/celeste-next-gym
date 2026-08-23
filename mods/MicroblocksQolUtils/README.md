@@ -32,14 +32,20 @@ Implemented:
 - Native background finalization decodes only the retained ranges from the
   continuous room file and re-encodes them into a gapless MP4. This permits
   exact non-keyframe cuts while failed attempts and load freezes are omitted.
+- Pass-through FMOD DSP taps capture `bus:/gameplay_sfx` and optionally
+  `bus:/ui_sfx`, while deliberately excluding `bus:/music`. Mixer callbacks
+  feed a fixed pool of 32 native PCM chunks with non-blocking `try_lock`
+  semantics, and a writer thread streams them to a timestamped `.sfxchunks`
+  sidecar instead of buffering room audio in managed or native memory. Exact
+  zero-filled idle blocks are represented as timestamp gaps rather than stored.
 - Timeline cuts for SpeedrunTool save/load and respawn-point triggers. A saved
   prefix is trimmed at its exact timestamp, so deaths and load freezes are not
   included in the final video.
 
 Planned/in progress:
 
-- FMOD DSP taps for gameplay/UI SFX, plus automatic BGM reconstruction from
-  event and timeline metadata.
+- Timeline-aware SFX mixing/AAC muxing from the captured sidecar, plus
+  automatic BGM reconstruction from event and timeline metadata.
 
 ## Recorder setup
 

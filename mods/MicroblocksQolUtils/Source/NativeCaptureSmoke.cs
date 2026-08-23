@@ -4,6 +4,7 @@ internal static class NativeCaptureSmoke {
     private const string OutputVariable = "MICROBLOCKS_QOL_CAPTURE_SMOKE_OUTPUT";
     private static CancellationTokenSource? cancellation;
     private static NativeCaptureSession? active;
+    private static FmodSfxTap? activeTap;
 
     public static void Load() {
         string? configured = Environment.GetEnvironmentVariable(OutputVariable);
@@ -17,6 +18,7 @@ internal static class NativeCaptureSmoke {
         cancellation?.Cancel();
         cancellation?.Dispose();
         cancellation = null;
+        Interlocked.Exchange(ref activeTap, null)?.Dispose();
         Interlocked.Exchange(ref active, null)?.Dispose();
     }
 
@@ -32,8 +34,13 @@ internal static class NativeCaptureSmoke {
                 2_000
             );
             Interlocked.Exchange(ref active, capture)?.Dispose();
+            FmodSfxTap tap = FmodSfxTap.Attach(capture, includeUiSfx: true)
+                ?? throw new InvalidOperationException("FMOD SFX tap did not attach to any bus");
+            Interlocked.Exchange(ref activeTap, tap)?.Dispose();
+            Audio.Play("event:/ui/main/button_select");
             await Task.Delay(2_000, token).ConfigureAwait(false);
             CaptureStatistics statistics = capture.Statistics;
+            Interlocked.Exchange(ref activeTap, null)?.Dispose();
             Interlocked.Exchange(ref active, null)?.Dispose();
             FileInfo file = new(output);
             long length = file.Exists ? file.Length : 0;
@@ -45,11 +52,22 @@ internal static class NativeCaptureSmoke {
                     + $"nativeError={NativeCaptureBridge.LastError()}"
                 );
             }
+            string sidecar = output + ".sfxchunks";
+            byte[] audio = File.Exists(sidecar) ? File.ReadAllBytes(sidecar) : [];
+            if (statistics.AudioFramesCaptured == 0
+                || audio.Length <= 8
+                || !audio.AsSpan(0, 8).SequenceEqual("MQOLAUD1"u8)) {
+                throw new InvalidDataException(
+                    $"FMOD SFX sidecar is invalid: bytes={audio.Length} "
+                    + $"frames={statistics.AudioFramesCaptured} dropped={statistics.AudioChunksDropped}"
+                );
+            }
             Logger.Log(LogLevel.Info, "MicroblocksQolUtils/Recorder", $"QOL_CAPTURE_SMOKE_PASSED {output}");
         } catch (OperationCanceledException) {
         } catch (Exception exception) {
             Logger.LogDetailed(exception, "MicroblocksQolUtils/Recorder/CaptureSmoke");
         } finally {
+            Interlocked.Exchange(ref activeTap, null)?.Dispose();
             Interlocked.Exchange(ref active, null)?.Dispose();
         }
     }

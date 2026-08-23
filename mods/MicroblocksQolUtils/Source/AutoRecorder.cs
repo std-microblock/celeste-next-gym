@@ -191,7 +191,7 @@ public static class AutoRecorder {
         _ = NativeRecordingFinalizer.FinishAsync(
             clips,
             [stop],
-            [recording.Path],
+            [recording.Path, recording.AudioPath],
             output
         );
         ResetTimelineState();
@@ -229,6 +229,7 @@ public static class AutoRecorder {
         if (recording is not null) {
             _ = recording.StopAsync().ContinueWith(_ => {
                 try { File.Delete(recording.Path); } catch { }
+                try { File.Delete(recording.AudioPath); } catch { }
             }, TaskScheduler.Default);
         }
         ActivePrefix.Clear();
@@ -245,6 +246,7 @@ public static class AutoRecorder {
             if (deleteSource) {
                 _ = stop.ContinueWith(_ => {
                     try { File.Delete(recording.Path); } catch { }
+                    try { File.Delete(recording.AudioPath); } catch { }
                 }, TaskScheduler.Default);
             }
         }
