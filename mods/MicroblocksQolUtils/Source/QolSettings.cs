@@ -132,9 +132,6 @@ public sealed class QolSettings : EverestModuleSettings {
     [DefaultValue("")]
     public string RecordingDirectory { get; set; } = "";
 
-    [DefaultValue("Celeste")]
-    public string RecordingWindowTitle { get; set; } = "Celeste";
-
     [DefaultValue("auto")]
     public string RecordingEncoder { get; set; } = "auto";
 

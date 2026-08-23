@@ -43,23 +43,21 @@ public static class NativeCaptureBridge {
         }
     }
 
-    public static NativeCaptureSession Start(string windowTitle, int fps, int queueCapacity = 3) {
-        return StartCore(windowTitle, fps, queueCapacity, null, "auto", 12_000);
+    public static NativeCaptureSession Start(int fps, int queueCapacity = 3) {
+        return StartCore(fps, queueCapacity, null, "auto", 12_000);
     }
 
     public static NativeCaptureSession StartRecording(
-        string windowTitle,
         int fps,
         string outputPath,
         string encoder,
         int bitrateKbps,
         int queueCapacity = 3
     ) {
-        return StartCore(windowTitle, fps, queueCapacity, Path.GetFullPath(outputPath), encoder, bitrateKbps);
+        return StartCore(fps, queueCapacity, Path.GetFullPath(outputPath), encoder, bitrateKbps);
     }
 
     private static NativeCaptureSession StartCore(
-        string windowTitle,
         int fps,
         int queueCapacity,
         string? outputPath,
@@ -67,15 +65,18 @@ public static class NativeCaptureBridge {
         int bitrateKbps
     ) {
         EnsureAvailable();
+        ulong windowHandle = ResolveGameWindowHandle();
+        if (windowHandle == 0)
+            throw new InvalidOperationException("Celeste HWND is not available yet");
         byte[] json = JsonSerializer.SerializeToUtf8Bytes(new {
-            window_title = windowTitle,
+            window_title = "",
             fps,
             queue_capacity = queueCapacity,
             show_cursor = false,
             output_path = outputPath,
             encoder,
             bitrate_kbps = bitrateKbps,
-            window_handle = ResolveGameWindowHandle()
+            window_handle = windowHandle
         });
         int status = CaptureCreate(json, (nuint)json.Length, out ulong handle);
         ThrowIfFailed(status, "create");

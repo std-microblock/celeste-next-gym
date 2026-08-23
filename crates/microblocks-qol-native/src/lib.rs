@@ -70,8 +70,10 @@ impl Default for CaptureConfig {
 impl CaptureConfig {
     fn validate(mut self) -> Result<Self, CaptureError> {
         self.window_title = self.window_title.trim().to_owned();
-        if self.window_title.is_empty() {
-            return Err(CaptureError::InvalidConfig("window_title is empty"));
+        if self.window_handle == 0 && self.window_title.is_empty() {
+            return Err(CaptureError::InvalidConfig(
+                "window_handle and window_title are both empty",
+            ));
         }
         if !(1..=240).contains(&self.fps) {
             return Err(CaptureError::InvalidConfig("fps must be between 1 and 240"));

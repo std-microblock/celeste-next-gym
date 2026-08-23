@@ -27,7 +27,6 @@ internal static class NativeCaptureSmoke {
             Directory.CreateDirectory(Path.GetDirectoryName(output)!);
             await Task.Delay(3_000, token).ConfigureAwait(false);
             NativeCaptureSession capture = NativeCaptureBridge.StartRecording(
-                "Celeste",
                 30,
                 output,
                 "libopenh264",

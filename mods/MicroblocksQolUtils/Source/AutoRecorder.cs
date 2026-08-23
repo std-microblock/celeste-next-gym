@@ -17,7 +17,18 @@ public static class AutoRecorder {
     private static string areaSid = "";
     private static bool branchActive;
     private static bool waitingForStablePlayer;
+    private static bool pauseSuspended;
     private static bool completing;
+    private static bool manualMode;
+    private static int finalizingCount;
+    private static string lastOutput = "";
+
+    public static bool ManualMode => manualMode;
+    public static bool IsRecording => current is not null;
+    public static bool IsFinalizing => Volatile.Read(ref finalizingCount) > 0;
+    public static double CurrentSeconds => current?.MediaTimeSeconds ?? 0;
+    public static string CurrentPath => current?.Path ?? "";
+    public static string LastOutput => lastOutput;
 
     public static void Load(string directory) {
         _ = directory;
@@ -28,6 +39,7 @@ public static class AutoRecorder {
     }
 
     public static void Unload() {
+        manualMode = false;
         SpeedrunToolBridge.Unload();
         On.Celeste.Level.RegisterAreaComplete -= RegisterAreaComplete;
         On.Celeste.Level.TransitionTo -= LevelTransitionTo;
@@ -37,7 +49,7 @@ public static class AutoRecorder {
 
     public static void Update(Level level) {
         QolSettings settings = MicroblocksQolUtilsModule.Settings;
-        if (!settings.AutoRecorderEnabled || !OperatingSystem.IsWindows()) {
+        if ((!settings.AutoRecorderEnabled && !manualMode) || !OperatingSystem.IsWindows()) {
             if (current is not null || roomKey.Length > 0) StopAndReset(deleteSource: true);
             return;
         }
@@ -50,8 +62,13 @@ public static class AutoRecorder {
             BeginRoom(level);
         }
 
-        if (!ShouldRecord(player, settings)) {
+        if (!manualMode && !ShouldRecord(player, settings)) {
             if (current is not null) DiscardCurrentRecording();
+            return;
+        }
+
+        if (level.Paused) {
+            SuspendForPause();
             return;
         }
 
@@ -61,7 +78,10 @@ public static class AutoRecorder {
         NativeRoomRecording? recording = current;
         if (recording is null) return;
 
-        if (waitingForStablePlayer && !player.Dead && !level.Transitioning) {
+        if (pauseSuspended && !player.Dead && !level.Transitioning) {
+            pauseSuspended = false;
+            StartBranchAtCurrentTime();
+        } else if (waitingForStablePlayer && !player.Dead && !level.Transitioning) {
             StartBranchAtCurrentTime();
         }
 
@@ -76,6 +96,18 @@ public static class AutoRecorder {
             respawnAnchor = new RecordingTimelineSnapshot(CaptureCurrentClips(recording));
         }
         observedRespawnPoint = respawn;
+    }
+
+    public static void StartManual() {
+        if (!OperatingSystem.IsWindows()) return;
+        manualMode = true;
+    }
+
+    public static void StopManual(Level? level, bool save) {
+        manualMode = false;
+        if (current is null) return;
+        if (save && level is not null) FinalizeCurrent(level);
+        else DiscardCurrentRecording();
     }
 
     public static RecordingTimelineSnapshot? CaptureTimeline(Level level) {
@@ -106,6 +138,7 @@ public static class AutoRecorder {
             : new RecordingTimelineSnapshot(snapshot.RespawnAnchorClips.ToArray());
         branchActive = false;
         waitingForStablePlayer = true;
+        pauseSuspended = false;
         observedRespawnPoint = level.Session.RespawnPoint;
     }
 
@@ -122,6 +155,7 @@ public static class AutoRecorder {
         if (respawnAnchor is not null) ActivePrefix.AddRange(respawnAnchor.Clips);
         branchActive = false;
         waitingForStablePlayer = true;
+        pauseSuspended = false;
         return body;
     }
 
@@ -150,6 +184,7 @@ public static class AutoRecorder {
         ActivePrefix.Clear();
         branchActive = false;
         waitingForStablePlayer = false;
+        pauseSuspended = false;
     }
 
     private static void StartRoomRecording(Level level) {
@@ -173,6 +208,17 @@ public static class AutoRecorder {
         waitingForStablePlayer = false;
     }
 
+    private static void SuspendForPause() {
+        if (pauseSuspended) return;
+        NativeRoomRecording? recording = current;
+        if (recording is not null && branchActive) {
+            RecordingClip? completed = CurrentClip(recording.MediaTimeSeconds);
+            if (completed is not null) ActivePrefix.Add(completed);
+            branchActive = false;
+        }
+        pauseSuspended = true;
+    }
+
     private static void ObserveMusicTimeline(NativeRoomRecording recording) {
         double now = recording.MediaTimeSeconds;
         MusicPosition observed = MusicPosition.Read();
@@ -191,17 +237,27 @@ public static class AutoRecorder {
     }
 
     private static void Complete(Level level) {
+        FinalizeCurrent(level);
+    }
+
+    private static void FinalizeCurrent(Level level) {
         NativeRoomRecording? recording = current;
         if (completing
             || recording is null
-            || !branchActive
             || !string.Equals(level.Session.Level, roomName, StringComparison.Ordinal)) {
             return;
         }
         completing = true;
         List<RecordingClip> clips = [.. ActivePrefix];
-        RecordingClip? finalClip = CurrentClip(recording.MediaTimeSeconds);
-        if (finalClip is not null) clips.Add(finalClip);
+        if (branchActive) {
+            RecordingClip? finalClip = CurrentClip(recording.MediaTimeSeconds);
+            if (finalClip is not null) clips.Add(finalClip);
+        }
+        if (clips.Count == 0) {
+            completing = false;
+            DiscardCurrentRecording();
+            return;
+        }
         current = null;
         Task stop = recording.StopAsync();
         string output = Path.Combine(
@@ -209,12 +265,14 @@ public static class AutoRecorder {
             Sanitize(areaSid),
             $"{DateTime.Now:yyyyMMdd-HHmmss}-{Sanitize(roomName)}.mp4"
         );
+        lastOutput = output;
+        Interlocked.Increment(ref finalizingCount);
         _ = NativeRecordingFinalizer.FinishAsync(
             clips,
             [stop],
             [recording.Path, recording.AudioPath],
             output
-        );
+        ).ContinueWith(_ => Interlocked.Decrement(ref finalizingCount), TaskScheduler.Default);
         ResetTimelineState();
     }
 
@@ -257,6 +315,7 @@ public static class AutoRecorder {
         respawnAnchor = null;
         branchActive = false;
         waitingForStablePlayer = false;
+        pauseSuspended = false;
     }
 
     private static void StopAndReset(bool deleteSource) {
@@ -282,6 +341,7 @@ public static class AutoRecorder {
         branchMusicStart = default;
         branchActive = false;
         waitingForStablePlayer = false;
+        pauseSuspended = false;
         roomKey = "";
         roomName = "";
         areaSid = "";

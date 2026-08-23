@@ -31,7 +31,6 @@ internal sealed class NativeRoomRecording {
         QolSettings settings = MicroblocksQolUtilsModule.Settings;
         try {
             NativeCaptureSession capture = NativeCaptureBridge.StartRecording(
-                settings.RecordingWindowTitle,
                 settings.RecordingFrameRate,
                 output,
                 settings.RecordingEncoder,
