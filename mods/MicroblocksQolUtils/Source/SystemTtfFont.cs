@@ -27,7 +27,8 @@ namespace Celeste.Mod.MicroblocksQolUtils;
 public static class SystemTtfFont {
     private const float BasePixelSize = 42f;
     private const float BaseLineHeight = 54f;
-    private static readonly Dictionary<(char Character, int PixelSize, int ViewWidth), Glyph> Glyphs = [];
+    private const float RasterOversample = 2f;
+    private static readonly Dictionary<(char Character, int PixelSize), Glyph> Glyphs = [];
     private static readonly Dictionary<int, DrawingFont> Fonts = [];
     private static PrivateFontCollection? privateFonts;
     private static DrawingFontFamily? fontFamily;
@@ -152,17 +153,16 @@ public static class SystemTtfFont {
 
     private static Glyph GetGlyph(char character, float scale) {
         Prepare();
-        int viewWidth = Math.Max(1, Engine.ViewWidth);
-        float outputScale = Math.Max(0.01f, viewWidth / 1920f);
-        float textureScale = 1f / outputScale;
-        int pixelSize = Math.Max(8, (int)MathF.Round(BasePixelSize * Math.Max(0.01f, scale) * outputScale));
-        var key = (character, pixelSize, viewWidth);
+        float desiredPixelSize = BasePixelSize * Math.Max(0.01f, scale);
+        int pixelSize = Math.Max(8, (int)MathF.Round(desiredPixelSize * RasterOversample));
+        float textureScale = desiredPixelSize / pixelSize;
+        var key = (character, pixelSize);
         if (Glyphs.TryGetValue(key, out Glyph? glyph)) return glyph;
         if (fontFamily is null || stringFormat is null) throw new InvalidOperationException("UI font is not prepared.");
 
         DrawingFont font = GetFont(pixelSize);
         if (character == '\t')
-            return Glyphs[key] = new Glyph(null, pixelSize * 2f * textureScale, Vector2.Zero, textureScale, outputScale);
+            return Glyphs[key] = new Glyph(null, pixelSize * 2f * textureScale, Vector2.Zero, textureScale, 1f);
 
         string value = character.ToString();
         float advance;
@@ -173,7 +173,7 @@ public static class SystemTtfFont {
             advance = Math.Max(1f, graphics.MeasureString(value, font, DrawingPointF.Empty, stringFormat).Width);
         }
         if (char.IsWhiteSpace(character))
-            return Glyphs[key] = new Glyph(null, advance * textureScale, Vector2.Zero, textureScale, outputScale);
+            return Glyphs[key] = new Glyph(null, advance * textureScale, Vector2.Zero, textureScale, 1f);
 
         int padding = Math.Max(2, (int)MathF.Ceiling(pixelSize / 10f));
         int width = Math.Max(1, (int)Math.Ceiling(advance) + padding * 2);
@@ -197,7 +197,7 @@ public static class SystemTtfFont {
             advance * textureScale,
             new Vector2(-padding * textureScale),
             textureScale,
-            outputScale
+            1f
         );
     }
 
@@ -223,7 +223,10 @@ public static class SystemTtfFont {
                 for (int x = 0; x < bitmap.Width; x++) {
                     int source = row + x * 4;
                     byte alpha = pixels[source + 3];
-                    colors[y * bitmap.Width + x] = new Color(255, 255, 255, alpha);
+                    // Monocle's normal AlphaBlend state expects premultiplied color.
+                    // Keeping RGB at 255 when A is zero turns every glyph texture into
+                    // a visible white rectangle instead of a transparent background.
+                    colors[y * bitmap.Width + x] = new Color(alpha, alpha, alpha, alpha);
                 }
             }
             Texture2D texture = new(Engine.Graphics.GraphicsDevice, bitmap.Width, bitmap.Height);
@@ -238,4 +241,3 @@ public static class SystemTtfFont {
 
     private sealed record Glyph(Texture2D? Texture, float Advance, Vector2 Offset, float TextureScale, float OutputScale);
 }
-
