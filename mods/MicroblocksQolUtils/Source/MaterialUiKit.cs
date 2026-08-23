@@ -1,4 +1,6 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using Monocle;
 
 namespace Celeste.Mod.MicroblocksQolUtils;
 
@@ -97,6 +99,99 @@ internal static class MaterialLayout {
             width,
             height
         );
+    }
+}
+
+internal sealed class MaterialScrollController {
+    public float Offset { get; private set; }
+    public float Target { get; private set; }
+
+    public void Update(float maximum) {
+        maximum = Math.Max(0f, maximum);
+        Target = Math.Clamp(Target, 0f, maximum);
+        float speed = Math.Max(420f, Math.Abs(Target - Offset) * 10f);
+        Offset = Calc.Approach(Offset, Target, speed * Engine.RawDeltaTime);
+        Offset = Math.Clamp(Offset, 0f, maximum);
+    }
+
+    public void Scroll(float pixels, float maximum) {
+        Target = Math.Clamp(Target + pixels, 0f, Math.Max(0f, maximum));
+    }
+
+    public void EnsureVisible(float top, float bottom, float viewportHeight, float maximum) {
+        if (top < Target) Target = top;
+        else if (bottom > Target + viewportHeight) Target = bottom - viewportHeight;
+        Target = Math.Clamp(Target, 0f, Math.Max(0f, maximum));
+    }
+
+    public void Reset() {
+        Offset = 0f;
+        Target = 0f;
+    }
+}
+
+internal sealed class MaterialScrollViewport : IDisposable {
+    private readonly string name;
+    private VirtualRenderTarget? target;
+
+    public MaterialScrollViewport(string name) {
+        this.name = name;
+    }
+
+    public void Render(MaterialRect bounds, System.Action drawContents) {
+        int width = Math.Max(1, (int)MathF.Ceiling(bounds.Width));
+        int height = Math.Max(1, (int)MathF.Ceiling(bounds.Height));
+        EnsureTarget(width, height);
+        if (target is null) return;
+
+        GraphicsDevice graphics = Engine.Graphics.GraphicsDevice;
+        RenderTargetBinding[] previousTargets = graphics.GetRenderTargets();
+        Viewport previousViewport = graphics.Viewport;
+        Draw.SpriteBatch.End();
+        graphics.SetRenderTarget(target);
+        graphics.Viewport = new Viewport(0, 0, width, height);
+        graphics.Clear(Color.Transparent);
+        Draw.SpriteBatch.Begin(
+            SpriteSortMode.Deferred,
+            BlendState.AlphaBlend,
+            SamplerState.LinearClamp,
+            DepthStencilState.None,
+            RasterizerState.CullNone,
+            null,
+            Matrix.CreateTranslation(-bounds.X, -bounds.Y, 0f)
+        );
+        drawContents();
+        Draw.SpriteBatch.End();
+
+        if (previousTargets.Length == 0) graphics.SetRenderTarget(null);
+        else graphics.SetRenderTargets(previousTargets);
+        graphics.Viewport = previousViewport;
+        Draw.SpriteBatch.Begin(
+            SpriteSortMode.Deferred,
+            BlendState.AlphaBlend,
+            SamplerState.LinearClamp,
+            DepthStencilState.None,
+            RasterizerState.CullNone,
+            null,
+            Engine.ScreenMatrix
+        );
+        Draw.SpriteBatch.Draw(target, new Rectangle(
+            (int)MathF.Round(bounds.X),
+            (int)MathF.Round(bounds.Y),
+            width,
+            height
+        ), Color.White);
+    }
+
+    public void Dispose() {
+        target?.Dispose();
+        target = null;
+    }
+
+    private void EnsureTarget(int width, int height) {
+        if (target?.Width == width && target.Height == height) return;
+        target?.Dispose();
+        target = VirtualContent.CreateRenderTarget(name, width, height);
     }
 }
 

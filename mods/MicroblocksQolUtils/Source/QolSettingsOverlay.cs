@@ -17,9 +17,10 @@ internal sealed class QolSettingsOverlay : Entity, IMaterialAcrylicPage {
     private readonly bool minimal;
     private readonly bool oldAllowHudHide;
     private readonly List<SettingsTab> tabs;
+    private readonly MaterialScrollController rowScroll = new();
+    private readonly MaterialScrollViewport rowViewport = new("mqol-settings-rows");
     private int selectedTab;
     private int selectedRow;
-    private int rowScroll;
     private float inputDelay = 0.18f;
     private bool capturingKey;
     private SettingRow? keyRow;
@@ -48,12 +49,15 @@ internal sealed class QolSettingsOverlay : Entity, IMaterialAcrylicPage {
 
     public override void Removed(Scene scene) {
         if (activePage == this) activePage = null;
+        rowViewport.Dispose();
         base.Removed(scene);
     }
 
     public override void Update() {
         base.Update();
         if (closing) return;
+        OverlayLayout layout = OverlayLayout.Create();
+        rowScroll.Update(MaxRowScroll(layout));
         inputDelay -= Engine.DeltaTime;
         if (capturingKey) {
             UpdateKeyCapture();
@@ -133,38 +137,37 @@ internal sealed class QolSettingsOverlay : Entity, IMaterialAcrylicPage {
             new Vector2(1f, 0f), MaterialTextRole.Caption, palette.OnSurfaceVariant);
 
         if (capturingKey) RenderKeyCaptureModal(palette);
-        if (MInput.Mouse.WasMoved || MInput.Mouse.CheckLeftButton)
-            MaterialUiKit.Cursor(MInput.Mouse.Position, palette, 1f);
+        MaterialUiKit.Cursor(MInput.Mouse.Position, palette, 1f);
     }
 
     private void RenderRows(OverlayLayout layout, MaterialPalette palette) {
         List<SettingRow> rows = CurrentRows;
-        int visibleCount = layout.VisibleRows;
-        for (int visible = 0; visible < visibleCount; visible++) {
-            int index = rowScroll + visible;
-            if (index >= rows.Count) break;
-            SettingRow row = rows[index];
-            MaterialRect rect = layout.Row(visible);
-            bool selected = index == selectedRow;
-            bool enabled = row.Enabled();
-            if (selected) {
-                MaterialUi.RoundedRect(rect.X, rect.Y, rect.Width, rect.Height, 22f,
-                    palette.Primary * (enabled ? 0.20f : 0.09f));
-                MaterialUi.RoundedOutline(rect.X, rect.Y, rect.Width, rect.Height, 22f, 2f,
-                    palette.Primary * (enabled ? 0.90f : 0.35f));
+        rowViewport.Render(layout.Rows, () => {
+            for (int index = 0; index < rows.Count; index++) {
+                SettingRow row = rows[index];
+                MaterialRect rect = layout.Row(index, rowScroll.Offset);
+                if (rect.Bottom < layout.Rows.Y || rect.Y > layout.Rows.Bottom) continue;
+                bool selected = index == selectedRow;
+                bool enabled = row.Enabled();
+                if (selected) {
+                    MaterialUi.RoundedRect(rect.X, rect.Y, rect.Width, rect.Height, 22f,
+                        palette.Primary * (enabled ? 0.20f : 0.09f));
+                    MaterialUi.RoundedOutline(rect.X, rect.Y, rect.Width, rect.Height, 22f, 2f,
+                        palette.Primary * (enabled ? 0.90f : 0.35f));
+                }
+                Color labelColor = enabled ? palette.OnSurface : palette.OnSurfaceVariant * 0.45f;
+                Color valueColor = selected ? palette.Primary : palette.OnSurfaceVariant;
+                MaterialUiKit.Text(row.Label, new Vector2(rect.X + 20f, rect.Y + 12f), Vector2.Zero,
+                    MaterialTextRole.Body, labelColor, scaleOverride: 0.37f);
+                MaterialUiKit.Text(Trim(row.Value(), 56), new Vector2(rect.Right - 20f, rect.Y + 13f),
+                    new Vector2(1f, 0f), MaterialTextRole.Caption,
+                    enabled ? valueColor : palette.OnSurfaceVariant * 0.38f, scaleOverride: 0.34f);
+                if (index + 1 < rows.Count)
+                    MaterialUi.Line(new Vector2(rect.X + 18f, rect.Bottom + RowGap / 2f),
+                        new Vector2(rect.Right - 18f, rect.Bottom + RowGap / 2f), 1f,
+                        palette.Outline * 0.32f);
             }
-            Color labelColor = enabled ? palette.OnSurface : palette.OnSurfaceVariant * 0.45f;
-            Color valueColor = selected ? palette.Primary : palette.OnSurfaceVariant;
-            MaterialUiKit.Text(row.Label, new Vector2(rect.X + 20f, rect.Y + 12f), Vector2.Zero,
-                MaterialTextRole.Body, labelColor, scaleOverride: 0.37f);
-            MaterialUiKit.Text(Trim(row.Value(), 56), new Vector2(rect.Right - 20f, rect.Y + 13f),
-                new Vector2(1f, 0f), MaterialTextRole.Caption,
-                enabled ? valueColor : palette.OnSurfaceVariant * 0.38f, scaleOverride: 0.34f);
-            if (visible + 1 < visibleCount && index + 1 < rows.Count)
-                MaterialUi.Line(new Vector2(rect.X + 18f, rect.Bottom + RowGap / 2f),
-                    new Vector2(rect.Right - 18f, rect.Bottom + RowGap / 2f), 1f,
-                    palette.Outline * 0.32f);
-        }
+        });
     }
 
     private void RenderKeyCaptureModal(MaterialPalette palette) {
@@ -181,13 +184,7 @@ internal sealed class QolSettingsOverlay : Entity, IMaterialAcrylicPage {
         OverlayLayout layout = OverlayLayout.Create();
         Vector2 mouse = MInput.Mouse.Position;
         if (MInput.Mouse.WheelDelta != 0 && layout.Body.Contains(mouse)) {
-            rowScroll = Math.Clamp(
-                rowScroll - Math.Sign(MInput.Mouse.WheelDelta),
-                0,
-                Math.Max(0, CurrentRows.Count - layout.VisibleRows)
-            );
-            selectedRow = Math.Clamp(selectedRow, rowScroll,
-                Math.Min(CurrentRows.Count - 1, rowScroll + layout.VisibleRows - 1));
+            rowScroll.Scroll(-Math.Sign(MInput.Mouse.WheelDelta) * 180f, MaxRowScroll(layout));
         }
         if (!MInput.Mouse.WasMoved && !MInput.Mouse.PressedLeftButton) return;
         for (int index = 0; index < tabs.Count; index++) {
@@ -195,9 +192,9 @@ internal sealed class QolSettingsOverlay : Entity, IMaterialAcrylicPage {
             if (MInput.Mouse.PressedLeftButton) SelectTab(index);
             return;
         }
-        for (int visible = 0; visible < layout.VisibleRows; visible++) {
-            int index = rowScroll + visible;
-            if (index >= CurrentRows.Count || !layout.Row(visible).Contains(mouse)) continue;
+        if (!layout.Rows.Contains(mouse)) return;
+        for (int index = 0; index < CurrentRows.Count; index++) {
+            if (!layout.Row(index, rowScroll.Offset).Contains(mouse)) continue;
             selectedRow = index;
             if (MInput.Mouse.PressedLeftButton) ActivateRow(1);
             return;
@@ -241,7 +238,7 @@ internal sealed class QolSettingsOverlay : Entity, IMaterialAcrylicPage {
     private void SelectTab(int index) {
         selectedTab = (index % tabs.Count + tabs.Count) % tabs.Count;
         selectedRow = 0;
-        rowScroll = 0;
+        rowScroll.Reset();
         Audio.Play("event:/ui/main/rollover_down");
     }
 
@@ -254,10 +251,16 @@ internal sealed class QolSettingsOverlay : Entity, IMaterialAcrylicPage {
     }
 
     private void EnsureRowVisible() {
-        int visible = OverlayLayout.Create().VisibleRows;
-        if (selectedRow < rowScroll) rowScroll = selectedRow;
-        if (selectedRow >= rowScroll + visible) rowScroll = selectedRow - visible + 1;
-        rowScroll = Math.Clamp(rowScroll, 0, Math.Max(0, CurrentRows.Count - visible));
+        OverlayLayout layout = OverlayLayout.Create();
+        float top = selectedRow * (RowHeight + RowGap);
+        rowScroll.EnsureVisible(top, top + RowHeight, layout.Rows.Height, MaxRowScroll(layout));
+    }
+
+    private float MaxRowScroll(OverlayLayout layout) {
+        float contentHeight = CurrentRows.Count == 0
+            ? 0f
+            : CurrentRows.Count * RowHeight + (CurrentRows.Count - 1) * RowGap;
+        return Math.Max(0f, contentHeight - layout.Rows.Height);
     }
 
     private void CloseToPauseMenu() {
@@ -452,8 +455,7 @@ internal sealed class QolSettingsOverlay : Entity, IMaterialAcrylicPage {
         MaterialRect Tabs,
         MaterialRect Body,
         MaterialRect Rows,
-        MaterialRect Footer,
-        int VisibleRows
+        MaterialRect Footer
     ) {
         public static OverlayLayout Create() {
             MaterialRect panel = new(130f, 50f, 1660f, 980f);
@@ -468,8 +470,7 @@ internal sealed class QolSettingsOverlay : Entity, IMaterialAcrylicPage {
                 MaterialTrack.Fixed(34f)
             );
             MaterialRect rows = tracks[2].Inset(18f, 14f);
-            int visibleRows = Math.Max(1, (int)MathF.Floor((rows.Height + RowGap) / (RowHeight + RowGap)));
-            return new OverlayLayout(panel, tracks[0], tracks[1], tracks[2], rows, tracks[3], visibleRows);
+            return new OverlayLayout(panel, tracks[0], tracks[1], tracks[2], rows, tracks[3]);
         }
 
         public MaterialRect Tab(int index, int count) => MaterialLayout.GridCell(
@@ -481,9 +482,9 @@ internal sealed class QolSettingsOverlay : Entity, IMaterialAcrylicPage {
             index
         );
 
-        public MaterialRect Row(int visibleIndex) => new(
+        public MaterialRect Row(int index, float scrollOffset) => new(
             Rows.X,
-            Rows.Y + visibleIndex * (RowHeight + RowGap),
+            Rows.Y + index * (RowHeight + RowGap) - scrollOffset,
             Rows.Width,
             RowHeight
         );
