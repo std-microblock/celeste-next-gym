@@ -118,6 +118,12 @@ public sealed class QolSettings : EverestModuleSettings {
     [DefaultValue(true)]
     public bool ShowFps { get; set; } = true;
 
+    [DefaultValue(true)]
+    public bool ShowFrameTime { get; set; } = true;
+
+    [DefaultValue(false)]
+    public bool ShowPhysicalAndRenderFps { get; set; }
+
     [DefaultValue(false)]
     public bool EnableFrameProfiler { get; set; }
 

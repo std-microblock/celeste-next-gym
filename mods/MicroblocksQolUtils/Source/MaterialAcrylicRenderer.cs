@@ -27,14 +27,15 @@ internal static class MaterialAcrylicRenderer {
     }
 
     private static void RenderCore(On.Monocle.Engine.orig_RenderCore orig, Engine self) {
-        MaterialChapterSelect? page = MaterialChapterSelect.ActivePage;
+        IMaterialAcrylicPage? page = (IMaterialAcrylicPage?)MaterialChapterSelect.ActivePage
+            ?? QolSettingsOverlay.ActivePage;
         QolSettings settings = MicroblocksQolUtilsModule.Settings;
         if (rendering
             || failed
             || page is null
             || !settings.MaterialYouInterface
             || !settings.MaterialAcrylicBackground
-            || Engine.Scene is not Overworld scene) {
+            || Engine.Scene is not Scene scene) {
             orig(self);
             return;
         }

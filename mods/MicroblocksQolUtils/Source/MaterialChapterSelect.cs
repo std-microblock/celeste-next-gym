@@ -7,7 +7,7 @@ using MonoMod.RuntimeDetour;
 
 namespace Celeste.Mod.MicroblocksQolUtils;
 
-public sealed class MaterialChapterSelect : Oui {
+public sealed class MaterialChapterSelect : Oui, IMaterialAcrylicPage {
     private const float ScreenWidth = 1920f;
     private const float ScreenHeight = 1080f;
     private const int Columns = 3;
@@ -29,7 +29,7 @@ public sealed class MaterialChapterSelect : Oui {
     private bool display;
     private Color paletteSeed = new(126, 99, 184);
 
-    internal bool SuppressNormalRender { get; set; }
+    public bool SuppressNormalRender { get; set; }
 
     internal static MaterialChapterSelect? ActivePage {
         get {
@@ -103,7 +103,7 @@ public sealed class MaterialChapterSelect : Oui {
         RenderMaterialContent(acrylicActive: false);
     }
 
-    internal void RenderMaterialContent(bool acrylicActive) {
+    public void RenderMaterialContent(bool acrylicActive) {
         if (!Visible || ease <= 0f) return;
         ChapterEntry? selected = entries.Count == 0 ? null : entries[Math.Clamp(selectedIndex, 0, entries.Count - 1)];
         MaterialPalette palette = MaterialPalette.FromSeed(paletteSeed);

@@ -13,6 +13,7 @@ public sealed class QolHud : Entity {
 
     public override void Update() {
         base.Update();
+        FrameRateCounter.TickUpdate();
         if (!MicroblocksQolUtilsModule.Settings.Enabled) return;
         MiaoNetBridge.Update(Scene as Level);
         if (Scene is Level level) {
@@ -23,13 +24,19 @@ public sealed class QolHud : Entity {
 
     public override void Render() {
         base.Render();
+        FrameRateCounter.TickRender();
         QolSettings settings = MicroblocksQolUtilsModule.Settings;
         if (!settings.Enabled) return;
 
         if (Scene is Level level) MiniMapRenderer.Render(level);
 
         if (settings.ShowFps) {
-            string text = $"{Engine.FPS,3} FPS  {FrameProfiler.LastFrameMilliseconds,5:0.0} ms CPU";
+            bool dualFps = settings.ShowPhysicalAndRenderFps && MotionSmoothingBridge.Enabled;
+            string text = dualFps
+                ? $"物理 {FrameRateCounter.PhysicsFps,3:0} FPS  ·  渲染 {FrameRateCounter.RenderFps,3:0} FPS"
+                : $"{FrameRateCounter.RenderFps,3:0} FPS";
+            if (settings.ShowFrameTime)
+                text += $"  ·  {FrameProfiler.LastFrameMilliseconds,5:0.0} ms CPU";
             Vector2 position = new(18f, 16f);
             Color color = Color.White;
             float outline = 1.5f;

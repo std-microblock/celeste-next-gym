@@ -16,6 +16,7 @@ public sealed class MicroblocksQolUtilsModule : EverestModule {
         Logger.Log(LogLevel.Info, "MicroblocksQolUtils", "Loading microblock's QoL Utils");
         CollabUtils2Bridge.Load();
         MaterialChapterSelect.Load();
+        QolPauseMenu.Load();
         MaterialAcrylicRenderer.Load();
         MaterialUiSmoke.Load();
         NativeCaptureBridge.Initialize(Path.GetDirectoryName(Metadata.DLL));
@@ -33,12 +34,14 @@ public sealed class MicroblocksQolUtilsModule : EverestModule {
         NativeCaptureSmoke.Unload();
         MaterialAcrylicRenderer.Unload();
         MaterialChapterSelect.Unload();
+        QolPauseMenu.Unload();
         MaterialUiSmoke.Unload();
         NativeCaptureCommands.Unload();
         AutoRecorder.Unload();
         InstantTransitions.Unload();
         FrameProfiler.Unload();
         MiaoNetBridge.Unload();
+        MotionSmoothingBridge.Unload();
         MaterialUi.Dispose();
         SystemTtfFont.Dispose();
     }
