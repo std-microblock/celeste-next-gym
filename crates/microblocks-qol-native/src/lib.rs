@@ -17,7 +17,7 @@ mod encoder;
 #[cfg(all(windows, feature = "ffmpeg"))]
 mod finalizer;
 
-const ABI_VERSION: u32 = 1;
+const ABI_VERSION: u32 = 2;
 const OK: i32 = 0;
 const ERR_INVALID_ARGUMENT: i32 = -1;
 const ERR_NOT_FOUND: i32 = -2;
@@ -41,6 +41,7 @@ pub struct CaptureConfig {
     pub output_path: Option<String>,
     pub encoder: String,
     pub bitrate_kbps: u32,
+    pub window_handle: u64,
 }
 
 impl Default for CaptureConfig {
@@ -53,6 +54,7 @@ impl Default for CaptureConfig {
             output_path: None,
             encoder: "auto".to_owned(),
             bitrate_kbps: 12_000,
+            window_handle: 0,
         }
     }
 }
@@ -115,6 +117,7 @@ pub struct CaptureStats {
     pub frames_dropped: u64,
     pub bytes_captured: u64,
     pub last_frame_unix_nanos: u64,
+    pub media_time_nanos: u64,
 }
 
 #[derive(Debug)]
@@ -215,6 +218,7 @@ struct AtomicStats {
     frames_dropped: AtomicU64,
     bytes_captured: AtomicU64,
     last_frame_unix_nanos: AtomicU64,
+    media_time_nanos: AtomicU64,
 }
 
 #[derive(Debug)]
@@ -254,8 +258,13 @@ impl CaptureSession {
         let capture = thread::Builder::new()
             .name("microblocks-qol-wgc".to_owned())
             .spawn(move || {
-                if let Err(error) = run_capture(&capture_session) {
-                    set_last_error(error.to_string());
+                match catch_unwind(AssertUnwindSafe(|| run_capture(&capture_session))) {
+                    Ok(Ok(())) => {}
+                    Ok(Err(error)) => set_last_error(error.to_string()),
+                    Err(payload) => set_last_error(format!(
+                        "scap capture thread panicked: {}",
+                        panic_payload_message(payload)
+                    )),
                 }
                 capture_session
                     .capture_finished
@@ -277,11 +286,23 @@ impl CaptureSession {
         let consumer = thread::Builder::new()
             .name("microblocks-qol-encoder-feed".to_owned())
             .spawn(move || {
-                if let Err(error) = run_consumer(&consumer_session) {
-                    set_last_error(error);
-                    consumer_session
-                        .stop_requested
-                        .store(true, Ordering::Release);
+                match catch_unwind(AssertUnwindSafe(|| run_consumer(&consumer_session))) {
+                    Ok(Ok(())) => {}
+                    Ok(Err(error)) => {
+                        set_last_error(error);
+                        consumer_session
+                            .stop_requested
+                            .store(true, Ordering::Release);
+                    }
+                    Err(payload) => {
+                        set_last_error(format!(
+                            "FFmpeg consumer thread panicked: {}",
+                            panic_payload_message(payload)
+                        ));
+                        consumer_session
+                            .stop_requested
+                            .store(true, Ordering::Release);
+                    }
                 }
             })
             .map_err(|error| {
@@ -348,6 +369,7 @@ impl CaptureSession {
             frames_dropped: self.stats.frames_dropped.load(Ordering::Relaxed),
             bytes_captured: self.stats.bytes_captured.load(Ordering::Relaxed),
             last_frame_unix_nanos: self.stats.last_frame_unix_nanos.load(Ordering::Relaxed),
+            media_time_nanos: self.stats.media_time_nanos.load(Ordering::Relaxed),
         }
     }
 }
@@ -397,25 +419,15 @@ impl Drop for CaptureSession {
 fn run_capture(session: &Arc<CaptureSession>) -> Result<(), CaptureError> {
     use scap::capturer::{Capturer, Options, Resolution};
     use scap::frame::{Frame, FrameType, VideoFrame};
-    use scap::{Target, get_all_targets};
 
-    let target = get_all_targets()
-        .into_iter()
-        .filter_map(|target| match target {
-            Target::Window(window) => Some(window),
-            Target::Display(_) => None,
-        })
-        .find(|window| {
-            window.title == session.config.window_title
-                || window.title.contains(&session.config.window_title)
-        })
+    let target = find_capture_window(&session.config)
         .ok_or_else(|| CaptureError::WindowNotFound(session.config.window_title.clone()))?;
 
     let mut capturer = Capturer::build(Options {
         fps: session.config.fps,
         show_cursor: session.config.show_cursor,
         show_highlight: false,
-        target: Some(Target::Window(target)),
+        target: Some(scap::Target::Window(target)),
         crop_area: None,
         output_type: FrameType::BGRAFrame,
         output_resolution: Resolution::Captured,
@@ -426,10 +438,14 @@ fn run_capture(session: &Arc<CaptureSession>) -> Result<(), CaptureError> {
     .map_err(|error| CaptureError::Scap(error.to_string()))?;
 
     capturer.start_capture();
+    let mut origin_unix_nanos = None;
     while !session.stop_requested.load(Ordering::Acquire) {
-        let frame = capturer
-            .get_next_frame()
-            .map_err(|error| CaptureError::Scap(error.to_string()))?;
+        let Some(frame) = capturer
+            .get_next_frame_timeout(Duration::from_millis(100))
+            .map_err(|error| CaptureError::Scap(error.to_string()))?
+        else {
+            continue;
+        };
         let Frame::Video(VideoFrame::BGRA(frame)) = frame else {
             continue;
         };
@@ -440,6 +456,8 @@ fn run_capture(session: &Arc<CaptureSession>) -> Result<(), CaptureError> {
             .as_nanos()
             .try_into()
             .unwrap_or(u64::MAX);
+        let origin = *origin_unix_nanos.get_or_insert(captured_at_unix_nanos);
+        let media_time_nanos = captured_at_unix_nanos.saturating_sub(origin);
         let captured = CapturedFrame {
             width: frame.width.max(0) as u32,
             height: frame.height.max(0) as u32,
@@ -463,12 +481,109 @@ fn run_capture(session: &Arc<CaptureSession>) -> Result<(), CaptureError> {
             .stats
             .last_frame_unix_nanos
             .store(captured_at_unix_nanos, Ordering::Relaxed);
+        session
+            .stats
+            .media_time_nanos
+            .store(media_time_nanos, Ordering::Relaxed);
         if session.queue.push_latest(captured) {
             session.stats.frames_dropped.fetch_add(1, Ordering::Relaxed);
         }
     }
     capturer.stop_capture();
     Ok(())
+}
+
+#[cfg(windows)]
+fn find_capture_window(config: &CaptureConfig) -> Option<scap::Window> {
+    use std::ffi::c_void;
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::WindowsAndMessaging::IsWindow;
+
+    if config.window_handle != 0 {
+        let raw_handle = HWND(config.window_handle as usize as *mut c_void);
+        if unsafe { IsWindow(raw_handle).as_bool() } {
+            return Some(scap::Window {
+                id: config.window_handle as u32,
+                title: config.window_title.clone(),
+                raw_handle,
+            });
+        }
+    }
+    find_current_process_window(&config.window_title).or_else(|| {
+        scap::get_all_targets()
+            .into_iter()
+            .filter_map(|target| match target {
+                scap::Target::Window(window) => Some(window),
+                scap::Target::Display(_) => None,
+            })
+            .find(|window| {
+                window.title == config.window_title || window.title.contains(&config.window_title)
+            })
+    })
+}
+
+#[cfg(windows)]
+fn find_current_process_window(title: &str) -> Option<scap::Window> {
+    use windows::Win32::Foundation::{BOOL, HWND, LPARAM, RECT, TRUE};
+    use windows::Win32::System::Threading::GetCurrentProcessId;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        EnumWindows, GetClientRect, GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId,
+        IsWindowVisible,
+    };
+
+    struct Search {
+        process_id: u32,
+        title: String,
+        found: Option<(HWND, String)>,
+        fallback: Option<(HWND, String, u64)>,
+    }
+
+    unsafe extern "system" fn visit(window: HWND, parameter: LPARAM) -> BOOL {
+        // SAFETY: `parameter` points to the Search value for the duration of EnumWindows.
+        let search = unsafe { &mut *(parameter.0 as *mut Search) };
+        let mut process_id = 0;
+        unsafe { GetWindowThreadProcessId(window, Some(&mut process_id)) };
+        if process_id != search.process_id {
+            return TRUE;
+        }
+        let length = unsafe { GetWindowTextLengthW(window) }.max(0);
+        let mut utf16 = vec![0_u16; length as usize + 1];
+        let copied = unsafe { GetWindowTextW(window, &mut utf16) }.max(0);
+        let actual = String::from_utf16_lossy(&utf16[..copied as usize]);
+        let mut rect = RECT::default();
+        let _ = unsafe { GetClientRect(window, &mut rect) };
+        let area = (rect.right - rect.left).max(0) as u64 * (rect.bottom - rect.top).max(0) as u64;
+        let visible_bonus = u64::from(unsafe { IsWindowVisible(window).as_bool() }) << 63;
+        let score = visible_bonus | area.min(i64::MAX as u64);
+        if search
+            .fallback
+            .as_ref()
+            .is_none_or(|(_, _, previous_score)| score > *previous_score)
+        {
+            search.fallback = Some((window, actual.clone(), score));
+        }
+        if !actual.is_empty() && (actual == search.title || actual.contains(&search.title)) {
+            search.found = Some((window, actual));
+            return BOOL(0);
+        }
+        TRUE
+    }
+
+    let mut search = Search {
+        process_id: unsafe { GetCurrentProcessId() },
+        title: title.to_owned(),
+        found: None,
+        fallback: None,
+    };
+    let _ = unsafe { EnumWindows(Some(visit), LPARAM(std::ptr::addr_of_mut!(search) as isize)) };
+    search
+        .found
+        .or_else(|| search.fallback.map(|(window, title, _)| (window, title)))
+        .map(|(raw_handle, actual_title)| scap::Window {
+            id: raw_handle.0 as usize as u32,
+            title: actual_title,
+            raw_handle,
+        })
 }
 
 #[cfg(not(windows))]
@@ -485,6 +600,16 @@ fn set_last_error(message: impl Into<String>) {
         .get_or_init(|| Mutex::new(String::new()))
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner()) = message.into();
+}
+
+fn panic_payload_message(payload: Box<dyn std::any::Any + Send>) -> String {
+    if let Some(message) = payload.downcast_ref::<&str>() {
+        (*message).to_owned()
+    } else if let Some(message) = payload.downcast_ref::<String>() {
+        message.clone()
+    } else {
+        "non-string panic payload".to_owned()
+    }
 }
 
 fn ffi_status(operation: impl FnOnce() -> Result<i32, i32>) -> i32 {

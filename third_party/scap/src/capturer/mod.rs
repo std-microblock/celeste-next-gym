@@ -1,6 +1,10 @@
 pub mod engine;
 
-use std::{error::Error, sync::mpsc};
+use std::{
+    error::Error,
+    sync::mpsc,
+    time::{Duration, Instant},
+};
 
 use engine::ChannelItem;
 
@@ -136,6 +140,30 @@ impl Capturer {
 
             if let Some(frame) = self.engine.process_channel_item(res) {
                 return Ok(frame);
+            }
+        }
+    }
+
+    /// Wait up to `timeout` for a captured frame. A timeout is reported as
+    /// `Ok(None)` so callers can poll cancellation without tearing down WGC.
+    pub fn get_next_frame_timeout(
+        &self,
+        timeout: Duration,
+    ) -> Result<Option<Frame>, mpsc::RecvError> {
+        let deadline = Instant::now() + timeout;
+        loop {
+            let now = Instant::now();
+            if now >= deadline {
+                return Ok(None);
+            }
+            match self.rx.recv_timeout(deadline - now) {
+                Ok(item) => {
+                    if let Some(frame) = self.engine.process_channel_item(item) {
+                        return Ok(Some(frame));
+                    }
+                }
+                Err(mpsc::RecvTimeoutError::Timeout) => return Ok(None),
+                Err(mpsc::RecvTimeoutError::Disconnected) => return Err(mpsc::RecvError),
             }
         }
     }

@@ -245,9 +245,11 @@ impl VideoFileEncoder {
         let elapsed = captured.captured_at_unix_nanos.saturating_sub(origin) as u128;
         let timestamp =
             ((elapsed * self.fps as u128) / 1_000_000_000_u128).min(i64::MAX as u128) as i64;
-        let pts = timestamp.max(self.last_pts.saturating_add(1));
-        self.last_pts = pts;
-        self.converted.set_pts(Some(pts));
+        if timestamp <= self.last_pts {
+            return Ok(());
+        }
+        self.last_pts = timestamp;
+        self.converted.set_pts(Some(timestamp));
         self.encoder
             .send_frame(&self.converted)
             .map_err(EncoderError::SendFrame)?;
@@ -314,11 +316,11 @@ fn copy_bgra(captured: &CapturedFrame, output: &mut frame::Video) -> Result<(), 
     Ok(())
 }
 
-fn even_dimension(value: u32) -> u32 {
+pub(crate) fn even_dimension(value: u32) -> u32 {
     value.max(2) & !1
 }
 
-fn encoder_candidates(preferred: &str) -> Vec<&str> {
+pub(crate) fn encoder_candidates(preferred: &str) -> Vec<&str> {
     const AUTOMATIC: [&str; 5] = [
         "h264_nvenc",
         "h264_qsv",
@@ -341,7 +343,7 @@ fn encoder_candidates(preferred: &str) -> Vec<&str> {
     result
 }
 
-fn pixel_format_for_encoder(name: &str) -> ffmpeg::format::Pixel {
+pub(crate) fn pixel_format_for_encoder(name: &str) -> ffmpeg::format::Pixel {
     if name.eq_ignore_ascii_case("libopenh264") {
         ffmpeg::format::Pixel::YUV420P
     } else {
@@ -349,7 +351,7 @@ fn pixel_format_for_encoder(name: &str) -> ffmpeg::format::Pixel {
     }
 }
 
-fn encoder_options(name: &str) -> Dictionary<'static> {
+pub(crate) fn encoder_options(name: &str) -> Dictionary<'static> {
     let mut options = Dictionary::new();
     match name {
         "h264_nvenc" => {

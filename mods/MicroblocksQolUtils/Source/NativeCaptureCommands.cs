@@ -26,7 +26,7 @@ public static class NativeCaptureCommands {
             $"running={stats.Running} size={stats.Width}x{stats.Height} "
             + $"captured={stats.FramesCaptured} consumed={stats.FramesConsumed} "
             + $"dropped={stats.FramesDropped} queue={stats.QueueDepth} "
-            + $"bytes={stats.BytesCaptured}"
+            + $"bytes={stats.BytesCaptured} media={stats.MediaTimeSeconds:0.000}s"
         );
     }
 
@@ -42,4 +42,3 @@ public static class NativeCaptureCommands {
         probe = null;
     }
 }
-

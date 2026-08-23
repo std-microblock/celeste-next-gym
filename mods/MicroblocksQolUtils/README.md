@@ -26,17 +26,18 @@ Implemented:
 - Streaming H.264 encoding through FFmpeg shared libraries, with automatic
   NVENC, QSV, AMF, Media Foundation, then OpenH264 fallback. No `ffmpeg.exe`,
   `gdigrab`, managed frame buffer, or subprocess is used.
-- Native packet-level finalization of the retained successful segments into an
-  MP4. Failed-attempt files are deleted after their timeline is no longer
-  referenced.
+- One WGC/encoder session remains alive for the whole room. Deaths,
+  SpeedrunTool loads, and respawn changes only move logical start/end markers;
+  they never restart capture or grow an in-memory recording buffer.
+- Native background finalization decodes only the retained ranges from the
+  continuous room file and re-encodes them into a gapless MP4. This permits
+  exact non-keyframe cuts while failed attempts and load freezes are omitted.
 - Timeline cuts for SpeedrunTool save/load and respawn-point triggers. A saved
   prefix is trimmed at its exact timestamp, so deaths and load freezes are not
   included in the final video.
 
 Planned/in progress:
 
-- Keep one WGC capture alive for the whole room and represent deaths,
-  SpeedrunTool loads, and respawn changes entirely as logical time ranges.
 - FMOD DSP taps for gameplay/UI SFX, plus automatic BGM reconstruction from
   event and timeline metadata.
 

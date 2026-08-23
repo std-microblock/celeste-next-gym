@@ -3,7 +3,6 @@ use crate::{
     frame::{AudioFormat, AudioFrame, BGRAFrame, Frame, FrameType, VideoFrame},
     targets::{self, get_scale_factor, Target},
 };
-use ::windows::Win32::System::Performance::{QueryPerformanceCounter, QueryPerformanceFrequency};
 use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
     StreamInstant,
@@ -31,8 +30,7 @@ use windows_capture::{
 struct Capturer {
     pub tx: mpsc::Sender<Frame>,
     pub crop: Option<Area>,
-    pub start_time: (i64, SystemTime),
-    pub perf_freq: i64,
+    pub start_time: Option<(i64, SystemTime)>,
 }
 
 #[derive(Clone)]
@@ -55,19 +53,7 @@ impl GraphicsCaptureApiHandler for Capturer {
         Ok(Self {
             tx: context.flags.tx,
             crop: context.flags.crop,
-            start_time: (
-                unsafe {
-                    let mut time = 0;
-                    QueryPerformanceCounter(&mut time);
-                    time
-                },
-                SystemTime::now(),
-            ),
-            perf_freq: unsafe {
-                let mut freq = 0;
-                QueryPerformanceFrequency(&mut freq);
-                freq
-            },
+            start_time: None,
         })
     }
 
@@ -76,14 +62,16 @@ impl GraphicsCaptureApiHandler for Capturer {
         frame: &mut WCFrame,
         _: InternalCaptureControl,
     ) -> Result<(), Self::Error> {
-        let elapsed = frame.timestamp().Duration - self.start_time.0;
-        let display_time = self
+        // Windows.Graphics.Capture timestamps are TimeSpan values in 100 ns units,
+        // not raw QueryPerformanceCounter ticks.
+        let frame_ticks = frame.timestamp().Duration;
+        let (origin_ticks, origin_time) = *self
             .start_time
-            .1
-            .checked_add(Duration::from_secs_f64(
-                elapsed as f64 / self.perf_freq as f64,
-            ))
-            .unwrap();
+            .get_or_insert_with(|| (frame_ticks, SystemTime::now()));
+        let elapsed_ticks = frame_ticks.saturating_sub(origin_ticks).max(0) as u64;
+        let display_time = origin_time
+            .checked_add(Duration::from_nanos(elapsed_ticks.saturating_mul(100)))
+            .unwrap_or(origin_time);
 
         match &self.crop {
             Some(cropped_area) => {

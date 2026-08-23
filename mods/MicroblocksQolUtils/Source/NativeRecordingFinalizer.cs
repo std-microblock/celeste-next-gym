@@ -13,7 +13,14 @@ internal static class NativeRecordingFinalizer {
             await Task.WhenAll(pendingStops).ConfigureAwait(false);
             if (clips.Count == 0 || clips.Any(clip => !File.Exists(clip.Source))) return;
             Directory.CreateDirectory(Path.GetDirectoryName(output)!);
-            await NativeCaptureBridge.FinalizeRecordingAsync(clips, output).ConfigureAwait(false);
+            QolSettings settings = MicroblocksQolUtilsModule.Settings;
+            await NativeCaptureBridge.FinalizeRecordingAsync(
+                clips,
+                output,
+                settings.RecordingEncoder,
+                settings.RecordingBitrateKbps,
+                settings.RecordingFrameRate
+            ).ConfigureAwait(false);
             await File.WriteAllTextAsync(
                 output + ".timeline.json",
                 JsonSerializer.Serialize(new { clips }, new JsonSerializerOptions { WriteIndented = true })

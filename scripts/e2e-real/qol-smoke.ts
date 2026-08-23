@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { cpSync, existsSync, readFileSync } from "node:fs";
+import { cpSync, existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -53,9 +53,12 @@ try {
 
   await modPort.release();
   updateRunManifest(context, { status: "starting-qol-smoke" });
+  const captureOutput = resolve(context.tempRoot, "qol-capture-smoke.mkv");
   game = spawn(gameInstall.executable, ["--disable-splash", "--loglevel", "info"], {
     cwd: gameInstall.gameRoot,
-    windowsHide: true,
+    // WGC cannot create a GraphicsCaptureItem for a deliberately hidden game window.
+    // This smoke is the one E2E that must display Celeste to exercise real capture.
+    windowsHide: false,
     stdio: "ignore",
     shell: false,
     env: {
@@ -64,6 +67,7 @@ try {
       CELESTE_GYM_RUN_NONCE: context.runNonce,
       EVEREST_SAVEPATH: context.saveRoot,
       EVEREST_TMPDIR: context.tempRoot,
+      MICROBLOCKS_QOL_CAPTURE_SMOKE_OUTPUT: captureOutput,
     },
   });
   if (!game.pid) throw new Error("Celeste child did not expose a process id");
@@ -73,17 +77,33 @@ try {
     processId: game.pid,
     port: modPort.port,
   });
-  await new Promise<void>((resolveWait) => setTimeout(resolveWait, 2_000));
-
   const logPath = resolve(gameInstall.gameRoot, "log.txt");
+  const deadline = Date.now() + 15_000;
+  let log = "";
+  while (Date.now() < deadline) {
+    if (existsSync(logPath)) log = readFileSync(logPath, "utf8");
+    if (log.includes("QOL_CAPTURE_SMOKE_PASSED")
+        && existsSync(captureOutput)
+        && statSync(captureOutput).size >= 1_000) break;
+    await new Promise<void>((resolveWait) => setTimeout(resolveWait, 250));
+  }
   if (!existsSync(logPath)) throw new Error("Celeste log.txt was not created");
-  const log = readFileSync(logPath, "utf8");
   const critical = log.lastIndexOf("ENCOUNTERED A CRITICAL ERROR");
   if (critical >= 0) throw new Error(log.slice(critical, critical + 4_000));
   if (!log.includes("Loading microblock's QoL Utils")) {
     throw new Error("MicroblocksQolUtils load marker was not found in log.txt");
   }
-  updateRunManifest(context, { status: "qol-smoke-passed", everest_ping: ping });
+  if (!log.includes("QOL_CAPTURE_SMOKE_PASSED")) {
+    throw new Error("Native scap/FFmpeg capture smoke marker was not found in log.txt");
+  }
+  if (!existsSync(captureOutput) || statSync(captureOutput).size < 1_000) {
+    throw new Error("Native scap/FFmpeg capture smoke output was not created");
+  }
+  updateRunManifest(context, {
+    status: "qol-smoke-passed",
+    everest_ping: ping,
+    native_capture_output: captureOutput,
+  });
   console.log(`QOL_SMOKE_PASSED ${context.manifestPath}`);
 } catch (error) {
   updateRunManifest(context, { status: "qol-smoke-failed", error: String(error) });
@@ -94,4 +114,3 @@ try {
   }
   await Promise.allSettled([modPort.release(), httpPort.release()]);
 }
-

@@ -1,13 +1,15 @@
 using System.Reflection;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
+using Monocle;
 
 namespace Celeste.Mod.MicroblocksQolUtils;
 
 public static class NativeCaptureBridge {
     private const string LibraryName = "microblocks_qol_native";
-    private const uint ExpectedAbiVersion = 1;
+    private const uint ExpectedAbiVersion = 2;
     private static bool resolverInstalled;
     private static IntPtr nativeHandle;
     private static string? configuredNativeDirectory;
@@ -72,7 +74,8 @@ public static class NativeCaptureBridge {
             show_cursor = false,
             output_path = outputPath,
             encoder,
-            bitrate_kbps = bitrateKbps
+            bitrate_kbps = bitrateKbps,
+            window_handle = ResolveGameWindowHandle()
         });
         int status = CaptureCreate(json, (nuint)json.Length, out ulong handle);
         ThrowIfFailed(status, "create");
@@ -85,14 +88,32 @@ public static class NativeCaptureBridge {
         }
     }
 
-    public static Task FinalizeRecordingAsync(IReadOnlyList<RecordingClip> clips, string outputPath) {
+    private static ulong ResolveGameWindowHandle() {
+        IntPtr window = Process.GetCurrentProcess().MainWindowHandle;
+        if (window == IntPtr.Zero && Engine.Instance?.Window is { } gameWindow) {
+            window = gameWindow.Handle;
+        }
+        return unchecked((ulong)window.ToInt64());
+    }
+
+    public static Task FinalizeRecordingAsync(
+        IReadOnlyList<RecordingClip> clips,
+        string outputPath,
+        string encoder,
+        int bitrateKbps,
+        int fps
+    ) {
         EnsureAvailable();
         byte[] json = JsonSerializer.SerializeToUtf8Bytes(new {
             clips = clips.Select(clip => new {
                 source = Path.GetFullPath(clip.Source),
+                start_seconds = clip.StartSeconds,
                 duration_seconds = clip.DurationSeconds
             }),
-            output_path = Path.GetFullPath(outputPath)
+            output_path = Path.GetFullPath(outputPath),
+            encoder,
+            bitrate_kbps = bitrateKbps,
+            fps
         });
         return Task.Run(() => ThrowIfFailed(RecordingFinalize(json, (nuint)json.Length), "finalize"));
     }
@@ -107,7 +128,7 @@ public static class NativeCaptureBridge {
         throw new InvalidOperationException($"native capture {operation} failed ({status}): {LastError()}");
     }
 
-    private static string LastError() {
+    internal static string LastError() {
         nuint required = CaptureLastError(IntPtr.Zero, 0);
         if (required <= 1 || required > 64 * 1024) return "unknown native error";
         byte[] bytes = new byte[(int)required];
@@ -150,7 +171,8 @@ public static class NativeCaptureBridge {
             stats.FramesConsumed,
             stats.FramesDropped,
             stats.BytesCaptured,
-            stats.LastFrameUnixNanos
+            stats.LastFrameUnixNanos,
+            stats.MediaTimeNanos
         );
     }
 
@@ -176,6 +198,7 @@ public static class NativeCaptureBridge {
         public ulong FramesDropped;
         public ulong BytesCaptured;
         public ulong LastFrameUnixNanos;
+        public ulong MediaTimeNanos;
     }
 
     [DllImport(LibraryName, EntryPoint = "mqol_capture_abi_version", CallingConvention = CallingConvention.Cdecl)]
@@ -235,5 +258,8 @@ public readonly record struct CaptureStatistics(
     ulong FramesConsumed,
     ulong FramesDropped,
     ulong BytesCaptured,
-    ulong LastFrameUnixNanos
-);
+    ulong LastFrameUnixNanos,
+    ulong MediaTimeNanos
+) {
+    public double MediaTimeSeconds => MediaTimeNanos / 1_000_000_000.0;
+}

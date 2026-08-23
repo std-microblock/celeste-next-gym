@@ -3,16 +3,19 @@ using Microsoft.Xna.Framework;
 namespace Celeste.Mod.MicroblocksQolUtils;
 
 public static class AutoRecorder {
+    private const double MinimumClipSeconds = 0.02;
+
     private static readonly List<RecordingClip> ActivePrefix = [];
-    private static readonly List<Task> PendingStops = [];
-    private static readonly HashSet<string> TemporaryFiles = new(StringComparer.OrdinalIgnoreCase);
-    private static readonly HashSet<string> ProtectedSources = new(StringComparer.OrdinalIgnoreCase);
-    private static NativeRecordingSegment? current;
+    private static NativeRoomRecording? current;
     private static RecordingTimelineSnapshot? respawnAnchor;
     private static Vector2? observedRespawnPoint;
+    private static MusicPosition branchMusicStart;
+    private static double branchStartSeconds;
     private static string roomKey = "";
     private static string roomName = "";
     private static string areaSid = "";
+    private static bool branchActive;
+    private static bool waitingForStablePlayer;
     private static bool completing;
 
     public static void Load(string directory) {
@@ -28,54 +31,77 @@ public static class AutoRecorder {
         On.Celeste.Level.RegisterAreaComplete -= RegisterAreaComplete;
         On.Celeste.Level.TransitionTo -= LevelTransitionTo;
         On.Celeste.Player.Die -= PlayerDie;
-        StopAndReset(deleteAll: true);
+        StopAndReset(deleteSource: true);
     }
 
     public static void Update(Level level) {
         QolSettings settings = MicroblocksQolUtilsModule.Settings;
         if (!settings.AutoRecorderEnabled || !OperatingSystem.IsWindows()) {
-            if (current is not null || roomKey.Length > 0) StopAndReset(deleteAll: true);
+            if (current is not null || roomKey.Length > 0) StopAndReset(deleteSource: true);
             return;
         }
 
         Player? player = level.Tracker.GetEntity<Player>();
         if (player is null) return;
-        string key = $"{level.Session.Area.SID}|{(int)level.Session.Area.Mode}|{level.Session.Level}";
+        string key = RoomKey(level);
         if (!string.Equals(key, roomKey, StringComparison.Ordinal)) {
-            if (roomKey.Length > 0 && !completing) StopAndReset(deleteAll: true);
+            if (roomKey.Length > 0 && !completing) StopAndReset(deleteSource: true);
             BeginRoom(level);
         }
-        if (!ShouldRecord(player, settings)) return;
 
-        Vector2? respawn = level.Session.RespawnPoint;
-        if (observedRespawnPoint.HasValue && respawn.HasValue && Vector2.DistanceSquared(observedRespawnPoint.Value, respawn.Value) > 0.01f) {
-            respawnAnchor = CaptureTimeline(level);
-            if (respawnAnchor is not null) Protect(respawnAnchor);
+        if (!ShouldRecord(player, settings)) {
+            if (current is not null) DiscardCurrentRecording();
+            return;
         }
-        observedRespawnPoint = respawn;
 
         if (current is null && !player.Dead && !level.Transitioning) {
-            StartSegment();
+            StartRoomRecording(level);
         }
+        NativeRoomRecording? recording = current;
+        if (recording is null) return;
+
+        if (waitingForStablePlayer && !player.Dead && !level.Transitioning) {
+            StartBranchAtCurrentTime();
+        }
+
+        Vector2? respawn = level.Session.RespawnPoint;
+        if (branchActive
+            && observedRespawnPoint.HasValue
+            && respawn.HasValue
+            && Vector2.DistanceSquared(observedRespawnPoint.Value, respawn.Value) > 0.01f) {
+            respawnAnchor = new RecordingTimelineSnapshot(CaptureCurrentClips(recording));
+        }
+        observedRespawnPoint = respawn;
     }
 
     public static RecordingTimelineSnapshot? CaptureTimeline(Level level) {
-        if (current is null || !string.Equals(level.Session.Level, roomName, StringComparison.Ordinal)) return null;
-        List<RecordingClip> clips = [.. ActivePrefix, CurrentClip()];
-        RecordingTimelineSnapshot snapshot = new(clips);
-        Protect(snapshot);
-        return snapshot;
+        NativeRoomRecording? recording = current;
+        if (recording is null
+            || !branchActive
+            || !string.Equals(level.Session.Level, roomName, StringComparison.Ordinal)) {
+            return null;
+        }
+        return new RecordingTimelineSnapshot(
+            CaptureCurrentClips(recording),
+            respawnAnchor?.Clips.ToArray()
+        );
     }
 
     public static void RestoreTimeline(Level level, RecordingTimelineSnapshot snapshot) {
-        if (!MicroblocksQolUtilsModule.Settings.AutoRecorderEnabled) return;
-        StopCurrent(deleteIfUnprotected: true);
+        NativeRoomRecording? recording = current;
+        if (!MicroblocksQolUtilsModule.Settings.AutoRecorderEnabled || recording is null) return;
+        if (!string.Equals(RoomKey(level), roomKey, StringComparison.Ordinal)) return;
+        if (snapshot.Clips.Any(clip => !string.Equals(clip.Source, recording.Path, StringComparison.OrdinalIgnoreCase))) {
+            Logger.Log(LogLevel.Warn, "MicroblocksQolUtils/Recorder", "Ignored SpeedrunTool timeline from another recording session.");
+            return;
+        }
         ActivePrefix.Clear();
         ActivePrefix.AddRange(snapshot.Clips);
-        Protect(snapshot);
-        roomKey = $"{level.Session.Area.SID}|{(int)level.Session.Area.Mode}|{level.Session.Level}";
-        roomName = level.Session.Level;
-        areaSid = level.Session.Area.SID;
+        respawnAnchor = snapshot.RespawnAnchorClips is null
+            ? null
+            : new RecordingTimelineSnapshot(snapshot.RespawnAnchorClips.ToArray());
+        branchActive = false;
+        waitingForStablePlayer = true;
         observedRespawnPoint = level.Session.RespawnPoint;
     }
 
@@ -88,13 +114,19 @@ public static class AutoRecorder {
     ) {
         PlayerDeadBody? body = orig(self, direction, evenIfInvincible, registerDeathInStats);
         if (body is null || current is null) return body;
-        StopCurrent(deleteIfUnprotected: true);
         ActivePrefix.Clear();
         if (respawnAnchor is not null) ActivePrefix.AddRange(respawnAnchor.Clips);
+        branchActive = false;
+        waitingForStablePlayer = true;
         return body;
     }
 
-    private static void LevelTransitionTo(On.Celeste.Level.orig_TransitionTo orig, Level self, LevelData next, Vector2 direction) {
+    private static void LevelTransitionTo(
+        On.Celeste.Level.orig_TransitionTo orig,
+        Level self,
+        LevelData next,
+        Vector2 direction
+    ) {
         Complete(self);
         orig(self, next, direction);
     }
@@ -106,65 +138,84 @@ public static class AutoRecorder {
 
     private static void BeginRoom(Level level) {
         completing = false;
-        roomKey = $"{level.Session.Area.SID}|{(int)level.Session.Area.Mode}|{level.Session.Level}";
+        roomKey = RoomKey(level);
         roomName = level.Session.Level;
         areaSid = level.Session.Area.SID;
         observedRespawnPoint = level.Session.RespawnPoint;
         respawnAnchor = null;
+        ActivePrefix.Clear();
+        branchActive = false;
+        waitingForStablePlayer = false;
     }
 
-    private static void StartSegment() {
+    private static void StartRoomRecording(Level level) {
         string tempRoot = Path.Combine(ResolveRecordingRoot(), ".working", Sanitize(roomKey));
         Directory.CreateDirectory(tempRoot);
-        string path = Path.Combine(tempRoot, $"segment-{DateTime.UtcNow:yyyyMMdd-HHmmss-fff}-{Guid.NewGuid():N}.mkv");
-        current = NativeRecordingSegment.Start(path);
-        if (current is not null) TemporaryFiles.Add(path);
+        string path = Path.Combine(tempRoot, $"room-{DateTime.UtcNow:yyyyMMdd-HHmmss-fff}-{Guid.NewGuid():N}.mkv");
+        current = NativeRoomRecording.Start(path);
+        if (current is null) return;
+        ActivePrefix.Clear();
+        respawnAnchor = null;
+        observedRespawnPoint = level.Session.RespawnPoint;
+        StartBranchAtCurrentTime();
     }
 
-    private static void StopCurrent(bool deleteIfUnprotected) {
-        NativeRecordingSegment? session = current;
-        current = null;
-        if (session is null) return;
-        Task stop = session.StopAsync();
-        PendingStops.Add(stop);
-        if (deleteIfUnprotected && !ProtectedSources.Contains(session.Path)) {
-            _ = stop.ContinueWith(_ => {
-                try { File.Delete(session.Path); } catch { }
-            }, TaskScheduler.Default);
-        }
+    private static void StartBranchAtCurrentTime() {
+        NativeRoomRecording? recording = current;
+        if (recording is null) return;
+        branchStartSeconds = recording.MediaTimeSeconds;
+        branchMusicStart = MusicPosition.Read();
+        branchActive = true;
+        waitingForStablePlayer = false;
     }
 
     private static void Complete(Level level) {
-        if (completing || current is null || !string.Equals(level.Session.Level, roomName, StringComparison.Ordinal)) return;
+        NativeRoomRecording? recording = current;
+        if (completing
+            || recording is null
+            || !branchActive
+            || !string.Equals(level.Session.Level, roomName, StringComparison.Ordinal)) {
+            return;
+        }
         completing = true;
-        RecordingClip finalClip = CurrentClip();
-        StopCurrent(deleteIfUnprotected: false);
-        List<RecordingClip> clips = [.. ActivePrefix, finalClip];
-        string outputRoot = ResolveRecordingRoot();
+        List<RecordingClip> clips = [.. ActivePrefix];
+        RecordingClip? finalClip = CurrentClip(recording.MediaTimeSeconds);
+        if (finalClip is not null) clips.Add(finalClip);
+        current = null;
+        Task stop = recording.StopAsync();
         string output = Path.Combine(
-            outputRoot,
+            ResolveRecordingRoot(),
             Sanitize(areaSid),
             $"{DateTime.Now:yyyyMMdd-HHmmss}-{Sanitize(roomName)}.mp4"
         );
-        List<Task> stops = [.. PendingStops];
-        string[] temporary = TemporaryFiles.ToArray();
         _ = NativeRecordingFinalizer.FinishAsync(
             clips,
-            stops,
-            temporary,
+            [stop],
+            [recording.Path],
             output
         );
-        ResetStateWithoutDeleting();
+        ResetTimelineState();
     }
 
-    private static RecordingClip CurrentClip() {
-        NativeRecordingSegment session = current ?? throw new InvalidOperationException("No active recording segment.");
+    private static RecordingClip? CurrentClip(double endSeconds) {
+        NativeRoomRecording? recording = current;
+        if (recording is null || !branchActive) return null;
+        double duration = endSeconds - branchStartSeconds;
+        if (duration < MinimumClipSeconds) return null;
         return new RecordingClip(
-            session.Path,
-            Math.Max(0.05, session.ElapsedSeconds),
-            session.MusicStart.Event,
-            session.MusicStart.TimelineMilliseconds
+            recording.Path,
+            Math.Max(0, branchStartSeconds),
+            duration,
+            branchMusicStart.Event,
+            branchMusicStart.TimelineMilliseconds
         );
+    }
+
+    private static List<RecordingClip> CaptureCurrentClips(NativeRoomRecording recording) {
+        List<RecordingClip> clips = [.. ActivePrefix];
+        RecordingClip? currentClip = CurrentClip(recording.MediaTimeSeconds);
+        if (currentClip is not null) clips.Add(currentClip);
+        return clips;
     }
 
     private static bool ShouldRecord(Player player, QolSettings settings) {
@@ -172,8 +223,46 @@ public static class AutoRecorder {
         return player.Leader.Followers.Any(follower => follower.Entity is Strawberry { Golden: true });
     }
 
-    private static void Protect(RecordingTimelineSnapshot snapshot) {
-        foreach (RecordingClip clip in snapshot.Clips) ProtectedSources.Add(clip.Source);
+    private static void DiscardCurrentRecording() {
+        NativeRoomRecording? recording = current;
+        current = null;
+        if (recording is not null) {
+            _ = recording.StopAsync().ContinueWith(_ => {
+                try { File.Delete(recording.Path); } catch { }
+            }, TaskScheduler.Default);
+        }
+        ActivePrefix.Clear();
+        respawnAnchor = null;
+        branchActive = false;
+        waitingForStablePlayer = false;
+    }
+
+    private static void StopAndReset(bool deleteSource) {
+        NativeRoomRecording? recording = current;
+        current = null;
+        if (recording is not null) {
+            Task stop = recording.StopAsync();
+            if (deleteSource) {
+                _ = stop.ContinueWith(_ => {
+                    try { File.Delete(recording.Path); } catch { }
+                }, TaskScheduler.Default);
+            }
+        }
+        ResetTimelineState();
+    }
+
+    private static void ResetTimelineState() {
+        ActivePrefix.Clear();
+        respawnAnchor = null;
+        observedRespawnPoint = null;
+        branchStartSeconds = 0;
+        branchMusicStart = default;
+        branchActive = false;
+        waitingForStablePlayer = false;
+        roomKey = "";
+        roomName = "";
+        areaSid = "";
+        completing = false;
     }
 
     private static string ResolveRecordingRoot() {
@@ -184,32 +273,8 @@ public static class AutoRecorder {
         return Path.Combine(videos, "Celeste", "microblocks-qol-recordings");
     }
 
-    private static void StopAndReset(bool deleteAll) {
-        StopCurrent(deleteIfUnprotected: deleteAll);
-        if (deleteAll) {
-            Task[] stops = PendingStops.ToArray();
-            string[] files = TemporaryFiles.ToArray();
-            _ = Task.WhenAll(stops).ContinueWith(_ => {
-                foreach (string file in files) {
-                    try { File.Delete(file); } catch { }
-                }
-            }, TaskScheduler.Default);
-        }
-        ResetStateWithoutDeleting();
-    }
-
-    private static void ResetStateWithoutDeleting() {
-        current = null;
-        ActivePrefix.Clear();
-        PendingStops.Clear();
-        TemporaryFiles.Clear();
-        ProtectedSources.Clear();
-        respawnAnchor = null;
-        observedRespawnPoint = null;
-        roomKey = "";
-        roomName = "";
-        areaSid = "";
-        completing = false;
+    private static string RoomKey(Level level) {
+        return $"{level.Session.Area.SID}|{(int)level.Session.Area.Mode}|{level.Session.Level}";
     }
 
     private static string Sanitize(string value) {

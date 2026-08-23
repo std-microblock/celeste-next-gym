@@ -1,23 +1,30 @@
-using System.Diagnostics;
-
 namespace Celeste.Mod.MicroblocksQolUtils;
 
-internal sealed class NativeRecordingSegment {
+internal sealed class NativeRoomRecording {
     private readonly NativeCaptureSession capture;
-    private readonly Stopwatch elapsed = Stopwatch.StartNew();
     private int stopped;
+    private double lastMediaTime;
 
     public string Path { get; }
-    public MusicPosition MusicStart { get; }
-    public double ElapsedSeconds => elapsed.Elapsed.TotalSeconds;
 
-    private NativeRecordingSegment(NativeCaptureSession capture, string path, MusicPosition musicStart) {
+    private NativeRoomRecording(NativeCaptureSession capture, string path) {
         this.capture = capture;
         Path = path;
-        MusicStart = musicStart;
     }
 
-    public static NativeRecordingSegment? Start(string output) {
+    public double MediaTimeSeconds {
+        get {
+            try {
+                double value = capture.Statistics.MediaTimeSeconds;
+                if (value > lastMediaTime) lastMediaTime = value;
+            } catch (Exception exception) {
+                Logger.Log(LogLevel.Warn, "MicroblocksQolUtils/Recorder", $"Cannot read native media clock: {exception.Message}");
+            }
+            return lastMediaTime;
+        }
+    }
+
+    public static NativeRoomRecording? Start(string output) {
         QolSettings settings = MicroblocksQolUtilsModule.Settings;
         try {
             NativeCaptureSession capture = NativeCaptureBridge.StartRecording(
@@ -27,7 +34,7 @@ internal sealed class NativeRecordingSegment {
                 settings.RecordingEncoder,
                 settings.RecordingBitrateKbps
             );
-            return new NativeRecordingSegment(capture, output, MusicPosition.Read());
+            return new NativeRoomRecording(capture, output);
         } catch (Exception exception) {
             Logger.Log(LogLevel.Error, "MicroblocksQolUtils/Recorder", $"Cannot start native recording: {exception.Message}");
             return null;
@@ -36,7 +43,6 @@ internal sealed class NativeRecordingSegment {
 
     public Task StopAsync() {
         if (Interlocked.Exchange(ref stopped, 1) != 0) return Task.CompletedTask;
-        elapsed.Stop();
         return Task.Run(capture.Dispose);
     }
 }
