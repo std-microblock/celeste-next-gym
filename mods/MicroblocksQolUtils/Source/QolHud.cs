@@ -14,6 +14,7 @@ public sealed class QolHud : Entity {
         base.Update();
         if (!MicroblocksQolUtilsModule.Settings.Enabled) return;
         MiaoNetBridge.Update(Scene as Level);
+        if (Scene is Level level) AutoRecorder.Update(level);
     }
 
     public override void Render() {

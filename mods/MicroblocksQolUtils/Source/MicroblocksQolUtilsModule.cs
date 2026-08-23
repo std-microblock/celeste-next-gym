@@ -15,6 +15,7 @@ public sealed class MicroblocksQolUtilsModule : EverestModule {
     public override void Load() {
         FrameProfiler.Load();
         InstantTransitions.Load();
+        AutoRecorder.Load(Path.GetDirectoryName(Metadata.DLL) ?? "");
         Everest.Events.Level.OnLoadLevel += OnLoadLevel;
         On.Monocle.Engine.Update += EngineUpdate;
     }
@@ -22,6 +23,7 @@ public sealed class MicroblocksQolUtilsModule : EverestModule {
     public override void Unload() {
         On.Monocle.Engine.Update -= EngineUpdate;
         Everest.Events.Level.OnLoadLevel -= OnLoadLevel;
+        AutoRecorder.Unload();
         InstantTransitions.Unload();
         FrameProfiler.Unload();
         MiaoNetBridge.Unload();
