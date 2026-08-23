@@ -17,8 +17,10 @@ Implemented:
   (plus `qol_watch`, `qol_unwatch`, `qol_watch_list` in the Everest console).
 - Background Windows balloon notifications when a watched player changes rooms.
 - Optional suppression of MiaoNet's off-screen name labels.
+- Near-instant room transitions (camera/player/light interpolation removed).
+- Opt-in frame-spike sampling grouped by owning assembly for entity Update and
+  Render, with an on-screen top offender and CSV logs under LocalAppData.
 
 Planned/in progress:
 
-- Zero-duration room transitions and per-mod/entity frame spike profiles.
 - Disk-backed successful-attempt recording and SpeedrunTool timeline splicing.

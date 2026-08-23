@@ -13,6 +13,8 @@ public sealed class MicroblocksQolUtilsModule : EverestModule {
     }
 
     public override void Load() {
+        FrameProfiler.Load();
+        InstantTransitions.Load();
         Everest.Events.Level.OnLoadLevel += OnLoadLevel;
         On.Monocle.Engine.Update += EngineUpdate;
     }
@@ -20,6 +22,8 @@ public sealed class MicroblocksQolUtilsModule : EverestModule {
     public override void Unload() {
         On.Monocle.Engine.Update -= EngineUpdate;
         Everest.Events.Level.OnLoadLevel -= OnLoadLevel;
+        InstantTransitions.Unload();
+        FrameProfiler.Unload();
         MiaoNetBridge.Unload();
         SystemTtfFont.Dispose();
     }
@@ -30,10 +34,6 @@ public sealed class MicroblocksQolUtilsModule : EverestModule {
 
     private static void EngineUpdate(On.Monocle.Engine.orig_Update orig, Engine self, Microsoft.Xna.Framework.GameTime gameTime) {
         FrameProfiler.BeginFrame();
-        try {
-            orig(self, gameTime);
-        } finally {
-            FrameProfiler.EndFrame();
-        }
+        orig(self, gameTime);
     }
 }

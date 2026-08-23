@@ -24,8 +24,9 @@ public sealed class QolHud : Entity {
         if (Scene is Level level) MiniMapRenderer.Render(level);
 
         if (settings.ShowFps) {
-            string text = $"{FrameProfiler.FramesPerSecond,3:0} FPS  {FrameProfiler.LastFrameMilliseconds,5:0.0} ms";
+            string text = $"{Engine.FPS,3} FPS  {FrameProfiler.LastFrameMilliseconds,5:0.0} ms CPU";
             SystemTtfFont.Draw(text, new Vector2(18f, 16f), Vector2.Zero, 0.43f, Color.White, 1.5f);
+            if (settings.EnableFrameProfiler) FrameProfiler.RenderHud(new Vector2(18f, 48f));
         }
     }
 }
