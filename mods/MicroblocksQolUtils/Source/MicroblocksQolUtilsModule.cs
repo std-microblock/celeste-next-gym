@@ -20,6 +20,7 @@ public sealed class MicroblocksQolUtilsModule : EverestModule {
     public override void Unload() {
         On.Monocle.Engine.Update -= EngineUpdate;
         Everest.Events.Level.OnLoadLevel -= OnLoadLevel;
+        MiaoNetBridge.Unload();
         SystemTtfFont.Dispose();
     }
 
@@ -36,4 +37,3 @@ public sealed class MicroblocksQolUtilsModule : EverestModule {
         }
     }
 }
-

@@ -21,10 +21,11 @@ public sealed class QolHud : Entity {
         QolSettings settings = MicroblocksQolUtilsModule.Settings;
         if (!settings.Enabled) return;
 
+        if (Scene is Level level) MiniMapRenderer.Render(level);
+
         if (settings.ShowFps) {
             string text = $"{FrameProfiler.FramesPerSecond,3:0} FPS  {FrameProfiler.LastFrameMilliseconds,5:0.0} ms";
             SystemTtfFont.Draw(text, new Vector2(18f, 16f), Vector2.Zero, 0.43f, Color.White, 1.5f);
         }
     }
 }
-
