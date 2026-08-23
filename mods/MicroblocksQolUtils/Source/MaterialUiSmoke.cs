@@ -47,13 +47,30 @@ internal static class MaterialUiSmoke {
                     passed = true;
                     throw new InvalidOperationException("Material acrylic renderer did not composite any frames");
                 }
+                if (ModuleInstalled("CollabUtils2") && !CollabUtils2Bridge.Available) {
+                    passed = true;
+                    throw new InvalidOperationException("CollabUtils2 is installed but its LobbyHelper interop is unavailable");
+                }
+                if (ModuleInstalled("SpeedrunTool") && !SpeedrunToolBridge.Available) {
+                    passed = true;
+                    throw new InvalidOperationException("SpeedrunTool is installed but recording timeline interop is unavailable");
+                }
+                if (ModuleInstalled("MiaoNet") && !MiaoNetBridge.SmokeValidate()) {
+                    passed = true;
+                    throw new InvalidOperationException("MiaoNet is installed but the /qol chat command could not be registered");
+                }
                 passed = true;
                 Logger.Log(
                     LogLevel.Info,
                     "MicroblocksQolUtils/MaterialUI",
-                    "QOL_MATERIAL_UI_SMOKE_PASSED"
+                    $"QOL_MATERIAL_UI_SMOKE_PASSED collab={CollabUtils2Bridge.Available} "
+                        + $"miaonet={MiaoNetBridge.Available} speedrun={SpeedrunToolBridge.Available}"
                 );
             }
         }
     }
+
+    private static bool ModuleInstalled(string name) => Everest.Modules.Any(module =>
+        string.Equals(module.Metadata.Name, name, StringComparison.OrdinalIgnoreCase)
+    );
 }

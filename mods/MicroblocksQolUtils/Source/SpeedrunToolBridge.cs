@@ -24,6 +24,8 @@ public static class SpeedrunToolBridge {
     private const string TimelineKey = "recording-timeline";
     private static object? registration;
 
+    internal static bool Available => registration is not null;
+
     public static void Load() {
         typeof(SpeedrunToolImports).ModInterop();
         if (SpeedrunToolImports.RegisterSaveLoadAction is null) return;
@@ -62,4 +64,3 @@ public static class SpeedrunToolBridge {
         }
     }
 }
-

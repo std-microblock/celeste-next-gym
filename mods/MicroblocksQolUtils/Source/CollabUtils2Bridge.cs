@@ -11,6 +11,8 @@ internal static class CollabUtils2Bridge {
         try {
             typeof(Imports).ModInterop();
             Available = Imports.IsCollabLobby is not null || Imports.IsCollabMap is not null;
+            if (Available)
+                Logger.Log(LogLevel.Info, "MicroblocksQolUtils", "CollabUtils2 chapter-select integration enabled");
         } catch (Exception exception) {
             Available = false;
             Logger.Log(LogLevel.Warn, "MicroblocksQolUtils/CollabUtils2", $"Interop unavailable: {exception.Message}");

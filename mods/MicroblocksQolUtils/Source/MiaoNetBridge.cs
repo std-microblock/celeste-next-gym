@@ -26,6 +26,8 @@ public static class MiaoNetBridge {
     private static bool commandInstalled;
     private static int retryFrames;
     private static int? originalOffscreenOpacity;
+    private static string? originalOffscreenProperty;
+    private static bool loggedLegacyNameFallback;
     private static PixelFont? avatarFont;
     private static float avatarBaseSize;
     private static Type? emojiType;
@@ -33,6 +35,13 @@ public static class MiaoNetBridge {
     public static IReadOnlyList<RemotePlayer> Players => CurrentPlayers;
     public static int PlayersInMap { get; private set; } = 1;
     public static bool Available => module is not null;
+    internal static bool CommandInstalled => commandInstalled;
+
+    internal static bool SmokeValidate() {
+        if (!TryResolve()) return true;
+        if (!commandInstalled) TryInstallChatCommand();
+        return commandInstalled;
+    }
 
     public static void Update(Level? level) {
         if (level is null) return;
@@ -59,6 +68,7 @@ public static class MiaoNetBridge {
         avatarFont = null;
         emojiType = null;
         commandInstalled = false;
+        loggedLegacyNameFallback = false;
     }
 
     public static bool TryDrawAvatar(int playerId, Vector2 center, float size, Color color) {
@@ -99,22 +109,20 @@ public static class MiaoNetBridge {
             object context = module!.GetType().GetProperty("MiaoNetContext")!.GetValue(module)!;
             object? clientState = context.GetType().GetProperty("ClientState")?.GetValue(context);
             if (clientState is null) return;
-            object self = clientState.GetType().GetProperty("Self")!.GetValue(clientState)!;
-            int selfId = (int)self.GetType().GetProperty("ID")!.GetValue(self)!;
-            IEnumerable allPlayers = (IEnumerable)clientState.GetType().GetProperty("AllPlayers")!.GetValue(clientState)!;
+            object? self = clientState.GetType().GetProperty("Self")?.GetValue(clientState);
+            int selfId = self is null ? -1 : ReadInt(self, "ID", -1);
+            List<object> allPlayers = EnumeratePlayers(clientState).Cast<object>().ToList();
+            if (self is not null && allPlayers.All(player => ReadInt(player, "ID", -2) != selfId))
+                allPlayers.Add(self);
             int count = 0;
             foreach (object player in allPlayers) {
-                object location = player.GetType().GetProperty("Location")!.GetValue(player)!;
-                object map = location.GetType().GetProperty("Map")!.GetValue(location)!;
-                string sid = (string)map.GetType().GetProperty("Sid")!.GetValue(map)!;
-                object modeValue = map.GetType().GetProperty("AreaMode")!.GetValue(map)!;
+                if (!TryReadLocation(player, out string sid, out int mode, out string room)) continue;
                 if (!string.Equals(sid, level.Session.Area.SID, StringComparison.Ordinal)
-                    || Convert.ToInt32(modeValue) != (int)level.Session.Area.Mode) continue;
+                    || mode != (int)level.Session.Area.Mode) continue;
                 count++;
 
-                int id = (int)player.GetType().GetProperty("ID")!.GetValue(player)!;
+                int id = ReadInt(player, "ID", -1);
                 if (id == selfId) continue;
-                string room = (string)location.GetType().GetProperty("Room")!.GetValue(location)!;
                 object info = player.GetType().GetProperty("Info")!.GetValue(player)!;
                 string name = (string)info.GetType().GetProperty("Name")!.GetValue(info)!;
                 Color color = (Color)info.GetType().GetProperty("Color")!.GetValue(info)!;
@@ -131,6 +139,42 @@ public static class MiaoNetBridge {
             CurrentPlayers.Clear();
             PlayersInMap = 1;
         }
+    }
+
+    private static IEnumerable EnumeratePlayers(object clientState) {
+        object? allPlayers = clientState.GetType().GetProperty("AllPlayers")?.GetValue(clientState);
+        if (allPlayers is IEnumerable direct) return direct;
+
+        object? players = clientState.GetType().GetProperty("Players")?.GetValue(clientState);
+        object? values = players?.GetType().GetProperty("Values")?.GetValue(players);
+        return values as IEnumerable ?? Array.Empty<object>();
+    }
+
+    private static bool TryReadLocation(object player, out string sid, out int mode, out string room) {
+        sid = "";
+        mode = 0;
+        room = "";
+        object? location = player.GetType().GetProperty("Location")?.GetValue(player);
+        if (location is null) return false;
+
+        Type locationType = location.GetType();
+        object? map = locationType.GetProperty("Map")?.GetValue(location);
+        if (map is not null) {
+            Type mapType = map.GetType();
+            sid = mapType.GetProperty("Sid")?.GetValue(map)?.ToString() ?? "";
+            mode = Convert.ToInt32(mapType.GetProperty("AreaMode")?.GetValue(map) ?? 0);
+            room = locationType.GetProperty("Room")?.GetValue(location)?.ToString() ?? "";
+        } else {
+            sid = locationType.GetProperty("MapSid")?.GetValue(location)?.ToString() ?? "";
+            mode = Convert.ToInt32(locationType.GetProperty("Side")?.GetValue(location) ?? 0);
+            room = locationType.GetProperty("MapRoom")?.GetValue(location)?.ToString() ?? "";
+        }
+        return sid.Length > 0;
+    }
+
+    private static int ReadInt(object value, string property, int fallback) {
+        object? result = value.GetType().GetProperty(property)?.GetValue(value);
+        return result is null ? fallback : Convert.ToInt32(result);
     }
 
     private static void ObserveRoomChange(int id, string name, string room) {
@@ -150,15 +194,24 @@ public static class MiaoNetBridge {
         try {
             Type? moduleType = assembly?.GetType("Celeste.Mod.MiaoNet.MiaoNetModule");
             object? settings = moduleType?.GetProperty("Settings", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
-            PropertyInfo? property = settings?.GetType().GetProperty("OffScreenPlayerNameOpacity");
+            PropertyInfo? property = settings?.GetType().GetProperty("OffScreenPlayerNameOpacity")
+                ?? settings?.GetType().GetProperty("PlayerNameOpacity");
             if (settings is null || property is null) return;
             int current = (int)property.GetValue(settings)!;
             if (MicroblocksQolUtilsModule.Settings.HideMiaoNetOffscreenNames) {
                 originalOffscreenOpacity ??= current;
+                originalOffscreenProperty ??= property.Name;
+                if (property.Name == "PlayerNameOpacity" && !loggedLegacyNameFallback) {
+                    loggedLegacyNameFallback = true;
+                    Logger.Log(
+                        LogLevel.Warn,
+                        "MicroblocksQolUtils/MiaoNet",
+                        "This MiaoNet version has no separate off-screen name opacity; hiding its native player names while the option is enabled."
+                    );
+                }
                 if (current != 0) property.SetValue(settings, 0);
             } else if (originalOffscreenOpacity is int restore) {
-                property.SetValue(settings, restore);
-                originalOffscreenOpacity = null;
+                RestoreOffscreenNameSetting(settings, restore);
             }
         } catch (Exception exception) {
             Logger.Log(LogLevel.Warn, "MicroblocksQolUtils/MiaoNet", $"Cannot update offscreen-name opacity: {exception.Message}");
@@ -170,9 +223,15 @@ public static class MiaoNetBridge {
         try {
             Type? moduleType = assembly.GetType("Celeste.Mod.MiaoNet.MiaoNetModule");
             object? settings = moduleType?.GetProperty("Settings", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
-            settings?.GetType().GetProperty("OffScreenPlayerNameOpacity")?.SetValue(settings, restore);
+            RestoreOffscreenNameSetting(settings, restore);
         } catch { }
+    }
+
+    private static void RestoreOffscreenNameSetting(object? settings, int restore) {
+        if (settings is not null && originalOffscreenProperty is { } propertyName)
+            settings.GetType().GetProperty(propertyName)?.SetValue(settings, restore);
         originalOffscreenOpacity = null;
+        originalOffscreenProperty = null;
     }
 
     private static bool TryResolveAvatarFont() {
