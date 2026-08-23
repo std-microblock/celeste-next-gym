@@ -71,6 +71,9 @@ public sealed class QolSettings : EverestModuleSettings {
     public int MiniMapBackgroundOpacity { get; set; } = 6;
 
     [DefaultValue(true)]
+    public bool MiniMapAdaptiveColors { get; set; } = true;
+
+    [DefaultValue(true)]
     public bool ShowMiaoNetPlayers { get; set; } = true;
 
     [DefaultValue(MiniMapNameMode.WatchedOnly)]

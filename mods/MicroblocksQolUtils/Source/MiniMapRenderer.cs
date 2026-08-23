@@ -20,8 +20,11 @@ public static class MiniMapRenderer {
         float radius = size / 2f;
         Vector2 center = new(ScreenWidth - Margin - radius, Margin + radius);
         float pixelsPerWorld = 0.24f * settings.MiniMapZoom;
+        Color levelBackground = level.BackgroundColor;
         MaterialPalette palette = MaterialPalette.FromSeed(
-            AreaData.Get(level.Session.Area)?.TitleBaseColor ?? new Color(126, 99, 184)
+            settings.MiniMapAdaptiveColors
+                ? levelBackground
+                : AreaData.Get(level.Session.Area)?.TitleBaseColor ?? new Color(126, 99, 184)
         );
         Color background = settings.MaterialYouInterface
             ? palette.SurfaceHigh * (settings.MiniMapBackgroundOpacity / 10f)
@@ -33,14 +36,22 @@ public static class MiniMapRenderer {
             else Draw.Rect(center.X - radius, center.Y - radius, size, size, background);
         }
 
-        DrawSolids(solids, player.Center, center, radius, pixelsPerWorld, settings.MiniMapShape);
+        Color mapBackdrop = settings.MiniMapBackground
+            ? CompositeOver(background, levelBackground)
+            : levelBackground;
+        Color terrainColor = settings.MiniMapAdaptiveColors
+            ? AdaptiveForeground(mapBackdrop) * 0.9f
+            : Color.SlateGray * 0.9f;
+        DrawSolids(solids, player.Center, center, radius, pixelsPerWorld, settings.MiniMapShape, terrainColor);
         foreach (RemotePlayer remote in MiaoNetBridge.Players) {
             if (!settings.ShowMiaoNetPlayers) break;
             DrawRemote(remote, player.Center, center, radius, pixelsPerWorld, settings);
         }
         DrawLocalPlayer(center);
 
-        Color border = settings.MaterialYouInterface ? palette.Outline : Color.White * 0.8f;
+        Color border = settings.MiniMapAdaptiveColors
+            ? AdaptiveForeground(mapBackdrop) * 0.8f
+            : settings.MaterialYouInterface ? palette.Outline : Color.White * 0.8f;
         if (settings.MiniMapShape == MiniMapShape.Circle) Draw.Circle(center, radius, border, 64);
         else if (settings.MaterialYouInterface)
             MaterialUi.RoundedOutline(center.X - radius, center.Y - radius, size, size, 24f, 2f, border);
@@ -89,13 +100,14 @@ public static class MiniMapRenderer {
         Vector2 center,
         float radius,
         float scale,
-        MiniMapShape shape
+        MiniMapShape shape,
+        Color color
     ) {
         float tileSize = Math.Max(1f, 8f * scale);
         foreach (Vector2 world in SolidPoints.GetValue(solids, static value => new SolidPointCache(value)).Points) {
             Vector2 point = center + (world - player) * scale;
             if (!Inside(point, center, radius - tileSize, shape)) continue;
-            Draw.Rect(point.X - tileSize / 2f, point.Y - tileSize / 2f, tileSize + 0.5f, tileSize + 0.5f, Color.SlateGray * 0.9f);
+            Draw.Rect(point.X - tileSize / 2f, point.Y - tileSize / 2f, tileSize + 0.5f, tileSize + 0.5f, color);
         }
     }
 
@@ -136,6 +148,37 @@ public static class MiniMapRenderer {
         return shape == MiniMapShape.Circle
             ? delta.LengthSquared() <= radius * radius
             : Math.Abs(delta.X) <= radius && Math.Abs(delta.Y) <= radius;
+    }
+
+    private static Color CompositeOver(Color source, Color destination) {
+        float inverseAlpha = 1f - source.A / 255f;
+        return new Color(
+            (byte)Math.Clamp(source.R + destination.R * inverseAlpha, 0f, 255f),
+            (byte)Math.Clamp(source.G + destination.G * inverseAlpha, 0f, 255f),
+            (byte)Math.Clamp(source.B + destination.B * inverseAlpha, 0f, 255f),
+            255
+        );
+    }
+
+    private static Color AdaptiveForeground(Color background) {
+        float luminance = RelativeLuminance(background);
+        float whiteContrast = 1.05f / (luminance + 0.05f);
+        float darkContrast = (luminance + 0.05f) / 0.05f;
+        return whiteContrast >= darkContrast
+            ? new Color(238, 244, 248)
+            : new Color(28, 34, 39);
+    }
+
+    private static float RelativeLuminance(Color color) =>
+        0.2126f * LinearChannel(color.R)
+        + 0.7152f * LinearChannel(color.G)
+        + 0.0722f * LinearChannel(color.B);
+
+    private static float LinearChannel(byte channel) {
+        float value = channel / 255f;
+        return value <= 0.04045f
+            ? value / 12.92f
+            : MathF.Pow((value + 0.055f) / 1.055f, 2.4f);
     }
 
     private static void FillCircle(Vector2 center, float radius, Color color) {
