@@ -45,7 +45,10 @@ internal readonly record struct MaterialPalette(
 internal static class MaterialUi {
     private static readonly Dictionary<(int Width, int Height, int Radius), Texture2D> RoundedMasks = [];
     private static readonly Dictionary<(int Width, int Height, int Radius, int Thickness), Texture2D> OutlineMasks = [];
+    private static readonly Dictionary<int, Texture2D> CircleMasks = [];
+    private static readonly Dictionary<(int Diameter, int Thickness), Texture2D> CircleOutlineMasks = [];
     private static Texture2D? noise;
+    private const int CoverageSamples = 4;
 
     public static void RoundedRect(float x, float y, float width, float height, float radius, Color color) {
         int pixelWidth = Math.Max(1, (int)MathF.Round(width));
@@ -72,6 +75,19 @@ internal static class MaterialUi {
         Draw.SpriteBatch.Draw(mask, new Rectangle((int)x, (int)y, pixelWidth, pixelHeight), color);
     }
 
+    public static void Circle(Vector2 center, float radius, Color color) {
+        int diameter = Math.Max(1, (int)MathF.Round(radius * 2f));
+        Texture2D mask = GetCircleMask(diameter);
+        Draw.SpriteBatch.Draw(mask, center - new Vector2(diameter / 2f), color);
+    }
+
+    public static void CircleOutline(Vector2 center, float radius, float thickness, Color color) {
+        int diameter = Math.Max(1, (int)MathF.Round(radius * 2f));
+        int pixelThickness = Math.Clamp((int)MathF.Round(thickness), 1, Math.Max(1, diameter / 2));
+        Texture2D mask = GetCircleOutlineMask(diameter, pixelThickness);
+        Draw.SpriteBatch.Draw(mask, center - new Vector2(diameter / 2f), color);
+    }
+
     public static void AcrylicSurface(
         float x,
         float y,
@@ -96,6 +112,10 @@ internal static class MaterialUi {
         RoundedMasks.Clear();
         foreach (Texture2D texture in OutlineMasks.Values) texture.Dispose();
         OutlineMasks.Clear();
+        foreach (Texture2D texture in CircleMasks.Values) texture.Dispose();
+        CircleMasks.Clear();
+        foreach (Texture2D texture in CircleOutlineMasks.Values) texture.Dispose();
+        CircleOutlineMasks.Clear();
         noise?.Dispose();
         noise = null;
     }
@@ -106,9 +126,8 @@ internal static class MaterialUi {
         Color[] pixels = new Color[width * height];
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                pixels[y * width + x] = InsideRounded(x, y, width, height, radius)
-                    ? Color.White
-                    : Color.Transparent;
+                float coverage = RoundedCoverage(x, y, width, height, radius);
+                pixels[y * width + x] = PremultipliedWhite(coverage);
             }
         }
         texture = new Texture2D(Engine.Graphics.GraphicsDevice, width, height);
@@ -126,10 +145,11 @@ internal static class MaterialUi {
         int innerRadius = Math.Max(0, radius - thickness);
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                bool outer = InsideRounded(x, y, width, height, radius);
-                bool inner = innerWidth > 0 && innerHeight > 0
-                    && InsideRounded(x - thickness, y - thickness, innerWidth, innerHeight, innerRadius);
-                pixels[y * width + x] = outer && !inner ? Color.White : Color.Transparent;
+                float outer = RoundedCoverage(x, y, width, height, radius);
+                float inner = innerWidth > 0 && innerHeight > 0
+                    ? RoundedCoverage(x - thickness, y - thickness, innerWidth, innerHeight, innerRadius)
+                    : 0f;
+                pixels[y * width + x] = PremultipliedWhite(Math.Clamp(outer - inner, 0f, 1f));
             }
         }
         texture = new Texture2D(Engine.Graphics.GraphicsDevice, width, height);
@@ -138,18 +158,84 @@ internal static class MaterialUi {
         return texture;
     }
 
-    private static bool InsideRounded(int x, int y, int width, int height, int radius) {
-        if (x < 0 || y < 0 || x >= width || y >= height) return false;
+    private static float RoundedCoverage(int pixelX, int pixelY, int width, int height, int radius) {
+        int hits = 0;
+        for (int sampleY = 0; sampleY < CoverageSamples; sampleY++) {
+            for (int sampleX = 0; sampleX < CoverageSamples; sampleX++) {
+                float x = pixelX + (sampleX + 0.5f) / CoverageSamples;
+                float y = pixelY + (sampleY + 0.5f) / CoverageSamples;
+                if (InsideRounded(x, y, width, height, radius)) hits++;
+            }
+        }
+        return hits / (float)(CoverageSamples * CoverageSamples);
+    }
+
+    private static bool InsideRounded(float x, float y, int width, int height, int radius) {
+        if (x < 0f || y < 0f || x >= width || y >= height) return false;
         if (radius <= 0) return true;
-        float left = radius - 0.5f;
-        float right = width - radius - 0.5f;
-        float top = radius - 0.5f;
-        float bottom = height - radius - 0.5f;
+        float left = radius;
+        float right = width - radius;
+        float top = radius;
+        float bottom = height - radius;
         float nearestX = Math.Clamp(x, left, right);
         float nearestY = Math.Clamp(y, top, bottom);
         float dx = x - nearestX;
         float dy = y - nearestY;
         return dx * dx + dy * dy <= radius * radius;
+    }
+
+    private static Texture2D GetCircleMask(int diameter) {
+        if (CircleMasks.TryGetValue(diameter, out Texture2D? texture)) return texture;
+        Color[] pixels = new Color[diameter * diameter];
+        float radius = diameter / 2f;
+        for (int y = 0; y < diameter; y++) {
+            for (int x = 0; x < diameter; x++) {
+                float coverage = CircleCoverage(x, y, radius, 0f);
+                pixels[y * diameter + x] = PremultipliedWhite(coverage);
+            }
+        }
+        texture = new Texture2D(Engine.Graphics.GraphicsDevice, diameter, diameter);
+        texture.SetData(pixels);
+        CircleMasks[diameter] = texture;
+        return texture;
+    }
+
+    private static Texture2D GetCircleOutlineMask(int diameter, int thickness) {
+        var key = (diameter, thickness);
+        if (CircleOutlineMasks.TryGetValue(key, out Texture2D? texture)) return texture;
+        Color[] pixels = new Color[diameter * diameter];
+        float radius = diameter / 2f;
+        for (int y = 0; y < diameter; y++) {
+            for (int x = 0; x < diameter; x++) {
+                float coverage = CircleCoverage(x, y, radius, thickness);
+                pixels[y * diameter + x] = PremultipliedWhite(coverage);
+            }
+        }
+        texture = new Texture2D(Engine.Graphics.GraphicsDevice, diameter, diameter);
+        texture.SetData(pixels);
+        CircleOutlineMasks[key] = texture;
+        return texture;
+    }
+
+    private static float CircleCoverage(int pixelX, int pixelY, float radius, float thickness) {
+        int hits = 0;
+        float inner = Math.Max(0f, radius - thickness);
+        float center = radius;
+        for (int sampleY = 0; sampleY < CoverageSamples; sampleY++) {
+            for (int sampleX = 0; sampleX < CoverageSamples; sampleX++) {
+                float x = pixelX + (sampleX + 0.5f) / CoverageSamples - center;
+                float y = pixelY + (sampleY + 0.5f) / CoverageSamples - center;
+                float lengthSquared = x * x + y * y;
+                if (lengthSquared <= radius * radius
+                    && (thickness <= 0f || lengthSquared >= inner * inner)) hits++;
+            }
+        }
+        return hits / (float)(CoverageSamples * CoverageSamples);
+    }
+
+    private static Color PremultipliedWhite(float coverage) {
+        byte alpha = (byte)Math.Clamp((int)MathF.Round(coverage * 255f), 0, 255);
+        return new Color(alpha, alpha, alpha, alpha);
     }
 
     private static void DrawNoise(float x, float y, float width, float height, float radius) {

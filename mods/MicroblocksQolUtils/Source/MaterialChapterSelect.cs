@@ -26,6 +26,8 @@ public sealed class MaterialChapterSelect : Oui {
 
     private static Hook? gotoRoutineHook;
     private static bool hookFailed;
+    private static bool replaceNextChapterSelect;
+    private static bool materialSessionActive;
 
     private readonly List<ChapterEntry> allEntries = [];
     private readonly List<ChapterEntry> entries = [];
@@ -36,6 +38,7 @@ public sealed class MaterialChapterSelect : Oui {
     private int levelSetScroll;
     private float ease;
     private bool display;
+    private Color paletteSeed = new(126, 99, 184);
 
     internal bool SuppressNormalRender { get; set; }
 
@@ -51,21 +54,26 @@ public sealed class MaterialChapterSelect : Oui {
     public static void Load() {
         if (gotoRoutineHook is not null || hookFailed) return;
         try {
+            On.Celeste.OuiFileSelectSlot.OnContinueSelected += FileSelectContinue;
             MethodInfo method = typeof(Overworld).GetMethod(
                 "GotoRoutine",
                 BindingFlags.Instance | BindingFlags.NonPublic
             ) ?? throw new MissingMethodException(typeof(Overworld).FullName, "GotoRoutine");
             gotoRoutineHook = new Hook(method, (GotoRoutineDetour)DetourGotoRoutine);
         } catch (Exception exception) {
+            On.Celeste.OuiFileSelectSlot.OnContinueSelected -= FileSelectContinue;
             hookFailed = true;
             Logger.LogDetailed(exception, "MicroblocksQolUtils/MaterialChapterSelect");
         }
     }
 
     public static void Unload() {
+        On.Celeste.OuiFileSelectSlot.OnContinueSelected -= FileSelectContinue;
         gotoRoutineHook?.Dispose();
         gotoRoutineHook = null;
         hookFailed = false;
+        replaceNextChapterSelect = false;
+        materialSessionActive = false;
     }
 
     public override bool IsStart(Overworld overworld, Overworld.StartMode start) => false;
@@ -78,6 +86,10 @@ public sealed class MaterialChapterSelect : Oui {
         Overworld.Mountain.AllowUserRotation = false;
         Overworld.Maddy.Hide();
         RebuildEntries();
+        paletteSeed = entries.Count == 0
+            ? new Color(126, 99, 184)
+            : entries[Math.Clamp(selectedIndex, 0, entries.Count - 1)].Area.TitleBaseColor;
+        materialSessionActive = true;
         Audio.Play("event:/ui/world_map/icon/roll_right");
         yield return null;
     }
@@ -105,29 +117,22 @@ public sealed class MaterialChapterSelect : Oui {
     internal void RenderMaterialContent(bool acrylicActive) {
         if (!Visible || ease <= 0f) return;
         ChapterEntry? selected = entries.Count == 0 ? null : entries[Math.Clamp(selectedIndex, 0, entries.Count - 1)];
-        MaterialPalette palette = MaterialPalette.FromSeed(selected?.Area.TitleBaseColor ?? new Color(133, 102, 171));
+        MaterialPalette palette = MaterialPalette.FromSeed(paletteSeed);
         float eased = Ease.CubeOut(ease);
         Draw.Rect(0f, 0f, ScreenWidth, ScreenHeight, palette.Scrim * eased);
 
         float rise = (1f - eased) * 34f;
-        MaterialUi.AcrylicSurface(
-            28f,
-            24f + rise,
-            1864f,
-            1030f,
-            42f,
-            palette.Surface * (acrylicActive ? 0.78f : 0.94f) * eased,
-            palette.Outline * eased
-        );
+        MaterialUiKit.Surface(new MaterialRect(28f, 24f + rise, 1864f, 1030f), 42f,
+            palette with { SurfaceHigh = palette.Surface * (acrylicActive ? 0.78f : 0.94f) }, eased);
 
-        SystemTtfFont.Draw(UiText("microblocks_qol_chapter_title", "选择章节"),
-            new Vector2(70f, 58f + rise), Vector2.Zero, 0.88f,
-            palette.OnSurface * eased);
+        MaterialUiKit.Text(UiText("microblocks_qol_chapter_title", "选择章节"),
+            new Vector2(70f, 58f + rise), Vector2.Zero, MaterialTextRole.Display,
+            palette.OnSurface, eased);
         string subtitle = CollabUtils2Bridge.Available
             ? UiText("microblocks_qol_chapter_subtitle_collab", "Material You  ·  键盘 / 鼠标  ·  CollabUtils2")
             : UiText("microblocks_qol_chapter_subtitle", "Material You  ·  键盘 / 鼠标");
-        SystemTtfFont.Draw(subtitle, new Vector2(72f, 111f + rise), Vector2.Zero, 0.38f,
-            palette.OnSurfaceVariant * eased);
+        MaterialUiKit.Text(subtitle, new Vector2(72f, 111f + rise), Vector2.Zero,
+            MaterialTextRole.Body, palette.OnSurfaceVariant, eased);
 
         RenderLevelSets(palette, rise, eased);
         RenderCards(palette, rise, eased);
@@ -138,7 +143,8 @@ public sealed class MaterialChapterSelect : Oui {
     private void UpdateInput() {
         if (Input.MenuCancel.Pressed || MInput.Keyboard.Pressed(Keys.Escape)) {
             Audio.Play("event:/ui/main/button_back");
-            Overworld.Goto<OuiMainMenu>();
+            materialSessionActive = false;
+            Overworld.Goto<OuiFileSelect>();
             return;
         }
 
@@ -286,32 +292,25 @@ public sealed class MaterialChapterSelect : Oui {
     }
 
     private void RenderLevelSets(MaterialPalette palette, float rise, float alpha) {
-        MaterialUi.AcrylicSurface(
-            SidebarX,
-            SidebarY + rise,
-            SidebarWidth,
-            850f,
-            28f,
-            palette.SurfaceHigh * 0.82f * alpha,
-            palette.Outline * alpha
-        );
-        SystemTtfFont.Draw(UiText("microblocks_qol_chapter_level_sets", "地图集"),
-            new Vector2(SidebarX + 26f, SidebarY + 20f + rise),
-            Vector2.Zero, 0.46f, palette.OnSurface * alpha);
+        MaterialUiKit.Surface(new MaterialRect(SidebarX, SidebarY + rise, SidebarWidth, 850f),
+            28f, palette with { SurfaceHigh = palette.SurfaceHigh * 0.82f }, alpha);
+        MaterialUiKit.Text(UiText("microblocks_qol_chapter_level_sets", "地图集"),
+            new Vector2(SidebarX + 26f, SidebarY + 20f + rise), Vector2.Zero,
+            MaterialTextRole.Section, palette.OnSurface, alpha);
         for (int visible = 0; visible < SidebarVisibleItems; visible++) {
             int index = levelSetScroll + visible;
             if (index >= levelSets.Count) break;
             float y = SidebarY + 70f + visible * SidebarItemHeight + rise;
             bool selected = index == selectedLevelSet;
-            if (selected)
-                MaterialUi.RoundedRect(SidebarX + 14f, y, SidebarWidth - 28f, 52f, 26f,
-                    palette.Primary * 0.92f * alpha);
+            MaterialUiKit.NavigationPill(new MaterialRect(SidebarX + 14f, y, SidebarWidth - 28f, 52f),
+                palette, selected, alpha);
             SystemTtfFont.Draw(
                 Trim(levelSets[index].Title, 20),
                 new Vector2(SidebarX + 34f, y + 11f),
                 Vector2.Zero,
                 0.39f,
-                (selected ? palette.OnPrimary : palette.OnSurfaceVariant) * alpha
+                (selected ? palette.OnPrimary : palette.OnSurfaceVariant) * alpha,
+                weight: selected ? UiFontWeight.Bold : UiFontWeight.Regular
             );
         }
     }
@@ -327,9 +326,8 @@ public sealed class MaterialChapterSelect : Oui {
             float y = ContentY + row * (CardHeight + CardGapY) + rise;
             bool selected = index == selectedIndex;
             Color surface = selected ? palette.SurfaceHighest : palette.SurfaceHigh;
-            MaterialUi.AcrylicSurface(x, y, CardWidth, CardHeight, 30f,
-                surface * (selected ? 0.98f : 0.85f) * alpha,
-                (selected ? palette.Primary : palette.Outline) * alpha);
+            MaterialUiKit.Card(new MaterialRect(x, y, CardWidth, CardHeight),
+                palette with { SurfaceHigh = surface * (selected ? 0.98f : 0.85f) }, selected, alpha);
             if (selected)
                 MaterialUi.RoundedRect(x + 18f, y + 18f, 8f, CardHeight - 36f, 4f,
                     palette.Primary * alpha);
@@ -358,7 +356,7 @@ public sealed class MaterialChapterSelect : Oui {
             MaterialUi.RoundedRect(x + 38f, y + 39f, 76f, 76f, 24f, palette.Primary * 0.42f * alpha);
         }
         SystemTtfFont.Draw(Trim(entry.Title, 22), new Vector2(x + 132f, y + 33f),
-            Vector2.Zero, 0.48f, palette.OnSurface * alpha);
+            Vector2.Zero, 0.48f, palette.OnSurface * alpha, weight: UiFontWeight.Bold);
         SystemTtfFont.Draw(Trim(entry.LevelSetTitle, 27), new Vector2(x + 132f, y + 79f),
             Vector2.Zero, 0.31f, palette.OnSurfaceVariant * alpha);
 
@@ -372,13 +370,8 @@ public sealed class MaterialChapterSelect : Oui {
         SystemTtfFont.Draw(progress, new Vector2(x + 38f, y + 145f), Vector2.Zero, 0.31f,
             palette.OnSurfaceVariant * alpha);
 
-        float badgeWidth = Math.Max(82f, SystemTtfFont.Measure(entry.Badge, 0.27f).X + 30f);
-        MaterialUi.RoundedRect(x + CardWidth - badgeWidth - 22f, y + CardHeight - 52f,
-            badgeWidth, 32f, 16f, (selected ? palette.Primary : palette.SurfaceHighest) * alpha);
-        SystemTtfFont.Draw(entry.Badge,
-            new Vector2(x + CardWidth - badgeWidth / 2f - 22f, y + CardHeight - 47f),
-            new Vector2(0.5f, 0f), 0.27f,
-            (selected ? palette.OnPrimary : palette.OnSurfaceVariant) * alpha);
+        MaterialUiKit.Chip(entry.Badge,
+            new Vector2(x + CardWidth - 22f, y + CardHeight - 52f), palette, selected, alpha);
     }
 
     private static void RenderFooter(
@@ -402,8 +395,7 @@ public sealed class MaterialChapterSelect : Oui {
     private static void RenderMouseCursor(MaterialPalette palette, float alpha) {
         if (!MInput.Mouse.WasMoved && !MInput.Mouse.CheckLeftButton) return;
         Vector2 mouse = MInput.Mouse.Position;
-        Draw.Circle(mouse, 10f, Color.Black * 0.55f * alpha, 16);
-        Draw.Circle(mouse, 7f, palette.Primary * alpha, 16);
+        MaterialUiKit.Cursor(mouse, palette, alpha);
     }
 
     private int SidebarIndexAt(Vector2 mouse) {
@@ -447,11 +439,24 @@ public sealed class MaterialChapterSelect : Oui {
         if (next is OuiChapterSelect vanilla
             && MicroblocksQolUtilsModule.Settings.ReplaceChapterSelect
             && MicroblocksQolUtilsModule.Settings.MaterialYouInterface
+            && (replaceNextChapterSelect || materialSessionActive && self.Current is OuiChapterPanel)
             && !IsAutoAdvancing(vanilla)
             && self.GetUI<MaterialChapterSelect>() is { } material) {
             next = material;
         }
         return orig(self, next);
+    }
+
+    private static void FileSelectContinue(
+        On.Celeste.OuiFileSelectSlot.orig_OnContinueSelected orig,
+        OuiFileSelectSlot self
+    ) {
+        replaceNextChapterSelect = true;
+        try {
+            orig(self);
+        } finally {
+            replaceNextChapterSelect = false;
+        }
     }
 
     private static bool IsAutoAdvancing(OuiChapterSelect select) {

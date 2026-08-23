@@ -19,6 +19,11 @@ using DrawingStringFormatFlags = System.Drawing.StringFormatFlags;
 
 namespace Celeste.Mod.MicroblocksQolUtils;
 
+public enum UiFontWeight {
+    Regular,
+    Bold
+}
+
 /// <summary>
 /// Rasterizes glyphs directly from a Windows-installed font or an arbitrary
 /// user-supplied TTF/OTF. Glyph textures are created lazily and retained on the
@@ -28,8 +33,8 @@ public static class SystemTtfFont {
     private const float BasePixelSize = 42f;
     private const float BaseLineHeight = 54f;
     private const float RasterOversample = 2f;
-    private static readonly Dictionary<(char Character, int PixelSize), Glyph> Glyphs = [];
-    private static readonly Dictionary<int, DrawingFont> Fonts = [];
+    private static readonly Dictionary<(char Character, int PixelSize, UiFontWeight Weight), Glyph> Glyphs = [];
+    private static readonly Dictionary<(int PixelSize, UiFontWeight Weight), DrawingFont> Fonts = [];
     private static PrivateFontCollection? privateFonts;
     private static DrawingFontFamily? fontFamily;
     private static DrawingStringFormat? stringFormat;
@@ -65,7 +70,7 @@ public static class SystemTtfFont {
         Logger.Log(LogLevel.Info, "MicroblocksQolUtils", $"Using system UI font {fontFamily.Name} ({identity})");
     }
 
-    public static Vector2 Measure(string text, float scale = 1f) {
+    public static Vector2 Measure(string text, float scale = 1f, UiFontWeight weight = UiFontWeight.Regular) {
         Prepare();
         if (string.IsNullOrEmpty(text)) return Vector2.Zero;
         float width = 0f;
@@ -77,7 +82,7 @@ public static class SystemTtfFont {
                 lineWidth = 0f;
                 height += LineHeight(scale);
             } else {
-                lineWidth += GetGlyph(character, scale).Advance;
+                lineWidth += GetGlyph(character, scale, weight).Advance;
             }
         }
         return new Vector2(Math.Max(width, lineWidth), height);
@@ -90,18 +95,19 @@ public static class SystemTtfFont {
         float scale,
         Color color,
         float outline = 0f,
-        Color? outlineColor = null
+        Color? outlineColor = null,
+        UiFontWeight weight = UiFontWeight.Regular
     ) {
         if (string.IsNullOrEmpty(text)) return;
         Prepare();
         if (outline > 0f) {
             Color stroke = outlineColor ?? Color.Black;
-            DrawCore(text, position + new Vector2(-outline, 0f), justify, scale, stroke);
-            DrawCore(text, position + new Vector2(outline, 0f), justify, scale, stroke);
-            DrawCore(text, position + new Vector2(0f, -outline), justify, scale, stroke);
-            DrawCore(text, position + new Vector2(0f, outline), justify, scale, stroke);
+            DrawCore(text, position + new Vector2(-outline, 0f), justify, scale, stroke, weight);
+            DrawCore(text, position + new Vector2(outline, 0f), justify, scale, stroke, weight);
+            DrawCore(text, position + new Vector2(0f, -outline), justify, scale, stroke, weight);
+            DrawCore(text, position + new Vector2(0f, outline), justify, scale, stroke, weight);
         }
-        DrawCore(text, position, justify, scale, color);
+        DrawCore(text, position, justify, scale, color, weight);
     }
 
     public static void Dispose() {
@@ -118,8 +124,15 @@ public static class SystemTtfFont {
         loadedIdentity = "";
     }
 
-    private static void DrawCore(string text, Vector2 position, Vector2 justify, float scale, Color color) {
-        Vector2 origin = Measure(text, scale) * justify;
+    private static void DrawCore(
+        string text,
+        Vector2 position,
+        Vector2 justify,
+        float scale,
+        Color color,
+        UiFontWeight weight
+    ) {
+        Vector2 origin = Measure(text, scale, weight) * justify;
         Vector2 cursor = Vector2.Zero;
         foreach (char character in text) {
             if (character == '\n') {
@@ -128,7 +141,7 @@ public static class SystemTtfFont {
                 continue;
             }
 
-            Glyph glyph = GetGlyph(character, scale);
+            Glyph glyph = GetGlyph(character, scale, weight);
             if (glyph.Texture is not null) {
                 Vector2 at = position + cursor + glyph.Offset - origin;
                 at = new Vector2(
@@ -151,16 +164,16 @@ public static class SystemTtfFont {
         }
     }
 
-    private static Glyph GetGlyph(char character, float scale) {
+    private static Glyph GetGlyph(char character, float scale, UiFontWeight weight) {
         Prepare();
         float desiredPixelSize = BasePixelSize * Math.Max(0.01f, scale);
         int pixelSize = Math.Max(8, (int)MathF.Round(desiredPixelSize * RasterOversample));
         float textureScale = desiredPixelSize / pixelSize;
-        var key = (character, pixelSize);
+        var key = (character, pixelSize, weight);
         if (Glyphs.TryGetValue(key, out Glyph? glyph)) return glyph;
         if (fontFamily is null || stringFormat is null) throw new InvalidOperationException("UI font is not prepared.");
 
-        DrawingFont font = GetFont(pixelSize);
+        DrawingFont font = GetFont(pixelSize, weight);
         if (character == '\t')
             return Glyphs[key] = new Glyph(null, pixelSize * 2f * textureScale, Vector2.Zero, textureScale, 1f);
 
@@ -201,11 +214,15 @@ public static class SystemTtfFont {
         );
     }
 
-    private static DrawingFont GetFont(int pixelSize) {
-        if (Fonts.TryGetValue(pixelSize, out DrawingFont? font)) return font;
+    private static DrawingFont GetFont(int pixelSize, UiFontWeight weight) {
+        var key = (pixelSize, weight);
+        if (Fonts.TryGetValue(key, out DrawingFont? font)) return font;
         if (fontFamily is null) throw new InvalidOperationException("UI font is not prepared.");
-        font = new DrawingFont(fontFamily, pixelSize, DrawingFontStyle.Regular, DrawingGraphicsUnit.Pixel);
-        Fonts.Add(pixelSize, font);
+        DrawingFontStyle style = weight == UiFontWeight.Bold && fontFamily.IsStyleAvailable(DrawingFontStyle.Bold)
+            ? DrawingFontStyle.Bold
+            : DrawingFontStyle.Regular;
+        font = new DrawingFont(fontFamily, pixelSize, style, DrawingGraphicsUnit.Pixel);
+        Fonts.Add(key, font);
         return font;
     }
 
