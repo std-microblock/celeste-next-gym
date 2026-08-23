@@ -9,6 +9,7 @@ internal static class NativeRecordingFinalizer {
         IReadOnlyCollection<string> temporaryFiles,
         string output
     ) {
+        bool completed = false;
         try {
             await Task.WhenAll(pendingStops).ConfigureAwait(false);
             if (clips.Count == 0 || clips.Any(clip => !File.Exists(clip.Source))) return;
@@ -26,11 +27,20 @@ internal static class NativeRecordingFinalizer {
                 JsonSerializer.Serialize(new { clips }, new JsonSerializerOptions { WriteIndented = true })
             ).ConfigureAwait(false);
             Logger.Log(LogLevel.Info, "MicroblocksQolUtils/Recorder", $"Saved successful room recording: {output}");
+            completed = true;
         } catch (Exception exception) {
             Logger.LogDetailed(exception, "MicroblocksQolUtils/Recorder");
         } finally {
-            foreach (string file in temporaryFiles) {
-                try { File.Delete(file); } catch { }
+            if (completed) {
+                foreach (string file in temporaryFiles) {
+                    try { File.Delete(file); } catch { }
+                }
+            } else {
+                Logger.Log(
+                    LogLevel.Warn,
+                    "MicroblocksQolUtils/Recorder",
+                    $"Finalization failed; preserved continuous recording files under {Path.GetDirectoryName(temporaryFiles.FirstOrDefault() ?? output)}"
+                );
             }
         }
     }

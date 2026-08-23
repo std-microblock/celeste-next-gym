@@ -62,7 +62,21 @@ internal static class NativeCaptureSmoke {
                     + $"frames={statistics.AudioFramesCaptured} dropped={statistics.AudioChunksDropped}"
                 );
             }
-            Logger.Log(LogLevel.Info, "MicroblocksQolUtils/Recorder", $"QOL_CAPTURE_SMOKE_PASSED {output}");
+            string finalized = output + ".final.mp4";
+            await NativeCaptureBridge.FinalizeRecordingAsync(
+                [new RecordingClip(output, 0, Math.Max(0.1, statistics.MediaTimeSeconds), "", 0)],
+                finalized,
+                "libopenh264",
+                2_000,
+                30
+            ).ConfigureAwait(false);
+            if (!File.Exists(finalized) || new FileInfo(finalized).Length < 1_000)
+                throw new InvalidDataException("native A/V finalizer did not produce an MP4");
+            Logger.Log(
+                LogLevel.Info,
+                "MicroblocksQolUtils/Recorder",
+                $"QOL_CAPTURE_SMOKE_PASSED {output} finalized={finalized}"
+            );
         } catch (OperationCanceledException) {
         } catch (Exception exception) {
             Logger.LogDetailed(exception, "MicroblocksQolUtils/Recorder/CaptureSmoke");

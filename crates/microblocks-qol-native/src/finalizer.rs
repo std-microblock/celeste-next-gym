@@ -9,6 +9,7 @@ use thiserror::Error;
 use crate::encoder::{
     encoder_candidates, encoder_options, even_dimension, pixel_format_for_encoder,
 };
+use crate::finalizer_audio;
 
 #[derive(Debug, Deserialize)]
 #[serde(default)]
@@ -109,6 +110,8 @@ pub enum FinalizeError {
         path: PathBuf,
         source: std::io::Error,
     },
+    #[error("cannot finalize recording audio: {0}")]
+    Audio(#[from] finalizer_audio::AudioFinalizeError),
 }
 
 pub fn finalize(plan: &FinalizePlan) -> Result<(), FinalizeError> {
@@ -127,8 +130,18 @@ pub fn finalize(plan: &FinalizePlan) -> Result<(), FinalizeError> {
         path: parent.to_owned(),
         source,
     })?;
-    let temporary = temporary_output_path(output_path);
-    let _ = fs::remove_file(&temporary);
+    let video_temporary = working_path(output_path, "video", "mp4");
+    let audio_temporary = working_path(output_path, "audio", "m4a");
+    let mixed_pcm = working_path(output_path, "mix", "f32");
+    let mux_temporary = temporary_output_path(output_path);
+    for path in [
+        &video_temporary,
+        &audio_temporary,
+        &mixed_pcm,
+        &mux_temporary,
+    ] {
+        let _ = fs::remove_file(path);
+    }
 
     let source_path = Path::new(&plan.clips[0].source);
     let mut input = format::input(source_path).map_err(|source| FinalizeError::OpenInput {
@@ -161,7 +174,7 @@ pub fn finalize(plan: &FinalizePlan) -> Result<(), FinalizeError> {
             &mut decoded,
             input_time_base,
             plan,
-            &temporary,
+            &video_temporary,
             &mut selection,
             &mut output,
         )?;
@@ -176,7 +189,7 @@ pub fn finalize(plan: &FinalizePlan) -> Result<(), FinalizeError> {
             &mut decoded,
             input_time_base,
             plan,
-            &temporary,
+            &video_temporary,
             &mut selection,
             &mut output,
         )?;
@@ -185,11 +198,31 @@ pub fn finalize(plan: &FinalizePlan) -> Result<(), FinalizeError> {
     let mut output = output.ok_or(FinalizeError::NoFrames)?;
     output.finish()?;
     drop(output);
+
+    let sidecar = PathBuf::from(format!("{}.sfxchunks", source_path.display()));
+    let has_audio =
+        finalizer_audio::build_audio_track(&sidecar, &plan.clips, &mixed_pcm, &audio_temporary)?;
+    if has_audio {
+        finalizer_audio::mux_video_and_audio(&video_temporary, &audio_temporary, &mux_temporary)?;
+    }
     fs::remove_file(output_path).ok();
-    fs::rename(&temporary, output_path).map_err(|source| FinalizeError::Replace {
+    let completed = if has_audio {
+        &mux_temporary
+    } else {
+        &video_temporary
+    };
+    fs::rename(completed, output_path).map_err(|source| FinalizeError::Replace {
         path: output_path.to_owned(),
         source,
     })?;
+    for path in [
+        &video_temporary,
+        &audio_temporary,
+        &mixed_pcm,
+        &mux_temporary,
+    ] {
+        let _ = fs::remove_file(path);
+    }
     Ok(())
 }
 
@@ -505,11 +538,21 @@ fn temporary_output_path(output: &Path) -> PathBuf {
     output.with_extension(format!("working.{extension}"))
 }
 
+fn working_path(output: &Path, purpose: &str, extension: &str) -> PathBuf {
+    let stem = output
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or("recording");
+    output.with_file_name(format!("{stem}.working.{purpose}.{extension}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::encoder::VideoFileEncoder;
-    use crate::{CaptureConfig, CapturedFrame};
+    use crate::{AudioChunk, CaptureConfig, CapturedFrame, write_audio_chunk};
+    use std::fs::File;
+    use std::io::{BufWriter, Write};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
@@ -543,6 +586,7 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let source = directory.path().join("continuous.mkv");
         write_continuous_source(&source);
+        write_continuous_audio(&source);
         let output = directory.path().join("joined.mp4");
         finalize(&FinalizePlan {
             clips: vec![
@@ -565,9 +609,13 @@ mod tests {
         .unwrap();
         assert!(fs::metadata(&output).unwrap().len() > 1_000);
         let mut joined = format::input(&output).unwrap();
-        let stream = joined.streams().best(media::Type::Video).unwrap();
-        let stream_index = stream.index();
-        let time_base = stream.time_base();
+        let video_stream = joined.streams().best(media::Type::Video).unwrap();
+        let stream_index = video_stream.index();
+        let time_base = video_stream.time_base();
+        drop(video_stream);
+        let audio_stream = joined.streams().best(media::Type::Audio).unwrap();
+        assert_eq!(audio_stream.parameters().id(), codec::Id::AAC);
+        drop(audio_stream);
         let mut last_timestamp = 0_i64;
         for (stream, packet) in joined.packets() {
             if stream.index() == stream_index {
@@ -607,5 +655,41 @@ mod tests {
             encoder.encode(&frame).unwrap();
         }
         encoder.finish().unwrap();
+    }
+
+    fn write_continuous_audio(video_path: &Path) {
+        let path = PathBuf::from(format!("{}.sfxchunks", video_path.display()));
+        let mut writer = BufWriter::new(File::create(path).unwrap());
+        writer.write_all(b"MQOLAUD1").unwrap();
+        let sample_rate = 48_000_u32;
+        let channels = 2_u16;
+        let frames_per_chunk = 1_024_usize;
+        for chunk_index in 0..141_u64 {
+            let media_time_nanos =
+                chunk_index * frames_per_chunk as u64 * 1_000_000_000 / u64::from(sample_rate);
+            for (bus_id, frequency, amplitude) in [(1_u16, 440.0_f32, 0.20_f32), (2, 660.0, 0.10)] {
+                let mut samples = Vec::with_capacity(frames_per_chunk * usize::from(channels));
+                for local_frame in 0..frames_per_chunk {
+                    let absolute_frame = chunk_index as usize * frames_per_chunk + local_frame;
+                    let value = (absolute_frame as f32 * frequency * std::f32::consts::TAU
+                        / sample_rate as f32)
+                        .sin()
+                        * amplitude;
+                    samples.extend_from_slice(&[value, value]);
+                }
+                write_audio_chunk(
+                    &mut writer,
+                    &AudioChunk {
+                        media_time_nanos,
+                        sample_rate,
+                        channels,
+                        bus_id,
+                        samples,
+                    },
+                )
+                .unwrap();
+            }
+        }
+        writer.flush().unwrap();
     }
 }

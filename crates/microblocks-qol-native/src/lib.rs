@@ -19,6 +19,8 @@ use thiserror::Error;
 mod encoder;
 #[cfg(all(windows, feature = "ffmpeg"))]
 mod finalizer;
+#[cfg(all(windows, feature = "ffmpeg"))]
+mod finalizer_audio;
 
 const ABI_VERSION: u32 = 3;
 const OK: i32 = 0;

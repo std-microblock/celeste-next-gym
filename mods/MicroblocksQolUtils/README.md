@@ -41,11 +41,14 @@ Implemented:
 - Timeline cuts for SpeedrunTool save/load and respawn-point triggers. A saved
   prefix is trimmed at its exact timestamp, so deaths and load freezes are not
   included in the final video.
+- The finalizer applies those same retained ranges to both SFX buses, mixes
+  overlapping gameplay/UI chunks at their timestamps, fills sparse gaps with
+  silence, streams the result through FFmpeg's native AAC encoder, then remuxes
+  H.264 + AAC into the completed MP4 without launching an executable.
 
 Planned/in progress:
 
-- Timeline-aware SFX mixing/AAC muxing from the captured sidecar, plus
-  automatic BGM reconstruction from event and timeline metadata.
+- Automatic BGM reconstruction from event and timeline metadata.
 
 ## Recorder setup
 

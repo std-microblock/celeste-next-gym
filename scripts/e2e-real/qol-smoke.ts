@@ -54,6 +54,7 @@ try {
   await modPort.release();
   updateRunManifest(context, { status: "starting-qol-smoke" });
   const captureOutput = resolve(context.tempRoot, "qol-capture-smoke.mkv");
+  const finalizedOutput = captureOutput + ".final.mp4";
   game = spawn(gameInstall.executable, ["--disable-splash", "--loglevel", "info"], {
     cwd: gameInstall.gameRoot,
     // WGC cannot create a GraphicsCaptureItem for a deliberately hidden game window.
@@ -84,7 +85,9 @@ try {
     if (existsSync(logPath)) log = readFileSync(logPath, "utf8");
     if (log.includes("QOL_CAPTURE_SMOKE_PASSED")
         && existsSync(captureOutput)
-        && statSync(captureOutput).size >= 1_000) break;
+        && statSync(captureOutput).size >= 1_000
+        && existsSync(finalizedOutput)
+        && statSync(finalizedOutput).size >= 1_000) break;
     await new Promise<void>((resolveWait) => setTimeout(resolveWait, 250));
   }
   if (!existsSync(logPath)) throw new Error("Celeste log.txt was not created");
@@ -99,10 +102,14 @@ try {
   if (!existsSync(captureOutput) || statSync(captureOutput).size < 1_000) {
     throw new Error("Native scap/FFmpeg capture smoke output was not created");
   }
+  if (!existsSync(finalizedOutput) || statSync(finalizedOutput).size < 1_000) {
+    throw new Error("Native timeline A/V finalizer smoke output was not created");
+  }
   updateRunManifest(context, {
     status: "qol-smoke-passed",
     everest_ping: ping,
     native_capture_output: captureOutput,
+    native_finalized_output: finalizedOutput,
   });
   console.log(`QOL_SMOKE_PASSED ${context.manifestPath}`);
 } catch (error) {
