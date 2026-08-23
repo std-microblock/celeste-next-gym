@@ -13,6 +13,7 @@ public sealed class MicroblocksQolUtilsModule : EverestModule {
     }
 
     public override void Load() {
+        Logger.Log(LogLevel.Info, "MicroblocksQolUtils", "Loading microblock's QoL Utils");
         FrameProfiler.Load();
         InstantTransitions.Load();
         AutoRecorder.Load(Path.GetDirectoryName(Metadata.DLL) ?? "");

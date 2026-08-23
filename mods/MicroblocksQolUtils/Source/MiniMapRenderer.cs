@@ -1,11 +1,13 @@
 using Microsoft.Xna.Framework;
 using Monocle;
+using System.Runtime.CompilerServices;
 
 namespace Celeste.Mod.MicroblocksQolUtils;
 
 public static class MiniMapRenderer {
     private const float ScreenWidth = 1920f;
     private const float Margin = 22f;
+    private static readonly ConditionalWeakTable<SolidTiles, SolidPointCache> SolidPoints = new();
 
     public static void Render(Level level) {
         QolSettings settings = MicroblocksQolUtilsModule.Settings;
@@ -63,14 +65,10 @@ public static class MiniMapRenderer {
         MiniMapShape shape
     ) {
         float tileSize = Math.Max(1f, 8f * scale);
-        for (int y = 0; y < solids.Grid.CellsY; y++) {
-            for (int x = 0; x < solids.Grid.CellsX; x++) {
-                if (!solids.Grid[x, y]) continue;
-                Vector2 world = solids.Position + new Vector2(x * 8f + 4f, y * 8f + 4f);
-                Vector2 point = center + (world - player) * scale;
-                if (!Inside(point, center, radius - tileSize, shape)) continue;
-                Draw.Rect(point.X - tileSize / 2f, point.Y - tileSize / 2f, tileSize + 0.5f, tileSize + 0.5f, Color.SlateGray * 0.9f);
-            }
+        foreach (Vector2 world in SolidPoints.GetValue(solids, static value => new SolidPointCache(value)).Points) {
+            Vector2 point = center + (world - player) * scale;
+            if (!Inside(point, center, radius - tileSize, shape)) continue;
+            Draw.Rect(point.X - tileSize / 2f, point.Y - tileSize / 2f, tileSize + 0.5f, tileSize + 0.5f, Color.SlateGray * 0.9f);
         }
     }
 
@@ -118,6 +116,18 @@ public static class MiniMapRenderer {
         for (int y = -rows; y <= rows; y++) {
             float halfWidth = MathF.Sqrt(Math.Max(0f, radius * radius - y * y));
             Draw.Rect(center.X - halfWidth, center.Y + y, halfWidth * 2f, 1.5f, color);
+        }
+    }
+
+    private sealed class SolidPointCache {
+        public List<Vector2> Points { get; } = [];
+
+        public SolidPointCache(SolidTiles solids) {
+            for (int y = 0; y < solids.Grid.CellsY; y++) {
+                for (int x = 0; x < solids.Grid.CellsX; x++) {
+                    if (solids.Grid[x, y]) Points.Add(solids.Position + new Vector2(x * 8f + 4f, y * 8f + 4f));
+                }
+            }
         }
     }
 }
