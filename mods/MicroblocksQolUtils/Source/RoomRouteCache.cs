@@ -14,6 +14,7 @@ public static class RoomRouteCache {
 
     private sealed class RoomGraph {
         private readonly Dictionary<string, int> distance = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> fallbackDistance = new(StringComparer.Ordinal);
 
         public RoomGraph(MapData map) {
             List<LevelData> levels = map.Levels.Where(level => !level.Dummy).ToList();
@@ -21,6 +22,10 @@ public static class RoomRouteCache {
 
             List<LevelData> goals = levels.Where(level => level.HasHeartGem).ToList();
             if (goals.Count == 0) goals.Add(levels[^1]);
+
+            int fallbackGoalIndex = levels.Max(goal => levels.IndexOf(goal));
+            for (int index = 0; index < levels.Count; index++)
+                fallbackDistance[levels[index].Name] = Math.Max(0, fallbackGoalIndex - index);
 
             Dictionary<string, List<string>> reverseEdges = levels.ToDictionary(
                 level => level.Name,
@@ -51,15 +56,20 @@ public static class RoomRouteCache {
             }
         }
 
-        public int? DistanceFrom(string room) => distance.TryGetValue(room, out int value) ? value : null;
+        public int? DistanceFrom(string room) {
+            if (distance.TryGetValue(room, out int value)) return value;
+            return fallbackDistance.TryGetValue(room, out int fallback) ? fallback : null;
+        }
 
         private static bool TouchAlongEdge(Rectangle first, Rectangle second) {
-            bool horizontal = (first.Right == second.Left || second.Right == first.Left)
+            const int tolerance = 16;
+            bool horizontal = (Math.Abs(first.Right - second.Left) <= tolerance
+                    || Math.Abs(second.Right - first.Left) <= tolerance)
                 && Math.Min(first.Bottom, second.Bottom) > Math.Max(first.Top, second.Top);
-            bool vertical = (first.Bottom == second.Top || second.Bottom == first.Top)
+            bool vertical = (Math.Abs(first.Bottom - second.Top) <= tolerance
+                    || Math.Abs(second.Bottom - first.Top) <= tolerance)
                 && Math.Min(first.Right, second.Right) > Math.Max(first.Left, second.Left);
             return horizontal || vertical;
         }
     }
 }
-

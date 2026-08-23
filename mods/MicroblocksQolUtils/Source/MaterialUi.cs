@@ -47,6 +47,7 @@ internal static class MaterialUi {
     private static readonly Dictionary<(int Width, int Height, int Radius, int Thickness), Texture2D> OutlineMasks = [];
     private static readonly Dictionary<int, Texture2D> CircleMasks = [];
     private static readonly Dictionary<(int Diameter, int Thickness), Texture2D> CircleOutlineMasks = [];
+    private static readonly Dictionary<(int Length, int ThicknessQuarterPixels), Texture2D> LineMasks = [];
     private static Texture2D? noise;
     private const int CoverageSamples = 4;
 
@@ -88,6 +89,29 @@ internal static class MaterialUi {
         Draw.SpriteBatch.Draw(mask, center - new Vector2(diameter / 2f), color);
     }
 
+    public static void Line(Vector2 from, Vector2 to, float thickness, Color color) {
+        Vector2 delta = to - from;
+        float length = delta.Length();
+        if (length < 0.001f) {
+            Circle(from, Math.Max(0.5f, thickness / 2f), color);
+            return;
+        }
+        int pixelLength = Math.Max(1, (int)MathF.Round(length));
+        int thicknessQuarterPixels = Math.Max(1, (int)MathF.Round(thickness * 4f));
+        Texture2D mask = GetLineMask(pixelLength, thicknessQuarterPixels);
+        Draw.SpriteBatch.Draw(
+            mask,
+            (from + to) / 2f,
+            null,
+            color,
+            MathF.Atan2(delta.Y, delta.X),
+            new Vector2(mask.Width / 2f, mask.Height / 2f),
+            Vector2.One,
+            SpriteEffects.None,
+            0f
+        );
+    }
+
     public static void AcrylicSurface(
         float x,
         float y,
@@ -116,6 +140,8 @@ internal static class MaterialUi {
         CircleMasks.Clear();
         foreach (Texture2D texture in CircleOutlineMasks.Values) texture.Dispose();
         CircleOutlineMasks.Clear();
+        foreach (Texture2D texture in LineMasks.Values) texture.Dispose();
+        LineMasks.Clear();
         noise?.Dispose();
         noise = null;
     }
@@ -231,6 +257,40 @@ internal static class MaterialUi {
             }
         }
         return hits / (float)(CoverageSamples * CoverageSamples);
+    }
+
+    private static Texture2D GetLineMask(int length, int thicknessQuarterPixels) {
+        var key = (length, thicknessQuarterPixels);
+        if (LineMasks.TryGetValue(key, out Texture2D? texture)) return texture;
+        const int padding = 2;
+        float thickness = thicknessQuarterPixels / 4f;
+        float radius = thickness / 2f;
+        int width = length + padding * 2;
+        int height = Math.Max(1, (int)MathF.Ceiling(thickness)) + padding * 2;
+        float centerY = height / 2f;
+        Color[] pixels = new Color[width * height];
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int hits = 0;
+                for (int sampleY = 0; sampleY < CoverageSamples; sampleY++) {
+                    for (int sampleX = 0; sampleX < CoverageSamples; sampleX++) {
+                        float px = x + (sampleX + 0.5f) / CoverageSamples;
+                        float py = y + (sampleY + 0.5f) / CoverageSamples;
+                        float nearestX = Math.Clamp(px, padding, padding + length);
+                        float dx = px - nearestX;
+                        float dy = py - centerY;
+                        if (dx * dx + dy * dy <= radius * radius) hits++;
+                    }
+                }
+                pixels[y * width + x] = PremultipliedWhite(
+                    hits / (float)(CoverageSamples * CoverageSamples)
+                );
+            }
+        }
+        texture = new Texture2D(Engine.Graphics.GraphicsDevice, width, height);
+        texture.SetData(pixels);
+        LineMasks[key] = texture;
+        return texture;
     }
 
     private static Color PremultipliedWhite(float coverage) {

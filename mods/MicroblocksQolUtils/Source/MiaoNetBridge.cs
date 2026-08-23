@@ -31,6 +31,8 @@ public static class MiaoNetBridge {
     private static Type? emojiType;
 
     public static IReadOnlyList<RemotePlayer> Players => CurrentPlayers;
+    public static RemotePlayer? LocalPlayer { get; private set; }
+    public static bool LoggedIn { get; private set; }
     public static int PlayersInMap { get; private set; } = 1;
     public static bool Available => module is not null;
     internal static bool CommandInstalled => commandInstalled;
@@ -45,6 +47,8 @@ public static class MiaoNetBridge {
         if (level is null) return;
         if (!TryResolve()) {
             CurrentPlayers.Clear();
+            LocalPlayer = null;
+            LoggedIn = false;
             PlayersInMap = 1;
             return;
         }
@@ -60,6 +64,8 @@ public static class MiaoNetBridge {
     public static void Unload() {
         RestoreOffscreenNameSetting();
         CurrentPlayers.Clear();
+        LocalPlayer = null;
+        LoggedIn = false;
         LastRooms.Clear();
         module = null;
         assembly = null;
@@ -101,13 +107,27 @@ public static class MiaoNetBridge {
 
     private static void ReadPlayers(Level level) {
         CurrentPlayers.Clear();
+        LocalPlayer = null;
+        LoggedIn = false;
         PlayersInMap = 1;
         try {
             object context = module!.GetType().GetProperty("MiaoNetContext")!.GetValue(module)!;
             object? clientState = context.GetType().GetProperty("ClientState")?.GetValue(context);
             if (clientState is null) return;
             object? self = clientState.GetType().GetProperty("Self")?.GetValue(clientState);
+            LoggedIn = self is not null;
             int selfId = self is null ? -1 : ReadInt(self, "ID", -1);
+            if (self is not null) {
+                object selfInfo = self.GetType().GetProperty("Info")!.GetValue(self)!;
+                string selfName = (string)selfInfo.GetType().GetProperty("Name")!.GetValue(selfInfo)!;
+                Color selfColor = (Color)selfInfo.GetType().GetProperty("Color")!.GetValue(selfInfo)!;
+                string selfRoom = TryReadLocation(self, out _, out _, out string readRoom) ? readRoom : "";
+                object? selfState = self.GetType().GetProperty("State")?.GetValue(self);
+                Vector2 selfPosition = selfState is null
+                    ? Vector2.Zero
+                    : (Vector2)selfState.GetType().GetProperty("Position")!.GetValue(selfState)!;
+                LocalPlayer = new RemotePlayer(selfId, selfName, selfPosition, selfRoom, selfColor);
+            }
             List<object> allPlayers = EnumeratePlayers(clientState).Cast<object>().ToList();
             if (self is not null && allPlayers.All(player => ReadInt(player, "ID", -2) != selfId))
                 allPlayers.Add(self);
@@ -134,6 +154,8 @@ public static class MiaoNetBridge {
         } catch (Exception exception) {
             Logger.LogDetailed(exception, "MicroblocksQolUtils/MiaoNet");
             CurrentPlayers.Clear();
+            LocalPlayer = null;
+            LoggedIn = false;
             PlayersInMap = 1;
         }
     }

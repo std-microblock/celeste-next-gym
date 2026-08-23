@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
 using Monocle;
 
 namespace Celeste.Mod.MicroblocksQolUtils;
@@ -14,7 +15,10 @@ public sealed class QolHud : Entity {
         base.Update();
         if (!MicroblocksQolUtilsModule.Settings.Enabled) return;
         MiaoNetBridge.Update(Scene as Level);
-        if (Scene is Level level) AutoRecorder.Update(level);
+        if (Scene is Level level) {
+            UpdateMiniMapZoom();
+            AutoRecorder.Update(level);
+        }
     }
 
     public override void Render() {
@@ -47,5 +51,13 @@ public sealed class QolHud : Entity {
             SystemTtfFont.Draw(text, position, Vector2.Zero, 0.43f, color, outline);
             if (settings.EnableFrameProfiler) FrameProfiler.RenderHud(new Vector2(18f, 48f));
         }
+    }
+
+    private static void UpdateMiniMapZoom() {
+        QolSettings settings = MicroblocksQolUtilsModule.Settings;
+        if (MInput.Keyboard.Pressed(settings.MiniMapZoomInKey))
+            settings.MiniMapZoom = Math.Min(12, settings.MiniMapZoom + 1);
+        if (MInput.Keyboard.Pressed(settings.MiniMapZoomOutKey))
+            settings.MiniMapZoom = Math.Max(0, settings.MiniMapZoom - 1);
     }
 }

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Microsoft.Xna.Framework.Input;
 
 namespace Celeste.Mod.MicroblocksQolUtils;
 
@@ -56,15 +57,27 @@ public sealed class QolSettings : EverestModuleSettings {
     [DefaultValue(220)]
     public int MiniMapSize { get; set; } = 220;
 
-    [SettingRange(1, 8)]
+    [SettingRange(0, 12)]
     [DefaultValue(3)]
     public int MiniMapZoom { get; set; } = 3;
+
+    [DefaultValue(Keys.OemPlus)]
+    public Keys MiniMapZoomInKey { get; set; } = Keys.OemPlus;
+
+    [DefaultValue(Keys.OemMinus)]
+    public Keys MiniMapZoomOutKey { get; set; } = Keys.OemMinus;
 
     [DefaultValue(MiniMapShape.Circle)]
     public MiniMapShape MiniMapShape { get; set; } = MiniMapShape.Circle;
 
     [DefaultValue(true)]
     public bool MiniMapBackground { get; set; } = true;
+
+    [DefaultValue(true)]
+    public bool MiniMapBorder { get; set; } = true;
+
+    [DefaultValue(true)]
+    public bool MiniMapRoomBounds { get; set; } = true;
 
     [SettingRange(0, 10)]
     [DefaultValue(6)]
@@ -75,6 +88,9 @@ public sealed class QolSettings : EverestModuleSettings {
 
     [DefaultValue(true)]
     public bool ShowMiaoNetPlayers { get; set; } = true;
+
+    [DefaultValue(true)]
+    public bool MiniMapShowOffscreenPlayers { get; set; } = true;
 
     [DefaultValue(MiniMapNameMode.WatchedOnly)]
     public MiniMapNameMode MiniMapNames { get; set; } = MiniMapNameMode.WatchedOnly;
