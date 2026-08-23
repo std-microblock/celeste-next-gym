@@ -4,6 +4,7 @@ namespace Celeste.Mod.MicroblocksQolUtils;
 
 public static class AutoRecorder {
     private const double MinimumClipSeconds = 0.02;
+    private const int MusicTimelineDiscontinuityMilliseconds = 750;
 
     private static readonly List<RecordingClip> ActivePrefix = [];
     private static NativeRoomRecording? current;
@@ -63,6 +64,9 @@ public static class AutoRecorder {
         if (waitingForStablePlayer && !player.Dead && !level.Transitioning) {
             StartBranchAtCurrentTime();
         }
+
+        if (branchActive && settings.BgmMode == BgmRecordingMode.SfxOnlyWithPostMix)
+            ObserveMusicTimeline(recording);
 
         Vector2? respawn = level.Session.RespawnPoint;
         if (branchActive
@@ -167,6 +171,23 @@ public static class AutoRecorder {
         branchMusicStart = MusicPosition.Read();
         branchActive = true;
         waitingForStablePlayer = false;
+    }
+
+    private static void ObserveMusicTimeline(NativeRoomRecording recording) {
+        double now = recording.MediaTimeSeconds;
+        MusicPosition observed = MusicPosition.Read();
+        bool eventChanged = !string.Equals(observed.Event, branchMusicStart.Event, StringComparison.Ordinal);
+        int expectedTimeline = branchMusicStart.TimelineMilliseconds
+            + (int)Math.Round(Math.Max(0, now - branchStartSeconds) * 1_000.0);
+        bool timelineJumped = observed.Event.Length > 0
+            && Math.Abs((long)observed.TimelineMilliseconds - expectedTimeline)
+                > MusicTimelineDiscontinuityMilliseconds;
+        if (!eventChanged && !timelineJumped) return;
+
+        RecordingClip? completed = CurrentClip(now);
+        if (completed is not null) ActivePrefix.Add(completed);
+        branchStartSeconds = now;
+        branchMusicStart = observed;
     }
 
     private static void Complete(Level level) {

@@ -101,19 +101,27 @@ public static class NativeCaptureBridge {
         string outputPath,
         string encoder,
         int bitrateKbps,
-        int fps
+        int fps,
+        bool reconstructBgm,
+        string bgmEventMapFile
     ) {
         EnsureAvailable();
         byte[] json = JsonSerializer.SerializeToUtf8Bytes(new {
             clips = clips.Select(clip => new {
                 source = Path.GetFullPath(clip.Source),
                 start_seconds = clip.StartSeconds,
-                duration_seconds = clip.DurationSeconds
+                duration_seconds = clip.DurationSeconds,
+                music_event = clip.MusicEvent,
+                music_timeline_milliseconds = clip.MusicTimelineMilliseconds
             }),
             output_path = Path.GetFullPath(outputPath),
             encoder,
             bitrate_kbps = bitrateKbps,
-            fps
+            fps,
+            reconstruct_bgm = reconstructBgm,
+            bgm_event_map_file = string.IsNullOrWhiteSpace(bgmEventMapFile)
+                ? ""
+                : Path.GetFullPath(Environment.ExpandEnvironmentVariables(bgmEventMapFile))
         });
         return Task.Run(() => ThrowIfFailed(RecordingFinalize(json, (nuint)json.Length), "finalize"));
     }

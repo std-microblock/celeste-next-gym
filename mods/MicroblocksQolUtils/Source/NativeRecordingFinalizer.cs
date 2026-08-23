@@ -20,7 +20,9 @@ internal static class NativeRecordingFinalizer {
                 output,
                 settings.RecordingEncoder,
                 settings.RecordingBitrateKbps,
-                settings.RecordingFrameRate
+                settings.RecordingFrameRate,
+                settings.BgmMode == BgmRecordingMode.SfxOnlyWithPostMix,
+                settings.BgmEventMapFile
             ).ConfigureAwait(false);
             await File.WriteAllTextAsync(
                 output + ".timeline.json",

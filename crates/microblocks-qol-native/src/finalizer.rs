@@ -19,6 +19,8 @@ pub struct FinalizePlan {
     pub encoder: String,
     pub bitrate_kbps: u32,
     pub fps: u32,
+    pub reconstruct_bgm: bool,
+    pub bgm_event_map_file: String,
 }
 
 impl Default for FinalizePlan {
@@ -29,6 +31,8 @@ impl Default for FinalizePlan {
             encoder: "auto".to_owned(),
             bitrate_kbps: 12_000,
             fps: 60,
+            reconstruct_bgm: false,
+            bgm_event_map_file: String::new(),
         }
     }
 }
@@ -38,6 +42,10 @@ pub struct FinalizeClip {
     pub source: String,
     pub start_seconds: f64,
     pub duration_seconds: f64,
+    #[serde(default)]
+    pub music_event: String,
+    #[serde(default)]
+    pub music_timeline_milliseconds: i64,
 }
 
 #[derive(Debug, Error)]
@@ -200,8 +208,15 @@ pub fn finalize(plan: &FinalizePlan) -> Result<(), FinalizeError> {
     drop(output);
 
     let sidecar = PathBuf::from(format!("{}.sfxchunks", source_path.display()));
-    let has_audio =
-        finalizer_audio::build_audio_track(&sidecar, &plan.clips, &mixed_pcm, &audio_temporary)?;
+    let bgm_map = (plan.reconstruct_bgm && !plan.bgm_event_map_file.trim().is_empty())
+        .then(|| Path::new(plan.bgm_event_map_file.trim()));
+    let has_audio = finalizer_audio::build_audio_track(
+        &sidecar,
+        &plan.clips,
+        &mixed_pcm,
+        &audio_temporary,
+        bgm_map,
+    )?;
     if has_audio {
         finalizer_audio::mux_video_and_audio(&video_temporary, &audio_temporary, &mux_temporary)?;
     }
@@ -562,11 +577,15 @@ mod tests {
                 source: "room.mkv".to_owned(),
                 start_seconds: 1.0,
                 duration_seconds: 2.0,
+                music_event: String::new(),
+                music_timeline_milliseconds: 0,
             },
             FinalizeClip {
                 source: "room.mkv".to_owned(),
                 start_seconds: 5.0,
                 duration_seconds: 1.0,
+                music_event: String::new(),
+                music_timeline_milliseconds: 0,
             },
         ];
         let mut selection = TimelineSelection::new(&clips);
@@ -594,17 +613,22 @@ mod tests {
                     source: source.to_string_lossy().into_owned(),
                     start_seconds: 0.25,
                     duration_seconds: 0.5,
+                    music_event: String::new(),
+                    music_timeline_milliseconds: 0,
                 },
                 FinalizeClip {
                     source: source.to_string_lossy().into_owned(),
                     start_seconds: 1.5,
                     duration_seconds: 0.5,
+                    music_event: String::new(),
+                    music_timeline_milliseconds: 0,
                 },
             ],
             output_path: output.to_string_lossy().into_owned(),
             encoder: "libopenh264".to_owned(),
             bitrate_kbps: 1_000,
             fps: 30,
+            ..FinalizePlan::default()
         })
         .unwrap();
         assert!(fs::metadata(&output).unwrap().len() > 1_000);

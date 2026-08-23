@@ -45,10 +45,15 @@ Implemented:
   overlapping gameplay/UI chunks at their timestamps, fills sparse gaps with
   silence, streams the result through FFmpeg's native AAC encoder, then remuxes
   H.264 + AAC into the completed MP4 without launching an executable.
+- In `SfxOnlyWithPostMix` mode, each retained segment also stores its FMOD
+  music event and timeline position. Event changes, loops, seeks, and other
+  timeline discontinuities split only the logical edit list; the finalizer
+  decodes the mapped clean BGM file, seeks to each saved position, resamples it
+  to the captured SFX format, and mixes it before AAC encoding.
 
 Planned/in progress:
 
-- Automatic BGM reconstruction from event and timeline metadata.
+- Broader built-in BGM event-map presets; custom maps already work.
 
 ## Recorder setup
 
@@ -64,8 +69,9 @@ import libraries, and packages only the required DLLs and license beside the
 mod's native DLL. The FFmpeg executable in the development archive is not
 packaged or invoked.
 
-For the planned automatic BGM reconstruction, a JSON event map will resolve
-FMOD event paths to clean music files, for example:
+For automatic BGM reconstruction, `BgmEventMapFile` points to a JSON object
+that resolves FMOD event paths to clean music files. Relative paths are
+resolved against the JSON file's directory, for example:
 
 ```json
 {
@@ -73,6 +79,5 @@ FMOD event paths to clean music files, for example:
 }
 ```
 
-Each retained clip already records the FMOD event path and timeline position so
-the future audio finalizer can align these files without recording the gameplay
-music bus.
+The music bus itself is never captured, so deaths cannot bake an interrupted or
+restarted BGM track into the continuous room recording.

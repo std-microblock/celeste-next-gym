@@ -68,7 +68,9 @@ internal static class NativeCaptureSmoke {
                 finalized,
                 "libopenh264",
                 2_000,
-                30
+                30,
+                false,
+                ""
             ).ConfigureAwait(false);
             if (!File.Exists(finalized) || new FileInfo(finalized).Length < 1_000)
                 throw new InvalidDataException("native A/V finalizer did not produce an MP4");

@@ -1,8 +1,9 @@
+use std::collections::HashMap;
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufReader, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
-use ffmpeg::{ChannelLayout, Packet, Rational, codec, encoder, format, frame, media};
+use ffmpeg::{ChannelLayout, Packet, Rational, codec, encoder, format, frame, media, software};
 use ffmpeg_next as ffmpeg;
 use thiserror::Error;
 
@@ -12,6 +13,8 @@ const SIDECAR_MAGIC: &[u8; 8] = b"MQOLAUD1";
 const CHUNK_HEADER_BYTES: usize = 24;
 const MAX_CHUNK_SAMPLES: usize = 16_384;
 const AUDIO_BITRATE: usize = 192_000;
+const DEFAULT_SAMPLE_RATE: u32 = 48_000;
+const DEFAULT_CHANNELS: u16 = 2;
 
 #[derive(Debug, Error)]
 pub enum AudioFinalizeError {
@@ -26,6 +29,27 @@ pub enum AudioFinalizeError {
     Channels { channels: u16 },
     #[error("audio timeline is too large")]
     TimelineTooLarge,
+    #[error("cannot read BGM event map {path}: {source}")]
+    ReadBgmMap {
+        path: PathBuf,
+        source: std::io::Error,
+    },
+    #[error("invalid BGM event map {path}: {source}")]
+    ParseBgmMap {
+        path: PathBuf,
+        source: serde_json::Error,
+    },
+    #[error("cannot open mapped BGM {path}: {source}")]
+    OpenBgm {
+        path: PathBuf,
+        source: ffmpeg::Error,
+    },
+    #[error("mapped BGM has no audio stream: {0}")]
+    MissingBgmAudio(PathBuf),
+    #[error("cannot decode mapped BGM: {0}")]
+    DecodeBgm(ffmpeg::Error),
+    #[error("cannot resample mapped BGM: {0}")]
+    ResampleBgm(ffmpeg::Error),
     #[error("FFmpeg AAC encoder is unavailable")]
     MissingAac,
     #[error("AAC encoder does not support planar f32 samples")]
@@ -84,13 +108,34 @@ pub fn build_audio_track(
     clips: &[FinalizeClip],
     mixed_pcm: &Path,
     audio_output: &Path,
+    bgm_event_map_file: Option<&Path>,
 ) -> Result<bool, AudioFinalizeError> {
-    if !sidecar.exists() {
+    let bgm_map = bgm_event_map_file
+        .map(load_bgm_map)
+        .transpose()?
+        .unwrap_or_default();
+    let has_mapped_bgm = clips
+        .iter()
+        .any(|clip| bgm_map.contains_key(&clip.music_event));
+    let captured_spec = sidecar
+        .exists()
+        .then(|| render_mix(sidecar, clips, mixed_pcm))
+        .transpose()?
+        .flatten();
+    if captured_spec.is_none() && !has_mapped_bgm {
         return Ok(false);
     }
-    let Some(spec) = render_mix(sidecar, clips, mixed_pcm)? else {
-        return Ok(false);
-    };
+    let spec = captured_spec.unwrap_or(AudioSpec {
+        sample_rate: DEFAULT_SAMPLE_RATE,
+        channels: DEFAULT_CHANNELS,
+        total_frames: total_timeline_frames(clips, DEFAULT_SAMPLE_RATE)?,
+    });
+    if captured_spec.is_none() {
+        create_empty_mix(mixed_pcm, spec)?;
+    }
+    if has_mapped_bgm {
+        mix_bgm_tracks(mixed_pcm, clips, &bgm_map, spec)?;
+    }
     encode_aac(mixed_pcm, audio_output, spec)?;
     Ok(true)
 }
@@ -173,6 +218,259 @@ fn render_mix(
         channels: first.channels,
         total_frames,
     }))
+}
+
+fn total_timeline_frames(
+    clips: &[FinalizeClip],
+    sample_rate: u32,
+) -> Result<u64, AudioFinalizeError> {
+    clips.iter().try_fold(0_u64, |total, clip| {
+        total
+            .checked_add(seconds_to_frames(clip.duration_seconds, sample_rate)?)
+            .ok_or(AudioFinalizeError::TimelineTooLarge)
+    })
+}
+
+fn create_empty_mix(path: &Path, spec: AudioSpec) -> Result<(), AudioFinalizeError> {
+    let total_bytes = spec
+        .total_frames
+        .checked_mul(u64::from(spec.channels))
+        .and_then(|samples| samples.checked_mul(4))
+        .ok_or(AudioFinalizeError::TimelineTooLarge)?;
+    let file = OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .read(true)
+        .write(true)
+        .open(path)
+        .map_err(|source| io_error(path, source))?;
+    file.set_len(total_bytes)
+        .map_err(|source| io_error(path, source))
+}
+
+fn load_bgm_map(path: &Path) -> Result<HashMap<String, PathBuf>, AudioFinalizeError> {
+    let bytes = fs::read(path).map_err(|source| AudioFinalizeError::ReadBgmMap {
+        path: path.to_owned(),
+        source,
+    })?;
+    let configured: HashMap<String, String> =
+        serde_json::from_slice(&bytes).map_err(|source| AudioFinalizeError::ParseBgmMap {
+            path: path.to_owned(),
+            source,
+        })?;
+    let base = path.parent().unwrap_or_else(|| Path::new("."));
+    Ok(configured
+        .into_iter()
+        .filter_map(|(event, configured_path)| {
+            let configured_path = configured_path.trim();
+            if event.trim().is_empty() || configured_path.is_empty() {
+                return None;
+            }
+            let audio = PathBuf::from(configured_path);
+            Some((
+                event,
+                if audio.is_absolute() {
+                    audio
+                } else {
+                    base.join(audio)
+                },
+            ))
+        })
+        .collect())
+}
+
+fn mix_bgm_tracks(
+    mixed_pcm: &Path,
+    clips: &[FinalizeClip],
+    event_map: &HashMap<String, PathBuf>,
+    spec: AudioSpec,
+) -> Result<(), AudioFinalizeError> {
+    let mut mixed = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(mixed_pcm)
+        .map_err(|source| io_error(mixed_pcm, source))?;
+    let mut output_offset = 0_u64;
+    for clip in clips {
+        let clip_frames = seconds_to_frames(clip.duration_seconds, spec.sample_rate)?;
+        if let Some(path) = event_map.get(&clip.music_event) {
+            mix_bgm_segment(
+                &mut mixed,
+                path,
+                clip.music_timeline_milliseconds.max(0) as f64 / 1_000.0,
+                clip.duration_seconds,
+                output_offset,
+                spec,
+            )?;
+        }
+        output_offset = output_offset
+            .checked_add(clip_frames)
+            .ok_or(AudioFinalizeError::TimelineTooLarge)?;
+    }
+    mixed.flush().map_err(|source| io_error(mixed_pcm, source))
+}
+
+fn mix_bgm_segment(
+    mixed: &mut File,
+    path: &Path,
+    source_start_seconds: f64,
+    duration_seconds: f64,
+    output_offset_frames: u64,
+    spec: AudioSpec,
+) -> Result<(), AudioFinalizeError> {
+    let mut input = format::input(path).map_err(|source| AudioFinalizeError::OpenBgm {
+        path: path.to_owned(),
+        source,
+    })?;
+    let stream = input
+        .streams()
+        .best(media::Type::Audio)
+        .ok_or_else(|| AudioFinalizeError::MissingBgmAudio(path.to_owned()))?;
+    let stream_index = stream.index();
+    let input_time_base = stream.time_base();
+    let mut decoder = codec::context::Context::from_parameters(stream.parameters())
+        .and_then(|context| context.decoder().audio())
+        .map_err(AudioFinalizeError::DecodeBgm)?;
+    drop(stream);
+
+    let input_layout = if decoder.channel_layout().is_empty() {
+        ChannelLayout::default(i32::from(decoder.channels()))
+    } else {
+        decoder.channel_layout()
+    };
+    let output_layout = match spec.channels {
+        1 => ChannelLayout::MONO,
+        2 => ChannelLayout::STEREO,
+        channels => return Err(AudioFinalizeError::Channels { channels }),
+    };
+    let output_format = ffmpeg::format::Sample::F32(ffmpeg::format::sample::Type::Packed);
+    let mut resampler = software::resampling::Context::get(
+        decoder.format(),
+        input_layout,
+        decoder.rate(),
+        output_format,
+        output_layout,
+        spec.sample_rate,
+    )
+    .map_err(AudioFinalizeError::ResampleBgm)?;
+    let seek_timestamp = (source_start_seconds * 1_000_000.0).round() as i64;
+    input
+        .seek(seek_timestamp, ..seek_timestamp)
+        .map_err(AudioFinalizeError::DecodeBgm)?;
+    decoder.flush();
+
+    let source_end_seconds = source_start_seconds + duration_seconds;
+    let mut decoded = frame::Audio::empty();
+    let mut fallback_seconds = source_start_seconds;
+    let mut finished = false;
+    for (packet_stream, packet) in input.packets() {
+        if packet_stream.index() != stream_index {
+            continue;
+        }
+        decoder
+            .send_packet(&packet)
+            .map_err(AudioFinalizeError::DecodeBgm)?;
+        if drain_bgm_decoder(
+            &mut decoder,
+            &mut decoded,
+            &mut resampler,
+            mixed,
+            input_time_base,
+            source_start_seconds,
+            source_end_seconds,
+            output_offset_frames,
+            spec,
+            &mut fallback_seconds,
+        )? {
+            finished = true;
+            break;
+        }
+    }
+    if !finished {
+        decoder.send_eof().map_err(AudioFinalizeError::DecodeBgm)?;
+        let _ = drain_bgm_decoder(
+            &mut decoder,
+            &mut decoded,
+            &mut resampler,
+            mixed,
+            input_time_base,
+            source_start_seconds,
+            source_end_seconds,
+            output_offset_frames,
+            spec,
+            &mut fallback_seconds,
+        )?;
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn drain_bgm_decoder(
+    decoder: &mut ffmpeg::decoder::Audio,
+    decoded: &mut frame::Audio,
+    resampler: &mut software::resampling::Context,
+    mixed: &mut File,
+    input_time_base: Rational,
+    source_start_seconds: f64,
+    source_end_seconds: f64,
+    output_offset_frames: u64,
+    spec: AudioSpec,
+    fallback_seconds: &mut f64,
+) -> Result<bool, AudioFinalizeError> {
+    while decoder.receive_frame(decoded).is_ok() {
+        let frame_start_seconds = decoded
+            .timestamp()
+            .map(|timestamp| timestamp as f64 * f64::from(input_time_base))
+            .unwrap_or(*fallback_seconds);
+        let capacity = ((decoded.samples() as u64 * u64::from(spec.sample_rate)
+            / u64::from(decoded.rate().max(1)))
+            + 256) as usize;
+        let output_layout = match spec.channels {
+            1 => ChannelLayout::MONO,
+            2 => ChannelLayout::STEREO,
+            channels => return Err(AudioFinalizeError::Channels { channels }),
+        };
+        let mut converted = frame::Audio::new(
+            ffmpeg::format::Sample::F32(ffmpeg::format::sample::Type::Packed),
+            capacity.max(1),
+            output_layout,
+        );
+        converted.set_rate(spec.sample_rate);
+        resampler
+            .run(decoded, &mut converted)
+            .map_err(AudioFinalizeError::ResampleBgm)?;
+        let converted_frames = converted.samples();
+        let frame_end_seconds =
+            frame_start_seconds + converted_frames as f64 / f64::from(spec.sample_rate);
+        *fallback_seconds = frame_end_seconds;
+        if frame_start_seconds >= source_end_seconds {
+            return Ok(true);
+        }
+        let overlap_start = frame_start_seconds.max(source_start_seconds);
+        let overlap_end = frame_end_seconds.min(source_end_seconds);
+        if overlap_start < overlap_end {
+            let source_frame =
+                seconds_to_frames(overlap_start - frame_start_seconds, spec.sample_rate)? as usize;
+            let mut frames =
+                seconds_to_frames(overlap_end - overlap_start, spec.sample_rate)? as usize;
+            frames = frames.min(converted_frames.saturating_sub(source_frame));
+            let destination_frame = output_offset_frames
+                .checked_add(seconds_to_frames(
+                    overlap_start - source_start_seconds,
+                    spec.sample_rate,
+                )?)
+                .ok_or(AudioFinalizeError::TimelineTooLarge)?;
+            let channels = usize::from(spec.channels);
+            let samples = converted.plane::<f32>(0);
+            add_samples(
+                mixed,
+                destination_frame,
+                &samples[source_frame * channels..(source_frame + frames) * channels],
+                spec.channels,
+            )?;
+        }
+    }
+    Ok(false)
 }
 
 fn mix_chunk(
@@ -622,6 +920,8 @@ mod tests {
                 source: "room.mkv".to_owned(),
                 start_seconds: 1.0 / 8_000.0,
                 duration_seconds: 2.0 / 8_000.0,
+                music_event: String::new(),
+                music_timeline_milliseconds: 0,
             }],
             &mixed,
         )
@@ -635,5 +935,76 @@ mod tests {
             .collect();
         assert_eq!(values.len(), 4);
         assert!(values.iter().all(|value| (*value - 0.5).abs() < 1e-6));
+    }
+
+    #[test]
+    fn mapped_bgm_is_decoded_from_its_saved_timeline_position() {
+        if std::env::var_os("MQOL_TEST_FFMPEG").is_none() {
+            return;
+        }
+        ffmpeg::init().unwrap();
+        let directory = tempfile::tempdir().unwrap();
+        let source_pcm = directory.path().join("source.f32");
+        let source_audio = directory.path().join("bgm.m4a");
+        let sample_rate = 48_000_u32;
+        let channels = 2_u16;
+        let total_frames = sample_rate as u64;
+        let mut pcm = Vec::with_capacity(total_frames as usize * usize::from(channels) * 4);
+        for frame in 0..total_frames {
+            let value = if frame < total_frames / 2 {
+                0.0
+            } else {
+                (frame as f32 * 440.0 * std::f32::consts::TAU / sample_rate as f32).sin() * 0.25
+            };
+            for _ in 0..channels {
+                pcm.extend_from_slice(&value.to_le_bytes());
+            }
+        }
+        fs::write(&source_pcm, pcm).unwrap();
+        encode_aac(
+            &source_pcm,
+            &source_audio,
+            AudioSpec {
+                sample_rate,
+                channels,
+                total_frames,
+            },
+        )
+        .unwrap();
+
+        let event_map = directory.path().join("bgm-map.json");
+        fs::write(&event_map, r#"{"event:/test":"bgm.m4a"}"#).unwrap();
+        let output_mix = directory.path().join("output.f32");
+        let output_audio = directory.path().join("output.m4a");
+        let clips = [FinalizeClip {
+            source: "room.mkv".to_owned(),
+            start_seconds: 0.0,
+            duration_seconds: 0.20,
+            music_event: "event:/test".to_owned(),
+            music_timeline_milliseconds: 600,
+        }];
+        assert!(
+            build_audio_track(
+                &directory.path().join("missing.sfxchunks"),
+                &clips,
+                &output_mix,
+                &output_audio,
+                Some(&event_map),
+            )
+            .unwrap()
+        );
+        let bytes = fs::read(output_mix).unwrap();
+        let samples: Vec<f32> = bytes
+            .chunks_exact(4)
+            .map(|sample| f32::from_le_bytes(sample.try_into().unwrap()))
+            .collect();
+        let rms = (samples
+            .iter()
+            .map(|sample| f64::from(*sample) * f64::from(*sample))
+            .sum::<f64>()
+            / samples.len() as f64)
+            .sqrt();
+        assert!(rms > 0.05, "unexpected reconstructed BGM RMS {rms}");
+        assert!(fs::metadata(output_audio).unwrap().len() > 1_000);
     }
 }

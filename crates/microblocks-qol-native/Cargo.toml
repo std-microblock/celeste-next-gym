@@ -23,7 +23,7 @@ windows = { version = "0.58", features = [
   "Win32_System_Threading",
   "Win32_UI_WindowsAndMessaging",
 ] }
-ffmpeg-next = { version = "9.0.0", optional = true, default-features = false, features = ["codec", "format", "software-scaling"] }
+ffmpeg-next = { version = "9.0.0", optional = true, default-features = false, features = ["codec", "format", "software-scaling", "software-resampling"] }
 
 [dev-dependencies]
 tempfile = "3"
