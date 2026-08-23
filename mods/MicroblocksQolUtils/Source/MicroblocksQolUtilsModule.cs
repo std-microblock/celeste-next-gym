@@ -14,6 +14,10 @@ public sealed class MicroblocksQolUtilsModule : EverestModule {
 
     public override void Load() {
         Logger.Log(LogLevel.Info, "MicroblocksQolUtils", "Loading microblock's QoL Utils");
+        CollabUtils2Bridge.Load();
+        MaterialChapterSelect.Load();
+        MaterialAcrylicRenderer.Load();
+        MaterialUiSmoke.Load();
         NativeCaptureBridge.Initialize(Path.GetDirectoryName(Metadata.DLL));
         NativeCaptureSmoke.Load();
         FrameProfiler.Load();
@@ -27,11 +31,15 @@ public sealed class MicroblocksQolUtilsModule : EverestModule {
         On.Monocle.Engine.Update -= EngineUpdate;
         Everest.Events.Level.OnLoadLevel -= OnLoadLevel;
         NativeCaptureSmoke.Unload();
+        MaterialAcrylicRenderer.Unload();
+        MaterialChapterSelect.Unload();
+        MaterialUiSmoke.Unload();
         NativeCaptureCommands.Unload();
         AutoRecorder.Unload();
         InstantTransitions.Unload();
         FrameProfiler.Unload();
         MiaoNetBridge.Unload();
+        MaterialUi.Dispose();
         SystemTtfFont.Dispose();
     }
 
@@ -42,5 +50,6 @@ public sealed class MicroblocksQolUtilsModule : EverestModule {
     private static void EngineUpdate(On.Monocle.Engine.orig_Update orig, Engine self, Microsoft.Xna.Framework.GameTime gameTime) {
         FrameProfiler.BeginFrame();
         orig(self, gameTime);
+        MaterialUiSmoke.Update();
     }
 }

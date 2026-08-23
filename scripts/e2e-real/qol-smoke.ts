@@ -79,11 +79,14 @@ try {
     port: modPort.port,
   });
   const logPath = resolve(gameInstall.gameRoot, "log.txt");
-  const deadline = Date.now() + 15_000;
+  // The material smoke deliberately waits for one fully visible second after the
+  // Overworld has finished entering, which can be later than native capture on CI.
+  const deadline = Date.now() + 30_000;
   let log = "";
   while (Date.now() < deadline) {
     if (existsSync(logPath)) log = readFileSync(logPath, "utf8");
     if (log.includes("QOL_CAPTURE_SMOKE_PASSED")
+        && log.includes("QOL_MATERIAL_UI_SMOKE_PASSED")
         && existsSync(captureOutput)
         && statSync(captureOutput).size >= 1_000
         && existsSync(finalizedOutput)
@@ -98,6 +101,9 @@ try {
   }
   if (!log.includes("QOL_CAPTURE_SMOKE_PASSED")) {
     throw new Error("Native scap/FFmpeg capture smoke marker was not found in log.txt");
+  }
+  if (!log.includes("QOL_MATERIAL_UI_SMOKE_PASSED")) {
+    throw new Error("Material You/acrylic chapter-select smoke marker was not found in log.txt");
   }
   if (!existsSync(captureOutput) || statSync(captureOutput).size < 1_000) {
     throw new Error("Native scap/FFmpeg capture smoke output was not created");

@@ -27,6 +27,22 @@ public sealed class QolSettings : EverestModuleSettings {
     [DefaultValue(true)]
     public bool Enabled { get; set; } = true;
 
+    [DefaultValue(true)]
+    public bool MaterialYouInterface { get; set; } = true;
+
+    [DefaultValue(true)]
+    public bool MaterialAcrylicBackground { get; set; } = true;
+
+    [SettingRange(1, 12)]
+    [DefaultValue(7)]
+    public int MaterialAcrylicBlurStrength { get; set; } = 7;
+
+    [DefaultValue(false)]
+    public bool ReplaceChapterSelect { get; set; }
+
+    [DefaultValue(false)]
+    public bool ChapterSelectShowCollabMaps { get; set; }
+
     [DefaultValue("Microsoft YaHei UI")]
     public string FontFamily { get; set; } = "Microsoft YaHei UI";
 

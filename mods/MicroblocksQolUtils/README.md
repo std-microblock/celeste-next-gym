@@ -7,6 +7,17 @@ Implemented:
 
 - HUD entity and settings model.
 - Direct Windows TTF/OTF glyph rasterization with a bounded, lazy GPU cache.
+- Material You surfaces for the HUD and chapter browser, using the selected
+  chapter's accent color and the same direct system-font renderer.
+- Toggleable GPU acrylic rendering for the custom chapter browser. The
+  Overworld is rendered into bounded full-screen targets, blurred with
+  Celeste's own Gaussian blur shader, and composited behind translucent cards.
+- An opt-in replacement chapter browser with keyboard, controller, mouse,
+  wheel, and level-set navigation. It honors vanilla Celeste unlock limits and
+  routes selections through the normal `OuiChapterPanel` launch flow.
+- Optional CollabUtils2 `LobbyHelper` interop. Lobby entries stay visible while
+  hidden Collab maps and gyms are omitted by default; an advanced setting can
+  expose them for direct selection without making CollabUtils2 a dependency.
 - Rolling FPS display.
 - Persistent watched-player list and Everest console commands.
 - Circular/square current-room minimap rendered from the live solid-tile grid.

@@ -20,9 +20,16 @@ public static class MiniMapRenderer {
         float radius = size / 2f;
         Vector2 center = new(ScreenWidth - Margin - radius, Margin + radius);
         float pixelsPerWorld = 0.24f * settings.MiniMapZoom;
-        Color background = Color.Black * (settings.MiniMapBackgroundOpacity / 10f);
+        MaterialPalette palette = MaterialPalette.FromSeed(
+            AreaData.Get(level.Session.Area)?.TitleBaseColor ?? new Color(126, 99, 184)
+        );
+        Color background = settings.MaterialYouInterface
+            ? palette.SurfaceHigh * (settings.MiniMapBackgroundOpacity / 10f)
+            : Color.Black * (settings.MiniMapBackgroundOpacity / 10f);
         if (settings.MiniMapBackground) {
             if (settings.MiniMapShape == MiniMapShape.Circle) FillCircle(center, radius, background);
+            else if (settings.MaterialYouInterface)
+                MaterialUi.RoundedRect(center.X - radius, center.Y - radius, size, size, 24f, background);
             else Draw.Rect(center.X - radius, center.Y - radius, size, size, background);
         }
 
@@ -33,8 +40,10 @@ public static class MiniMapRenderer {
         }
         DrawLocalPlayer(center);
 
-        Color border = Color.White * 0.8f;
+        Color border = settings.MaterialYouInterface ? palette.Outline : Color.White * 0.8f;
         if (settings.MiniMapShape == MiniMapShape.Circle) Draw.Circle(center, radius, border, 64);
+        else if (settings.MaterialYouInterface)
+            MaterialUi.RoundedOutline(center.X - radius, center.Y - radius, size, size, 24f, 2f, border);
         else Draw.HollowRect(center.X - radius, center.Y - radius, size, size, border);
 
         List<string> data = [];
@@ -45,13 +54,31 @@ public static class MiniMapRenderer {
         if (settings.ShowMapPlayerCount) data.Add($"{MiaoNetBridge.PlayersInMap} 人");
         if (settings.ShowClock) data.Add(DateTime.Now.ToString("HH:mm:ss"));
         if (data.Count > 0) {
+            string text = string.Join("  ·  ", data);
+            Vector2 textPosition = center + new Vector2(0f, radius + 10f);
+            Color textColor = Color.White;
+            float textOutline = 1.25f;
+            if (settings.MaterialYouInterface) {
+                Vector2 measured = SystemTtfFont.Measure(text, 0.42f);
+                MaterialUi.AcrylicSurface(
+                    textPosition.X - measured.X / 2f - 12f,
+                    textPosition.Y - 5f,
+                    measured.X + 24f,
+                    measured.Y + 10f,
+                    14f,
+                    palette.SurfaceHigh * 0.92f,
+                    palette.Outline
+                );
+                textColor = palette.OnSurface;
+                textOutline = 0f;
+            }
             SystemTtfFont.Draw(
-                string.Join("  ·  ", data),
-                center + new Vector2(0f, radius + 10f),
+                text,
+                textPosition,
                 new Vector2(0.5f, 0f),
                 0.42f,
-                Color.White,
-                1.25f
+                textColor,
+                textOutline
             );
         }
     }
