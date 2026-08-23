@@ -26,8 +26,6 @@ public static class MiaoNetBridge {
     private static bool commandInstalled;
     private static int retryFrames;
     private static int? originalOffscreenOpacity;
-    private static string? originalOffscreenProperty;
-    private static bool loggedLegacyNameFallback;
     private static PixelFont? avatarFont;
     private static float avatarBaseSize;
     private static Type? emojiType;
@@ -68,7 +66,6 @@ public static class MiaoNetBridge {
         avatarFont = null;
         emojiType = null;
         commandInstalled = false;
-        loggedLegacyNameFallback = false;
     }
 
     public static bool TryDrawAvatar(int playerId, Vector2 center, float size, Color color) {
@@ -194,24 +191,15 @@ public static class MiaoNetBridge {
         try {
             Type? moduleType = assembly?.GetType("Celeste.Mod.MiaoNet.MiaoNetModule");
             object? settings = moduleType?.GetProperty("Settings", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
-            PropertyInfo? property = settings?.GetType().GetProperty("OffScreenPlayerNameOpacity")
-                ?? settings?.GetType().GetProperty("PlayerNameOpacity");
+            PropertyInfo? property = settings?.GetType().GetProperty("OffScreenPlayerNameOpacity");
             if (settings is null || property is null) return;
             int current = (int)property.GetValue(settings)!;
             if (MicroblocksQolUtilsModule.Settings.HideMiaoNetOffscreenNames) {
                 originalOffscreenOpacity ??= current;
-                originalOffscreenProperty ??= property.Name;
-                if (property.Name == "PlayerNameOpacity" && !loggedLegacyNameFallback) {
-                    loggedLegacyNameFallback = true;
-                    Logger.Log(
-                        LogLevel.Warn,
-                        "MicroblocksQolUtils/MiaoNet",
-                        "This MiaoNet version has no separate off-screen name opacity; hiding its native player names while the option is enabled."
-                    );
-                }
                 if (current != 0) property.SetValue(settings, 0);
             } else if (originalOffscreenOpacity is int restore) {
-                RestoreOffscreenNameSetting(settings, restore);
+                property.SetValue(settings, restore);
+                originalOffscreenOpacity = null;
             }
         } catch (Exception exception) {
             Logger.Log(LogLevel.Warn, "MicroblocksQolUtils/MiaoNet", $"Cannot update offscreen-name opacity: {exception.Message}");
@@ -223,15 +211,9 @@ public static class MiaoNetBridge {
         try {
             Type? moduleType = assembly.GetType("Celeste.Mod.MiaoNet.MiaoNetModule");
             object? settings = moduleType?.GetProperty("Settings", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
-            RestoreOffscreenNameSetting(settings, restore);
+            settings?.GetType().GetProperty("OffScreenPlayerNameOpacity")?.SetValue(settings, restore);
         } catch { }
-    }
-
-    private static void RestoreOffscreenNameSetting(object? settings, int restore) {
-        if (settings is not null && originalOffscreenProperty is { } propertyName)
-            settings.GetType().GetProperty(propertyName)?.SetValue(settings, restore);
         originalOffscreenOpacity = null;
-        originalOffscreenProperty = null;
     }
 
     private static bool TryResolveAvatarFont() {
