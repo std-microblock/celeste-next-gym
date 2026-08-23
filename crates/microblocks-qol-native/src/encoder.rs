@@ -218,6 +218,16 @@ impl VideoFileEncoder {
     }
 
     pub fn encode(&mut self, captured: &CapturedFrame) -> Result<(), EncoderError> {
+        let origin = *self
+            .origin_unix_nanos
+            .get_or_insert(captured.captured_at_unix_nanos);
+        let elapsed = captured.captured_at_unix_nanos.saturating_sub(origin) as u128;
+        let timestamp =
+            ((elapsed * self.fps as u128) / 1_000_000_000_u128).min(i64::MAX as u128) as i64;
+        if timestamp <= self.last_pts {
+            return Ok(());
+        }
+
         if captured.width != self.input_width || captured.height != self.input_height {
             self.input_width = captured.width;
             self.input_height = captured.height;
@@ -239,15 +249,6 @@ impl VideoFileEncoder {
             .run(&input, &mut self.converted)
             .map_err(EncoderError::Convert)?;
 
-        let origin = *self
-            .origin_unix_nanos
-            .get_or_insert(captured.captured_at_unix_nanos);
-        let elapsed = captured.captured_at_unix_nanos.saturating_sub(origin) as u128;
-        let timestamp =
-            ((elapsed * self.fps as u128) / 1_000_000_000_u128).min(i64::MAX as u128) as i64;
-        if timestamp <= self.last_pts {
-            return Ok(());
-        }
         self.last_pts = timestamp;
         self.converted.set_pts(Some(timestamp));
         self.encoder

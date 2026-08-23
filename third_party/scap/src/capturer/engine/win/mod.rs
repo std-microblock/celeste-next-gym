@@ -31,6 +31,8 @@ struct Capturer {
     pub tx: mpsc::Sender<Frame>,
     pub crop: Option<Area>,
     pub start_time: Option<(i64, SystemTime)>,
+    pub target_fps: u32,
+    pub last_output_frame: Option<u64>,
 }
 
 #[derive(Clone)]
@@ -54,6 +56,8 @@ impl GraphicsCaptureApiHandler for Capturer {
             tx: context.flags.tx,
             crop: context.flags.crop,
             start_time: None,
+            target_fps: context.flags.target_fps,
+            last_output_frame: None,
         })
     }
 
@@ -69,6 +73,20 @@ impl GraphicsCaptureApiHandler for Capturer {
             .start_time
             .get_or_insert_with(|| (frame_ticks, SystemTime::now()));
         let elapsed_ticks = frame_ticks.saturating_sub(origin_ticks).max(0) as u64;
+        // WGC can deliver at the source presentation rate even when the caller requested a
+        // lower recording rate. MotionSmoothing commonly presents at 120+ FPS, so copying every
+        // callback to CPU memory would make a 60 FPS recording compete with the game for twice
+        // the required GPU/CPU bandwidth. Bucket by the requested output cadence before touching
+        // the frame buffer and forward at most one source frame per encoded frame.
+        let output_frame = ((elapsed_ticks as u128 * self.target_fps as u128) / 10_000_000_u128)
+            .min(u64::MAX as u128) as u64;
+        if self
+            .last_output_frame
+            .is_some_and(|last| output_frame <= last)
+        {
+            return Ok(());
+        }
+        self.last_output_frame = Some(output_frame);
         let display_time = origin_time
             .checked_add(Duration::from_nanos(elapsed_ticks.saturating_mul(100)))
             .unwrap_or(origin_time);
@@ -164,6 +182,7 @@ impl WCStream {
 struct FlagStruct {
     pub tx: mpsc::Sender<Frame>,
     pub crop: Option<Area>,
+    pub target_fps: u32,
 }
 
 #[derive(Debug)]
@@ -200,18 +219,30 @@ pub fn create_capturer(
         DrawBorderSettings::Default
     };
 
+    // Prefer throttling in the compositor as well as in the callback above. The callback-side
+    // bucket remains necessary for older Windows builds and as a hard upper bound.
+    let minimum_update_interval =
+        if GraphicsCaptureApi::is_minimum_update_interval_supported().unwrap_or(false) {
+            MinimumUpdateIntervalSettings::Custom(Duration::from_secs_f64(
+                1.0 / options.fps.max(1) as f64,
+            ))
+        } else {
+            MinimumUpdateIntervalSettings::Default
+        };
+
     let settings = match target {
         Target::Display(display) => Settings::Display(WCSettings::new(
             WCMonitor::from_raw_hmonitor(display.raw_handle.0),
             show_cursor,
             draw_border,
             SecondaryWindowSettings::Default,
-            MinimumUpdateIntervalSettings::Default,
+            minimum_update_interval,
             DirtyRegionSettings::Default,
             color_format,
             FlagStruct {
                 tx: tx.clone(),
                 crop: Some(get_crop_area(options)),
+                target_fps: options.fps.max(1),
             },
         )),
         Target::Window(window) => Settings::Window(WCSettings::new(
@@ -219,12 +250,13 @@ pub fn create_capturer(
             show_cursor,
             draw_border,
             SecondaryWindowSettings::Default,
-            MinimumUpdateIntervalSettings::Default,
+            minimum_update_interval,
             DirtyRegionSettings::Default,
             color_format,
             FlagStruct {
                 tx: tx.clone(),
                 crop: Some(get_crop_area(options)),
+                target_fps: options.fps.max(1),
             },
         )),
     };
