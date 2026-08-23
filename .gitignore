@@ -18,3 +18,4 @@ dist/
 /mods/CelesteGymTraining/Build/*.dll
 /mods/CelesteGymTraining/Build/*.so
 /mods/CelesteGymTraining/Build/*.dylib
+/mods/MicroblocksQolUtils/Build/
