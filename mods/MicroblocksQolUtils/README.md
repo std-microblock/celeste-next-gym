@@ -20,8 +20,9 @@ Implemented:
 - Near-instant room transitions (camera/player/light interpolation removed).
 - Opt-in frame-spike sampling grouped by owning assembly for entity Update and
   Render, with an on-screen top offender and CSV logs under LocalAppData.
-- Windows FFmpeg recording to disk (no frame buffering in managed memory),
-  deleting failed attempts and asynchronously rendering only successful rooms.
+- A Rust `cdylib` capture backend built on `scap`/WGC. Captured BGRA frames stay
+  outside managed memory and pass through a fixed-capacity latest-frame queue;
+  a slow encoder cannot grow memory without bound.
 - Timeline cuts for SpeedrunTool save/load and respawn-point triggers. A saved
   prefix is trimmed at its exact timestamp, so deaths and load freezes are not
   included in the final video.
@@ -33,10 +34,12 @@ Planned/in progress:
 
 ## Recorder setup
 
-Put FFmpeg at `Native/win-x64/ffmpeg.exe`, set `FfmpegPath`, or expose it on
-`PATH`. Capture uses Windows `gdigrab` and records the window title configured
-by `RecordingWindowTitle` (default `Celeste`). `RecordingEncoder` defaults to
-`h264_nvenc`; use `h264_qsv`, `h264_amf`, or `libx264` as appropriate.
+The native capture bridge selects the window configured by
+`RecordingWindowTitle` (default `Celeste`). During development, the Everest
+commands `qol_capture_probe_start`, `qol_capture_probe_stats`, and
+`qol_capture_probe_stop` exercise the real scap/WGC backend without enabling
+automatic recording. FFmpeg shared-library encoding is the next stage of this
+same native pipeline; the old `gdigrab` process backend is being removed.
 
 FFmpeg cannot isolate FMOD buses by itself. `RecordingAudioDevice` therefore
 names a DirectShow audio capture device. For automatic BGM reconstruction,

@@ -14,6 +14,7 @@ public sealed class MicroblocksQolUtilsModule : EverestModule {
 
     public override void Load() {
         Logger.Log(LogLevel.Info, "MicroblocksQolUtils", "Loading microblock's QoL Utils");
+        NativeCaptureBridge.Initialize(Path.GetDirectoryName(Metadata.DLL));
         FrameProfiler.Load();
         InstantTransitions.Load();
         AutoRecorder.Load(Path.GetDirectoryName(Metadata.DLL) ?? "");
@@ -24,6 +25,7 @@ public sealed class MicroblocksQolUtilsModule : EverestModule {
     public override void Unload() {
         On.Monocle.Engine.Update -= EngineUpdate;
         Everest.Events.Level.OnLoadLevel -= OnLoadLevel;
+        NativeCaptureCommands.Unload();
         AutoRecorder.Unload();
         InstantTransitions.Unload();
         FrameProfiler.Unload();

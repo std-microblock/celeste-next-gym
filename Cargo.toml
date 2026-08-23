@@ -4,6 +4,7 @@ members = [
   "crates/celeste-wasm",
   "crates/celeste-fuzz",
   "crates/celeste-gym-native",
+  "crates/microblocks-qol-native",
 ]
 resolver = "2"
 
