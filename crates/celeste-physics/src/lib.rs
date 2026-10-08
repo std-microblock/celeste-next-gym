@@ -42,9 +42,9 @@ pub use sim::{
 };
 pub use types::{
     BounceBlockSnapshot, BumperSnapshot, CassetteBlockSnapshot, CassetteManagerSnapshot,
-    CloudSnapshot, CoreMode, ExitBlockSnapshot, FallingBlockSnapshot, GliderSnapshot,
-    HeartGemSnapshot, InputState, InvisibleBarrierSnapshot, KillboxSnapshot, LookoutSnapshot,
-    MoveBlockSnapshot, PlayerSnapshot, PlayerState, RefillSnapshot, RisingLavaSnapshot,
-    SandwichLavaSnapshot, SeekerSnapshot, SpinnerSnapshot, TempleGateSnapshot, TheoCrystalSnapshot,
-    Vec2, ZipMoverSnapshot,
+    CloudSnapshot, CoreMode, CrushBlockSnapshot, DashBlockSnapshot, ExitBlockSnapshot,
+    FallingBlockSnapshot, GliderSnapshot, HeartGemSnapshot, InputState, InvisibleBarrierSnapshot,
+    KillboxSnapshot, LookoutSnapshot, MoveBlockSnapshot, PlayerSnapshot, PlayerState,
+    RefillSnapshot, RisingLavaSnapshot, SandwichLavaSnapshot, SeekerSnapshot, SpinnerSnapshot,
+    TempleGateSnapshot, TheoCrystalSnapshot, Vec2, ZipMoverSnapshot,
 };

@@ -265,6 +265,7 @@ impl Simulator {
         initialize_exit_blocks(&mut snapshot, &mut runtime_map);
         initialize_invisible_barriers(&mut snapshot, &mut runtime_map);
         initialize_killboxes(&mut snapshot, &mut runtime_map);
+        initialize_crush_and_dash_blocks(&mut snapshot, &mut runtime_map);
         initialize_lookouts(&mut snapshot, &runtime_map);
         position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
         sync_all_platform_static_movers(&snapshot, &mut runtime_map, &static_mover_attachments);
@@ -1316,6 +1317,289 @@ fn advance_killboxes(p: &mut PlayerSnapshot, map: &mut Map) {
     }
 }
 
+/// `Celeste.DashCollisionResults` as returned by the two vanilla Solid entities
+/// the runtime models. `CrushBlock.OnDashed` and `DashBlock.OnDashed` never
+/// return `Bounce` or `NormalOverride`, so those arms do not exist here.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum DashCollision {
+    /// `DashCollisionResults.NormalCollision`: `Player.OnCollideH`/`OnCollideV`
+    /// fall through to their ordinary stop.
+    NormalCollision,
+    /// `Player.cs:3168-3170` / `3266-3268`.
+    Rebound,
+    /// `Player.cs:3174-3176` / `3272-3274`.
+    Ignore,
+}
+
+/// `CrushBlock.cs:37`'s `AttackSequence` wind-up
+/// (`StartShaking(0.4f); yield return 0.4f;`, `CrushBlock.cs:422-423`).
+const CRUSH_BLOCK_WIND_UP: f32 = 0.4;
+
+/// Index of the *first* runtime Solid entity overlapping `rect`, in map entity
+/// order. `Monocle.Entity.CollideFirst<Solid>` walks the scene's `Solid` list in
+/// insertion order, and `LevelLoader` adds `Level.SolidTiles` before
+/// `Level.LoadLevel` adds the room entities (`LevelLoader.cs:271`,
+/// `Level.cs:357`), so a tile hit is `SolidTiles` and never has an
+/// `OnDashCollide`. Callers exclude static tile solids before using this.
+fn first_solid_entity_at(map: &Map, rect: Rect) -> Option<usize> {
+    map.entities.iter().position(|entity| {
+        is_solid_entity(entity.kind)
+            && solid_is_collidable(entity)
+            && entity.bounds.intersects(rect)
+    })
+}
+
+/// Position of `entity_index` inside the per-kind state vector this module
+/// keeps in `PlayerSnapshot`, matching the `initialize_*` filter order.
+fn kind_state_index(map: &Map, entity_index: usize, kind: EntityKind) -> Option<usize> {
+    map.entities[..=entity_index]
+        .iter()
+        .filter(|entity| entity.kind == kind)
+        .count()
+        .checked_sub(1)
+}
+
+/// `CrushBlock.CanActivate` (`CrushBlock.cs:284-303`). `axes` limits which
+/// directions the crusher may travel, `giant` refuses leftward travel for a
+/// chilled-out 48x48 crusher, and a block already travelling in `direction`
+/// cannot start the same attack twice.
+fn crush_block_can_activate(
+    entity: &crate::Entity,
+    state: &crate::CrushBlockSnapshot,
+    direction: Vec2,
+) -> bool {
+    let axes = entity.direction.x as i32;
+    let chill_out = entity.direction.y != 0.0;
+    let giant = entity.bounds.width >= 48.0 && entity.bounds.height >= 48.0 && chill_out;
+    if giant && direction.x <= 0.0 {
+        return false;
+    }
+    if state.can_activate && state.crush_dir != direction {
+        if direction.x != 0.0 && axes == 2 {
+            return false;
+        }
+        if direction.y != 0.0 && axes == 1 {
+            return false;
+        }
+        return true;
+    }
+    false
+}
+
+/// `Solid.OnDashCollide` for the two vanilla Solids the runtime models.
+/// Returns `None` when the hit Solid has no callback, which leaves
+/// `Player.OnCollideH`/`OnCollideV` on their ordinary path.
+///
+/// Not modelled: `CrushBlock`'s own `AttackSequence` travel (240 px/s toward the
+/// player, the `MoveHCheck`/`MoveVCheck` crush, the 60 px/s return leg and the
+/// squish kill) and `DashBlock.Break`'s debris. A crusher therefore stays where
+/// the room put it, and only its `OnDashCollide` decision and re-arm are
+/// reproduced.
+fn on_dash_collide(
+    p: &mut PlayerSnapshot,
+    map: &Map,
+    entity_index: usize,
+    direction: Vec2,
+) -> Option<DashCollision> {
+    let entity = &map.entities[entity_index];
+    match entity.kind {
+        EntityKind::CrushBlock => {
+            let index = kind_state_index(map, entity_index, EntityKind::CrushBlock)?;
+            let state = *p.crush_blocks.get(index)?;
+            // `CrushBlock.OnDashed` (`CrushBlock.cs:274-282`) passes
+            // `-direction` to both `CanActivate` and `Attack`.
+            let towards_player = Vec2::new(-direction.x, -direction.y);
+            if crush_block_can_activate(entity, &state, towards_player) {
+                let state = &mut p.crush_blocks[index];
+                state.crush_dir = towards_player;
+                state.can_activate = false;
+                state.wind_up_timer = CRUSH_BLOCK_WIND_UP;
+                return Some(DashCollision::Rebound);
+            }
+            Some(DashCollision::NormalCollision)
+        }
+        EntityKind::DashBlock => {
+            // `DashBlock.OnDashed` (`DashBlock.cs:131-139`).
+            let can_dash = entity.direction.x != 0.0;
+            if !can_dash && p.state != PlayerState::RedDash && p.state != PlayerState::SummitLaunch
+            {
+                return Some(DashCollision::NormalCollision);
+            }
+            let index = kind_state_index(map, entity_index, EntityKind::DashBlock)?;
+            let state = p.dash_blocks.get_mut(index)?;
+            if !state.broken {
+                state.broken = true;
+                // `DashBlock.Break` sets `Collidable = false` and `RemoveSelf`/
+                // `RemoveAndFlagAsGone`; the `Removed` override then runs
+                // `Celeste.Freeze(0.05f)` (`DashBlock.cs:80-84,114-122`).
+                p.freeze_timer = 0.05;
+            }
+            Some(DashCollision::Rebound)
+        }
+        _ => None,
+    }
+}
+
+/// `Player.OnCollideH`'s and `Player.OnCollideV`'s `OnDashCollide` branch
+/// (`Player.cs:3155-3177`, `3255-3281`).
+///
+/// `step_sign` is `data.Direction` on the blocked whole-pixel step and
+/// `rect` is the collider position that was blocked. `None` means the branch
+/// does not apply and the caller keeps its ordinary stop.
+fn try_dash_collide(
+    p: &mut PlayerSnapshot,
+    map: &Map,
+    rect: Rect,
+    horizontal: bool,
+    step_sign: f32,
+) -> Option<DashCollision> {
+    if p.state == PlayerState::StarFly || p.state == PlayerState::DreamDash {
+        return None;
+    }
+    if !dash_attacking(p) {
+        // `Player.cs:3276-3280`: outside the dash the callback still runs for
+        // state 10 and the caller returns without an ordinary stop.
+        if !horizontal && p.state == PlayerState::SummitLaunch && !map.static_solid_at(rect) {
+            if let Some(index) = first_solid_entity_at(map, rect) {
+                let direction = Vec2::new(0.0, step_sign);
+                on_dash_collide(p, map, index, direction);
+                return Some(DashCollision::Ignore);
+            }
+        }
+        return None;
+    }
+    let dash_sign = if horizontal {
+        p.dash_dir.x.signum()
+    } else {
+        p.dash_dir.y.signum()
+    };
+    if step_sign != dash_sign {
+        return None;
+    }
+    if map.static_solid_at(rect) {
+        return None;
+    }
+    let index = first_solid_entity_at(map, rect)?;
+    let direction = if horizontal {
+        Vec2::new(step_sign, 0.0)
+    } else {
+        Vec2::new(0.0, step_sign)
+    };
+    let result = on_dash_collide(p, map, index, direction)?;
+    // `Player.cs:3158-3165` remaps `NormalOverride` (never returned here) and
+    // then replaces any other result with `Ignore` while state 5 is active.
+    if result == DashCollision::NormalCollision && p.state == PlayerState::RedDash {
+        return Some(DashCollision::Ignore);
+    }
+    Some(result)
+}
+
+/// `Player.Rebound(int direction = 0)` (`Player.cs:2784-2800`).
+///
+/// `Player.lowFrictionStopTimer` and `Player.gliderBoostTimer` do not exist in
+/// this simulator's snapshot, so those two writes are the only ones the model
+/// cannot reproduce; the remaining fields are exact. The final
+/// `StateMachine.State = 0` goes through `Monocle/StateMachine.cs:36-62`, so it
+/// only runs `DashEnd`/`RedDashEnd` and `NormalBegin` when the state actually
+/// changes.
+fn rebound(p: &mut PlayerSnapshot, direction: f32) {
+    p.speed = Vec2::new(direction * 120.0, -120.0);
+    p.var_jump_speed = p.speed.y;
+    p.var_jump_timer = 0.15;
+    p.auto_jump = true;
+    p.auto_jump_timer = 0.0;
+    p.dash_attack_timer = 0.0;
+    p.wall_slide_timer = 1.2;
+    p.wall_boost_timer = 0.0;
+    p.launched = false;
+    p.force_move_x_timer = 0.0;
+    if p.state == PlayerState::Dash {
+        p.demo_dashed = false;
+    }
+    if p.state != PlayerState::Normal {
+        enter_normal(p);
+    }
+}
+
+/// Per-entity runtime state for the two vanilla dash-collision Solids, plus
+/// `DashBlock.Awake`'s remove-if-the-player-starts-inside rule
+/// (`DashBlock.cs:74-77`).
+///
+/// Known limitation: a `permanent` `DashBlock` that was already broken earlier
+/// in the session is not observable, because `Break` records it in
+/// `Session.DoNotLoad` (`DashBlock.cs:116-118,125-129`) and the trace exports
+/// only `Player` fields. Leaving permanent blocks non-collidable is *not* a fix:
+/// measured on `trace-202-v3` it loses three `ok` segments
+/// (`4-GoldenRidge|0|d-00|56604`, `6-Reflection|0|04|88986`,
+/// `6-Reflection|0|04|319789`) for the one it recovers.
+fn initialize_crush_and_dash_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
+    let player = current_player_rect(p, p.pos.x, p.pos.y);
+    let crush_blocks = map
+        .entities
+        .iter()
+        .filter(|entity| entity.kind == EntityKind::CrushBlock)
+        .count();
+    p.crush_blocks.truncate(crush_blocks);
+    while p.crush_blocks.len() < crush_blocks {
+        p.crush_blocks.push(crate::CrushBlockSnapshot::default());
+    }
+    let dash_blocks = map
+        .entities
+        .iter()
+        .filter(|entity| entity.kind == EntityKind::DashBlock)
+        .count();
+    p.dash_blocks.truncate(dash_blocks);
+    while p.dash_blocks.len() < dash_blocks {
+        p.dash_blocks.push(crate::DashBlockSnapshot::default());
+    }
+    let mut dash_index = 0usize;
+    for entity in &mut map.entities {
+        if entity.kind != EntityKind::DashBlock {
+            continue;
+        }
+        let index = dash_index;
+        dash_index += 1;
+        if p.dash_blocks[index].broken || entity.bounds.intersects(player) {
+            p.dash_blocks[index].broken = true;
+            park_entity(entity);
+        }
+    }
+}
+
+/// One-frame-deferred consequences of the dash-collision path: a broken
+/// `DashBlock` stops being collidable, and an activated `CrushBlock` re-arms
+/// `CRUSH_BLOCK_WIND_UP` seconds later unless it is `chillout`.
+fn advance_crush_and_dash_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
+    let frame_delta_time = p.frame_delta_time;
+    let mut crush_index = 0usize;
+    let mut dash_index = 0usize;
+    for entity in &mut map.entities {
+        match entity.kind {
+            EntityKind::CrushBlock => {
+                let index = crush_index;
+                crush_index += 1;
+                let state = &mut p.crush_blocks[index];
+                if state.wind_up_timer > 0.0 {
+                    state.wind_up_timer = (state.wind_up_timer - frame_delta_time).max(0.0);
+                    // `AttackSequence`: `yield return 0.4f; if (!chillOut) {
+                    // canActivate = true; }` (`CrushBlock.cs:423-427`).
+                    if state.wind_up_timer <= 0.0 && entity.direction.y == 0.0 {
+                        state.can_activate = true;
+                    }
+                }
+            }
+            EntityKind::DashBlock => {
+                let index = dash_index;
+                dash_index += 1;
+                if p.dash_blocks[index].broken && solid_is_collidable(entity) {
+                    park_entity(entity);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
 fn advance_refills(p: &mut PlayerSnapshot, map: &mut Map) {
     let mut refill_index = 0usize;
     for entity in &mut map.entities {
@@ -2359,6 +2643,8 @@ fn solid_collision_env(map: &Map, pusher_index: usize) -> SolidCollisionEnv {
         if matches!(
             entity.kind,
             EntityKind::BounceBlock
+                | EntityKind::CrushBlock
+                | EntityKind::DashBlock
                 | EntityKind::DreamBlock
                 | EntityKind::FallingBlock
                 | EntityKind::MoveBlock
@@ -4994,6 +5280,7 @@ fn step(
     // Player on an ordinary frame. Its only active Update is therefore run
     // before either Player.Update or the transition coroutine moves Player.
     advance_invisible_barriers(p, map);
+    advance_crush_and_dash_blocks(p, map);
     if p.transition_timer > 0.0 {
         update_transition(p, map);
         advance_sandwich_lavas(p, map);
@@ -7941,6 +8228,18 @@ fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount:
                 break;
             }
             if horizontal {
+                // `Player.OnCollideH`'s `OnDashCollide` branch runs before the
+                // dash corner correction (`Player.cs:3155-3177`). A `Rebound`
+                // or `Ignore` returns out of `OnCollideH`, so neither the
+                // correction nor the ordinary `Speed.X = 0` stop may run.
+                match try_dash_collide(p, map, next, true, sign as f32) {
+                    Some(DashCollision::Rebound) => {
+                        rebound(p, -p.speed.x.signum());
+                        return;
+                    }
+                    Some(DashCollision::Ignore) => return,
+                    _ => {}
+                }
                 if matches!(p.state, PlayerState::Dash | PlayerState::RedDash)
                     && p.speed.y == 0.0
                     && p.speed.x != 0.0
@@ -7983,6 +8282,18 @@ fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount:
                     p.state_timer = 0.1;
                 }
             } else {
+                // `Player.OnCollideV`'s `OnDashCollide` branch runs before the
+                // rising-bonk and falling-correction handling
+                // (`Player.cs:3255-3281`). `Rebound()` there takes the default
+                // `direction = 0` argument, so `Speed.X` is zeroed.
+                match try_dash_collide(p, map, next, false, sign as f32) {
+                    Some(DashCollision::Rebound) => {
+                        rebound(p, 0.0);
+                        return;
+                    }
+                    Some(DashCollision::Ignore) => return,
+                    _ => {}
+                }
                 if sign < 0 && p.state != PlayerState::StarFly && p.speed.y < 0.0 {
                     // Player.cs:3358-3388: a rising ceiling collision slides the
                     // player sideways onto the first free column one pixel up.
@@ -8137,6 +8448,8 @@ fn is_solid_entity(kind: EntityKind) -> bool {
         kind,
         EntityKind::BounceBlock
             | EntityKind::CassetteBlock
+            | EntityKind::CrushBlock
+            | EntityKind::DashBlock
             | EntityKind::DreamBlock
             | EntityKind::ExitBlock
             | EntityKind::FallingBlock
@@ -20178,5 +20491,169 @@ mod tests {
         assert!((normal.speed.x - expected_normal).abs() < 0.001);
         assert!((cold.speed.x - expected_cold).abs() < 0.001);
         assert!((cold.speed.x - normal.speed.x - RUN_REDUCE * 0.7 * DT).abs() < 0.001);
+    }
+
+    fn dash_collide_block_map(kind: EntityKind, bounds: Rect, direction: Vec2) -> Map {
+        Map {
+            entities: vec![crate::Entity {
+                kind,
+                bounds,
+                direction,
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: match kind {
+                    EntityKind::CrushBlock => "crushBlock".to_owned(),
+                    _ => "dashBlock".to_owned(),
+                },
+            }],
+            ..Map::default()
+        }
+    }
+
+    /// `CrushBlock` is a `Solid` (`CrushBlock.cs:9,85-87`) and its
+    /// `OnDashCollide` rebounds a dash that `CanActivate` accepts
+    /// (`CrushBlock.cs:274-282`). `Player.OnCollideH` then runs
+    /// `Rebound(-Math.Sign(Speed.X))` (`Player.cs:3168-3170`), i.e.
+    /// `Speed = (-120, -120)` with `AutoJump`, `varJumpTimer = 0.15` and
+    /// `StateMachine.State = 0` (`Player.cs:2784-2800`).
+    #[test]
+    fn crush_block_rebounds_a_horizontal_dash() {
+        // `axes = Both` (0), `chillout = false`.
+        let map = dash_collide_block_map(
+            EntityKind::CrushBlock,
+            Rect::new(80.0, 96.0, 32.0, 32.0),
+            Vec2::new(0.0, 0.0),
+        );
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 100.0),
+            on_ground: true,
+            dashes: 1,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = [InputState {
+            move_x: 1,
+            ..InputState::default()
+        }; 12];
+        inputs[0].dash_pressed = true;
+        let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
+        let rebound = trace
+            .states
+            .iter()
+            .find(|state| state.auto_jump)
+            .expect("the dash must rebound");
+        assert_eq!(rebound.speed, Vec2::new(-120.0, -120.0));
+        assert_eq!(rebound.state, PlayerState::Normal);
+        assert_eq!(rebound.var_jump_timer, 0.15);
+        assert_eq!(rebound.var_jump_speed, -120.0);
+        assert_eq!(rebound.dash_attack_timer, 0.0);
+        assert_eq!(rebound.wall_slide_timer, 1.2);
+        // `Attack` clears `canActivate` (`CrushBlock.cs:329`).
+        assert!(!rebound.crush_blocks[0].can_activate);
+        assert_eq!(rebound.crush_blocks[0].crush_dir, Vec2::new(-1.0, 0.0));
+    }
+
+    /// `CrushBlock.CanActivate` refuses a direction the `axes` limit forbids
+    /// (`CrushBlock.cs:290-299`), so a horizontal dash into a vertical-only
+    /// crusher is an ordinary `OnCollideH` stop: `Speed.X = 0`, no rebound.
+    #[test]
+    fn vertical_only_crush_block_does_not_rebound_a_horizontal_dash() {
+        // `axes = Vertical` (2).
+        let map = dash_collide_block_map(
+            EntityKind::CrushBlock,
+            Rect::new(80.0, 96.0, 32.0, 32.0),
+            Vec2::new(2.0, 0.0),
+        );
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 100.0),
+            on_ground: true,
+            dashes: 1,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = [InputState {
+            move_x: 1,
+            ..InputState::default()
+        }; 12];
+        inputs[0].dash_pressed = true;
+        let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
+        assert!(
+            trace.states.iter().all(|state| !state.auto_jump),
+            "a vertical-only crusher must not rebound a horizontal dash"
+        );
+        assert!(trace.states.iter().all(|state| state.speed.x <= 240.0));
+        // `CrushBlock.cs:290-291`: `crushDir == direction` blocks a repeat.
+        assert!(
+            trace
+                .states
+                .iter()
+                .all(|state| state.crush_blocks[0].can_activate)
+        );
+    }
+
+    /// `DashBlock.OnDashed` refuses the break while `canDash` is false and the
+    /// player is neither state 5 nor 10 (`DashBlock.cs:133-136`), which leaves
+    /// `Player.cs:3178-3219`'s ordinary stop in place.
+    #[test]
+    fn non_dashable_dash_block_stops_a_normal_dash() {
+        let map = dash_collide_block_map(
+            EntityKind::DashBlock,
+            Rect::new(80.0, 88.0, 16.0, 16.0),
+            // `canDash = false`, `permanent = true`.
+            Vec2::new(0.0, 1.0),
+        );
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 100.0),
+            on_ground: true,
+            dashes: 1,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = [InputState {
+            move_x: 1,
+            ..InputState::default()
+        }; 12];
+        inputs[0].dash_pressed = true;
+        let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
+        let stopped = trace
+            .states
+            .iter()
+            .find(|state| state.speed.x == 0.0 && !state.auto_jump)
+            .expect("the dash must stop against the block");
+        assert_eq!(stopped.state, PlayerState::Normal);
+        assert!(!stopped.dash_blocks[0].broken);
+    }
+
+    /// A `canDash` `DashBlock` breaks and rebounds
+    /// (`DashBlock.cs:131-139`), which also removes the Solid for good.
+    #[test]
+    fn dashable_dash_block_breaks_and_rebounds() {
+        let map = dash_collide_block_map(
+            EntityKind::DashBlock,
+            Rect::new(80.0, 88.0, 16.0, 16.0),
+            // `canDash = true`, `permanent = true`.
+            Vec2::new(1.0, 1.0),
+        );
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 100.0),
+            on_ground: true,
+            dashes: 1,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = [InputState {
+            move_x: 1,
+            ..InputState::default()
+        }; 12];
+        inputs[0].dash_pressed = true;
+        let trace = simulate_trace(p, &inputs, &map, inputs.len() as u32).unwrap();
+        let rebound = trace
+            .states
+            .iter()
+            .find(|state| state.auto_jump)
+            .expect("the block must break and rebound the dash");
+        assert_eq!(rebound.speed, Vec2::new(-120.0, -120.0));
+        assert!(rebound.dash_blocks[0].broken);
+        // `DashBlock.Break` -> `Collidable = false` (`DashBlock.cs:114`), modelled
+        // by parking the collider out of the room on the next `Simulator::new`.
+        let simulator = Simulator::new(rebound.clone(), &map).unwrap();
+        assert!(!solid_is_collidable(&simulator.runtime_entities()[0]));
     }
 }

@@ -308,6 +308,50 @@ pub struct SpinnerSnapshot {
     pub collidable: bool,
 }
 
+/// Per-entity `Celeste.CrushBlock` attack state. `CrushBlock` is a `Solid`
+/// whose `OnDashCollide` (`CrushBlock.cs:274-282`) either turns on the crusher's
+/// attack and returns `DashCollisionResults.Rebound`, or declines and lets
+/// `Player.OnCollideH`/`OnCollideV` run its ordinary stop. The decision comes
+/// from `CanActivate` (`CrushBlock.cs:284-303`), which reads `canActivate`,
+/// `crushDir`, the `axes` limits and the `giant`/`chillout` flags.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct CrushBlockSnapshot {
+    /// `CrushBlock.canActivate` (`CrushBlock.cs:49,290,329,426`). Starts true;
+    /// `Attack` clears it and `AttackSequence` sets it again 0.4 s later unless
+    /// the block is `chillout`.
+    pub can_activate: bool,
+    /// `CrushBlock.crushDir` (`CrushBlock.cs:51,290,328,562`). `Vector2.Zero`
+    /// while idle.
+    pub crush_dir: Vec2,
+    /// Remaining `AttackSequence().yield return 0.4f` wind-up
+    /// (`CrushBlock.cs:423`). The crusher's own 240 px/s travel and its
+    /// return-to-start leg are deliberately not modelled; see `sim.rs`.
+    pub wind_up_timer: f32,
+}
+
+impl Default for CrushBlockSnapshot {
+    fn default() -> Self {
+        Self {
+            // `canActivate = true` in the constructor (`CrushBlock.cs:92`).
+            can_activate: true,
+            crush_dir: Vec2::default(),
+            wind_up_timer: 0.0,
+        }
+    }
+}
+
+/// Per-entity `Celeste.DashBlock` break state (`DashBlock.cs:7`). `OnDashed`
+/// (`DashBlock.cs:131-139`) breaks the block unless `canDash` is false and the
+/// player is neither state 5 nor 10 (`Player.cs:3149-3177`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct DashBlockSnapshot {
+    /// `DashBlock.Break` already ran: `Collidable = false` and either
+    /// `RemoveAndFlagAsGone` or `RemoveSelf` (`DashBlock.cs:114-122`).
+    pub broken: bool,
+}
+
 /// Per-entity Bumper state. `position` is its live Entity.Position (the
 /// centre of the Circle(12) collider), while `sine_counter` is the randomized
 /// SineWave phase which advances at 0.44 radians per second.
@@ -621,6 +665,10 @@ pub struct PlayerSnapshot {
     pub invisible_barriers: Vec<InvisibleBarrierSnapshot>,
     /// Per-entity vanilla Killbox collidability, in map entity order.
     pub killboxes: Vec<KillboxSnapshot>,
+    /// Per-entity vanilla CrushBlock attack state, in map entity order.
+    pub crush_blocks: Vec<CrushBlockSnapshot>,
+    /// Per-entity vanilla DashBlock break state, in map entity order.
+    pub dash_blocks: Vec<DashBlockSnapshot>,
     /// Map-order TheoCrystal index currently held by Player.
     pub holding_theo: Option<u16>,
     /// Map-order Glider index currently held by Player.
@@ -820,6 +868,8 @@ impl Default for PlayerSnapshot {
             exit_blocks: vec![],
             invisible_barriers: vec![],
             killboxes: vec![],
+            crush_blocks: vec![],
+            dash_blocks: vec![],
             holding_theo: None,
             holding_glider: None,
             min_hold_timer: 0.0,

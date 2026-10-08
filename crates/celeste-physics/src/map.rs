@@ -106,6 +106,20 @@ pub enum EntityKind {
     CrystalStaticSpinner,
     /// Vanilla binocular entity. direction.x/y persist onlyY/summit flags.
     Lookout,
+    /// Vanilla `Celeste.CrushBlock : Solid` (`CrushBlock.cs:9`). Its data
+    /// `position`/`width`/`height` go straight into `Solid(Position, width,
+    /// height, safe: false)` (`CrushBlock.cs:85-87`, `146-149`), so the raw
+    /// rectangle is the collider. `direction.x` stores the `axes` enum
+    /// (`Both`=0, `Horizontal`=1, `Vertical`=2) and `direction.y` the `chillout`
+    /// flag; `OnDashCollide` turns on the crusher's attack when the axes allow
+    /// the dash direction (`CrushBlock.cs:274-303`).
+    CrushBlock,
+    /// Vanilla `Celeste.DashBlock : Solid` (`DashBlock.cs:7`). `Solid(position,
+    /// width, height, safe: true)` again takes the raw rectangle
+    /// (`DashBlock.cs:30-32`). `direction.x` stores `canDash` and `direction.y`
+    /// `permanent`; its `OnDashCollide` breaks the block and rebounds
+    /// (`DashBlock.cs:131-139`).
+    DashBlock,
     /// Simulator-native constant-velocity Solid used to exercise Monocle
     /// carrying, pushing, and Player LiftSpeed inheritance independently of a
     /// specific vanilla entity state machine.
@@ -885,6 +899,65 @@ pub(crate) fn encode_celeste_rooms(
                     ],
                     vec![],
                 )),
+                EntityKind::CrushBlock => Some(element(
+                    "crushBlock",
+                    [
+                        (
+                            "axes",
+                            BinaryValue::String(
+                                match entity.direction.x as i32 {
+                                    1 => "Horizontal",
+                                    2 => "Vertical",
+                                    _ => "Both",
+                                }
+                                .to_owned(),
+                            ),
+                        ),
+                        ("chillout", BinaryValue::Bool(entity.direction.y != 0.0)),
+                        ("height", BinaryValue::Int(height)),
+                        ("id", BinaryValue::Int(id)),
+                        ("originX", BinaryValue::Int(0)),
+                        ("originY", BinaryValue::Int(0)),
+                        ("width", BinaryValue::Int(width)),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![],
+                )),
+                EntityKind::DashBlock => Some(element(
+                    "dashBlock",
+                    [
+                        (
+                            "blendin",
+                            BinaryValue::Bool(
+                                map.entity_visuals
+                                    .get(index)
+                                    .and_then(|visual| visual.variant.as_deref())
+                                    == Some("blendin"),
+                            ),
+                        ),
+                        ("canDash", BinaryValue::Bool(entity.direction.x != 0.0)),
+                        ("height", BinaryValue::Int(height)),
+                        ("id", BinaryValue::Int(id)),
+                        ("originX", BinaryValue::Int(0)),
+                        ("originY", BinaryValue::Int(0)),
+                        ("permanent", BinaryValue::Bool(entity.direction.y != 0.0)),
+                        (
+                            "tiletype",
+                            BinaryValue::String(
+                                map.entity_visuals
+                                    .get(index)
+                                    .and_then(|visual| visual.tile)
+                                    .unwrap_or('3')
+                                    .to_string(),
+                            ),
+                        ),
+                        ("width", BinaryValue::Int(width)),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![],
+                )),
                 EntityKind::Decoration | EntityKind::Unknown => None,
             };
             if let Some(encoded) = encoded {
@@ -1307,6 +1380,8 @@ fn map_from_binary_inner(
                     EntityKind::CrystalStaticSpinner
                 }
                 "towerviewer" | "lookout" => EntityKind::Lookout,
+                "crushBlock" => EntityKind::CrushBlock,
+                "dashBlock" => EntityKind::DashBlock,
                 "celesteGymMovingSolid" => EntityKind::MovingSolid,
                 _ => registered.map_or(EntityKind::Unknown, |entry| entry.kind),
             };
@@ -1330,6 +1405,10 @@ fn map_from_binary_inner(
                     EntityKind::Lookout => 4.0,
                     EntityKind::HeartGem => 16.0,
                     EntityKind::RisingLava | EntityKind::SandwichLava => 340.0,
+                    // `CrushBlock` in every vanilla map carries an explicit
+                    // `width`/`height` (24-48 px); `DashBlock` likewise (16-96 px).
+                    EntityKind::CrushBlock => 32.0,
+                    EntityKind::DashBlock => 16.0,
                     _ => 8.0,
                 },
                 |entry| entry.default_width,
@@ -1343,6 +1422,8 @@ fn map_from_binary_inner(
                     EntityKind::RisingLava | EntityKind::SandwichLava => 120.0,
                     EntityKind::CrystalStaticSpinner => 12.0,
                     EntityKind::Lookout => 4.0,
+                    EntityKind::CrushBlock => 32.0,
+                    EntityKind::DashBlock => 16.0,
                     _ => default_w,
                 },
                 |entry| entry.default_height,
@@ -1490,6 +1571,54 @@ fn map_from_binary_inner(
                         Rect::new(ex, ey, raw_width, raw_height),
                         Vec2::new(attr_f32(el, "speedX", 0.0), attr_f32(el, "speedY", 0.0)),
                     ),
+                    // `CrushBlock(EntityData data, Vector2 offset) : this(data.Position
+                    // + offset, data.Width, data.Height, data.Enum("axes", Axes.Both),
+                    // data.Bool("chillout"))` (`CrushBlock.cs:146-149`) forwards the raw
+                    // rectangle straight into `Solid(position, width, height, safe:
+                    // false)` (`CrushBlock.cs:85-87`). `axes` selects
+                    // `canMoveHorizontally`/`canMoveVertically` (`CrushBlock.cs:98-114`)
+                    // and `chillout` disables the return leg and the re-arm
+                    // (`CrushBlock.cs:424-427,564-567`). Both are kept in `direction`
+                    // because `CanActivate` (`CrushBlock.cs:284-303`) needs them at
+                    // collision time.
+                    "crushBlock" => (
+                        Rect::new(ex, ey, raw_width, raw_height),
+                        Vec2::new(
+                            match attr_text(el, "axes").unwrap_or("Both") {
+                                "Horizontal" => 1.0,
+                                "Vertical" => 2.0,
+                                _ => 0.0,
+                            },
+                            if attr_bool(el, "chillout", false) {
+                                1.0
+                            } else {
+                                0.0
+                            },
+                        ),
+                    ),
+                    // `DashBlock(EntityData data, Vector2 offset, EntityID id) : this(
+                    // data.Position + offset, data.Char("tiletype", '3'), data.Width,
+                    // data.Height, data.Bool("blendin"), data.Bool("permanent", true),
+                    // data.Bool("canDash", true), id)` (`DashBlock.cs:45-47`) also
+                    // forwards the raw rectangle to `Solid(..., safe: true)`
+                    // (`DashBlock.cs:30-32`). `canDash` gates the dash rebound and
+                    // `permanent` decides whether a broken block is flagged as gone
+                    // (`DashBlock.cs:86-139`).
+                    "dashBlock" => (
+                        Rect::new(ex, ey, raw_width, raw_height),
+                        Vec2::new(
+                            if attr_bool(el, "canDash", true) {
+                                1.0
+                            } else {
+                                0.0
+                            },
+                            if attr_bool(el, "permanent", true) {
+                                1.0
+                            } else {
+                                0.0
+                            },
+                        ),
+                    ),
                     _ => (Rect::new(ex, ey, raw_width, raw_height), Vec2::default()),
                 }
             };
@@ -1538,6 +1667,20 @@ fn map_from_binary_inner(
                     tile: match kind {
                         EntityKind::FallingBlock => Some(attr_char(el, "tiletype").unwrap_or('3')),
                         EntityKind::ExitBlock => Some(attr_char(el, "tileType").unwrap_or('3')),
+                        // `DashBlock` takes `data.Char("tiletype", '3')`
+                        // (`DashBlock.cs:46`) and draws itself with
+                        // `FGAutotiler.GenerateBox/GenerateOverlay`
+                        // (`DashBlock.cs:56-68`).
+                        EntityKind::DashBlock => Some(attr_char(el, "tiletype").unwrap_or('3')),
+                        _ => None,
+                    },
+                    // `DashBlock.blendin` is presentation only, so it is kept with
+                    // the skin metadata instead of the physics rectangle, which the
+                    // encoder reads back when rebuilding a `dashBlock` element.
+                    variant: match kind {
+                        EntityKind::DashBlock if attr_bool(el, "blendin", false) => {
+                            Some("blendin".to_owned())
+                        }
                         _ => None,
                     },
                     ..EntityVisual::default()
@@ -1698,6 +1841,8 @@ impl Map {
                     entity.kind,
                     EntityKind::BounceBlock
                         | EntityKind::CassetteBlock
+                        | EntityKind::CrushBlock
+                        | EntityKind::DashBlock
                         | EntityKind::FallingBlock
                         | EntityKind::ExitBlock
                         | EntityKind::InvisibleBarrier
@@ -2651,5 +2796,63 @@ mod tests {
         assert_eq!(entity.kind, EntityKind::Glider);
         assert_eq!(entity.bounds, Rect::new(364.0, -130.0, 8.0, 10.0));
         assert_eq!(entity.name, "glider");
+    }
+
+    /// `CrushBlock(EntityData, offset)` forwards the raw rectangle into
+    /// `Solid(position, width, height, safe: false)` (`CrushBlock.cs:85-87,
+    /// 146-149`) and `DashBlock` does the same with `safe: true`
+    /// (`DashBlock.cs:30-32,45-47`), so both are Solids the player collides with.
+    #[test]
+    fn celeste_crush_block_and_dash_block_decode_as_solids() {
+        let crusher = Entity {
+            kind: EntityKind::CrushBlock,
+            bounds: Rect::new(600.0, -1224.0, 24.0, 24.0),
+            // `axes = Both` (0), `chillout = false`.
+            direction: Vec2::new(0.0, 0.0),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "crushBlock".to_owned(),
+        };
+        let dash = Entity {
+            kind: EntityKind::DashBlock,
+            bounds: Rect::new(80.0, 88.0, 64.0, 40.0),
+            // `canDash = false`, `permanent = false`.
+            direction: Vec2::new(0.0, 0.0),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "dashBlock".to_owned(),
+        };
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 176.0),
+            entities: vec![crusher.clone(), dash.clone()],
+            ..Map::default()
+        };
+        let encoded = encode_celeste_map(&map, "CelesteGymTest", "solids").unwrap();
+        let decoded = decode_map_room(&encoded, Some("solids")).unwrap();
+        assert_eq!(decoded.entities[0].kind, EntityKind::CrushBlock);
+        assert_eq!(decoded.entities[0].bounds, crusher.bounds);
+        assert_eq!(decoded.entities[0].direction, Vec2::new(0.0, 0.0));
+        assert_eq!(decoded.entities[1].kind, EntityKind::DashBlock);
+        assert_eq!(decoded.entities[1].bounds, dash.bounds);
+        assert_eq!(decoded.entities[1].direction, Vec2::new(0.0, 0.0));
+        assert!(decoded.non_dream_solid_at(Rect::new(604.0, -1220.0, 8.0, 11.0)));
+        assert!(decoded.non_dream_solid_at(Rect::new(100.0, 100.0, 8.0, 11.0)));
+        assert!(!decoded.solid_at(Rect::new(4.0, 4.0, 8.0, 11.0)));
+
+        // `axes` and `chillout` survive both directions.
+        let vertical = Entity {
+            direction: Vec2::new(2.0, 1.0),
+            ..crusher.clone()
+        };
+        let canvas = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 176.0),
+            entities: vec![vertical],
+            ..Map::default()
+        };
+        let encoded = encode_celeste_map(&canvas, "CelesteGymTest", "axes").unwrap();
+        let decoded = decode_map_room(&encoded, Some("axes")).unwrap();
+        assert_eq!(decoded.entities[0].direction, Vec2::new(2.0, 1.0));
     }
 }

@@ -627,6 +627,8 @@ fn unrestored_fields() -> Vec<(&'static str, &'static str)> {
             "exit_blocks",
             "invisible_barriers",
             "killboxes",
+            "crush_blocks",
+            "dash_blocks",
             "badeline_boost_active",
             "badeline_boost_final",
             "badeline_boost_phase",
