@@ -9169,8 +9169,14 @@ fn update_strawberry_train(p: &mut PlayerSnapshot) {
 }
 
 fn reset_for_spring_bounce(p: &mut PlayerSnapshot) {
-    // Player.Bounce(float fromY): RefillDash(); RefillStamina(); (Player.cs).
-    refill_dash(p);
+    // `Player.SuperBounce` (`Player.cs:2708-2722`) and `Player.SideBounce`
+    // (`:2741-2762`) both wrap the dash refill in `if (!Inventory.NoRefills)`, unlike
+    // `Player.Bounce` (`:2677-2691`, which guards it too) and `Player.PointBounce`
+    // (`:3061`, which does not). Refilling unconditionally handed the simulator a dash
+    // the game never restores in the `NoRefills` Core.
+    if !p.no_refills {
+        refill_dash(p);
+    }
     p.stamina = 110.0;
     p.state = PlayerState::Normal;
     p.jump_grace_timer = 0.0;
@@ -13952,6 +13958,41 @@ mod tests {
         let last = trace.states.last().unwrap();
         assert!(last.speed.y < WALL_BOOSTER_LIFT_SPEED);
         assert_eq!(lift_speed(last).y, WALL_BOOSTER_LIFT_SPEED);
+    }
+    /// `Player.SuperBounce` (`Player.cs:2708-2722`) and `Player.SideBounce`
+    /// (`:2741-2762`) wrap their dash refill in `if (!Inventory.NoRefills)`, so a spring
+    /// bounce in the Core hands back no dash - unlike `Player.PointBounce` (`:3061`),
+    /// which is unguarded, and `Player.Bounce` (`:2677-2691`), which guards only the
+    /// dash and always refills stamina.
+    #[test]
+    fn spring_bounces_refill_dashes_only_without_no_refills() {
+        let bounced = |no_refills| {
+            let mut p = PlayerSnapshot {
+                dashes: 0,
+                max_dashes: 2,
+                no_refills,
+                ..PlayerSnapshot::default()
+            };
+            super_bounce(&mut p, 100.0);
+            p
+        };
+        assert_eq!(bounced(false).dashes, 2);
+        assert_eq!(bounced(false).stamina, 110.0);
+        assert_eq!(bounced(true).dashes, 0);
+        assert_eq!(bounced(true).stamina, 110.0);
+
+        let side = |no_refills| {
+            let mut p = PlayerSnapshot {
+                dashes: 0,
+                max_dashes: 2,
+                no_refills,
+                ..PlayerSnapshot::default()
+            };
+            side_bounce(&mut p, 1, Rect::new(40.0, 60.0, 6.0, 16.0));
+            p
+        };
+        assert_eq!(side(false).dashes, 2);
+        assert_eq!(side(true).dashes, 0);
     }
     /// `Stamina` has no floor in the source: `Player.cs:4060`/`4078` are bare
     /// subtractions, so a climb that outlasts the bar leaves a negative value behind.
