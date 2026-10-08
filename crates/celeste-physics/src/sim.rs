@@ -63,6 +63,11 @@ const CLIMB_UP_SPEED: f32 = -45.0;
 const CLIMB_DOWN_SPEED: f32 = 80.0;
 const CLIMB_SLIP_SPEED: f32 = 30.0;
 const CLIMB_ACCEL: f32 = 900.0;
+// `Player.cs:3093-3095`: `WallBoosterSpeed`/`WallBoosterLiftSpeed`/`WallBoosterAccel`,
+// the conveyor ramp `ClimbUpdate` drives while a `WallBooster` faces the player.
+const WALL_BOOSTER_SPEED: f32 = -160.0;
+const WALL_BOOSTER_LIFT_SPEED: f32 = -80.0;
+const WALL_BOOSTER_ACCEL: f32 = 600.0;
 const CLIMB_CHECK_DIST: f32 = 2.0;
 const CLIMB_UP_CHECK_DIST: i32 = 2;
 const CLIMB_TIRED_THRESHOLD: f32 = 20.0;
@@ -6469,54 +6474,79 @@ fn climb_update(
     }
     if !touching_wall(p, map, wall) {
         if p.speed.y < 0.0 {
-            climb_hop(p, map, wall, climb_hop_solid);
+            if p.wall_boosting {
+                // `Player.cs:3140-3149`: a released conveyor hands its own
+                // `LiftSpeed` over instead of running the ledge `ClimbHop`.
+                add_lift_boost(p);
+            } else {
+                climb_hop(p, map, wall, climb_hop_solid);
+            }
         }
         enter_normal(p);
         return;
     }
-    let mut target = 0.0;
-    let mut try_slip = false;
-    if p.climb_no_move_timer <= 0.0 {
-        if climb_blocker_check(p, map, wall as f32, 0.0) {
-            try_slip = true;
-        } else if input.move_y == -1 {
-            target = CLIMB_UP_SPEED;
-            if map.solid_at(current_player_rect(p, p.pos.x, p.pos.y - 1.0))
-                || (climb_hop_blocked_check(p, map) && slip_check(p, map, -1.0))
-            {
-                if p.speed.y < 0.0 {
-                    p.speed.y = 0.0;
-                }
-                target = 0.0;
+    // `Player.cs:3154-3167`: a facing-side `WallBooster` that the player overlaps
+    // takes over the whole vertical block - the ordinary climb target is never
+    // computed - and drives `Speed.Y` toward `WallBoosterSpeed` at
+    // `WallBoosterAccel`, publishing the same figure as `LiftSpeed` so a later
+    // release inherits it.
+    if p.climb_no_move_timer <= 0.0 && wall_booster_check(p, map, wall) {
+        p.wall_boosting = true;
+        p.speed.y = approach(
+            p.speed.y,
+            WALL_BOOSTER_SPEED,
+            WALL_BOOSTER_ACCEL * p.frame_delta_time,
+        );
+        set_lift_speed(
+            p,
+            Vec2::new(0.0, p.speed.y.max(WALL_BOOSTER_LIFT_SPEED)),
+        );
+    } else {
+        p.wall_boosting = false;
+        let mut target = 0.0;
+        let mut try_slip = false;
+        if p.climb_no_move_timer <= 0.0 {
+            if climb_blocker_check(p, map, wall as f32, 0.0) {
                 try_slip = true;
-            } else if slip_check(p, map, 0.0) {
-                climb_hop(p, map, wall, climb_hop_solid);
-                enter_normal(p);
-                return;
-            }
-        } else if input.move_y == 1 {
-            target = CLIMB_DOWN_SPEED;
-            if p.on_ground {
-                if p.speed.y > 0.0 {
-                    p.speed.y = 0.0;
+            } else if input.move_y == -1 {
+                target = CLIMB_UP_SPEED;
+                if map.solid_at(current_player_rect(p, p.pos.x, p.pos.y - 1.0))
+                    || (climb_hop_blocked_check(p, map) && slip_check(p, map, -1.0))
+                {
+                    if p.speed.y < 0.0 {
+                        p.speed.y = 0.0;
+                    }
+                    target = 0.0;
+                    try_slip = true;
+                } else if slip_check(p, map, 0.0) {
+                    climb_hop(p, map, wall, climb_hop_solid);
+                    enter_normal(p);
+                    return;
                 }
-                target = 0.0;
+            } else if input.move_y == 1 {
+                target = CLIMB_DOWN_SPEED;
+                if p.on_ground {
+                    if p.speed.y > 0.0 {
+                        p.speed.y = 0.0;
+                    }
+                    target = 0.0;
+                }
+            } else {
+                try_slip = true;
             }
         } else {
             try_slip = true;
         }
-    } else {
-        try_slip = true;
+        // Player.cs:4045 `lastClimbMove = Math.Sign(num)` uses the BCL sign, so a
+        // neutral climb (num == 0, or a `flag` branch that only sets `flag`) stores
+        // 0 - not Rust's +1. Player.cs:4405 also reads this field back for the
+        // JumpThru assist.
+        p.last_climb_move = math_sign(target) as i8;
+        if try_slip && slip_check(p, map, 0.0) {
+            target = CLIMB_SLIP_SPEED;
+        }
+        p.speed.y = approach(p.speed.y, target, CLIMB_ACCEL * p.frame_delta_time);
     }
-    // Player.cs:4045 `lastClimbMove = Math.Sign(num)` uses the BCL sign, so a
-    // neutral climb (num == 0, or a `flag` branch that only sets `flag`) stores
-    // 0 - not Rust's +1. Player.cs:4405 also reads this field back for the
-    // JumpThru assist.
-    p.last_climb_move = math_sign(target) as i8;
-    if try_slip && slip_check(p, map, 0.0) {
-        target = CLIMB_SLIP_SPEED;
-    }
-    p.speed.y = approach(p.speed.y, target, CLIMB_ACCEL * p.frame_delta_time);
     p.speed.x = 0.0;
     if p.climb_no_move_timer <= 0.0 {
         // Player.cs:4058-4079 drains stamina from `lastClimbMove`, not from the
@@ -8110,15 +8140,65 @@ fn super_wall_jump_angle_check(p: &PlayerSnapshot) -> bool {
     p.dash_dir.x.abs() <= 0.2 && p.dash_dir.y <= -0.75
 }
 
+/// `ClimbBlocker.Check` (`ClimbBlocker.cs:28-38`) over every component the
+/// simulator's entity set can carry. Only `InvisibleBarrier`
+/// (`InvisibleBarrier.cs:15`) and `WallBooster` (`WallBooster.cs:42`) add one.
+///
+/// `WallBooster` is deliberately left out, even though `WallBooster.cs:85-101`
+/// makes its own `ClimbBlocker(edge: false)` `Blocking` in `IceMode`
+/// (`notCoreMode`, or a room whose `Level.CoreMode` is Cold), where the strip
+/// should refuse the grab and drive `ClimbUpdate` into `trySlip` instead.
+/// Modelled, that costs **2 regressions and 526 replayed frames** on
+/// `trace-100pct-v4` (`9-Core|1|b-03` and `9-Core|0|d-03`, both -6 frames), and
+/// the reason is a real discrepancy worth resolving rather than a detail:
+/// `9-Core|1|b-03` reports `Session.CoreMode = Cold` in the trace, and the game
+/// still grabs a wall flush against a booster there. So either `Level.CoreMode`
+/// - which is what `WallBooster` actually reads, through
+/// `Level.cs:302-323`/`:426` - disagrees with the traced `Session.CoreMode`, or
+/// the overlap needs the exact `ClimbCheck` probe, which uses
+/// `Position + UnitX * 2 * Facing` for the blocker but `dir * 2` for the solid
+/// (`Player.ClimbCheck`). `Entity.direction.y` keeps the decoded `notCoreMode`
+/// flag (`map.rs`), so finishing this needs no re-decode.
 fn climb_blocker_check(p: &PlayerSnapshot, map: &Map, x_add: f32, y_add: f32) -> bool {
     let player = current_player_rect(p, p.pos.x + x_add, p.pos.y + y_add);
+    map.entities
+        .iter()
+        .any(|entity| entity.kind == EntityKind::InvisibleBarrier && entity.bounds.intersects(player))
+}
+
+/// `WallBooster.IceMode` (`WallBooster.cs:74-101`): a `notCoreMode` booster is
+/// always icy, otherwise the room's `Level.CoreMode` decides. Kept because
+/// `climb_blocker_check` documents why it is not wired in yet.
+#[allow(dead_code)]
+fn wall_booster_ice_mode(p: &PlayerSnapshot, entity: &crate::Entity) -> bool {
+    entity.direction.y != 0.0 || p.core_mode == crate::CoreMode::Cold
+}
+
+/// `Player.WallBoosterCheck` (`Player.cs:3279-3289`): the facing-side booster the
+/// player currently overlaps, or nothing when a `ClimbBlocker` occupies that
+/// spot - which is the same strip once it is icy.
+fn wall_booster_check(p: &PlayerSnapshot, map: &Map, facing: i8) -> bool {
+    if climb_blocker_check(p, map, facing as f32, 0.0) {
+        return false;
+    }
+    let rect = current_player_rect(p, p.pos.x, p.pos.y);
     map.entities.iter().any(|entity| {
-        entity.kind == EntityKind::InvisibleBarrier && entity.bounds.intersects(player)
+        entity.kind == EntityKind::WallBooster
+            && (entity.direction.x as i8) == facing
+            && entity.bounds.intersects(rect)
     })
 }
 
+/// `ClimbBlocker.EdgeCheck` (`ClimbBlocker.cs:40-50`) is deliberately narrower
+/// than `Check`: it only counts components whose `Edge` flag is set, and among
+/// vanilla entities that is `InvisibleBarrier` alone (`InvisibleBarrier.cs:15`).
+/// `WallBooster`'s blocker is `edge: false` (`WallBooster.cs:42`), so a conveyor
+/// never suppresses a wall jump even while it is icy (`Player.cs:2541-2544`).
 fn climb_blocker_edge_check(p: &PlayerSnapshot, map: &Map, x_add: f32) -> bool {
-    climb_blocker_check(p, map, x_add, 0.0)
+    let player = current_player_rect(p, p.pos.x + x_add, p.pos.y);
+    map.entities
+        .iter()
+        .any(|entity| entity.kind == EntityKind::InvisibleBarrier && entity.bounds.intersects(player))
 }
 
 fn slip_check(p: &PlayerSnapshot, map: &Map, add_y: f32) -> bool {
@@ -13698,6 +13778,78 @@ mod tests {
         assert_eq!(swallowed.var_jump_speed, 0.0);
         assert_ne!(swallowed.speed.x, WALL_JUMP_H);
         assert_ne!(swallowed.speed.y, JUMP_SPEED);
+    }
+    /// `Player.cs:3154-3167`: a facing-side `WallBooster` the player overlaps takes
+    /// over the whole vertical block once `climbNoMoveTimer` has run out, ramping
+    /// `Speed.Y` toward `WallBoosterSpeed` at `WallBoosterAccel` and publishing
+    /// `UnitY * Math.Max(Speed.Y, WallBoosterLiftSpeed)` as `LiftSpeed`. Before
+    /// that timer expires the ordinary climb target still owns the frame.
+    #[test]
+    fn wall_booster_ramps_climb_speed_and_publishes_lift_speed() {
+        // Player at pos.x 36 has its 8 px hitbox on x 32..40, flush against the
+        // wall at 40..48; the conveyor serving that face is a `left: false` one,
+        // whose 2 px strip sits 6 px right of its entity position, so at 38..40 it
+        // overlaps the player exactly as `WallBooster.cs:38` places it.
+        let conveyor = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            solids: vec![Rect::new(40.0, 0.0, 8.0, 184.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::WallBooster,
+                bounds: Rect::new(38.0, 40.0, 2.0, 40.0),
+                direction: Vec2::new(1.0, 0.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "wallBooster".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let climbing = PlayerSnapshot {
+            pos: Vec2::new(36.0, 64.0),
+            state: PlayerState::Climb,
+            facing: true,
+            stamina: 80.0,
+            // What `ClimbBegin` (`Player.cs:3882-3891`) installs on a fresh grab.
+            climb_no_move_timer: 0.1,
+            ..PlayerSnapshot::default()
+        };
+        assert!(wall_booster_check(&climbing, &conveyor, 1));
+        assert!(!wall_booster_check(&climbing, &conveyor, -1));
+
+        let inputs = [InputState {
+            grab_held: true,
+            ..InputState::default()
+        }; 14];
+        let trace = simulate_trace(climbing, &inputs, &conveyor, 14).unwrap();
+        assert!(
+            !trace.states[3].wall_boosting,
+            "climbNoMoveTimer still gates the conveyor"
+        );
+        let ramp = trace
+            .states
+            .iter()
+            .filter(|s| s.wall_boosting)
+            .map(|s| s.speed.y)
+            .collect::<Vec<_>>();
+        assert!(ramp.len() >= 8, "the conveyor takes over for the rest: {ramp:?}");
+        for pair in ramp.windows(2) {
+            assert!((pair[0] - pair[1] - WALL_BOOSTER_ACCEL * DT).abs() < 0.001);
+        }
+        for state in trace.states.iter().filter(|s| s.wall_boosting) {
+            assert_eq!(state.speed.x, 0.0);
+            assert!(state.speed.y >= WALL_BOOSTER_SPEED);
+            // `Actor.LiftSpeed` falls back to `lastLiftSpeed` once the frame's
+            // `currentLiftSpeed` is cleared, so read it the way the source does.
+            assert_eq!(lift_speed(state).x, 0.0);
+            assert_eq!(
+                lift_speed(state).y,
+                state.speed.y.max(WALL_BOOSTER_LIFT_SPEED)
+            );
+        }
+        // Past -80 the published lift is the cap, not the live speed.
+        let last = trace.states.last().unwrap();
+        assert!(last.speed.y < WALL_BOOSTER_LIFT_SPEED);
+        assert_eq!(lift_speed(last).y, WALL_BOOSTER_LIFT_SPEED);
     }
     #[test]
     fn downward_air_dash_keeps_ducking_until_coyote_grace_expires() {

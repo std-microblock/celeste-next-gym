@@ -120,6 +120,16 @@ pub enum EntityKind {
     /// `permanent`; its `OnDashCollide` breaks the block and rebounds
     /// (`DashBlock.cs:131-139`).
     DashBlock,
+    /// Vanilla `Celeste.WallBooster : Entity` (`WallBooster.cs:8`), the Core
+    /// conveyor. Not a `Solid`: a 2 px `Hitbox` strip that `Player.ClimbUpdate`
+    /// speeds the player along at `WallBoosterSpeed` (`Player.cs:3093-3099`,
+    /// `3154-3167`). `direction.x` is `Facing` (`-1` left, `+1` right) and
+    /// `direction.y` the `notCoreMode` flag, which forces `IceMode` regardless of
+    /// the room's `CoreMode` (`WallBooster.cs:26-39`, `:74-101`). In `IceMode` the
+    /// entity's own `ClimbBlocker(edge: false)` is `Blocking`, so the strip
+    /// refuses the grab instead of driving it (`WallBooster.cs:42`, `:85-101`;
+    /// `ClimbBlocker.cs:28-38`).
+    WallBooster,
     /// Simulator-native constant-velocity Solid used to exercise Monocle
     /// carrying, pushing, and Player LiftSpeed inheritance independently of a
     /// specific vanilla entity state machine.
@@ -979,6 +989,26 @@ pub(crate) fn encode_celeste_rooms(
                     ],
                     vec![],
                 )),
+                // Re-encode the conveyor at the entity-data position the decoder
+                // started from: a left strip already sits on it, a right one was
+                // shifted six pixels by `WallBooster`'s own collider.
+                EntityKind::WallBooster => {
+                    let left = entity.direction.x < 0.0;
+                    Some(element(
+                        "wallBooster",
+                        [
+                            ("height", BinaryValue::Int(height)),
+                            ("id", BinaryValue::Int(id)),
+                            ("left", BinaryValue::Bool(left)),
+                            ("notCoreMode", BinaryValue::Bool(entity.direction.y != 0.0)),
+                            ("originX", BinaryValue::Int(0)),
+                            ("originY", BinaryValue::Int(0)),
+                            ("x", BinaryValue::Int(if left { x } else { x - 6 })),
+                            ("y", BinaryValue::Int(y)),
+                        ],
+                        vec![],
+                    ))
+                }
                 EntityKind::Decoration | EntityKind::Unknown => None,
             };
             if let Some(encoded) = encoded {
@@ -1403,6 +1433,7 @@ fn map_from_binary_inner(
                 "towerviewer" | "lookout" => EntityKind::Lookout,
                 "crushBlock" => EntityKind::CrushBlock,
                 "dashBlock" => EntityKind::DashBlock,
+                "wallBooster" => EntityKind::WallBooster,
                 "celesteGymMovingSolid" => EntityKind::MovingSolid,
                 _ => registered.map_or(EntityKind::Unknown, |entry| entry.kind),
             };
@@ -1640,6 +1671,35 @@ fn map_from_binary_inner(
                             },
                         ),
                     ),
+                    // `WallBooster(EntityData data, Vector2 offset) : this(data.Position +
+                    // offset, data.Height, data.Bool("left"), data.Bool("notCoreMode"))`
+                    // (`WallBooster.cs:47-50`). The constructor (`WallBooster.cs:24-39`)
+                    // gives a left booster `new Hitbox(2f, height)` at the entity position
+                    // and a right one `new Hitbox(2f, height, 6f)`, i.e. the same 2 px strip
+                    // six pixels to the right; `left` also picks `Facing`
+                    // (`WallBooster.cs:30-39`), which `Player.WallBoosterCheck`
+                    // (`Player.cs:3284-3286`) matches against the player's. `notCoreMode` is
+                    // packed into `direction.y` the way `crushBlock`/`dashBlock` pack their
+                    // own flags, because it decides `IceMode` (`WallBooster.cs:77-101`) and
+                    // with it whether the strip is a blocking `ClimbBlocker`.
+                    "wallBooster" => {
+                        let left = attr_bool(el, "left", false);
+                        (
+                            if left {
+                                Rect::new(ex, ey, 2.0, raw_height)
+                            } else {
+                                Rect::new(ex + 6.0, ey, 2.0, raw_height)
+                            },
+                            Vec2::new(
+                                if left { -1.0 } else { 1.0 },
+                                if attr_bool(el, "notCoreMode", false) {
+                                    1.0
+                                } else {
+                                    0.0
+                                },
+                            ),
+                        )
+                    }
                     _ => (Rect::new(ex, ey, raw_width, raw_height), Vec2::default()),
                 }
             };

@@ -688,6 +688,12 @@ pub struct PlayerSnapshot {
     pub pickup_old_var_jump_timer: f32,
     pub pickup_timer: f32,
     pub climb_no_move_timer: f32,
+    /// `Player.wallBoosting` (`Player.cs:3100`), set by the `WallBooster` conveyor
+    /// branch of `ClimbUpdate` and read by the "climbed over the ledge" branch
+    /// (`Player.cs:3142-3146`), where a booster releases into `Speed += LiftBoost`
+    /// instead of a `ClimbHop`. Private in the source, so the trace cannot carry
+    /// it and each segment derives it.
+    pub wall_boosting: bool,
     /// The signed vertical target selected by the most recent ClimbUpdate.
     /// Player.Update uses this to limit JumpThru Assist to upward climbing.
     pub last_climb_move: i8,
@@ -886,6 +892,7 @@ impl Default for PlayerSnapshot {
             pickup_old_var_jump_timer: 0.0,
             pickup_timer: 0.0,
             climb_no_move_timer: 0.0,
+            wall_boosting: false,
             last_climb_move: 0,
             dream_dash_can_end_timer: 0.0,
             launch_approach_x: None,
