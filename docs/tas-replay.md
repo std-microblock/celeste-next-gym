@@ -11,19 +11,19 @@ pinned vanilla 202-berry TAS, the instrumented CelesteTAS dumps one record per e
 
 | trace | `ok` rooms | mismatch | unsupported | replayed frames | frame-exact |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `trace-202-v5` | **426** | 1,041 | 0 | **134,788** | **133,716** |
-| `trace-100pct-v5` | **280** | 638 | 0 | **80,957** | **80,302** |
+| `trace-202-v5` | **437** | 1,030 | 0 | **136,388** | **135,327** |
+| `trace-100pct-v5` | **285** | 633 | 0 | **81,683** | **81,033** |
 | `trace-1a-v5` | **16** | 4 | 0 | **2,129** | **2,125** |
 
-The latest step is **`Level.InSpace`** (`de3fd65`). The trace exported it and the gate deliberately did
-not restore it, so the Core's zero-gravity scale (`SpacePhysicsMult = 0.6f`, `Player.cs:673`) never
-ran. All four physics sites are now in: the run target (`Player.cs:2889-2890`), both fall caps before
-the fast-fall comparison (`2904-2908`), gravity after the slow-fall halving (`2954-2955`) and the
-`DummyUpdate` gravity block. Only the room literally named `space` sets it in vanilla
-(`lvl_space`, 9-Core), so the effect is sharp rather than broad: its four segments went from
-diverging at offset 0 or 6 on a y-speed gap of exactly `900 * dt * 0.4` to replaying 13-19 frames.
-Measured `202 4 / 1464 / 0` and `100pct 2 / 916 / 0` (improved / identical / regressed), `+56` and
-`+31` replayed frames, `1a` unchanged.
+The latest step is **un-flooring `Stamina`** (`c0b9cda`), and it is the cheapest win so far: the
+simulator clamped both climb drains with `.max(0.0)` while `Player.cs:2648`, `4060` and `4078` are bare
+subtractions. That clamp is invisible to every `Stamina <= 0` test downstream, so it changed no
+behaviour - it only made the recorded value disagree with the game on each frame of a climb that ran
+past zero. It was the **entire** `stamina | anchor=StNormal` class (16 segments whose only mismatch was
+the value: sim `0`, game `-0.33` to `-10.83`). Measured `202 15 improved / 1453 identical / 0
+regressed` -> `426 -> 437` `ok` and `+1,600` replayed frames; `100pct 7 / 911 / 0`, `+726`; `1a`
+unchanged. It is worth re-reading every clamp in the simulator this way: a floor that no branch can
+observe still costs frames, because the gate compares the *value*.
 
 The latest step is **`CoreModeToggle` and `Level.CoreMode`** (`8c201f9`). The Core's
 ice/fire state was being read from the wrong field: `WallBooster.IceMode`
@@ -421,6 +421,9 @@ headline progress metric: an improved mechanic keeps more segments alive for lon
 | `trace-202-v5` | after `Level.InSpace` | 1,468 | **426** | 1,041 | 0 | **134,788** | **133,716** |
 | `trace-100pct-v5` | same build | 918 | **280** | 638 | 0 | **80,957** | **80,302** |
 | `trace-1a-v5` | same build | 20 | **16** | 4 | 0 | **2,129** | **2,125** |
+| `trace-202-v5` | after un-flooring `Stamina` | 1,468 | **437** | 1,030 | 0 | **136,388** | **135,327** |
+| `trace-100pct-v5` | same build | 918 | **285** | 633 | 0 | **81,683** | **81,033** |
+| `trace-1a-v5` | same build | 20 | **16** | 4 | 0 | **2,129** | **2,125** |
 
 The `v5` traces are `v4` plus one exported key, `levelCoreMode` (`Level.CoreMode`); replaying them
 with `--session-core-mode` reproduces the `v4` numbers exactly (`918/918` and `1468/1468` segments
@@ -485,7 +488,12 @@ against this same gate:
   with a live `wallSlideTimer` (`Player.cs:3749-3771`); the climb drain reads `lastClimbMove`
   (`Player.cs:4045`, `4056-4079`); and the wall boost is consumed before the on-ground stamina reset
   (`Player.cs:1560-1576`).
-* **`Level.InSpace`** (this round). Restored from the anchor row's `inSpace` (the room sets it once at
+* **`Stamina` is not floored** (this round). `Player.cs:2648`, `4060`, `4078` subtract from a bare
+  field, so a climb that outlasts the bar leaves a negative value; the simulator's `.max(0.0)` was
+  invisible to every `Stamina <= 0` branch and still cost `+1,600` replayed frames because the gate
+  compares the value. `202 15/1453/0`, `100pct 7/911/0`, `1a` unchanged. Guarded by
+  `climb_drain_lets_stamina_go_negative_like_the_source`.
+* **`Level.InSpace`** (previous round). Restored from the anchor row's `inSpace` (the room sets it once at
   load, so it is constant per segment) and applied at all four physics sites - run target, both fall
   caps, `NormalUpdate` gravity and `DummyUpdate` gravity. `202 4/1464/0, 100pct 2/916/0, 1a 0/20/0`,
   `+56` and `+31` replayed frames, all of it in the one vanilla `space` room. Guarded by
@@ -536,6 +544,19 @@ against this same gate:
   timer) stays visible to later reads of the same frame, where the game's `VirtualButton.Pressed`
   would report false (`VirtualButton.cs:153-157`). No read site depends on that yet, so this is
   recorded as a residual rather than a target.
+* **The dash-count class is the biggest single-reason class left: `dashes | anchor=StNormal`,
+  49 segments / 4,056 frames, every one a `(0,0)` position delta.** Two sub-cases: `sim=1 game=2` (41)
+  with `inventory.Dashes=2`, mostly Farewell (17) and 9-Core (8) - the game refilled a dash the
+  simulator did not; and `sim=1 game=0` (21) with `inventory.Dashes=1`, the one-dash areas, where the
+  simulator kept a dash the game spent. Some of both also disagree on `on_ground` at the same frame.
+  `Player.Update`'s ground refill (`Player.cs:1602-1612`) is narrower than the simulator's: it needs a
+  Solid or a JumpThru *outside* one pixel below **and** `!CollideCheck<Spikes>(Position)`, and the whole
+  `else if` is skipped on a frame where `dashRefillCooldownTimer > 0`. Check those before hunting
+  further; the other two refill sites are `Refill` collection and `BadelineBoost.cs:145-152`.
+  `on_ground` itself is not the cause: `grounded_at_offset` already mirrors
+  `CollideFirst<Solid>`-then-`CollideFirstOutside<JumpThru>` (`Player.cs:1504-1520`).
+* **`pos+speed+state | anchor=StSummitLaunch` has grown to 6 segments / 3,647 frames**, every one a
+  `(0,-4)` delta: one state, one offset, and now the largest frames-per-segment target in the report.
 * **The `space` room's remaining causes are `dashes` and `SpaceController`.** With `InSpace` landed,
   its four segments (`9-Core|0|space` x2, `9-Core|1|space` x2) replay 13-19 frames and then stop on a
   dash-count divergence, with `onGround` disagreeing on two of them - so the next causes there are the
