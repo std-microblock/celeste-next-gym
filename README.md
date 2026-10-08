@@ -45,6 +45,7 @@ node scripts/gym-actors.mjs --actors 4 --area-id 1
 
 Gym reset 显式传入 `fast_mode: true` 后，repository-owned FNA 固定步长 loop 会无渲染地批量执行 1～4096 个完整 Celeste/Everest physics updates；详见 `docs/real-game-gym.md`。
 - `interactive-recorder`：网页/真实游戏双端游玩逐帧录制、统一 trace 对比器、参考数据及自带地图包。
+- `tools/gym-cli`：给 agent 用的 CLI + TypeScript 绑定（模拟、TAS 回放、Fuzz（JSON/直接跑 `.ts`）、`.bin`/`.zip` 地图可加载性检查，以及 PNG/联系表/GIF/MP4 渲染）。配套 skill：`.agents/skills/celeste-gym-cli/SKILL.md`。
 - `docs`：架构、原版源码审计和保真边界。
 
 生成 WASM 需要先安装 `wasm32-unknown-unknown` target 和与依赖版本一致的 `wasm-bindgen-cli`。仓库同时包含已生成的浏览器资源；前端物理只运行 Rust WASM，加载失败会明确报错，不提供另一套模拟实现。

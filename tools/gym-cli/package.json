@@ -1,0 +1,32 @@
+{
+  "name": "celeste-gym-cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Agent-oriented CLI and TypeScript bindings for the Celeste Next Gym WASM simulator: simulate, fuzz, TAS replay, map checks and image/GIF/video rendering.",
+  "bin": {
+    "celeste-gym": "bin/celeste-gym.mjs"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "cli": "node bin/celeste-gym.mjs",
+    "test": "node --import tsx --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "engines": {
+    "node": ">=20.6"
+  },
+  "dependencies": {
+    "@msgpack/msgpack": "^3.1.3",
+    "@napi-rs/canvas": "^0.1.80",
+    "fflate": "^0.8.2",
+    "gifenc": "^1.0.3",
+    "tsx": "^4.20.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}

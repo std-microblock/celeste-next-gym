@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "variables": [
+    { "name": "dash_at", "range": { "from": 0, "to": 8 } },
+    { "name": "jump_at", "range": { "from": "dash_at + 1", "to": "dash_at + 14" } }
+  ],
+  "inputs": [
+    { "keys": ["right"], "at": 0, "held_time": "hold::inf", "verify": false },
+    { "keys": ["down", "dash"], "at": "dash_at", "held_time": 1 },
+    { "keys": ["jump"], "at": "jump_at", "after_input": ["after.speed.x > 200"] }
+  ],
+  "observe_until": "jump_at + 20",
+  "success": ["!final.dead"],
+  "objectives": [{ "type": "maximize", "expression": "final.pos.x - initial.pos.x" }],
+  "search": { "output": ["best", "windows", "top_3"] }
+}
