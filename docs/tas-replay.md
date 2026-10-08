@@ -630,10 +630,27 @@ against this same gate:
   the game moved one pixel left into the tile's column.
 
   So the open question is specific and **decidable from the trace with no new code**: is the game's
-  cell (37,19) solid at all? Find a frame in `trace-202-v5.jsonl` where the game's player is flush
-  against `Rect { 7592, -3104, 8, 8 }`, or crosses that column, and read whether its x or y movement
-  was blocked there. That witness settles it; only then is it worth touching the tile decode or the
-  movement code, and it must not be inferred from the simulator's own collision.
+  cell (37,19) solid at all? Walking the room visit does not settle it, and two earlier guesses are
+  now withdrawn rather than left standing:
+
+  * The game's frame applies a **full `-1.16667` horizontal move**: its `movementCounter.X` ends at
+    `-0.16667`, which a blocked `MoveH` cannot produce (`Actor.MoveHExact` zeroes the axis counter, and
+    `Player.OnCollideH`'s ordinary branch never re-applies the amount; only state 19 and a
+    `DashAttacking` dash-collision branch alter it, and `Speed.Y = -105` with `Speed.X = -70` is a
+    `ClimbJump`). So the game's probe at `[7599, 7607] x [-3113, -3102]` - which overlaps
+    `[7592, 7600] x [-3104, -3096]` - found nothing.
+  * That cannot be reconciled with the map by blaming placement: `tile_rects` splits on lines and reads
+    each row with `chars().nth(x)`, so ragged rows (trailing empty cells trimmed) are handled, and the
+    cell is `f` while `f` is the same character as the floor row the player stands on one row below.
+  * Nor is the jump a witness: the source's climb-jump branch in `NormalUpdate` requires only `Facing`,
+    `Stamina > 0`, `Holding == null` and *no blocker eight pixels in front of the facing direction*; it
+    never re-probes a wall on the facing side.
+
+  What is left is that some other quantity on that frame differs inside the simulator - its fed
+  `move_x`, or the pre-jump `Speed.X` (`-30` in the game) - and the round-13 tracer could not tell,
+  because it printed no frame index and its three lines cannot be attributed to the diverging frame
+  with certainty. **Next step: re-instrument with the frame index (or dump the simulator's own speed
+  sequence for the segment) before touching the tile decode or the movement code.**
 
   Found along the way and still open: `add_room_edge_tile_bleed` copies the room's boundary tiles
   outward without the source's occupancy guard (`LevelLoader.cs:233-264` stops each propagation at
