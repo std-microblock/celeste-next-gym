@@ -619,17 +619,28 @@ against this same gate:
   trimmed of trailing empties) has `f` at that cell: the room's origin is (7296,-3256), so cell
   (37,19) is `Rect { 7592, -3104, 8, 8 }` and row 19 reads `...00f` at columns 35-37. So the tile is
   in the map text and the simulator's decode of it is right; what differs is that the game's player
-  moved into it. The remaining candidate is therefore **frame order**: `MoveH` runs before `MoveV`
-  in the source (`Player.cs`, verified in the vendored file), and at `MoveH` time the player's
-  `Hitbox(8, 11, -4, -11)` is `[7600, 7608] x [-3113, -3102]`, which *touches* the tile in x and
-  overlaps it in y - so a game that moved vertically first would clear it and a game that did not
-  would be blocked. Deciding it needs a case whose tile top is not exactly at the post-move feet;
-  do not "fix" the move order on this case alone.
+  moved into it.
+
+  The frame-order candidate is now **excluded on the simulator's side**: `move_axis`
+  (`move_axis_amount(p, map, horizontal, speed * dt)`) is called with `horizontal = true` and then
+  `false`, which is the source's `MoveH`-before-`MoveV` order (re-checked in the vendored
+  `Player.cs`), so the simulator is not transposing the axes. What the frame *is* can be read off its
+  speeds: `Speed.X = -70` from a pre-jump `-30` plus `moveX * JumpHBoost` (`-40`) together with
+  `Speed.Y = JumpSpeed` (`-105`) is exactly a `ClimbJump`/wall-jump launch off that wall, after which
+  the game moved one pixel left into the tile's column.
+
+  So the open question is specific and **decidable from the trace with no new code**: is the game's
+  cell (37,19) solid at all? Find a frame in `trace-202-v5.jsonl` where the game's player is flush
+  against `Rect { 7592, -3104, 8, 8 }`, or crosses that column, and read whether its x or y movement
+  was blocked there. That witness settles it; only then is it worth touching the tile decode or the
+  movement code, and it must not be inferred from the simulator's own collision.
 
   Found along the way and still open: `add_room_edge_tile_bleed` copies the room's boundary tiles
   outward without the source's occupancy guard (`LevelLoader.cs:233-264` stops each propagation at
-  the first non-empty target cell), so it can invent up to three solid cells outside a room that the
-  game leaves empty.
+  the first non-empty target cell). The guard cannot be reproduced from the current room alone - the
+  source runs that loop over *every* room in the map against the shared grid, so a faithful version
+  has to decode all rooms' `solids` layers, which the simulator does not - and the missing direction
+  it implies (a *neighbour's* edge tiles bleeding into this room) is a second, separate gap.
 
 * **The simulator has no `VirtualButton.consumed` flag.** With `presses_are_effective` the press
   level each frame is now exactly the game's, which retired the four-frame offset; what remains is
