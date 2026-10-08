@@ -206,6 +206,104 @@ by `Ducking && onGround` (`Player.cs:3095`) where `onGround` is the *source-priv
 is `PlayerSnapshot::player_on_ground`, not the geometric `on_ground`. Using the geometric value
 dropped a wind push the game applied (+70 replayed frames on the 202 trace).
 
+> The absolute numbers in the table above were measured on the pre-integration base; the deltas are
+> what that change is worth. Everything below is measured on **master `47b4ba6`**, which already
+> contains the v2 tail (plus the six parallel workstreams).
+
+### Pre-consumption press edges (v3 traces)
+
+`in.dashP`, `in.cdashP`, `in.jumpP` and `in.talkP` are read **after** the engine update, so they are
+lossy: `Player.BoostUpdate` calls `Input.Dash.ConsumePress()` (`Player.cs:4721-4731`), which sets
+Monocle's `VirtualButton.consumed` and makes `Pressed` return `false` for the rest of the frame
+(`Monocle/VirtualButton.cs:55-58`, `:153-157`). Every boost frame that consumed a dash press
+therefore reports `dashP: false`, and the simulator — which rebuilds its `VirtualButton` buffers from
+those edges — never sees the press. This was capping a whole class: 61 of the 1,468 segments in the
+202 TAS died in `pos+state|anchor=StBoost|at=last`.
+
+The v3 traces add `in.jumpP0`, `in.dashP0`, `in.cdashP0`, `in.talkP0`: the same edges sampled by
+`TasFrameTrace.CaptureInput()`, which `tools/celestetas-trace/apply.mjs` patches into
+`InputController.AdvanceFrame` immediately after `InputHelper.FeedInputs(Current!)`
+(`InputController.cs:220`), before any `Scene.Update` runs. The harness prefers `*P0` and falls back
+to `*P`, so v1/v2 runs are bit-identical to before — `trace-1a` measures `16 / 2,126 / 2,122` on all
+revisions and `trace-202-v2` is unchanged.
+
+| trace | rows | frames where `*P0` differs from `*P` (jump / dash / cdash / talk) |
+| --- | ---: | --- |
+| `trace-1a-v3.jsonl` | 3,215 | 0 / 0 / 0 / 0 |
+| `trace-100pct-v3.jsonl` | 281,113 | 6 / 169 / 1 / 0 |
+| `trace-202-v3.jsonl` | 461,122 | 11 / 274 / 2 / 0 |
+| `trace-100pct-v4.jsonl` | 281,113 | the same rows (175 rows carry at least one difference) |
+| `trace-202-v4.jsonl` | 461,122 | the same rows (285 rows carry at least one difference) |
+
+(A row can differ in two edges, which is why the key-wise v3 counts above sum to 176 and 287 while
+the distinct row counts are 175 and 285.)
+
+Measured on master `47b4ba6` (`--maps vendor/celeste-game/Content/Maps`):
+
+| trace / metric | master `47b4ba6` | with the pre-consumption edges |
+| --- | ---: | ---: |
+| `trace-202-v3` `ok` | 332 | **353** |
+| `trace-202-v3` `mismatch` | 1,135 | 1,114 |
+| `trace-202-v3` replayed frames | 112,406 | **119,918** |
+| `trace-202-v3` matching frames | 111,271 | **118,804** |
+| `trace-202-v3` `pos+state\|anchor=StBoost\|at=last` | 61 segments / 4,390 frames / 4,329 exact | **0 segments** |
+| `trace-202-v3` `pos\|anchor=StNormal\|at=first` | 6 segments / 6 frames / 0 exact | 6 / 6 / 0 |
+| `trace-100pct-v3` `ok` | 220 | **233** |
+| `trace-100pct-v3` replayed frames | 67,834 | **72,310** |
+| `trace-100pct-v3` matching frames | 67,136 | **71,625** |
+| `trace-1a-v3` `ok` / frames / exact | 16 / 2,126 / 2,122 | 16 / 2,126 / 2,122 |
+
+The whole `pos+state|anchor=StBoost|at=last` class disappears (no segment reaches a `pos+state`
+mismatch while still anchored in `Boost`); its members either reach `ok` or now die later in
+`StNormal`/`StDash`. No segment regressed on either full-game trace.
+
+### `Session.CoreMode` and `Level.InSpace` (v4 traces)
+
+Two more quantities the base-chain dump cannot see, added on top of v3:
+
+| key | C# source | restored into | why |
+| --- | --- | --- | --- |
+| `coreMode` | `Celeste.Session.CoreMode` (`Session.cs:111`; `None = 0, Hot = 1, Cold = 2` per `Session.cs:22-27`) | `PlayerSnapshot::core_mode` | session state. The Core's ice factor `if (onGround && level.CoreMode == Cold) num2 *= 0.3f` (`Player.cs:3681-3684`) and the `CoreModeListener` entities read it, so every Core room used to replay as `CoreMode::None`. |
+| `inSpace` | `Celeste.Level.InSpace = levelData.Space` (`Level.cs:449`) | **not restored** — exported and reported only | `PlayerSnapshot` has no `in_space` and `map.rs` exposes no such field (`map.rs:161-193`), so the `* 0.6f` branches at `Player.cs:3703-3706,3718-3722,3778-3781` are unimplemented. A room that sets it is listed in the segment's `unavailableChecks` rather than silently ignored. |
+
+The map half of `inSpace` is narrow, and that is measured rather than assumed: `space` is a standard
+`LevelData` attribute on the `.bin` level element (present on 39/39 levels of `9-Core.bin`, 23/23 of
+`9H-Core.bin`, 113/113 of `LostLevels.bin`, absent from some early rooms such as `0-Intro.bin` where
+it defaults to false), and across all 27 vanilla maps **only `lvl_space` in `9-Core.bin` and
+`9H-Core.bin` is `true`**. Farewell (`LostLevels.bin`) is not exposed, contrary to the initial
+expectation. Verified with `cargo run -p celeste-physics --example inspect_bin_tree -- <map.bin>
+space`; the full scan is recorded in `.tmp/tasrun/w8-space-attribute-scan.txt`.
+
+Measured on the v4 traces (same trace file, only the `core_mode` restore toggled; the `without`
+column is base `47b4ba6` + the `*P0` preference, the `with` column adds the restore, and the last
+column is master `fbf2d2b`, where both are integrated):
+
+| trace / metric | v4 without `core_mode` | v4 with it | master `fbf2d2b` |
+| --- | ---: | ---: | ---: |
+| `trace-202-v4` `ok` | 353 | **355** | **355** |
+| `trace-202-v4` `mismatch` | 1,114 | 1,112 | 1,112 |
+| `trace-202-v4` replayed frames | 119,917 | 121,236 | **121,264** |
+| `trace-202-v4` matching frames | 118,803 | 120,124 | **120,124** |
+| `trace-100pct-v4` `ok` | 233 | **234** | **234** |
+| `trace-100pct-v4` replayed frames | 72,310 | 73,070 | **73,085** |
+| `trace-100pct-v4` matching frames | 71,625 | 72,386 | **72,386** |
+
+Per-segment, all **+1,319** frames on the 202 run come from `9-Core` rooms (22 of its 118 segments
+improve, 1,446 of the 1,468 segments are untouched, **none regresses**, and there are **no winners
+outside `9-Core`**), and all **+760** on the 100% run come from 13 Core segments with 0 regressions.
+The largest single win is `9-Core|1|a-04` (both of the run's two visits): `2/1 -> 192/192`, now
+fully `ok`. Others: `c-01` `1/0 -> 125/124`, `c-06` `9/8 -> 97/96`, `c-02` (A-side) `1/0 -> 85/84`,
+`c-00` (A-side) `23/22 -> 96/95`, `d-10` `7/6 -> 36/35`, `a-03` `29/28 -> 49/48`,
+`b-02` `4/3 -> 32/31`, `a-05` `12/11 -> 27/26`, `c-07` `29/28 -> 38/37`. The exception that proves
+the rule is `9-Core|0|space`: it is one of the two `InSpace` rooms and its segment is unchanged at
+`1/0`, because `inSpace` is exactly the quantity that cannot be restored yet.
+
+Comparing the two *trace files* rather than the two builds (`trace-202-v3` vs `trace-202-v4`, both
+with the `*P0` preference and no `core_mode`) leaves 1,467 of 1,468 segments identical and moves one
+segment — `7-Summit|0|a-00-intro`, `155/154 -> 154/153` — by a single frame, the Summit-intro
+dummy-walk nondeterminism documented above. The v4 traces are therefore equivalent to v3 for
+everything outside Core.
+
 ### Remainder probe
 
 `--probe-remainder N` re-anchors the first `N` mismatch segments with candidate
