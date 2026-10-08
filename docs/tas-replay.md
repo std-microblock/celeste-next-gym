@@ -121,7 +121,15 @@ Starting point was 45 `ok` rooms / 36,253 replayed frames / 87 `unsupported`. Th
 3. **86 of 162 `PlayerSnapshot` fields are never restored** — the checked-in
    `tools/tas-fidelity/field-map.md` is that list, regenerable with `--dump-field-map`.
 4. **164 vanilla entity names still decode to `EntityKind::Unknown`** — no solid, no diagnostic.
-   `map.rs` also does not decode the room `space` attribute (only `9-Core`/`9H-Core` are `true`).
+   `tools/tas-fidelity/undecoded-entities.mjs` (output checked in beside it as
+   `undecoded-entities.md`) scans the 27 vendored maps for every `Solid` subclass and `Trigger`
+   subclass name the decoder does not handle, so the gap is a ranked list rather than a number. The
+   ones with the strongest map evidence are `swapBlock` (8 maps), `switchGate` (18), `triggerSpikes`
+   (6), `dashSwitch` (5), `lockBlock` (5), `fireBarrier` (9-Core/9H-Core) and `floatySpaceBlock` /
+   `crumbleWallOnRumble` (LostLevels). Note the trap that cost two rounds: `SummitBackgroundManager`
+   was in the *decoration* bucket while being a real `AscendManager`, and `Refill`/`HeartGem`/
+   `Puffer`/`Strawberry` were polled with the wrong collider. Check the bucket and the collider before
+   assuming a mechanism is missing. `map.rs` also does not decode the room `space` attribute.
 5. **The real game is not bit-reproducible.** Two runs of the *same* exporter differ in ~28k rows,
    always starting at `7-Summit|a-00-intro`'s `StDummy` dummy walk (whole-pixel offsets with
    bit-identical `Speed`/`movementCounter`). "Frame-for-frame identical to vanilla" therefore has a
