@@ -208,6 +208,14 @@ headline progress metric: an improved mechanic keeps more segments alive for lon
 | `trace-202` | after the parallel workstreams | 1,468 | **159** | 1,308 | **0** | **67,527** | **66,219** |
 | `trace-1a` | after wall-jump/retention/slide | 20 | **14** | 6 | 0 | **2,084** | **2,078** |
 | `trace-202` | after wall-jump/retention/slide | 1,468 | **234** | 1,233 | 0 | **81,380** | **80,147** |
+| `trace-202` | after the second wave (v1 trace) | 1,468 | **304** | 1,163 | 0 | **102,004** | **100,841** |
+| `trace-202-v3` | same build, richer trace | 1,468 | **332** | 1,135 | 0 | **112,406** | **111,271** |
+| `trace-100pct-v3` | same build | 918 | **220** | 698 | 0 | **67,834** | **67,136** |
+| `trace-1a-v3` | same build | 20 | **16** | 4 | 0 | **2,126** | **2,122** |
+
+The second wave was verified with a per-segment diff keyed by `(sid, mode, room, startRow)` against
+the `trace-202` v1 baseline: **242 segments improved, 0 regressed, 0 missing**. The v3 trace scores
+higher because it exports and restores fields the v1 trace never carried.
 
 94–96% of every replayed frame is already frame-exact; the gate's value is that each remaining
 divergence names a specific mechanic.
@@ -254,18 +262,30 @@ against this same gate:
 
 ### Known open gaps (measured, not guessed)
 
-* **`Level.Wind`** — 41 segments diverge by exactly `level.Wind * 0.1 * Engine.DeltaTime` in x, from
+* **`Session.CoreMode` is not exported**, so the Core ice factor
+  `if (onGround && level.CoreMode == Cold) num2 *= 0.3f` (`Player.cs:3681-3684`) is implemented but
+  inert. Forcing `Cold` measured **+294 replayed frames** across one copy of the Core rooms.
+* **`Level.InSpace`** (`Level.cs:449`) is a per-room map property `map.rs` does not decode, so
+  `Player.cs:3703-3706`, `3718-3722`, `3778-3781` (`*= 0.6f`) are unimplemented.
+* **`Level.Wind`** — 41+ segments diverge by exactly `level.Wind * 0.1 * Engine.DeltaTime` in x, from
   `Player.cs:1180`'s `WindMover` component, which runs before the main `MoveH` (`Player.cs:1801`).
-  `Celeste.Level.Wind` is a `Level` field the trace does not export, and its value at a room's first
-  live row depends on cross-room history (`WindController.cs:194`, `:201`).
-* **`Engine.FreezeTimer`** and **`Level.Transitioning`** — engine/level fields, so a frame whose
-  `Scene.Update` was skipped cannot be replayed exactly. The ~40-row transition window at each room
-  entry is currently unreplayable and each segment anchors after it.
-* **`Player.Ducking`** — a computed property over `Entity.Collider`, not a field, so the anchored
-  hitbox can be 11 px where the game has 6 px; the gate never compares it.
-* **`Session.Inventory`** — no session model at all (no berries, checkpoints, area identity).
+  The v3 exporter now carries it; the restore is landed, and the residual wind segments are next.
+* **`Engine.FreezeTimer`** and **`Level.Transitioning`** — the ~40-row transition window at each room
+  entry is still unreplayable and each segment anchors after it.
+* **`Player.Ducking`** — a computed property over `Entity.Collider`; the trace exports `wasDucking`
+  (which equals `Ducking` after each `Player.Update`, `Player.cs:1921-1924`) and X4 measured that
+  restoring it is the single biggest remaining win (57 segments: a superslide needs the
+  `if (Ducking) { Speed.X *= 1.25; Speed.Y *= 0.5; }` branch, `Player.cs:2495-2502`).
+* **The gate does not compare `movementCounter`**, so a 0.667 px remainder drift stays invisible until
+  it flips a `Math.Round` step — which is the shape of most remaining "1–2 px `pos`, speed's 7th
+  significant digit differs" divergences.
+* **`CrushBlock` / `DashBlock` are not decoded at all** (42 segments) — 24×24 crushers arrive as
+  `EntityKind::Unknown` with no solid, and `sim.rs` has no `OnDashCollide` path at all
+  (`CrushBlock.cs:279`, `Player.cs:2784-2800`, `3168-3169`).
 * **166 vanilla entity names decode to `EntityKind::Unknown`** with no solid and no diagnostic.
-* `sim.rs` has no `Player.climbHopSolid` carry (`Player.cs:1642-1652`).
+* **`Session`** — no session model at all (no berries, checkpoints, area identity).
+* The three residual `wall_dir`-instead-of-`WallJumpCheck` call sites (RedDash/StarFly/NormalUpdate).
+
 
 
 ## Captured ground truth
