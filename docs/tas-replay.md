@@ -124,7 +124,34 @@ no menus, no chapter transitions and only a subset of player states. Instead the
 This directly measures the per-room physics fidelity the objective targets, and divergences point at
 concrete mechanics to fix.
 
-## Components
+### Ground rules for anything that reads these artifacts
+
+The canonical ground-truth traces are **0.9–1.7 GB each and are line-delimited on purpose**:
+
+```
+trace-202.jsonl       1480 MB      trace-202-v2.jsonl    1594 MB      trace-202-v3.jsonl    1621 MB
+trace-100pct.jsonl     899 MB      trace-100pct-v2.jsonl  968 MB      trace-100pct-v3.jsonl  984 MB
+```
+
+Never `JSON.parse(fs.readFileSync(...))` one of them. A scratch `node -e` that did exactly that grew
+V8 to **66–74 GB of private memory**, exhausted physical RAM, and the resulting hard-fault storm froze
+keyboard and mouse input on the machine for minutes. Reproducing those traces costs real game runs, so
+they are never deleted to make room — the readers are fixed instead.
+
+`tools/tas-fidelity/lib/guard.mjs` provides the three safe readers:
+
+```js
+import { readJsonSmall, forEachJsonLine, forEachJsonArrayItem } from './tools/tas-fidelity/lib/guard.mjs';
+
+const report = readJsonSmall('.../fidelity.json');                     // throws above a 64 MB cap
+await forEachJsonLine('.../trace-202.jsonl', (row) => { /* one frame */ });
+await forEachJsonArrayItem('.../fidelity.json', 'segments', (s) => { /* one room segment */ });
+```
+
+`forEachJsonArrayItem` is a scanner, not a parser: it tracks brace and string state and hands over one
+complete element at a time, so a report whose `segments` array is hundreds of megabytes is still safe
+to walk.
+
 
 | path | role |
 | --- | --- |
