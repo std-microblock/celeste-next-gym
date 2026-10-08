@@ -189,6 +189,105 @@ pub fn training_entry_check_msgpack(snapshot_bytes: &[u8], checks_json: &str) ->
     }
 }
 
+#[derive(Serialize)]
+struct WasmAuditResponse {
+    success: bool,
+    rooms: Vec<celeste_physics::CelesteRoomAudit>,
+}
+
+/// Enumerate every room of a Celeste BinaryPacker `.bin` with its raw entity
+/// and trigger names. Used by tooling to decide whether a map is loadable and
+/// which gameplay objects the simulator would ignore.
+#[wasm_bindgen]
+pub fn audit_celeste_map_msgpack(map_bytes: &[u8]) -> Vec<u8> {
+    match celeste_physics::audit_celeste_map(map_bytes) {
+        Ok(rooms) => rmp_serde::to_vec_named(&WasmAuditResponse {
+            success: true,
+            rooms,
+        })
+        .unwrap_or_default(),
+        Err(error) => error_bytes(&error.to_string()),
+    }
+}
+
+#[derive(Serialize)]
+struct WasmFuzzResponse {
+    success: bool,
+    result: celeste_fuzz::FuzzResult,
+    estimated_candidates: u64,
+    /// Fully resolved per-frame inputs of `result.best`, when present.
+    best_inputs: Option<Vec<InputState>>,
+}
+
+/// General-purpose Fuzz entry point for tooling (CLI / scripts). Unlike the
+/// training bridge this honours the specification's own `search.output` and
+/// `search.bindings`, takes the map explicitly, and also returns the resolved
+/// inputs of the best candidate so it can be replayed or rendered.
+/// `max_candidates == 0` keeps the specification limit.
+#[wasm_bindgen]
+pub fn fuzz_search_msgpack(
+    snapshot_bytes: &[u8],
+    map_bytes: &[u8],
+    fuzz_json: &str,
+    max_candidates: f64,
+) -> Vec<u8> {
+    let result = (|| -> Result<Vec<u8>, String> {
+        let snapshot: PlayerSnapshot = rmp_serde::from_slice(snapshot_bytes)
+            .map_err(|error| format!("invalid snapshot: {error}"))?;
+        let map = decode_map(map_bytes).map_err(|error| error.to_string())?;
+        let compiled = compile(parse_spec(fuzz_json).map_err(|error| error.to_string())?)
+            .map_err(|error| error.to_string())?;
+        let options = SearchOptions {
+            max_candidates: (max_candidates >= 1.0).then_some(max_candidates as u64),
+            ..SearchOptions::default()
+        };
+        let result = compiled
+            .search(snapshot, &map, HashMap::new(), Vec::new(), options)
+            .map_err(|error| error.to_string())?;
+        let best_inputs = match &result.best {
+            Some(best) => Some(
+                compiled
+                    .resolve_inputs(&best.bindings)
+                    .map_err(|error| error.to_string())?,
+            ),
+            None => None,
+        };
+        rmp_serde::to_vec_named(&WasmFuzzResponse {
+            success: true,
+            estimated_candidates: compiled.estimate_candidates(),
+            result,
+            best_inputs,
+        })
+        .map_err(|error| error.to_string())
+    })();
+    result.unwrap_or_else(|message| error_bytes(&message))
+}
+
+/// Resolve the full per-frame input schedule of a Fuzz candidate.
+/// `bindings_json` is a JSON object mapping every variable to an integer.
+#[wasm_bindgen]
+pub fn fuzz_resolve_inputs_msgpack(fuzz_json: &str, bindings_json: &str) -> Vec<u8> {
+    let result = (|| -> Result<Vec<u8>, String> {
+        let compiled = compile(parse_spec(fuzz_json).map_err(|error| error.to_string())?)
+            .map_err(|error| error.to_string())?;
+        let bindings: std::collections::BTreeMap<String, i64> = serde_json::from_str(bindings_json)
+            .map_err(|error| format!("invalid bindings: {error}"))?;
+        let inputs = compiled
+            .resolve_inputs(&bindings)
+            .map_err(|error| error.to_string())?;
+        rmp_serde::to_vec_named(&inputs).map_err(|error| error.to_string())
+    })();
+    result.unwrap_or_else(|message| error_bytes(&message))
+}
+
+fn error_bytes(message: &str) -> Vec<u8> {
+    rmp_serde::to_vec_named(&WasmError {
+        success: false,
+        error: message,
+    })
+    .unwrap_or_default()
+}
+
 fn run(
     snapshot_bytes: &[u8],
     input_bytes: &[u8],
@@ -263,6 +362,51 @@ mod tests {
         let decoded: WasmMapResponse = rmp_serde::from_slice(&result).unwrap();
         assert!(decoded.success);
         assert_eq!(decoded.map.bounds.width, 320.0);
+    }
+
+    #[test]
+    fn tooling_fuzz_returns_best_inputs() {
+        let mut source_map = Map::default();
+        source_map
+            .solids
+            .push(celeste_physics::Rect::new(0.0, 160.0, 320.0, 20.0));
+        let snapshot = rmp_serde::to_vec_named(&PlayerSnapshot {
+            pos: celeste_physics::Vec2::new(40.0, 160.0),
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        })
+        .unwrap();
+        let map = encode_map(&source_map).unwrap();
+        let spec = r#"{"version":1,
+            "variables":[{"name":"hold","range":{"from":1,"to":4}}],
+            "inputs":[{"keys":["right"],"at":0,"held_time":"hold"}],
+            "observe_until":6,
+            "objectives":[{"type":"maximize","expression":"final.pos.x"}],
+            "search":{"output":["best","top_2"]}}"#;
+        let bytes = fuzz_search_msgpack(&snapshot, &map, spec, 0.0);
+        let value: serde_json::Value = rmp_serde::from_slice(&bytes).unwrap();
+        assert_eq!(value["success"], true, "{value}");
+        assert_eq!(value["result"]["best"]["bindings"]["hold"], 4);
+        assert_eq!(value["result"]["top"].as_array().unwrap().len(), 2);
+        let inputs = value["best_inputs"].as_array().unwrap();
+        assert_eq!(inputs.len(), 6);
+        assert_eq!(inputs[3]["move_x"], 1);
+        assert_eq!(inputs[4]["move_x"], 0);
+
+        let resolved = fuzz_resolve_inputs_msgpack(spec, r#"{"hold":2}"#);
+        let inputs: Vec<InputState> = rmp_serde::from_slice(&resolved).unwrap();
+        assert_eq!(inputs.iter().filter(|input| input.move_x == 1).count(), 2);
+    }
+
+    #[test]
+    fn bridge_audits_celeste_rooms() {
+        let mut source_map = Map::default();
+        source_map.bounds.height = 184.0;
+        let map = celeste_physics::encode_celeste_map(&source_map, "TestMap", "a-00").unwrap();
+        let value: serde_json::Value =
+            rmp_serde::from_slice(&audit_celeste_map_msgpack(&map)).unwrap();
+        assert_eq!(value["success"], true);
+        assert_eq!(value["rooms"][0]["name"], "a-00");
     }
 
     #[test]

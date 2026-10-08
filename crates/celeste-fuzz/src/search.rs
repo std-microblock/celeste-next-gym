@@ -294,6 +294,29 @@ impl CompiledFuzz {
         self.estimated_candidates
     }
 
+    /// Resolve the complete per-frame input schedule (length `observe_until`)
+    /// for one fully bound candidate. Tooling uses this to replay, render, or
+    /// export a reported candidate without re-implementing the scheduler.
+    pub fn resolve_inputs(
+        &self,
+        bindings: &BTreeMap<String, i64>,
+    ) -> Result<Vec<InputState>, FuzzError> {
+        self.validate_runtime_binding_names(bindings)?;
+        for variable in &self.variables {
+            if !bindings.contains_key(&variable.name) {
+                return Err(FuzzError::Spec(format!(
+                    "binding for variable `{}` is missing",
+                    variable.name
+                )));
+            }
+        }
+        let engine = build_engine(self.spec.limits.max_expression_operations);
+        let tuple = self.tuple(bindings);
+        Ok(self
+            .resolve_candidate(&engine, bindings.clone(), tuple)?
+            .inputs)
+    }
+
     pub fn search(
         &self,
         initial: PlayerSnapshot,
