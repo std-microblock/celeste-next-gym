@@ -599,6 +599,29 @@ against this same gate:
 
 ### Known open gaps (measured, not guessed)
 
+* **The one-pixel `pos` classes now have a minimal two-frame repro, and it is a collision asymmetry
+  rather than rounding.** `4-GoldenRidge|0|c-06b|52462` (A-side, room bounds x 7296..7616
+  y -3256..-3076) replays one frame exactly and stops on the second:
+
+  | frame | game | simulator |
+  | --- | --- | --- |
+  | 52503 (offset 0) | pos (7604,-3102), counter (0, 0.25), move (-0.66665, -1.75) | identical |
+  | 52504 (offset 1) | pos (7603,-3104), counter (-0.16667, 0.49999), move (**-1.16667**, -1.75) | pos (7604,-3104), counter (0, 0.49999), move (**0**, -1.75) |
+
+  Both sides jump on the same frame (`Speed.Y = -105`, `varJumpSpeed`/`varJumpTimer` agree) and the
+  y amount, counters and final y are bit-identical; only x differs, and the simulator's x amount is
+  exactly `0`, i.e. its `MoveH` was blocked at the first pixel. The room's decoded solids include
+  `Rect { x: 7592, y: -3104, w: 8, h: 8 }`, whose right edge (`7600`) is exactly the player's left
+  edge at the frame start and whose top (`-3104`) is where the player's feet end up. So at `MoveH`
+  time the player's `Hitbox(8, 11, -4, -11)` is `[7600, 7608] x [-3113, -3102]`, **touching** that
+  solid in x and overlapping it in y; after one pixel left it would be `[7599, 7607] x [-3113,-3102]`,
+  which overlaps (`7599 < 7600`, `-3104 < -3102`) - a collision by Monocle's own test, and the game
+  moved anyway. Two candidates remain and the next step is to separate them, not to guess:
+  (a) the simulator's map carries a solid the game does not have at that rectangle (the project
+  already has an independent JS RLE decoder, used once to close the `roof03` tile-origin question),
+  or (b) `MoveH`/`MoveV` ordering - the game would clear the solid vertically first, the simulator
+  would not. Candidate (b) is testable from the same dump by a room whose solid is one pixel lower.
+
 * **The simulator has no `VirtualButton.consumed` flag.** With `presses_are_effective` the press
   level each frame is now exactly the game's, which retired the four-frame offset; what remains is
   that a press the simulator consumes *inside* a frame (`wall_jump`/`jump`/`begin_dash` zero the
