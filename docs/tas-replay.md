@@ -61,16 +61,26 @@ zero per-segment regressions, commit in a worktree, integrate.
 
 **The dominant remaining mechanism is a 1-pixel rounding difference.** `tools/tas-fidelity/lib/worklist.mjs` groups every `mismatch` segment of a report into classes (run it as `node tools/tas-fidelity/lib/worklist.mjs <report.json> <out.md>`; it streams). On the `395 ok` master the two biggest classes are `pos|anchor=StNormal` (180 segments / 11,340 frames) and `pos|anchor=StDash` (131 / 8,777), and their position deltas are overwhelmingly **one pixel on one axis** - 142 of the 180 are `(0,+-1)` or `(+-1,0)`, and 82 of the 131 likewise. That is the signature of sub-pixel remainder drift that stays invisible while the gate ignores `movementCounter` and only surfaces when it flips a `Math.Round` step, so these two classes almost certainly share a single root cause in the pixel-move / collision boundary code rather than hundreds of independent bugs. `dashes|anchor=StNormal` (43 / 3,708) is different: every one of its deltas is `(0,0)`, i.e. the divergence is reachable only through the dash count, not through motion.
 
-**Rounding-mode lead (untested).** C#'s `Math.Round(double)` — which is what
-`Monocle.Calc.Round(this Vector2)` uses (`Calc.cs`) — is **banker's rounding (half-to-even)**, while
-Rust's `f32::round()` is **half-away-from-zero**. Any simulator site that mirrors a C# `Math.Round` on
-a value that can land exactly on `.5` therefore differs by one pixel. `sim.rs` has five `.round()`
-sites (`936`, `962`, `6256`, `9546`, `9547`); the pixel-move path splits fractional moves elsewhere,
-and no named helper (`calc_round` / `bankers` / `snap`) exists. This is the most plausible single rule
-behind the dominant one-pixel class, and it is cheap to test: on the divergence frames of
-`pos|anchor=StNormal`, check whether the two sides differ **only when a moved amount lands exactly on
-a half-integer**. If it does not correlate, the alternative reading is a missing or extra `Move` call,
-identifiable by the fixed `amount * dt` surplus.
+**Rounding-mode lead: TESTED AND ELIMINATED.** The hypothesis was that the simulator used Rust's
+`f32::round()` (half-away-from-zero) where C#'s `Math.Round` / `Monocle.Calc.Round` uses banker's
+rounding (half-to-even). That is **already correct in the code**: the pixel-split path is
+`sim.rs:8190-8192` —
+
+```rust
+*remainder += amount;
+let amount = remainder.round_ties_even() as i32;   // == C# Math.Round, half-to-even
+*remainder -= amount as f32;
+```
+
+so `round_ties_even()` *is* C#'s `Math.Round` semantics, and the five bare `.round()` sites
+(`936`, `962`, `6256`, `9546`, `9547`) are outside the pixel-move path (cassette beats, dash-frame
+counting, transition-speed rounding). **Do not chase rounding mode for the dominant one-pixel class.**
+That leaves the alternative reading: a **missing or extra `Move` call**, which the recovered per-frame
+total names directly — `T_axis = Δpos_axis + movementCounter_after − movementCounter_before`, where a
+surplus of exactly `amount * dt` identifies the missing/extra `Player.cs` `MoveH`/`MoveV` and an
+integer surplus identifies an exact move that should or should not have happened. Note also that
+`movement_remainder` is *not* the same quantity as `Actor.movementCounter`'s C# sign convention —
+verify the two agree before attributing a surplus to a missing call.
 
 ## Which TAS is "the 202 TAS" — verified, not assumed
 
