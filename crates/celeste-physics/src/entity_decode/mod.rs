@@ -11,9 +11,21 @@ mod vanilla;
 
 use crate::{BinaryElement, BinaryValue, EntityKind, Rect, Vec2};
 
+/// `Celeste.JumpThru`'s collider height, from `JumpThru.cs:12` (`new Hitbox(width, 5f)`).
+pub(crate) const JUMP_THRU_COLLIDER_HEIGHT: f32 = 5.0;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Placement {
     TopLeft,
+    /// `Celeste.JumpthruPlatform`/`JumpThru` anchor a `Hitbox(width, 5)` at the map entity's
+    /// top-left; the entity data's own `height` (8 in every vanilla map) is never read.
+    /// `JumpThru(Vector2, int width, bool safe)` sets `Collider = new Hitbox(width, 5f)`
+    /// (`JumpThru.cs:12`), and `JumpthruPlatform(EntityData data, Vector2 offset)` forwards only
+    /// `data.Position` and `data.Width` (`JumpthruPlatform.cs:23-26`). Using the raw 8 px attribute
+    /// made the collider 3 px too tall, which turned the `Player.Update` JumpThru Assist
+    /// (`Player.cs:1787-1790`) on for frames where the real game skips it and stole
+    /// `40 * Engine.DeltaTime` of sub-pixel budget.
+    JumpThru,
     SpikeUp,
     SpikeDown,
     SpikeLeft,
@@ -37,13 +49,12 @@ impl Registration {
     pub(crate) const fn decoration() -> Self {
         Self::new(EntityKind::Decoration, Placement::TopLeft, 8.0, 8.0)
     }
-
     pub(crate) const fn water() -> Self {
         Self::new(EntityKind::Water, Placement::TopLeft, 8.0, 8.0)
     }
 
     pub(crate) const fn jump_thru() -> Self {
-        Self::new(EntityKind::JumpThru, Placement::TopLeft, 8.0, 8.0)
+        Self::new(EntityKind::JumpThru, Placement::JumpThru, 8.0, JUMP_THRU_COLLIDER_HEIGHT)
     }
 
     pub(crate) const fn dream_block() -> Self {
@@ -99,6 +110,10 @@ impl Registration {
     ) -> (Rect, Vec2) {
         match self.placement {
             Placement::TopLeft => (Rect::new(x, y, width, height), Vec2::default()),
+            Placement::JumpThru => (
+                Rect::new(x, y, width, JUMP_THRU_COLLIDER_HEIGHT),
+                Vec2::default(),
+            ),
             Placement::SpikeUp => (Rect::new(x, y - 3.0, width, 3.0), Vec2::new(0.0, -1.0)),
             Placement::SpikeDown => (Rect::new(x, y, width, 3.0), Vec2::new(0.0, 1.0)),
             Placement::SpikeLeft => (Rect::new(x - 3.0, y, 3.0, height), Vec2::new(-1.0, 0.0)),

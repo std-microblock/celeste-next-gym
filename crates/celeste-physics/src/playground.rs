@@ -54,7 +54,7 @@ pub fn mechanics_playground() -> Map {
         entities: vec![
             Entity {
                 kind: EntityKind::JumpThru,
-                bounds: Rect::new(112.0, 400.0, 112.0, 8.0),
+                bounds: Rect::new(112.0, 400.0, 112.0, 5.0),
                 direction: Vec2::default(),
                 shielded: false,
                 single_use: false,

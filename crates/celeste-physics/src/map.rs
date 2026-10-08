@@ -1419,6 +1419,22 @@ fn map_from_binary_inner(
                         Rect::new(ex - 6.0, ey - 8.0, 6.0, 16.0),
                         Vec2::new(-1.0, 0.0),
                     ),
+                    // `Celeste.JumpthruPlatform` forwards only `data.Position` and `data.Width`
+                    // to `JumpThru`, which replaces the entity data's 8 px `height` with
+                    // `new Hitbox(width, 5f)` anchored at the entity's top-left
+                    // (`JumpThru.cs:12`, `JumpthruPlatform.cs:23-26`). Using the raw attribute made
+                    // the collider 3 px too tall, which fired the `Player.Update` JumpThru Assist
+                    // (`Player.cs:1787-1790`) on frames where the real game skips it and stole
+                    // `40 * Engine.DeltaTime` of sub-pixel budget.
+                    "jumpThru" => (
+                        Rect::new(
+                            ex,
+                            ey,
+                            raw_width,
+                            crate::entity_decode::JUMP_THRU_COLLIDER_HEIGHT,
+                        ),
+                        Vec2::default(),
+                    ),
                     "bounceBlock" | "zipMover" | "templeGate" | "exitBlock"
                     | "invisibleBarrier" => {
                         (Rect::new(ex, ey, raw_width, raw_height), Vec2::default())
@@ -2349,9 +2365,11 @@ mod tests {
             Rect::new(528.0, -84.0, 24.0, 16.0)
         );
         assert_eq!(decoded.entities[6].kind, EntityKind::JumpThru);
+        // `Celeste.JumpThru` replaces the entity data's 8 px `height` with
+        // `new Hitbox(width, 5f)` (JumpThru.cs:12), anchored at the entity's top-left.
         assert_eq!(
             decoded.entities[6].bounds,
-            Rect::new(560.0, -52.0, 32.0, 8.0)
+            Rect::new(560.0, -52.0, 32.0, 5.0)
         );
         assert_eq!(decoded.entities[7].kind, EntityKind::Unknown);
         assert_eq!(decoded.entities[8].kind, EntityKind::Unknown);
