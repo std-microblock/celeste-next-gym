@@ -626,6 +626,96 @@ anchor search skips such rows, which is why the same trace produces no `state_ma
 | `Celeste/1-ForsakenCity|1|04` | 2 | 0 | `pos, speed, stamina, state` |
 <!-- END WORST ROOMS 202 -->
 
+## Diagnosis for the workstreams
+
+Two classes were recovered with the technique above, from `report-202.json` +
+`trace-202.jsonl`. The analysis script is a scratch tool
+(`.tmp/tasrun/move-totals.mjs`), not part of the repo.
+
+### D1 — "pure 1 px `pos`" on the first replayed frame: a constant `40 * Δt` x offset
+
+The requested example, `Celeste/4-GoldenRidge|0|c-02` (startRow 51522, anchorRow 51562,
+mismatch row 51563, `reasons: ["pos"]`, `state = StNormal`, speeds bit-identical
+`(304.33331298828125, 22.500043869018555)`):
+
+| quantity | value |
+| --- | --- |
+| anchor `Position` / `movementCounter` | `(6312, -2317)` / `(0.4777865409851074, 0.2500009834766388)` |
+| game row 51563 | `Position (6317, -2316)`, `movementCounter (-0.11664962768554688, -0.3749975562095642)` |
+| simulator after that frame | `Position (6318, -2316)`, `movementCounter (-0.449981689453125, -0.3749975562095642)` |
+| recovered `T_game` / `T_sim` | `x: 4.405564 / 5.072232`, `y: 0.375001 / 0.375001` |
+| **surplus** | **`x: +0.666668 = +40·Δt`**, `y: 0` |
+
+So the two sides agreed on every engine quantity except that the simulator's horizontal MoveH
+total is exactly `40·Δt` larger: the simulator moved `Speed.X · Δt = 304.3333 · Δt` while the game's
+frame moved `264.3338 · Δt`, and the trace's *reported* `Speed.X` is the same 304.3333 on both
+sides. Rows 51562–51566 show the same constant offset (implied move-time `Speed.X` = reported
+`Speed.X` − 40, every frame), with `wallSpeedRetained = 365`, `wallSpeedRetentionTimer = 0`,
+`forceMoveX = 1`, `DashDir = (0.7071, 0.7071)`, `Stamina = 82.5`.
+
+Two readings fit the arithmetic exactly, and telling them apart needs a sim-side instrument:
+
+* **ordering**: the game's `MoveH(Speed.X * Δt)` (`Player.cs` L1801) ran with `Speed.X` *before* a
+  `+40` x write that lands later in the frame, while the simulator applies the `+40` before its move.
+  The only `Speed.X += 40` in `Player.cs` is `L2446` inside `Player.Jump()`
+  (`Speed.X += 40f * (float)moveX`), but the trace **rules that writer out for this frame**:
+  `Jump()` also sets `varJumpTimer = 0.2f` and `varJumpSpeed = Speed.Y = -105f`, and row 51563 has
+  `varJumpTimer = 0`, `varJumpSpeed = -105` (stale) and `Speed.Y = 22.5`. So if this reading is
+  right, the writer is a path that adds 40 px/s to `Speed.X` without a jump (candidates:
+  `Level.EnforceBounds(player)` at `Player.cs` L1917, which runs *after* both moves and can clamp
+  and rewrite `Speed`; the `onCollideH` callback; or a `StaticMover`/lift carry).
+* **an extra move**: the game applied `MoveH(+40·Δt)` on top of its main move, i.e. a horizontal
+  `MoveH(40f * Engine.DeltaTime)`-shaped call the simulator lacks. `Player.cs`'s fractional MoveH
+  sites are only L1801, L3628/L3633 (`±50·Δt`) and L6164 (`32·Δt`), so this would have to come from a
+  carried/moving solid or a `WindMove`-style displacement rather than a direct Player call.
+
+Both readings point at the same place: a `40·Δt`-shaped horizontal displacement tied to
+`wallSpeedRetained`/wall-jump trajectories (W2) and to the post-move `EnforceBounds` window (W6).
+193 of the 1,335 mismatch segments diverge on their very first replayed frame and are recoverable
+this way; of those, 55 are `pos`-only with bit-identical speeds, bucketed by surplus as
+`40·Δt` (8), `80·Δt` (10, matches the `80f·Δt` booster approach), `100·Δt`, `160·Δt`, `30·Δt`,
+`-15·Δt`, `-20·Δt`, `-105·Δt`, `-52.5·Δt`, `120·Δt` … plus 48 with a zero surplus (the totals agree,
+so those agree on the float sum and differ only in rounding/splitting) and 6 with an integer surplus
+(`MoveHExact`/`MoveVExact`).
+
+### D2 — `on_ground` disagreement: not a harness artifact
+
+The trace's `p.onGround` is `Celeste.Player.onGround`, a private field written **only** in
+`Player.Update` (`Player.cs` L1499-1526) and never rewritten later in the frame — not by entities,
+not by `EnforceBounds`. It is a *start-of-frame* probe: at that point the frame has not moved the
+player yet (the move pass is L1799-1806) and `Speed.Y` is still the previous frame's value, and the
+probe itself is
+
+```csharp
+if (StateMachine.State == 9) onGround = false;                       // StDreamDash
+else if (Speed.Y >= 0f) {
+    Platform platform = CollideFirst<Solid>(Position + Vector2.UnitY);
+    if (platform == null) platform = CollideFirstOutside<JumpThru>(Position + Vector2.UnitY);
+    onGround = platform != null;  OnSafeGround = platform?.Safe ?? false;
+} else onGround = false;                                             // rising
+```
+
+`PlayerSnapshot::player_on_ground` is the simulator's mirror of exactly that quantity
+(`sim.rs` L4807-4812: `state != DreamDash && speed.y >= 0.0 && grounded(p, map)`, evaluated before
+the state dispatch, i.e. also start-of-frame), which is why the harness compares the trace's
+`onGround` against it. `PlayerSnapshot::on_ground` is a *different* quantity by construction — the
+post-entity geometric re-probe (`sim.rs` L4867) — and comparing the trace against it produces false
+mismatches, which is why the harness does not.
+
+So the 36 `on_ground`-reason segments (100% run; 63 in 202) are **not** a gate-restore bug in the
+harness: the anchor restores both `player_on_ground` and `on_ground` from `p.onGround` and marks
+`player_on_ground_initialized = true`, and the comparison is like-for-like. They are a
+`grounded(p, map)` vs `CollideFirst<Solid>(Position + UnitY)` / `CollideFirstOutside<JumpThru>`
+divergence. Worth checking, in order: (a) whether `grounded()` honours `Entity.Collidable == false`
+and the `Outside` semantics of `CollideFirstOutside<JumpThru>`; (b) whether it probes
+`Position + UnitY` (a 1 px shift of the *collider*) or a hand-rolled rect; (c) whether the
+`Speed.Y >= 0f` gate reads the same `Speed.Y` the game had at that instant (the simulator sets
+`player_on_ground` before its state dispatch, but the game's probe runs before `base.Update()`,
+i.e. before the state callback — if the simulator's `NormalUpdate` has already touched `speed.y` by
+then, the gate can disagree). `geometricGroundDiffFrames` (970 frames in 100%, 1,637 in 202) counts
+where the simulator's own two ground values disagree, which is the fastest way to find the frames
+worth instrumenting.
+
 ## Reproduce
 
 ```powershell
