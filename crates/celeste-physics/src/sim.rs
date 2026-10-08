@@ -8793,6 +8793,17 @@ fn interact(
                 // (`CoreModeToggle.cs:48`), so its overlap test is one of the callbacks that
                 // sees the live hurtbox rather than the taller hitbox.
                 | EntityKind::CoreModeToggle
+                // Same for these four: `Refill.cs:54`, `HeartGem.cs`,
+                // `Puffer.cs` and `Strawberry.cs` all register a `PlayerCollider`. The
+                // hurtbox is two pixels shorter than the hitbox (`Hitbox(8, 9, -4, -11)`
+                // against `Hitbox(8, 11, -4, -11)`), and that is enough to flip a
+                // collection by one frame - measured on `6-Reflection|1|b-04|188460`,
+                // where the simulator ate a `refill` at row 188675 while the game's
+                // hurtbox first reached it at 188676.
+                | EntityKind::Refill
+                | EntityKind::HeartGem
+                | EntityKind::Puffer
+                | EntityKind::Strawberry
         ) {
             current_player_hurt_rect(p)
         } else {
@@ -19458,7 +19469,10 @@ mod tests {
     #[test]
     fn refill_restores_dash_and_stamina_then_respawns_after_two_point_five_seconds() {
         let p = PlayerSnapshot {
-            pos: Vec2::new(84.0, 89.0),
+            // The hurtbox is what `Refill`'s `PlayerCollider` sees
+            // (`Hitbox(8, 9, -4, -11)`, two pixels shorter than the hitbox), so the
+            // player stands inside the crystal's 16x16 box rather than 1 px above it.
+            pos: Vec2::new(84.0, 92.0),
             on_ground: true,
             dashes: 0,
             stamina: 5.0,
@@ -19485,7 +19499,10 @@ mod tests {
     fn pink_refill_sets_two_dashes_while_full_refill_does_not_collect() {
         let map = refill_map(true, false);
         let p = PlayerSnapshot {
-            pos: Vec2::new(84.0, 89.0),
+            // The hurtbox is what `Refill`'s `PlayerCollider` sees
+            // (`Hitbox(8, 9, -4, -11)`, two pixels shorter than the hitbox), so the
+            // player stands inside the crystal's 16x16 box rather than 1 px above it.
+            pos: Vec2::new(84.0, 92.0),
             on_ground: true,
             dashes: 1,
             ..PlayerSnapshot::default()
@@ -19498,7 +19515,10 @@ mod tests {
         // refill stays collidable for a later depleted pass.
         let map = refill_map(false, false);
         let p = PlayerSnapshot {
-            pos: Vec2::new(84.0, 89.0),
+            // The hurtbox is what `Refill`'s `PlayerCollider` sees
+            // (`Hitbox(8, 9, -4, -11)`, two pixels shorter than the hitbox), so the
+            // player stands inside the crystal's 16x16 box rather than 1 px above it.
+            pos: Vec2::new(84.0, 92.0),
             on_ground: true,
             dashes: 1,
             stamina: 110.0,
@@ -19512,7 +19532,10 @@ mod tests {
     #[test]
     fn one_use_refill_removes_itself_after_collection() {
         let p = PlayerSnapshot {
-            pos: Vec2::new(84.0, 89.0),
+            // The hurtbox is what `Refill`'s `PlayerCollider` sees
+            // (`Hitbox(8, 9, -4, -11)`, two pixels shorter than the hitbox), so the
+            // player stands inside the crystal's 16x16 box rather than 1 px above it.
+            pos: Vec2::new(84.0, 92.0),
             on_ground: true,
             dashes: 0,
             stamina: 5.0,
