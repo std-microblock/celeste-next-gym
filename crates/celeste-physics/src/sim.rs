@@ -6501,15 +6501,22 @@ fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount:
                 && !p.ignore_jump_thrus
                 && map.jump_thru_at(next, current_player_rect(p, p.pos.x, p.pos.y).bottom()));
         if collided {
+            // `Actor.MoveHExact`/`MoveVExact` zero the *moving* axis's
+            // `movementCounter` the moment the blocked step is found, and only
+            // then invoke the collision callback (`Actor.cs:220` for X,
+            // `Actor.cs:249` for Y). `Player.OnCollideH`/`OnCollideV` can still
+            // return without touching that axis (dash corner corrections call
+            // `MoveVExact`/`MoveHExact`, which never restore it), so the
+            // zeroing has to happen here rather than per callback branch.
+            if horizontal {
+                p.movement_remainder.x = 0.0;
+            } else {
+                p.movement_remainder.y = 0.0;
+            }
             if dream_block
                 && p.can_dream_dash
                 && (p.dash_attack_timer > 0.0 || p.state == PlayerState::RedDash)
             {
-                if horizontal {
-                    p.movement_remainder.x = 0.0;
-                } else {
-                    p.movement_remainder.y = 0.0;
-                }
                 p.state = PlayerState::DreamDash;
                 p.speed = Vec2::new(p.dash_dir.x * DASH_SPEED, p.dash_dir.y * DASH_SPEED);
                 p.dream_dash_can_end_timer = 0.1;
@@ -6528,7 +6535,12 @@ fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount:
                             let offset = correction as f32 * direction;
                             let corrected =
                                 current_player_rect(p, p.pos.x + sign as f32, p.pos.y + offset);
-                            if !map.solid_at(corrected) {
+                            let wedged = current_player_rect(
+                                p,
+                                p.pos.x + sign as f32,
+                                p.pos.y + (correction - 1) as f32 * direction,
+                            );
+                            if !map.solid_at(corrected) && map.solid_at(wedged) {
                                 p.pos.y += offset;
                                 p.pos.x += sign as f32;
                                 return;
