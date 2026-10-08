@@ -579,7 +579,10 @@ driven from):
 # 0. build + install the trace-capable CelesteTAS (once) - patch + build in one step
 robocopy "D:\celeste-research\.tmp\tasrun\celestetas-src" "D:\celeste-research\.tmp\tasrun\celestetas-trace" /E /XD .git
 node tools\celestetas-trace\apply.mjs "D:\celeste-research\.tmp\tasrun\celestetas-trace"
-# then install that tree as a dev mod at <game>\Mods\CelesteTAS-EverestInterop\
+# then install that tree as a dev mod at <game>\Mods\CelesteTAS-EverestInterop\:
+#   copy <tree>\CelesteTAS-EverestInterop\bin\Release\net8.0\* over
+#   D:\celeste-research\.tmp\tasrun\game-trace\Mods\CelesteTAS-EverestInterop\bin\
+#   (that folder's everest.yaml points DLL at bin/CelesteTAS-EverestInterop.dll)
 
 # 1. ground truth (real game; ~2 min for 100%, ~3.5 min for the 202 TAS)
 D:\celeste-research\.tmp\tasrun\run-trace.ps1 `
