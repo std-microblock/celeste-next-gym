@@ -152,14 +152,15 @@ await forEachJsonArrayItem('.../fidelity.json', 'segments', (s) => { /* one room
 complete element at a time, so a report whose `segments` array is hundreds of megabytes is still safe
 to walk.
 
+## Components
 
 | path | role |
 | --- | --- |
 | `tools/tas-replay/` | flattens a `.tas` `Read`/`Repeat` tree into the canonical input stream (`src/resolve.mjs`), with `docs/tas-format.md` |
-| `tools/tas-fidelity/` | renders the Rust fidelity report into Markdown |
+| `tools/tas-fidelity/` | renders the Rust fidelity report into Markdown, and holds `lib/guard.mjs` |
 | `crates/celeste-physics/examples/tas_fidelity.rs` | replays every level segment of a trace through `Simulator` and reports divergences |
-| `.tmp/celestetas-patch/TasFrameTrace.cs` | CelesteTAS command `TasFrameTrace,<path.jsonl>` — the ground-truth dump |
-| `D:\celeste-research\.tmp\tasrun\run-trace.ps1` | spawns the trace-capable install and owns the PID lifecycle |
+| `tools/celestetas-trace/` | the `TasFrameTrace` instrumentation for CelesteTAS, plus `apply.mjs` |
+| `D:\celeste-research\.tmp\tasrun\run-trace-env.ps1` | launches the game from local1/local2 and owns the PID lifecycle |
 
 ## Ground-truth trace format
 
