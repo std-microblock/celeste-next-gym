@@ -214,7 +214,7 @@ headline progress metric: an improved mechanic keeps more segments alive for lon
 | `trace-1a-v3` | same build | 20 | **16** | 4 | 0 | **2,126** | **2,122** |
 | `trace-202-v3` | after the v3/v4 exporter (pre-consumption `*P0`, `coreMode`, `inSpace`) | 1,468 | **353** | 1,114 | 0 | **119,918** | **118,804** |
 | `trace-202-v4` | same build, v4 trace | 1,468 | **355** | 1,112 | 0 | **121,236** | **120,124** |
-| `trace-100pct-v4` | same build | 918 | see `final` report | | | | |
+| `trace-100pct-v4` | same build | 918 | **234** | 684 | 0 | **73,070** | **72,386** |
 
 The exporter wave was verified independently against the `trace-202-v3` baseline: **61 segments
 improved, 0 regressed, 0 missing**. `trace-100pct-v4` and `trace-202-v4` were produced from **local1**
