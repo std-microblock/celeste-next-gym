@@ -267,9 +267,8 @@ struct Frame {
     core_mode: Option<CoreMode>,
     collider: Option<[f64; 4]>,
     inventory: Option<InventoryRec>,
-    /// `Level.InSpace` at the end of this engine frame. Parsed and reported, but there is no
-    /// `PlayerSnapshot::in_space` and `map.rs` does not decode the room's `Space` property, so it is
-    /// not restored (see the harness's open-gap notes).
+    /// `Level.InSpace` at the end of this engine frame (`Level.cs:449`, set once from
+    /// `LevelData.Space` at load). Restored into `PlayerSnapshot::in_space`.
     in_space: Option<bool>,
     /// `Session.Deaths` / `Session.Time`, carried so the gate can notice that a
     /// chapter session restarted between two segments of the same chapter.
@@ -530,6 +529,7 @@ const DERIVED_FIELDS: &[(&str, &str)] = &[
     ("core_mode", "top-level `levelCoreMode` (`Celeste.Level.CoreMode`, `Session.cs:22-27` for the enum; `None = 0, Hot = 1, Cold = 2`). This is the field the Core mechanics read - the ice factor (`Player.cs:3681-3684`), `WallBooster.IceMode` (`WallBooster.cs:77-101`) and every `CoreModeListener` - and it is `Level`'s own field, copied from and back to `Session.CoreMode` at room load and transition (`Level.cs:426`, `:1488`). The older `coreMode` key carries `Session.CoreMode`, which is not always the same value; `levelCoreMode` wins when the exporter writes it."),
     ("wall_boosting", "`Player.wallBoosting` (`Player.cs:3100`) is private, so `Celeste.Player`'s declared-field dump cannot see it. `Simulator::climb_update` derives it from the room's `WallBooster` set exactly as `Player.ClimbUpdate` does (`Player.cs:3154-3167` on, `3168-3170` off), and it is only read by the \"climbed over the ledge\" branch (`Player.cs:3140-3149`)."),
     ("core_mode_toggle_cooldowns", "`CoreModeToggle.cooldownTimer` (`CoreModeToggle.cs:12`) is per-entity room state, not `Player` state, so nothing in the trace carries it. `initialize_core_mode_toggles` sizes one slot per decoded `coreModeToggle` in map order and `advance_core_mode_toggles` counts each down after `Player.Update`, matching the entity's depth 2000 (`CoreModeToggle.cs:50`)."),
+    ("in_space", "top-level `inSpace` (`Celeste.Level.InSpace`, `Level.cs:449`, assigned once from `LevelData.Space` at load, so it is constant for a room and the anchor row is exact). `Player.cs:2889-2890` scales the run target, `2904-2908` both fall caps, `2954-2955` gravity and `DummyUpdate` its own gravity by `SpacePhysicsMult = 0.6f` (`Player.cs:673`). Only `9-Core`/`9H-Core` set it in vanilla."),
 ];
 
 /// Fields with no ground-truth source anywhere in the trace.
@@ -1651,17 +1651,16 @@ fn replay(
             .unavailable
             .push("core_mode: the trace row has no `Level.CoreMode`".to_owned());
     }
-    // `Level.InSpace` is exported (`inSpace`) but deliberately not restored: there is no
-    // `PlayerSnapshot::in_space` and `map.rs` does not decode the `.bin` level element's `space`
-    // attribute, so the `* 0.6f` branches at `Player.cs:3703-3706,3718-3722,3778-3781` are
-    // unimplemented. Reported rather than silently ignored.
-    if anchor.in_space == Some(true) {
-        outcome.unavailable.push(
-            "InSpace: the room sets Level.InSpace (`Level.cs:449`) but PlayerSnapshot has no \
-             `in_space`, so the Player.cs:3703-3706/3718-3722/3778-3781 `* 0.6f` branches are not \
-             modelled"
-                .to_owned(),
-        );
+    // `Level.InSpace` is a per-room map property (`Level.cs:449`, set from `LevelData.Space`
+    // at load), so the anchor row's value holds for the whole segment: a room cannot change
+    // it. `Player.cs:2889-2890`, `2904-2908`, `2954-2955` and `DummyUpdate` scale their run
+    // target, fall caps and gravity by 0.6 while it is set, and only `9-Core`/`9H-Core`
+    // carry it in vanilla.
+    match anchor.in_space {
+        Some(in_space) => snapshot.in_space = in_space,
+        None => outcome
+            .unavailable
+            .push("in_space: the trace row has no `Level.InSpace`".to_owned()),
     }
 
     let mut simulator = match Simulator::new(snapshot, map) {

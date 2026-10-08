@@ -551,6 +551,11 @@ pub struct PlayerSnapshot {
     pub camera_initialized: bool,
     /// Session.CoreMode observed by CoreModeListener entities.
     pub core_mode: CoreMode,
+    /// `Level.InSpace` (`Level.cs:449`, set from `LevelData.Space` at load): the Core's
+    /// zero-gravity rooms. `Player.cs:2889-2890`, `2904-2908`, `2954-2955` and the
+    /// `DummyUpdate` gravity at `Player.cs:4736-4790` scale their target speed, fall caps and
+    /// gravity by `SpacePhysicsMult = 0.6f` (`Player.cs:673`).
+    pub in_space: bool,
     /// Player.JustRespawned gates RisingLava and SandwichLava waiting behavior.
     pub just_respawned: bool,
     pub dash_dir: Vec2,
@@ -818,6 +823,7 @@ impl Default for PlayerSnapshot {
             camera: Vec2::default(),
             camera_initialized: false,
             core_mode: CoreMode::None,
+            in_space: false,
             just_respawned: false,
             dash_dir: Vec2::default(),
             last_aim: Vec2::new(1.0, 0.0),

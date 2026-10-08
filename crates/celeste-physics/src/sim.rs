@@ -46,6 +46,9 @@ const DASH_COOLDOWN: f32 = 0.2;
 const DASH_ATTACK_TIME: f32 = 0.3;
 /// `Celeste.Freeze(0.05f)` in `Player.DashBegin` (`Player.cs:4282-4285`).
 const DASH_FREEZE_TIME: f32 = 0.05;
+/// `Player.SpacePhysicsMult` (`Player.cs:673`), the 0.6 scale the Core's zero-gravity
+/// rooms apply to the run target, both fall caps and gravity.
+const SPACE_PHYSICS_MULT: f32 = 0.6;
 /// `Celeste.Freeze(0.05f)` from `CoreModeToggle.OnPlayer` (`CoreModeToggle.cs:123`),
 /// the same 0.05 s hold a dash uses but raised by a different mechanic.
 const CORE_TOGGLE_FREEZE_TIME: f32 = 0.05;
@@ -5895,6 +5898,13 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
         } else {
             MAX_RUN
         };
+        // `Player.cs:2889-2890`: `level.InSpace` scales the run *target*, unlike the Core's
+        // ice factor, which scales the acceleration multiplier instead.
+        let max_run = if p.in_space {
+            max_run * SPACE_PHYSICS_MULT
+        } else {
+            max_run
+        };
         let target = move_x as f32 * max_run;
         let same_direction_over_max = move_x != 0
             && p.speed.x.abs() > max_run
@@ -5914,12 +5924,24 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
         p.facing = move_x > 0;
     }
 
-    let target_max_fall = if holding_slow_fall(p) && p.force_move_x_timer <= 0.0 {
-        if input.move_y > 0 { 120.0 } else { 40.0 }
-    } else if input.move_y > 0 && p.speed.y >= MAX_FALL {
-        FAST_MAX_FALL
+    // `Player.cs:2904-2908`: the space multiplier scales both fall caps *before* the
+    // fast-fall comparison, so it also moves the speed at which the fast cap is selected.
+    let max_fall_cap = if p.in_space {
+        MAX_FALL * SPACE_PHYSICS_MULT
     } else {
         MAX_FALL
+    };
+    let fast_max_fall_cap = if p.in_space {
+        FAST_MAX_FALL * SPACE_PHYSICS_MULT
+    } else {
+        FAST_MAX_FALL
+    };
+    let target_max_fall = if holding_slow_fall(p) && p.force_move_x_timer <= 0.0 {
+        if input.move_y > 0 { 120.0 } else { 40.0 }
+    } else if input.move_y > 0 && p.speed.y >= max_fall_cap {
+        fast_max_fall_cap
+    } else {
+        max_fall_cap
     };
     p.max_fall = approach(
         p.max_fall,
@@ -5977,6 +5999,11 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
         };
     if holding_slow_fall(p) && p.force_move_x_timer <= 0.0 {
         gravity_mult *= 0.5;
+    }
+    // `Player.cs:2954-2955`: applied after the slow-fall halving and only ever read inside
+    // the `!onGround` block below, exactly as the source nests it.
+    if p.in_space {
+        gravity_mult *= SPACE_PHYSICS_MULT;
     }
     if !p.on_ground {
         p.speed.y = approach(
@@ -6952,12 +6979,17 @@ fn dummy_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         p.ducking = false;
     }
     if !p.on_ground && p.dummy_gravity {
-        let gravity_mult =
+        let mut gravity_mult =
             if p.speed.y.abs() < HALF_GRAV_THRESHOLD && (input.jump_held || p.auto_jump) {
                 0.5
             } else {
                 1.0
             };
+        // `Player.cs`'s `DummyUpdate` repeats the `!onGround` gravity block, `InSpace`
+        // multiplier included.
+        if p.in_space {
+            gravity_mult *= SPACE_PHYSICS_MULT;
+        }
         p.speed.y = approach(
             p.speed.y,
             p.max_fall,
@@ -13914,6 +13946,54 @@ mod tests {
         let last = trace.states.last().unwrap();
         assert!(last.speed.y < WALL_BOOSTER_LIFT_SPEED);
         assert_eq!(lift_speed(last).y, WALL_BOOSTER_LIFT_SPEED);
+    }
+    /// `Level.InSpace` (`Level.cs:449`) scales the run target
+    /// (`Player.cs:2889-2890`), both fall caps (`2904-2908`) and gravity
+    /// (`2954-2955`) by `SpacePhysicsMult = 0.6f`.
+    #[test]
+    fn space_rooms_scale_run_target_fall_caps_and_gravity() {
+        let map = floor_map();
+        let grounded = PlayerSnapshot {
+            in_space: true,
+            ..grounded_player()
+        };
+        let running = [InputState {
+            move_x: 1,
+            ..InputState::default()
+        }; 12];
+        let space = simulate_trace(grounded.clone(), &running, &map, 12).unwrap();
+        assert_eq!(space.states[12].speed.x, MAX_RUN * SPACE_PHYSICS_MULT);
+        let plain = simulate_trace(
+            PlayerSnapshot {
+                in_space: false,
+                ..grounded
+            },
+            &running,
+            &map,
+            12,
+        )
+        .unwrap();
+        assert_eq!(plain.states[12].speed.x, MAX_RUN);
+
+        let falling = |in_space| PlayerSnapshot {
+            pos: Vec2::new(32.0, 40.0),
+            on_ground: false,
+            in_space,
+            max_fall: MAX_FALL,
+            ..PlayerSnapshot::default()
+        };
+        let one = [InputState::default(); 1];
+        assert_eq!(
+            simulate(falling(true), &one, &map, 1).unwrap().speed.y,
+            GRAVITY * SPACE_PHYSICS_MULT * DT
+        );
+        assert_eq!(
+            simulate(falling(false), &one, &map, 1).unwrap().speed.y,
+            GRAVITY * DT
+        );
+        let long = [InputState::default(); 60];
+        let capped = simulate_trace(falling(true), &long, &map, 60).unwrap();
+        assert_eq!(capped.states[60].max_fall, MAX_FALL * SPACE_PHYSICS_MULT);
     }
     /// `CoreModeToggle.OnPlayer` (`CoreModeToggle.cs:103-126`): when the player's
     /// hurtbox touches the switch and it is `Usable` (`:24-38`) it flips
