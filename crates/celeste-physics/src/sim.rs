@@ -6484,7 +6484,10 @@ fn climb_jump(p: &mut PlayerSnapshot, wall: i8) {
     p.speed.y = JUMP_SPEED;
     add_lift_boost(p);
     if !p.on_ground {
-        p.stamina = (p.stamina - CLIMB_JUMP_COST).max(0.0);
+        // `Player.ClimbJump` (`Player.cs:2644-2651`) subtracts the cost from a bare
+        // `Stamina` field with no floor: the game happily records a negative value, and
+        // only the `Stamina <= 0` tests downstream act on it.
+        p.stamina -= CLIMB_JUMP_COST;
     }
     if p.move_x == 0 {
         p.wall_boost_dir = -wall;
@@ -6614,7 +6617,10 @@ fn climb_update(
         } else {
             0.0
         };
-        p.stamina = (p.stamina - cost * p.frame_delta_time).max(0.0);
+        // `Player.cs:4060` and `4078` are bare subtractions: `Stamina` is allowed to go
+        // negative, and floored it here made the simulator's value disagree with the
+        // game's on every frame a climb outlasted the bar.
+        p.stamina -= cost * p.frame_delta_time;
     }
     if p.stamina <= 0.0 {
         enter_normal(p);
@@ -13946,6 +13952,39 @@ mod tests {
         let last = trace.states.last().unwrap();
         assert!(last.speed.y < WALL_BOOSTER_LIFT_SPEED);
         assert_eq!(lift_speed(last).y, WALL_BOOSTER_LIFT_SPEED);
+    }
+    /// `Stamina` has no floor in the source: `Player.cs:4060`/`4078` are bare
+    /// subtractions, so a climb that outlasts the bar leaves a negative value behind.
+    /// Flooring it made every such frame disagree with the game while changing nothing
+    /// the `Stamina <= 0` tests could see.
+    #[test]
+    fn climb_drain_lets_stamina_go_negative_like_the_source() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            solids: vec![Rect::new(40.0, 0.0, 8.0, 184.0)],
+            ..Map::default()
+        };
+        let climbing = PlayerSnapshot {
+            pos: Vec2::new(36.0, 64.0),
+            state: PlayerState::Climb,
+            facing: true,
+            stamina: 1.0,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [InputState {
+            grab_held: true,
+            move_y: -1,
+            ..InputState::default()
+        }; 3];
+        let trace = simulate_trace(climbing, &inputs, &map, 3).unwrap();
+        assert_eq!(trace.states[1].stamina, 1.0 - CLIMB_UP_COST * DT);
+        assert_eq!(trace.states[1].state, PlayerState::Climb);
+        assert!(
+            trace.states[2].stamina < 0.0,
+            "the drain is not floored: {:?}",
+            trace.states[2].stamina
+        );
+        assert_eq!(trace.states[2].state, PlayerState::Normal);
     }
     /// `Level.InSpace` (`Level.cs:449`) scales the run target
     /// (`Player.cs:2889-2890`), both fall caps (`2904-2908`) and gravity
