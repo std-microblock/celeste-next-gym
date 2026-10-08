@@ -445,6 +445,14 @@ pub struct PlayerSnapshot {
     pub state: PlayerState,
     pub facing: bool,
     pub dashes: u8,
+    /// `Player.MaxDashes`, which is `PlayerInventory.Dashes` for the live
+    /// session (`Player.cs` MaxDashes, `PlayerInventory.cs:8-20`). `RefillDash`
+    /// restores to this value, never to a hardcoded one (`Player.cs` RefillDash):
+    /// the Prologue carries zero dashes, The Summit/Core/Epilogue carry two.
+    pub max_dashes: u8,
+    /// `PlayerInventory.NoRefills` (`PlayerInventory.cs:28`), which suppresses
+    /// the ground/swim `RefillDash` at `Player.cs:1602`.
+    pub no_refills: bool,
     pub stamina: f32,
     /// Geometric `Player.OnGround()` value exposed by the portable snapshot
     /// after every entity in the Scene has updated.
@@ -704,6 +712,8 @@ impl Default for PlayerSnapshot {
             state: PlayerState::Normal,
             facing: default_facing(),
             dashes: default_dashes(),
+            max_dashes: default_dashes(),
+            no_refills: false,
             stamina: default_stamina(),
             on_ground: false,
             player_on_ground: false,

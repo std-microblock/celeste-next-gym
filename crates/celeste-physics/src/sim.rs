@@ -275,6 +275,22 @@ impl Simulator {
         &self.snapshot
     }
 
+    /// Make the next [`Simulator::step`] reproduce an engine frame whose
+    /// `Scene.Update` did not run.
+    ///
+    /// `Celeste.Freeze(t)` writes `Engine.FreezeTimer` and `Monocle.Engine.Update`
+    /// then skips `Scene.Update` for as long as it is positive; `Level.Update`
+    /// likewise runs only `Player`-external transition work while
+    /// `Level.Transitioning`. `Engine.FreezeTimer` is an `Engine` field rather
+    /// than a `Player` field, so a frame-by-frame trace cannot export it. A row
+    /// whose `Player.StrawberryCollectResetTimer` did not move proves the frame
+    /// was skipped, and a caller that replays such a row must not run a
+    /// `Player.Update` the game never ran. One call covers exactly one engine
+    /// frame; repeat it for each skipped row.
+    pub fn skip_engine_frame(&mut self) {
+        self.snapshot.freeze_timer = self.snapshot.freeze_timer.max(DT);
+    }
+
     /// Current entity rectangles after all runtime movement, visibility, and
     /// StaticMover attachment updates have been applied. The order is stable
     /// and matches the decoded room entity order, which lets hot-path clients
@@ -4855,7 +4871,8 @@ fn step(
             p.on_ground = grounded(p, map);
             p.player_on_ground = p.on_ground;
             p.player_on_ground_initialized = true;
-            p.dashes = p.dashes.max(1);
+            // Player.Added: `lastDashes = (Dashes = MaxDashes);` (Player.cs).
+            refill_dash(p);
             p.stamina = 110.0;
             p.movement_remainder = Vec2::default();
             p.just_respawned = true;
@@ -4962,13 +4979,17 @@ fn step(
         p.auto_jump = false;
         p.jump_grace_timer = JUMP_GRACE;
         p.wall_slide_timer = WALL_SLIDE_TIME;
-        if !dash_refill_cooldown_active {
-            p.dashes = p.dashes.max(1);
+        if !dash_refill_cooldown_active && !p.no_refills {
+            // Player.Update: `else if (!Inventory.NoRefills) { ... onGround &&
+            // CollideCheck<Solid, NegaBlock>(Position + UnitY) ... -> RefillDash(); }`
+            // (Player.cs). Excludes the state-3 branch handled below.
+            refill_dash(p);
         }
         p.stamina = 110.0;
     }
-    if p.state == PlayerState::Swim && !dash_refill_cooldown_active {
-        p.dashes = p.dashes.max(1);
+    if p.state == PlayerState::Swim && !dash_refill_cooldown_active && !p.no_refills {
+        // Player.Update: `if (StateMachine.State == 3) RefillDash();` (Player.cs).
+        refill_dash(p);
     }
     p.move_x = if force_move_x_active {
         p.force_move_x
@@ -5194,6 +5215,27 @@ fn step(
     advance_post_player_entities(p, map, input, attachments);
     p.on_ground = grounded(p, map);
     Ok(())
+}
+
+/// `Player.RefillDash()` (`Player.cs`):
+///
+/// ```csharp
+/// public bool RefillDash() {
+///     if (Dashes < MaxDashes) { Dashes = MaxDashes; return true; }
+///     return false;
+/// }
+/// ```
+///
+/// `MaxDashes` is `Inventory.Dashes` for the live session (`Player.cs`
+/// `MaxDashes`, `PlayerInventory.cs`): 0 in the Prologue, 2 in The Summit,
+/// Core and the Epilogue, 1 elsewhere. Restoring a hardcoded single dash
+/// desynchronised every 0-Intro room (the sim granted a dash the Prologue
+/// never has) and every The Summit/Core room (the sim stopped at 1 where the
+/// game restored 2).
+fn refill_dash(p: &mut PlayerSnapshot) {
+    if p.dashes < p.max_dashes {
+        p.dashes = p.max_dashes;
+    }
 }
 
 fn tick_timers(p: &mut PlayerSnapshot) {
@@ -6284,7 +6326,10 @@ fn try_end_dream_dash(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
         p.auto_jump_timer = 0.0;
     }
     p.jump_grace_timer = if horizontal_exit { JUMP_GRACE } else { 0.0 };
-    p.dashes = p.dashes.max(1);
+    // Player.DreamDashEnd: `if (!Inventory.NoRefills) RefillDash();` (Player.cs).
+    if !p.no_refills {
+        refill_dash(p);
+    }
     p.stamina = 110.0;
     p.dash_attack_timer = 0.0;
     p.freeze_timer = 0.05;
@@ -7042,7 +7087,8 @@ fn star_fly_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         if p.star_fly_transform_frames == 0 {
             p.star_fly_transforming = false;
             p.star_fly_timer = STAR_FLY_TIME;
-            p.dashes = p.dashes.max(1);
+            // Player.StarFlyBegin (feather transform): RefillDash(); RefillStamina();
+            refill_dash(p);
             p.stamina = 110.0;
             let mut dir = input_vector(input);
             if dir == Vec2::default() {
@@ -8097,7 +8143,8 @@ fn interact(
                 p.last_booster_target = p.boost_target;
                 p.booster_reuse_timer = 0.45;
                 p.state_timer = 0.25 + p.frame_delta_time * 2.0;
-                p.dashes = p.dashes.max(1);
+                // Player.BoostBegin: RefillDash(); RefillStamina(); (Player.cs).
+                refill_dash(p);
                 p.stamina = 110.0;
             }
             EntityKind::FlyFeather => {
@@ -8170,8 +8217,9 @@ fn interact(
                     continue;
                 }
                 // Player.UseRefill(twoDashes): refill only when Dashes < num
-                // (MaxDashes, or 2 for the pink diamond) or Stamina < 20.
-                let target_dashes = if state.two_dashes { 2 } else { 1 };
+                // (MaxDashes, or 2 for the pink diamond) or Stamina < 20
+                // (`Player.cs` UseRefill). MaxDashes is Inventory.Dashes.
+                let target_dashes = if state.two_dashes { 2 } else { p.max_dashes };
                 if p.dashes < target_dashes || p.stamina < CLIMB_TIRED_THRESHOLD {
                     p.dashes = target_dashes;
                     p.stamina = 110.0;
@@ -8315,7 +8363,8 @@ fn update_strawberry_train(p: &mut PlayerSnapshot) {
 }
 
 fn reset_for_spring_bounce(p: &mut PlayerSnapshot) {
-    p.dashes = p.dashes.max(1);
+    // Player.Bounce(float fromY): RefillDash(); RefillStamina(); (Player.cs).
+    refill_dash(p);
     p.stamina = 110.0;
     p.state = PlayerState::Normal;
     p.jump_grace_timer = 0.0;
@@ -8401,7 +8450,10 @@ fn explode_launch(
             p.explode_launch_boost_speed = p.speed.x * 1.2;
         }
     }
-    p.dashes = p.dashes.max(1);
+    // Player.ExplodeLaunch: `if (!Inventory.NoRefills) RefillDash();` (Player.cs).
+    if !p.no_refills {
+        refill_dash(p);
+    }
     p.stamina = 110.0;
     p.dash_cooldown_timer = DASH_COOLDOWN;
     p.state = PlayerState::Launch;
@@ -8429,7 +8481,11 @@ fn bounce(p: &mut PlayerSnapshot, map: &Map, from_y: f32) {
         p.pos.y = next_y;
     }
 
-    p.dashes = p.dashes.max(1);
+    // Player.DreamDashEnd (from inside a DreamBlock): the source performs
+    // `if (!Inventory.NoRefills) RefillDash(); RefillStamina();` (Player.cs).
+    if !p.no_refills {
+        refill_dash(p);
+    }
     p.stamina = 110.0;
     if p.state == PlayerState::StarFly {
         // Setting StateMachine.State to Normal invokes StarFlyEnd first. The
@@ -8497,7 +8553,13 @@ fn try_begin_badeline_boost(p: &mut PlayerSnapshot, map: &Map) -> bool {
     };
     p.state = PlayerState::Dummy;
     p.speed = Vec2::default();
-    p.dashes = p.dashes.max(1);
+    // BadelineBoost.RefillRoutine: a two-dash session is cut back to one dash,
+    // otherwise `RefillDash()` runs (BadelineBoost.cs:145-152).
+    if p.max_dashes > 1 {
+        p.dashes = 1;
+    } else {
+        refill_dash(p);
+    }
     p.stamina = 110.0;
     p.facing = side < 0.0;
     p.badeline_boost_active = true;
@@ -8594,7 +8656,8 @@ fn begin_badeline_launch(p: &mut PlayerSnapshot, map: &Map) {
     p.launch_approach_x = Some(p.last_badeline_boost_target.x);
     p.speed = Vec2::new(0.0, -330.0);
     p.auto_jump = true;
-    p.dashes = p.dashes.max(1);
+    // Player.BadelineBoostLaunch: RefillDash(); RefillStamina(); (Player.cs).
+    refill_dash(p);
     p.stamina = 110.0;
     p.dash_cooldown_timer = DASH_COOLDOWN;
     p.state = PlayerState::Launch;
@@ -8638,7 +8701,8 @@ fn point_bounce(p: &mut PlayerSnapshot, from: Vec2) {
     if p.state == PlayerState::Dash {
         p.state = PlayerState::Normal;
     }
-    p.dashes = p.dashes.max(1);
+    // Player.PointBounce: RefillDash(); RefillStamina(); (Player.cs).
+    refill_dash(p);
     p.stamina = 110.0;
     let collider = current_player_hurt_rect(p);
     let center = Vec2::new(
@@ -8887,7 +8951,8 @@ fn update_transition(p: &mut PlayerSnapshot, map: &mut Map) {
         p.wall_slide_timer = WALL_SLIDE_TIME;
         p.jump_grace_timer = 0.0;
         p.force_move_x_timer = 0.0;
-        p.dashes = p.dashes.max(1);
+        // Player.OnTransition: RefillDash(); RefillStamina(); (Player.cs).
+        refill_dash(p);
         p.stamina = 110.0;
         let previous_room = Some(p.current_room_bounds.unwrap_or(map.bounds));
         let next_room = p.transition_room_bounds.take();

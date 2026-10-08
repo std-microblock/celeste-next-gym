@@ -21,7 +21,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use celeste_physics::{
-    InputState, Map, PlayerSnapshot, PlayerState, SimulationError, Simulator, Vec2,
+    EntityKind, InputState, Map, PlayerSnapshot, PlayerState, Rect, SimulationError, Simulator, Vec2,
     celeste_map_rooms, decode_map_room,
 };
 use serde::{Deserialize, Serialize};
@@ -121,6 +121,9 @@ struct Record {
     scene: String,
     sid: Option<String>,
     mode: Option<i64>,
+    /// `Session.Area.ID`. Selects the `PlayerInventory` (`AreaData`) the run is
+    /// playing with, which sets `Player.MaxDashes` and `NoRefills`.
+    area: Option<i64>,
     room: Option<String>,
     state: Option<String>,
     p: Option<JsonMap<String, Value>>,
@@ -379,6 +382,8 @@ const DERIVED_FIELDS: &[(&str, &str)] = &[
     ("facing", "`p.Facing` (`Facings` enum: -1 Left, 1 Right) compared against the boolean `facing`."),
     ("time_rate", "top-level `timeRate` (`Engine.TimeRate`)."),
     ("player_on_ground_initialized", "set to true; the anchor row is a post-`Player.Update` capture, so the source-private `onGround` is authoritative."),
+    ("max_dashes", "`Player.MaxDashes` -> `PlayerInventory.Dashes` for the segment's `Session.Area.ID` (`AreaData`), tightened by the largest `Dashes` the trace reports in the segment."),
+    ("no_refills", "`PlayerInventory.NoRefills` for the segment's `Session.Area.ID` (`AreaData`)."),
     ("frame_delta_time", "`#[serde(skip)]` on the wire type. `Simulator::step` recomputes it every frame as the supplied `rawDt` bits times `time_rate`."),
     ("state_timer", "in the Dash state, `PlayerSnapshot::restore_dash_phase` rebuilds the simulator's dash clock from `p.dashAttackTimer`: Celeste times the dash with `DashCoroutine` (`Player.cs:4465-4567`), not a `StateMachine.Timer`, and `dashAttackTimer` (`Player.cs:4296`, decremented per unfrozen frame at `Player.cs:1577-1580`) counts exactly those frames."),
     ("wind", "top-level `wind` (`Celeste.Level.Wind`, `Level.cs:149`). Restored verbatim from the anchor row so the room segment continues the source's own ramp: `WindController.Update` rewrites it with `Calc.Approach(level.Wind, targetSpeed, 1000f * Engine.DeltaTime)` (`WindController.cs:194`) and displaces the Player's `WindMover` component (`Player.cs:1180`) by `level.Wind * 0.1f * Engine.DeltaTime` (`WindController.cs:199-201`)."),
@@ -613,6 +618,8 @@ fn snapshot_fields_markdown() -> String {
 struct Segment {
     sid: String,
     mode: i64,
+    /// `Session.Area.ID` of the segment's first row.
+    area: i64,
     room: String,
     start_row: u64,
     start_frame: i64,
@@ -971,6 +978,119 @@ fn restore_restored_fields(
 
 const TOLERANCE: f32 = 0.01;
 
+/// `PlayerInventory.Dashes` for the area whose `Session.Area.ID` is `area`
+/// (`AreaData` assigns one `PlayerInventory` per area/mode; `PlayerInventory.cs`
+/// declares the values):
+///
+/// * area 0 (Prologue) is `PlayerInventory.Prologue` -> `Dashes = 0`;
+/// * areas 7 (The Summit), 8 (Epilogue) are `PlayerInventory.TheSummit` -> 2;
+/// * area 9 (Core) is `PlayerInventory.Core` -> 2;
+/// * area 10 (`LostLevels`, the Farewell chapter) is `PlayerInventory.Farewell`
+///   -> 1. The chapter's intro cutscene raises the *session* value to 2
+///   (`CS10_Gravestone.cs` `BadelineRejoin`/`OnEnd`:
+///   `Level.Session.Inventory.Dashes = 2;`), and `CS10_FinalRoom.cs:76` returns
+///   it to 1 before the ending, so no per-area constant is right for the whole
+///   chapter: the per-segment witness below recovers the raised value wherever
+///   the trace demonstrates it, and this table value covers the rest;
+/// * everything else is `PlayerInventory.Default` -> 1.
+///
+/// `PlayerInventory.cs` cannot be observed through the trace: `Player.Inventory`
+/// is a property over `Level.Session`, so the exporter's `DeclaredOnly` field
+/// walk cannot see it. The session value is therefore recovered from the area
+/// table above, tightened by `observe_session_dashes` below whenever the trace
+/// actually witnesses the session's capacity.
+fn area_inventory_dashes(area: i64) -> u8 {
+    match area {
+        0 => 0,
+        7 | 8 | 9 => 2,
+        _ => 1,
+    }
+}
+
+/// `PlayerInventory.NoRefills` (`PlayerInventory.cs`): `PlayerInventory.Core`
+/// (area 9) sets it, which suppresses `RefillDash()` at `Player.cs:1602`,
+/// `2687`, `2718`, `2758`, `4961` and `5159`.
+///
+/// `NoRefillTrigger` (`NoRefillTrigger.cs`) can also toggle this per room; the
+/// trace carries no session-inventory field, so only the area default is
+/// restored here.
+fn area_inventory_no_refills(area: i64) -> bool {
+    area == 9
+}
+
+/// Recover `PlayerInventory.Dashes` for this segment from the trace.
+///
+/// `Player.RefillDash()` only ever writes `Dashes = MaxDashes` and
+/// `Player.MaxDashes` is `Inventory.Dashes`, so a `Dashes` value the game itself
+/// reports after a refill is a witness for the session's capacity there. It is a
+/// *lower* bound: `Refill.UseRefill(twoDashes)` can also land on the pink
+/// diamond's fixed `2` (`Player.cs` UseRefill) regardless of `MaxDashes`, and
+/// `BadelineBoost`'s alarm only ever increments up to `Inventory.Dashes`
+/// (`BadelineBoost.cs:216-219`). The pink diamond is therefore excluded below by
+/// position, which leaves only writes that set exactly `MaxDashes` - or a
+/// bounded increment - as witnesses.
+///
+/// Taking the maximum when the segment shows any dash at all, and falling back
+/// to the area's `PlayerInventory` otherwise, keeps the restored capacity
+/// monotone: it never exceeds what the game demonstrated in that segment, and
+/// never discards a dash the area's inventory grants. Farewell is why the
+/// witness has to win over the area table: the chapter's intro
+/// (`CS10_Gravestone.cs:133-134/144-145`) raises `Inventory.Dashes` to 2 while
+/// `CS10_FinalRoom.cs:76` returns it to 1, so no single per-area constant fits
+/// the chapter, and the second `LostLevels` pass (which never replays the intro)
+/// only ever refills to one dash.
+fn observe_session_dashes(area: i64, witnessed: Option<i64>) -> u8 {
+    let area_dashes = area_inventory_dashes(area);
+    match witnessed.map(|value| value.clamp(0, u8::MAX as i64) as u8) {
+        Some(witnessed) if witnessed > 0 => witnessed.min(area_dashes),
+        _ => area_dashes,
+    }
+}
+
+/// Is the player's post-frame position inside a pink `twoDash` diamond?
+///
+/// `Refill.RefillRoutine`/`OnPlayer` (`Refill.cs`) is the only refill that can
+/// exceed `Player.MaxDashes`, and `twoDashes` comes straight from the map's
+/// `twoDash` attribute, so the decoded room is the witness. The probe is the
+/// player's own box widened by a few pixels, because a collected diamond stops
+/// being collidable on that same frame and a fast dash can travel several pixels
+/// while inside its 16x16 hitbox.
+fn near_pink_refill(map: &Map, position: [f64; 2]) -> bool {
+    let probe = Rect::new(
+        position[0] as f32 - 12.0,
+        position[1] as f32 - 14.0,
+        24.0,
+        28.0,
+    );
+    map.entities.iter().any(|entity| {
+        entity.kind == EntityKind::Refill
+            && entity.direction.x != 0.0
+            && entity.bounds.intersects(probe)
+    })
+}
+
+/// Largest `Dashes` this segment reaches through a refill that cannot be the
+/// pink diamond, i.e. through a write that lands on exactly `Player.MaxDashes`.
+fn witnessed_session_dashes(map: &Map, truth: &[Truth]) -> Option<i64> {
+    let mut best: Option<i64> = None;
+    for index in 1..truth.len() {
+        let (Some(previous), Some(current)) = (truth[index - 1].dashes, truth[index].dashes) else {
+            continue;
+        };
+        if current <= previous || current <= 0 {
+            continue;
+        }
+        let Some(position) = truth[index].position else {
+            continue;
+        };
+        if near_pink_refill(map, position) {
+            continue;
+        }
+        best = Some(best.map_or(current, |value| value.max(current)));
+    }
+    best
+}
+
 fn bits_of(delta: f64) -> u32 {
     (delta as f32).to_bits()
 }
@@ -1209,6 +1329,12 @@ fn replay(
     };
     let mut snapshot = PlayerSnapshot::default();
     restore_restored_fields(&mut snapshot, anchor_fields);
+    // `Player.MaxDashes` and `PlayerInventory.NoRefills` are session state, not
+    // `Player` fields, so the reflection dump cannot carry them. Restore them
+    // from the area's `PlayerInventory` (`AreaData`) as tightened by the
+    // capacity the trace itself witnesses in this segment.
+    snapshot.max_dashes = observe_session_dashes(segment.area, witnessed_session_dashes(map, &truth));
+    snapshot.no_refills = area_inventory_no_refills(segment.area);
     snapshot.state = anchor_state;
     snapshot.facing = anchor_fields
         .get("Facing")
@@ -1344,6 +1470,15 @@ fn replay(
             if first_freeze_disagreement.is_none() {
                 first_freeze_disagreement = Some(offset);
             }
+        }
+        // `Engine.FreezeTimer` is not a `Player` field, so the trace cannot
+        // export the freeze that started inside the anchor row (for example
+        // `Player.DashBegin` -> `Celeste.Freeze(0.05f)`, or a collected
+        // `Refill`). The stalled row is the only witness, and without this the
+        // simulator runs a `Player.Update` the game skipped and then compares
+        // its freshly computed fields against the game's frozen ones.
+        if stalled[index] && !simulator_frozen {
+            simulator.skip_engine_frame();
         }
         let delta = frame.raw_dt.unwrap_or(frame.dt);
         let input = frame.input.to_input_state(bits_of(delta));
@@ -1957,6 +2092,7 @@ fn run() -> Result<(), String> {
             current = Some(Segment {
                 sid,
                 mode,
+                area: record.area.unwrap_or(0),
                 room,
                 start_row: record.n,
                 start_frame: record.f,
