@@ -64,6 +64,15 @@ pub struct InputState {
     /// is diagnostic replay data only, so portable scenario inputs omit it.
     #[serde(skip)]
     pub frame_delta_time_bits: Option<u32>,
+    /// The `*_pressed` flags above are `Monocle.VirtualButton.Pressed`
+    /// (`VirtualButton.cs:43-65`) - a *buffered* level, already zeroed wherever the
+    /// game called `ConsumeBuffer`/`ConsumePress` - rather than a raw
+    /// `Binding.Pressed` edge. The TAS fidelity harness exports exactly that level,
+    /// so it sets this to stop `Simulator::step` from running the same press
+    /// through a second `VirtualButton` buffer. Portable scenario inputs leave it
+    /// false and keep the buffered-edge model.
+    #[serde(default)]
+    pub presses_are_effective: bool,
 }
 
 impl InputState {

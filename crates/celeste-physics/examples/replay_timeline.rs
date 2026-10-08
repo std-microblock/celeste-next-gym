@@ -58,6 +58,9 @@ impl FrameButtons {
             grab_held: self.grab,
             talk_pressed: false,
             frame_delta_time_bits: None,
+            // This reader derives raw press edges from the held flags, so the
+            // simulator keeps its own `VirtualButton` buffer for them.
+            presses_are_effective: false,
         }
     }
 }

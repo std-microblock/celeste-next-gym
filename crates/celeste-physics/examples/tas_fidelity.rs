@@ -121,6 +121,11 @@ impl InputRec {
                 .or(self.talk_pressed)
                 .unwrap_or(self.talk),
             frame_delta_time_bits: Some(frame_delta_time_bits),
+            // `*P0` is `Monocle.VirtualButton.Pressed`, i.e. the buffered level the
+            // game itself read, already zeroed wherever the game consumed the
+            // press. `Simulator::step` must therefore adopt it verbatim instead of
+            // running it through its own `VirtualButton` buffer a second time.
+            presses_are_effective: true,
         }
     }
 }

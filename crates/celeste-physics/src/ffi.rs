@@ -72,6 +72,9 @@ impl CelesteInputPod {
             grab_held: self.flags & (1 << 4) != 0,
             talk_pressed: self.flags & (1 << 5) != 0,
             frame_delta_time_bits: None,
+            // The FFI pod carries raw press edges, so the simulator keeps its own
+            // `VirtualButton` buffer for this path.
+            presses_are_effective: false,
         }
     }
 }

@@ -5201,28 +5201,46 @@ fn step(
     // as well as Input.Jump. Preserve the former before Player state code can
     // consume the latter's VirtualButton buffer.
     let menu_cancel_pressed = input.jump_pressed;
-    // VirtualButton.Update runs in MInput before Celeste.Freeze can skip the
-    // Scene. It subtracts DeltaTime first, then a new press restores the full
-    // buffer; Jump also clears its buffer as soon as the binding is not held.
-    p.jump_buffer_timer -= p.frame_delta_time;
-    if input.jump_pressed {
-        p.jump_buffer_timer = JUMP_BUFFER_TIME;
-    } else if !input.jump_held {
-        p.jump_buffer_timer = 0.0;
+    if input.presses_are_effective {
+        // The caller already supplies `VirtualButton.Pressed` itself - the level,
+        // not a raw edge - including the zeroing `ConsumeBuffer`/`ConsumePress`
+        // perform (`VirtualButton.cs:148-157`). Running it through the buffers
+        // below a second time would re-arm them on every frame the game's press is
+        // merely still alive, so the press would outlive the game's window. Adopt
+        // the level as this frame's press instead; `jump_held` stays the raw
+        // `VirtualButton.Check`, which `Player.cs:2952` and `2963` read for
+        // half-gravity and variable-jump.
+        p.jump_buffer_timer = if input.jump_pressed {
+            JUMP_BUFFER_TIME
+        } else {
+            0.0
+        };
+        p.dash_buffer_timer = if input.dash_pressed { 0.08 } else { 0.0 };
+        p.crouch_dash_buffer_timer = if input.crouch_dash_pressed { 0.08 } else { 0.0 };
+    } else {
+        // VirtualButton.Update runs in MInput before Celeste.Freeze can skip the
+        // Scene. It subtracts DeltaTime first, then a new press restores the full
+        // buffer; Jump also clears its buffer as soon as the binding is not held.
+        p.jump_buffer_timer -= p.frame_delta_time;
+        if input.jump_pressed {
+            p.jump_buffer_timer = JUMP_BUFFER_TIME;
+        } else if !input.jump_held {
+            p.jump_buffer_timer = 0.0;
+        }
+        // Dash and CrouchDash use a 0.08 second VirtualButton buffer. Their
+        // portable input contract only records press edges, so keep the existing
+        // press buffer alive across freeze until it is consumed or expires.
+        p.dash_buffer_timer = (p.dash_buffer_timer - p.frame_delta_time).max(0.0);
+        p.crouch_dash_buffer_timer = (p.crouch_dash_buffer_timer - p.frame_delta_time).max(0.0);
+        if input.dash_pressed {
+            p.dash_buffer_timer = 0.08;
+        }
+        if input.crouch_dash_pressed {
+            p.crouch_dash_buffer_timer = 0.08;
+        }
     }
     // Player state callbacks read VirtualButton.Pressed, not the raw edge.
     input.jump_pressed = p.jump_buffer_timer > 0.0;
-    // Dash and CrouchDash use a 0.08 second VirtualButton buffer. Their
-    // portable input contract only records press edges, so keep the existing
-    // press buffer alive across freeze until it is consumed or expires.
-    p.dash_buffer_timer = (p.dash_buffer_timer - p.frame_delta_time).max(0.0);
-    p.crouch_dash_buffer_timer = (p.crouch_dash_buffer_timer - p.frame_delta_time).max(0.0);
-    if input.dash_pressed {
-        p.dash_buffer_timer = 0.08;
-    }
-    if input.crouch_dash_pressed {
-        p.crouch_dash_buffer_timer = 0.08;
-    }
     input.dash_pressed = p.dash_buffer_timer > 0.0;
     input.crouch_dash_pressed = p.crouch_dash_buffer_timer > 0.0;
     if p.dead {
