@@ -7,6 +7,7 @@
  *   await renderTrace(trace, "out.gif", { hud: true });
  */
 import { resolve } from "node:path";
+import { createCanvas } from "@napi-rs/canvas";
 import { auditMap, checkState, decodeRoom, encodeMap, fuzzRaw, fuzzResolveInputs, simulateRaw } from "./wasm.ts";
 import {
   initialState,
@@ -270,6 +271,8 @@ export async function renderTrace(trace: Trace, out: string, options: TraceRende
   const to = Math.max(from, Math.min(last, options.to ?? last));
   const views: GymMap[] = [];
   for (const state of trace.states) views.push(await trace.map.viewFor(state));
+  // Freeze each room's cached surfaces once, before any frame is drawn.
+  for (const view of new Set(views)) await renderer.prepare(view);
 
   if (kind === "png" && (options.sheet || options.sheetEvery)) {
     const indices: number[] = [];
@@ -300,12 +303,18 @@ export async function renderTrace(trace: Trace, out: string, options: TraceRende
   // Keep one output size for the whole sequence (the start room's size).
   const size = renderer.size(trace.map.view);
   const fps = options.fps ?? Math.round(60 / every);
+  // One fixed framebuffer for the whole sequence: every encoder reads each
+  // frame before the next one is drawn (gifenc quantises, writeFrames encodes,
+  // writeVideo copies into ffmpeg's stdin), and paintGame clears the viewport,
+  // so re-drawing into it is not observable — and allocating a canvas per frame
+  // is not.
+  const target = createCanvas(size.width, size.height);
   const result = await writeSequence(
     {
       width: size.width,
       height: size.height,
       count: indices.length,
-      frame: (i) => renderer.drawFrame(views[indices[i]], trace.states, indices[i], trace.inputs, undefined, size),
+      frame: (i) => renderer.drawFrame(views[indices[i]], trace.states, indices[i], trace.inputs, target, size),
     },
     out,
     { fps, ffmpeg: options.ffmpeg },

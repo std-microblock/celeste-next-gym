@@ -40,6 +40,7 @@ import { type VisualTheme, type VisualThemeLayer } from "../visualThemes";
 import {
   createRenderCanvas,
   freezeRenderCanvas,
+  freezeRenderCanvasAsync,
   renderBackend,
 } from "./canvasBackend";
 
@@ -72,11 +73,14 @@ let assetsPromise: Promise<GameAssets> | null = null;
 
 type LoadedImage = CanvasImageSource & { width: number; height: number };
 
-function imageToCanvas(image: LoadedImage): HTMLCanvasElement {
-  const canvas = createRenderCanvas(image.width, image.height);
-  const context = canvas.getContext("2d");
-  if (context) context.drawImage(image, 0, 0);
-  return freezeRenderCanvas(canvas);
+/**
+ * The atlas surface. `loadImage` already hands back a decoded bitmap, which is
+ * the cheapest thing to blit sprites out of in every backend — a Node canvas
+ * instead makes Skia copy the whole atlas on every `drawImage`, so an atlas
+ * must never be wrapped in (or frozen through) an offscreen canvas.
+ */
+function atlasImage(image: LoadedImage): HTMLCanvasElement {
+  return image as unknown as HTMLCanvasElement;
 }
 
 function loadAssetImage(
@@ -107,7 +111,7 @@ export function loadAssets(): Promise<GameAssets> {
         "无法加载基础游戏图集",
       );
       return {
-        image: imageToCanvas(image),
+        image: atlasImage(image),
         entries: manifest.entries,
         keys: Object.keys(manifest.entries),
         frameLists: new Map(),
@@ -130,7 +134,7 @@ export async function loadThemeAtlas(
     `主题图集加载失败: ${atlasUrl}`,
   );
   return {
-    image: imageToCanvas(image),
+    image: atlasImage(image),
     entries: manifest.entries,
     keys: Object.keys(manifest.entries),
     frameLists: new Map(),
@@ -168,6 +172,26 @@ export function mergeGameAssets(
     keys: Object.keys(entries),
     frameLists: new Map(),
     tinted: new Map(),
+  };
+}
+
+/**
+ * Await the backend's async freeze for a composited atlas (see
+ * `RenderBackend.freezeAsync`). Compositing necessarily produces a canvas, and
+ * a Node canvas costs a full-surface copy per sprite blitted out of it, so a
+ * caller that can await must run this once before drawing. A no-op for
+ * backends whose frozen source is already synchronous (the browser) and for
+ * surfaces that are already decoded images (the plain atlases).
+ */
+export async function prepareGameAssets(assets: GameAssets): Promise<GameAssets> {
+  const image = await freezeRenderCanvasAsync(assets.image as unknown as HTMLCanvasElement);
+  if (image === (assets.image as unknown as HTMLCanvasElement)) return assets;
+  return {
+    image: image as unknown as GameAssets["image"],
+    entries: assets.entries,
+    keys: assets.keys,
+    frameLists: new Map(assets.frameLists),
+    tinted: new Map(assets.tinted),
   };
 }
 

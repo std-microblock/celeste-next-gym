@@ -19,17 +19,26 @@ export interface RenderBackend {
   loadJson(url: string): Promise<unknown>;
   /**
    * Optional: convert a finished, never-again-modified offscreen canvas into
-   * the backend's fastest drawImage source; the browser keeps the canvas.
-   *
-   * Only implement this when the returned object is drawable *immediately and
-   * synchronously* — the very next `drawImage` runs in the same tick. A source
-   * that needs an asynchronous decode must not be returned here: e.g.
-   * `@napi-rs/canvas` decodes `Image.src = <Buffer>` on a worker thread, so an
-   * Image built from `canvas.toBuffer("image/png")` draws an empty bitmap and
-   * silently blanks the whole frame. Such a backend should leave this
-   * undefined and let `freezeRenderCanvas` return the canvas.
+   * the backend's fastest drawImage source. Only implement this when the
+   * result is drawable *immediately and synchronously* — it is used by the very
+   * next `drawImage`, in the same tick.
    */
   freeze?(canvas: HTMLCanvasElement): HTMLCanvasElement;
+  /**
+   * Optional async variant, for backends whose fastest source needs a decode.
+   *
+   * `@napi-rs/canvas` is such a backend: drawing a *canvas* makes Skia copy the
+   * whole source surface on every call (an 8x8 tile blitted out of the
+   * 1024x4600 gameplay atlas copies ~18 MB per tile, which OOMs a small
+   * machine), while a decoded `Image` is free — but `Image.src =
+   * canvas.toBuffer("image/png")` only finishes on a worker thread, and
+   * drawing the Image before that draws an empty bitmap. So the decode has to
+   * be awaited by a caller that can: `freezeRenderCanvasAsync`, used to
+   * prepare the cached atlases / tile layers before the first frame.
+   *
+   * Implementations should pass non-canvas sources straight through.
+   */
+  freezeAsync?(canvas: HTMLCanvasElement): Promise<HTMLCanvasElement>;
 }
 
 export const browserRenderBackend: RenderBackend = {
@@ -68,7 +77,22 @@ export function createRenderCanvas(width = 1, height = 1): HTMLCanvasElement {
   return activeBackend.createCanvas(Math.max(1, width), Math.max(1, height));
 }
 
-/** Mark a cached offscreen canvas as final (see `RenderBackend.freeze`). */
+/**
+ * Mark a cached offscreen canvas as final (see `RenderBackend.freeze`).
+ * Synchronous: only valid for backends whose frozen source is drawable in the
+ * same tick. Callers that can await should use `freezeRenderCanvasAsync`.
+ */
 export function freezeRenderCanvas(canvas: HTMLCanvasElement): HTMLCanvasElement {
   return activeBackend.freeze ? activeBackend.freeze(canvas) : canvas;
+}
+
+/**
+ * Awaitably mark a cached offscreen canvas as final (see
+ * `RenderBackend.freezeAsync`), for backends that must decode first. On
+ * backends without an async freeze this is a resolved pass-through.
+ */
+export async function freezeRenderCanvasAsync(canvas: HTMLCanvasElement): Promise<HTMLCanvasElement> {
+  const backend = activeBackend;
+  if (backend.freezeAsync) return await backend.freezeAsync(canvas);
+  return freezeRenderCanvas(canvas);
 }

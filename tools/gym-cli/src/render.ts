@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, extname, join, resolve } from "node:path";
 import { Canvas, GlobalFonts, createCanvas, loadImage, type SKRSContext2D } from "@napi-rs/canvas";
 import gifenc from "gifenc";
-import { setRenderBackend } from "../../../web/src/render/canvasBackend.ts";
+import { setRenderBackend, freezeRenderCanvasAsync } from "../../../web/src/render/canvasBackend.ts";
 import {
   buildSolidGrid,
   buildSpinnerGroups,
@@ -18,6 +18,7 @@ import {
   loadThemeAtlas,
   mergeGameAssets,
   paintGame,
+  prepareGameAssets,
   type GameAssets,
   type GameViewDrawInput,
 } from "../../../web/src/render/gameRenderer.ts";
@@ -89,16 +90,18 @@ export function installNodeRenderBackend(): void {
     createCanvas: (width, height) => createCanvas(width, height) as unknown as HTMLCanvasElement,
     loadImage: async (url) => (await loadImage(readFileSync(assetPath(url)))) as unknown as HTMLImageElement,
     loadJson: async (url) => JSON.parse(readFileSync(assetPath(url), "utf8")),
-    // Deliberately no `freeze` override, so `freezeRenderCanvas` returns the
-    // canvas itself. @napi-rs/canvas decodes `Image.src = <Buffer>` on a worker
-    // thread, so a "frozen" Image built from `canvas.toBuffer("image/png")` is
-    // still blank when the next drawImage runs in the same tick: it silently
-    // erased the merged gameplay atlas and every cached tile layer, leaving
-    // background + HUD only. `Image.decode()` is async and `freeze` cannot
-    // await it. The optimisation is also worthless here — measured on
-    // @napi-rs/canvas 0.1.100, drawImage(canvas) matches drawImage(decoded
-    // Image) (~2 ms/frame for 400 blits out of a 2048x1200 atlas, with the
-    // per-frame getImageData that GIF/video encoding does).
+    // Decoding the PNG back into an Image is what makes a cached atlas / tile
+    // layer cheap to draw: blitting out of a *canvas* makes Skia copy the whole
+    // source surface on every drawImage (an 8x8 tile out of the 1024x4600
+    // gameplay atlas copies ~18 MB, which OOMs a small machine), while a decoded
+    // Image is free. `Image.src = <Buffer>` only finishes on a worker thread, so
+    // this must be the *awaited* variant — a synchronous `freeze` returning that
+    // Image draws an empty bitmap and blanks the frame.
+    freezeAsync: async (canvas) => {
+      const source = canvas as unknown as { toBuffer?: (mime: string) => Buffer };
+      if (typeof source.toBuffer !== "function") return canvas; // already a decoded image
+      return (await loadImage(source.toBuffer("image/png"))) as unknown as HTMLCanvasElement;
+    },
   });
 }
 
@@ -178,20 +181,38 @@ export class SceneRenderer {
         // Theme atlases are optional; the base atlas covers fallbacks.
       }
     }
-    renderer.assets = assets;
+    // Composited surfaces are canvases; decode them once here so per-sprite
+    // drawImage never copies a whole atlas (see RenderBackend.freezeAsync).
+    renderer.assets = await prepareGameAssets(assets);
     return renderer;
+  }
+
+  /**
+   * Build a room's cached surfaces, including the async freeze of its tile
+   * layer. `renderTrace` awaits this for every room of a trace before the first
+   * frame; `drawFrame` falls back to the unfrozen (but correct) build.
+   */
+  async prepare(map: GymMap): Promise<void> {
+    if (this.rooms.has(map)) return;
+    const room = this.buildRoom(map);
+    if (room.tileLayer) room.tileLayer = await freezeRenderCanvasAsync(room.tileLayer);
+    this.rooms.set(map, room);
+  }
+
+  private buildRoom(map: GymMap): SceneRoom {
+    return {
+      map,
+      tileLayer: buildTileLayer(this.assets, map, buildSolidGrid(map), this.theme),
+      spinnerGroups: buildSpinnerGroups(this.assets, map, this.theme),
+      kindIndices: entityKindIndices(map),
+      staticMoverAttachments: buildStaticMoverAttachments(map),
+    };
   }
 
   private room(map: GymMap): SceneRoom {
     let room = this.rooms.get(map);
     if (!room) {
-      room = {
-        map,
-        tileLayer: buildTileLayer(this.assets, map, buildSolidGrid(map), this.theme),
-        spinnerGroups: buildSpinnerGroups(this.assets, map, this.theme),
-        kindIndices: entityKindIndices(map),
-        staticMoverAttachments: buildStaticMoverAttachments(map),
-      };
+      room = this.buildRoom(map);
       this.rooms.set(map, room);
     }
     return room;

@@ -220,6 +220,11 @@ a known time sink.
 - `player state X is parsed but not implemented` → the start/trace entered an unsupported
   state; start elsewhere or shorten the segment.
 - `ffmpeg not found` → use `.gif`/`.png`, or install ffmpeg / pass `--ffmpeg`.
-- Rendered PNG/GIF is background + HUD only (no tiles, no player) → the Node render backend must
-  not return an asynchronously-decoded `Image` from `freeze` (`web/src/render/canvasBackend.ts`);
-  `npm test` in `tools/gym-cli` has a regression test for exactly this.
+- Rendered PNG/GIF is background + HUD only (no tiles, no player) → a backend returned a
+  not-yet-decoded image from `freeze`; surfaces that need a decode belong in `freezeAsync`
+  (`web/src/render/canvasBackend.ts`), and the callers must await `prepareGameAssets` /
+  `SceneRenderer.prepare`. `npm test` in `tools/gym-cli` covers both.
+- Renders are slow, or OOM on a small machine → something is drawn straight out of an offscreen
+  canvas. On `@napi-rs/canvas` that copies the whole source surface on *every* `drawImage`
+  (~18 MB per 8x8 tile out of the 1024x4600 gameplay atlas). Keep the atlas a decoded image and
+  bake composed surfaces once (see the two entries above).
