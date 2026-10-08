@@ -185,10 +185,6 @@ struct Record {
     /// (`Monocle/Collider.cs:229,205,12,14`).
     collider: Option<Vec<f64>>,
     inventory: Option<InventoryRec>,
-    /// `Celeste.Session.CoreMode` (`Session.cs:22-27`): `0` None, `1` Hot, `2` Cold. Session
-    /// state, so the base-chain dump cannot see it.
-    #[serde(rename = "coreMode")]
-    core_mode: Option<i64>,
     /// `Celeste.Level.InSpace` = `levelData.Space` (`Level.cs:449`), the per-room map property
     /// `Player.cs:3703-3706,3718-3722,3778-3781` reads. `map.rs` does not decode the `.bin` level
     /// element's `space` attribute, so this is the only source.
@@ -217,14 +213,10 @@ struct Frame {
     freeze_timer: Option<f64>,
     ducking: Option<bool>,
     /// `Celeste.Session.CoreMode` (`Session.cs:22-27,111`) at the end of this
-    /// engine frame.
-    core_mode: Option<i64>,
+    /// engine frame, already converted from the trace's integer.
+    core_mode: Option<CoreMode>,
     collider: Option<[f64; 4]>,
     inventory: Option<InventoryRec>,
-    /// `Session.CoreMode` at the end of this engine frame. A `Session` field, so the only
-    /// ground-truth source for the Core's ice factor (`Player.cs:3681-3684`) and for the
-    /// `CoreModeListener` entities.
-    core_mode: Option<CoreMode>,
     /// `Level.InSpace` at the end of this engine frame. Parsed and reported, but there is no
     /// `PlayerSnapshot::in_space` and `map.rs` does not decode the room's `Space` property, so it is
     /// not restored (see the harness's open-gap notes).
@@ -2357,7 +2349,6 @@ fn run() -> Result<(), String> {
             transitioning: record.transitioning,
             freeze_timer: record.freeze_timer,
             ducking: record.ducking,
-            core_mode: record.core_mode,
             collider: quad_field(record.collider.as_ref()),
             inventory: record.inventory,
             core_mode: record.core_mode.and_then(core_mode_from_int),
