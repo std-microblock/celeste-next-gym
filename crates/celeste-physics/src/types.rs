@@ -671,6 +671,27 @@ pub struct PlayerSnapshot {
     pub reflection_fall_wait_timer: f32,
     pub ignore_jump_thrus: bool,
     pub launched: bool,
+    /// Program counter of the active `Player.Intro*` callback coroutine
+    /// (`IntroWalkCoroutine`, `IntroJumpCoroutine`, `IntroWakeUpCoroutine`,
+    /// `IntroThinkForABitCoroutine`) or of `IntroRespawnBegin`'s tween.
+    /// `0` means "not reconstructed yet".
+    pub intro_phase: u8,
+    /// Remaining `Monocle.Coroutine.waitTimer` of the active intro phase, or
+    /// the elapsed `Monocle.Tween.Timer` of `IntroRespawnBegin`.
+    pub intro_timer: f32,
+    /// Coroutine-local scratch: the `Vector2 start` captured by
+    /// `IntroWalkCoroutine`/`IntroJumpCoroutine`, and the `float target` of
+    /// `IntroThinkForABitCoroutine` (stored in `.x`).
+    pub intro_start: Vec2,
+    /// `Monocle.Sprite.animationTimer` while `IntroWakeUpCoroutine` waits on
+    /// `Sprite.PlayRoutine("wakeUp")`.
+    pub intro_sprite_timer: f32,
+    /// `Monocle.Sprite.CurrentAnimationFrame` of that same `wakeUp` routine.
+    pub intro_sprite_frame: u8,
+    /// Set once `intro_phase` has been reconstructed. A trace-replayed
+    /// snapshot is a post-`Player.Update` capture of the state's second
+    /// update, so the phase may only be derived once.
+    pub intro_phase_ready: bool,
     /// Monocle-style sub-pixel remainder required for deterministic axis movement.
     pub movement_remainder: Vec2,
 }
@@ -830,6 +851,12 @@ impl Default for PlayerSnapshot {
             reflection_fall_wait_timer: 0.0,
             ignore_jump_thrus: false,
             launched: false,
+            intro_phase: 0,
+            intro_timer: 0.0,
+            intro_start: Vec2::default(),
+            intro_sprite_timer: 0.0,
+            intro_sprite_frame: 0,
+            intro_phase_ready: false,
             movement_remainder: Vec2::default(),
         }
     }

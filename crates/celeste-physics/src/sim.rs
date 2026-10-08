@@ -87,6 +87,72 @@ const LAUNCH_CANCEL_THRESHOLD: f32 = 220.0;
 const TRANSITION_TIME: f32 = 0.65;
 const TRANSITION_MOVE_SPEED: f32 = 60.0;
 
+// Player.cs story-intro callbacks. Every constant below is copied from the
+// callback that owns it; the `file:line` citations live on the phase bodies.
+//
+// `IntroWalkCoroutine` (Player.cs:5969-5993).
+const INTRO_WALK_WAIT: f32 = 0.3;
+const INTRO_WALK_SPEED: f32 = 64.0;
+const INTRO_WALK_ARRIVE: f32 = 2.0;
+const INTRO_WALK_REST: f32 = 0.2;
+// `IntroJumpCoroutine` (Player.cs:5995-6068).
+const INTRO_JUMP_SETTLE: f32 = 0.5;
+const INTRO_JUMP_RISE_SPEED: f32 = -120.0;
+const INTRO_JUMP_RISE_GAP: f32 = 8.0;
+const INTRO_JUMP_BOTTOM_GAP: f32 = 16.0;
+const INTRO_JUMP_SUMMIT_BOTTOM_GAP: f32 = 24.0;
+const INTRO_JUMP_LAUNCH_SPEED: f32 = -100.0;
+const INTRO_JUMP_GRAVITY: f32 = 800.0;
+const INTRO_JUMP_REST: f32 = 0.1;
+const INTRO_JUMP_SUMMIT_REST: f32 = 0.2;
+const INTRO_JUMP_SUMMIT_RECOVER: f32 = 0.1;
+// `IntroWakeUpCoroutine` (Player.cs:6112-6119) plus the `wakeUp` animation it
+// awaits: `Content/Graphics/Sprites.xml:72`
+// `<Anim id="wakeUp" path="wakeUp/" delay=".1" frames="0-4,5*10,6-14"/>`,
+// i.e. 24 frames at 0.1 s each. `Monocle.Calc.ReadCSVIntWithTricks`
+// (Calc.cs:1221) expands `5*10` into ten copies of frame 5.
+const INTRO_WAKE_ASLEEP: f32 = 0.5;
+const INTRO_WAKE_REST: f32 = 0.2;
+const INTRO_WAKE_ANIM_DELAY: f32 = 0.1;
+const INTRO_WAKE_ANIM_FRAMES: u8 = 24;
+// `IntroThinkForABitCoroutine` (Player.cs:6156-6174).
+const INTRO_THINK_CAMERA_WAIT: f32 = 0.1;
+const INTRO_THINK_WALK_SPEED: f32 = 32.0;
+const INTRO_THINK_WALK_DISTANCE: f32 = 8.0;
+const INTRO_THINK_IDLE: f32 = 0.3;
+const INTRO_THINK_LEFT: f32 = 0.8;
+const INTRO_THINK_RIGHT: f32 = 0.1;
+// `IntroRespawnBegin` (Player.cs:6131) creates a 0.6 second Oneshot tween.
+const INTRO_RESPAWN_TIME: f32 = 0.6;
+
+// Intro coroutine program counters.
+const INTRO_PHASE_WALK_WAIT: u8 = 1;
+const INTRO_PHASE_WALK_MOVE: u8 = 2;
+const INTRO_PHASE_WALK_REST: u8 = 3;
+const INTRO_PHASE_JUMP_SETTLE: u8 = 4;
+const INTRO_PHASE_JUMP_RISE: u8 = 5;
+const INTRO_PHASE_JUMP_DECEL: u8 = 6;
+const INTRO_PHASE_JUMP_REST: u8 = 7;
+const INTRO_PHASE_JUMP_FALL: u8 = 8;
+const INTRO_PHASE_JUMP_SUMMIT_REST: u8 = 9;
+const INTRO_PHASE_JUMP_SUMMIT_RECOVER: u8 = 10;
+const INTRO_PHASE_WAKE_ASLEEP: u8 = 11;
+const INTRO_PHASE_WAKE_SPRITE: u8 = 12;
+const INTRO_PHASE_WAKE_POP: u8 = 13;
+const INTRO_PHASE_WAKE_REST: u8 = 14;
+const INTRO_PHASE_THINK_CAMERA: u8 = 15;
+const INTRO_PHASE_THINK_WALK: u8 = 16;
+const INTRO_PHASE_THINK_IDLE: u8 = 17;
+const INTRO_PHASE_THINK_LEFT: u8 = 18;
+const INTRO_PHASE_THINK_RIGHT: u8 = 19;
+const INTRO_PHASE_RESPAWN: u8 = 20;
+/// `wasSummitJump = StateMachine.PreviousState == 10` (Player.cs:5998) is not
+/// exported by the trace; the Summit finale hand-off is recorded in this bit
+/// of `PlayerSnapshot::intro_phase`.
+const INTRO_PHASE_SUMMIT_FLAG: u8 = 0x80;
+/// `intro_phase` values are all below this mask.
+const INTRO_PHASE_MASK: u8 = 0x7F;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Fidelity {
@@ -137,6 +203,7 @@ impl Simulator {
         }
         restore_session_dream_dash(&mut snapshot);
         let mut runtime_map = map.clone();
+        add_room_edge_tile_bleed(&mut runtime_map);
         let static_mover_attachments = initialize_static_mover_attachments(&runtime_map);
         initialize_zip_movers(&mut snapshot, &mut runtime_map);
         initialize_bounce_blocks(&mut snapshot, &mut runtime_map);
@@ -4741,8 +4808,12 @@ fn step(
             p.speed = Vec2::default();
             p.state = PlayerState::IntroRespawn;
             // Player.IntroRespawnBegin creates a 0.6-second tween whose
-            // OnComplete changes StateMachine.State back to StNormal.
-            p.state_timer = 0.6;
+            // OnComplete changes StateMachine.State back to StNormal
+            // (Player.cs:6131-6144). The tween's `Timer` starts at zero and is
+            // advanced by `Tween.Update` on each following frame.
+            p.intro_phase = INTRO_PHASE_RESPAWN;
+            p.intro_timer = 0.0;
+            p.intro_phase_ready = true;
             p.on_ground = grounded(p, map);
             p.player_on_ground = p.on_ground;
             p.player_on_ground_initialized = true;
@@ -4858,6 +4929,7 @@ fn step(
         input.move_x
     };
     if p.move_x != 0
+        && player_in_control(p.state)
         && !matches!(
             p.state,
             PlayerState::Climb
@@ -4897,6 +4969,14 @@ fn step(
         return Ok(());
     }
 
+    // The `Player.Intro*` states carry no update callback: their whole
+    // behaviour is the `StateMachine` coroutine, and a trace row does not
+    // export the `Monocle.Coroutine` stack. Rebuild the phase once, from the
+    // exported snapshot, before the state runs.
+    if is_intro_state(p.state) && !p.intro_phase_ready {
+        intro_resume(p, map);
+    }
+
     let was_pickup = p.state == PlayerState::Pickup;
     let was_dream_dash = p.state == PlayerState::DreamDash;
     match p.state {
@@ -4916,14 +4996,20 @@ fn step(
         PlayerState::Frozen => {}
         PlayerState::TempleFall => temple_fall_update(p, map),
         PlayerState::ReflectionFall => reflection_fall_update(p, map),
+        // Player.cs:5969-5993 / 5995-6068 / 6112-6119 / 6156-6174. These
+        // callbacks only mutate Position/Speed/state; the shared
+        // JumpThru-Assist / MoveH / MoveV tail below still runs for them,
+        // exactly like the source's post-`base.Update()` pass.
+        PlayerState::IntroWalk => intro_walk_update(p, map),
+        PlayerState::IntroJump => intro_jump_update(p, map),
+        PlayerState::IntroWakeUp => intro_wake_up_update(p),
+        PlayerState::IntroThinkForABit => intro_think_for_a_bit_update(p, map),
         PlayerState::IntroRespawn => {
-            p.state_timer -= p.frame_delta_time;
+            // Player.cs:6121-6146. `Player.Update` still runs its ordinary
+            // tail for this state; only the tween drives it.
+            intro_respawn_update(p);
             advance_post_player_entities(p, map, input, attachments);
             p.on_ground = grounded(p, map);
-            if p.state_timer <= 0.0 {
-                p.state_timer = 0.0;
-                p.state = PlayerState::Normal;
-            }
             return Ok(());
         }
         other => return Err(SimulationError::UnsupportedState(other)),
@@ -6058,6 +6144,483 @@ fn reflection_fall_update(p: &mut PlayerSnapshot, map: &Map) {
             p.max_fall = MAX_FALL;
         }
         _ => {}
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Player.Intro* story states
+//
+// These five states have no `StateMachine` update callback at all: their whole
+// behaviour lives in the coroutine that `StateMachine.SetCallbacks`
+// (Player.cs:1158-1171) installs when the state is entered, plus, for
+// IntroRespawn, the 0.6 s `Tween` created by `IntroRespawnBegin`. The
+// coroutine runs inside `base.Update()` (`StateMachine.Update`,
+// Monocle/StateMachine.cs:168-183), i.e. before `Player.Update`'s Unduck /
+// JumpThru Assist / MoveH / MoveV tail, so these states still receive the
+// ordinary movement pass.
+//
+// `Player.InControl` (Player.cs:934-954) is false for states 12-15 and 25, so
+// no facing flip, camera follow, or `Level.EnforceBounds` runs.
+//
+// A trace row is a post-`Player.Update` capture, and the fidelity gate anchors
+// on the segment's second live row, which for a level load is the state's
+// second `StateMachine.Update`. `intro_resume` therefore reconstructs the
+// coroutine one update in: every phase timer is primed with one
+// `Engine.DeltaTime` already consumed.
+// ---------------------------------------------------------------------------
+
+fn is_intro_state(state: PlayerState) -> bool {
+    matches!(
+        state,
+        PlayerState::IntroWalk
+            | PlayerState::IntroJump
+            | PlayerState::IntroRespawn
+            | PlayerState::IntroWakeUp
+            | PlayerState::IntroThinkForABit
+    )
+}
+
+/// `LevelLoader` builds a single map-wide `SolidTiles` grid and, after copying
+/// every level's `solids` layer into it, bleeds each level's boundary tiles up
+/// to three cells outward:
+///
+/// ```text
+/// value6 = virtualMap2[num12, Bottom - 1];
+/// for (num14 = 1; num14 < 4 && !virtualMap3[...]; num14++)
+///     virtualMap2[num12, Bottom - 1 + num14] = value6;
+/// ```
+///
+/// (LevelLoader.cs:233-263; the left/right loop covers
+/// `TileBounds.Top - 4 .. TileBounds.Bottom + 4`). `SolidTiles` owns a `Grid`
+/// collider over that whole map (SolidTiles.cs:18-26), so a player outside the
+/// loaded room still collides with these bled cells. The intro states depend on
+/// it: `IntroJumpCoroutine` parks the player 16 px below
+/// `level.Bounds.Bottom` (Player.cs:6003), where the game's floor bleed keeps
+/// them grounded and blocks `Actor.MoveV`.
+///
+/// `Map::tile_grid` is only populated for decoded rooms, so synthetic maps keep
+/// exactly the solids they declare.
+fn add_room_edge_tile_bleed(map: &mut Map) {
+    if map.tile_grid.is_empty() {
+        return;
+    }
+    let occupied = |x: usize, y: usize| {
+        map.tile_grid
+            .get(y)
+            .and_then(|row| row.chars().nth(x))
+            .is_some_and(|c| c != '0' && c != ' ')
+    };
+    let rows = map.tile_grid.len();
+    let columns = map
+        .tile_grid
+        .iter()
+        .map(|row| row.chars().count())
+        .max()
+        .unwrap_or(0);
+    if rows == 0 || columns == 0 {
+        return;
+    }
+    let cell = |x: i32, y: i32| {
+        Rect::new(
+            map.bounds.x + x as f32 * 8.0,
+            map.bounds.y + y as f32 * 8.0,
+            8.0,
+            8.0,
+        )
+    };
+    let mut bled = Vec::new();
+    for column in 0..columns {
+        // Bottom boundary row, copied downward.
+        if occupied(column, rows - 1) {
+            for step in 1..4 {
+                bled.push(cell(column as i32, rows as i32 - 1 + step));
+            }
+        }
+        // Top boundary row, copied upward.
+        if occupied(column, 0) {
+            for step in 1..4 {
+                bled.push(cell(column as i32, -(step as i32)));
+            }
+        }
+    }
+    for row in 0..rows {
+        // Left boundary column, copied leftward.
+        if occupied(0, row) {
+            for step in 1..4 {
+                bled.push(cell(-step, row as i32));
+            }
+        }
+        // Right boundary column, copied rightward.
+        if occupied(columns - 1, row) {
+            for step in 1..4 {
+                bled.push(cell(columns as i32 - 1 + step, row as i32));
+            }
+        }
+    }
+    if !bled.is_empty() {
+        map.solids.extend(bled);
+    }
+}
+
+/// `Level.DefaultSpawnPoint` (Level.cs:290) is
+/// `GetSpawnPoint(new Vector2(Bounds.Left, Bounds.Bottom))`, and
+/// `Session.GetSpawnPoint` (Session.cs:256) returns
+/// `LevelData.Spawns.ClosestTo(from)`. Every intro state is entered by
+/// `Level.LoadLevel` -> `Player.Added` (Level.cs:1297-1317), where the player
+/// is created at exactly that point, so this is the coroutine's `start`.
+fn intro_default_spawn(map: &Map) -> Vec2 {
+    let corner = Vec2::new(map.bounds.x, map.bounds.bottom());
+    let candidates: &[Vec2] = if map.room_spawns.is_empty() {
+        std::slice::from_ref(&map.spawn)
+    } else {
+        &map.room_spawns
+    };
+    let mut best = map.spawn;
+    let mut best_distance = f32::INFINITY;
+    for spawn in candidates {
+        let dx = spawn.x - corner.x;
+        let dy = spawn.y - corner.y;
+        let distance = dx * dx + dy * dy;
+        if distance < best_distance {
+            best_distance = distance;
+            best = *spawn;
+        }
+    }
+    best
+}
+
+/// Rebuild the active intro coroutine's phase from a snapshot.
+///
+/// Every phase that a post-`Player.Update` anchor can be in is identified from
+/// exported state (`PlayerSnapshot::pos`, `speed`, `player_on_ground`); the
+/// phase timers are primed with one frame already elapsed.
+fn intro_resume(p: &mut PlayerSnapshot, map: &Map) {
+    p.intro_phase_ready = true;
+    p.intro_start = intro_default_spawn(map);
+    let dt = p.frame_delta_time;
+    match p.state {
+        PlayerState::IntroWalk => {
+            // The coroutine's first statement snaps X outside the room edge
+            // named by `IntroWalkDirection` (Player.cs:5972-5981) and then
+            // waits 0.3 s (Player.cs:5982). That snap is what a snapshot taken
+            // at the state's entry/next frame shows, so use it to pick the
+            // phase; the walk itself is driven by `start.X`.
+            let outside = p.pos.x <= map.bounds.x || p.pos.x >= map.bounds.right();
+            if outside {
+                p.intro_phase = INTRO_PHASE_WALK_WAIT;
+                p.intro_timer = INTRO_WALK_WAIT - dt;
+            } else if (p.pos.x - p.intro_start.x).abs() > INTRO_WALK_ARRIVE {
+                p.intro_phase = INTRO_PHASE_WALK_MOVE;
+            } else {
+                p.intro_phase = INTRO_PHASE_WALK_REST;
+                p.intro_timer = INTRO_WALK_REST - dt;
+            }
+        }
+        PlayerState::IntroJump => {
+            // `IntroJumpCoroutine` (Player.cs:5995-6010) either writes
+            // `Y = level.Bounds.Bottom + 16` -- placing the player below the
+            // room -- and waits 0.5 s, or, when the Summit finale hands off
+            // from StSummitLaunch, keeps the launch speed and starts the rise
+            // immediately at `start.Y = level.Bounds.Bottom - 24`.
+            let settle_y = map.bounds.bottom() + INTRO_JUMP_BOTTOM_GAP;
+            if p.speed.y == 0.0
+                && (p.pos.y > map.bounds.bottom() || (p.pos.y - settle_y).abs() <= 2.0)
+            {
+                p.intro_phase = INTRO_PHASE_JUMP_SETTLE;
+                p.intro_timer = INTRO_JUMP_SETTLE - dt;
+            } else if p.speed.y < INTRO_JUMP_LAUNCH_SPEED {
+                // Residual speed below the coroutine's own -100 launch speed:
+                // the Summit `nextLevelIntro = Jump` hand-off
+                // (CS10_FinalLaunch.cs:135) with `PreviousState == 10`, whose
+                // branch is `start.Y = Bounds.Bottom - 24;
+                // MoveToX((int)Math.Round(X / 8f) * 8f);` (Player.cs:6006-6010).
+                p.intro_start.y = map.bounds.bottom() - INTRO_JUMP_SUMMIT_BOTTOM_GAP;
+                let aligned_x = (p.pos.x / 8.0).round_ties_even() * 8.0;
+                intro_move_to_x(p, map, aligned_x);
+                p.intro_phase = INTRO_PHASE_JUMP_RISE | INTRO_PHASE_SUMMIT_FLAG;
+            } else if p.speed.y < 0.0 {
+                p.intro_phase = INTRO_PHASE_JUMP_DECEL;
+            } else {
+                p.intro_phase = INTRO_PHASE_JUMP_RISE;
+            }
+        }
+        PlayerState::IntroWakeUp => {
+            // Player.cs:6112-6115: `Sprite.Play("asleep"); yield return 0.5f;`
+            p.intro_phase = INTRO_PHASE_WAKE_ASLEEP;
+            p.intro_timer = INTRO_WAKE_ASLEEP - dt;
+        }
+        PlayerState::IntroThinkForABit => {
+            // Player.cs:6158-6159: `(base.Scene as Level).Camera.X += 8f;`
+            // then `yield return 0.1f;`. The camera is not exported by the
+            // trace, so the callback's one-shot nudge is applied here, at the
+            // state's first update.
+            p.camera.x += 8.0;
+            p.intro_phase = INTRO_PHASE_THINK_CAMERA;
+            p.intro_timer = INTRO_THINK_CAMERA_WAIT - dt;
+        }
+        PlayerState::IntroRespawn => {
+            // `Tween.Update` advances `Timer` by DeltaTime on the frame
+            // `IntroRespawnBegin` created the tween, so the second update of
+            // the state already carries two frames of tween clock.
+            p.intro_phase = INTRO_PHASE_RESPAWN;
+            p.intro_timer = 2.0 * dt;
+        }
+        _ => {}
+    }
+}
+
+/// `Actor.MoveToX` (Actor.cs:304-307) is `MoveH(toX - ExactPosition.X)`.
+fn intro_move_to_x(p: &mut PlayerSnapshot, map: &Map, to_x: f32) {
+    let exact_x = p.pos.x + p.movement_remainder.x;
+    move_axis_amount(p, map, true, to_x - exact_x);
+}
+
+/// `IntroWalkCoroutine` (Player.cs:5969-5993).
+fn intro_walk_update(p: &mut PlayerSnapshot, map: &Map) {
+    if p.intro_phase == INTRO_PHASE_WALK_WAIT {
+        if p.intro_timer > 0.0 {
+            p.intro_timer -= p.frame_delta_time;
+            return;
+        }
+        // `Sprite.Play("runSlow")` has no physics effect.
+        p.intro_phase = INTRO_PHASE_WALK_MOVE;
+    }
+    if p.intro_phase == INTRO_PHASE_WALK_MOVE {
+        let facing_dir = if p.facing { 1.0 } else { -1.0 };
+        let ahead = current_player_rect(p, p.pos.x + facing_dir, p.pos.y);
+        // `while (Math.Abs(X - start.X) > 2f && !CollideCheck<Solid>(Position + new Vector2(Facing, 0)))`
+        // (Player.cs:5984) -- `CollideCheck<Solid>` includes DreamBlocks, so
+        // the probe is `Map::solid_at`.
+        if (p.pos.x - p.intro_start.x).abs() > INTRO_WALK_ARRIVE && !map.solid_at(ahead) {
+            // `MoveTowardsX(start.X, 64f * Engine.DeltaTime)` uses
+            // `Actor.ExactPosition` (Actor.cs:292-296).
+            move_towards_x(
+                p,
+                map,
+                p.intro_start.x,
+                INTRO_WALK_SPEED * p.frame_delta_time,
+            );
+            return;
+        }
+        // `Position = start` (Player.cs:5989) writes both axes directly; it
+        // does not touch `Platform.movementCounter`.
+        p.pos = p.intro_start;
+        p.intro_phase = INTRO_PHASE_WALK_REST;
+        p.intro_timer = INTRO_WALK_REST;
+        return;
+    }
+    if p.intro_phase == INTRO_PHASE_WALK_REST {
+        if p.intro_timer > 0.0 {
+            p.intro_timer -= p.frame_delta_time;
+            return;
+        }
+        // `StateMachine.State = 0` (Player.cs:5992).
+        p.state = PlayerState::Normal;
+    }
+}
+
+/// `IntroJumpCoroutine` (Player.cs:5995-6068).
+///
+/// `wasSummitJump = StateMachine.PreviousState == 10` (Player.cs:5998) is not
+/// exported by the trace, so the Summit finale hand-off
+/// (`CS10_FinalLaunch.cs:135` sets `nextLevelIntro = Jump` while the player is
+/// still in StSummitLaunch) is recorded in the phase's
+/// `INTRO_PHASE_SUMMIT_FLAG` bit. It changes the 0.1 s post-launch wait into
+/// `0.2 s + 0.1 s` (Player.cs:6028-6038) and skips the final
+/// `Position = start` (Player.cs:6048-6051).
+fn intro_jump_update(p: &mut PlayerSnapshot, _map: &Map) {
+    let summit = p.intro_phase & INTRO_PHASE_SUMMIT_FLAG != 0;
+    let mut phase = p.intro_phase & INTRO_PHASE_MASK;
+    if phase == INTRO_PHASE_JUMP_SETTLE {
+        if p.intro_timer > 0.0 {
+            p.intro_timer -= p.frame_delta_time;
+            return;
+        }
+        phase = INTRO_PHASE_JUMP_RISE;
+        p.intro_phase = phase | (p.intro_phase & INTRO_PHASE_SUMMIT_FLAG);
+    }
+    if phase == INTRO_PHASE_JUMP_RISE {
+        // `while (base.Y > start.Y - 8f) base.Y += -120f * Engine.DeltaTime;`
+        // (Player.cs:6015-6019). `base.Y +=` writes `Position.Y` directly, so
+        // it must not be routed through `Actor.MoveV`.
+        if p.pos.y > p.intro_start.y - INTRO_JUMP_RISE_GAP {
+            p.pos.y += INTRO_JUMP_RISE_SPEED * p.frame_delta_time;
+            return;
+        }
+        p.pos.y = p.pos.y.round_ties_even();
+        p.speed.y = INTRO_JUMP_LAUNCH_SPEED;
+        phase = INTRO_PHASE_JUMP_DECEL;
+        p.intro_phase = phase | (p.intro_phase & INTRO_PHASE_SUMMIT_FLAG);
+    }
+    if phase == INTRO_PHASE_JUMP_DECEL {
+        // `while (Speed.Y < 0f) Speed.Y += Engine.DeltaTime * 800f;` then
+        // `Speed.Y = 0f;` (Player.cs:6021-6027). The loop's first iteration
+        // shares the rise-exit frame.
+        if p.speed.y < 0.0 {
+            p.speed.y += INTRO_JUMP_GRAVITY * p.frame_delta_time;
+            return;
+        }
+        p.speed.y = 0.0;
+        if summit {
+            p.intro_phase = INTRO_PHASE_JUMP_SUMMIT_REST | INTRO_PHASE_SUMMIT_FLAG;
+            p.intro_timer = INTRO_JUMP_SUMMIT_REST;
+        } else {
+            p.intro_phase = INTRO_PHASE_JUMP_REST;
+            p.intro_timer = INTRO_JUMP_REST;
+        }
+        return;
+    }
+    if phase == INTRO_PHASE_JUMP_REST {
+        if p.intro_timer > 0.0 {
+            p.intro_timer -= p.frame_delta_time;
+            return;
+        }
+        phase = INTRO_PHASE_JUMP_FALL;
+        p.intro_phase = phase;
+    }
+    if phase == INTRO_PHASE_JUMP_SUMMIT_REST {
+        if p.intro_timer > 0.0 {
+            p.intro_timer -= p.frame_delta_time;
+            return;
+        }
+        // `Sprite.Play("launchRecover"); yield return 0.1f;`
+        // (Player.cs:6032-6033).
+        p.intro_phase = INTRO_PHASE_JUMP_SUMMIT_RECOVER | INTRO_PHASE_SUMMIT_FLAG;
+        p.intro_timer = INTRO_JUMP_SUMMIT_RECOVER;
+        return;
+    }
+    if phase == INTRO_PHASE_JUMP_SUMMIT_RECOVER {
+        if p.intro_timer > 0.0 {
+            p.intro_timer -= p.frame_delta_time;
+            return;
+        }
+        phase = INTRO_PHASE_JUMP_FALL;
+        p.intro_phase = phase;
+    }
+    if phase == INTRO_PHASE_JUMP_FALL {
+        // `while (!onGround) Speed.Y += Engine.DeltaTime * 800f;`
+        // (Player.cs:6043-6047).
+        if !p.player_on_ground {
+            p.speed.y += INTRO_JUMP_GRAVITY * p.frame_delta_time;
+            return;
+        }
+        if !summit {
+            // `if (StateMachine.PreviousState != 10) Position = start;`
+            // (Player.cs:6048-6051).
+            p.pos = p.intro_start;
+        }
+        p.speed.y = 0.0;
+        p.intro_phase = 0;
+        p.state = PlayerState::Normal;
+    }
+}
+
+/// `IntroWakeUpCoroutine` (Player.cs:6112-6119).
+fn intro_wake_up_update(p: &mut PlayerSnapshot) {
+    if p.intro_phase == INTRO_PHASE_WAKE_ASLEEP {
+        if p.intro_timer > 0.0 {
+            p.intro_timer -= p.frame_delta_time;
+            return;
+        }
+        // `yield return Sprite.PlayRoutine("wakeUp")` starts the animation on
+        // this frame; `Monocle.Sprite.Update` (Sprite.cs:104-183) has already
+        // run for it, so the first advance is the next frame.
+        p.intro_phase = INTRO_PHASE_WAKE_SPRITE;
+        p.intro_sprite_timer = 0.0;
+        p.intro_sprite_frame = 0;
+        return;
+    }
+    if p.intro_phase == INTRO_PHASE_WAKE_SPRITE {
+        // `Sprite.PlayRoutine` -> `PlayUtil` yields while `Sprite.Animating`
+        // (Sprite.cs:418-428); `Animating` clears when the non-looping
+        // animation walks past its last frame (Sprite.cs:158-177).
+        p.intro_sprite_timer += p.frame_delta_time;
+        if p.intro_sprite_timer >= INTRO_WAKE_ANIM_DELAY {
+            p.intro_sprite_timer -= INTRO_WAKE_ANIM_DELAY;
+            p.intro_sprite_frame += 1;
+            if p.intro_sprite_frame >= INTRO_WAKE_ANIM_FRAMES {
+                // The frame the animation ends: `Coroutine.Update` pops the
+                // nested enumerator and does not resume the outer routine
+                // until the next frame (Monocle/Coroutine.cs:64-71).
+                p.intro_phase = INTRO_PHASE_WAKE_POP;
+            }
+        }
+        return;
+    }
+    if p.intro_phase == INTRO_PHASE_WAKE_POP {
+        p.intro_phase = INTRO_PHASE_WAKE_REST;
+        p.intro_timer = INTRO_WAKE_REST;
+        return;
+    }
+    if p.intro_phase == INTRO_PHASE_WAKE_REST {
+        if p.intro_timer > 0.0 {
+            p.intro_timer -= p.frame_delta_time;
+            return;
+        }
+        p.state = PlayerState::Normal;
+    }
+}
+
+/// `IntroThinkForABitCoroutine` (Player.cs:6156-6174).
+fn intro_think_for_a_bit_update(p: &mut PlayerSnapshot, map: &Map) {
+    if p.intro_phase == INTRO_PHASE_THINK_CAMERA {
+        if p.intro_timer > 0.0 {
+            p.intro_timer -= p.frame_delta_time;
+            return;
+        }
+        // `Sprite.Play("walk"); float target = base.X + 8f;`
+        // (Player.cs:6160-6161).
+        p.intro_start.x = p.pos.x + INTRO_THINK_WALK_DISTANCE;
+        p.intro_phase = INTRO_PHASE_THINK_WALK;
+    }
+    if p.intro_phase == INTRO_PHASE_THINK_WALK {
+        // `while (base.X < target) { MoveH(32f * Engine.DeltaTime); ... }`
+        // (Player.cs:6162-6166).
+        if p.pos.x < p.intro_start.x {
+            move_axis_amount(p, map, true, INTRO_THINK_WALK_SPEED * p.frame_delta_time);
+            return;
+        }
+        p.intro_phase = INTRO_PHASE_THINK_IDLE;
+        p.intro_timer = INTRO_THINK_IDLE;
+        return;
+    }
+    if p.intro_phase == INTRO_PHASE_THINK_IDLE {
+        if p.intro_timer > 0.0 {
+            p.intro_timer -= p.frame_delta_time;
+            return;
+        }
+        p.facing = false;
+        p.intro_phase = INTRO_PHASE_THINK_LEFT;
+        p.intro_timer = INTRO_THINK_LEFT;
+        return;
+    }
+    if p.intro_phase == INTRO_PHASE_THINK_LEFT {
+        if p.intro_timer > 0.0 {
+            p.intro_timer -= p.frame_delta_time;
+            return;
+        }
+        p.facing = true;
+        p.intro_phase = INTRO_PHASE_THINK_RIGHT;
+        p.intro_timer = INTRO_THINK_RIGHT;
+        return;
+    }
+    if p.intro_phase == INTRO_PHASE_THINK_RIGHT {
+        if p.intro_timer > 0.0 {
+            p.intro_timer -= p.frame_delta_time;
+            return;
+        }
+        // `StateMachine.State = 0` (Player.cs:6173).
+        p.state = PlayerState::Normal;
+    }
+}
+
+/// `IntroRespawnBegin`'s tween (Player.cs:6121-6146): `Tween.Update` adds
+/// DeltaTime and `OnComplete` restores `StateMachine.State = 0` as soon as
+/// `Timer >= Duration` (Monocle/Tween.cs).
+fn intro_respawn_update(p: &mut PlayerSnapshot) {
+    p.intro_timer += p.frame_delta_time;
+    if p.intro_timer >= INTRO_RESPAWN_TIME {
+        p.state = PlayerState::Normal;
     }
 }
 
@@ -16444,7 +17007,12 @@ mod tests {
         };
         let respawned = simulate(dead, &[InputState::default()], &map, 1).unwrap();
         assert_eq!(respawned.state, PlayerState::IntroRespawn);
-        assert_eq!(respawned.state_timer, 0.6);
+        // `IntroRespawnBegin` starts the tween at `Timer = 0`
+        // (Player.cs:6131); the simulator keeps that clock in
+        // `PlayerSnapshot::intro_timer` and advances it by DeltaTime per
+        // update, matching `Monocle.Tween.Update`.
+        assert_eq!(respawned.intro_timer, 0.0);
+        assert_eq!(respawned.intro_phase, INTRO_PHASE_RESPAWN);
 
         let intro = simulate(respawned, &[InputState::default(); 35], &map, 35).unwrap();
         assert_eq!(intro.state, PlayerState::IntroRespawn);
@@ -16461,6 +17029,179 @@ mod tests {
         )
         .unwrap();
         assert!(moving.speed.x > 0.0);
+    }
+
+    /// `Level.DefaultSpawnPoint` picks the spawn closest to the room's
+    /// bottom-left corner (`Level.cs:290`, `Session.cs:256`).
+    fn intro_walk_map() -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            spawn: Vec2::new(24.0, 152.0),
+            room_spawns: vec![Vec2::new(24.0, 152.0)],
+            solids: vec![Rect::new(0.0, 152.0, 320.0, 32.0)],
+            ..Map::default()
+        }
+    }
+
+    /// A real decoded room: the bottom tile row is solid and `LevelLoader`
+    /// bleeds it three cells downward, so the intro jump's below-the-room
+    /// settle stays grounded (`LevelLoader.cs:233-249`).
+    fn intro_jump_map() -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            spawn: Vec2::new(24.0, 144.0),
+            room_spawns: vec![Vec2::new(24.0, 144.0)],
+            solids: vec![Rect::new(0.0, 144.0, 320.0, 40.0)],
+            tile_grid: (0..23)
+                .map(|row| {
+                    if row >= 18 {
+                        "1".repeat(40)
+                    } else {
+                        "0".repeat(40)
+                    }
+                })
+                .collect(),
+            ..Map::default()
+        }
+    }
+
+    #[test]
+    fn room_edge_tile_bleed_extends_the_bottom_row_outward() {
+        let mut map = intro_jump_map();
+        let before = map.solids.len();
+        add_room_edge_tile_bleed(&mut map);
+        // Row 22 is the room's solid bottom row; rows 23..25 (y 184..208) copy
+        // it, and the five solid cells of each side column copy outward too.
+        assert!(map.solids.contains(&Rect::new(0.0, 184.0, 8.0, 8.0)));
+        assert!(map.solids.contains(&Rect::new(312.0, 200.0, 8.0, 8.0)));
+        assert_eq!(map.solids.len(), before + 40 * 3 + 5 * 3 * 2);
+    }
+
+    #[test]
+    fn intro_jump_settles_below_the_room_then_rises_to_the_source_rise_band() {
+        // `IntroJumpCoroutine` (Player.cs:5995-6068): the non-Summit branch
+        // writes `Y = level.Bounds.Bottom + 16` and waits 0.5 s, then rises at
+        // -120 px/s until `start.Y - 8`.
+        let map = intro_jump_map();
+        let anchor = PlayerSnapshot {
+            pos: Vec2::new(24.0, 200.0),
+            state: PlayerState::IntroJump,
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(anchor, &[InputState::default(); 120], &map, 120).unwrap();
+        // The anchor is the state's second update, so the 0.5 s settle has
+        // already consumed one frame: the rise starts on step 30.
+        assert_eq!(trace.states[17].state, PlayerState::IntroJump);
+        assert_eq!(trace.states[17].pos.y, 200.0);
+        assert_eq!(trace.states[29].pos.y, 200.0);
+        // The bled bottom row keeps `Player.onGround` true while the coroutine
+        // holds the player 16 px below the room (LevelLoader.cs:233-249).
+        assert!(trace.states[29].player_on_ground);
+        assert_eq!(trace.states[30].pos.y, 198.0);
+        // `start.Y` is the spawn (144), so the rise body stops at
+        // `start.Y - 8` = 136; the following `Speed.Y = -100` decay keeps
+        // moving the player up through `Actor.MoveV`, reaching 131 -- exactly
+        // what the real `1-ForsakenCity|0|1` trace shows.
+        let lowest = trace
+            .states
+            .iter()
+            .map(|state| state.pos.y)
+            .fold(f32::INFINITY, f32::min);
+        assert_eq!(lowest, 131.0);
+        let landed = trace
+            .states
+            .iter()
+            .position(|state| state.state == PlayerState::Normal)
+            .expect("the coroutine releases the player");
+        assert_eq!(trace.states[landed].pos, Vec2::new(24.0, 144.0));
+        assert_eq!(trace.states[landed].speed, Vec2::default());
+    }
+
+    #[test]
+    fn intro_walk_snaps_outside_walks_to_the_default_spawn_and_rests() {
+        // `IntroWalkCoroutine` (Player.cs:5969-5993) teleports X to
+        // `Bounds.Left - 16`, waits 0.3 s, walks toward the captured `start`
+        // at 64 px/s, then restores `Position = start` and waits 0.2 s.
+        let map = intro_walk_map();
+        let anchor = PlayerSnapshot {
+            pos: Vec2::new(-16.0, 152.0),
+            state: PlayerState::IntroWalk,
+            facing: true,
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(anchor, &[InputState::default(); 90], &map, 90).unwrap();
+        assert_eq!(trace.states[17].pos.x, -16.0);
+        // `Actor.MoveTowardsX` (Actor.cs:292-296) steps from ExactPosition, so
+        // the first walk frame advances one whole pixel and banks the rest.
+        assert_eq!(trace.states[18].pos.x, -15.0);
+        assert!((trace.states[18].movement_remainder.x - 0.066_670_7).abs() < 1e-4);
+        let restored = trace
+            .states
+            .iter()
+            .position(|state| state.pos == Vec2::new(24.0, 152.0))
+            .expect("the walk restores Position = start");
+        // `while (Math.Abs(X - start.X) > 2f)` stops within two pixels.
+        assert!((trace.states[restored - 1].pos.x - 24.0).abs() <= 2.0);
+        // Then `yield return 0.2f` before `StateMachine.State = 0`.
+        assert_eq!(trace.states[restored + 12].state, PlayerState::IntroWalk);
+        assert_eq!(trace.states[restored + 13].state, PlayerState::Normal);
+    }
+
+    #[test]
+    fn intro_wake_up_waits_for_the_source_wake_up_animation_frames() {
+        // `IntroWakeUpCoroutine` (Player.cs:6112-6119) waits 0.5 s, then awaits
+        // `Sprite.PlayRoutine("wakeUp")`. `Sprites.xml:72` defines that
+        // animation as 24 frames at 0.1 s, and `Monocle.Sprite.Update`
+        // advances one frame per 0.1 s, so the routine clears after
+        // 24 * 6 = 144 updates.
+        let map = intro_walk_map();
+        let anchor = PlayerSnapshot {
+            pos: Vec2::new(24.0, 152.0),
+            state: PlayerState::IntroWakeUp,
+            on_ground: true,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(anchor, &[InputState::default(); 200], &map, 200).unwrap();
+        assert_eq!(trace.states[187].state, PlayerState::IntroWakeUp);
+        assert_eq!(trace.states[188].state, PlayerState::Normal);
+    }
+
+    #[test]
+    fn intro_think_for_a_bit_walks_eight_pixels_and_faces_both_ways() {
+        // `IntroThinkForABitCoroutine` (Player.cs:6156-6174) nudges the camera,
+        // waits 0.1 s, walks `X + 8` at 32 px/s, then alternates facing.
+        let map = intro_walk_map();
+        let anchor = PlayerSnapshot {
+            pos: Vec2::new(24.0, 152.0),
+            state: PlayerState::IntroThinkForABit,
+            facing: false,
+            on_ground: true,
+            camera: Vec2::new(0.0, 0.0),
+            camera_initialized: true,
+            ..PlayerSnapshot::default()
+        };
+        let trace = simulate_trace(anchor, &[InputState::default(); 120], &map, 120).unwrap();
+        // `Camera.X += 8f` runs on the coroutine's first update; the camera is
+        // not exported by the trace and `update_camera` (which the source gates
+        // on `Player.InControl`, Player.cs:1884) then eases it back.
+        assert!(trace.states[1].camera.x > 0.0);
+        assert_eq!(trace.states[5].pos.x, 24.0);
+        assert_eq!(trace.states[6].pos.x, 25.0);
+        let walked = trace
+            .states
+            .iter()
+            .map(|state| state.pos.x)
+            .fold(f32::NEG_INFINITY, f32::max);
+        assert_eq!(walked, 32.0);
+        assert!(trace.states.iter().any(|state| !state.facing));
+        let released = trace
+            .states
+            .iter()
+            .position(|state| state.state == PlayerState::Normal)
+            .expect("the coroutine releases the player");
+        assert!(trace.states[released - 1].facing);
     }
 
     #[test]
