@@ -135,6 +135,7 @@ impl Simulator {
             snapshot.player_on_ground = snapshot.on_ground;
             snapshot.player_on_ground_initialized = true;
         }
+        restore_session_dream_dash(&mut snapshot);
         let mut runtime_map = map.clone();
         let static_mover_attachments = initialize_static_mover_attachments(&runtime_map);
         initialize_zip_movers(&mut snapshot, &mut runtime_map);
@@ -214,6 +215,34 @@ impl Simulator {
 
     pub fn into_snapshot(self) -> PlayerSnapshot {
         self.snapshot
+    }
+}
+
+/// Recover the session-level dream-dash inventory from the player's own timer.
+///
+/// `Player.dreamDashCanEndTimer` is a `private float` (`Player.cs:551`), so it starts at
+/// the C# default `0f` for every fresh `Player`, and the source writes it in exactly two
+/// places, both inside state 9:
+///
+/// * `DreamDashBegin` sets it to `DreamDashMinTime` = `0.1f` (`Player.cs:5144`, constant at
+///   `Player.cs:251`);
+/// * `DreamDashUpdate` subtracts `Engine.DeltaTime` from it, and only while it is
+///   `> 0f` (`Player.cs:5189-5192`), so once it runs out it stays at a tiny non-zero
+///   residue instead of returning to zero.
+///
+/// State 9 is only ever entered by the three `DreamDashCheck` call sites (`Player.cs:3205`,
+/// `3313`, `3396`), and each of them is gated on `Inventory.DreamDash` (`Player.cs:3420`).
+/// That flag is session state with no equally-named field on the player, so a restored
+/// snapshot cannot carry it: the only gameplay writer is the Old Site mirror cutscene
+/// (`CS02_Mirror.cs:104`), which turns it on, on top of a chapter inventory that starts with
+/// `dreamDash: false` (`PlayerInventory.cs:12`, `AreaData.cs:211`; the console command at
+/// `Commands.cs:691` can also toggle it). A non-zero timer — or a snapshot already in state
+/// 9 — therefore proves the inventory is on, while a timer still at exactly `0f` is the
+/// fresh-player state in which it may be off (Old Site A-side before checkpoint "3",
+/// `AreaData.cs:208-211`).
+fn restore_session_dream_dash(p: &mut PlayerSnapshot) {
+    if p.dream_dash_can_end_timer != 0.0 || p.state == PlayerState::DreamDash {
+        p.can_dream_dash = true;
     }
 }
 
@@ -14840,6 +14869,76 @@ mod tests {
         let p = simulate(p, &inputs, &map, inputs.len() as u32).unwrap();
         assert_eq!(p.state, PlayerState::DreamDash);
         assert_eq!(p.speed, Vec2::new(240.0, 0.0));
+    }
+
+    #[test]
+    fn dream_dash_inventory_is_recovered_from_a_spent_dream_dash_timer() {
+        // A trace/anchor snapshot cannot carry `Inventory.DreamDash` (it is session state,
+        // `Player.cs:3420`), but a `dreamDashCanEndTimer` that has already been spent down
+        // to its negative residue (`Player.cs:5189-5192`) can only exist after a
+        // `DreamDashBegin` (`Player.cs:5144`), i.e. after the inventory was granted.
+        let map = Map {
+            entities: vec![crate::Entity {
+                kind: EntityKind::DreamBlock,
+                bounds: Rect::new(40.0, 40.0, 32.0, 40.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "dreamBlock".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 64.0),
+            dashes: 1,
+            // The exact residue the vanilla 202-berry trace carries on the frames that
+            // expose this cluster.
+            dream_dash_can_end_timer: -1.937_150_955_200_195_3e-7,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [InputState {
+            move_x: 1,
+            dash_pressed: true,
+            ..InputState::default()
+        }; 6];
+        let p = simulate(p, &inputs, &map, inputs.len() as u32).unwrap();
+        assert!(p.can_dream_dash);
+        assert_eq!(p.state, PlayerState::DreamDash);
+        assert_eq!(p.speed, Vec2::new(240.0, 0.0));
+    }
+
+    #[test]
+    fn fresh_player_timer_leaves_the_dream_dash_inventory_off() {
+        // The mirror cutscene has not run yet (`PlayerInventory.OldSite` is
+        // `dreamDash: false`, `PlayerInventory.cs:12`): the timer is still at the C#
+        // default `0f` (`Player.cs:551`) and the dream block must stay a wall.
+        let map = Map {
+            entities: vec![crate::Entity {
+                kind: EntityKind::DreamBlock,
+                bounds: Rect::new(40.0, 40.0, 32.0, 40.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "dreamBlock".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 64.0),
+            dashes: 1,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [InputState {
+            move_x: 1,
+            dash_pressed: true,
+            ..InputState::default()
+        }; 6];
+        let p = simulate(p, &inputs, &map, inputs.len() as u32).unwrap();
+        assert!(!p.can_dream_dash);
+        assert_eq!(p.state, PlayerState::Dash);
+        assert_eq!(p.speed, Vec2::new(0.0, 0.0));
     }
 
     #[test]
