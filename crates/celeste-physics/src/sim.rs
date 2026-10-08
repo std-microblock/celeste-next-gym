@@ -7947,6 +7947,18 @@ fn interact(
         }
         let player_box = if matches!(
             entity.kind,
+            // Every `Celeste.PlayerCollider` in the room is polled by
+            // `Player.Update` itself, inside a block that swaps the player's
+            // collider to the live `hurtbox` for the duration of the loop
+            // (`Player.cs:1898-1909`: `Collider collider = base.Collider;
+            // base.Collider = hurtbox; foreach (PlayerCollider component2 in
+            // ...GetComponents<PlayerCollider>())`). `PlayerCollider.Check`
+            // (PlayerCollider.cs:24-50) then runs `player.CollideCheck(Entity)`,
+            // so those callbacks see `normalHurtbox`/`duckHurtbox`/
+            // `starFlyHurtbox` (`Player.cs:609-615`) - never the taller
+            // hitbox. A `Booster` registers a bare
+            // `new PlayerCollider(OnPlayer)` (Booster.cs:60), so its
+            // `OnPlayer` collision test is one of them.
             EntityKind::Spikes
                 | EntityKind::FlyFeather
                 | EntityKind::Bumper
@@ -7956,6 +7968,8 @@ fn interact(
                 | EntityKind::SandwichLava
                 | EntityKind::CrystalStaticSpinner
                 | EntityKind::Killbox
+                | EntityKind::Booster
+                | EntityKind::RedBooster
         ) {
             current_player_hurt_rect(p)
         } else {
