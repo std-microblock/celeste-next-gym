@@ -59,6 +59,8 @@ artifacts (never whole-file `JSON.parse` a trace), and the reproduce commands. N
 follow the established loop: pick a cluster from the gate report, cite the `Player.cs` line, prove
 zero per-segment regressions, commit in a worktree, integrate.
 
+**The dominant remaining mechanism is a 1-pixel rounding difference.** `tools/tas-fidelity/lib/worklist.mjs` groups every `mismatch` segment of a report into classes (run it as `node tools/tas-fidelity/lib/worklist.mjs <report.json> <out.md>`; it streams). On the `395 ok` master the two biggest classes are `pos|anchor=StNormal` (180 segments / 11,340 frames) and `pos|anchor=StDash` (131 / 8,777), and their position deltas are overwhelmingly **one pixel on one axis** - 142 of the 180 are `(0,+-1)` or `(+-1,0)`, and 82 of the 131 likewise. That is the signature of sub-pixel remainder drift that stays invisible while the gate ignores `movementCounter` and only surfaces when it flips a `Math.Round` step, so these two classes almost certainly share a single root cause in the pixel-move / collision boundary code rather than hundreds of independent bugs. `dashes|anchor=StNormal` (43 / 3,708) is different: every one of its deltas is `(0,0)`, i.e. the divergence is reachable only through the dash count, not through motion.
+
 ## Which TAS is "the 202 TAS" — verified, not assumed
 
 Everest CI (`EverestAPI/Everest/.github/workflows/tas-sync-check.yml`) pins
