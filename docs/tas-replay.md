@@ -11,9 +11,19 @@ pinned vanilla 202-berry TAS, the instrumented CelesteTAS dumps one record per e
 
 | trace | `ok` rooms | mismatch | unsupported | replayed frames | frame-exact |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `trace-202-v5` | **426** | 1,041 | 0 | **134,732** | **133,660** |
-| `trace-100pct-v5` | **280** | 638 | 0 | **80,926** | **80,271** |
+| `trace-202-v5` | **426** | 1,041 | 0 | **134,788** | **133,716** |
+| `trace-100pct-v5` | **280** | 638 | 0 | **80,957** | **80,302** |
 | `trace-1a-v5` | **16** | 4 | 0 | **2,129** | **2,125** |
+
+The latest step is **`Level.InSpace`** (`de3fd65`). The trace exported it and the gate deliberately did
+not restore it, so the Core's zero-gravity scale (`SpacePhysicsMult = 0.6f`, `Player.cs:673`) never
+ran. All four physics sites are now in: the run target (`Player.cs:2889-2890`), both fall caps before
+the fast-fall comparison (`2904-2908`), gravity after the slow-fall halving (`2954-2955`) and the
+`DummyUpdate` gravity block. Only the room literally named `space` sets it in vanilla
+(`lvl_space`, 9-Core), so the effect is sharp rather than broad: its four segments went from
+diverging at offset 0 or 6 on a y-speed gap of exactly `900 * dt * 0.4` to replaying 13-19 frames.
+Measured `202 4 / 1464 / 0` and `100pct 2 / 916 / 0` (improved / identical / regressed), `+56` and
+`+31` replayed frames, `1a` unchanged.
 
 The latest step is **`CoreModeToggle` and `Level.CoreMode`** (`8c201f9`). The Core's
 ice/fire state was being read from the wrong field: `WallBooster.IceMode`
@@ -408,6 +418,9 @@ headline progress metric: an improved mechanic keeps more segments alive for lon
 | `trace-202-v5` | after `CoreModeToggle` + `Level.CoreMode` | 1,468 | **426** | 1,041 | 0 | **134,732** | **133,660** |
 | `trace-100pct-v5` | same build | 918 | **280** | 638 | 0 | **80,926** | **80,271** |
 | `trace-1a-v5` | same build | 20 | **16** | 4 | 0 | **2,129** | **2,125** |
+| `trace-202-v5` | after `Level.InSpace` | 1,468 | **426** | 1,041 | 0 | **134,788** | **133,716** |
+| `trace-100pct-v5` | same build | 918 | **280** | 638 | 0 | **80,957** | **80,302** |
+| `trace-1a-v5` | same build | 20 | **16** | 4 | 0 | **2,129** | **2,125** |
 
 The `v5` traces are `v4` plus one exported key, `levelCoreMode` (`Level.CoreMode`); replaying them
 with `--session-core-mode` reproduces the `v4` numbers exactly (`918/918` and `1468/1468` segments
@@ -472,7 +485,12 @@ against this same gate:
   with a live `wallSlideTimer` (`Player.cs:3749-3771`); the climb drain reads `lastClimbMove`
   (`Player.cs:4045`, `4056-4079`); and the wall boost is consumed before the on-ground stamina reset
   (`Player.cs:1560-1576`).
-* **`CoreModeToggle` and the `Level.CoreMode` ground truth** (this round). The switch decoded to
+* **`Level.InSpace`** (this round). Restored from the anchor row's `inSpace` (the room sets it once at
+  load, so it is constant per segment) and applied at all four physics sites - run target, both fall
+  caps, `NormalUpdate` gravity and `DummyUpdate` gravity. `202 4/1464/0, 100pct 2/916/0, 1a 0/20/0`,
+  `+56` and `+31` replayed frames, all of it in the one vanilla `space` room. Guarded by
+  `space_rooms_scale_run_target_fall_caps_and_gravity`.
+* **`CoreModeToggle` and the `Level.CoreMode` ground truth** (previous round). The switch decoded to
   `Unknown`, so `Level.CoreMode` never changed inside a room and the Core's ice/fire state was frozen
   at the value the segment anchored on - while the trace exported the *session* value, which is a
   different field. Now: `levelCoreMode` is exported and preferred, `CoreModeToggle` is decoded
@@ -518,8 +536,15 @@ against this same gate:
   timer) stays visible to later reads of the same frame, where the game's `VirtualButton.Pressed`
   would report false (`VirtualButton.cs:153-157`). No read site depends on that yet, so this is
   recorded as a residual rather than a target.
-* **`Level.InSpace`** (`Level.cs:449`) is a per-room map property `map.rs` does not decode, so
-  `Player.cs:3703-3706`, `3718-3722`, `3778-3781` (`*= 0.6f`) are unimplemented.
+* **The `space` room's remaining causes are `dashes` and `SpaceController`.** With `InSpace` landed,
+  its four segments (`9-Core|0|space` x2, `9-Core|1|space` x2) replay 13-19 frames and then stop on a
+  dash-count divergence, with `onGround` disagreeing on two of them - so the next causes there are the
+  dash refill inside the shaft and `SpaceController` (`SpaceController.cs:14-29`), which wraps the
+  player vertically against `Level.Camera` bounds and is not modelled. It is camera-dependent, and the
+  camera model still has the residual recorded below, so it needs the camera checked first.
+* **`Level.InSpace`** (`Level.cs:449`) is a per-room map property `map.rs` does not decode; the
+  simulator reads it from the trace instead, so a portable scenario that does not come from a trace
+  cannot set it.
 * **`Level.Wind`** — 41+ segments diverge by exactly `level.Wind * 0.1 * Engine.DeltaTime` in x, from
   `Player.cs:1180`'s `WindMover` component, which runs before the main `MoveH` (`Player.cs:1801`).
   The v3 exporter now carries it; the restore is landed, and the residual wind segments are next.
