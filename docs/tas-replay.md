@@ -129,9 +129,54 @@ One JSON object per line, one line per executed TAS frame:
   `Player.BoostUpdate` calls `Input.Dash.ConsumePress()` (`Player.cs:4724`).
 * `a` / `aStr` are the TAS input frame's raw `StudioCommunication.Actions` bitmask and source text —
   the authoritative, gameplay-independent record of the intended input.
-* `p` contains **every declared instance field of `Player`** with round-trip float formatting, so a
-  snapshot restore can be exact instead of lossy.
+* `p` contains **every instance field reachable from `Player` by walking the base chain**
+  (`Player` → `Actor` → `Platform` → `Entity`), 126 fields, with round-trip float formatting, so a
+  snapshot restore can be exact instead of lossy. `Position` (on `Entity`) and `movementCounter`
+  (on `Platform`) matter most: without `movementCounter` a segment anchored mid-motion starts with a
+  zero sub-pixel remainder and drifts a pixel on its very first frame.
 * Non-level scenes (overworld, transitions, vignettes) still produce a row, with `scene` naming them.
+
+## Measured fidelity — the gate
+
+`crates/celeste-physics/examples/tas_fidelity` replays every level segment of a trace through
+`Simulator` and stops each segment at its first divergence. `replayed frames` is therefore the
+headline progress metric: an improved mechanic keeps more segments alive for longer.
+
+| trace | date | segments | `ok` | `mismatch` | `unsupported` | replayed frames | exact frames |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `trace-1a` | first baseline | 20 | 1 | 18 | 1 | 567 | 548 |
+| `trace-1a` | after JumpThru fix | 20 | 1 | 18 | 1 | **741** | **722** |
+| `trace-100pct` | first baseline | 918 | 29 | 840 | 48 | 20,609 | 19,721 |
+| `trace-100pct` | after JumpThru fix | 918 | 30 | 840 | 48 | **21,653** | **20,765** |
+| `trace-202` | first baseline | 1,468 | 44 | 1,335 | 87 | 34,223 | 32,801 |
+| `trace-202` | after JumpThru fix | 1,468 | 45 | 1,335 | 87 | **36,253** | **34,831** |
+
+94–96% of every replayed frame is already frame-exact; the gate's value is that each remaining
+divergence names a specific mechanic.
+
+### Fixed so far
+
+* **`JumpThru` collider height** (`5299096`). `Celeste.JumpthruPlatform` forwards only
+  `data.Position` and `data.Width` to `JumpThru`, whose constructor replaces the map entity's 8 px
+  height with `new Hitbox(width, 5f)` anchored top-left (`JumpThru.cs:12`,
+  `JumpthruPlatform.cs:23-26`). Vanilla `jumpThru` fell through the generic bounds arm and kept the
+  raw 8 px, so the collider reached 3 px lower than the real game and the `Player.Update` JumpThru
+  Assist (`Player.cs:1787-1790`) fired on frames the real game skips, stealing
+  `40 * Engine.DeltaTime` of sub-pixel budget. On `trace-1a` this alone took room 7 from 1 to 34
+  replayed frames, room 8 from 3 to 25, room 10a from 1 to 76 and room 6b from 27 to 71.
+
+### Known open gaps (measured, not guessed)
+
+* `sim.rs:4944-4950` applies the JumpThru Assist without a `JumpThruBoostBlockedCheck()` equivalent
+  (`Player.cs:4179-4189`, driven by `LedgeBlocker` components from `CrystalStaticSpinner`,
+  `DustStaticSpinner`, `Spikes`, `TriggerSpikes`).
+* 87 of 1,468 segments in the 202 TAS open in an intro/cutscene state the subset does not implement:
+  `StIntroJump`, `StIntroWalk`, `StIntroWakeUp`, `StIntroThinkForABit`.
+* Segments anchored inside `StDash` cannot restore `StateMachine.Timer` (it is not a `Player` field).
+  `dashAttackTimer` is exported and makes the dash's age derivable, but the derivation is not
+  implemented.
+* The first ~40 rows of every room are a `Level.Transitioning` window: `Player.Update` does not run,
+  so those rows cannot be replayed and each segment anchors after them.
 
 ## Captured ground truth
 
@@ -161,15 +206,12 @@ driven from):
 ## Reproduce
 
 ```powershell
-# 0. build + install the trace-capable CelesteTAS (once)
+# 0. build + install the trace-capable CelesteTAS (once) - patch + build in one step
 robocopy "D:\celeste-research\.tmp\tasrun\celestetas-src" "D:\celeste-research\.tmp\tasrun\celestetas-trace" /E /XD .git
-copy "D:\celeste-research\.tmp\celestetas-patch\TasFrameTrace.cs" `
-     "D:\celeste-research\.tmp\tasrun\celestetas-trace\CelesteTAS-EverestInterop\Source\Tools\TasFrameTrace.cs"
-# plus one line in Source\TAS\Input\InputController.cs next to ExportGameInfo.ExportInfo():
-#     TasFrameTrace.ExportInfo();
-dotnet build "D:\celeste-research\.tmp\tasrun\celestetas-trace\CelesteTAS-EverestInterop\CelesteTAS-EverestInterop.csproj" -c Release -p:UseSymlinks=false
+node tools\celestetas-trace\apply.mjs "D:\celeste-research\.tmp\tasrun\celestetas-trace"
+# then install that tree as a dev mod at <game>\Mods\CelesteTAS-EverestInterop\
 
-# 1. ground truth (real game; ~3.5 min for the 202 TAS)
+# 1. ground truth (real game; ~2 min for 100%, ~3.5 min for the 202 TAS)
 D:\celeste-research\.tmp\tasrun\run-trace.ps1 `
   -TasFile "D:\celeste-research\.tmp\tas\CelesteTAS\<rev>\_trace-202.tas" -Tag 202
 
@@ -182,3 +224,14 @@ cargo run -q -p celeste-physics --release --example tas_fidelity -- `
   --maps vendor\celeste-game\Content\Maps --out .tmp\fidelity-202.json
 node tools\tas-fidelity\render-report.mjs .tmp\fidelity-202.json .tmp\fidelity-202.md
 ```
+
+The wrapper TAS files that switch the trace on must live in the TAS tree itself, because `Read`
+resolves relative to the reading file:
+
+```
+_trace-202.tas:
+TasFrameTrace,D:/celeste-research/.tmp/tasrun/trace-202.jsonl
+Read,0 - 202 Berries
+```
+
+Paths in TAS command arguments use `/`, not `\` — `CommandLine.TryParse` treats `\` as an escape.
