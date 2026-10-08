@@ -11,11 +11,11 @@ pinned vanilla 202-berry TAS, the instrumented CelesteTAS dumps one record per e
 
 | trace | `ok` rooms | mismatch | unsupported | replayed frames | frame-exact |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `trace-202-v4` | **355** | 1,112 | 0 | **121,264** | **120,124** |
+| `trace-202-v4` | **395** | 1,072 | 0 | **127,369** | **126,267** |
 | `trace-100pct-v4` | **234** | 684 | 0 | **73,085** | **72,386** |
 | `trace-1a-v4` | **16** | 4 | 0 | 2,126 | 2,122 |
 
-Starting point was 45 `ok` rooms / 36,253 replayed frames / 87 `unsupported`. Every landed fix cites a
+Starting point was 45 `ok` rooms / 36,253 replayed frames / 87 `unsupported`. The three pending workstreams on the previous revision of this section (Resort clutter with per-`sid` `oshiro_clutter_cleared_*` threading, `CrushBlock`/`DashBlock` with `OnDashCollide`, and the `LevelData` 184 -> 180 clamp) are now **landed** as `f735c98`, `b862df8` and `a27c8b4`; combined they took the 202 trace from 355 to 395 `ok` rooms and 121,264 to 127,369 replayed frames, with 128 segments improved and exactly 3 documented trade-offs: `5-MirrorTemple|0|b-14` (a `permanent` `DashBlock` in `Session.DoNotLoad`, which a Player-only trace cannot express) and `9-Core|1|c-08` x2 (the clamp moves `Bounds.Bottom` 4 px into `Player.CameraTarget`, and the residual is the camera model, not the clamp). Every landed fix cites a
 `Player.cs`/`Monocle` line and was proved to be zero-regression with a per-segment diff keyed by
 `(sid, mode, room, startRow)`.
 
