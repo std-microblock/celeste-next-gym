@@ -35,6 +35,14 @@ use serde_json::{Map as JsonMap, Value, json};
 ///
 /// `talkP` is optional because the earlier exporter revision that produced
 /// `trace-1a.jsonl` did not emit the `Pressed` edge for Talk.
+///
+/// The `*P0` keys are the same press edges sampled **before** anything in the frame could consume
+/// them (`TasFrameTrace.CaptureInput`, called right after `InputHelper.FeedInputs`). They exist
+/// because the post-frame `*P` keys are lossy: `Player.BoostUpdate` calls
+/// `Input.Dash.ConsumePress()` (`Player.cs:4721-4731`), which makes Monocle's `VirtualButton.Pressed`
+/// false for the rest of the frame (`Monocle/VirtualButton.cs:55-58`, `:153-157`), so every
+/// `StBoost` frame that consumed a dash press reports `dashP: false`. They are absent from the v1
+/// and v2 traces, where the fallback reproduces the old behaviour exactly.
 #[derive(Clone, Default, Deserialize)]
 #[serde(default)]
 struct InputRec {
@@ -45,16 +53,24 @@ struct InputRec {
     jump: bool,
     #[serde(rename = "jumpP")]
     jump_pressed: bool,
+    #[serde(rename = "jumpP0")]
+    jump_pressed_0: Option<bool>,
     dash: bool,
     #[serde(rename = "dashP")]
     dash_pressed: bool,
+    #[serde(rename = "dashP0")]
+    dash_pressed_0: Option<bool>,
     cdash: bool,
     #[serde(rename = "cdashP")]
     crouch_dash_pressed: bool,
+    #[serde(rename = "cdashP0")]
+    crouch_dash_pressed_0: Option<bool>,
     grab: bool,
     talk: bool,
     #[serde(rename = "talkP")]
     talk_pressed: Option<bool>,
+    #[serde(rename = "talkP0")]
+    talk_pressed_0: Option<bool>,
 }
 
 impl InputRec {
@@ -62,12 +78,17 @@ impl InputRec {
         InputState {
             move_x: self.mx.clamp(-1, 1) as i8,
             move_y: self.my.clamp(-1, 1) as i8,
-            jump_pressed: self.jump_pressed,
+            jump_pressed: self.jump_pressed_0.unwrap_or(self.jump_pressed),
             jump_held: self.jump,
-            dash_pressed: self.dash_pressed,
-            crouch_dash_pressed: self.crouch_dash_pressed,
+            dash_pressed: self.dash_pressed_0.unwrap_or(self.dash_pressed),
+            crouch_dash_pressed: self
+                .crouch_dash_pressed_0
+                .unwrap_or(self.crouch_dash_pressed),
             grab_held: self.grab,
-            talk_pressed: self.talk_pressed.unwrap_or(self.talk),
+            talk_pressed: self
+                .talk_pressed_0
+                .or(self.talk_pressed)
+                .unwrap_or(self.talk),
             frame_delta_time_bits: Some(frame_delta_time_bits),
         }
     }
@@ -1169,6 +1190,11 @@ fn game_view(frame: &Frame, truth: &Truth, pos: Option<[f64; 2]>) -> Value {
         "windTarget": frame.wind_target,
         "windPattern": frame.wind_pattern,
         "transitioning": frame.transitioning,
+        // Pre-consumption press edges (v3 traces only; `null` on v1/v2).
+        "jumpP0": frame.input.jump_pressed_0,
+        "dashP0": frame.input.dash_pressed_0,
+        "cdashP0": frame.input.crouch_dash_pressed_0,
+        "talkP0": frame.input.talk_pressed_0,
         "inventory": frame.inventory.as_ref().map(|inv| json!({
             "Dashes": inv.dashes,
             "DreamDash": inv.dream_dash,

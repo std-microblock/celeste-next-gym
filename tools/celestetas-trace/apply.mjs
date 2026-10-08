@@ -41,16 +41,37 @@ console.log(`wrote ${target}`);
 let controller = fs.readFileSync(controllerPath, 'utf8');
 // Tolerate LF and CRLF checkouts.
 const anchor = /^([ \t]*)ExportGameInfo\.ExportInfo\(\);\r?\n/m;
+// The press edges must be sampled after `InputHelper.FeedInputs` (which ends with
+// `MInput.UpdateVirtualInputs`) and before the frame's `Scene.Update`, because `Player.BoostUpdate`
+// calls `Input.Dash.ConsumePress()` and `VirtualButton.Pressed` is false afterwards.
+const feedAnchor = /^([ \t]*)InputHelper\.FeedInputs\(Current!\);\r?\n/m;
 
+let patched = false;
 if (controller.includes('TasFrameTrace.ExportInfo();')) {
-  console.log('InputController.cs already patched');
+  console.log('InputController.cs already patched (ExportInfo)');
 } else if (anchor.test(controller)) {
   controller = controller.replace(anchor, (match, indent) => `${match}${indent}TasFrameTrace.ExportInfo();\n`);
-  fs.writeFileSync(controllerPath, controller);
-  console.log(`patched ${controllerPath}`);
+  console.log('patched InputController.cs (ExportInfo)');
+  patched = true;
 } else {
   console.error('could not find the "ExportGameInfo.ExportInfo();" anchor in InputController.cs; patch manually');
   process.exit(1);
+}
+
+if (controller.includes('TasFrameTrace.CaptureInput();')) {
+  console.log('InputController.cs already patched (CaptureInput)');
+} else if (feedAnchor.test(controller)) {
+  controller = controller.replace(feedAnchor, (match, indent) => `${match}${indent}TasFrameTrace.CaptureInput();\n`);
+  console.log('patched InputController.cs (CaptureInput)');
+  patched = true;
+} else {
+  console.error('could not find the "InputHelper.FeedInputs(Current!);" anchor in InputController.cs; patch manually');
+  process.exit(1);
+}
+
+if (patched) {
+  fs.writeFileSync(controllerPath, controller);
+  console.log(`wrote ${controllerPath}`);
 }
 
 if (noBuild) {

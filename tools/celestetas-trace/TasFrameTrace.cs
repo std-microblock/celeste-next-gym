@@ -33,8 +33,30 @@ public static class TasFrameTrace {
     /// <c>CurrentFrameInTas</c> is still the frame about to run, and
     /// <c>InputController.AdvanceFrame</c> always ends with exactly one <c>CurrentFrameInTas++</c>,
     /// so the executed frame index is <c>FrameInTas + 1</c>.
+    ///
+    /// The press-edge fields are filled later, by <see cref="CaptureInput"/>, which
+    /// <c>InputController.AdvanceFrame</c> calls immediately after
+    /// <c>InputHelper.FeedInputs(Current!)</c>. A class (not a record struct) so that call can
+    /// mutate the entry already queued here.
     /// </summary>
-    private readonly record struct PendingFrame(InputFrame Frame, int FrameInTas);
+    private sealed class PendingFrame {
+        public InputFrame Frame = null!;
+        public int FrameInTas;
+
+        /// <summary>
+        /// `VirtualButton.Pressed` for each button, sampled before anything in the frame could
+        /// consume it. `Player.BoostUpdate` calls `Input.Dash.ConsumePress()` (`Player.cs:4721-4731`),
+        /// which sets Monocle's `VirtualButton.consumed` and makes `Pressed` return false for the
+        /// rest of the frame (`Monocle/VirtualButton.cs:55-58`, `:153-157`). Because the row is
+        /// written after the engine update, the historical `in.dashP`/`in.cdashP`/`in.jumpP`/
+        /// `in.talkP` keys are post-consumption on every such frame; these are the true edges.
+        /// </summary>
+        public bool PressedCaptured;
+        public bool JumpPressed;
+        public bool DashPressed;
+        public bool CrouchDashPressed;
+        public bool TalkPressed;
+    }
 
     private static StreamWriter? writer;
     // A queue rather than a single slot: `AdvanceFrame` runs at most once per `Engine.Update`, but a
@@ -42,6 +64,10 @@ public static class TasFrameTrace {
     // `SelectCampaign` jump `CurrentFrameInTas` forward *inside* one AdvanceFrame
     // (InputController.cs:178-184), which shows up as a legitimate gap in `f` — it is not row loss.
     private static readonly Queue<PendingFrame> pending = new();
+    // The entry `CaptureInput` fills. `ExportInfo` hands it over, so a frame whose press edges are
+    // never captured (for example `Current` is null, or `AdvanceFrame` returns before
+    // `FeedInputs`) cannot inherit the previous frame's edges.
+    private static PendingFrame? captureTarget;
     private static bool exporting;
     private static string targetPath = "";
     private static long rows;
@@ -76,6 +102,7 @@ public static class TasFrameTrace {
     private static void Finish() {
         exporting = false;
         pending.Clear();
+        captureTarget = null;
         if (writer != null) {
             try {
                 writer.Flush();
@@ -103,6 +130,10 @@ public static class TasFrameTrace {
 
         while (pending.Count > 0) {
             PendingFrame frame = pending.Dequeue();
+            if (ReferenceEquals(captureTarget, frame)) {
+                captureTarget = null;
+            }
+
             try {
                 WriteFrame(frame);
             } catch (Exception e) {
@@ -119,14 +150,42 @@ public static class TasFrameTrace {
     /// after the matching <c>Engine.Update</c>, the same point <c>ExportGameInfo</c> records at.
     /// </summary>
     public static void ExportInfo() {
+        captureTarget = null;
         if (!exporting) {
             return;
         }
 
         InputController controller = Manager.Controller;
         if (controller.Current is { } currentInput) {
-            pending.Enqueue(new PendingFrame(currentInput, controller.CurrentFrameInTas));
+            var entry = new PendingFrame {
+                Frame = currentInput,
+                FrameInTas = controller.CurrentFrameInTas,
+            };
+            pending.Enqueue(entry);
+            captureTarget = entry;
         }
+    }
+
+    /// <summary>
+    /// Snapshots the frame's press edges into the entry <see cref="ExportInfo"/> just queued.
+    ///
+    /// `InputController.AdvanceFrame` calls this immediately after
+    /// <c>InputHelper.FeedInputs(Current!)</c> (`InputController.cs:220`), which ends with
+    /// <c>MInput.UpdateVirtualInputs()</c> (`InputHelper.cs:33`). At that instant the fed input has
+    /// just recomputed every `VirtualButton` and no `Scene.Update` has run yet, so the edges are
+    /// pre-consumption — unlike the post-frame reads the `in.*P` keys have always used.
+    /// </summary>
+    public static void CaptureInput() {
+        if (!exporting || captureTarget == null) {
+            return;
+        }
+
+        PendingFrame target = captureTarget;
+        target.JumpPressed = CelesteInput.Jump.Pressed;
+        target.DashPressed = CelesteInput.Dash.Pressed;
+        target.CrouchDashPressed = CelesteInput.CrouchDash.Pressed;
+        target.TalkPressed = CelesteInput.Talk.Pressed;
+        target.PressedCaptured = true;
     }
 
     private static void Begin(string path) {
@@ -165,7 +224,7 @@ public static class TasFrameTrace {
         sb.Append(",\"rawDt\":"); AppendFloat(Engine.RawDeltaTime);
         sb.Append(",\"timeRate\":"); AppendFloat(Engine.TimeRate);
 
-        AppendInputState();
+        AppendInputState(record);
 
         sb.Append(",\"a\":").Append(((int) inputFrame.Actions).ToString(CultureInfo.InvariantCulture));
         sb.Append(",\"aStr\":");
@@ -215,7 +274,7 @@ public static class TasFrameTrace {
         }
     }
 
-    private static void AppendInputState() {
+    private static void AppendInputState(PendingFrame record) {
         sb.Append(",\"in\":{");
         sb.Append("\"mx\":").Append(CelesteInput.MoveX.Value.ToString(CultureInfo.InvariantCulture));
         sb.Append(",\"my\":").Append(CelesteInput.MoveY.Value.ToString(CultureInfo.InvariantCulture));
@@ -229,6 +288,13 @@ public static class TasFrameTrace {
         AppendBoolField("grab", CelesteInput.Grab.Check);
         AppendBoolField("talk", CelesteInput.Talk.Check);
         AppendBoolField("talkP", CelesteInput.Talk.Pressed);
+        // Append-only: the same edges sampled before any consumer ran, i.e. what
+        // `InputHelper.FeedInputs` produced and what the frame's state callbacks saw before they
+        // could call `VirtualButton.ConsumePress()`. `in.*P` above stay exactly as they were.
+        AppendBoolField("jumpP0", record.PressedCaptured ? record.JumpPressed : CelesteInput.Jump.Pressed);
+        AppendBoolField("dashP0", record.PressedCaptured ? record.DashPressed : CelesteInput.Dash.Pressed);
+        AppendBoolField("cdashP0", record.PressedCaptured ? record.CrouchDashPressed : CelesteInput.CrouchDash.Pressed);
+        AppendBoolField("talkP0", record.PressedCaptured ? record.TalkPressed : CelesteInput.Talk.Pressed);
         sb.Append(",\"aim\":");
         AppendVector(CelesteInput.Aim.Value);
         sb.Append(",\"feather\":");
