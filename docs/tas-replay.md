@@ -65,6 +65,32 @@ Any automation must **poll `result.json` for `finished: true`, wait a grace wind
 PID's image path, then `Stop-Process` that one PID** — never `WaitForExit` on the SyncChecker itself,
 and never kill by process name.
 
+### Run the game on local1 / local2, never in the coordinating session
+
+`local1` (`win_dsh-test1`, Windows account `mb-cloud\dsh-test1`) and `local2` (`win_dsh-test2`) are
+**additional accounts on this same machine**, not remote hosts, so they see the very same paths
+(`D:\celeste-research\...`). Celeste must be launched from one of them:
+
+```powershell
+# from a borrowed local1/local2 account (note: `pwsh` is not on those accounts' PATH, use `& <script>`)
+& D:\celeste-research\.tmp\tasrun\run-trace-env.ps1 `
+    -TasFile "D:\celeste-research\.tmp\tas\CelesteTAS\<rev>\0 - 202 Berries.tas" `
+    -Tag 202 -TraceOut "D:\celeste-research\.tmp\tasrun\trace-202-<tag>.jsonl" `
+    -SavesDir "D:\celeste-research\.tmp\tasrun\game-trace\saves-<account>" `
+    -ResultOut "D:\celeste-research\.tmp\tasrun\result-<tag>.json"
+```
+
+`run-trace-env.ps1` takes the **plain TAS entry** (`1A.tas`, `0 - 202 Berries.tas`), not one of the
+pre-made `_trace-*.tas` wrappers, because the trace destination is a `TasFrameTrace,<path>` line
+*inside* the `.tas` file and therefore not a process argument. The script generates a per-run wrapper
+next to the entry (the resolver resolves `Read` relative to the reading file) and points it at
+`-TraceOut`. TAS command arguments must use `/`, never `\` — `CommandLine.TryParse` treats `\` as an
+escape. Each account needs its own `-SavesDir` so concurrent runs cannot share save state.
+
+Measured: `trace-1a` takes ~30 s of wall clock on local1 (a cold first run can take ~5 min while the
+shader cache warms).
+
+
 ## Architecture
 
 ```
