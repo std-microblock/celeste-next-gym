@@ -16,6 +16,9 @@ const RUN_ACCEL: f32 = 1000.0;
 const RUN_REDUCE: f32 = 400.0;
 const DUCK_FRICTION: f32 = 500.0;
 const AIR_MULT: f32 = 0.65;
+/// `Player.NormalUpdate`'s Core ice-mode factor (`Player.cs:3681-3684`):
+/// `num2 *= 0.3f` while `onGround` and `level.CoreMode == Cold`.
+const ICE_GROUND_MULT: f32 = 0.3;
 const JUMP_GRACE: f32 = 0.1;
 const JUMP_BUFFER_TIME: f32 = 0.08;
 const JUMP_SPEED: f32 = -105.0;
@@ -4918,7 +4921,12 @@ fn step(
     // at frame start is only decremented, even if it crosses zero.
     let dash_refill_cooldown_active = p.dash_refill_cooldown_timer > 0.0;
     if p.explode_launch_boost_timer > 0.0 {
-        if input.move_x as f32 == p.explode_launch_boost_speed.signum() {
+        // Player.cs:1467 compares `Input.MoveX.Value` against
+        // `Math.Sign(explodeLaunchBoostSpeed)`. `Math.Sign(0f)` is 0, so a
+        // boosted speed that has been zeroed does not match either direction;
+        // `f32::signum(0.0)` is +1 and would match a rightward stick, clearing
+        // the timer and overwriting `Speed.X` with zero.
+        if input.move_x as f32 == math_sign(p.explode_launch_boost_speed) {
             p.speed.x = p.explode_launch_boost_speed;
             p.explode_launch_boost_timer = 0.0;
         } else {
@@ -5373,7 +5381,14 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
     }
 
     let mult = if p.on_ground {
-        1.0
+        // Player.cs:3681-3684: the Core's ice mode scales the whole ground
+        // run multiplier by 0.3, which shrinks both `Calc.Approach` steps
+        // (400f and 1000f per second) to 30% of their normal size.
+        if p.core_mode == crate::CoreMode::Cold {
+            ICE_GROUND_MULT
+        } else {
+            1.0
+        }
     } else if holding_slow_fall(p) {
         AIR_MULT * 0.5
     } else {
@@ -5973,6 +5988,7 @@ fn climb_update(
         return;
     }
     if !input.grab_held {
+        add_lift_boost(p);
         enter_normal(p);
         return;
     }
@@ -6080,7 +6096,13 @@ fn swim_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     } else {
         SWIM_MAX
     };
-    let horizontal_accel = if p.speed.x.abs() > SWIM_MAX && p.speed.x.signum() == x.signum() {
+    // Player.cs:4645 / 4659 compare against `Math.Sign(value.X)` and
+    // `Math.Sign(value.Y)` of the safe-normalized Feather vector. `SafeNormalize`
+    // keeps a purely vertical or purely horizontal stick at an exact zero
+    // component, and `Math.Sign(0f)` is 0, so that axis never takes the reduce
+    // branch; `f32::signum(0.0)` would report +1 and wrongly reduce a
+    // same-sign speed.
+    let horizontal_accel = if p.speed.x.abs() > SWIM_MAX && math_sign(p.speed.x) == math_sign(x) {
         SWIM_REDUCE
     } else {
         SWIM_ACCEL
@@ -6094,7 +6116,7 @@ fn swim_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     if y == 0.0 && swim_rise_check(p, map) {
         p.speed.y = approach(p.speed.y, SWIM_MAX_RISE, SWIM_ACCEL * p.frame_delta_time);
     } else if y >= 0.0 || underwater {
-        let vertical_accel = if p.speed.y.abs() > SWIM_MAX && p.speed.y.signum() == y.signum() {
+        let vertical_accel = if p.speed.y.abs() > SWIM_MAX && math_sign(p.speed.y) == math_sign(y) {
             SWIM_REDUCE
         } else {
             SWIM_ACCEL
@@ -6159,7 +6181,7 @@ fn try_end_dream_dash(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
         // DreamDashUpdate calls Jump before the state transition, then
         // DreamDashEnd restores horizontal-exit grace. That callback ordering
         // is why a buffered Dream Jump can jump a second time.
-        p.state = PlayerState::Normal;
+        enter_normal(p);
         p.jump_buffer_timer = 0.0;
         p.speed.y = JUMP_SPEED;
         p.speed.x += input.move_x as f32 * JUMP_H_BOOST;
@@ -6179,7 +6201,12 @@ fn try_end_dream_dash(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
         p.climb_no_move_timer = 0.1;
         p.wall_boost_timer = 0.0;
     } else {
-        p.state = PlayerState::Normal;
+        // Player.cs:5240 returns state 0, so `StateMachine` runs
+        // `DreamDashEnd` and then `NormalBegin` (`Player.cs:1146`), whose
+        // `maxFall = 160f` (`Player.cs:3531-3534`) survives the 0.05 s freeze
+        // that follows the exit. Assigning `state` directly left the Core's
+        // fast-fall 240 px/s cap in place.
+        enter_normal(p);
         p.auto_jump = true;
         p.auto_jump_timer = 0.0;
     }
@@ -7579,6 +7606,17 @@ fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount:
                                 return;
                             }
                         }
+                    }
+                    // Player.cs:3389-3392: a ceiling bonk only ends the
+                    // variable-jump window once the jump has been rising for
+                    // more than five hundredths of a second
+                    // (`varJumpTimer < 0.15f`). Before that the window survives,
+                    // so the frames after the bonk keep the half-gravity
+                    // `num7 = 0.5` fall target instead of falling at 900 px/s^2.
+                    // This runs only when neither sideways ceiling slide above
+                    // returned, exactly like the source's fall-through.
+                    if p.var_jump_timer < 0.15 {
+                        p.var_jump_timer = 0.0;
                     }
                 }
                 if sign > 0
@@ -19563,5 +19601,129 @@ mod tests {
         assert!(trace.states[55].speed.x > 300.0);
         assert!(trace.states[59].speed.x < trace.states[58].speed.x);
         assert_eq!(trace.states[51].move_blocks[0].position.y, 440.0);
+    }
+
+    /// `Player.ClimbUpdate`'s grab-release branch (`Player.cs:3950-3955`) adds
+    /// `LiftBoost` before returning to `StNormal`. Releasing a grab on a rising
+    /// lift therefore hands the lift's speed to the player instead of leaving
+    /// the `StClimb` zero.
+    #[test]
+    fn climb_release_adds_lift_boost() {
+        let map = floor_map();
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 100.0),
+            state: PlayerState::Climb,
+            facing: true,
+            current_lift_speed: Vec2::new(121.083_748, 0.0),
+            lift_speed_timer: 0.16,
+            ..PlayerSnapshot::default()
+        };
+
+        // `input.grab_held == false` and no jump/dash press: the first branch
+        // `ClimbUpdate` can take is the grab release.
+        climb_update(&mut p, InputState::default(), &map);
+
+        assert_eq!(p.state, PlayerState::Normal);
+        assert_eq!(p.speed.x, 121.083_748);
+        assert_eq!(p.max_fall, MAX_FALL);
+    }
+
+    /// `Player.OnCollideV`'s rising branch (`Player.cs:3389-3392`) clears
+    /// `varJumpTimer` on a ceiling bonk once the jump has been rising for more
+    /// than 0.05 s, i.e. once the timer has fallen below 0.15 s. While the timer
+    /// is still at or above 0.15 the variable-jump window survives, so the
+    /// frames after the bonk keep the half-gravity fall target.
+    #[test]
+    fn ceiling_bonk_ends_the_variable_jump_window() {
+        // `player_rect` puts the hitbox at `y - 11 .. y`; a ceiling ending at
+        // y = 89 blocks the first pixel of an upward move from y = 100.
+        let map = Map {
+            solids: vec![Rect::new(0.0, 0.0, 320.0, 89.0)],
+            ..Map::default()
+        };
+
+        let mut late = PlayerSnapshot {
+            pos: Vec2::new(32.0, 100.0),
+            speed: Vec2::new(0.0, -105.0),
+            var_jump_timer: 0.133_333_3,
+            var_jump_speed: -105.0,
+            ..PlayerSnapshot::default()
+        };
+        let amount = late.speed.y * DT;
+        move_axis_amount(&mut late, &map, false, amount);
+        assert_eq!(late.speed.y, 0.0);
+        assert_eq!(late.var_jump_timer, 0.0);
+
+        // A timer at 0.15 s or above means the jump has been rising for less
+        // than 0.05 s, so the window is left alone.
+        let mut early = PlayerSnapshot {
+            pos: Vec2::new(32.0, 100.0),
+            speed: Vec2::new(0.0, -105.0),
+            var_jump_timer: 0.166_666_6,
+            var_jump_speed: -105.0,
+            ..PlayerSnapshot::default()
+        };
+        let amount = early.speed.y * DT;
+        move_axis_amount(&mut early, &map, false, amount);
+        assert_eq!(early.speed.y, 0.0);
+        assert_eq!(early.var_jump_timer, 0.166_666_6);
+    }
+
+    /// `Player.DreamDashUpdate` returns state 0 (`Player.cs:5240`), so
+    /// `StateMachine` runs `DreamDashEnd` and then `NormalBegin`, whose
+    /// `maxFall = 160f` (`Player.cs:3531-3534`) must replace the Core's
+    /// 240 px/s fast-fall cap.
+    #[test]
+    fn dream_dash_exit_runs_normal_begin() {
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 240.0),
+            ..Map::default()
+        };
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 100.0),
+            state: PlayerState::DreamDash,
+            dash_dir: Vec2::new(0.0, 1.0),
+            max_fall: FAST_MAX_FALL,
+            ..PlayerSnapshot::default()
+        };
+        p.dream_dash_can_end_timer = 0.0;
+
+        try_end_dream_dash(&mut p, &map, InputState::default());
+
+        assert_eq!(p.state, PlayerState::Normal);
+        assert_eq!(p.max_fall, MAX_FALL);
+        assert!(p.auto_jump);
+    }
+
+    /// `Player.NormalUpdate`'s Core ice factor (`Player.cs:3681-3684`):
+    /// `num2 *= 0.3f` while grounded and `level.CoreMode == Cold`, which shrinks
+    /// the 400 px/s `Calc.Approach` step to 120 px/s.
+    #[test]
+    fn core_ice_mode_scales_the_ground_run_approach() {
+        let map = floor_map();
+        let grounded = |core_mode| PlayerSnapshot {
+            pos: Vec2::new(32.0, 100.0),
+            on_ground: true,
+            speed: Vec2::new(299.0, 0.0),
+            move_x: 1,
+            max_fall: MAX_FALL,
+            core_mode,
+            ..PlayerSnapshot::default()
+        };
+        let input = InputState {
+            move_x: 1,
+            ..InputState::default()
+        };
+
+        let mut normal = grounded(crate::CoreMode::None);
+        normal_update(&mut normal, input, &map, true);
+        let mut cold = grounded(crate::CoreMode::Cold);
+        normal_update(&mut cold, input, &map, true);
+
+        let expected_normal = 299.0 - RUN_REDUCE * DT;
+        let expected_cold = 299.0 - RUN_REDUCE * ICE_GROUND_MULT * DT;
+        assert!((normal.speed.x - expected_normal).abs() < 0.001);
+        assert!((cold.speed.x - expected_cold).abs() < 0.001);
+        assert!((cold.speed.x - normal.speed.x - RUN_REDUCE * 0.7 * DT).abs() < 0.001);
     }
 }
