@@ -11,21 +11,22 @@ pinned vanilla 202-berry TAS, the instrumented CelesteTAS dumps one record per e
 
 | trace | `ok` rooms | mismatch | unsupported | replayed frames | frame-exact |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `trace-202-v4` | **421** | 1,046 | 0 | **134,152** | **133,075** |
-| `trace-100pct-v4` | **277** | 641 | 0 | **80,608** | **79,950** |
-| `trace-1a-v4` | **16** | 4 | 0 | **2,129** | **2,125** |
+| `trace-202-v5` | **426** | 1,041 | 0 | **134,732** | **133,660** |
+| `trace-100pct-v5` | **280** | 638 | 0 | **80,926** | **80,271** |
+| `trace-1a-v5` | **16** | 4 | 0 | **2,129** | **2,125** |
 
-The latest step is the **Core conveyor** (`7806a25`): `wallBooster` decoded to
-`EntityKind::Unknown`, so `Player.ClimbUpdate`'s `WallBooster` branch
-(`Player.cs:3154-3167`) never ran and the simulator held the ordinary climb
-target while the game ramped `Speed.Y` toward -160 at 600/s. Per-segment diff
-against the previous baselines: **202 18 improved / 1,450 identical / 0
-regressed, 100pct 9 / 909 / 0, 1a 0 / 20 (no boosters in Forsaken City)**, for
-`+2,848` and `+1,414` frame-exact frames and `+10` / `+5` `ok` rooms. One part of
-the entity is deliberately **not** modelled yet and is recorded in
-`climb_blocker_check`: its ice-mode `ClimbBlocker` costs 526 frames and regresses
-two 9H-Core segments, which is a real `Level.CoreMode` vs traced
-`Session.CoreMode` discrepancy rather than a detail.
+The latest step is **`CoreModeToggle` and `Level.CoreMode`** (`8c201f9`). The Core's
+ice/fire state was being read from the wrong field: `WallBooster.IceMode`
+(`WallBooster.cs:77-101`), the ice factor (`Player.cs:3681-3684`) and every `CoreModeListener` read
+`Level.CoreMode`, while the trace exported - and the simulator restored - `Session.CoreMode`. They are
+separate fields and disagree on **3,641 Level rows of the 100% trace**, because `CoreModeToggle`
+(`CoreModeToggle.cs:6-137`) flips `Level.CoreMode` mid-room and the entity decoded to `Unknown`.
+The exporter now writes `levelCoreMode` beside `coreMode`; the gate prefers it and has
+`--session-core-mode` to read the old key, which is how the change was measured against the *same*
+trace. Per-segment: **202 7 improved / 1,461 identical / 0 regressed (421 -> 426 `ok`), 100pct 4 / 914
+/ 0 (277 -> 280), 1a unchanged**, `+580` and `+318` replayed frames. That also retires the round-2
+caveat that the conveyor's ice-mode `ClimbBlocker` cost 526 frames: with the right field plus the
+toggle it is exactly neutral, and it is now modelled.
 
 The step before that was the **input-press model** (`45b3070`, plus the
 effective-press commit): the harness was feeding the game's already-buffered
@@ -71,7 +72,7 @@ Starting point was 45 `ok` rooms / 36,253 replayed frames / 87 `unsupported`. Th
    (`oshiro_clutter_cleared_*`), or `Level.Frozen`.
 3. **86 of 162 `PlayerSnapshot` fields are never restored** — the checked-in
    `tools/tas-fidelity/field-map.md` is that list, regenerable with `--dump-field-map`.
-4. **165 vanilla entity names still decode to `EntityKind::Unknown`** — no solid, no diagnostic.
+4. **164 vanilla entity names still decode to `EntityKind::Unknown`** — no solid, no diagnostic.
    `map.rs` also does not decode the room `space` attribute (only `9-Core`/`9H-Core` are `true`).
 5. **The real game is not bit-reproducible.** Two runs of the *same* exporter differ in ~28k rows,
    always starting at `7-Summit|a-00-intro`'s `StDummy` dummy walk (whole-pixel offsets with
@@ -91,17 +92,17 @@ artifacts (never whole-file `JSON.parse` a trace), and the reproduce commands. N
 follow the established loop: pick a cluster from the gate report, cite the `Player.cs` line, prove
 zero per-segment regressions, commit in a worktree, integrate.
 
-**The two biggest single levers found so far are landed: the input-press model and the Core
-conveyor.** Both were found by taking one divergence, reading the matching `Player.cs` branch, and
-proving the fix per segment rather than by fitting the report. Concretely: the harness used to feed
-the game's *buffered* press level into `Simulator`'s own `VirtualButton` buffer, so every press
-outlived the game's by four frames (`InputState::presses_are_effective` now adopts the recorded level
-verbatim: `+3 / +2,599 / +3,945` frames on `1a / 100pct / 202`), and `wallBooster` decoded to
-`Unknown` so the Core conveyor never ran (`+0 / +1,414 / +2,848`). Both are documented below with the
-ground-truth proof and the superseded hypotheses. Next: re-run
-`tools/tas-fidelity/lib/worklist.mjs` on `gate-wb4-202-v4.json`, because the class sizes have moved
-again, and settle the `Level.CoreMode` vs `Session.CoreMode` question the conveyor uncovered - it
-affects the ice factor and the `CoreModeListener` entities too, not just the conveyor.
+**Three systematic levers have landed, each found from one divergence rather than from fitting the
+report: the input-press model, the Core conveyor, and the Core's ice/fire state.** The first two are
+described below (`+3 / +2,599 / +3,945` and `+0 / +1,414 / +2,848` replayed frames on
+`1a / 100pct / 202`). The third is the most instructive: the trace was exporting `Session.CoreMode`
+while every Core mechanic reads `Level.CoreMode`, and the two disagree on 3,641 rows because
+`CoreModeToggle` - a decoded-as-`Unknown` entity - flips the *level* value mid-room. Measuring it
+needed no new game run at all: export both keys in one trace and add a flag that reads the old one,
+so the same trace produces both reports and the comparison has zero run-to-run noise. Next: re-run
+`tools/tas-fidelity/lib/worklist.mjs` on `gate-final-202.json` (the class sizes have moved again), and
+note that the same trick - export the field the source actually reads, alongside the one already
+exported - applies to `Level.InSpace`, which `map.rs` still does not decode.
 
 **The dominant remaining mechanism is a 1-pixel rounding difference.** `tools/tas-fidelity/lib/worklist.mjs` groups every `mismatch` segment of a report into classes (run it as `node tools/tas-fidelity/lib/worklist.mjs <report.json> <out.md>`; it streams). On the `395 ok` master the two biggest classes are `pos|anchor=StNormal` (180 segments / 11,340 frames) and `pos|anchor=StDash` (131 / 8,777), and their position deltas are overwhelmingly **one pixel on one axis** - 142 of the 180 are `(0,+-1)` or `(+-1,0)`, and 82 of the 131 likewise. That is the signature of sub-pixel remainder drift that stays invisible while the gate ignores `movementCounter` and only surfaces when it flips a `Math.Round` step, so these two classes almost certainly share a single root cause in the pixel-move / collision boundary code rather than hundreds of independent bugs. `dashes|anchor=StNormal` (43 / 3,708) is different: every one of its deltas is `(0,0)`, i.e. the divergence is reachable only through the dash count, not through motion.
 
@@ -403,9 +404,14 @@ headline progress metric: an improved mechanic keeps more segments alive for lon
 | `trace-202-v4` | after the effective-press input model | 1,468 | **411** | 1,056 | 0 | **131,314** | **130,227** |
 | `trace-100pct-v4` | same build | 918 | **272** | 646 | 0 | **79,199** | **78,536** |
 | `trace-1a-v4` | same build | 20 | **16** | 4 | 0 | **2,129** | **2,125** |
-| `trace-202-v4` | after the Core `WallBooster` conveyor | 1,468 | **421** | 1,046 | 0 | **134,152** | **133,075** |
-| `trace-100pct-v4` | same build | 918 | **277** | 641 | 0 | **80,608** | **79,950** |
 | `trace-1a-v4` | same build | 20 | **16** | 4 | 0 | **2,129** | **2,125** |
+| `trace-202-v5` | after `CoreModeToggle` + `Level.CoreMode` | 1,468 | **426** | 1,041 | 0 | **134,732** | **133,660** |
+| `trace-100pct-v5` | same build | 918 | **280** | 638 | 0 | **80,926** | **80,271** |
+| `trace-1a-v5` | same build | 20 | **16** | 4 | 0 | **2,129** | **2,125** |
+
+The `v5` traces are `v4` plus one exported key, `levelCoreMode` (`Level.CoreMode`); replaying them
+with `--session-core-mode` reproduces the `v4` numbers exactly (`918/918` and `1468/1468` segments
+identical), so the trace change alone moves nothing and the two revisions stay comparable.
 
 The `100%` row moved from 234 to **262** as the later waves landed, so always compare against a
 named report file, not against the number in an older revision of this table. The three current
@@ -466,7 +472,16 @@ against this same gate:
   with a live `wallSlideTimer` (`Player.cs:3749-3771`); the climb drain reads `lastClimbMove`
   (`Player.cs:4045`, `4056-4079`); and the wall boost is consumed before the on-ground stamina reset
   (`Player.cs:1560-1576`).
-* **The Core `WallBooster` conveyor** (this round). Entity decode plus
+* **`CoreModeToggle` and the `Level.CoreMode` ground truth** (this round). The switch decoded to
+  `Unknown`, so `Level.CoreMode` never changed inside a room and the Core's ice/fire state was frozen
+  at the value the segment anchored on - while the trace exported the *session* value, which is a
+  different field. Now: `levelCoreMode` is exported and preferred, `CoreModeToggle` is decoded
+  (`Hitbox(16, 24, -8, -12)`, `onlyFire`/`onlyIce` in `direction`, `persistent` in `single_use`) and
+  modelled (`Usable && cooldownTimer <= 0` flips the mode, `Celeste.Freeze(0.05f)`, one-second
+  cooldown counted down after `Player.Update`). `202 7/1461/0, 100pct 4/914/0, 1a 0/20/0`
+  (improved/identical/regressed), `+580` and `+318` replayed frames. Guarded by
+  `core_mode_toggle_flips_level_mode_then_cools_down`.
+* **The Core `WallBooster` conveyor** (previous round). Entity decode plus
   `Player.ClimbUpdate`'s booster branch: `Speed.Y` toward `WallBoosterSpeed`
   (-160) at `WallBoosterAccel` (600), `LiftSpeed = UnitY * Max(Speed.Y, -80)`
   (`Player.cs:3093-3099`, `3154-3167`), the `wallBoosting` release on the ledge
@@ -497,29 +512,12 @@ against this same gate:
 
 ### Known open gaps (measured, not guessed)
 
-* **`Level.CoreMode` is not the same quantity as the traced `Session.CoreMode`, and something in the
-  Core proves it.** `WallBooster` reads `Level.CoreMode` (`WallBooster.cs:77-82`) to decide `IceMode`,
-  in which its own `ClimbBlocker(edge: false)` is `Blocking` (`WallBooster.cs:42`, `:85-101`) and the
-  strip must refuse the grab. Wiring that in - it is decoded and ready as
-  `Entity.direction.y` - costs **526 replayed frames** and regresses `9-Core|1|b-03` and
-  `9-Core|0|d-03` by 6 frames each. In `9-Core|1|b-03` the trace reports `Session.CoreMode = Cold`
-  and the game still grabs a wall flush against a booster, which cannot happen while that booster
-  blocks. So either `Level.CoreMode` lags or leads `Session.CoreMode` in those rooms
-  (`Level.cs:302-323` setter, `:426` `CoreMode = Session.CoreMode` at load, `:1488`
-  `Session.CoreMode = CoreMode` at transition), or the overlap needs the exact `ClimbCheck` probe,
-  which uses `Position + UnitX * 2 * Facing` for the blocker but `dir * 2` for the solid. Resolving
-  it matters beyond the conveyor: `Player.cs:3681-3684`'s ice factor and the `CoreModeListener`
-  entities read `level.CoreMode` too, and the simulator currently feeds all of them the traced
-  `Session.CoreMode`.
 * **The simulator has no `VirtualButton.consumed` flag.** With `presses_are_effective` the press
   level each frame is now exactly the game's, which retired the four-frame offset; what remains is
   that a press the simulator consumes *inside* a frame (`wall_jump`/`jump`/`begin_dash` zero the
   timer) stays visible to later reads of the same frame, where the game's `VirtualButton.Pressed`
   would report false (`VirtualButton.cs:153-157`). No read site depends on that yet, so this is
   recorded as a residual rather than a target.
-* **`Session.CoreMode` is not exported**, so the Core ice factor
-  `if (onGround && level.CoreMode == Cold) num2 *= 0.3f` (`Player.cs:3681-3684`) is implemented but
-  inert. Forcing `Cold` measured **+294 replayed frames** across one copy of the Core rooms.
 * **`Level.InSpace`** (`Level.cs:449`) is a per-room map property `map.rs` does not decode, so
   `Player.cs:3703-3706`, `3718-3722`, `3778-3781` (`*= 0.6f`) are unimplemented.
 * **`Level.Wind`** — 41+ segments diverge by exactly `level.Wind * 0.1 * Engine.DeltaTime` in x, from
@@ -547,9 +545,16 @@ against this same gate:
 
 | artifact | rows | Level rows | level segments | size |
 | --- | ---: | ---: | ---: | ---: |
+| `trace-1a-v5.jsonl` (1A only, fast iteration) | 3,215 | 3,213 | — | 11.8 MB |
 | `trace-100pct.jsonl` | 281,113 | 266,262 | 918 | 845 MB |
 | `trace-202.jsonl` | 461,122 | 438,303 | 1,468 | 1.39 GB |
-| `trace-1a.jsonl` (1A only, fast iteration) | 3,215 | 3,213 | — | 9.8 MB |
+| `trace-100pct-v5.jsonl` | 281,113 | 266,262 | 918 | 996 MB |
+| `trace-202-v5.jsonl` | 461,122 | 438,303 | 1,468 | 1.64 GB |
+
+`v5` is `v4` plus one exported key, `levelCoreMode` (`Celeste.Level.CoreMode`), written by the same
+`tools/celestetas-trace/apply.mjs` patch; `v4` traces stay usable because the gate falls back to the
+older `coreMode` (`Session.CoreMode`) key when the new one is absent. Both v5 runs report
+`sync-check status: success` and reproduce the v4 row counts exactly.
 Player-state coverage across `trace-202.jsonl` (this is the per-mechanic corpus the fixes will be
 driven from):
 
