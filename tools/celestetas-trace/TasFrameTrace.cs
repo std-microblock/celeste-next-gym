@@ -337,6 +337,18 @@ public static class TasFrameTrace {
 
         AppendWindController(level);
 
+        // Celeste.Level.InSpace = levelData.Space (Level.cs:449). A per-room map property read by
+        // Player.cs:3703-3706, 3718-3722 and 3778-3781, which scale the boost/feather/climb speed
+        // components by 0.6f. `crates/celeste-physics/src/map.rs` does not decode the `.bin` level
+        // element's `space` attribute, so the trace is the only ground-truth source for it.
+        sb.Append(",\"inSpace\":").Append(level.InSpace ? "true" : "false");
+
+        // Celeste.Session.CoreMode (Session.cs:22-27, 111). Read by the Core's ice factor
+        // (Player.cs:3681-3684) and by the CoreModeListener entities; it is session state, not a
+        // `Player` field. `Session.CoreModes` is `None = 0, Hot = 1, Cold = 2`.
+        sb.Append(",\"coreMode\":")
+            .Append(((int) level.Session.CoreMode).ToString(CultureInfo.InvariantCulture));
+
         // Celeste.Session.Inventory is a `PlayerInventory` struct (Session.cs:35,
         // PlayerInventory.cs:6-36). `Session.Level` and `Session.Deaths` already have
         // their own keys above (`room`, `deaths`).

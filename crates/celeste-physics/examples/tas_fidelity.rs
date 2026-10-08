@@ -21,8 +21,8 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use celeste_physics::{
-    EntityKind, InputState, Map, PlayerSnapshot, PlayerState, Rect, SimulationError, Simulator, Vec2,
-    celeste_map_rooms, decode_map_room,
+    CoreMode, EntityKind, InputState, Map, PlayerSnapshot, PlayerState, Rect, SimulationError,
+    Simulator, Vec2, celeste_map_rooms, decode_map_room,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Value, json};
@@ -127,6 +127,17 @@ fn quad_field(values: Option<&Vec<f64>>) -> Option<[f64; 4]> {
     ])
 }
 
+/// `Celeste.Session.CoreModes` (`Session.cs:22-27`): `None = 0, Hot = 1, Cold = 2`, matching the
+/// declaration order of `celeste_physics::CoreMode` (`types.rs:162-169`).
+fn core_mode_from_int(value: i64) -> Option<CoreMode> {
+    Some(match value {
+        0 => CoreMode::None,
+        1 => CoreMode::Hot,
+        2 => CoreMode::Cold,
+        _ => return None,
+    })
+}
+
 #[derive(Default, Deserialize)]
 #[serde(default)]
 struct Record {
@@ -168,6 +179,15 @@ struct Record {
     /// (`Monocle/Collider.cs:229,205,12,14`).
     collider: Option<Vec<f64>>,
     inventory: Option<InventoryRec>,
+    /// `Celeste.Session.CoreMode` (`Session.cs:22-27`): `0` None, `1` Hot, `2` Cold. Session
+    /// state, so the base-chain dump cannot see it.
+    #[serde(rename = "coreMode")]
+    core_mode: Option<i64>,
+    /// `Celeste.Level.InSpace` = `levelData.Space` (`Level.cs:449`), the per-room map property
+    /// `Player.cs:3703-3706,3718-3722,3778-3781` reads. `map.rs` does not decode the `.bin` level
+    /// element's `space` attribute, so this is the only source.
+    #[serde(rename = "inSpace")]
+    in_space: Option<bool>,
 }
 
 #[derive(Clone)]
@@ -192,6 +212,14 @@ struct Frame {
     ducking: Option<bool>,
     collider: Option<[f64; 4]>,
     inventory: Option<InventoryRec>,
+    /// `Session.CoreMode` at the end of this engine frame. A `Session` field, so the only
+    /// ground-truth source for the Core's ice factor (`Player.cs:3681-3684`) and for the
+    /// `CoreModeListener` entities.
+    core_mode: Option<CoreMode>,
+    /// `Level.InSpace` at the end of this engine frame. Parsed and reported, but there is no
+    /// `PlayerSnapshot::in_space` and `map.rs` does not decode the room's `Space` property, so it is
+    /// not restored (see the harness's open-gap notes).
+    in_space: Option<bool>,
 }
 
 /// The subset of `Celeste.Player` fields `tas_fidelity` diffs.
@@ -412,6 +440,7 @@ const DERIVED_FIELDS: &[(&str, &str)] = &[
     ("ducking", "top-level `ducking` (`Player.Ducking`, `Player.cs:1005-1028`). A computed property over `Monocle.Entity.Collider` (`Monocle/Entity.cs:73`), so it is not a declared field; the exporter also writes the active collider as `collider` = `[absoluteLeft, absoluteTop, width, height]` (`Monocle/Collider.cs:229,205,12,14`)."),
     ("freeze_timer", "top-level `freezeTimer` (`Monocle.Engine.FreezeTimer`, `Monocle/Engine.cs:28`). While positive `Engine.Update` only decrements it and skips `Scene.Update` entirely (`Engine.cs:266-269`); the exporter writes the post-decrement value, which is exactly the snapshot state `Simulator::step` reads at the top of the next frame."),
     ("can_dream_dash", "top-level `inventory.DreamDash` (`Celeste.Session.Inventory`, `Session.cs:35`, `PlayerInventory.cs:24`). `Player.Inventory` forwards it (`Player.cs:956-966`) and the source reads it at `Player.cs:3420` and `4500`; restoring it removes the need to infer the flag from `dreamDashCanEndTimer`."),
+    ("core_mode", "top-level `coreMode` (`Celeste.Session.CoreMode`, `Session.cs:111`; `None = 0, Hot = 1, Cold = 2` per `Session.cs:22-27`). Session state, so the base-chain dump cannot see it; the Core's ice factor (`Player.cs:3681-3684`, `if (onGround && level.CoreMode == Cold) num2 *= 0.3f`) and the `CoreModeListener` entities read it. Without it every Core room replays as `CoreMode::None`."),
 ];
 
 /// Fields with no ground-truth source anywhere in the trace.
@@ -466,7 +495,6 @@ fn unrestored_fields() -> Vec<(&'static str, &'static str)> {
             "neutral_wall_jump_friction_delay",
             "moving_solid_time",
             "scene_time_active",
-            "core_mode",
             "booster_boosting",
             "last_booster_target",
             "booster_reuse_timer",
@@ -1138,6 +1166,11 @@ fn rust_view(snapshot: &PlayerSnapshot) -> Value {
         "wind": [snapshot.wind.x, snapshot.wind.y],
         "windTarget": [snapshot.wind_target.x, snapshot.wind_target.y],
         "canDreamDash": snapshot.can_dream_dash,
+        "coreMode": match snapshot.core_mode {
+            CoreMode::None => 0,
+            CoreMode::Hot => 1,
+            CoreMode::Cold => 2,
+        },
         "stateTimer": snapshot.state_timer,
         "movementRemainder": [snapshot.movement_remainder.x, snapshot.movement_remainder.y],
         "dashAttackTimer": snapshot.dash_attack_timer,
@@ -1190,6 +1223,12 @@ fn game_view(frame: &Frame, truth: &Truth, pos: Option<[f64; 2]>) -> Value {
         "windTarget": frame.wind_target,
         "windPattern": frame.wind_pattern,
         "transitioning": frame.transitioning,
+        "coreMode": frame.core_mode.map(|mode| match mode {
+            CoreMode::None => 0,
+            CoreMode::Hot => 1,
+            CoreMode::Cold => 2,
+        }),
+        "inSpace": frame.in_space,
         // Pre-consumption press edges (v3 traces only; `null` on v1/v2).
         "jumpP0": frame.input.jump_pressed_0,
         "dashP0": frame.input.dash_pressed_0,
@@ -1451,6 +1490,29 @@ fn replay(
         None => outcome
             .unavailable
             .push("can_dream_dash: the trace row has no `Session.Inventory.DreamDash`".to_owned()),
+    }
+    // `Celeste.Session.CoreMode` (`Session.cs:111`) is the session's chapter-9 mode; the Core's ice
+    // factor (`Player.cs:3681-3684`) and the `CoreModeListener` entities read it. It is not a
+    // `Player` field, so the base-chain dump cannot see it and the simulator would otherwise replay
+    // every Core room with `CoreMode::None`.
+    if let Some(core_mode) = anchor.core_mode {
+        snapshot.core_mode = core_mode;
+    } else {
+        outcome
+            .unavailable
+            .push("core_mode: the trace row has no `Session.CoreMode`".to_owned());
+    }
+    // `Level.InSpace` is exported (`inSpace`) but deliberately not restored: there is no
+    // `PlayerSnapshot::in_space` and `map.rs` does not decode the `.bin` level element's `space`
+    // attribute, so the `* 0.6f` branches at `Player.cs:3703-3706,3718-3722,3778-3781` are
+    // unimplemented. Reported rather than silently ignored.
+    if anchor.in_space == Some(true) {
+        outcome.unavailable.push(
+            "InSpace: the room sets Level.InSpace (`Level.cs:449`) but PlayerSnapshot has no \
+             `in_space`, so the Player.cs:3703-3706/3718-3722/3778-3781 `* 0.6f` branches are not \
+             modelled"
+                .to_owned(),
+        );
     }
 
     let mut simulator = match Simulator::new(snapshot, map) {
@@ -2152,6 +2214,8 @@ fn run() -> Result<(), String> {
             ducking: record.ducking,
             collider: quad_field(record.collider.as_ref()),
             inventory: record.inventory,
+            core_mode: record.core_mode.and_then(core_mode_from_int),
+            in_space: record.in_space,
         });
 
         if args.limit_segments.is_some_and(|limit| processed >= limit) {
