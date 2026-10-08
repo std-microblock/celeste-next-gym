@@ -211,6 +211,9 @@ pub struct Simulator {
     runtime_map: Map,
     static_mover_attachments: Vec<Option<StaticMoverAttachment>>,
     climb_hop_solid: Option<ClimbHopSolid>,
+    /// `oshiro_clutter_cleared_<color>` (`Session.Flags`), see
+    /// [`Simulator::clutter_cleared`].
+    clutter_cleared: [bool; CLUTTER_COLORS],
 }
 
 /// `Player.climbHopSolid` (`Player.cs:553`) and `climbHopSolidPosition`
@@ -239,6 +242,8 @@ impl Simulator {
         restore_session_dream_dash(&mut snapshot);
         let mut runtime_map = map.clone();
         add_room_edge_tile_bleed(&mut runtime_map);
+        let clutter_cleared = [false; CLUTTER_COLORS];
+        add_clutter_solids(&mut runtime_map, &clutter_cleared);
         let static_mover_attachments = initialize_static_mover_attachments(&runtime_map);
         initialize_zip_movers(&mut snapshot, &mut runtime_map);
         initialize_bounce_blocks(&mut snapshot, &mut runtime_map);
@@ -268,7 +273,54 @@ impl Simulator {
             runtime_map,
             static_mover_attachments,
             climb_hop_solid: None,
+            clutter_cleared,
         })
+    }
+
+    /// The three `oshiro_clutter_cleared_<color>` session flags
+    /// (`ClutterSwitch.cs:138`, read back by `ClutterBlockGenerator.Init`,
+    /// `ClutterBlockGenerator.cs:78-81`), indexed by `ClutterBlock.Colors`
+    /// (Red = 0, Green = 1, Yellow = 2; `ClutterBlock.cs:10-15`).
+    ///
+    /// These are chapter-session state, not player state: a trace row cannot
+    /// carry them, so a caller that replays several room segments of one
+    /// chapter must hand the previous segment's value to the next one exactly
+    /// like the live session keeps it.
+    pub fn clutter_cleared(&self) -> [bool; CLUTTER_COLORS] {
+        self.clutter_cleared
+    }
+
+    /// Restore the `oshiro_clutter_cleared_<color>` flags before the first
+    /// replayed frame, deactivating the `ClutterBlockBase` solids of every
+    /// colour that was already cleared (`ClutterBlockBase.Deactivate`,
+    /// `ClutterBlockBase.cs:46-56`).
+    pub fn set_clutter_cleared(&mut self, cleared: [bool; CLUTTER_COLORS]) {
+        for color in 0..CLUTTER_COLORS {
+            if cleared[color] && !self.clutter_cleared[color] {
+                self.clear_clutter_color(color);
+            }
+        }
+        self.clutter_cleared = cleared;
+    }
+
+    /// `ClutterBlockBase.Deactivate` (`ClutterBlockBase.cs:46-51`) plus
+    /// `ClutterSwitch.BePressed`'s ten-pixel drop (`ClutterSwitch.cs:86-87`).
+    fn clear_clutter_color(&mut self, color: usize) {
+        remove_clutter_solids(&mut self.runtime_map, color);
+        for (rect, switch_color) in clutter_switch_rects(&self.runtime_map) {
+            if switch_color != Some(color) {
+                continue;
+            }
+            if let Some(index) = self
+                .runtime_map
+                .solids
+                .iter()
+                .rposition(|solid| *solid == rect)
+            {
+                self.runtime_map.solids[index] =
+                    Rect::new(rect.x, rect.y + PRESSED_SWITCH_OFFSET, rect.width, rect.height);
+            }
+        }
     }
 
     pub fn snapshot(&self) -> &PlayerSnapshot {
@@ -317,6 +369,35 @@ impl Simulator {
             &mut self.climb_hop_solid,
         )?;
         Ok(&self.snapshot)
+    }
+
+    /// `ClutterSwitch.OnDashed` (`ClutterSwitch.cs:131-156`): a downward dash
+    /// that lands on the switch clears its colour for the whole session.
+    ///
+    /// `resting` is the collider rectangle of the pressing player, one pixel
+    /// down, i.e. the shape that touches the switch's own Solid
+    /// (`ClutterSwitch.cs:49-50`). A replay that diverges before the press
+    /// cannot observe the dash itself, so the gate hands the ground truth's
+    /// rectangle in; everything else - which switch, which colour, which
+    /// `ClutterBlockBase` rectangles disappear - stays here. Returns the
+    /// cleared colour, if the press landed on a switch whose colour the map
+    /// decoder retained.
+    pub fn press_clutter_switch(&mut self, resting: Rect) -> Option<usize> {
+        let colors: Vec<usize> = clutter_switch_rects(&self.runtime_map)
+            .into_iter()
+            .filter_map(|(rect, color)| {
+                let color = color?;
+                (color < CLUTTER_COLORS
+                    && !self.clutter_cleared[color]
+                    && rect.intersects(resting))
+                .then_some(color)
+            })
+            .collect();
+        for color in &colors {
+            self.clutter_cleared[*color] = true;
+            self.clear_clutter_color(*color);
+        }
+        colors.first().copied()
     }
 
     pub fn run(&mut self, inputs: &[InputState], frames: u32) -> Result<(), SimulationError> {
@@ -6669,6 +6750,183 @@ fn is_intro_state(state: PlayerState) -> bool {
 ///
 /// `Map::tile_grid` is only populated for decoded rooms, so synthetic maps keep
 /// exactly the solids they declare.
+/// `ClutterBlock.Colors` (`ClutterBlock.cs:10-15`): Red, Green, Yellow.
+const CLUTTER_COLORS: usize = 3;
+
+/// `ClutterSwitch`'s real collider: `base(position, 32f, 16f, safe: true)`
+/// (`ClutterSwitch.cs:49-50`). The map `EntityData` only carries the editor's
+/// 8x8 default, exactly like `JumpThru`'s height.
+const CLUTTER_SWITCH_WIDTH: f32 = 32.0;
+const CLUTTER_SWITCH_HEIGHT: f32 = 16.0;
+
+/// The colour of a `ClutterBlockGenerator` map entity, or `None` for every
+/// other entity. `Level.LoadLevel` dispatches the three names
+/// (`Level.cs:956-967`), and `ClutterBlockGenerator` indexes its `enabled`
+/// array with the same enum value (`ClutterBlockGenerator.cs:78-81`).
+fn clutter_color(name: &str) -> Option<usize> {
+    match name {
+        "redBlocks" => Some(0),
+        "greenBlocks" => Some(1),
+        "yellowBlocks" => Some(2),
+        _ => None,
+    }
+}
+
+/// `ClutterSwitch.Colors` of a `colorSwitch` entity, from the map's `type`
+/// attribute: `ClutterSwitch(EntityData data, Vector2 offset)` forwards
+/// `data.Enum("type", ClutterBlock.Colors.Green)` (`ClutterSwitch.cs:65-68`).
+/// `ClutterBlock.Colors.Lightning` is reported as `Some(CLUTTER_COLORS)`, a
+/// switch whose press does not touch any clutter.
+fn clutter_switch_color(map: &Map, index: usize) -> Option<usize> {
+    let variant = map.entity_visuals.get(index)?.variant.as_deref()?;
+    match variant {
+        "Red" => Some(0),
+        "Green" => Some(1),
+        "Yellow" => Some(2),
+        "Lightning" => Some(CLUTTER_COLORS),
+        _ => None,
+    }
+}
+
+/// Every `colorSwitch` rectangle in the *present* room together with its
+/// decoded colour. `map.entity_visuals` is index-aligned with `map.entities`.
+fn clutter_switch_rects(map: &Map) -> Vec<(Rect, Option<usize>)> {
+    map.entities
+        .iter()
+        .enumerate()
+        .filter(|(_, entity)| entity.name == "colorSwitch")
+        .map(|(index, entity)| (clutter_switch_rect(entity), clutter_switch_color(map, index)))
+        .collect()
+}
+
+/// `ClutterSwitch : Solid`'s collider rectangle (`ClutterSwitch.cs:49-50`).
+fn clutter_switch_rect(entity: &crate::Entity) -> Rect {
+    Rect::new(
+        entity.bounds.x,
+        entity.bounds.y,
+        CLUTTER_SWITCH_WIDTH,
+        CLUTTER_SWITCH_HEIGHT,
+    )
+}
+
+/// The `ClutterBlock.Colors` of the colour switch a rectangle presses, for
+/// callers outside the simulator that hold only the ground truth's player
+/// rectangle (`ClutterSwitch.cs:65-68,131-156`).
+pub fn clutter_switch_color_at(map: &Map, resting: Rect) -> Option<usize> {
+    map.entities
+        .iter()
+        .enumerate()
+        .filter(|(_, entity)| entity.name == "colorSwitch")
+        .find(|(_, entity)| clutter_switch_rect(entity).intersects(resting))
+        .and_then(|(index, _)| clutter_switch_color(map, index))
+        .filter(|color| *color < CLUTTER_COLORS)
+}
+
+/// `ClutterSwitch.BePressed`: `atY += 10f; base.Y += 10f;`
+/// (`ClutterSwitch.cs:86-87`).
+const PRESSED_SWITCH_OFFSET: f32 = 10.0;
+
+/// `ClutterBlockGenerator` cannot run at all until the map decoder retains the
+/// `type` attribute of every `colorSwitch` in the room: without it the
+/// simulator cannot tell which colour a press clears, and adding collision it
+/// cannot deactivate would be a regression rather than a fidelity gain.
+fn clutter_is_trackable(map: &Map) -> bool {
+    map.entities
+        .iter()
+        .enumerate()
+        .filter(|(_, entity)| entity.name == "colorSwitch")
+        .all(|(index, _)| clutter_switch_color(map, index).is_some())
+}
+
+/// Every `ClutterBlockBase` rectangle a room's entity list contributes for one
+/// colour. `ClutterBlockGenerator.Add` is called with
+/// `((int)entity.Position.X / 8, (int)entity.Position.Y / 8, entity.Width / 8,
+/// entity.Height / 8)` and builds the Solid at `level.Bounds + (x, y) * 8` with
+/// size `w * 8` by `h * 8` (`ClutterBlockGenerator.cs:136-138`), which is
+/// exactly the decoded entity rectangle, one Solid per entity even when two
+/// entities share a rectangle.
+fn clutter_rects(entities: &[crate::Entity], color: usize) -> Vec<Rect> {
+    entities
+        .iter()
+        .filter(|entity| clutter_color(&entity.name) == Some(color))
+        .map(|entity| entity.bounds)
+        .collect()
+}
+
+/// `ClutterBlockBase : Solid` (`ClutterBlockBase.cs:9`) covers the whole
+/// `yellowBlocks`/`redBlocks`/`greenBlocks` rectangle, and its constructor is
+/// reached for every such entity regardless of the session flag - only
+/// `Collidable` depends on `oshiro_clutter_cleared_<color>`
+/// (`ClutterBlockBase.cs:20-27`). Append the still-enabled rectangles to the
+/// present room and to every room reachable by a transition, because
+/// `Level.LoadLevel` rebuilds them from the destination room's own entity list
+/// (`load_transition_room`).
+///
+/// `ClutterSwitch : Solid` is appended the same way (`ClutterSwitch.cs:9`), at
+/// the rectangle its constructor installs. `BePressed` moves it down ten pixels
+/// (`ClutterSwitch.cs:86-87`); that offset is derived from the session flag the
+/// press itself sets, so a switch of an already-cleared colour is appended at
+/// the pressed position. A transition room carries no `EntityVisual` list, so
+/// its switches stay at the unpressed position.
+fn add_clutter_solids(map: &mut Map, cleared: &[bool; CLUTTER_COLORS]) {
+    if !clutter_is_trackable(map) {
+        return;
+    }
+    for color in 0..CLUTTER_COLORS {
+        if cleared[color] {
+            continue;
+        }
+        for rect in clutter_rects(&map.entities, color) {
+            map.solids.push(rect);
+        }
+        for room in &mut map.transition_runtime {
+            for rect in clutter_rects(&room.entities, color) {
+                room.solids.push(rect);
+            }
+        }
+    }
+    for (rect, color) in clutter_switch_rects(map) {
+        let pressed = color.is_some_and(|color| color < CLUTTER_COLORS && cleared[color]);
+        map.solids.push(if pressed {
+            Rect::new(
+                rect.x,
+                rect.y + PRESSED_SWITCH_OFFSET,
+                rect.width,
+                rect.height,
+            )
+        } else {
+            rect
+        });
+    }
+    for room in &mut map.transition_runtime {
+        for entity in &room.entities {
+            if entity.name == "colorSwitch" {
+                room.solids.push(clutter_switch_rect(entity));
+            }
+        }
+    }
+}
+
+/// `ClutterBlockBase.Deactivate` (`ClutterBlockBase.cs:46-51`) sets
+/// `Collidable = false` on every base of the cleared colour. The rectangles
+/// were appended last, so remove the last match and leave an identical tile
+/// rectangle (a 16x16 clutter patch can coalesce with the tile grid) in place.
+fn remove_clutter_solids(map: &mut Map, color: usize) {
+    fn remove_one(solids: &mut Vec<Rect>, rect: Rect) {
+        if let Some(index) = solids.iter().rposition(|solid| *solid == rect) {
+            solids.remove(index);
+        }
+    }
+    for rect in clutter_rects(&map.entities, color) {
+        remove_one(&mut map.solids, rect);
+    }
+    for room in &mut map.transition_runtime {
+        for rect in clutter_rects(&room.entities, color) {
+            remove_one(&mut room.solids, rect);
+        }
+    }
+}
+
 fn add_room_edge_tile_bleed(map: &mut Map) {
     if map.tile_grid.is_empty() {
         return;

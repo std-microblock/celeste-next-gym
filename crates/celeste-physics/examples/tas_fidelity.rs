@@ -22,10 +22,41 @@ use std::process::ExitCode;
 
 use celeste_physics::{
     CoreMode, EntityKind, InputState, Map, PlayerSnapshot, PlayerState, Rect, SimulationError,
-    Simulator, Vec2, celeste_map_rooms, decode_map_room,
+    Simulator, Vec2, celeste_map_rooms, clutter_switch_color_at, decode_map_room,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Value, json};
+
+/// One chapter's `oshiro_clutter_cleared_*` session flags plus the session clock
+/// of the last segment replayed for it.
+///
+/// `ClutterSwitch.OnDashed` writes `Session.SetFlag("oshiro_clutter_cleared_" +
+/// (int)color)` when a downward dash lands on it (`ClutterSwitch.cs:131-156`),
+/// and `ClutterBlockGenerator.Init` reads the three flags back to decide
+/// whether each colour's `ClutterBlockBase` Solid starts collidable
+/// (`ClutterBlockGenerator.cs:78-81`). They are chapter state, not player
+/// state, so no trace row carries them: the gate walks the trace in row order,
+/// so keeping one entry per chapter reproduces the live session exactly.
+/// `Session.Deaths` and `Session.Time` fall back when the chapter is restarted,
+/// which is the only way those flags are cleared again.
+#[derive(Clone, Copy, Default)]
+struct ClutterCarry {
+    deaths: i64,
+    level_time: i64,
+    seen: bool,
+    cleared: [bool; 3],
+}
+
+// The chapter whose segment is currently being replayed, and the carried flags.
+thread_local! {
+    static Y3_CHAPTER: std::cell::RefCell<(String, i64)> =
+        const { std::cell::RefCell::new((String::new(), 0)) };
+    static Y3_CLUTTER: std::cell::RefCell<HashMap<(String, i64), ClutterCarry>> =
+        std::cell::RefCell::new(HashMap::new());
+    /// Flags the chapter carried into the segment now being replayed (used by
+    /// the `--probe-remainder` diagnostic, which re-anchors that segment).
+    static Y3_CARRIED: std::cell::RefCell<[bool; 3]> = const { std::cell::RefCell::new([false; 3]) };
+}
 
 // ---------------------------------------------------------------------------
 // Trace parsing
@@ -157,6 +188,12 @@ struct Record {
     /// playing with, which sets `Player.MaxDashes` and `NoRefills`.
     area: Option<i64>,
     room: Option<String>,
+    /// `Session.Deaths` and `Session.Time` (`Session.cs`). Used only to detect
+    /// that a chapter session restarted - both go backwards - so the carried
+    /// `oshiro_clutter_cleared_*` flags are reset with it.
+    deaths: Option<i64>,
+    #[serde(rename = "levelTime")]
+    level_time: Option<i64>,
     state: Option<String>,
     p: Option<JsonMap<String, Value>>,
     // ---- Append-only exporter tail (see tools/celestetas-trace/TasFrameTrace.cs).
@@ -221,6 +258,10 @@ struct Frame {
     /// `PlayerSnapshot::in_space` and `map.rs` does not decode the room's `Space` property, so it is
     /// not restored (see the harness's open-gap notes).
     in_space: Option<bool>,
+    /// `Session.Deaths` / `Session.Time`, carried so the gate can notice that a
+    /// chapter session restarted between two segments of the same chapter.
+    deaths: Option<i64>,
+    level_time: Option<i64>,
 }
 
 /// The subset of `Celeste.Player` fields `tas_fidelity` diffs.
@@ -1354,6 +1395,7 @@ fn replay(
     remainder_override: Option<Vec2>,
     frame_cap: Option<usize>,
     dump: bool,
+    carried_clutter: [bool; 3],
 ) -> ReplayOutcome {
     let row_count = segment.frames.len();
     let mut outcome = ReplayOutcome {
@@ -1611,6 +1653,10 @@ fn replay(
             return outcome;
         }
     };
+    // `oshiro_clutter_cleared_*` is chapter state that the trace cannot carry
+    // (`ClutterSwitch.cs:138`, `ClutterBlockGenerator.cs:78-81`); restore the
+    // caller's carried value before the first replayed frame.
+    simulator.set_clutter_cleared(carried_clutter);
 
     let mut exact_prefix = 0u64;
     let mut replayed = 0u64;
@@ -1670,6 +1716,12 @@ fn replay(
         // its freshly computed fields against the game's frozen ones.
         if stalled[index] && !simulator_frozen {
             simulator.skip_engine_frame();
+        }
+        // A `ClutterSwitch` press inside a replayed frame: the ground truth
+        // freezes the engine (`ClutterSwitch.cs:135`) and deactivates that
+        // colour's `ClutterBlockBase` solids (`ClutterSwitch.cs:227-233`).
+        if let Some(resting) = clutter_press_rect(frame) {
+            simulator.press_clutter_switch(resting);
         }
         let delta = frame.raw_dt.unwrap_or(frame.dt);
         let input = frame.input.to_input_state(bits_of(delta));
@@ -1924,13 +1976,80 @@ struct SegmentOutcome {
     status: &'static str,
 }
 
+/// The collider rectangle of a frame on which the ground truth shows a
+/// `ClutterSwitch` being pressed.
+///
+/// `ClutterSwitch.OnDashed` is the only writer of the session's
+/// `oshiro_clutter_cleared_<color>` flags (`ClutterSwitch.cs:131-156`), and it
+/// freezes the engine for exactly 0.2 s (`:135`) while `AbsorbRoutine`
+/// switches the player to `StDummy` (`:190`) on that same frame, leaving the
+/// player resting on the switch's own Solid (`:49-50`). The exported collider
+/// is that resting rectangle, moved one pixel down so it touches the switch.
+fn clutter_press_rect(frame: &Frame) -> Option<Rect> {
+    if frame.state_name.as_deref() != Some("StDummy") {
+        return None;
+    }
+    if !frame
+        .freeze_timer
+        .is_some_and(|freeze| (freeze - 0.2).abs() < 0.005)
+    {
+        return None;
+    }
+    let collider = frame.collider?;
+    Some(Rect::new(
+        collider[0] as f32,
+        collider[1] as f32 + 1.0,
+        collider[2] as f32,
+        collider[3] as f32,
+    ))
+}
+
 fn simulate_segment(
     segment: &Segment,
     map: &Map,
     area_file: Option<String>,
     dump: bool,
 ) -> SegmentOutcome {
-    let outcome = replay(segment, map, None, None, dump);
+    // Carry `oshiro_clutter_cleared_*` across the segments of one chapter, and
+    // reset it when the trace shows the chapter session restarted (its clock
+    // moved backwards).
+    Y3_CHAPTER.with(|chapter| *chapter.borrow_mut() = (segment.sid.clone(), segment.mode));
+    let session = segment
+        .frames
+        .first()
+        .map(|frame| (frame.deaths, frame.level_time));
+    let carried = Y3_CLUTTER.with(|carry| {
+        let mut carry = carry.borrow_mut();
+        let entry = carry
+            .entry((segment.sid.clone(), segment.mode))
+            .or_default();
+        if let Some((Some(deaths), Some(level_time))) = session {
+            if entry.seen && (deaths < entry.deaths || level_time < entry.level_time) {
+                entry.cleared = [false; 3];
+            }
+            entry.deaths = deaths;
+            entry.level_time = level_time;
+            entry.seen = true;
+        }
+        entry.cleared
+    });
+    Y3_CARRIED.with(|carry| *carry.borrow_mut() = carried);
+    // A `ClutterSwitch` press inside this segment clears its colour for the
+    // rest of the chapter even when the replay diverges before reaching it, so
+    // the presses are folded into the carried flags for the next segment.
+    let mut next = carried;
+    for frame in &segment.frames {
+        if let Some(rect) = clutter_press_rect(frame) {
+            if let Some(color) = clutter_switch_color_at(map, rect) {
+                next[color] = true;
+            }
+        }
+    }
+    Y3_CLUTTER.with(|carry| {
+        let chapter = Y3_CHAPTER.with(|c| c.borrow().clone());
+        carry.borrow_mut().entry(chapter).or_default().cleared = next;
+    });
+    let outcome = replay(segment, map, None, None, dump, carried);
     let report = SegmentReport {
         sid: segment.sid.clone(),
         mode: segment.mode,
@@ -1976,9 +2095,16 @@ fn simulate_segment(
 /// a 1/64 grid on `[-0.5, 0.5]` and reports how far the segment replays for each
 /// candidate. A candidate that unlocks a long prefix proves the divergence was
 /// pure `Actor.MoveH`/`MoveV` rounding rather than a physics discrepancy.
-fn probe_remainder(segment: &Segment, map: &Map, frame_cap: usize) -> Value {
+/// `--probe-remainder` is a diagnostic that re-anchors the same segment with
+/// swept remainders; it reuses the chapter's carried clutter flags.
+fn probe_remainder(
+    segment: &Segment,
+    map: &Map,
+    frame_cap: usize,
+    carried: [bool; 3],
+) -> Value {
     const STEPS: i32 = 32;
-    let baseline = replay(segment, map, None, Some(frame_cap), false);
+    let baseline = replay(segment, map, None, Some(frame_cap), false, carried);
     let mut axes = Vec::new();
     for (axis, name) in [(0usize, "x"), (1usize, "y")] {
         let mut best: Option<(ReplayOutcome, f32)> = None;
@@ -1989,7 +2115,7 @@ fn probe_remainder(segment: &Segment, map: &Map, frame_cap: usize) -> Value {
             } else {
                 Vec2::new(0.0, value)
             };
-            let result = replay(segment, map, Some(remainder), Some(frame_cap), false);
+            let result = replay(segment, map, Some(remainder), Some(frame_cap), false, carried);
             if best
                 .as_ref()
                 .is_none_or(|(current, _)| result.exact_prefix > current.exact_prefix)
@@ -2016,7 +2142,7 @@ fn probe_remainder(segment: &Segment, map: &Map, frame_cap: usize) -> Value {
         for y_step in -STEPS2D..=STEPS2D {
             let x = x_step as f32 / (2.0 * STEPS2D as f32);
             let y = y_step as f32 / (2.0 * STEPS2D as f32);
-            let result = replay(segment, map, Some(Vec2::new(x, y)), Some(frame_cap), false);
+            let result = replay(segment, map, Some(Vec2::new(x, y)), Some(frame_cap), false, carried);
             if best2d
                 .as_ref()
                 .is_none_or(|(current, _, _)| result.exact_prefix > current.exact_prefix)
@@ -2353,6 +2479,8 @@ fn run() -> Result<(), String> {
             inventory: record.inventory,
             core_mode: record.core_mode.and_then(core_mode_from_int),
             in_space: record.in_space,
+            deaths: record.deaths,
+            level_time: record.level_time,
         });
 
         if args.limit_segments.is_some_and(|limit| processed >= limit) {
@@ -2548,8 +2676,11 @@ fn finish_segment(
             }
             if *probe_budget > 0 && outcome.status == "mismatch" {
                 *probe_budget -= 1;
+                // The probe re-anchors this same segment, so it starts from the
+                // flags the chapter carried *into* it.
+                let carried = Y3_CARRIED.with(|carry| *carry.borrow());
                 outcome.report.remainder_probe =
-                    Some(probe_remainder(&segment, &map, args.probe_frames));
+                    Some(probe_remainder(&segment, &map, args.probe_frames, carried));
             }
             outcome
         }

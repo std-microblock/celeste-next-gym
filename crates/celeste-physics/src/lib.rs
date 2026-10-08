@@ -38,7 +38,7 @@ pub use map_fixture::{
 pub use playground::{PLAYGROUND_PACKAGE, PLAYGROUND_ROOM, PLAYGROUND_SID, mechanics_playground};
 pub use sim::{
     DT, Fidelity, INTENTIONALLY_UNSUPPORTED_STATES, SimulationError, SimulationResult, Simulator,
-    fidelity, simulate, simulate_trace,
+    clutter_switch_color_at, fidelity, simulate, simulate_trace,
 };
 pub use types::{
     BounceBlockSnapshot, BumperSnapshot, CassetteBlockSnapshot, CassetteManagerSnapshot,

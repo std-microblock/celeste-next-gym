@@ -1524,6 +1524,16 @@ fn map_from_binary_inner(
                     variant: attr_text(el, "type").map(str::to_owned),
                     ..EntityVisual::default()
                 },
+                // `ClutterSwitch(EntityData data, Vector2 offset)` forwards
+                // `data.Enum("type", ClutterBlock.Colors.Green)`
+                // (`ClutterSwitch.cs:65-68`), and `ClutterDoor` carries the same
+                // attribute. `sim.rs` needs the colour to deactivate exactly the
+                // `ClutterBlockBase` pile of the switch that was pressed
+                // (`ClutterBlockGenerator.cs:78-81,136-138`).
+                "colorSwitch" | "clutterDoor" => EntityVisual {
+                    variant: attr_text(el, "type").map(str::to_owned),
+                    ..EntityVisual::default()
+                },
                 _ => EntityVisual {
                     tile: match kind {
                         EntityKind::FallingBlock => Some(attr_char(el, "tiletype").unwrap_or('3')),
