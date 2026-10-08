@@ -2,11 +2,12 @@
  * Headless rendering: the web app's canvas renderer (web/src/render) driven by
  * @napi-rs/canvas, plus PNG / contact sheet / GIF / MP4-WebM encoding.
  */
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, extname, join, resolve } from "node:path";
 import { Canvas, GlobalFonts, createCanvas, loadImage, type SKRSContext2D } from "@napi-rs/canvas";
 import gifenc from "gifenc";
+import { encodePng, encodePngAsync } from "./png.ts";
 import { setRenderBackend, freezeRenderCanvasAsync } from "../../../web/src/render/canvasBackend.ts";
 import {
   buildSolidGrid,
@@ -375,13 +376,54 @@ export function outputKind(path: string): OutputKind {
   throw new Error(`unsupported render output ${path} (use .png, .gif, .mp4, .webm, .mkv, .mov, or a directory)`);
 }
 
-export function findFfmpeg(explicit?: string): string {
-  const candidates = [explicit, process.env.FFMPEG, process.env.FFMPEG_PATH, "ffmpeg"].filter(Boolean) as string[];
-  for (const candidate of candidates) {
-    const probe = spawnSync(candidate, ["-version"], { stdio: "ignore" });
-    if (probe.status === 0) return candidate;
+const FFMPEG_HINT = "ffmpeg not found: install it on PATH or pass --ffmpeg / set FFMPEG (GIF and PNG need no ffmpeg)";
+
+/** Look a bare executable name up on PATH (no process spawn, ~1 ms). */
+function executableOnPath(name: string): string | undefined {
+  const separator = process.platform === "win32" ? ";" : ":";
+  const suffixes = process.platform === "win32" ? (process.env.PATHEXT ?? ".EXE;.CMD;.BAT").split(";") : [""];
+  for (const directory of (process.env.PATH ?? "").split(separator)) {
+    if (!directory) continue;
+    for (const suffix of suffixes) {
+      const candidate = join(directory, `${name}${suffix}`);
+      if (existsSync(candidate)) return candidate;
+      const lower = join(directory, `${name}${suffix.toLowerCase()}`);
+      if (existsSync(lower)) return lower;
+    }
   }
-  throw new Error("ffmpeg not found: install it on PATH or pass --ffmpeg / set FFMPEG (GIF and PNG need no ffmpeg)");
+  return undefined;
+}
+
+/**
+ * Resolve the ffmpeg executable without running it: an explicit path (CLI flag
+ * or env) is checked on disk — a typo there must not silently fall back to PATH
+ * — and a bare name is looked up on PATH. Probing with `ffmpeg -version` costs
+ * ~60 ms, a fifth of a short render, so it is only worth it for `cg info`.
+ */
+export function resolveFfmpeg(explicit?: string): string | undefined {
+  for (const candidate of [explicit, process.env.FFMPEG, process.env.FFMPEG_PATH]) {
+    if (!candidate) continue;
+    if (candidate.includes("/") || candidate.includes("\\")) {
+      if (existsSync(candidate)) return candidate;
+      continue;
+    }
+    const onPath = executableOnPath(candidate);
+    if (onPath) return onPath;
+  }
+  return executableOnPath("ffmpeg");
+}
+
+/** Resolve ffmpeg, or throw the actionable "install it" error (video output). */
+export function findFfmpeg(explicit?: string): string {
+  const found = resolveFfmpeg(explicit);
+  if (!found) throw new Error(FFMPEG_HINT);
+  return found;
+}
+
+/** Turn a spawn failure into the actionable message. */
+function ffmpegError(error: NodeJS.ErrnoException, ffmpeg: string, stderr: string): Error {
+  if (error.code === "ENOENT") return new Error(`${FFMPEG_HINT} (tried "${ffmpeg}")`);
+  return new Error(`ffmpeg failed: ${error.message}${stderr.trim() ? `: ${stderr.trim()}` : ""}`);
 }
 
 export interface FrameSequence {
@@ -397,32 +439,138 @@ function ensureParent(path: string): void {
   mkdirSync(dirname(resolve(path)), { recursive: true });
 }
 
-export function writePng(canvas: Canvas, path: string): void {
-  ensureParent(path);
-  writeFileSync(path, canvas.toBuffer("image/png"));
+function frameRgba(canvas: Canvas, width: number, height: number): Uint8ClampedArray {
+  return canvas.getContext("2d").getImageData(0, 0, width, height).data;
 }
 
-export function writeFrames(sequence: FrameSequence, directory: string): string[] {
+export function writePng(canvas: Canvas, path: string): void {
+  ensureParent(path);
+  writeFileSync(path, encodePng(frameRgba(canvas, canvas.width, canvas.height), canvas.width, canvas.height));
+}
+
+/**
+ * Write a PNG sequence. Encoding frame N is started as soon as it is drawn and
+ * deflated on the thread pool, so up to PNG_SEQUENCE_IN_FLIGHT frames are being
+ * compressed while later ones are still rendering; the window bounds the memory
+ * held by in-flight raw frames.
+ */
+const PNG_SEQUENCE_IN_FLIGHT = 4;
+
+export async function writeFrames(sequence: FrameSequence, directory: string): Promise<string[]> {
   mkdirSync(directory, { recursive: true });
   const files: string[] = [];
+  const queue: { file: string; png: Promise<Buffer> }[] = [];
   for (let i = 0; i < sequence.count; i += 1) {
     const file = join(directory, `frame-${String(i).padStart(5, "0")}.png`);
-    writeFileSync(file, sequence.frame(i).toBuffer("image/png"));
     files.push(file);
+    const rgba = frameRgba(sequence.frame(i), sequence.width, sequence.height);
+    queue.push({ file, png: encodePngAsync(rgba, sequence.width, sequence.height) });
+    if (queue.length >= PNG_SEQUENCE_IN_FLIGHT) {
+      const item = queue.shift()!;
+      writeFileSync(item.file, await item.png);
+    }
   }
+  for (const item of queue) writeFileSync(item.file, await item.png);
   return files;
 }
 
-/** GIF via gifenc (no external tools). `fps` is the output frame rate (max 50). */
-export function writeGif(sequence: FrameSequence, path: string, fps: number): void {
-  const encoder = GIFEncoder();
-  const delay = Math.max(20, Math.round(1000 / Math.min(50, fps)));
+/**
+ * How many raw frames the single-pass ffmpeg GIF may buffer. ffmpeg's
+ * palettegen has to see every frame before it can emit the global palette, so
+ * the split branch holds the whole sequence in memory (~1 MB per 640x360
+ * frame). Past this budget we keep the streaming gifenc encoder instead of
+ * risking an OOM on a small machine.
+ */
+const GIF_FFMPEG_BUDGET_BYTES = 512 * 1024 * 1024;
+
+/** GIF: one ffmpeg pass (palettegen + paletteuse) when available, else gifenc. */
+export async function writeGif(sequence: FrameSequence, path: string, fps: number, ffmpegPath?: string): Promise<void> {
+  const rate = Math.min(50, fps);
+  const ffmpeg = resolveFfmpeg(ffmpegPath);
+  const rawBytes = sequence.count * sequence.width * sequence.height * 4;
+  if (ffmpeg && rawBytes <= GIF_FFMPEG_BUDGET_BYTES) {
+    await writeGifFfmpeg(sequence, path, rate, ffmpeg);
+    return;
+  }
+  writeGifGifenc(sequence, path, rate);
+}
+
+/**
+ * ffmpeg writes a much smaller and better-looking GIF than gifenc (it diffs
+ * frames against the previous one and dithers the palette): on a 52-frame
+ * Forsaken City run, 66 KB in 313 ms versus 1.6 MB in 479 ms.
+ */
+async function writeGifFfmpeg(sequence: FrameSequence, path: string, rate: number, ffmpeg: string): Promise<void> {
+  ensureParent(path);
+  const child = spawn(
+    ffmpeg,
+    [
+      "-y", "-loglevel", "error",
+      "-f", "rawvideo", "-pix_fmt", "rgba",
+      "-s", `${sequence.width}x${sequence.height}`,
+      "-r", String(rate),
+      "-i", "-",
+      "-filter_complex",
+      "[0:v]split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=3",
+      "-loop", "0",
+      resolve(path),
+    ],
+    { stdio: ["pipe", "ignore", "pipe"] },
+  );
+  let stderr = "";
+  child.stderr.on("data", (chunk) => (stderr += chunk));
+  child.stdin.on("error", () => {
+    // ffmpeg exiting early surfaces through the close handler.
+  });
+  const done = new Promise<void>((resolvePromise, reject) => {
+    child.on("error", (error: NodeJS.ErrnoException) => reject(ffmpegError(error, ffmpeg, stderr)));
+    child.on("close", (code) =>
+      code === 0 ? resolvePromise() : reject(new Error(`ffmpeg exited with ${code}: ${stderr.trim()}`)),
+    );
+  });
   for (let i = 0; i < sequence.count; i += 1) {
-    const canvas = sequence.frame(i);
-    const rgba = canvas.getContext("2d").getImageData(0, 0, sequence.width, sequence.height).data;
-    const palette = quantize(rgba, 256, { format: "rgb565" });
-    const index = applyPalette(rgba, palette, "rgb565");
-    encoder.writeFrame(index, sequence.width, sequence.height, { palette, delay, repeat: 0 });
+    const data = frameRgba(sequence.frame(i), sequence.width, sequence.height);
+    if (!child.stdin.write(Buffer.from(data.buffer, data.byteOffset, data.byteLength))) {
+      await new Promise((resolveDrain) => child.stdin.once("drain", resolveDrain));
+    }
+  }
+  child.stdin.end();
+  await done;
+}
+
+/**
+ * Fallback GIF encoder (no ffmpeg, or a sequence too large to buffer in
+ * ffmpeg). One palette is quantised from a spread of sampled frames and reused
+ * for every frame: quantising per frame costs more than the LZW pass itself,
+ * and passing the palette only on the first frame keeps the later frames on the
+ * global colour table instead of a local one per frame.
+ */
+function writeGifGifenc(sequence: FrameSequence, path: string, rate: number): void {
+  const { width, height } = sequence;
+  const samples = Math.min(4, sequence.count);
+  const sampleStride = Math.max(4, Math.floor((width * height) / 60_000) * 4);
+  const sampleBytes = Math.ceil((width * height * 4) / sampleStride) * 4;
+  const sample = new Uint8Array(sampleBytes * samples);
+  for (let s = 0; s < samples; s += 1) {
+    const index = samples === 1 ? 0 : Math.round((s * (sequence.count - 1)) / (samples - 1));
+    const rgba = frameRgba(sequence.frame(index), width, height);
+    const base = s * sampleBytes;
+    let to = base;
+    for (let from = 0; from < rgba.length && to + 4 <= base + sampleBytes; from += sampleStride) {
+      sample[to] = rgba[from];
+      sample[to + 1] = rgba[from + 1];
+      sample[to + 2] = rgba[from + 2];
+      sample[to + 3] = 255;
+      to += 4;
+    }
+  }
+  const palette = quantize(sample, 256, { format: "rgb565" });
+  const encoder = GIFEncoder();
+  const delay = Math.max(20, Math.round(1000 / rate));
+  for (let i = 0; i < sequence.count; i += 1) {
+    const index = applyPalette(frameRgba(sequence.frame(i), sequence.width, sequence.height), palette, "rgb565");
+    if (i === 0) encoder.writeFrame(index, width, height, { palette, delay, repeat: 0 });
+    else encoder.writeFrame(index, width, height, { delay });
   }
   encoder.finish();
   ensureParent(path);
@@ -458,14 +606,17 @@ export async function writeVideo(
   );
   let stderr = "";
   child.stderr.on("data", (chunk) => (stderr += chunk));
+  child.stdin.on("error", () => {
+    // ffmpeg exiting early surfaces through the close handler.
+  });
   const done = new Promise<void>((resolvePromise, reject) => {
-    child.on("error", reject);
+    child.on("error", (error: NodeJS.ErrnoException) => reject(ffmpegError(error, ffmpeg, stderr)));
     child.on("close", (code) =>
       code === 0 ? resolvePromise() : reject(new Error(`ffmpeg exited with ${code}: ${stderr.trim()}`)),
     );
   });
   for (let i = 0; i < sequence.count; i += 1) {
-    const data = sequence.frame(i).getContext("2d").getImageData(0, 0, sequence.width, sequence.height).data;
+    const data = frameRgba(sequence.frame(i), sequence.width, sequence.height);
     if (!child.stdin.write(Buffer.from(data.buffer, data.byteOffset, data.byteLength))) {
       await new Promise((resolveDrain) => child.stdin.once("drain", resolveDrain));
     }
@@ -508,8 +659,8 @@ export async function writeSequence(
 ): Promise<{ kind: OutputKind; path: string; frames: number }> {
   const kind = outputKind(path);
   if (kind === "png") writePng(sequence.frame(sequence.count - 1), path);
-  else if (kind === "gif") writeGif(sequence, path, options.fps);
+  else if (kind === "gif") await writeGif(sequence, path, options.fps, options.ffmpeg);
   else if (kind === "video") await writeVideo(sequence, path, options.fps, options.ffmpeg);
-  else writeFrames(sequence, path);
+  else await writeFrames(sequence, path);
   return { kind, path: resolve(path), frames: kind === "png" ? 1 : sequence.count };
 }

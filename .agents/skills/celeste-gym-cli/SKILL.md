@@ -152,8 +152,13 @@ Add `--render OUT` (repeatable) to `sim`, `tas`, `fuzz` (renders the replayed ca
 - `.png` — last frame (`--frame F` picks one), or a **contact sheet** with `--sheet N`
   (N evenly spaced frames) / `--sheet-every K` and `--columns C`. Sheets are the best way for
   an agent to *look* at a run: render one, then open it with the image-reading tool.
-- `.gif` (no external tools; default every 2nd frame at 30 fps), `.mp4/.webm/.mkv/.mov`
-  (ffmpeg on PATH, `FFMPEG`, or `--ffmpeg`; 60 fps), or a directory → PNG sequence.
+- `.gif` (default every 2nd frame at 30 fps) — encoded by **ffmpeg's palettegen/paletteuse**
+  when ffmpeg is available (~1.5x faster and ~20x smaller than the bundled encoder: 66 KB vs
+  1.6 MB for a 52-frame run), else by the bundled gifenc encoder in one pass with a shared
+  palette (no external tools needed).
+- `.mp4/.webm/.mkv/.mov` (ffmpeg on PATH, `FFMPEG`, or `--ffmpeg`; 60 fps), or a directory →
+  PNG sequence (encoded by the CLI itself: same pixels as Skia, ~10% smaller, with the deflate
+  pipelined across frames).
 - `--scale N` (default 2 → 640x360), `--camera follow|room` (in-game camera vs whole room),
   `--theme ID` (default: theme extracted for the same map file, else Forsaken City; list with
   `cg themes`), `--hud` (frame/state/input/pos/speed/dash/stamina overlay), `--hitboxes`
@@ -219,7 +224,8 @@ a known time sink.
 - `room "x" not found` → names come from `cg maps <map>`; `lvl_` prefixes are stripped.
 - `player state X is parsed but not implemented` → the start/trace entered an unsupported
   state; start elsewhere or shorten the segment.
-- `ffmpeg not found` → use `.gif`/`.png`, or install ffmpeg / pass `--ffmpeg`.
+- `ffmpeg not found` → install ffmpeg / pass `--ffmpeg`; `.png` and directories need none, and
+  `.gif` falls back to the bundled encoder automatically.
 - Rendered PNG/GIF is background + HUD only (no tiles, no player) → a backend returned a
   not-yet-decoded image from `freeze`; surfaces that need a decode belong in `freezeAsync`
   (`web/src/render/canvasBackend.ts`), and the callers must await `prepareGameAssets` /

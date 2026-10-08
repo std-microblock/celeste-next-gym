@@ -246,7 +246,7 @@ async function cmdInfo() {
   }
   let ffmpeg: string | null = null;
   try {
-    ffmpeg = (await import("./render.ts")).findFfmpeg();
+    ffmpeg = (await import("./render.ts")).resolveFfmpeg() ?? null;
   } catch {
     ffmpeg = null;
   }

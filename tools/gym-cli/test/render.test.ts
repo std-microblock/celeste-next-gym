@@ -10,16 +10,19 @@
  * in a canvas at all.
  */
 import { strict as assert } from "node:assert";
-import { existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { test } from "node:test";
+import { loadImage, type Canvas } from "@napi-rs/canvas";
 import {
   createRenderCanvas,
   freezeRenderCanvas,
   freezeRenderCanvasAsync,
 } from "../../../web/src/render/canvasBackend.ts";
 import { loadAssets, prepareGameAssets } from "../../../web/src/render/gameRenderer.ts";
-import { SceneRenderer, installNodeRenderBackend } from "../src/render.ts";
+import { SceneRenderer, installNodeRenderBackend, writeFrames, writeGif } from "../src/render.ts";
+import { encodePng } from "../src/png.ts";
 import { openMap } from "../src/index.ts";
 import { defaultWasmDir } from "../src/wasm.ts";
 
@@ -104,4 +107,71 @@ test("a rendered frame contains tiles and sprites, not a flat background", { ski
   // ~230 colours / 0.39, so both thresholds have wide margins.
   assert.ok(buckets.size > 100, `frame has too few colours (${buckets.size}): atlases or tile layer did not draw`);
   assert.ok(modalShare < 0.6, `frame is ${(modalShare * 100).toFixed(0)}% one colour: tiles/sprites missing`);
+});
+
+test("the bundled PNG encoder round-trips pixels exactly", async () => {
+  const width = 29;
+  const height = 17;
+  const canvas = createRenderCanvas(width, height);
+  const context = canvas.getContext("2d");
+  assert.ok(context);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      context.fillStyle = `rgba(${(x * 9) % 256},${(y * 13) % 256},${(x * y) % 256},${(x + y) % 3 === 0 ? 128 : 255})`;
+      context.fillRect(x, y, 1, 1);
+    }
+  }
+  const original = context.getImageData(0, 0, width, height).data;
+  const png = encodePng(original, width, height);
+  assert.equal(png.subarray(1, 4).toString(), "PNG");
+  const decoded = await loadImage(png);
+  assert.equal(decoded.width, width);
+  assert.equal(decoded.height, height);
+  const back = createRenderCanvas(width, height);
+  back.getContext("2d")?.drawImage(decoded as unknown as CanvasImageSource, 0, 0);
+  const roundTripped = back.getContext("2d")!.getImageData(0, 0, width, height).data;
+  assert.deepEqual([...roundTripped], [...original]);
+});
+
+test("a PNG sequence and a GIF are written and decodable", async () => {
+  installNodeRenderBackend();
+  const width = 48;
+  const height = 32;
+  const palette = ["#e43b44", "#3ca370", "#4d65b4"];
+  const sequence = {
+    width,
+    height,
+    count: palette.length,
+    frame: (i: number) => {
+      const canvas = createRenderCanvas(width, height);
+      const context = canvas.getContext("2d");
+      assert.ok(context);
+      context.fillStyle = palette[i];
+      context.fillRect(0, 0, width, height);
+      return canvas as unknown as Canvas;
+    },
+  };
+  const directory = mkdtempSync(join(tmpdir(), "celeste-gym-frames-"));
+  try {
+    const files = await writeFrames(sequence, directory);
+    assert.equal(files.length, palette.length);
+    for (const [i, file] of files.entries()) {
+      const image = await loadImage(readFileSync(file));
+      assert.equal(image.width, width);
+      assert.equal(image.height, height);
+      const decoded = createRenderCanvas(width, height);
+      decoded.getContext("2d")?.drawImage(image as unknown as CanvasImageSource, 0, 0);
+      const [r, g, b] = decoded.getContext("2d")!.getImageData(1, 1, 1, 1).data;
+      const expected = palette[i].slice(1).match(/../g)!.map((part) => Number.parseInt(part, 16));
+      assert.deepEqual([r, g, b], expected, `frame ${i} pixels`);
+    }
+
+    const gifPath = join(directory, "run.gif");
+    await writeGif(sequence, gifPath, 30);
+    const gif = readFileSync(gifPath);
+    assert.equal(gif.subarray(0, 3).toString(), "GIF");
+    assert.ok(gif.length > 100, "gif looks empty");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
