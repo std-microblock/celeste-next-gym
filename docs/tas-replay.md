@@ -562,22 +562,26 @@ against this same gate:
   timer) stays visible to later reads of the same frame, where the game's `VirtualButton.Pressed`
   would report false (`VirtualButton.cs:153-157`). No read site depends on that yet, so this is
   recorded as a residual rather than a target.
-* **The unresolved half of the dash-count class is `sim=1 game=0` (21 of 31 segments) and its cause is
-  localised but not yet identified.** Worked example: `6-Reflection|1|b-04|188460`, divergence at
-  offset 174 = row 188675, where every compared field matches except `dashes` (sim 1, game 0). The
-  game's own count goes 0 -> 1 on the *next* row (188676), which is the last live frame before a room
-  transition - rows 188677+ are stalled and the position freezes - so the game's refill is
-  `Player.OnTransition` (`Player.cs:2282-2290`, called from `Level.TransitionRoutine` at
-  `Level.cs:1626` as the transition closes). The simulator therefore gains the dash one frame *early*.
-  `playerOnGround` is false on both sides at that row, so `Player.Update`'s ground refill
-  (`Player.cs:1602-1612`) is not the branch that fired, and the simulator's own transition refill only
-  runs once `transition_timer` has expired and the player has reached the transfer target
-  (`sim.rs` `update_transition`), which cannot precede the game's transition. Next step is to
-  instrument `refill_dash` with a call-site marker and run the gate with `--rooms b-04`; the remaining
-  candidates are few enough that guessing is worse than measuring. The other fragments are
-  `sim=1 game=2` (8), `sim=2 game=0` (6) and `sim=2 game=1` (3). Capability side, still unmodelled:
-  `Player.Update`'s ground refill also needs `!CollideCheck<Spikes>(Position)`, and `CanDash`
-  (`Player.cs:1074-1088`) also needs `(TalkComponent.PlayerOver == null || !Input.Talk.Pressed)`.
+* **The unresolved half of the dash-count class is `sim=1 game=0` (21 of 31 segments), and its cause is
+  now identified: the simulator applies a `Refill` crystal's dash in the frame it is touched, while the
+  game defers it through `RefillRoutine`.** Worked example: `6-Reflection|1|b-04|188460` (6H, room
+  `b-04`, bounds x 5024..5344 y 1160..1912), divergence at offset 174 = row 188675 - the room visit's
+  last row - where every compared field matches except `dashes` (sim 1, game 0). The map holds a
+  `refill` at `[5168, 1672, 16, 16]`; at row 188675 the player's hurtbox is `[5182, 5190] x [1668, 1677]`
+  and first overlaps it, so the game's `Collidable = false` and `respawnTimer = 2.5f` there too. The
+  game's own count only reaches 1 at row 188676, because `Refill.OnPlayer` (`Refill.cs:166-174`) starts
+  `RefillRoutine`, which does `Celeste.Freeze(0.05f)` and `yield return null` *before* calling
+  `player.UseRefill(twoDashes)` (`Refill.cs:178-190`); the simulator instead writes
+  `p.dashes = target_dashes` inline in `interact`'s `Refill` arm, one or more frames early, while still
+  applying the freeze.
+
+  A call-site trace of `refill_dash` (env-gated `eprintln!`, since reverted) rules out every other
+  refill: it does not fire at that position at all, and the only other write that can raise `dashes` is
+  the `Refill` arm itself. So the remaining work is to model the coroutine - collection sets
+  `collidable = false`/`respawnTimer = 2.5f`/`Celeste.Freeze(0.05f)`, and `UseRefill` lands after the
+  freeze plus the coroutine's `yield return null`. **The exact landing frame is the open question**:
+  the observed one-frame gap is smaller than a 0.05 s freeze plus a yield would suggest, so measure it
+  rather than assume it.
 * **`pos+speed+state | anchor=StSummitLaunch` has grown to 6 segments / 3,647 frames**, every one a
   `(0,-4)` delta: one state, one offset, and now the largest frames-per-segment target in the report.
 * **The `space` room's remaining causes are `dashes` and `SpaceController`.** With `InSpace` landed,
