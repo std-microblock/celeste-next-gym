@@ -562,16 +562,22 @@ against this same gate:
   timer) stays visible to later reads of the same frame, where the game's `VirtualButton.Pressed`
   would report false (`VirtualButton.cs:153-157`). No read site depends on that yet, so this is
   recorded as a residual rather than a target.
-* **The dash-count class is down to 31 segments / 3,294 frames, and its remaining half is
-  `sim=1 game=0` (21 of them).** Those are the one-dash areas: the game spent its dash and the
-  simulator still has it, i.e. the simulator did not *start* a dash the game started - a
-  `(0,0)` position delta is possible because `Player.DashBegin` calls `Celeste.Freeze(0.05f)`, so the
-  dash's motion begins several frames later. Start from the `CanDash` condition
-  (`Player.cs:1078`: `(CrouchDashPressed || DashPressed) && dashCooldownTimer <= 0 && Dashes > 0 &&
-  (TalkComponent.PlayerOver == null || !Talk.Pressed)`) rather than from the report. Also left:
-  `sim=2 game=0` (6) and `sim=2 game=1` (3). Capability side: `Player.Update`'s ground refill
-  (`Player.cs:1602-1612`) also needs `!CollideCheck<Spikes>(Position)`, which the simulator does not
-  check yet.
+* **The unresolved half of the dash-count class is `sim=1 game=0` (21 of 31 segments) and its cause is
+  localised but not yet identified.** Worked example: `6-Reflection|1|b-04|188460`, divergence at
+  offset 174 = row 188675, where every compared field matches except `dashes` (sim 1, game 0). The
+  game's own count goes 0 -> 1 on the *next* row (188676), which is the last live frame before a room
+  transition - rows 188677+ are stalled and the position freezes - so the game's refill is
+  `Player.OnTransition` (`Player.cs:2282-2290`, called from `Level.TransitionRoutine` at
+  `Level.cs:1626` as the transition closes). The simulator therefore gains the dash one frame *early*.
+  `playerOnGround` is false on both sides at that row, so `Player.Update`'s ground refill
+  (`Player.cs:1602-1612`) is not the branch that fired, and the simulator's own transition refill only
+  runs once `transition_timer` has expired and the player has reached the transfer target
+  (`sim.rs` `update_transition`), which cannot precede the game's transition. Next step is to
+  instrument `refill_dash` with a call-site marker and run the gate with `--rooms b-04`; the remaining
+  candidates are few enough that guessing is worse than measuring. The other fragments are
+  `sim=1 game=2` (8), `sim=2 game=0` (6) and `sim=2 game=1` (3). Capability side, still unmodelled:
+  `Player.Update`'s ground refill also needs `!CollideCheck<Spikes>(Position)`, and `CanDash`
+  (`Player.cs:1074-1088`) also needs `(TalkComponent.PlayerOver == null || !Input.Talk.Pressed)`.
 * **`pos+speed+state | anchor=StSummitLaunch` has grown to 6 segments / 3,647 frames**, every one a
   `(0,-4)` delta: one state, one offset, and now the largest frames-per-segment target in the report.
 * **The `space` room's remaining causes are `dashes` and `SpaceController`.** With `InSpace` landed,
