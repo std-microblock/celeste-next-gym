@@ -5958,7 +5958,15 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
             p.wall_boost_timer = 0.0;
             p.var_jump_speed = p.speed.y;
             p.var_jump_timer = VAR_JUMP_TIME;
-        } else {
+        } else if can_unduck(p, map) {
+            // `Player.cs:2969-3004`: the whole wall-jump / water-jump branch of
+            // `NormalUpdate` sits inside `else if (CanUnDuck)`. A crouched player
+            // whose normal hitbox does not fit where it stands cannot stand up, so
+            // `CanUnDuck` is false and the press is *swallowed*: no `WallJump`,
+            // no `ClimbJump`, no water `Jump`, and `Ducking` stays true. Without
+            // this gate the simulator ate the same press into a `WallJump`
+            // (`Ducking = false` plus `WallJumpHSpeed`/`JumpSpeed`), which is a
+            // one-frame divergence whose first visible effect is a wrong speed.
             let jump_wall = if wall_jump_check(p, map, 1) {
                 1
             } else if wall_jump_check(p, map, -1) {
@@ -13613,6 +13621,65 @@ mod tests {
         .unwrap();
         assert!(falling_under_ceiling.ducking);
         assert!(!can_unduck(&falling_under_ceiling, &low_ceiling));
+    }
+    /// `Player.cs:2969-3004`: the whole wall-jump / water-jump branch of
+    /// `NormalUpdate` sits inside `else if (CanUnDuck)`, so a crouched player who
+    /// cannot stand up where it is swallows the press completely - no `WallJump`,
+    /// no `ClimbJump`, no water `Jump`, and `Ducking` stays true. The same press
+    /// beside the same wall does launch when the player can stand.
+    #[test]
+    fn crouched_jump_press_is_swallowed_while_can_unduck_is_false() {
+        // x 20..28 is reachable by `WallJumpCheck(-1)`'s three-pixel probe
+        // (`Player.cs`'s `WallJumpCheckDist`) from a player whose hitbox starts at
+        // x 28, and y 94..124 overlaps the six-pixel crouch hitbox but not the
+        // normal eleven-pixel one.
+        let wall = Rect::new(20.0, 94.0, 8.0, 30.0);
+        let open_wall = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 360.0),
+            solids: vec![wall],
+            ..Map::default()
+        };
+        // Adding a ceiling at y 80..94 keeps the crouch hitbox (y 94..100) clear
+        // while the normal hitbox (y 89..100) would collide, so `CanUnDuck` is
+        // false exactly as it is inside a one-tile crawlspace.
+        let crawlspace = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 360.0),
+            solids: vec![Rect::new(0.0, 80.0, 320.0, 14.0), wall],
+            ..Map::default()
+        };
+        let input = InputState {
+            jump_pressed: true,
+            jump_held: true,
+            ..InputState::default()
+        };
+
+        let upright = PlayerSnapshot {
+            pos: Vec2::new(32.0, 100.0),
+            speed: Vec2::new(77.0, -20.0),
+            ..PlayerSnapshot::default()
+        };
+        assert!(can_unduck(&upright, &open_wall));
+        assert!(wall_jump_check(&upright, &open_wall, -1));
+        let launched = simulate(upright, &[input], &open_wall, 1).unwrap();
+        assert_eq!(launched.speed.x, WALL_JUMP_H);
+        assert_eq!(launched.speed.y, JUMP_SPEED);
+        assert_eq!(launched.var_jump_timer, VAR_JUMP_TIME);
+        assert!(!launched.ducking);
+
+        let crouched = PlayerSnapshot {
+            pos: Vec2::new(32.0, 100.0),
+            speed: Vec2::new(77.0, -20.0),
+            ducking: true,
+            ..PlayerSnapshot::default()
+        };
+        assert!(!can_unduck(&crouched, &crawlspace));
+        assert!(wall_jump_check(&crouched, &crawlspace, -1));
+        let swallowed = simulate(crouched, &[input], &crawlspace, 1).unwrap();
+        assert!(swallowed.ducking);
+        assert_eq!(swallowed.var_jump_timer, 0.0);
+        assert_eq!(swallowed.var_jump_speed, 0.0);
+        assert_ne!(swallowed.speed.x, WALL_JUMP_H);
+        assert_ne!(swallowed.speed.y, JUMP_SPEED);
     }
     #[test]
     fn downward_air_dash_keeps_ducking_until_coyote_grace_expires() {
