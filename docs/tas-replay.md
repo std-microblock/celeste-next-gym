@@ -649,8 +649,19 @@ against this same gate:
   What is left is that some other quantity on that frame differs inside the simulator - its fed
   `move_x`, or the pre-jump `Speed.X` (`-30` in the game) - and the round-13 tracer could not tell,
   because it printed no frame index and its three lines cannot be attributed to the diverging frame
-  with certainty. **Next step: re-instrument with the frame index (or dump the simulator's own speed
-  sequence for the segment) before touching the tile decode or the movement code.**
+  with certainty.
+
+  `--dump-segment` now prints both sides' speeds, and that closes the question it was asked to close:
+  at row 52504 the game holds `gameSpeed=(0.00000,-105.00000)` and the simulator holds
+  `rustSpeed=(0.00000,-105.00000)` - **identical, including `Speed.X = 0`** - while the game's x
+  displacement is `-1` with its counter ending at `-0.16667` and the simulator's is `0` with its
+  counter at `0`. So the simulator is not missing the speed, and its own `Speed.X = 0` at the end is
+  what a blocked `MoveH` plus `OnCollideH` produces; the game ends at `Speed.X = 0` *without* a
+  counter zeroing, i.e. through a path that displaces x by `-1.16667` and then clears the speed
+  anyway. The recovered move decomposes either as one successful `MoveH(-1.16667)` or as a raw `-1`
+  position write plus a `-10 * dt` move; the next probe is that decomposition - read
+  `Player.OnCollideH`'s normal branch and `Actor.MoveHExact` for a path that both moves and clears
+  `Speed.X` - and not the tile.
 
   Found along the way and still open: `add_room_edge_tile_bleed` copies the room's boundary tiles
   outward without the source's occupancy guard (`LevelLoader.cs:233-264` stops each propagation at

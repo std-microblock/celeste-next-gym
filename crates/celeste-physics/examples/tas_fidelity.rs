@@ -1791,16 +1791,24 @@ fn replay(
                             - before.movement_remainder.y
                     );
                     outcome.dump.push(format!(
-                        "row={} offset={offset} gamePos=({:.5},{:.5}) gameCounter=({:.5},{:.5}) gameMove={game_move} rustPos=({:.5},{:.5}) rustCounter=({:.5},{:.5}) rustMove={rust_move} gameState={:?} rustState={:?} stalled={} freeze={:.5}",
+                        "row={} offset={offset} gamePos=({:.5},{:.5}) gameCounter=({:.5},{:.5}) gameMove={game_move} gameSpeed={} rustPos=({:.5},{:.5}) rustCounter=({:.5},{:.5}) rustMove={rust_move} rustSpeed=({:.5},{:.5}) gameState={:?} rustState={:?} stalled={} freeze={:.5}",
                         frame.n,
                         expected.position.map_or(f64::NAN, |p| p[0]),
                         expected.position.map_or(f64::NAN, |p| p[1]),
                         expected.movement_counter.map_or(f64::NAN, |p| p[0]),
                         expected.movement_counter.map_or(f64::NAN, |p| p[1]),
+                        // The recovered *move* is Δposition + Δcounter, which a blocked
+                        // `MoveHExact` zeroes on both sides at once. The speed each side
+                        // held during the frame is the quantity that separates "the
+                        // simulator moved less" from "the simulator never had the speed",
+                        // so both sides' speeds belong in the dump.
+                        expected.speed.map_or("?".to_owned(), |s| format!("({:.5},{:.5})", s[0], s[1])),
                         actual.pos.x,
                         actual.pos.y,
                         actual.movement_remainder.x,
                         actual.movement_remainder.y,
+                        actual.speed.x,
+                        actual.speed.y,
                         frame.state_name.as_deref().unwrap_or("?"),
                         state_name(actual.state),
                         stalled[index],
