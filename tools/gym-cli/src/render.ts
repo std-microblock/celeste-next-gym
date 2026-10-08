@@ -547,28 +547,23 @@ async function writeGifFfmpeg(sequence: FrameSequence, path: string, rate: numbe
  */
 function writeGifGifenc(sequence: FrameSequence, path: string, rate: number): void {
   const { width, height } = sequence;
+  // Quantise one palette from a spread of whole frames — quantising ~230k
+  // pixels costs ~1.6 ms, so four of them are far cheaper than quantising every
+  // frame — then index every frame against it. Sampling pixels on a stride
+  // instead (every third pixel) systematically misses single-pixel detail in
+  // pixel art and measurably bloats the GIF.
   const samples = Math.min(4, sequence.count);
-  const sampleStride = Math.max(4, Math.floor((width * height) / 60_000) * 4);
-  const sampleBytes = Math.ceil((width * height * 4) / sampleStride) * 4;
-  const sample = new Uint8Array(sampleBytes * samples);
+  const frameBytes = width * height * 4;
+  const sample = new Uint8Array(frameBytes * samples);
   for (let s = 0; s < samples; s += 1) {
     const index = samples === 1 ? 0 : Math.round((s * (sequence.count - 1)) / (samples - 1));
-    const rgba = frameRgba(sequence.frame(index), width, height);
-    const base = s * sampleBytes;
-    let to = base;
-    for (let from = 0; from < rgba.length && to + 4 <= base + sampleBytes; from += sampleStride) {
-      sample[to] = rgba[from];
-      sample[to + 1] = rgba[from + 1];
-      sample[to + 2] = rgba[from + 2];
-      sample[to + 3] = 255;
-      to += 4;
-    }
+    sample.set(frameRgba(sequence.frame(index), width, height), s * frameBytes);
   }
   const palette = quantize(sample, 256, { format: "rgb565" });
   const encoder = GIFEncoder();
   const delay = Math.max(20, Math.round(1000 / rate));
   for (let i = 0; i < sequence.count; i += 1) {
-    const index = applyPalette(frameRgba(sequence.frame(i), sequence.width, sequence.height), palette, "rgb565");
+    const index = applyPalette(frameRgba(sequence.frame(i), width, height), palette, "rgb565");
     if (i === 0) encoder.writeFrame(index, width, height, { palette, delay, repeat: 0 });
     else encoder.writeFrame(index, width, height, { delay });
   }
