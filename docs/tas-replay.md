@@ -610,17 +610,26 @@ against this same gate:
 
   Both sides jump on the same frame (`Speed.Y = -105`, `varJumpSpeed`/`varJumpTimer` agree) and the
   y amount, counters and final y are bit-identical; only x differs, and the simulator's x amount is
-  exactly `0`, i.e. its `MoveH` was blocked at the first pixel. The room's decoded solids include
-  `Rect { x: 7592, y: -3104, w: 8, h: 8 }`, whose right edge (`7600`) is exactly the player's left
-  edge at the frame start and whose top (`-3104`) is where the player's feet end up. So at `MoveH`
-  time the player's `Hitbox(8, 11, -4, -11)` is `[7600, 7608] x [-3113, -3102]`, **touching** that
-  solid in x and overlapping it in y; after one pixel left it would be `[7599, 7607] x [-3113,-3102]`,
-  which overlaps (`7599 < 7600`, `-3104 < -3102`) - a collision by Monocle's own test, and the game
-  moved anyway. Two candidates remain and the next step is to separate them, not to guess:
-  (a) the simulator's map carries a solid the game does not have at that rectangle (the project
-  already has an independent JS RLE decoder, used once to close the `roof03` tile-origin question),
-  or (b) `MoveH`/`MoveV` ordering - the game would clear the solid vertically first, the simulator
-  would not. Candidate (b) is testable from the same dump by a room whose solid is one pixel lower.
+  exactly `0`, i.e. its `MoveH` was blocked at the first pixel. A `DSH_MOVE_TRACE` instrumentation of
+  `move_axis_amount` (since reverted) named the blocker exactly: `h=true pos=(7604,-3102)
+  next=Rect { x: 7599, y: -3113, w: 8, h: 11 } tile=true dream=false jt=false ents=[]` - a **tile**,
+  not an entity.
+
+  The room's raw `solids` innerText (read out of the `.bin`, one character per 8 px cell, rows
+  trimmed of trailing empties) has `f` at that cell: the room's origin is (7296,-3256), so cell
+  (37,19) is `Rect { 7592, -3104, 8, 8 }` and row 19 reads `...00f` at columns 35-37. So the tile is
+  in the map text and the simulator's decode of it is right; what differs is that the game's player
+  moved into it. The remaining candidate is therefore **frame order**: `MoveH` runs before `MoveV`
+  in the source (`Player.cs`, verified in the vendored file), and at `MoveH` time the player's
+  `Hitbox(8, 11, -4, -11)` is `[7600, 7608] x [-3113, -3102]`, which *touches* the tile in x and
+  overlaps it in y - so a game that moved vertically first would clear it and a game that did not
+  would be blocked. Deciding it needs a case whose tile top is not exactly at the post-move feet;
+  do not "fix" the move order on this case alone.
+
+  Found along the way and still open: `add_room_edge_tile_bleed` copies the room's boundary tiles
+  outward without the source's occupancy guard (`LevelLoader.cs:233-264` stops each propagation at
+  the first non-empty target cell), so it can invent up to three solid cells outside a room that the
+  game leaves empty.
 
 * **The simulator has no `VirtualButton.consumed` flag.** With `presses_are_effective` the press
   level each frame is now exactly the game's, which retired the four-frame offset; what remains is
