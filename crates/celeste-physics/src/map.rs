@@ -296,6 +296,27 @@ fn valid_room_bounds(bounds: Rect) -> bool {
         && bounds.height % 8.0 == 0.0
 }
 
+/// `LevelData`'s room rectangle, including its one unconditional rewrite:
+///
+/// ```csharp
+/// case "height":
+///     Bounds.Height = (int)attribute.Value;
+///     if (Bounds.Height == 184) { Bounds.Height = 180; }
+///     break;
+/// ```
+///
+/// (`LevelData.cs:132-137`). Every consumer of `Level.Bounds` therefore sees
+/// 180 for a room whose file says 184: `Level.EnforceBounds`
+/// (`Level.cs:2725`, called from `Player.cs:1915-1917`), `Player.ClimbBoundsCheck`
+/// (`Player.cs`), `Level.IsInBounds`/`MapData.CanTransitionTo`
+/// (`Level.cs:2740,2761`) and the camera. `LevelData.TileBounds`
+/// (`LevelData.cs:76`) uses the same clamped height, and
+/// `ceil(180 / 8) == ceil(184 / 8) == 23`, so the stored 23 tile rows are
+/// unaffected. Only the 4 px of `Bounds.Bottom` change.
+pub(crate) const fn level_room_bounds(x: f32, y: f32, width: f32, height: f32) -> Rect {
+    Rect::new(x, y, width, if height == 184.0 { 180.0 } else { height })
+}
+
 pub(crate) fn encode_celeste_rooms(
     package: &str,
     rooms: &[(String, Map)],
@@ -1207,7 +1228,7 @@ pub fn audit_celeste_map(bytes: &[u8]) -> Result<Vec<CelesteRoomAudit>, MapError
             }
             Ok(CelesteRoomAudit {
                 name,
-                bounds: Rect::new(
+                bounds: level_room_bounds(
                     x,
                     y,
                     attr_f32(level, "width", 320.0),
@@ -1308,13 +1329,13 @@ fn map_from_binary_inner(
     let width = attr_f32(level, "width", 320.0);
     let height = attr_f32(level, "height", 180.0);
     let mut map = Map {
-        bounds: Rect::new(x, y, width, height),
+        bounds: level_room_bounds(x, y, width, height),
         transition_rooms: levels
             .children
             .iter()
             .filter(|candidate| !std::ptr::eq(*candidate, level))
             .map(|candidate| {
-                Rect::new(
+                level_room_bounds(
                     attr_f32(candidate, "x", 0.0),
                     attr_f32(candidate, "y", 0.0),
                     attr_f32(candidate, "width", 320.0),
@@ -1879,9 +1900,12 @@ mod tests {
 
     #[test]
     fn single_room_solids_round_trip_unchanged() {
+        // 176 keeps the room tile-aligned, which is what the encoder requires.
+        // The 184 -> 180 `LevelData` rewrite is covered separately by
+        // `level_data_clamps_a_184_pixel_room_height_to_180`.
         let map = Map {
-            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
-            solids: vec![Rect::new(16.0, 176.0, 32.0, 8.0)],
+            bounds: Rect::new(0.0, 0.0, 320.0, 176.0),
+            solids: vec![Rect::new(16.0, 168.0, 32.0, 8.0)],
             ..Map::default()
         };
         let bytes = encode_celeste_map(&map, "CelesteGymPlayground", "single").unwrap();
@@ -2066,6 +2090,11 @@ mod tests {
     #[test]
     fn selected_room_retains_adjacent_transition_bounds() {
         let adjacent = Rect::new(0.0, -184.0, 320.0, 184.0);
+        // `LevelData.cs:132-137` rewrites a declared height of 184 into 180, so
+        // both the selected room and its neighbour decode 4 px shorter than the
+        // rectangle the encoder wrote.
+        let decoded_bounds = Rect::new(0.0, 0.0, 320.0, 180.0);
+        let decoded_adjacent = Rect::new(0.0, -184.0, 320.0, 180.0);
         let map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
             transition_rooms: vec![adjacent],
@@ -2077,24 +2106,24 @@ mod tests {
         };
         let bytes = encode_celeste_map(&map, "CelesteGymPlayground", "lower").unwrap();
         let lower = decode_map_room(&bytes, Some("lower")).unwrap();
-        assert_eq!(lower.bounds, map.bounds);
-        assert_eq!(lower.transition_rooms, vec![adjacent]);
+        assert_eq!(lower.bounds, decoded_bounds);
+        assert_eq!(lower.transition_rooms, vec![decoded_adjacent]);
         assert_eq!(lower.transition_runtime.len(), 2);
         assert!(
             lower
                 .transition_runtime
                 .iter()
-                .any(|room| room.bounds == map.bounds && room.spawns == vec![lower.spawn])
+                .any(|room| room.bounds == decoded_bounds && room.spawns == vec![lower.spawn])
         );
         let upper = decode_map_room(&bytes, Some("transition_0")).unwrap();
-        assert_eq!(upper.bounds, adjacent);
-        assert_eq!(upper.transition_rooms, vec![map.bounds]);
+        assert_eq!(upper.bounds, decoded_adjacent);
+        assert_eq!(upper.transition_rooms, vec![decoded_bounds]);
         assert_eq!(upper.transition_runtime.len(), 2);
         assert!(
             upper
                 .transition_runtime
                 .iter()
-                .any(|room| room.bounds == map.bounds && room.spawns == vec![lower.spawn])
+                .any(|room| room.bounds == decoded_bounds && room.spawns == vec![lower.spawn])
         );
         assert_eq!(upper.spawn, Vec2::new(24.0, -16.0));
         assert_eq!(lower.solids, vec![Rect::new(0.0, 176.0, 320.0, 8.0)]);
@@ -2796,6 +2825,49 @@ mod tests {
         assert_eq!(entity.kind, EntityKind::Glider);
         assert_eq!(entity.bounds, Rect::new(364.0, -130.0, 8.0, 10.0));
         assert_eq!(entity.name, "glider");
+    }
+
+    /// `LevelData.cs:132-137` rewrites a declared room height of 184 into 180, so
+    /// a decoded room's `Level.Bounds` must be 180 tall even though the file and
+    /// the encoder keep 184.
+    #[test]
+    fn level_data_clamps_a_184_pixel_room_height_to_180() {
+        assert_eq!(
+            level_room_bounds(0.0, -864.0, 976.0, 184.0),
+            Rect::new(0.0, -864.0, 976.0, 180.0)
+        );
+        assert_eq!(
+            level_room_bounds(0.0, 0.0, 320.0, 180.0),
+            Rect::new(0.0, 0.0, 320.0, 180.0)
+        );
+        assert_eq!(
+            level_room_bounds(0.0, 0.0, 320.0, 160.0),
+            Rect::new(0.0, 0.0, 320.0, 160.0)
+        );
+
+        let map = Map {
+            bounds: Rect::new(0.0, -864.0, 976.0, 184.0),
+            ..Map::default()
+        };
+        let encoded = encode_celeste_map(&map, "CelesteGymTest", "tall").unwrap();
+        assert_eq!(
+            parse_celeste_bin(&encoded)
+                .unwrap()
+                .children
+                .iter()
+                .find(|child| child.name == "levels")
+                .and_then(|levels| levels.children.first())
+                .and_then(|level| level.attributes.get("height").cloned()),
+            Some(BinaryValue::Int(184))
+        );
+        assert_eq!(
+            decode_map_room(&encoded, Some("tall")).unwrap().bounds,
+            Rect::new(0.0, -864.0, 976.0, 180.0)
+        );
+        // `LevelData.TileBounds` (`LevelData.cs:76`) uses the clamped height and
+        // `ceil(180 / 8) == ceil(184 / 8) == 23`, so the stored tile rows are
+        // unaffected by the rewrite.
+        assert_eq!(audit_celeste_map(&encoded).unwrap()[0].bounds.height, 180.0);
     }
 
     /// `CrushBlock(EntityData, offset)` forwards the raw rectangle into
