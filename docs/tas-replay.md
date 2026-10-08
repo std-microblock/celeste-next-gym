@@ -145,38 +145,63 @@ headline progress metric: an improved mechanic keeps more segments alive for lon
 | trace | date | segments | `ok` | `mismatch` | `unsupported` | replayed frames | exact frames |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | `trace-1a` | first baseline | 20 | 1 | 18 | 1 | 567 | 548 |
-| `trace-1a` | after JumpThru fix | 20 | 1 | 18 | 1 | **741** | **722** |
+| `trace-1a` | after JumpThru fix | 20 | 1 | 18 | 1 | 741 | 722 |
+| `trace-1a` | after the parallel workstreams | 20 | **8** | 12 | **0** | **1,686** | **1,674** |
 | `trace-100pct` | first baseline | 918 | 29 | 840 | 48 | 20,609 | 19,721 |
-| `trace-100pct` | after JumpThru fix | 918 | 30 | 840 | 48 | **21,653** | **20,765** |
+| `trace-100pct` | after JumpThru fix | 918 | 30 | 840 | 48 | 21,653 | 20,765 |
 | `trace-202` | first baseline | 1,468 | 44 | 1,335 | 87 | 34,223 | 32,801 |
-| `trace-202` | after JumpThru fix | 1,468 | 45 | 1,335 | 87 | **36,253** | **34,831** |
+| `trace-202` | after JumpThru fix | 1,468 | 45 | 1,335 | 87 | 36,253 | 34,831 |
+| `trace-202` | after the parallel workstreams | 1,468 | **159** | 1,308 | **0** | **67,527** | **66,219** |
 
 94–96% of every replayed frame is already frame-exact; the gate's value is that each remaining
 divergence names a specific mechanic.
 
 ### Fixed so far
 
+Work was split into one workstream per divergence class, each in its own git worktree and verified
+against this same gate:
+
 * **`JumpThru` collider height** (`5299096`). `Celeste.JumpthruPlatform` forwards only
   `data.Position` and `data.Width` to `JumpThru`, whose constructor replaces the map entity's 8 px
   height with `new Hitbox(width, 5f)` anchored top-left (`JumpThru.cs:12`,
   `JumpthruPlatform.cs:23-26`). Vanilla `jumpThru` fell through the generic bounds arm and kept the
   raw 8 px, so the collider reached 3 px lower than the real game and the `Player.Update` JumpThru
-  Assist (`Player.cs:1787-1790`) fired on frames the real game skips, stealing
-  `40 * Engine.DeltaTime` of sub-pixel budget. On `trace-1a` this alone took room 7 from 1 to 34
-  replayed frames, room 8 from 3 to 25, room 10a from 1 to 76 and room 6b from 27 to 71.
+  Assist (`Player.cs:1787-1790`) fired on frames the real game skips.
+* **`NormalBegin`'s `maxFall` reset and the held-down wall-slide guard** (`586011d`). Every
+  `DashUpdate` branch that returns state 0 runs `NormalBegin`, which resets `maxFall = 160f`
+  (`Player.cs:3531-3534`); the simulator kept the cap the dash inherited. `Player.cs:3749` also gates
+  the whole wall-slide fall target on `Input.MoveY.Value != 1`.
+* **`Actor.MoveHExact`/`MoveVExact` remainder zeroing** (`95f7cfc`). The source zeroes the *moving
+  axis's* `movementCounter` at the collision point, before invoking the callback (`Actor.cs:220`,
+  `:249`, `:269`); the simulator zeroed it inside each callback branch, so branches that return early
+  kept the pre-collision fraction and the position drifted a pixel later.
+* **Dream-dash inventory** (`122491e`). `Inventory.DreamDash` is session state the trace cannot
+  export; it is recovered from the surviving witness `Player.dreamDashCanEndTimer`, which is only
+  written by `DreamDashBegin` (`Player.cs:5144`) behind `Player.DreamDashCheck` (`Player.cs:3420`).
+* **The four `Player.Intro*` states** (`321361e`) — `IntroWalk`, `IntroJump`, `IntroWakeUp`,
+  `IntroThinkForABit` (`Player.cs:5969-6174`) and `IntroRespawn`'s tween clock. This removed the last
+  `unsupported` segments from the 202 trace (87 → 0). It also added
+  `LevelLoader`'s 3-cell outward room-edge tile bleed (`LevelLoader.cs:233-263`).
+* **The `Player.cs:1791-1794` dash down-close** and the `DashUpdate` buffered-jump block
+  (`Player.cs:4384-4441`), `DashCorrectCheck` (`Player.cs:4191-4209`), and the derivation of the
+  simulator's invented `state_timer` from the exported `dashAttackTimer` (`Player.cs:4276-4304`,
+  `1577-1580`).
 
 ### Known open gaps (measured, not guessed)
 
-* `sim.rs:4944-4950` applies the JumpThru Assist without a `JumpThruBoostBlockedCheck()` equivalent
-  (`Player.cs:4179-4189`, driven by `LedgeBlocker` components from `CrystalStaticSpinner`,
-  `DustStaticSpinner`, `Spikes`, `TriggerSpikes`).
-* 87 of 1,468 segments in the 202 TAS open in an intro/cutscene state the subset does not implement:
-  `StIntroJump`, `StIntroWalk`, `StIntroWakeUp`, `StIntroThinkForABit`.
-* Segments anchored inside `StDash` cannot restore `StateMachine.Timer` (it is not a `Player` field).
-  `dashAttackTimer` is exported and makes the dash's age derivable, but the derivation is not
-  implemented.
-* The first ~40 rows of every room are a `Level.Transitioning` window: `Player.Update` does not run,
-  so those rows cannot be replayed and each segment anchors after them.
+* **`Level.Wind`** — 41 segments diverge by exactly `level.Wind * 0.1 * Engine.DeltaTime` in x, from
+  `Player.cs:1180`'s `WindMover` component, which runs before the main `MoveH` (`Player.cs:1801`).
+  `Celeste.Level.Wind` is a `Level` field the trace does not export, and its value at a room's first
+  live row depends on cross-room history (`WindController.cs:194`, `:201`).
+* **`Engine.FreezeTimer`** and **`Level.Transitioning`** — engine/level fields, so a frame whose
+  `Scene.Update` was skipped cannot be replayed exactly. The ~40-row transition window at each room
+  entry is currently unreplayable and each segment anchors after it.
+* **`Player.Ducking`** — a computed property over `Entity.Collider`, not a field, so the anchored
+  hitbox can be 11 px where the game has 6 px; the gate never compares it.
+* **`Session.Inventory`** — no session model at all (no berries, checkpoints, area identity).
+* **166 vanilla entity names decode to `EntityKind::Unknown`** with no solid and no diagnostic.
+* `sim.rs` has no `Player.climbHopSolid` carry (`Player.cs:1642-1652`).
+
 
 ## Captured ground truth
 

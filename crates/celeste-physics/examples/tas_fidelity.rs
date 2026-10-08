@@ -338,6 +338,17 @@ fn unrestored_fields() -> Vec<(&'static str, &'static str)> {
     );
     push(
         &[
+            "intro_phase",
+            "intro_phase_ready",
+            "intro_start",
+            "intro_sprite_frame",
+            "intro_sprite_timer",
+            "intro_timer",
+        ],
+        "`Player.Intro*` coroutine progress. The intro state callbacks (`Player.cs` IntroWalk/IntroJump/IntroWakeUp/IntroThinkForABit) live in the state machine's enumerators, and the sprite clock lives on the `Monocle.Sprite` component, so no `Player` field carries it. The simulator reconstructs the phase once from the anchor's state, position and facing (`intro_resume`) instead.",
+    );
+    push(
+        &[
             "camera",
             "camera_initialized",
         ],
