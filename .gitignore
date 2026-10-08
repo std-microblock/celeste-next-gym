@@ -14,6 +14,8 @@ dist/
 *.log
 /web/public/ai-demo-live.json
 **/bin/
+# ...except the CLI entry point (the rule above is for C# mod build output).
+!tools/gym-cli/bin/
 **/obj/
 /mods/CelesteGymTraining/Build/*.dll
 /mods/CelesteGymTraining/Build/*.so
