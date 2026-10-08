@@ -670,6 +670,23 @@ against this same gate:
   has to decode all rooms' `solids` layers, which the simulator does not - and the missing direction
   it implies (a *neighbour's* edge tiles bleeding into this room) is a second, separate gap.
 
+* **The state-reason classes have a by-design half, and it is now separable.** `speed+state |
+  anchor=StNormal` is 41 segments / 2,762 frames, but `tools/tas-fidelity/class-states.mjs` (new) shows
+  28 of those segments and 1,876 of those frames are the Badeline boss's `StAttract` in 6-Reflection -
+  an intentional product exclusion, since `Attract` is one of the two excluded mechanisms in
+  `AGENTS.md` - and the fixable remainder is `StLaunch` (8 / 688, all 9-Core C-side), `StRedDash`
+  (2 / 85), `StTempleFall` (1 / 73) and `StFlingBird` (2 / 40). `state | anchor=StNormal` is likewise
+  1,454 frames of which `StIntroJump` is 5 segments / 861 frames (7-Summit x4, 6-Reflection x1) and
+  `StIntroWakeUp` 2 / 376, against 183 frames of `StDummy` and 34 of `StIntroRespawn`. Always run a
+  state class through that tool before treating its frame count as a work estimate.
+* **`StLaunch` is not a missing mechanic, so do not "add" it.** The only three writers of state 7 are
+  `Player.ExplodeLaunch` (`Player.cs:4967`), `FinalBossPushLaunch` (`:4982`, excluded) and
+  `BadelineBoostLaunch` (`:4999`), and the launcher in the 9-Core C-side room `01` is a `Bumper`
+  (`Bumper.cs:170` calls `player.ExplodeLaunch(Position, snapUp: false)`), which `interact`'s
+  `EntityKind::Bumper` arm already calls as `explode_launch(p, input, target, false, false)`. The 688
+  frames are therefore a condition or ordering difference - the game polls `PlayerCollider`s before
+  its state callback while `interact` runs after the state update and the physics - not an absent
+  state.
 * **The simulator has no `VirtualButton.consumed` flag.** With `presses_are_effective` the press
   level each frame is now exactly the game's, which retired the four-frame offset; what remains is
   that a press the simulator consumes *inside* a frame (`wall_jump`/`jump`/`begin_dash` zero the
