@@ -11,11 +11,26 @@ pinned vanilla 202-berry TAS, the instrumented CelesteTAS dumps one record per e
 
 | trace | `ok` rooms | mismatch | unsupported | replayed frames | frame-exact |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `trace-202-v5` | **450** | 1,017 | 0 | **139,188** | **138,140** |
-| `trace-100pct-v5` | **298** | 620 | 0 | **84,483** | **83,846** |
+| `trace-202-v5` | **470** | 997 | 0 | **144,020** | **142,992** |
+| `trace-100pct-v5` | **311** | 607 | 0 | **87,381** | **86,757** |
 | `trace-1a-v5` | **16** | 4 | 0 | **2,129** | **2,125** |
 
-The latest step is the **dash-capacity witness** (`c0d8167`), and it is the second-largest single
+The latest step is the **hurtbox for `PlayerCollider` entities** (`4090043`), and it is the largest
+single win so far. `Player.Update` polls every `PlayerCollider` inside a block that swaps the player's
+collider to the live hurtbox (`Player.cs:1898-1909`), so no callback ever sees the taller hitbox.
+`interact` already did that for spikes, springs, boosters, spinners, killboxes, feathers, lava and the
+core switch - but four `PlayerCollider` entities were still tested against the hitbox: `Refill`
+(`Refill.cs:54`), `HeartGem`, `Puffer` and `Strawberry`. The hurtbox is `Hitbox(8f, 9f, -4f, -11f)`
+against the hitbox's `(8f, 11f, -4f, -11f)`, so the whole difference is two pixels at the player's
+feet - and it is enough to collect a crystal a frame early, which is what round 8's tracer had
+localised but mis-attributed to the game's `RefillRoutine` coroutine. Measured **202 33 improved /
+1435 identical / 0 regressed**, `450 -> 470` `ok`, `+4,832` frames; **100pct 21 / 897 / 0**,
+`298 -> 311`, `+2,898`; `1a` unchanged. The dash-count class fell from 31 segments to 16 and dropped
+out of the report's top six classes. Three unit tests had encoded the old behaviour - they placed the
+player where only the hitbox touched the crystal - and now stand inside it, which is what the game
+requires.
+
+The step before that was the **dash-capacity witness** (`c0d8167`), and it is the second-largest single
 win so far. `observe_session_dashes` combined the trace's witness of the session's
 `PlayerInventory.Dashes` with the per-area table using `min`, which throws the witness away exactly
 when the chapter has *raised* its capacity mid-play: `PlayerInventory.Farewell` is 1 dash, and
@@ -38,7 +53,7 @@ game `-0.33` to `-10.83`): `202 15 / 1453 / 0`, `+1,600` frames; `100pct 7 / 911
 re-reading every clamp in the simulator this way: a floor no branch can observe still costs frames,
 because the gate compares the *value*.
 
-The latest step is **`CoreModeToggle` and `Level.CoreMode`** (`8c201f9`). The Core's
+The step before that was **`CoreModeToggle` and `Level.CoreMode`** (`8c201f9`). The Core's
 ice/fire state was being read from the wrong field: `WallBooster.IceMode`
 (`WallBooster.cs:77-101`), the ice factor (`Player.cs:3681-3684`) and every `CoreModeListener` read
 `Level.CoreMode`, while the trace exported - and the simulator restored - `Session.CoreMode`. They are
@@ -434,8 +449,8 @@ headline progress metric: an improved mechanic keeps more segments alive for lon
 | `trace-202-v5` | after `Level.InSpace` | 1,468 | **426** | 1,041 | 0 | **134,788** | **133,716** |
 | `trace-100pct-v5` | same build | 918 | **280** | 638 | 0 | **80,957** | **80,302** |
 | `trace-1a-v5` | same build | 20 | **16** | 4 | 0 | **2,129** | **2,125** |
-| `trace-202-v5` | after the dash-capacity witness | 1,468 | **450** | 1,017 | 0 | **139,188** | **138,140** |
-| `trace-100pct-v5` | same build | 918 | **298** | 620 | 0 | **84,483** | **83,846** |
+| `trace-202-v5` | after the hurtbox fix | 1,468 | **470** | 997 | 0 | **144,020** | **142,992** |
+| `trace-100pct-v5` | same build | 918 | **311** | 607 | 0 | **87,381** | **86,757** |
 | `trace-1a-v5` | same build | 20 | **16** | 4 | 0 | **2,129** | **2,125** |
 
 The `v5` traces are `v4` plus one exported key, `levelCoreMode` (`Level.CoreMode`); replaying them
@@ -501,7 +516,12 @@ against this same gate:
   with a live `wallSlideTimer` (`Player.cs:3749-3771`); the climb drain reads `lastClimbMove`
   (`Player.cs:4045`, `4056-4079`); and the wall boost is consumed before the on-ground stamina reset
   (`Player.cs:1560-1576`).
-* **The dash-capacity witness now raises the area floor** (this round). `min` -> `max` in
+* **`PlayerCollider` entities are polled with the hurtbox** (this round). Four of them - `Refill`,
+  `HeartGem`, `Puffer`, `Strawberry` - were still tested against the two-pixels-taller hitbox, which
+  collects a crystal a frame early. `202 33/1435/0`, `100pct 21/897/0`, `+4,832` and `+2,898` frames.
+  The lesson generalises: when a divergence is one frame and one pixel, check *which collider* the
+  source uses before hunting for a missing call. Three unit tests had baked in the wrong collider.
+* **The dash-capacity witness now raises the area floor** (previous round). `min` -> `max` in
   `observe_session_dashes`: a chapter that raises `Session.Inventory.Dashes` mid-play (Farewell's
   intro, `CS10_Gravestone.cs:133-134`) was being clamped back to the area's 1. `202 37/1431/0`,
   `100pct 37/881/0`, `+2,800` frames on both, `1a` unchanged. The dash-count class fell from
@@ -562,26 +582,15 @@ against this same gate:
   timer) stays visible to later reads of the same frame, where the game's `VirtualButton.Pressed`
   would report false (`VirtualButton.cs:153-157`). No read site depends on that yet, so this is
   recorded as a residual rather than a target.
-* **The unresolved half of the dash-count class is `sim=1 game=0` (21 of 31 segments), and its cause is
-  now identified: the simulator applies a `Refill` crystal's dash in the frame it is touched, while the
-  game defers it through `RefillRoutine`.** Worked example: `6-Reflection|1|b-04|188460` (6H, room
-  `b-04`, bounds x 5024..5344 y 1160..1912), divergence at offset 174 = row 188675 - the room visit's
-  last row - where every compared field matches except `dashes` (sim 1, game 0). The map holds a
-  `refill` at `[5168, 1672, 16, 16]`; at row 188675 the player's hurtbox is `[5182, 5190] x [1668, 1677]`
-  and first overlaps it, so the game's `Collidable = false` and `respawnTimer = 2.5f` there too. The
-  game's own count only reaches 1 at row 188676, because `Refill.OnPlayer` (`Refill.cs:166-174`) starts
-  `RefillRoutine`, which does `Celeste.Freeze(0.05f)` and `yield return null` *before* calling
-  `player.UseRefill(twoDashes)` (`Refill.cs:178-190`); the simulator instead writes
-  `p.dashes = target_dashes` inline in `interact`'s `Refill` arm, one or more frames early, while still
-  applying the freeze.
-
-  A call-site trace of `refill_dash` (env-gated `eprintln!`, since reverted) rules out every other
-  refill: it does not fire at that position at all, and the only other write that can raise `dashes` is
-  the `Refill` arm itself. So the remaining work is to model the coroutine - collection sets
-  `collidable = false`/`respawnTimer = 2.5f`/`Celeste.Freeze(0.05f)`, and `UseRefill` lands after the
-  freeze plus the coroutine's `yield return null`. **The exact landing frame is the open question**:
-  the observed one-frame gap is smaller than a 0.05 s freeze plus a yield would suggest, so measure it
-  rather than assume it.
+* **The dash-count class is down to 16 segments** (from 49 two rounds ago): `sim=1 game=2` (8),
+  `sim=1 game=0` (7) and `sim=2 game=1` (1), and it is no longer among the report's six largest
+  classes. The `sim=1 game=0` half that round 8 chased was *mostly* the hurtbox bug above, not the
+  `RefillRoutine` coroutine: the worked example `6-Reflection|1|b-04|188460` is now `ok`. What remains
+  to check there, if it is chased again: the simulator still applies a collected crystal's `UseRefill`
+  in the same frame, where `Refill.OnPlayer` (`Refill.cs:166-174`) starts `RefillRoutine`, which does
+  `Celeste.Freeze(0.05f)` and `yield return null` before `player.UseRefill(twoDashes)`
+  (`Refill.cs:178-190`); and `CanDash` (`Player.cs:1074-1088`) still lacks
+  `(TalkComponent.PlayerOver == null || !Input.Talk.Pressed)`.
 * **`pos+speed+state | anchor=StSummitLaunch` has grown to 6 segments / 3,647 frames**, every one a
   `(0,-4)` delta: one state, one offset, and now the largest frames-per-segment target in the report.
 * **The `space` room's remaining causes are `dashes` and `SpaceController`.** With `InSpace` landed,
