@@ -3,6 +3,62 @@
 Objective: run the **vanilla Celeste full-game TAS** as a fidelity gate for `celeste-physics`
 ("next-gym"). The real game produces the ground truth; next-gym must reproduce it frame by frame.
 
+## Status and handoff
+
+**Where it stands.** The environment works end to end and the gate is real: the real game plays the
+pinned vanilla 202-berry TAS, the instrumented CelesteTAS dumps one record per executed frame, and
+`tas_fidelity` replays every room segment through `Simulator` and stops at its first divergence.
+
+| trace | `ok` rooms | mismatch | unsupported | replayed frames | frame-exact |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `trace-202-v4` | **355** | 1,112 | 0 | **121,264** | **120,124** |
+| `trace-100pct-v4` | **234** | 684 | 0 | **73,085** | **72,386** |
+| `trace-1a-v4` | **16** | 4 | 0 | 2,126 | 2,122 |
+
+Starting point was 45 `ok` rooms / 36,253 replayed frames / 87 `unsupported`. Every landed fix cites a
+`Player.cs`/`Monocle` line and was proved to be zero-regression with a per-segment diff keyed by
+`(sid, mode, room, startRow)`.
+
+**In flight when this section was written** (each in its own git worktree under
+`D:\celeste-research\.tmp\wt\`, none of it in master yet — recovering it is the first job):
+
+* `mapdecode` — `CrushBlock`/`DashBlock` decoded as Solids plus the full `OnDashCollide`/`Rebound`
+  path, and the `LevelData` 184 → 180 room-height clamp. Measured on `trace-202-v3`:
+  `ok 332 → 346`, frames `112,406 → 114,382`, with **3 regressions**, which is why the author
+  refused to commit it and stashed the work (`stash@{0}` on base `47b4ba6`). The split I asked for:
+  one commit for the block decode (prove zero regressions), a second for the clamp, whose measured
+  cost is `9-Core|1|c-08` ×2 (the clamp moves `Bounds.Bottom` 4 px → `Player.CameraTarget`,
+  `Player.cs:857`, → a camera-gated spinner flips). `5-MirrorTemple|0|b-14` is a `permanent`
+  `DashBlock` already in `Session.DoNotLoad` and **cannot be represented in a Player-only trace**;
+  record it as a known limitation, not a regression.
+* `posspeed` — `ClutterBlockBase` as a Solid (Celestial Resort clutter, `ClutterBlockGenerator.cs:136-138`;
+  `3-CelestialResort` alone holds 34 segments of its cluster) plus a ~5-line harness change threading
+  `oshiro_clutter_cleared_0/1/2` across segments by `sid`. Without the threading it measured
+  `+2,987 frames` with 14 regressions, all in rooms whose clutter was already cleared by an earlier
+  `ClutterSwitch` down-dash (`ClutterSwitch.cs:131-156`). Commit is `a8ef7a6`, based on stale master
+  `47b4ba6`; it must be rebased onto `ff50e21` or it will revert the exporter docs and `field-map.md`.
+
+**Structural gaps — these are not "a few more formulas":**
+
+1. **The gate re-anchors per room segment; nothing runs the TAS continuously.** Room transitions,
+   cross-room `Session`, chapter chaining and the 22,819 non-`Level` rows have never been executed.
+   This is the single biggest gap against "the 202 TAS runs through".
+2. **No `Session` model at all** — no berries, checkpoints, area identity, `Session.Flags`
+   (`oshiro_clutter_cleared_*`), or `Level.Frozen`.
+3. **86 of 162 `PlayerSnapshot` fields are never restored** — the checked-in
+   `tools/tas-fidelity/field-map.md` is that list, regenerable with `--dump-field-map`.
+4. **166 vanilla entity names still decode to `EntityKind::Unknown`** — no solid, no diagnostic.
+   `map.rs` also does not decode the room `space` attribute (only `9-Core`/`9H-Core` are `true`).
+5. **The real game is not bit-reproducible.** Two runs of the *same* exporter differ in ~28k rows,
+   always starting at `7-Summit|a-00-intro`'s `StDummy` dummy walk (whole-pixel offsets with
+   bit-identical `Speed`/`movementCounter`). "Frame-for-frame identical to vanilla" therefore has a
+   noise floor that this environment cannot go below.
+
+**How to continue.** Read the sections below for the environment, the ground rules for reading the
+artifacts (never whole-file `JSON.parse` a trace), and the reproduce commands. New mechanics should
+follow the established loop: pick a cluster from the gate report, cite the `Player.cs` line, prove
+zero per-segment regressions, commit in a worktree, integrate.
+
 ## Which TAS is "the 202 TAS" — verified, not assumed
 
 Everest CI (`EverestAPI/Everest/.github/workflows/tas-sync-check.yml`) pins
