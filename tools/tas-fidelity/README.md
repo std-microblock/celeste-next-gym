@@ -110,10 +110,11 @@ Two engine mechanisms make a trace row a stale copy of the previous one:
 | `dashes` | `p.Dashes` | exact |
 | `on_ground` | `p.onGround` **vs `PlayerSnapshot::player_on_ground`** | exact |
 | `dead` | `p.<Dead>k__BackingField` | exact |
-| `ducking` | — | **not comparable** |
+| `ducking` | top-level `ducking` (`Player.Ducking`, v2 traces only) | **diagnostic only** (`duckingDisagreementFrames`) |
+| `wind` | top-level `wind` (`Level.Wind`, v2 traces only) | **diagnostic only** (`windDisagreementFrames`) |
 | `state_timer` | — | **not comparable** |
 | `camera` | — | **not comparable** |
-| `freeze_timer` | — | not exported; reproduced by the simulator's own model |
+| `freeze_timer` | top-level `freezeTimer` (`Engine.FreezeTimer`, v2 traces only) | restored at the anchor; mid-segment agreement via `freezeDisagreementFrames` |
 
 Three details that are easy to get wrong:
 
@@ -124,16 +125,86 @@ Three details that are easy to get wrong:
   *post-entity geometric* probe, which is a different quantity by design. Comparing the trace's
   `onGround` against the geometric value manufactures false mismatches on a rising player resting
   near a ledge; `geometricGroundDiffFrames` reports how often the simulator's two ground values
-  disagree (970 frames over the 100% run), as a diagnostic only.
+  disagree, as a diagnostic only (1,637 over the 202 run before the exporter tail, 2,791 after —
+  the increase is the extra frames the newly restored fields keep alive, not a new divergence).
+  The distinction is load-bearing for wind too: `Player.WindMove` gates its horizontal push on
+  `Ducking && onGround` (`Player.cs:3095`), i.e. on the *field*, which is
+  `PlayerSnapshot::player_on_ground` at the moment `WindController.Update` runs.
 * **`rawDt`, not `dt`, is fed to `InputState::frame_delta_time_bits`.** Monocle computes
   `Engine.DeltaTime = RawDeltaTime * TimeRate * TimeRateB`, and `Simulator::step` multiplies the
   supplied bits by `snapshot.time_rate` — so the *raw* delta is the correct input. In
   `trace-1a.jsonl` `timeRate` is `1` on every row and `dt == rawDt` bit for bit, so the two choices
   are indistinguishable there; they are not in general (HeartGem writes `Engine.TimeRate`).
-* **`ducking` is a computed property.** `Player.Ducking` is `Collider == duckHitbox || Collider ==
-  duckHurtbox` (`Player.cs` L1005-1028), and `Collider` lives on `Monocle.Entity`; neither is a
-  serialisable field on the player's base chain, so it is not in `p` and is never compared. This is
-  the most consequential remaining gap — see [the next divergence class](#the-next-divergence-class).
+* **`ducking` is restored, but its evolution is only 99.2% right.** `Player.Ducking` is
+  `Collider == duckHitbox || Collider == duckHurtbox` (`Player.cs` L1005-1028), and `Collider` lives
+  on `Monocle.Entity`, so it is not a declared field on the player's base chain. The v2 exporter
+  writes `ducking` plus the active collider rect (`collider`) as top-level keys, so the anchored
+  hitbox is now exact; `duckingDisagreementFrames` counts the replayed frames where the simulator's
+  own setter rules still disagree (319 of 40,989 replayed frames on `trace-202-v2`).
+
+### The exporter tail (v2 traces)
+
+Six divergences turned out to be unreachable from the player's field chain because the ground truth
+did not export the quantity at all. `tools/celestetas-trace/TasFrameTrace.cs` now appends a
+**tail** to every `scene == "Level"` row — after every pre-existing key, so nothing that reads the
+older traces changes meaning:
+
+| key | C# source | restored into | why it cannot be inferred |
+| --- | --- | --- | --- |
+| `wind` | `Celeste.Level.Wind` (`Level.cs:149`) | `PlayerSnapshot::wind` (verbatim, at the anchor) | `WindController.Update` rewrites it every frame with `Calc.Approach(level.Wind, targetSpeed, 1000f * Engine.DeltaTime)` (`WindController.cs:194`) and then displaces the Player's `WindMover` component (`Player.cs:1180`) by `level.Wind * 0.1f * Engine.DeltaTime` (`WindController.cs:199-201`). The ramp crosses room boundaries, so a segment anchored mid-flight cannot reconstruct it. |
+| `windTarget` | `WindController.targetSpeed` (`WindController.cs:47`, reflection through the private `Level.windController` field, `Level.cs:101`) | `PlayerSnapshot::wind_target` | the ramp needs the source's own target |
+| `windPattern` | `WindController.pattern` (`WindController.cs:45`) | — (evidence) | |
+| `windSine`, `windSineTimer` | `Level.cs:151-153` | — (evidence) | visual only |
+| `transitioning` | `Celeste.Level.Transitioning` (`Level.cs:221`) | — (evidence) | `PlayerSnapshot::transition_timer` is a countdown, not the `transition != null` predicate |
+| `freezeTimer` | `Monocle.Engine.FreezeTimer` (`Monocle/Engine.cs:28`) | `PlayerSnapshot::freeze_timer` | while positive `Engine.Update` only decrements it and skips `Scene.Update` (`Engine.cs:266-269`) |
+| `ducking` | `Player.Ducking` (`Player.cs:1005-1028`) | `PlayerSnapshot::ducking` | computed property over `Monocle.Entity.Collider` (`Monocle/Entity.cs:73`) |
+| `collider` | `Collider.AbsoluteLeft/AbsoluteTop/Width/Height` (`Monocle/Collider.cs:229,205,12,14`) | — (evidence; `[x,y,w,h]`) | |
+| `inventory` | `Celeste.Session.Inventory` (`Session.cs:35`, `PlayerInventory.cs:22-28`) | `PlayerSnapshot::can_dream_dash` <- `inventory.DreamDash` | session state; `Player.Inventory` forwards it (`Player.cs:956-966`) and the source reads it at `Player.cs:3420,4500`. The old harness could only infer the flag from `Player.dreamDashCanEndTimer`, which is wrong for a session that has not dream-dashed since the last respawn. |
+
+`Session.Level` and `Session.Deaths` already had their own keys (`room`, `deaths`) and were not
+duplicated. `ducking`/`collider` are absent only on rows where `level.Tracker.GetEntity<Player>()`
+is null — the same rows that have no `state`/`p` (234 of 266,262 Level rows on the 100% trace, 302
+of 438,303 on the 202 trace).
+
+The three traces were regenerated as **`trace-1a-v2.jsonl`** (3,215 rows),
+**`trace-100pct-v2.jsonl`** (281,113 rows) and **`trace-202-v2.jsonl`** (461,122 rows); row counts
+and the `n` sequence match the originals exactly (`n` increases by exactly 1 per row). A
+row-by-row comparison against the old files shows every pre-existing key byte-identical on
+`trace-1a` with zero exceptions.
+
+> **Caveat, measured, not assumed.** On `trace-100pct`/`trace-202` 31,613 / 46,413 rows differ from
+> the *old* traces — but two consecutive runs of the **same** exporter differ from each other in
+> 28,601 rows as well, always starting at the same row and always in the same place:
+> `Celeste/7-Summit|a-00-intro`, state `StDummy`, where the dummy-walk position alternates by whole
+> pixels with bit-identical `Speed` and `movementCounter`. That is real-game nondeterminism in the
+> Summit intro, not an exporter behaviour change.
+
+Measured on `trace-202-v2.jsonl` (`--maps vendor/celeste-game/Content/Maps`):
+
+| metric | before restoring the tail | after |
+| --- | ---: | ---: |
+| segments | 1,468 | 1,468 |
+| `ok` | 45 | **51** |
+| `mismatch` | 1,335 | 1,329 |
+| `unsupported` | 87 | 87 |
+| replayed frames | 36,253 | **40,989** |
+| matching frames | 34,831 | **39,573** |
+| `pos\|anchor=StNormal\|at=first` cluster | 41 segments / 41 frames / 0 exact | **4 segments / 4 frames / 0 exact** |
+| `freezeDisagreementFrames` | 243 | 173 |
+| `windDisagreementFrames` (sim ramp vs exported `Level.Wind`) | — | 64 of 40,989 |
+| `duckingDisagreementFrames` | — | 319 of 40,989 |
+| `geometricGroundDiffFrames` | 1,627 | 2,791 |
+
+211 segments replayed further, 1,253 were unchanged and 4 regressed (`1-ForsakenCity|0|6c`
+29→12 frames, `7-Summit|0|e-05` ×2 4→3, `4-GoldenRidge|0|c-07` 4→1 — each now dies on a different,
+earlier mechanic). `Celeste/4-GoldenRidge|0|c-02` (start row 51,522), the segment that motivated
+the wind work, goes from **1 replayed frame to 49** (48 exact).
+
+`sim.rs::apply_wind_movement` also gained the source's own gate: the horizontal push is suppressed
+by `Ducking && onGround` (`Player.cs:3095`) where `onGround` is the *source-private field*, which
+`WindController.Update` (running before `Player.Update`) reads as the previous frame's probe — that
+is `PlayerSnapshot::player_on_ground`, not the geometric `on_ground`. Using the geometric value
+dropped a wind push the game applied (+70 replayed frames on the 202 trace).
 
 ### Remainder probe
 
@@ -279,6 +350,11 @@ prints a warning). `derived` = restored by bespoke code; `none` = no ground-trut
 | `time_rate` | derived | top-level `timeRate` (`Engine.TimeRate`). |
 | `player_on_ground_initialized` | derived | set to true; the anchor row is a post-`Player.Update` capture, so the source-private `onGround` is authoritative. |
 | `frame_delta_time` | derived | `#[serde(skip)]` on the wire type. `Simulator::step` recomputes it every frame as the supplied `rawDt` bits times `time_rate`. |
+| `wind` | derived | top-level `wind` (`Celeste.Level.Wind`, `Level.cs:149`). Restored verbatim from the anchor row so the room segment continues the source's own ramp: `WindController.Update` rewrites it with `Calc.Approach(level.Wind, targetSpeed, 1000f * Engine.DeltaTime)` (`WindController.cs:194`) and displaces the Player's `WindMover` component (`Player.cs:1180`) by `level.Wind * 0.1f * Engine.DeltaTime` (`WindController.cs:199-201`). |
+| `wind_target` | derived | top-level `windTarget` (`WindController.targetSpeed`, `WindController.cs:47`, read by reflection through the private `Level.windController` field at `Level.cs:101`). The replayed ramp needs the source's own target, which a room segment cannot reconstruct. |
+| `ducking` | derived | top-level `ducking` (`Player.Ducking`, `Player.cs:1005-1028`). A computed property over `Monocle.Entity.Collider` (`Monocle/Entity.cs:73`), so it is not a declared field; the exporter also writes the active collider as `collider` = `[absoluteLeft, absoluteTop, width, height]` (`Monocle/Collider.cs:229,205,12,14`). |
+| `freeze_timer` | derived | top-level `freezeTimer` (`Monocle.Engine.FreezeTimer`, `Monocle/Engine.cs:28`). While positive `Engine.Update` only decrements it and skips `Scene.Update` entirely (`Engine.cs:266-269`); the exporter writes the post-decrement value, which is exactly the snapshot state `Simulator::step` reads at the top of the next frame. |
+| `can_dream_dash` | derived | top-level `inventory.DreamDash` (`Celeste.Session.Inventory`, `Session.cs:35`, `PlayerInventory.cs:24`). `Player.Inventory` forwards it (`Player.cs:956-966`) and the source reads it at `Player.cs:3420` and `4500`; restoring it removes the need to infer the flag from `dreamDashCanEndTimer`. |
 | `badeline_boost_active` | none | room-entity runtime state, not `Player` state; initialized by `Simulator::new` (`initialize_*`) from the decoded room |
 | `badeline_boost_collidable` | none | room-entity runtime state, not `Player` state; initialized by `Simulator::new` (`initialize_*`) from the decoded room |
 | `badeline_boost_current_position` | none | room-entity runtime state, not `Player` state; initialized by `Simulator::new` (`initialize_*`) from the decoded room |
@@ -302,7 +378,6 @@ prints a warning). `derived` = restored by bespoke code; `none` = no ground-trut
 | `bumpers` | none | room-entity runtime state, not `Player` state; initialized by `Simulator::new` (`initialize_*`) from the decoded room |
 | `camera` | none | not reachable from the player's base chain (`Celeste.Player` -> `Monocle.Actor` -> `Monocle.Platform` -> `Monocle.Entity`), so the reflection dump cannot see it |
 | `camera_initialized` | none | not reachable from the player's base chain (`Celeste.Player` -> `Monocle.Actor` -> `Monocle.Platform` -> `Monocle.Entity`), so the reflection dump cannot see it |
-| `can_dream_dash` | none | no equally-named `Player` field in the trace; left to the simulator (`Default` or `Simulator::new` initialize_*) |
 | `carried_strawberries` | none | no equally-named `Player` field in the trace; left to the simulator (`Default` or `Simulator::new` initialize_*) |
 | `cassette_blocks` | none | room-entity runtime state, not `Player` state; initialized by `Simulator::new` (`initialize_*`) from the decoded room |
 | `cassette_manager` | none | room-entity runtime state, not `Player` state; initialized by `Simulator::new` (`initialize_*`) from the decoded room |
@@ -313,11 +388,9 @@ prints a warning). `derived` = restored by bespoke code; `none` = no ground-trut
 | `dash_buffer_timer` | none | `VirtualButton` buffers live on the static `Celeste.Input` object, not on `Player`; `Simulator::step` rebuilds them from the press edges |
 | `dash_end_pending` | none | no equally-named `Player` field in the trace; left to the simulator (`Default` or `Simulator::new` initialize_*) |
 | `death_freeze_pending` | none | no equally-named `Player` field in the trace; left to the simulator (`Default` or `Simulator::new` initialize_*) |
-| `ducking` | none | `Player.Ducking` is a computed property over `Entity.Collider` (`Player.cs` Ducking getter), not a declared field, so the DeclaredOnly field dump cannot see it |
 | `exit_blocks` | none | room-entity runtime state, not `Player` state; initialized by `Simulator::new` (`initialize_*`) from the decoded room |
 | `falling_blocks` | none | room-entity runtime state, not `Player` state; initialized by `Simulator::new` (`initialize_*`) from the decoded room |
 | `feather_reuse_timer` | none | no equally-named `Player` field in the trace; left to the simulator (`Default` or `Simulator::new` initialize_*) |
-| `freeze_timer` | none | `Engine.FreezeTimer` is an Engine field, not a `Player` field; the harness reconstructs the skipped `Scene.Update` frames from the trace instead (see README) |
 | `gliders` | none | room-entity runtime state, not `Player` state; initialized by `Simulator::new` (`initialize_*`) from the decoded room |
 | `heart_gems` | none | room-entity runtime state, not `Player` state; initialized by `Simulator::new` (`initialize_*`) from the decoded room |
 | `holding_glider` | none | no equally-named `Player` field in the trace; left to the simulator (`Default` or `Simulator::new` initialize_*) |
@@ -363,11 +436,9 @@ prints a warning). `derived` = restored by bespoke code; `none` = no ground-trut
 | `transition_room_bounds` | none | no equally-named `Player` field in the trace; left to the simulator (`Default` or `Simulator::new` initialize_*) |
 | `transition_target` | none | no equally-named `Player` field in the trace; left to the simulator (`Default` or `Simulator::new` initialize_*) |
 | `transition_timer` | none | no equally-named `Player` field in the trace; left to the simulator (`Default` or `Simulator::new` initialize_*) |
-| `wind` | none | no equally-named `Player` field in the trace; left to the simulator (`Default` or `Simulator::new` initialize_*) |
-| `wind_target` | none | no equally-named `Player` field in the trace; left to the simulator (`Default` or `Simulator::new` initialize_*) |
 | `zip_movers` | none | room-entity runtime state, not `Player` state; initialized by `Simulator::new` (`initialize_*`) from the decoded room |
 
-Declared `PlayerSnapshot` fields: 152. Restored from a `p` key: 61. Derived: 5. Unrestored: 87. Missing from table: []. Stale table entries: [].
+Declared `PlayerSnapshot` fields: 152. Restored from a `p` key: 61. Derived: 10. Unrestored: 82. Missing from table: []. Stale table entries: [].
 <!-- END GENERATED FIELD TABLE -->
 
 Notes on the table:

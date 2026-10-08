@@ -10,6 +10,10 @@
 //! `--dump-field-map` prints the generated `PlayerSnapshot` field-coverage table
 //! (the same table that is embedded in the report) as Markdown and exits.
 
+// The report views are single large `serde_json::json!` literals; the default
+// macro recursion limit is too small once the exporter tail fields are included.
+#![recursion_limit = "256"]
+
 use std::collections::{BTreeMap, HashMap};
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Write};
@@ -69,6 +73,39 @@ impl InputRec {
     }
 }
 
+/// `Session.Inventory` (`Celeste.Session.cs:35`, `PlayerInventory.cs:22-28`), the
+/// session-level flag block `Player.Inventory` forwards (`Player.cs:956-966`).
+#[derive(Clone, Default, Deserialize)]
+#[serde(default)]
+struct InventoryRec {
+    #[serde(rename = "Dashes")]
+    dashes: Option<i64>,
+    #[serde(rename = "DreamDash")]
+    dream_dash: Option<bool>,
+    #[serde(rename = "Backpack")]
+    backpack: Option<bool>,
+    #[serde(rename = "NoRefills")]
+    no_refills: Option<bool>,
+}
+
+/// Two- and four-element float arrays. Kept as `Vec<f64>` rather than a fixed-size
+/// array so that an exporter that writes `null` for a non-finite component does not
+/// turn the whole row into a parse error.
+fn pair_field(values: Option<&Vec<f64>>) -> Option<[f64; 2]> {
+    let values = values?;
+    Some([*values.first()?, *values.get(1)?])
+}
+
+fn quad_field(values: Option<&Vec<f64>>) -> Option<[f64; 4]> {
+    let values = values?;
+    Some([
+        *values.first()?,
+        *values.get(1)?,
+        *values.get(2)?,
+        *values.get(3)?,
+    ])
+}
+
 #[derive(Default, Deserialize)]
 #[serde(default)]
 struct Record {
@@ -87,6 +124,26 @@ struct Record {
     room: Option<String>,
     state: Option<String>,
     p: Option<JsonMap<String, Value>>,
+    // ---- Append-only exporter tail (see tools/celestetas-trace/TasFrameTrace.cs).
+    /// `Celeste.Level.Wind` (`Level.cs:149`).
+    wind: Option<Vec<f64>>,
+    /// `WindController.targetSpeed` (`WindController.cs:47`), reached by reflection
+    /// through the private `Level.windController` field (`Level.cs:101`).
+    #[serde(rename = "windTarget")]
+    wind_target: Option<Vec<f64>>,
+    #[serde(rename = "windPattern")]
+    wind_pattern: Option<i64>,
+    /// `Celeste.Level.Transitioning` (`Level.cs:221`).
+    transitioning: Option<bool>,
+    /// `Monocle.Engine.FreezeTimer` (`Monocle/Engine.cs:28`).
+    #[serde(rename = "freezeTimer")]
+    freeze_timer: Option<f64>,
+    /// `Player.Ducking` (`Player.cs:1005-1028`), a computed `Entity.Collider` property.
+    ducking: Option<bool>,
+    /// The active collider as `[absoluteLeft, absoluteTop, width, height]`
+    /// (`Monocle/Collider.cs:229,205,12,14`).
+    collider: Option<Vec<f64>>,
+    inventory: Option<InventoryRec>,
 }
 
 #[derive(Clone)]
@@ -99,6 +156,18 @@ struct Frame {
     input: InputRec,
     state_name: Option<String>,
     fields: Option<JsonMap<String, Value>>,
+    /// `Level.Wind` captured at the end of this engine frame, i.e. exactly the value
+    /// `WindController.Update` ramps from on the next frame (`WindController.cs:194`).
+    wind: Option<[f64; 2]>,
+    /// `WindController.targetSpeed` at the end of this engine frame.
+    wind_target: Option<[f64; 2]>,
+    wind_pattern: Option<i64>,
+    transitioning: Option<bool>,
+    /// `Engine.FreezeTimer` at the end of this engine frame (`Engine.cs:266-269`).
+    freeze_timer: Option<f64>,
+    ducking: Option<bool>,
+    collider: Option<[f64; 4]>,
+    inventory: Option<InventoryRec>,
 }
 
 /// The subset of `Celeste.Player` fields `tas_fidelity` diffs.
@@ -312,6 +381,11 @@ const DERIVED_FIELDS: &[(&str, &str)] = &[
     ("player_on_ground_initialized", "set to true; the anchor row is a post-`Player.Update` capture, so the source-private `onGround` is authoritative."),
     ("frame_delta_time", "`#[serde(skip)]` on the wire type. `Simulator::step` recomputes it every frame as the supplied `rawDt` bits times `time_rate`."),
     ("state_timer", "in the Dash state, `PlayerSnapshot::restore_dash_phase` rebuilds the simulator's dash clock from `p.dashAttackTimer`: Celeste times the dash with `DashCoroutine` (`Player.cs:4465-4567`), not a `StateMachine.Timer`, and `dashAttackTimer` (`Player.cs:4296`, decremented per unfrozen frame at `Player.cs:1577-1580`) counts exactly those frames."),
+    ("wind", "top-level `wind` (`Celeste.Level.Wind`, `Level.cs:149`). Restored verbatim from the anchor row so the room segment continues the source's own ramp: `WindController.Update` rewrites it with `Calc.Approach(level.Wind, targetSpeed, 1000f * Engine.DeltaTime)` (`WindController.cs:194`) and displaces the Player's `WindMover` component (`Player.cs:1180`) by `level.Wind * 0.1f * Engine.DeltaTime` (`WindController.cs:199-201`)."),
+    ("wind_target", "top-level `windTarget` (`WindController.targetSpeed`, `WindController.cs:47`, read by reflection through the private `Level.windController` field at `Level.cs:101`). The replayed ramp needs the source's own target, which a room segment cannot reconstruct."),
+    ("ducking", "top-level `ducking` (`Player.Ducking`, `Player.cs:1005-1028`). A computed property over `Monocle.Entity.Collider` (`Monocle/Entity.cs:73`), so it is not a declared field; the exporter also writes the active collider as `collider` = `[absoluteLeft, absoluteTop, width, height]` (`Monocle/Collider.cs:229,205,12,14`)."),
+    ("freeze_timer", "top-level `freezeTimer` (`Monocle.Engine.FreezeTimer`, `Monocle/Engine.cs:28`). While positive `Engine.Update` only decrements it and skips `Scene.Update` entirely (`Engine.cs:266-269`); the exporter writes the post-decrement value, which is exactly the snapshot state `Simulator::step` reads at the top of the next frame."),
+    ("can_dream_dash", "top-level `inventory.DreamDash` (`Celeste.Session.Inventory`, `Session.cs:35`, `PlayerInventory.cs:24`). `Player.Inventory` forwards it (`Player.cs:956-966`) and the source reads it at `Player.cs:3420` and `4500`; restoring it removes the need to infer the flag from `dreamDashCanEndTimer`."),
 ];
 
 /// Fields with no ground-truth source anywhere in the trace.
@@ -332,10 +406,6 @@ fn unrestored_fields() -> Vec<(&'static str, &'static str)> {
         }
     };
 
-    push(
-        &["ducking"],
-        "`Player.Ducking` is a computed property over `Entity.Collider` (`Player.cs` Ducking getter), not a declared field, so the DeclaredOnly field dump cannot see it",
-    );
     push(
         &[
             "intro_phase",
@@ -363,17 +433,10 @@ fn unrestored_fields() -> Vec<(&'static str, &'static str)> {
         VIRTUAL_BUTTON,
     );
     push(
-        &["freeze_timer"],
-        "`Engine.FreezeTimer` is an Engine field, not a `Player` field; the harness reconstructs the skipped `Scene.Update` frames from the trace instead (see README)",
-    );
-    push(
         &[
-            "can_dream_dash",
             "dash_end_pending",
             "death_freeze_pending",
             "respawn_frames",
-            "wind",
-            "wind_target",
             "neutral_wall_jump_friction_delay",
             "moving_solid_time",
             "scene_time_active",
@@ -618,6 +681,14 @@ struct SegmentReport {
     freeze_disagreement_frames: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     first_freeze_disagreement_offset: Option<u64>,
+    /// Frames where the simulator's own `WindController` ramp disagrees with the
+    /// trace's exported `Level.Wind` (diagnostic; never a mismatch reason).
+    #[serde(skip_serializing_if = "is_zero")]
+    wind_disagreement_frames: u64,
+    /// Frames where the simulator's `Player.Ducking` disagrees with the trace's
+    /// exported `Player.Ducking` (diagnostic; never a mismatch reason).
+    #[serde(skip_serializing_if = "is_zero")]
+    ducking_disagreement_frames: u64,
     /// Present only with `--probe-remainder`; see `probe_remainder`.
     #[serde(skip_serializing_if = "Option::is_none")]
     remainder_probe: Option<Value>,
@@ -904,6 +975,12 @@ fn bits_of(delta: f64) -> u32 {
     (delta as f32).to_bits()
 }
 
+/// `skip_serializing_if` helper for the optional diagnostic counters: a segment that
+/// never disagreed keeps its report entry byte-identical to the pre-tail schema.
+fn is_zero(value: &u64) -> bool {
+    *value == 0
+}
+
 fn rust_view(snapshot: &PlayerSnapshot) -> Value {
     json!({
         "pos": [snapshot.pos.x, snapshot.pos.y],
@@ -916,6 +993,10 @@ fn rust_view(snapshot: &PlayerSnapshot) -> Value {
         "onGround": snapshot.on_ground,
         "playerOnGround": snapshot.player_on_ground,        "ducking": snapshot.ducking,
         "dead": snapshot.dead,
+        "freezeTimer": snapshot.freeze_timer,
+        "wind": [snapshot.wind.x, snapshot.wind.y],
+        "windTarget": [snapshot.wind_target.x, snapshot.wind_target.y],
+        "canDreamDash": snapshot.can_dream_dash,
         "stateTimer": snapshot.state_timer,
         "movementRemainder": [snapshot.movement_remainder.x, snapshot.movement_remainder.y],
         "dashAttackTimer": snapshot.dash_attack_timer,
@@ -961,7 +1042,19 @@ fn game_view(frame: &Frame, truth: &Truth, pos: Option<[f64; 2]>) -> Value {
         "stamina": truth.stamina,
         "onGround": truth.on_ground,
         "dead": truth.dead,
-        "ducking": Value::Null,
+        "ducking": frame.ducking,
+        "collider": frame.collider,
+        "freezeTimer": frame.freeze_timer,
+        "wind": frame.wind,
+        "windTarget": frame.wind_target,
+        "windPattern": frame.wind_pattern,
+        "transitioning": frame.transitioning,
+        "inventory": frame.inventory.as_ref().map(|inv| json!({
+            "Dashes": inv.dashes,
+            "DreamDash": inv.dream_dash,
+            "Backpack": inv.backpack,
+            "NoRefills": inv.no_refills,
+        })),
         "stateTimer": Value::Null,
         "movementRemainder": truth.movement_counter,
         "collectResetTimer": truth.collect_reset_timer,
@@ -990,6 +1083,13 @@ struct ReplayOutcome {
     /// shows `Player.Update` did not run (or vice versa).
     freeze_disagreement_frames: u64,
     first_freeze_disagreement: Option<u64>,
+    /// Replayed frames where the simulator's `Level.Wind` (advanced by its own
+    /// `WindController` ramp) differs from the trace's exported `Level.Wind`.
+    /// Diagnostic only: the wind does not fail a segment on its own.
+    wind_disagreement_frames: u64,
+    /// Replayed frames where the simulator's `Player.Ducking` differs from the
+    /// trace's exported `Player.Ducking` / active collider. Diagnostic only.
+    ducking_disagreement_frames: u64,
     status: &'static str,
     error: Option<String>,
     unsupported: Option<(String, u64)>,
@@ -1136,10 +1236,70 @@ fn replay(
             return outcome;
         }
     }
-    outcome.unavailable.push(
-        "ducking: `Player.Ducking` is a computed Collider property and is not exported; never compared"
-            .to_owned(),
-    );
+    // -----------------------------------------------------------------
+    // Append-only exporter tail (tools/celestetas-trace/TasFrameTrace.cs).
+    //
+    // Every value below is captured at the end of the anchor engine frame, which is
+    // exactly the state the next `Player.Update` starts from, so it is restored
+    // verbatim rather than inferred:
+    //
+    //  * `Level.Wind` (`Level.cs:149`) is the quantity `WindController.Update` ramps
+    //    with `Calc.Approach(level.Wind, targetSpeed, 1000f * Engine.DeltaTime)`
+    //    (`WindController.cs:194`) and then applies to the Player's own `WindMover`
+    //    component (`Player.cs:1180`) as `level.Wind * 0.1f * Engine.DeltaTime`
+    //    (`WindController.cs:199-201`). A room segment anchored mid-flight cannot
+    //    reconstruct the cross-room ramp, so the anchored value must come from the
+    //    trace. `WindController.targetSpeed` (`WindController.cs:47`) is restored
+    //    with it so the simulator's ramp continues on the source's own target.
+    //  * `Player.Ducking` (`Player.cs:1005-1028`) selects between `normalHitbox`
+    //    (8x11) and `duckHitbox` (8x6); without it every collider probe reads the
+    //    wrong box.
+    //  * `Engine.FreezeTimer` (`Monocle/Engine.cs:28`) is the engine-level gate that
+    //    makes `Engine.Update` skip `Scene.Update` (`Engine.cs:266-269`). The
+    //    exporter writes the post-decrement value, which is precisely the snapshot
+    //    state `Simulator::step` reads at the top of the next frame.
+    //  * `Session.Inventory.DreamDash` (`Session.cs:35`, `PlayerInventory.cs:24`) is
+    //    what `Player.Inventory.DreamDash` forwards (`Player.cs:956-966`) and what
+    //    the simulator models as `PlayerSnapshot::can_dream_dash`
+    //    (`Player.cs:3420,4500`). Restoring it removes the need to infer the flag
+    //    from `dreamDashCanEndTimer`.
+    // -----------------------------------------------------------------
+    if let Some(wind) = anchor.wind {
+        snapshot.wind = Vec2::new(wind[0] as f32, wind[1] as f32);
+    } else {
+        outcome
+            .unavailable
+            .push("wind: the trace row has no `Level.Wind`".to_owned());
+    }
+    if let Some(target) = anchor.wind_target {
+        snapshot.wind_target = Vec2::new(target[0] as f32, target[1] as f32);
+    } else {
+        outcome.unavailable.push(
+            "wind_target: the trace row has no `WindController.targetSpeed`; the simulator's own \
+             windTrigger target is used for the ramp"
+                .to_owned(),
+        );
+    }
+    if let Some(ducking) = anchor.ducking {
+        snapshot.ducking = ducking;
+    } else {
+        outcome
+            .unavailable
+            .push("ducking: the trace row has no `Player.Ducking`".to_owned());
+    }
+    if let Some(freeze_timer) = anchor.freeze_timer {
+        snapshot.freeze_timer = freeze_timer as f32;
+    } else {
+        outcome
+            .unavailable
+            .push("freeze_timer: the trace row has no `Engine.FreezeTimer`".to_owned());
+    }
+    match anchor.inventory.as_ref().and_then(|inv| inv.dream_dash) {
+        Some(dream_dash) => snapshot.can_dream_dash = dream_dash,
+        None => outcome
+            .unavailable
+            .push("can_dream_dash: the trace row has no `Session.Inventory.DreamDash`".to_owned()),
+    }
 
     let mut simulator = match Simulator::new(snapshot, map) {
         Ok(simulator) => simulator,
@@ -1155,6 +1315,8 @@ fn replay(
     let mut geometric_ground_diff = 0u64;
     let mut freeze_disagreement = 0u64;
     let mut first_freeze_disagreement = None;
+    let mut wind_disagreement = 0u64;
+    let mut ducking_disagreement = 0u64;
     for index in window_start + 1..row_count {
         if frame_cap.is_some_and(|cap| replayed as usize >= cap) {
             outcome.status = "capped";
@@ -1163,6 +1325,8 @@ fn replay(
             outcome.geometric_ground_diff = geometric_ground_diff;
             outcome.freeze_disagreement_frames = freeze_disagreement;
             outcome.first_freeze_disagreement = first_freeze_disagreement;
+            outcome.wind_disagreement_frames = wind_disagreement;
+            outcome.ducking_disagreement_frames = ducking_disagreement;
             return outcome;
         }
         let frame = &segment.frames[index];
@@ -1240,6 +1404,25 @@ fn replay(
                 if actual.on_ground != actual.player_on_ground {
                     geometric_ground_diff += 1;
                 }
+                // Diagnostic only: the source applies `Level.Wind * 0.1f *
+                // Engine.DeltaTime` through the Player's own WindMover
+                // (WindController.cs:199-201); this counts how far the simulator's
+                // own ramp has drifted from the trace's `Level.Wind` since the
+                // anchor.
+                if let Some(wind) = frame.wind {
+                    if (actual.wind.x - wind[0] as f32).abs() > TOLERANCE
+                        || (actual.wind.y - wind[1] as f32).abs() > TOLERANCE
+                    {
+                        wind_disagreement += 1;
+                    }
+                }
+                // Diagnostic only: `Player.Ducking` selects the active collider
+                // (Player.cs:1005-1028).
+                if let Some(ducking) = frame.ducking {
+                    if actual.ducking != ducking {
+                        ducking_disagreement += 1;
+                    }
+                }
                 let mut reasons: Vec<String> = Vec::new();
                 // Position comes from the row *after* the one being diffed:
                 // row k+1's PreviousPosition is the position at the end of
@@ -1280,6 +1463,8 @@ fn replay(
                             outcome.geometric_ground_diff = geometric_ground_diff;
                             outcome.freeze_disagreement_frames = freeze_disagreement;
                             outcome.first_freeze_disagreement = first_freeze_disagreement;
+                            outcome.wind_disagreement_frames = wind_disagreement;
+                            outcome.ducking_disagreement_frames = ducking_disagreement;
                             return outcome;
                         }
                     },
@@ -1326,6 +1511,8 @@ fn replay(
                 outcome.geometric_ground_diff = geometric_ground_diff;
                 outcome.freeze_disagreement_frames = freeze_disagreement;
                 outcome.first_freeze_disagreement = first_freeze_disagreement;
+                outcome.wind_disagreement_frames = wind_disagreement;
+                outcome.ducking_disagreement_frames = ducking_disagreement;
                 outcome.mismatch = Some(FirstMismatch {
                     offset,
                     reasons,
@@ -1342,6 +1529,8 @@ fn replay(
                 outcome.geometric_ground_diff = geometric_ground_diff;
                 outcome.freeze_disagreement_frames = freeze_disagreement;
                 outcome.first_freeze_disagreement = first_freeze_disagreement;
+                outcome.wind_disagreement_frames = wind_disagreement;
+                outcome.ducking_disagreement_frames = ducking_disagreement;
                 outcome.error = Some(format!(
                     "SimulationError::UnsupportedState({name}) while executing frame offset {offset}"
                 ));
@@ -1355,6 +1544,8 @@ fn replay(
                 outcome.geometric_ground_diff = geometric_ground_diff;
                 outcome.freeze_disagreement_frames = freeze_disagreement;
                 outcome.first_freeze_disagreement = first_freeze_disagreement;
+                outcome.wind_disagreement_frames = wind_disagreement;
+                outcome.ducking_disagreement_frames = ducking_disagreement;
                 outcome.error = Some(format!("frame offset {offset}: {error}"));
                 return outcome;
             }
@@ -1367,6 +1558,8 @@ fn replay(
     outcome.geometric_ground_diff = geometric_ground_diff;
     outcome.freeze_disagreement_frames = freeze_disagreement;
     outcome.first_freeze_disagreement = first_freeze_disagreement;
+    outcome.wind_disagreement_frames = wind_disagreement;
+    outcome.ducking_disagreement_frames = ducking_disagreement;
     outcome
 }
 
@@ -1405,6 +1598,8 @@ fn simulate_segment(
         geometric_ground_diff_frames: outcome.geometric_ground_diff,
         freeze_disagreement_frames: outcome.freeze_disagreement_frames,
         first_freeze_disagreement_offset: outcome.first_freeze_disagreement,
+        wind_disagreement_frames: outcome.wind_disagreement_frames,
+        ducking_disagreement_frames: outcome.ducking_disagreement_frames,
         remainder_probe: None,
         dump: outcome.dump,
     };
@@ -1787,6 +1982,14 @@ fn run() -> Result<(), String> {
             input: record.input,
             state_name: record.state,
             fields: record.p,
+            wind: pair_field(record.wind.as_ref()),
+            wind_target: pair_field(record.wind_target.as_ref()),
+            wind_pattern: record.wind_pattern,
+            transitioning: record.transitioning,
+            freeze_timer: record.freeze_timer,
+            ducking: record.ducking,
+            collider: quad_field(record.collider.as_ref()),
+            inventory: record.inventory,
         });
 
         if args.limit_segments.is_some_and(|limit| processed >= limit) {
@@ -2010,6 +2213,8 @@ fn finish_segment(
                 geometric_ground_diff_frames: 0,
                 freeze_disagreement_frames: 0,
                 first_freeze_disagreement_offset: None,
+                wind_disagreement_frames: 0,
+                ducking_disagreement_frames: 0,
                 remainder_probe: None,
                 dump: Vec::new(),
             },

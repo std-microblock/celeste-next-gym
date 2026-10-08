@@ -9003,7 +9003,16 @@ fn apply_wind_movement(p: &mut PlayerSnapshot, map: &Map) {
     if move_x != 0.0 && p.state != PlayerState::Climb {
         let shield_x = p.pos.x - move_x.signum() * WIND_WALL_DISTANCE;
         if !map.solid_at(current_player_rect(p, shield_x, p.pos.y)) {
-            if p.ducking && p.on_ground {
+            // Player.WindMove gates the horizontal push on `Ducking && onGround`
+            // (Player.cs:3095), and that `onGround` is the source-private field
+            // Player.Update writes behind its `Speed.Y >= 0f` probe (Player.cs:1499-1526),
+            // not `Actor.OnGround()`. WindController.Update runs before Player.Update in
+            // the frame, so the value it reads is the previous frame's probe: exactly
+            // PlayerSnapshot::player_on_ground at this point in step() (it is refreshed
+            // later, in the Player.Update mirror). The geometric `p.on_ground` is a
+            // different quantity and made the simulator drop a wind push the game applied
+            // while the player was rising off a ledge with the duck collider active.
+            if p.ducking && p.player_on_ground {
                 move_x = 0.0;
             }
             move_axis_amount(p, map, true, move_x);

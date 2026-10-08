@@ -50,6 +50,12 @@ public static class TasFrameTrace {
     private static readonly StringBuilder sb = new(8192);
     private static readonly List<FieldInfo> playerFields = new();
     private static Type? fieldsType;
+    // `Celeste.Level.windController` (Level.cs:101) and the WindController's own
+    // `targetSpeed`/`pattern` (WindController.cs:45-47) are all private fields, so
+    // reflection is the only reader. Cached because the write path is per frame.
+    private static FieldInfo? windControllerField;
+    private static FieldInfo? windTargetField;
+    private static FieldInfo? windPatternField;
 
     // "TasFrameTrace"
     // "TasFrameTrace Path"
@@ -183,6 +189,12 @@ public static class TasFrameTrace {
                 AppendString(PlayerStates.GetCurrentStateName(player));
                 AppendPlayerFields(player);
             }
+
+            // Append-only tail. Every key added here is new and lands *after* all
+            // pre-existing keys of the `Level` branch, so no earlier key moves and
+            // no earlier key changes meaning; readers of the older traces are
+            // unaffected because they ignore unknown top-level keys.
+            AppendLevelTail(level, player);
         } else if (Engine.Scene is Overworld overworld) {
             sb.Append(",\"scene\":");
             AppendString($"Overworld {(overworld.Current ?? overworld.Next).GetType().Name}");
@@ -222,6 +234,138 @@ public static class TasFrameTrace {
         sb.Append(",\"feather\":");
         AppendVector(CelesteInput.Feather.Value);
         sb.Append('}');
+    }
+
+    /// <summary>
+    /// Scene-, engine-, session- and computed-property state that lives outside the
+    /// player's declared field base chain, so <see cref="AppendPlayerFields"/> cannot
+    /// see it. Emitted at the end of the `Level` branch only.
+    /// </summary>
+    private static void AppendLevelTail(Level level, Player? player) {
+        // Celeste.Level.Wind (Level.cs:149). WindController.Update rewrites it every
+        // frame with `Calc.Approach(level.Wind, targetSpeed, 1000f * Engine.DeltaTime)`
+        // (WindController.cs:194) and then displaces every WindMover component by
+        // `level.Wind * 0.1f * Engine.DeltaTime` (WindController.cs:201). The Player
+        // owns one of those components (Player.cs:1180), so this value is a physical
+        // per-frame displacement the player snapshot cannot otherwise recover.
+        sb.Append(",\"wind\":");
+        AppendVector(level.Wind);
+
+        // Celeste.Level.WindSine / WindSineTimer (Level.cs:151-153). Visual only, but
+        // exported so the ramp can be followed without guessing.
+        sb.Append(",\"windSine\":");
+        AppendFloat(level.WindSine);
+        sb.Append(",\"windSineTimer\":");
+        AppendFloat(level.WindSineTimer);
+
+        // Celeste.Level.Transitioning => `transition != null` (Level.cs:221). While it
+        // is true `Level.Update` runs the transition coroutine and `Player.Update`
+        // never runs, which is why the head of every room segment is a stale window.
+        sb.Append(",\"transitioning\":").Append(level.Transitioning ? "true" : "false");
+
+        // Monocle.Engine.FreezeTimer (Monocle/Engine.cs:28). While positive,
+        // `Engine.Update` only decrements it and skips `Scene.Update` entirely
+        // (Engine.cs:266-269), so the frame is a stale copy of the previous one.
+        sb.Append(",\"freezeTimer\":");
+        AppendFloat(Engine.FreezeTimer);
+
+        AppendWindController(level);
+
+        // Celeste.Session.Inventory is a `PlayerInventory` struct (Session.cs:35,
+        // PlayerInventory.cs:6-36). `Session.Level` and `Session.Deaths` already have
+        // their own keys above (`room`, `deaths`).
+        AppendInventory(level);
+
+        if (player == null) {
+            return;
+        }
+
+        // Player.Ducking is a computed property over `Entity.Collider`
+        // (Player.cs:1005-1028), not a declared field, so `p` never carries it and the
+        // anchors can hold the 11 px normal hitbox where the game has the 6 px
+        // duck hitbox.
+        sb.Append(",\"ducking\":").Append(player.Ducking ? "true" : "false");
+
+        // `Monocle.Entity.Collider` (Monocle/Entity.cs:73), read through
+        // `Collider.AbsoluteLeft/AbsoluteTop/Width/Height` (Monocle/Collider.cs:229,
+        // 205, 12, 14) so the active hitbox is exported exactly, in world pixels.
+        sb.Append(",\"collider\":");
+        AppendCollider(player.Collider);
+    }
+
+    /// <summary>
+    /// `Celeste.Level.windController` (Level.cs:101) with its private `targetSpeed`
+    /// and `pattern` fields (WindController.cs:45-47). The target is what
+    /// `WindController.Update` ramps `Level.Wind` toward, so a replayed room segment
+    /// cannot reconstruct it from `Level.Wind` alone. Both keys are `null` when the
+    /// level has no WindController or the fields cannot be read.
+    /// </summary>
+    private static void AppendWindController(Level level) {
+        object? controller = null;
+        try {
+            windControllerField ??= typeof(Level).GetField(
+                "windController",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            controller = windControllerField?.GetValue(level);
+        } catch {
+            controller = null;
+        }
+
+        Vector2? target = null;
+        long? pattern = null;
+        if (controller != null) {
+            Type type = controller.GetType();
+            try {
+                windTargetField ??= type.GetField("targetSpeed", BindingFlags.Instance | BindingFlags.NonPublic);
+                windPatternField ??= type.GetField("pattern", BindingFlags.Instance | BindingFlags.NonPublic);
+                if (windTargetField?.GetValue(controller) is Vector2 value) {
+                    target = value;
+                }
+
+                if (windPatternField?.GetValue(controller) is Enum enumValue) {
+                    pattern = Convert.ToInt64(enumValue, CultureInfo.InvariantCulture);
+                }
+            } catch {
+                // Leave both null: an unreadable target must not corrupt the row.
+            }
+        }
+
+        sb.Append(",\"windTarget\":");
+        if (target.HasValue) {
+            AppendVector(target.Value);
+        } else {
+            sb.Append("null");
+        }
+
+        sb.Append(",\"windPattern\":");
+        sb.Append(pattern?.ToString(CultureInfo.InvariantCulture) ?? "null");
+    }
+
+    private static void AppendInventory(Level level) {
+        PlayerInventory inventory = level.Session.Inventory;
+        sb.Append(",\"inventory\":{");
+        sb.Append("\"Dashes\":").Append(inventory.Dashes.ToString(CultureInfo.InvariantCulture));
+        AppendBoolField("DreamDash", inventory.DreamDash);
+        AppendBoolField("Backpack", inventory.Backpack);
+        AppendBoolField("NoRefills", inventory.NoRefills);
+        sb.Append('}');
+    }
+
+    private static void AppendCollider(Collider? collider) {
+        if (collider == null) {
+            sb.Append("null");
+            return;
+        }
+
+        sb.Append('[');
+        AppendFloat(collider.AbsoluteLeft);
+        sb.Append(',');
+        AppendFloat(collider.AbsoluteTop);
+        sb.Append(',');
+        AppendFloat(collider.Width);
+        sb.Append(',');
+        AppendFloat(collider.Height);
+        sb.Append(']');
     }
 
     private static void AppendPlayerFields(Player player) {
