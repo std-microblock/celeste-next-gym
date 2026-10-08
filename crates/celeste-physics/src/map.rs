@@ -130,6 +130,13 @@ pub enum EntityKind {
     /// refuses the grab instead of driving it (`WallBooster.cs:42`, `:85-101`;
     /// `ClimbBlocker.cs:28-38`).
     WallBooster,
+    /// Vanilla `Celeste.CoreModeToggle : Entity` (`CoreModeToggle.cs:6`), the Core's ice/fire
+    /// switch. Not a `Solid`: a `Hitbox(16f, 24f, -8f, -12f)` (`CoreModeToggle.cs:46`) that flips
+    /// `Level.CoreMode` when the player's hurtbox touches it (`:103-126`). `direction.x` is
+    /// `onlyFire` and `direction.y` `onlyIce`, the `Usable` gate (`:24-38`); `single_use` is
+    /// `persistent`, which decides whether the flip is also written back to `Session.CoreMode`
+    /// (`:117-120`).
+    CoreModeToggle,
     /// Simulator-native constant-velocity Solid used to exercise Monocle
     /// carrying, pushing, and Player LiftSpeed inheritance independently of a
     /// specific vanilla entity state machine.
@@ -989,6 +996,25 @@ pub(crate) fn encode_celeste_rooms(
                     ],
                     vec![],
                 )),
+                // `CoreModeToggle`'s box is centred on the entity position, so re-encode the
+                // position it was decoded from and let the constructor re-apply the offset.
+                EntityKind::CoreModeToggle => Some(element(
+                    "coreModeToggle",
+                    [
+                        ("id", BinaryValue::Int(id)),
+                        (
+                            "onlyFire",
+                            BinaryValue::Bool(entity.direction.x != 0.0),
+                        ),
+                        ("onlyIce", BinaryValue::Bool(entity.direction.y != 0.0)),
+                        ("originX", BinaryValue::Int(8)),
+                        ("originY", BinaryValue::Int(8)),
+                        ("persistent", BinaryValue::Bool(entity.single_use)),
+                        ("x", BinaryValue::Int(x + 8)),
+                        ("y", BinaryValue::Int(y + 12)),
+                    ],
+                    vec![],
+                )),
                 // Re-encode the conveyor at the entity-data position the decoder
                 // started from: a left strip already sits on it, a right one was
                 // shifted six pixels by `WallBooster`'s own collider.
@@ -1434,6 +1460,7 @@ fn map_from_binary_inner(
                 "crushBlock" => EntityKind::CrushBlock,
                 "dashBlock" => EntityKind::DashBlock,
                 "wallBooster" => EntityKind::WallBooster,
+                "coreModeToggle" => EntityKind::CoreModeToggle,
                 "celesteGymMovingSolid" => EntityKind::MovingSolid,
                 _ => registered.map_or(EntityKind::Unknown, |entry| entry.kind),
             };
@@ -1671,6 +1698,27 @@ fn map_from_binary_inner(
                             },
                         ),
                     ),
+                    // `CoreModeToggle(EntityData data, Vector2 offset) : this(data.Position + offset,
+                    // data.Bool("onlyFire"), data.Bool("onlyIce"), data.Bool("persistent"))`
+                    // (`CoreModeToggle.cs:53-54`). The constructor installs
+                    // `new Hitbox(16f, 24f, -8f, -12f)` (`:46`), a 16x24 box centred on the entity
+                    // position, `direction.x`/`direction.y` carry `onlyFire`/`onlyIce` for the
+                    // `Usable` gate (`:24-38`) and `single_use` carries `persistent`.
+                    "coreModeToggle" => (
+                        Rect::new(ex - 8.0, ey - 12.0, 16.0, 24.0),
+                        Vec2::new(
+                            if attr_bool(el, "onlyFire", false) {
+                                1.0
+                            } else {
+                                0.0
+                            },
+                            if attr_bool(el, "onlyIce", false) {
+                                1.0
+                            } else {
+                                0.0
+                            },
+                        ),
+                    ),
                     // `WallBooster(EntityData data, Vector2 offset) : this(data.Position +
                     // offset, data.Height, data.Bool("left"), data.Bool("notCoreMode"))`
                     // (`WallBooster.cs:47-50`). The constructor (`WallBooster.cs:24-39`)
@@ -1776,6 +1824,7 @@ fn map_from_binary_inner(
                 single_use: match kind {
                     EntityKind::RisingLava => attr_bool(el, "intro", false),
                     EntityKind::Refill => attr_bool(el, "oneUse", false),
+                    EntityKind::CoreModeToggle => attr_bool(el, "persistent", false),
                     _ => attr_bool(el, "singleUse", false),
                 },
                 nodes: el

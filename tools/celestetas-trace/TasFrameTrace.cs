@@ -349,6 +349,18 @@ public static class TasFrameTrace {
         sb.Append(",\"coreMode\":")
             .Append(((int) level.Session.CoreMode).ToString(CultureInfo.InvariantCulture));
 
+        // Celeste.Level.CoreMode (Level.cs:296-323), the field the Core mechanics actually read:
+        // the ice factor, `WallBooster.IceMode` and every `CoreModeListener` go through
+        // `level.CoreMode`, not `Session.CoreMode`. The two are separate fields - `Level.cs:426`
+        // copies Session into Level when a room loads and `Level.cs:1488` copies Level back into
+        // Session on a transition - so a room can legitimately hold a Level value that disagrees
+        // with the Session one, and in `9-Core|1|b-03` the game grabs a wall flush against a
+        // `WallBooster` in a room whose Session mode is Cold, which cannot happen while that
+        // booster's own `ClimbBlocker` is blocking (`WallBooster.cs:42`, `:77-101`). Exported
+        // separately so the simulator can pick the one the source reads.
+        sb.Append(",\"levelCoreMode\":")
+            .Append(((int) level.CoreMode).ToString(CultureInfo.InvariantCulture));
+
         // Celeste.Session.Inventory is a `PlayerInventory` struct (Session.cs:35,
         // PlayerInventory.cs:6-36). `Session.Level` and `Session.Deaths` already have
         // their own keys above (`room`, `deaths`).

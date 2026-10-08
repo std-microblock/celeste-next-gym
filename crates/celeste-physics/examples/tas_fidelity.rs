@@ -217,12 +217,20 @@ struct Record {
     freeze_timer: Option<f64>,
     /// `Player.Ducking` (`Player.cs:1005-1028`), a computed `Entity.Collider` property.
     ducking: Option<bool>,
-    /// `Celeste.Session.CoreMode` (`Session.cs:22-27,111`), i.e. `Level.Session.CoreMode`
-    /// as read by `Player.NormalUpdate` (`Player.cs:3681-3684`). Session state on
-    /// `Level.Session`, not a `Player` field, so the reflection dump cannot carry
+    /// `Celeste.Session.CoreMode` (`Session.cs:22-27,111`), i.e. `Level.Session.CoreMode`.
+    /// Session state on `Level.Session`, not a `Player` field, so the reflection dump cannot carry
     /// it. Workstream W8 adds the key; the traces in use do not have it yet.
     #[serde(rename = "coreMode")]
     core_mode: Option<i64>,
+    /// `Celeste.Level.CoreMode` (`Level.cs:296-323`), the field the Core mechanics actually read:
+    /// `Player.NormalUpdate`'s ice factor (`Player.cs:3681-3684`), `WallBooster.IceMode`
+    /// (`WallBooster.cs:77-101`) and every `CoreModeListener` go through `level.CoreMode`, not
+    /// `Session.CoreMode`. They are separate fields (`Level.cs:426` copies Session into Level at
+    /// room load, `Level.cs:1488` copies Level back into Session on a transition), so a room can
+    /// legitimately disagree - measured in `9-Core|1|b-03`, where the game grabs a wall flush
+    /// against a `WallBooster` in a room whose Session mode is Cold. When present this key wins.
+    #[serde(rename = "levelCoreMode")]
+    level_core_mode: Option<i64>,
     /// The active collider as `[absoluteLeft, absoluteTop, width, height]`
     /// (`Monocle/Collider.cs:229,205,12,14`).
     collider: Option<Vec<f64>>,
@@ -519,8 +527,9 @@ const DERIVED_FIELDS: &[(&str, &str)] = &[
     ("ducking", "top-level `ducking` (`Player.Ducking`, `Player.cs:1005-1028`). A computed property over `Monocle.Entity.Collider` (`Monocle/Entity.cs:73`), so it is not a declared field; the exporter also writes the active collider as `collider` = `[absoluteLeft, absoluteTop, width, height]` (`Monocle/Collider.cs:229,205,12,14`)."),
     ("freeze_timer", "top-level `freezeTimer` (`Monocle.Engine.FreezeTimer`, `Monocle/Engine.cs:28`). While positive `Engine.Update` only decrements it and skips `Scene.Update` entirely (`Engine.cs:266-269`); the exporter writes the post-decrement value, which is exactly the snapshot state `Simulator::step` reads at the top of the next frame."),
     ("can_dream_dash", "top-level `inventory.DreamDash` (`Celeste.Session.Inventory`, `Session.cs:35`, `PlayerInventory.cs:24`). `Player.Inventory` forwards it (`Player.cs:956-966`) and the source reads it at `Player.cs:3420` and `4500`; restoring it removes the need to infer the flag from `dreamDashCanEndTimer`."),
-    ("core_mode", "top-level `coreMode` (`Celeste.Session.CoreMode`, `Session.cs:111`; `None = 0, Hot = 1, Cold = 2` per `Session.cs:22-27`). Session state, so the base-chain dump cannot see it; the Core's ice factor (`Player.cs:3681-3684`, `if (onGround && level.CoreMode == Cold) num2 *= 0.3f`) and the `CoreModeListener` entities read it. Without it every Core room replays as `CoreMode::None`."),
+    ("core_mode", "top-level `levelCoreMode` (`Celeste.Level.CoreMode`, `Session.cs:22-27` for the enum; `None = 0, Hot = 1, Cold = 2`). This is the field the Core mechanics read - the ice factor (`Player.cs:3681-3684`), `WallBooster.IceMode` (`WallBooster.cs:77-101`) and every `CoreModeListener` - and it is `Level`'s own field, copied from and back to `Session.CoreMode` at room load and transition (`Level.cs:426`, `:1488`). The older `coreMode` key carries `Session.CoreMode`, which is not always the same value; `levelCoreMode` wins when the exporter writes it."),
     ("wall_boosting", "`Player.wallBoosting` (`Player.cs:3100`) is private, so `Celeste.Player`'s declared-field dump cannot see it. `Simulator::climb_update` derives it from the room's `WallBooster` set exactly as `Player.ClimbUpdate` does (`Player.cs:3154-3167` on, `3168-3170` off), and it is only read by the \"climbed over the ledge\" branch (`Player.cs:3140-3149`)."),
+    ("core_mode_toggle_cooldowns", "`CoreModeToggle.cooldownTimer` (`CoreModeToggle.cs:12`) is per-entity room state, not `Player` state, so nothing in the trace carries it. `initialize_core_mode_toggles` sizes one slot per decoded `coreModeToggle` in map order and `advance_core_mode_toggles` counts each down after `Player.Update`, matching the entity's depth 2000 (`CoreModeToggle.cs:50`)."),
 ];
 
 /// Fields with no ground-truth source anywhere in the trace.
@@ -1629,16 +1638,18 @@ fn replay(
             .unavailable
             .push("can_dream_dash: the trace row has no `Session.Inventory.DreamDash`".to_owned()),
     }
-    // `Celeste.Session.CoreMode` (`Session.cs:111`) is the session's chapter-9 mode; the Core's ice
-    // factor (`Player.cs:3681-3684`) and the `CoreModeListener` entities read it. It is not a
-    // `Player` field, so the base-chain dump cannot see it and the simulator would otherwise replay
-    // every Core room with `CoreMode::None`.
+    // `Celeste.Level.CoreMode` (`Level.cs:296-323`) is what the Core mechanics read: the ice factor
+    // (`Player.cs:3681-3684`), `WallBooster.IceMode` (`WallBooster.cs:77-101`) and every
+    // `CoreModeListener`. `Frame::core_mode` therefore carries `levelCoreMode` when the exporter
+    // wrote it and falls back to the older `coreMode` (`Session.CoreMode`) key, which is not always
+    // the same value. Neither is a `Player` field, so the base-chain dump cannot see them and the
+    // simulator would otherwise replay every Core room with `CoreMode::None`.
     if let Some(core_mode) = anchor.core_mode {
         snapshot.core_mode = core_mode;
     } else {
         outcome
             .unavailable
-            .push("core_mode: the trace row has no `Session.CoreMode`".to_owned());
+            .push("core_mode: the trace row has no `Level.CoreMode`".to_owned());
     }
     // `Level.InSpace` is exported (`inSpace`) but deliberately not restored: there is no
     // `PlayerSnapshot::in_space` and `map.rs` does not decode the `.bin` level element's `space`
@@ -2201,6 +2212,10 @@ struct Args {
     probe_frames: usize,
     /// `sid|mode|room|startRow` of one segment to dump frame by frame.
     dump_segment: Option<String>,
+    /// Diagnostic: read the older `coreMode` (`Session.CoreMode`) key instead of `levelCoreMode`
+    /// (`Level.CoreMode`). The two disagree on 3,641 Level rows of the 100% trace, so this isolates
+    /// the effect of choosing the field the source actually reads without re-running the game.
+    session_core_mode: bool,
 }
 
 fn parse_args() -> Result<Args, String> {
@@ -2215,6 +2230,7 @@ fn parse_args() -> Result<Args, String> {
     let mut probe_remainder = 0usize;
     let mut probe_frames = 200usize;
     let mut dump_segment = None;
+    let mut session_core_mode = false;
 
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
@@ -2264,12 +2280,13 @@ fn parse_args() -> Result<Args, String> {
                     .map_err(|error| format!("--probe-frames: {error}"))?
             }
             "--dump-segment" => dump_segment = Some(value("--dump-segment")?),
+            "--session-core-mode" => session_core_mode = true,
             "-h" | "--help" => {
                 println!(
                     "usage: tas_fidelity --trace <jsonl> --maps <dir> --out <report.json> \
                      [--min-frames 1] [--limit-segments N] [--max-frames N] [--rooms a,b] \
                      [--probe-remainder N] [--probe-frames N] [--dump-segment sid|mode|room|startRow] \
-                     [--dump-field-map]"
+                     [--session-core-mode] [--dump-field-map]"
                 );
                 std::process::exit(0);
             }
@@ -2290,6 +2307,7 @@ fn parse_args() -> Result<Args, String> {
             probe_remainder,
             probe_frames,
             dump_segment,
+            session_core_mode,
         });
     }
 
@@ -2305,6 +2323,7 @@ fn parse_args() -> Result<Args, String> {
         probe_remainder,
         probe_frames,
         dump_segment,
+        session_core_mode,
     })
 }
 
@@ -2485,7 +2504,12 @@ fn run() -> Result<(), String> {
             ducking: record.ducking,
             collider: quad_field(record.collider.as_ref()),
             inventory: record.inventory,
-            core_mode: record.core_mode.and_then(core_mode_from_int),
+            core_mode: if args.session_core_mode {
+                record.core_mode
+            } else {
+                record.level_core_mode.or(record.core_mode)
+            }
+            .and_then(core_mode_from_int),
             in_space: record.in_space,
             deaths: record.deaths,
             level_time: record.level_time,

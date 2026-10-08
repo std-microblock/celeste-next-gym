@@ -46,6 +46,9 @@ const DASH_COOLDOWN: f32 = 0.2;
 const DASH_ATTACK_TIME: f32 = 0.3;
 /// `Celeste.Freeze(0.05f)` in `Player.DashBegin` (`Player.cs:4282-4285`).
 const DASH_FREEZE_TIME: f32 = 0.05;
+/// `Celeste.Freeze(0.05f)` from `CoreModeToggle.OnPlayer` (`CoreModeToggle.cs:123`),
+/// the same 0.05 s hold a dash uses but raised by a different mechanic.
+const CORE_TOGGLE_FREEZE_TIME: f32 = 0.05;
 const DASH_CORNER_CORRECTION: i32 = 4;
 /// `Player.cs:1791` probes `Position + Vector2.UnitY * 3f` for the dash's
 /// downward corner close.
@@ -262,6 +265,7 @@ impl Simulator {
         initialize_camera(&mut snapshot, &runtime_map);
         initialize_seekers(&mut snapshot, &mut runtime_map);
         initialize_temple_gates(&mut snapshot, &mut runtime_map);
+        initialize_core_mode_toggles(&mut snapshot, &runtime_map);
         initialize_cassette_blocks(&mut snapshot, &mut runtime_map);
         initialize_spinners(&mut snapshot, &mut runtime_map);
         initialize_bumpers(&mut snapshot, &mut runtime_map);
@@ -3762,6 +3766,27 @@ fn initialize_temple_gates(p: &mut PlayerSnapshot, map: &mut Map) {
     }
 }
 
+fn initialize_core_mode_toggles(p: &mut PlayerSnapshot, map: &Map) {
+    let count = map
+        .entities
+        .iter()
+        .filter(|entity| entity.kind == EntityKind::CoreModeToggle)
+        .count();
+    p.core_mode_toggle_cooldowns.clear();
+    p.core_mode_toggle_cooldowns.resize(count, 0.0);
+}
+
+/// `CoreModeToggle.Update` (`CoreModeToggle.cs:128-135`): the cooldown only ever
+/// counts down while it is positive, and the entity's depth 2000 (`:50`) puts its
+/// `Update` after `Player.Update` in the same frame.
+fn advance_core_mode_toggles(p: &mut PlayerSnapshot) {
+    for cooldown in &mut p.core_mode_toggle_cooldowns {
+        if *cooldown > 0.0 {
+            *cooldown -= p.frame_delta_time;
+        }
+    }
+}
+
 fn hit_theo_spring(theo: &mut crate::TheoCrystalSnapshot, map: &Map) {
     if theo.held {
         return;
@@ -5167,6 +5192,9 @@ fn advance_post_player_entities(
         p.booster_reuse_timer = p.booster_reuse_timer.max(1.0);
     }
     advance_zip_movers(p, map, attachments);
+    // `CoreModeToggle` has depth 2000 (`CoreModeToggle.cs:50`), so its own `Update` - the only
+    // place its cooldown moves - runs after `Player.Update` in the same frame.
+    advance_core_mode_toggles(p);
     advance_bounce_blocks(p, map);
     advance_move_blocks(p, map, input, attachments);
     advance_falling_blocks(p, map, attachments);
@@ -8142,34 +8170,35 @@ fn super_wall_jump_angle_check(p: &PlayerSnapshot) -> bool {
 
 /// `ClimbBlocker.Check` (`ClimbBlocker.cs:28-38`) over every component the
 /// simulator's entity set can carry. Only `InvisibleBarrier`
-/// (`InvisibleBarrier.cs:15`) and `WallBooster` (`WallBooster.cs:42`) add one.
+/// (`InvisibleBarrier.cs:15`) and `WallBooster` (`WallBooster.cs:42`) add one:
+/// the barrier is always blocking, the booster only in `IceMode`
+/// (`WallBooster.cs:85-101`, `notCoreMode` or a Cold `Level.CoreMode`), where the
+/// strip refuses the grab and drives `ClimbUpdate` into `trySlip`.
 ///
-/// `WallBooster` is deliberately left out, even though `WallBooster.cs:85-101`
-/// makes its own `ClimbBlocker(edge: false)` `Blocking` in `IceMode`
-/// (`notCoreMode`, or a room whose `Level.CoreMode` is Cold), where the strip
-/// should refuse the grab and drive `ClimbUpdate` into `trySlip` instead.
-/// Modelled, that costs **2 regressions and 526 replayed frames** on
-/// `trace-100pct-v4` (`9-Core|1|b-03` and `9-Core|0|d-03`, both -6 frames), and
-/// the reason is a real discrepancy worth resolving rather than a detail:
-/// `9-Core|1|b-03` reports `Session.CoreMode = Cold` in the trace, and the game
-/// still grabs a wall flush against a booster there. So either `Level.CoreMode`
-/// - which is what `WallBooster` actually reads, through
-/// `Level.cs:302-323`/`:426` - disagrees with the traced `Session.CoreMode`, or
-/// the overlap needs the exact `ClimbCheck` probe, which uses
-/// `Position + UnitX * 2 * Facing` for the blocker but `dir * 2` for the solid
-/// (`Player.ClimbCheck`). `Entity.direction.y` keeps the decoded `notCoreMode`
-/// flag (`map.rs`), so finishing this needs no re-decode.
+/// This arm only works because `PlayerSnapshot::core_mode` carries
+/// `Level.CoreMode` rather than `Session.CoreMode`: read as the session value it
+/// cost 526 replayed frames and regressed two 9H-Core segments, because
+/// `9-Core|1|b-03` reports a Cold *session* while the game happily grabs a wall
+/// flush against a booster - which cannot happen while that booster blocks.
+/// `Level.CoreMode` disagrees with the session value on 3,641 Level rows of the
+/// 100% trace, in both directions.
 fn climb_blocker_check(p: &PlayerSnapshot, map: &Map, x_add: f32, y_add: f32) -> bool {
     let player = current_player_rect(p, p.pos.x + x_add, p.pos.y + y_add);
-    map.entities
-        .iter()
-        .any(|entity| entity.kind == EntityKind::InvisibleBarrier && entity.bounds.intersects(player))
+    map.entities.iter().any(|entity| match entity.kind {
+        EntityKind::InvisibleBarrier => entity.bounds.intersects(player),
+        EntityKind::WallBooster => {
+            wall_booster_ice_mode(p, entity) && entity.bounds.intersects(player)
+        }
+        _ => false,
+    })
 }
 
 /// `WallBooster.IceMode` (`WallBooster.cs:74-101`): a `notCoreMode` booster is
-/// always icy, otherwise the room's `Level.CoreMode` decides. Kept because
-/// `climb_blocker_check` documents why it is not wired in yet.
-#[allow(dead_code)]
+/// always icy, otherwise `Level.CoreMode` decides. `p.core_mode` carries
+/// `Level.CoreMode`, not `Session.CoreMode` - the two disagree on 3,641 Level
+/// rows of the 100% trace, and the game's own behaviour there (a grab of a wall
+/// flush against a booster in a room whose *session* mode is Cold) is what proves
+/// which one the entity reads.
 fn wall_booster_ice_mode(p: &PlayerSnapshot, entity: &crate::Entity) -> bool {
     entity.direction.y != 0.0 || p.core_mode == crate::CoreMode::Cold
 }
@@ -8657,6 +8686,7 @@ fn interact(
     let mut sandwich_lava_index = 0usize;
     let mut bumper_index = 0usize;
     let mut refill_index = 0usize;
+    let mut core_toggle_index = 0usize;
     for (entity_index, entity) in map.entities.iter().enumerate() {
         let current_bumper = (entity.kind == EntityKind::Bumper).then(|| {
             let index = bumper_index;
@@ -8721,6 +8751,10 @@ fn interact(
                 | EntityKind::Killbox
                 | EntityKind::Booster
                 | EntityKind::RedBooster
+                // `CoreModeToggle` adds a bare `new PlayerCollider(OnPlayer)`
+                // (`CoreModeToggle.cs:48`), so its overlap test is one of the callbacks that
+                // sees the live hurtbox rather than the taller hitbox.
+                | EntityKind::CoreModeToggle
         ) {
             current_player_hurt_rect(p)
         } else {
@@ -8822,6 +8856,35 @@ fn interact(
                 return;
             }
             EntityKind::Water => {}
+            EntityKind::CoreModeToggle => {
+                // `CoreModeToggle.OnPlayer` (`CoreModeToggle.cs:103-126`): `Usable` is
+                // `(!onlyFire || iceMode) && (!onlyIce || !iceMode)` (`:24-38`) with the toggle's own
+                // `iceMode` mirroring `Level.CoreMode` through its `CoreModeListener` (`:65-69`), and
+                // a flip is refused for one second after the previous one (`:105`, `:124`).
+                let slot = core_toggle_index;
+                core_toggle_index += 1;
+                let ice = p.core_mode == crate::CoreMode::Cold;
+                let only_fire = entity.direction.x != 0.0;
+                let only_ice = entity.direction.y != 0.0;
+                let usable = (!only_fire || ice) && (!only_ice || !ice);
+                if usable
+                    && p.core_mode_toggle_cooldowns
+                        .get(slot)
+                        .is_some_and(|cooldown| *cooldown <= 0.0)
+                {
+                    p.core_mode_toggle_cooldowns[slot] = 1.0;
+                    p.core_mode = if ice {
+                        crate::CoreMode::Hot
+                    } else {
+                        crate::CoreMode::Cold
+                    };
+                    // `Celeste.Freeze(0.05f)` (`CoreModeToggle.cs:123`) raises
+                    // `Engine.FreezeTimer` only when it is currently smaller.
+                    if p.freeze_timer < CORE_TOGGLE_FREEZE_TIME {
+                        p.freeze_timer = CORE_TOGGLE_FREEZE_TIME;
+                    }
+                }
+            }
             EntityKind::Booster | EntityKind::RedBooster
                 if !matches!(
                     p.state,
@@ -9574,6 +9637,7 @@ fn load_transition_room(
     initialize_clouds(p, map);
     initialize_seekers(p, map);
     initialize_temple_gates(p, map);
+    initialize_core_mode_toggles(p, map);
     initialize_cassette_blocks(p, map);
     initialize_spinners(p, map);
     initialize_bumpers(p, map);
@@ -13850,6 +13914,66 @@ mod tests {
         let last = trace.states.last().unwrap();
         assert!(last.speed.y < WALL_BOOSTER_LIFT_SPEED);
         assert_eq!(lift_speed(last).y, WALL_BOOSTER_LIFT_SPEED);
+    }
+    /// `CoreModeToggle.OnPlayer` (`CoreModeToggle.cs:103-126`): when the player's
+    /// hurtbox touches the switch and it is `Usable` (`:24-38`) it flips
+    /// `Level.CoreMode`, freezes the engine for 0.05 s and refuses to fire again for
+    /// one second.
+    #[test]
+    fn core_mode_toggle_flips_level_mode_then_cools_down() {
+        let map_with = |direction: Vec2| Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
+            solids: vec![Rect::new(0.0, 100.0, 320.0, 84.0)],
+            entities: vec![crate::Entity {
+                kind: EntityKind::CoreModeToggle,
+                bounds: Rect::new(28.0, 52.0, 16.0, 24.0),
+                direction,
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "coreModeToggle".to_owned(),
+            }],
+            ..Map::default()
+        };
+        // The vanilla `9-Core|0|d-03` switch is `onlyFire`, so only an icy room may use it.
+        let only_fire = map_with(Vec2::new(1.0, 0.0));
+        let always = map_with(Vec2::default());
+        let player = |core_mode| PlayerSnapshot {
+            pos: Vec2::new(36.0, 68.0),
+            core_mode,
+            ..PlayerSnapshot::default()
+        };
+        let inputs = [InputState::default(); 10];
+
+        let from_cold = simulate_trace(player(crate::CoreMode::Cold), &inputs, &only_fire, 10).unwrap();
+        assert_eq!(from_cold.states[1].core_mode, crate::CoreMode::Hot);
+        assert!(from_cold.states[1].freeze_timer > 0.0);
+        assert!(
+            from_cold.states[1].core_mode_toggle_cooldowns[0] > 0.9,
+            "the flip re-arms the one-second cooldown: {:?}",
+            from_cold.states[1].core_mode_toggle_cooldowns
+        );
+        assert_eq!(from_cold.states[10].core_mode, crate::CoreMode::Hot);
+
+        // `onlyFire` while already Hot: not usable, so nothing happens at all.
+        let from_hot = simulate_trace(player(crate::CoreMode::Hot), &inputs, &only_fire, 10).unwrap();
+        assert_eq!(from_hot.states[10].core_mode, crate::CoreMode::Hot);
+        assert_eq!(from_hot.states[10].core_mode_toggle_cooldowns[0], 0.0);
+
+        // A switch that is always usable still may not flip back while its cooldown runs:
+        // the flip lands on frame 1, the 0.05 s freeze skips the next frames, and the
+        // cooldown (one second) then refuses the re-flip that would otherwise turn it Cold
+        // again on the first frame Player.Update resumes.
+        let always_usable = simulate_trace(player(crate::CoreMode::Cold), &inputs, &always, 10).unwrap();
+        assert_eq!(always_usable.states[1].core_mode, crate::CoreMode::Hot);
+        assert_eq!(always_usable.states[10].core_mode, crate::CoreMode::Hot);
+        assert!(
+            always_usable.states[10].core_mode_toggle_cooldowns[0]
+                < always_usable.states[1].core_mode_toggle_cooldowns[0],
+            "the cooldown counts down once Player.Update resumes: {:?} -> {:?}",
+            always_usable.states[1].core_mode_toggle_cooldowns,
+            always_usable.states[10].core_mode_toggle_cooldowns
+        );
     }
     #[test]
     fn downward_air_dash_keeps_ducking_until_coyote_grace_expires() {

@@ -664,6 +664,10 @@ pub struct PlayerSnapshot {
     pub seekers: Vec<SeekerSnapshot>,
     /// Per-entity CloseBehindPlayerAlways TempleGate state.
     pub temple_gates: Vec<TempleGateSnapshot>,
+    /// `CoreModeToggle.cooldownTimer` (`CoreModeToggle.cs:12`, `:105`, `:124`, `:128-135`), one
+    /// entry per decoded `coreModeToggle` in map order. A toggle refuses to flip again for one
+    /// second after it fires, and its own `Update` runs after `Player.Update` in the same frame.
+    pub core_mode_toggle_cooldowns: Vec<f32>,
     /// Per-entity vanilla Refill state, in map entity order.
     pub refills: Vec<RefillSnapshot>,
     /// Per-entity vanilla FallingBlock Solid coroutine state, in map entity order.
@@ -878,6 +882,7 @@ impl Default for PlayerSnapshot {
             clouds: vec![],
             seekers: vec![],
             temple_gates: vec![],
+            core_mode_toggle_cooldowns: vec![],
             refills: vec![],
             falling_blocks: vec![],
             exit_blocks: vec![],
