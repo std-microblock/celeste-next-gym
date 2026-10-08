@@ -5,7 +5,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, extname, join, resolve } from "node:path";
-import { Canvas, GlobalFonts, Image, createCanvas, loadImage, type SKRSContext2D } from "@napi-rs/canvas";
+import { Canvas, GlobalFonts, createCanvas, loadImage, type SKRSContext2D } from "@napi-rs/canvas";
 import gifenc from "gifenc";
 import { setRenderBackend } from "../../../web/src/render/canvasBackend.ts";
 import {
@@ -89,13 +89,16 @@ export function installNodeRenderBackend(): void {
     createCanvas: (width, height) => createCanvas(width, height) as unknown as HTMLCanvasElement,
     loadImage: async (url) => (await loadImage(readFileSync(assetPath(url)))) as unknown as HTMLImageElement,
     loadJson: async (url) => JSON.parse(readFileSync(assetPath(url), "utf8")),
-    // Skia copies the whole source surface on every drawImage(canvas); a
-    // decoded Image is ~1000x faster for the cached atlases / tile layers.
-    freeze: (canvas) => {
-      const image = new Image();
-      image.src = (canvas as unknown as Canvas).toBuffer("image/png");
-      return image as unknown as HTMLCanvasElement;
-    },
+    // Deliberately no `freeze` override, so `freezeRenderCanvas` returns the
+    // canvas itself. @napi-rs/canvas decodes `Image.src = <Buffer>` on a worker
+    // thread, so a "frozen" Image built from `canvas.toBuffer("image/png")` is
+    // still blank when the next drawImage runs in the same tick: it silently
+    // erased the merged gameplay atlas and every cached tile layer, leaving
+    // background + HUD only. `Image.decode()` is async and `freeze` cannot
+    // await it. The optimisation is also worthless here — measured on
+    // @napi-rs/canvas 0.1.100, drawImage(canvas) matches drawImage(decoded
+    // Image) (~2 ms/frame for 400 blits out of a 2048x1200 atlas, with the
+    // per-frame getImageData that GIF/video encoding does).
   });
 }
 

@@ -180,8 +180,27 @@ Also: `map.start({pos, spawn, patch})`, `map.replayCandidate(spec, bindings)`, `
 exprs)`, `map.audit()`, `map.viewFor(state)`, `trace.states/inputs/final/summary()/table()/toJSON()`,
 `checkMap`, `resolveTasFile`, `parseTasLines`, `tasFramesToInputs`, `inputsToTas`,
 `SceneRenderer`, `contactSheet`, raw `simulateRaw/fuzzRaw/decodeRoom/auditMap/listRooms`.
-Script files outside a `"type":"module"` package are compiled as CommonJS — use a default
-export (as above) or name the file `.mts` if you need top-level `await`.
+
+### `cg run` scripts: name them `.mts`, or they get transpiled as CommonJS
+
+`cg run <script>` imports the file dynamically, and the script's module format comes from its
+nearest `package.json` — this repo has **no root `package.json`**, so a plain `.ts` script saved
+at the repo root or in `.tmp/` (or in any package without `"type":"module"`) is transpiled as
+**CommonJS** instead of ESM. Two things then go wrong:
+
+- Interop breaks: `import gifenc from "gifenc"` binds the default to a bare function, so
+  `GIFEncoder` is undefined → **`GIFEncoder is not a function`** (verified: the same import works
+  in a `.mts` script). Use `await import("gifenc")` if you must stay in `.ts`.
+- Dependencies load through the CommonJS require graph, so module-level state can land in a
+  *second copy* of a module: `setRenderBackend()` then configures a different renderer instance
+  than the one `gym.renderTrace` / the CLI use, and the script renders through the browser backend
+  (`document is not defined`) or draws nothing.
+
+Fix: name the script `script.mts` (or `.mjs`, or keep it inside `tools/gym-cli/`, which is
+`"type":"module"`). A default export is still the entry point:
+`export default async (gym, args) => {...}`. Reach for `.mts` whenever the script imports anything
+from the repo — a sweep script written as `.ts` whose `setRenderBackend` silently does nothing is
+a known time sink.
 
 ## Fidelity caveats (state them when reporting results)
 
@@ -201,3 +220,6 @@ export (as above) or name the file `.mts` if you need top-level `await`.
 - `player state X is parsed but not implemented` → the start/trace entered an unsupported
   state; start elsewhere or shorten the segment.
 - `ffmpeg not found` → use `.gif`/`.png`, or install ffmpeg / pass `--ffmpeg`.
+- Rendered PNG/GIF is background + HUD only (no tiles, no player) → the Node render backend must
+  not return an asynchronously-decoded `Image` from `freeze` (`web/src/render/canvasBackend.ts`);
+  `npm test` in `tools/gym-cli` has a regression test for exactly this.

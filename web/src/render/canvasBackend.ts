@@ -19,9 +19,15 @@ export interface RenderBackend {
   loadJson(url: string): Promise<unknown>;
   /**
    * Optional: convert a finished, never-again-modified offscreen canvas into
-   * the backend's fastest drawImage source. Skia-backed Node canvases copy a
-   * whole canvas surface on every `drawImage(canvas, ...)`, so the Node
-   * backend returns a decoded Image here; the browser keeps the canvas.
+   * the backend's fastest drawImage source; the browser keeps the canvas.
+   *
+   * Only implement this when the returned object is drawable *immediately and
+   * synchronously* — the very next `drawImage` runs in the same tick. A source
+   * that needs an asynchronous decode must not be returned here: e.g.
+   * `@napi-rs/canvas` decodes `Image.src = <Buffer>` on a worker thread, so an
+   * Image built from `canvas.toBuffer("image/png")` draws an empty bitmap and
+   * silently blanks the whole frame. Such a backend should leave this
+   * undefined and let `freezeRenderCanvas` return the canvas.
    */
   freeze?(canvas: HTMLCanvasElement): HTMLCanvasElement;
 }
