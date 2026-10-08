@@ -152,6 +152,8 @@ headline progress metric: an improved mechanic keeps more segments alive for lon
 | `trace-202` | first baseline | 1,468 | 44 | 1,335 | 87 | 34,223 | 32,801 |
 | `trace-202` | after JumpThru fix | 1,468 | 45 | 1,335 | 87 | 36,253 | 34,831 |
 | `trace-202` | after the parallel workstreams | 1,468 | **159** | 1,308 | **0** | **67,527** | **66,219** |
+| `trace-1a` | after wall-jump/retention/slide | 20 | **14** | 6 | 0 | **2,084** | **2,078** |
+| `trace-202` | after wall-jump/retention/slide | 1,468 | **234** | 1,233 | 0 | **81,380** | **80,147** |
 
 94–96% of every replayed frame is already frame-exact; the gate's value is that each remaining
 divergence names a specific mechanic.
@@ -186,6 +188,15 @@ against this same gate:
   (`Player.cs:4384-4441`), `DashCorrectCheck` (`Player.cs:4191-4209`), and the derivation of the
   simulator's invented `state_timer` from the exported `dashAttackTimer` (`Player.cs:4276-4304`,
   `1577-1580`).
+* **Wall jumps, wall-speed retention and the wall slide** (`52b61a9`). `Math.Sign(0f)` is `0` while
+  Rust's `f32::signum(0.0)` is `1.0`, so the zeroed `Speed.X` from a wall collision cancelled the
+  `wallSpeedRetention` window instead of restoring the retained speed (`Player.cs:1669`, `1673-1676`);
+  `NormalEnd` (`Player.cs:3536-3541`) was not modelled at all; `DashUpdate`'s buffered-jump block is a
+  `ClimbJump` or plain `WallJump` for any `DashDir` other than the super cases
+  (`Player.cs:4393-4441`); the wall-slide block follows the force-move-adjusted `moveX` into `Facing`
+  with a live `wallSlideTimer` (`Player.cs:3749-3771`); the climb drain reads `lastClimbMove`
+  (`Player.cs:4045`, `4056-4079`); and the wall boost is consumed before the on-ground stamina reset
+  (`Player.cs:1560-1576`).
 
 ### Known open gaps (measured, not guessed)
 
