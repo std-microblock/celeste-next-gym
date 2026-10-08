@@ -11,9 +11,18 @@ pinned vanilla 202-berry TAS, the instrumented CelesteTAS dumps one record per e
 
 | trace | `ok` rooms | mismatch | unsupported | replayed frames | frame-exact |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `trace-202-v4` | **395** | 1,072 | 0 | **127,369** | **126,267** |
-| `trace-100pct-v4` | **234** | 684 | 0 | **73,085** | **72,386** |
-| `trace-1a-v4` | **16** | 4 | 0 | 2,126 | 2,122 |
+| `trace-202-v4` | **411** | 1,056 | 0 | **131,314** | **130,227** |
+| `trace-100pct-v4` | **272** | 646 | 0 | **79,199** | **78,536** |
+| `trace-1a-v4` | **16** | 4 | 0 | **2,129** | **2,125** |
+
+The latest step is the **input-press model** (`45b3070`, plus the effective-press commit): the
+harness was feeding the game's already-buffered `VirtualButton.Pressed` level into `Simulator`'s own
+`VirtualButton` buffer, so every press outlived the game's by four frames. Per-segment diff against
+the previous baselines: **1a 1 improved / 19 identical, 100pct 26 improved / 892 identical, 202 36
+improved / 1432 identical, zero regressions on all three**, for `+3 / +2,599 / +3,945` replayed
+frames and `+0 / +10 / +16` `ok` rooms. See "The harness double-counts Monocle's `VirtualButton`
+buffer" below for the ground-truth proof; that paragraph's original conclusion (that the fix has to
+be two-sided) was **superseded** - adopting the recorded `Pressed` level verbatim is enough.
 
 Starting point was 45 `ok` rooms / 36,253 replayed frames / 87 `unsupported`. The three pending workstreams on the previous revision of this section (Resort clutter with per-`sid` `oshiro_clutter_cleared_*` threading, `CrushBlock`/`DashBlock` with `OnDashCollide`, and the `LevelData` 184 -> 180 clamp) are now **landed** as `f735c98`, `b862df8` and `a27c8b4`; combined they took the 202 trace from 355 to 395 `ok` rooms and 121,264 to 127,369 replayed frames, with 128 segments improved and exactly 3 documented trade-offs: `5-MirrorTemple|0|b-14` (a `permanent` `DashBlock` in `Session.DoNotLoad`, which a Player-only trace cannot express) and `9-Core|1|c-08` x2 (the clamp moves `Bounds.Bottom` 4 px into `Player.CameraTarget`, and the residual is the camera model, not the clamp). Every landed fix cites a
 `Player.cs`/`Monocle` line and was proved to be zero-regression with a per-segment diff keyed by
@@ -53,25 +62,30 @@ Starting point was 45 `ok` rooms / 36,253 replayed frames / 87 `unsupported`. Th
    always starting at `7-Summit|a-00-intro`'s `StDummy` dummy walk (whole-pixel offsets with
    bit-identical `Speed`/`movementCounter`). "Frame-for-frame identical to vanilla" therefore has a
    noise floor that this environment cannot go below.
-6. **The harness's input-press model is wrong and masks the simulator's own button model.** It feeds
-   the game's buffered `*P0` level where `Simulator` expects a raw edge, so every press lives four
-   frames too long (proven against ground truth; see "The harness double-counts Monocle's
-   `VirtualButton` buffer"). The fix is two-sided and measured: the simulator needs `VirtualButton`'s
-   `consumed` semantics before the harness can feed edges.
+6. **The harness's input-press model fed the game's buffered `*P0` level into `Simulator`'s own
+   `VirtualButton` buffer**, so every press lived four frames too long. **Landed** via
+   `InputState::presses_are_effective`, which makes the simulator adopt the recorded `Pressed` level
+   verbatim instead of re-buffering it: `1a +3`, `100pct +2,599`, `202 +3,945` replayed frames and
+   `+0 / +10 / +16` `ok` rooms, zero per-segment regressions. Residual: the simulator still has no
+   `VirtualButton.consumed` flag, so a press it consumes inside a frame stays visible to later reads
+   of the *same* frame (`VirtualButton.cs:153-157`). That is now a small, bounded gap rather than a
+   four-frame offset.
 
 **How to continue.** Read the sections below for the environment, the ground rules for reading the
 artifacts (never whole-file `JSON.parse` a trace), and the reproduce commands. New mechanics should
 follow the established loop: pick a cluster from the gate report, cite the `Player.cs` line, prove
 zero per-segment regressions, commit in a worktree, integrate.
 
-**Start here: the input-press model, not a player formula.** The single highest-value finding of the
-run that produced this revision is that the harness feeds the game's *buffered* press level
-(`*P0`) into `Simulator`'s own `VirtualButton`-equivalent buffer, so the simulator's effective press
-outlives the game's by four frames and it fires mechanics the game swallowed - with ground-truth
-proof and a three-way measurement. Fixing only the harness is a measured regression, so the work is
-"make the simulator's button model faithful (`consumed` flag + per-read-site re-read), then feed raw
-edges". Details, and the trap that `frames - 1` divergences are structural rather than a clue, are in
-the paragraphs below.
+**The input-press model was the biggest single lever found so far, and it is landed.** The harness
+was feeding the game's *buffered* press level (`*P0`) into `Simulator`'s own
+`VirtualButton`-equivalent buffer, so the simulator's effective press outlived the game's by four
+frames and it fired mechanics the game swallowed - with ground-truth proof and a three-way
+measurement. `InputState::presses_are_effective` makes the simulator adopt the recorded `Pressed`
+level verbatim instead: `+3 / +2,599 / +3,945` replayed frames on `1a / 100pct / 202` with **zero
+per-segment regressions** and `+0 / +10 / +16` `ok` rooms. Details, the superseded two-sided
+conclusion, and the trap that `frames - 1` divergences are structural rather than a clue, are in the
+paragraphs below. Next: re-run `tools/tas-fidelity/lib/worklist.mjs` on the
+`gate-eff-202-v4.json` report, because the class sizes have moved.
 
 **The dominant remaining mechanism is a 1-pixel rounding difference.** `tools/tas-fidelity/lib/worklist.mjs` groups every `mismatch` segment of a report into classes (run it as `node tools/tas-fidelity/lib/worklist.mjs <report.json> <out.md>`; it streams). On the `395 ok` master the two biggest classes are `pos|anchor=StNormal` (180 segments / 11,340 frames) and `pos|anchor=StDash` (131 / 8,777), and their position deltas are overwhelmingly **one pixel on one axis** - 142 of the 180 are `(0,+-1)` or `(+-1,0)`, and 82 of the 131 likewise. That is the signature of sub-pixel remainder drift that stays invisible while the gate ignores `movementCounter` and only surfaces when it flips a `Math.Round` step, so these two classes almost certainly share a single root cause in the pixel-move / collision boundary code rather than hundreds of independent bugs. `dashes|anchor=StNormal` (43 / 3,708) is different: every one of its deltas is `(0,0)`, i.e. the divergence is reachable only through the dash count, not through motion.
 
@@ -105,8 +119,7 @@ divergence happened. The number that does is
 `1-ForsakenCity|0|5|755` that is 50, i.e. a genuine mid-room divergence. Reading the `frames - 1`
 pattern as "every segment fails on its last row" is wrong and nearly produced a whole theory.
 
-**The harness double-counts Monocle's `VirtualButton` buffer (proven on ground truth; NOT yet
-fixed).** `Monocle/VirtualButton` (`vendor/celeste-fna/Monocle/VirtualButton.cs:43-65`, `:107-146`) is
+**The harness double-counts Monocle's `VirtualButton` buffer (proven on ground truth, then fixed).** `Monocle/VirtualButton` (`vendor/celeste-fna/Monocle/VirtualButton.cs:43-65`, `:107-146`) is
 a *buffered* button: `Update` re-arms `bufferCounter = BufferTime` **only** when the raw
 `Binding.Pressed` edge fires, decays it by `Engine.DeltaTime` every frame, and zeroes it whenever the
 binding is not held; `Pressed` is true for as long as `bufferCounter > 0`. The trace's `*P0` keys are
@@ -133,14 +146,24 @@ Measured alternatives on `trace-1a-v4` (same binary, same map directory):
 | rising edge of `*P0` | 8 | 1,678 | 1,666 |
 | rising edge of the held flag | 4 | 1,334 | 1,318 |
 
-Both exact-edge models are *further* from the game than the level, and that is the real finding: the
-simulator's button model is not yet `VirtualButton`. It has no `consumed` flag
-(`VirtualButton.cs:153-157`) and no per-read-site re-read, so a press it consumes
-(`wall_jump`/`jump`/`begin_dash` zero the timer) is gone for the whole frame, and `ConsumeBuffer`'s
-zeroing (`Player.cs:2551`) has no equivalent at all. The level feed is load-bearing: its four-frame
-overhang hands the simulator back a press whose consumption timing it got wrong. **Changing only the
-harness is a measured regression** - the two have to land together, so "let `InputState` carry
-Monocle's `consumed` semantics and feed raw edges" is a workstream of its own, not a one-line change.
+Both exact-edge models are *further* from the game than the level, and that decided the fix.
+The simulator has no `consumed` flag (`VirtualButton.cs:153-157`) and no per-read-site re-read, so a
+press it consumes (`wall_jump`/`jump`/`begin_dash` zero the timer) is gone for the whole frame, and
+`ConsumeBuffer`'s zeroing (`Player.cs:2551`) has no equivalent at all. Reconstructing raw edges
+therefore throws away information the simulator needs. The fix went the other way instead:
+`InputState::presses_are_effective` (`types.rs`) tells `step` that these `*_pressed` flags **are**
+Monocle's `Pressed` level - already consumed where the game consumed it - so it adopts them verbatim
+instead of running them through a second buffer. `jump_held`/`grab_held` stay the raw
+`VirtualButton.Check`, which `Player.cs:2952` and `2963` read for half-gravity and variable-jump.
+Portable scenario inputs and the FFI pod leave the flag false and keep the buffered-edge model, so no
+existing caller or test changes behaviour. Measured per-segment: **1a 1 improved / 19 identical /
+0 regressed, 100pct 26 / 892 / 0, 202 36 / 1432 / 0** (`+3`, `+2,599`, `+3,945` replayed frames and
+`+0`, `+10`, `+16` `ok` rooms), with `7-Summit|0|b-09` alone going from 5 to 730 frames.
+
+An earlier revision of this paragraph concluded the fix had to be two-sided. That was wrong, and the
+reason is worth keeping: the over-long press window was not compensating for a *missing* mechanic,
+it was compensating for the simulator reading a press the game had already consumed - which adopting
+the recorded level fixes directly.
 
 **The dash-count class has two opposite sub-causes (measured).** Of the segments whose only divergence reason is dashes, 66 in total on the 395-ok report, the (simulator, game) dash pairs are: sim=1 game=2 in 35 segments, sim=1 game=0 in 21, sim=2 game=1 in 3, sim=2 game=0 in 3, sim=0 game=1 in 4. By area: LostLevels 34, 6-Reflection 12, 7-Summit 6, 1-ForsakenCity 6, 3-CelestialResort 3, 9-Core 3, 4-GoldenRidge 1, 5-MirrorTemple 1. So the class is not one bug: the 35 sim-lower cases look like a two-dash session whose refill the simulator never reaches (MaxDashes = Inventory.Dashes is 2 in areas 6/7/9 and for LostLevels after CS10_Gravestone, 1 for LostLevels before it), and the 21 sim-higher cases look like a refill the simulator performs where the game does not. Both live in the same refill sites (Player.RefillDash, UseRefill, BadelineBoost.cs:145-152), so a single audit of every refill site against its Player.cs MaxDashes/NoRefills guard should retire most of the class. This is independent of the one-pixel class.
 
@@ -361,6 +384,9 @@ headline progress metric: an improved mechanic keeps more segments alive for lon
 | `trace-202-v4` | after clutter / `CrushBlock` / the 184->180 clamp | 1,468 | **395** | 1,072 | 0 | **127,369** | **126,267** |
 | `trace-100pct-v4` | later waves landed (same trace) | 918 | **262** | 656 | 0 | **76,600** | **75,928** |
 | `trace-1a-v4` | same build | 20 | **16** | 4 | 0 | **2,126** | **2,122** |
+| `trace-202-v4` | after the effective-press input model | 1,468 | **411** | 1,056 | 0 | **131,314** | **130,227** |
+| `trace-100pct-v4` | same build | 918 | **272** | 646 | 0 | **79,199** | **78,536** |
+| `trace-1a-v4` | same build | 20 | **16** | 4 | 0 | **2,129** | **2,125** |
 
 The `100%` row moved from 234 to **262** as the later waves landed, so always compare against a
 named report file, not against the number in an older revision of this table. The three current
@@ -421,6 +447,13 @@ against this same gate:
   with a live `wallSlideTimer` (`Player.cs:3749-3771`); the climb drain reads `lastClimbMove`
   (`Player.cs:4045`, `4056-4079`); and the wall boost is consumed before the on-ground stamina reset
   (`Player.cs:1560-1576`).
+* **The input-press model** (this round). `InputState::presses_are_effective` (`types.rs`): the TAS
+  fidelity harness exports `Monocle.VirtualButton.Pressed` itself (`*P0`, already zeroed wherever the
+  game called `ConsumeBuffer`/`ConsumePress`), so `Simulator::step` must adopt that level verbatim
+  instead of re-arming its own buffer from it. `1a 1/19/0, 100pct 26/892/0, 202 36/1432/0`
+  (improved/identical/regressed) and `+3, +2,599, +3,945` replayed frames. `7-Summit|0|b-09` went
+  from 5 to 730 frames; 10 more `ok` rooms on `100pct`, 16 more on `202`. Portable inputs and the FFI
+  pod leave the flag false, so no existing caller changes behaviour.
 * **The `CanUnDuck` gate on `NormalUpdate`'s wall-jump branch** (this round). `Player.cs:2969-3004`
   puts the wall-jump / `ClimbJump` / water-jump branch inside `else if (CanUnDuck)`, so a crouched
   player whose normal hitbox does not fit where it stands swallows the press entirely and keeps
@@ -436,14 +469,12 @@ against this same gate:
 
 ### Known open gaps (measured, not guessed)
 
-* **The simulator's button model is not `Monocle.VirtualButton`, and the harness papers over it.**
-  This is the highest-value structural gap found so far and it is proven, not guessed: the harness
-  feeds the game's already-buffered `*P0` level into the simulator's own buffer, so every press
-  outlives the game's by four frames (full proof, ground-truth rows and the three-way measurement are
-  in the "Status and handoff" section). Fixing it needs `InputState` to carry Monocle's `consumed`
-  semantics and every read site to re-read the buffer, then the harness can feed raw edges. Until
-  then every remaining "the simulator saw a press the game did not" divergence is unfixable at the
-  mechanic level, and the classes below cannot be cleanly attributed.
+* **The simulator has no `VirtualButton.consumed` flag.** With `presses_are_effective` the press
+  level each frame is now exactly the game's, which retired the four-frame offset; what remains is
+  that a press the simulator consumes *inside* a frame (`wall_jump`/`jump`/`begin_dash` zero the
+  timer) stays visible to later reads of the same frame, where the game's `VirtualButton.Pressed`
+  would report false (`VirtualButton.cs:153-157`). No read site depends on that yet, so this is
+  recorded as a residual rather than a target.
 * **`Session.CoreMode` is not exported**, so the Core ice factor
   `if (onGround && level.CoreMode == Cold) num2 *= 0.3f` (`Player.cs:3681-3684`) is implemented but
   inert. Forcing `Cold` measured **+294 replayed frames** across one copy of the Core rooms.
