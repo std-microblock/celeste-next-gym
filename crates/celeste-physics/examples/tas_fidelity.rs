@@ -175,6 +175,12 @@ struct Record {
     freeze_timer: Option<f64>,
     /// `Player.Ducking` (`Player.cs:1005-1028`), a computed `Entity.Collider` property.
     ducking: Option<bool>,
+    /// `Celeste.Session.CoreMode` (`Session.cs:22-27,111`), i.e. `Level.Session.CoreMode`
+    /// as read by `Player.NormalUpdate` (`Player.cs:3681-3684`). Session state on
+    /// `Level.Session`, not a `Player` field, so the reflection dump cannot carry
+    /// it. Workstream W8 adds the key; the traces in use do not have it yet.
+    #[serde(rename = "coreMode")]
+    core_mode: Option<i64>,
     /// The active collider as `[absoluteLeft, absoluteTop, width, height]`
     /// (`Monocle/Collider.cs:229,205,12,14`).
     collider: Option<Vec<f64>>,
@@ -210,6 +216,9 @@ struct Frame {
     /// `Engine.FreezeTimer` at the end of this engine frame (`Engine.cs:266-269`).
     freeze_timer: Option<f64>,
     ducking: Option<bool>,
+    /// `Celeste.Session.CoreMode` (`Session.cs:22-27,111`) at the end of this
+    /// engine frame.
+    core_mode: Option<i64>,
     collider: Option<[f64; 4]>,
     inventory: Option<InventoryRec>,
     /// `Session.CoreMode` at the end of this engine frame. A `Session` field, so the only
@@ -266,6 +275,33 @@ impl Truth {
 
 fn float_field(fields: &JsonMap<String, Value>, name: &str) -> Option<f64> {
     fields.get(name).and_then(Value::as_f64)
+}
+
+/// Whether a row on which `Player.Update` did not run still carries a different
+/// player snapshot than the row before it.
+///
+/// `Player.Update` decrements `StrawberryCollectResetTimer` unconditionally
+/// (`Player.cs:1477`), so two consecutive rows with the same value prove the
+/// entity did not update. When the compared snapshot fields changed anyway, the
+/// change came from a path outside `Player.Update`
+/// (`Player.TransitionTo`, `Player.StartCassetteFly`, ...), i.e. a row the
+/// simulator cannot produce. Compares exactly the fields the gate diffs, so it
+/// can never excuse a difference the gate would otherwise have caught.
+fn stalled_row_mutates_player(frames: &[Frame], truth: &[Truth], index: usize) -> bool {
+    let Some(previous) = index.checked_sub(1) else {
+        return false;
+    };
+    let (before, after) = (&truth[previous], &truth[index]);
+    before.position != after.position
+        || before.speed != after.speed
+        || before.movement_counter != after.movement_counter
+        || before.stamina != after.stamina
+        || before.dashes != after.dashes
+        || before.facing != after.facing
+        || before.on_ground != after.on_ground
+        || before.dead != after.dead
+        || frames[previous].state_name != frames[index].state_name
+        || frames[previous].ducking != frames[index].ducking
 }
 
 fn vector_field(fields: &JsonMap<String, Value>, name: &str) -> Option<[f64; 2]> {
@@ -423,6 +459,11 @@ restored_fields! {
     dummy_friction: bool = "DummyFriction",
     dummy_maxspeed: bool = "DummyMaxspeed",
     launched: bool = "launched",
+    // `Player.wasDucking` (`Player.cs:461`) and `Player.holdCannotDuck`
+    // (`Player.cs:465`) are declared private fields of `Player`, so the reflection
+    // dump carries them under their exact C# names.
+    was_ducking: bool = "wasDucking",
+    hold_cannot_duck: bool = "holdCannotDuck",
 }
 
 /// Fields restored by bespoke code rather than the generic `p`-key loop.
@@ -745,6 +786,23 @@ struct SegmentReport {
     /// exported `Player.Ducking` (diagnostic; never a mismatch reason).
     #[serde(skip_serializing_if = "is_zero")]
     ducking_disagreement_frames: u64,
+    /// Replayed frames where `Player.Update` did not run but the player snapshot
+    /// still changed, so the row came from a coroutine that drives the player
+    /// directly and was not compared. Diagnostic only.
+    #[serde(skip_serializing_if = "is_zero")]
+    frozen_mutation_frames: u64,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    frozen_mutation_offsets: Vec<u64>,
+    /// Mechanism split of the stalled rows inside the replay window, from the
+    /// v3 exporter tail (`transitioning`: `Level.cs:221`; `freezeTimer`:
+    /// `Engine.cs:28`; neither: the `Level.FrozenOrPaused` branch at
+    /// `Level.cs:1837`). Diagnostic only.
+    #[serde(skip_serializing_if = "is_zero")]
+    stall_transition_frames: u64,
+    #[serde(skip_serializing_if = "is_zero")]
+    stall_engine_freeze_frames: u64,
+    #[serde(skip_serializing_if = "is_zero")]
+    stall_frozen_entity_frames: u64,
     /// Present only with `--probe-remainder`; see `probe_remainder`.
     #[serde(skip_serializing_if = "Option::is_none")]
     remainder_probe: Option<Value>,
@@ -1275,6 +1333,18 @@ struct ReplayOutcome {
     /// Replayed frames where the simulator's `Player.Ducking` differs from the
     /// trace's exported `Player.Ducking` / active collider. Diagnostic only.
     ducking_disagreement_frames: u64,
+    /// Row offsets where `Player.Update` did not run but the player snapshot
+    /// changed anyway, i.e. rows produced by a coroutine that drives the player
+    /// directly (`Level.Transitioning` -> `Player.TransitionTo`,
+    /// `Level.FrozenOrPaused` -> `Cassette.CollectRoutine`). Such rows are
+    /// stepped but not compared; the segment continues.
+    frozen_mutation_frames: u64,
+    frozen_mutation_offsets: Vec<u64>,
+    /// Mechanism split of the stalled rows inside the replay window, from the v3
+    /// exporter tail. Diagnostic only.
+    stall_transition_frames: u64,
+    stall_engine_freeze_frames: u64,
+    stall_frozen_entity_frames: u64,
     status: &'static str,
     error: Option<String>,
     unsupported: Option<(String, u64)>,
@@ -1471,12 +1541,38 @@ fn replay(
                 .to_owned(),
         );
     }
-    if let Some(ducking) = anchor.ducking {
-        snapshot.ducking = ducking;
-    } else {
-        outcome
+    // `Player.Ducking` is the computed `Collider` property (`Player.cs:1005-1028`).
+    // The exporter writes it directly on every row that has a Player, but
+    // `p.wasDucking` (`Player.cs:461`) is an independent witness of the same
+    // quantity: `Player.Update` assigns `wasDucking = Ducking` at
+    // `Player.cs:1921-1924` on every frame it runs, so the two agree on every
+    // post-`Player.Update` capture except the death early-return at
+    // `Player.cs:1907`. Prefer the computed property, fall back to `wasDucking`
+    // when a trace predates it, and surface a disagreement instead of hiding it.
+    let was_ducking = anchor_fields.get("wasDucking").and_then(Value::as_bool);
+    match (anchor.ducking, was_ducking) {
+        (Some(ducking), Some(was)) => {
+            snapshot.ducking = ducking;
+            if ducking != was {
+                outcome.unavailable.push(format!(
+                    "ducking: the anchor row's computed `Player.Ducking` ({ducking}) disagrees \
+                     with `p.wasDucking` ({was}); the death early-return at Player.cs:1907 is the \
+                     only Player.Update path that leaves them different"
+                ));
+            }
+        }
+        (Some(ducking), None) => snapshot.ducking = ducking,
+        (None, Some(was)) => {
+            snapshot.ducking = was;
+            outcome.unavailable.push(
+                "ducking: the trace row has no computed `Player.Ducking`; fell back to \
+                 `p.wasDucking` (Player.cs:1921-1924)"
+                    .to_owned(),
+            );
+        }
+        (None, None) => outcome
             .unavailable
-            .push("ducking: the trace row has no `Player.Ducking`".to_owned());
+            .push("ducking: the trace row has no `Player.Ducking`".to_owned()),
     }
     if let Some(freeze_timer) = anchor.freeze_timer {
         snapshot.freeze_timer = freeze_timer as f32;
@@ -1547,6 +1643,21 @@ fn replay(
         let expected = &truth[index];
         let offset = (index - window_start - 1) as u64;
         replayed += 1;
+        // Which engine mechanism skipped `Player.Update` on this row, read from
+        // the v3 exporter tail: `Level.Transitioning` (`Level.cs:221`), a
+        // positive `Engine.FreezeTimer` (`Engine.cs:266-269`), or neither - the
+        // `Level.FrozenOrPaused` branch (`Level.cs:1837`) that `Cassette`,
+        // `HeartGem`, `CSGEN_StrawberrySeeds` and `ForsakenCitySatellite` drive
+        // with `level.Frozen = true`. Diagnostic only.
+        if stalled[index] {
+            match (frame.transitioning, frame.freeze_timer) {
+                (Some(true), _) => outcome.stall_transition_frames += 1,
+                (_, Some(timer)) if timer > 0.0 => outcome.stall_engine_freeze_frames += 1,
+                _ => outcome.stall_frozen_entity_frames += 1,
+            }
+        }
+        let frozen_mutation =
+            stalled[index] && stalled_row_mutates_player(&segment.frames, &truth, index);
         // The trace says `Player.Update` did not run on this engine frame
         // (`Level.Transitioning` transition coroutine or `Celeste.Freeze`).
         // The simulator must therefore skip its own player update this frame,
@@ -1645,6 +1756,35 @@ fn replay(
                     if actual.ducking != ducking {
                         ducking_disagreement += 1;
                     }
+                }
+                // The stall detector only proves that `Player.Update` did not run
+                // on this row. It does not prove the row is a stale copy of the
+                // previous one: both `Level.Update` branches that skip the player
+                // still run other entities and coroutines, and some of those
+                // mutate the player directly.
+                //
+                //  * `Level.Transitioning` (`Level.cs:1888-1896`) runs
+                //    `transition.Update()`, which drives `Player.TransitionTo`
+                //    (`Player.cs:2293-2308`) - that writes `Position`/`Speed`
+                //    directly with no `Player.Update`.
+                //  * `Level.FrozenOrPaused` (`Level.cs:1837-1868`) runs the
+                //    `Tags.FrozenUpdate` entities. `Cassette.CollectRoutine`
+                //    (`Cassette.cs:168-243`, tagged at `Cassette.cs:175`) calls
+                //    `player.StartCassetteFly` (`Cassette.cs:231` ->
+                //    `Player.cs:5590`), which sets `StateMachine.State = 21`
+                //    (`StCassetteFly`) and starts the fly coroutine.
+                //
+                // The player itself is `Tags.Persistent` only (`Player.cs:1122`),
+                // so those writes are the whole story: a stalled row whose player
+                // fields differ from the previous row's cannot have been produced
+                // by `Player.Update` at all. Comparing it would report a
+                // divergence the simulator structurally cannot reproduce, so the
+                // row is counted, not compared, and the segment stays alive to
+                // catch the next genuine `Player.Update` mismatch.
+                if frozen_mutation {
+                    outcome.frozen_mutation_frames += 1;
+                    outcome.frozen_mutation_offsets.push(offset);
+                    continue;
                 }
                 let mut reasons: Vec<String> = Vec::new();
                 // Position comes from the row *after* the one being diffed:
@@ -1823,6 +1963,11 @@ fn simulate_segment(
         first_freeze_disagreement_offset: outcome.first_freeze_disagreement,
         wind_disagreement_frames: outcome.wind_disagreement_frames,
         ducking_disagreement_frames: outcome.ducking_disagreement_frames,
+        frozen_mutation_frames: outcome.frozen_mutation_frames,
+        frozen_mutation_offsets: outcome.frozen_mutation_offsets,
+        stall_transition_frames: outcome.stall_transition_frames,
+        stall_engine_freeze_frames: outcome.stall_engine_freeze_frames,
+        stall_frozen_entity_frames: outcome.stall_frozen_entity_frames,
         remainder_probe: None,
         dump: outcome.dump,
     };
@@ -2212,6 +2357,7 @@ fn run() -> Result<(), String> {
             transitioning: record.transitioning,
             freeze_timer: record.freeze_timer,
             ducking: record.ducking,
+            core_mode: record.core_mode,
             collider: quad_field(record.collider.as_ref()),
             inventory: record.inventory,
             core_mode: record.core_mode.and_then(core_mode_from_int),
@@ -2441,6 +2587,11 @@ fn finish_segment(
                 first_freeze_disagreement_offset: None,
                 wind_disagreement_frames: 0,
                 ducking_disagreement_frames: 0,
+                frozen_mutation_frames: 0,
+                frozen_mutation_offsets: Vec::new(),
+                stall_transition_frames: 0,
+                stall_engine_freeze_frames: 0,
+                stall_frozen_entity_frames: 0,
                 remainder_probe: None,
                 dump: Vec::new(),
             },

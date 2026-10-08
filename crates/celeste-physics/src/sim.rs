@@ -3268,7 +3268,7 @@ fn release_holdable(p: &mut PlayerSnapshot, input: InputState) {
     }
 }
 
-fn pickup_update(p: &mut PlayerSnapshot) {
+fn pickup_update(p: &mut PlayerSnapshot, input: InputState) {
     if p.pickup_timer > 0.0 {
         return;
     }
@@ -3287,6 +3287,12 @@ fn pickup_update(p: &mut PlayerSnapshot) {
     // normal jump speed even when the cached vertical speed was smaller.
     if p.holding_glider.is_some() && p.speed.y < 0.0 {
         p.speed.y = p.speed.y.min(JUMP_SPEED);
+    }
+    // Player.cs:5116-5131: on the frame the tween completes, a grounded player
+    // still holding down with a slow-fall holdable in hand sets `holdCannotDuck`,
+    // which blocks the duck re-entry at `Player.cs:3652`.
+    if p.on_ground && holding_slow_fall(p) && input.move_y == 1 {
+        p.hold_cannot_duck = true;
     }
 }
 
@@ -5088,7 +5094,7 @@ fn step(
         PlayerState::Boost => boost_update(p, input, map),
         PlayerState::RedDash => red_dash_update(p, input, map),
         PlayerState::HitSquash => hit_squash_update(p),
-        PlayerState::Pickup => pickup_update(p),
+        PlayerState::Pickup => pickup_update(p, input),
         PlayerState::Launch => launch_update(p, input, map),
         PlayerState::DreamDash => dream_dash_update(p),
         PlayerState::SummitLaunch => summit_launch_update(p, map),
@@ -5422,12 +5428,27 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
     // Player.NormalUpdate changes the active collider before applying run
     // friction. This ordering is what lets a crouched player enter a booster
     // with the six-pixel hitbox (Archie) on the same frame.
+    //
+    // The duck-entry test differs between the two halves of the source block.
+    // With empty hands it is the plain grounded/`MoveY == 1`/`Speed.Y >= 0`
+    // test (`Player.cs:3640`); with a holdable in hand the same test is
+    // additionally gated on `!holdCannotDuck` (`Player.cs:3652`), and the flag
+    // is cleared only once the player is grounded and stops holding down
+    // (`Player.cs:3669-3671`). `holdCannotDuck` is restored from
+    // `p.holdCannotDuck` and maintained below, so a holdable-carrying player who
+    // already ducked once cannot re-enter the duck hitbox by tapping down again.
     if p.ducking {
         if p.on_ground && input.move_y != 1 && can_unduck(p, map) {
             p.ducking = false;
         }
     } else if p.on_ground && input.move_y == 1 && p.speed.y >= 0.0 {
-        p.ducking = true;
+        if !(holding_holdable(p) && p.hold_cannot_duck) {
+            p.ducking = true;
+        }
+    }
+    if p.on_ground && input.move_y != 1 && p.hold_cannot_duck {
+        // Player.cs:3669-3671.
+        p.hold_cannot_duck = false;
     }
 
     let mult = if p.on_ground {
@@ -5487,6 +5508,13 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
         FAST_MAX_ACCEL * p.frame_delta_time,
     );
     let mut fall_target = p.max_fall;
+    // Player.cs:3742-3748. `NormalUpdate`'s `!onGround` block mirrors the down
+    // input into `holdCannotDuck` whenever a slow-fall holdable is in hand, so
+    // the flag tracks "the player has been falling with down held" and only the
+    // grounded release at `Player.cs:3669-3671` clears it.
+    if !p.on_ground && holding_slow_fall(p) {
+        p.hold_cannot_duck = input.move_y == 1;
+    }
     // Player.cs:3749-3771. The whole wall-slide block is gated on the
     // force-move-adjusted `moveX` pointing into Facing (or a neutral moveX while
     // Grab is held) and on `Input.MoveY != 1` - holding down (a fast-fall)

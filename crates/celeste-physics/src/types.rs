@@ -464,6 +464,23 @@ pub struct PlayerSnapshot {
     /// value so segmented simulation can resume the one-frame separation.
     pub player_on_ground_initialized: bool,
     pub ducking: bool,
+    /// `Player.wasDucking` (`Player.cs:461`), the source's own copy of the
+    /// previous `Player.Ducking`. `Player.Update` syncs it on every frame it
+    /// runs (`Player.cs:1921-1924`), and the only exit that skips that sync is
+    /// the death early-return at `Player.cs:1907`, so on every non-death
+    /// post-`Player.Update` capture it equals the computed `Ducking` property
+    /// (`Player.cs:1005-1028`). The harness keeps it as the ducking witness of
+    /// last resort: a trace without the computed `ducking` key still carries
+    /// this one.
+    pub was_ducking: bool,
+    /// `Player.holdCannotDuck` (`Player.cs:465`). `NormalUpdate`'s duck block
+    /// refuses to re-enter the duck hitbox while it is set and a holdable is in
+    /// hand (`Player.cs:3652`), and only clears it once the player is grounded
+    /// and no longer holding down (`Player.cs:3669-3671`). It is written while
+    /// falling with a slow-fall holdable (`Player.cs:3745-3748`) and when the
+    /// pickup tween completes on the ground with down held
+    /// (`Player.cs:5128-5131`).
+    pub hold_cannot_duck: bool,
     pub can_dream_dash: bool,
     pub dead: bool,
     pub death_freeze_pending: bool,
@@ -719,6 +736,8 @@ impl Default for PlayerSnapshot {
             player_on_ground: false,
             player_on_ground_initialized: false,
             ducking: false,
+            was_ducking: false,
+            hold_cannot_duck: false,
             can_dream_dash: false,
             dead: false,
             death_freeze_pending: false,
