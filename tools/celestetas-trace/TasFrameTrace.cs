@@ -228,8 +228,20 @@ public static class TasFrameTrace {
         if (fieldsType != typeof(Player)) {
             fieldsType = typeof(Player);
             playerFields.Clear();
+            // Walk the whole base chain up to (but excluding) object, not just Player's own fields.
+            // `Position` lives on Entity and `movementCounter` on Platform; without them a segment
+            // restored mid-motion starts with the wrong sub-pixel remainder and drifts by a pixel.
+            // A name declared more than once keeps the most-derived declaration.
             const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
-            playerFields.AddRange(fieldsType.GetFields(flags));
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            for (Type? type = fieldsType; type != null && type != typeof(object); type = type.BaseType) {
+                foreach (FieldInfo field in type.GetFields(flags)) {
+                    if (seen.Add(field.Name)) {
+                        playerFields.Add(field);
+                    }
+                }
+            }
+
             playerFields.Sort(static (a, b) => string.CompareOrdinal(a.Name, b.Name));
         }
 

@@ -67,7 +67,12 @@ Paths in TAS command arguments must use `/`, not `\` — `CommandLine.TryParse` 
 * `in` live `Celeste.Input` state after the frame — what the game actually consumed
 * `a` / `aStr` / `nf` / `rep` raw `StudioCommunication.Actions` bitmask, source text, frame count and
   repeat index of the TAS input frame (authoritative and gameplay-independent)
-* `p` all declared `Player` instance fields by exact C# name (`Vector2` → `[x,y]`, enums → int)
+* `p` all instance fields reachable from `Player` by **walking the whole base chain**
+  (`Player` → `Actor` → `Platform` → `Entity`, stopping before `object`) with most-derived-wins
+  de-duplication, by exact C# name (`Vector2` → `[x,y]`, enums → int). This yields 126 fields and is
+  deliberate: `Position` is declared on `Entity` and `movementCounter` on `Platform`, and without the
+  latter a segment restored mid-motion starts with the wrong sub-pixel remainder and drifts by a
+  pixel on the very first frame.
 * non-`Level` scenes still produce a row with `scene` naming them (`Overworld OuiChapterPanel`,
   `LevelEnter`, `AreaComplete`, …), so the trace can be aligned frame by frame
 
