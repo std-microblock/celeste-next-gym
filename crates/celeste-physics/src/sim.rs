@@ -207,6 +207,23 @@ pub struct Simulator {
     snapshot: PlayerSnapshot,
     runtime_map: Map,
     static_mover_attachments: Vec<Option<StaticMoverAttachment>>,
+    climb_hop_solid: Option<ClimbHopSolid>,
+}
+
+/// `Player.climbHopSolid` (`Player.cs:553`) and `climbHopSolidPosition`
+/// (`Player.cs:555`). `Player.ClimbHop` (`Player.cs:4124`) stores the
+/// `CollideFirst<Solid>` it grabbed; while the climb-hop force-move window is
+/// open, `Player.Update` replays that Solid's whole-pixel movement onto the
+/// player (`Player.cs:1646-1652`). Only the entity index and the last observed
+/// position are needed, and both survive `Simulator::fork` so branch searches
+/// stay identical to a continuous run.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct ClimbHopSolid {
+    entity: usize,
+    /// `Solid.Position`. The runtime map stores the collider rectangle, whose
+    /// offset from `Position` is constant for every Solid kind, so deltas
+    /// between frames are exact.
+    position: Vec2,
 }
 
 impl Simulator {
@@ -247,6 +264,7 @@ impl Simulator {
             snapshot,
             runtime_map,
             static_mover_attachments,
+            climb_hop_solid: None,
         })
     }
 
@@ -277,6 +295,7 @@ impl Simulator {
             input.normalized(),
             &mut self.runtime_map,
             &mut self.static_mover_attachments,
+            &mut self.climb_hop_solid,
         )?;
         Ok(&self.snapshot)
     }
@@ -4775,6 +4794,7 @@ fn step(
     mut input: InputState,
     map: &mut Map,
     attachments: &mut Vec<Option<StaticMoverAttachment>>,
+    climb_hop_solid: &mut Option<ClimbHopSolid>,
 ) -> Result<(), SimulationError> {
     // Engine computes DeltaTime once at the beginning of the raw frame. A
     // HeartGem can write TimeRate during Scene.Update, but that write only
@@ -4947,6 +4967,38 @@ fn step(
     } else {
         input.move_x
     };
+    // Player.cs:1642-1652. `Player.ClimbHop` may have stored the Solid it
+    // grabbed; while the force-move window is still open the player is carried
+    // by that Solid's whole-pixel movement through `MoveHExact`/`MoveVExact`.
+    // Those bypass `movementCounter` (they only clear the moving axis when a
+    // pixel is blocked, `Actor.cs:220`/`Actor.cs:249`), so this is a raw
+    // `Entity.Position` write and the trace shows it as a position delta with a
+    // bit-unchanged `movementCounter`. The reference is dropped as soon as the
+    // window closes (`Player.cs:1640`) or the Solid stops being collidable
+    // (`Player.cs:1642`).
+    if force_move_x_active {
+        if let Some(carry) = *climb_hop_solid {
+            let entity = &map.entities[carry.entity];
+            if solid_is_collidable(entity) {
+                let position = Vec2::new(entity.bounds.x, entity.bounds.y);
+                *climb_hop_solid = Some(ClimbHopSolid {
+                    entity: carry.entity,
+                    position,
+                });
+                let delta = Vec2::new(position.x - carry.position.x, position.y - carry.position.y);
+                if delta.x != 0.0 {
+                    move_h_exact(p, map, delta.x as i32);
+                }
+                if delta.y != 0.0 {
+                    move_v_exact(p, map, delta.y as i32);
+                }
+            } else {
+                *climb_hop_solid = None;
+            }
+        }
+    } else {
+        *climb_hop_solid = None;
+    }
     if p.move_x != 0
         && player_in_control(p.state)
         && !matches!(
@@ -5002,7 +5054,7 @@ fn step(
     match p.state {
         PlayerState::Normal => normal_update(p, input, map, was_on_ground),
         PlayerState::Dash => dash_update(p, input, map),
-        PlayerState::Climb => climb_update(p, input, map),
+        PlayerState::Climb => climb_update(p, input, map, climb_hop_solid),
         PlayerState::Swim => swim_update(p, input, map),
         PlayerState::Boost => boost_update(p, input, map),
         PlayerState::RedDash => red_dash_update(p, input, map),
@@ -5089,6 +5141,7 @@ fn step(
         && p.speed.y <= 0.0
         && (p.state != PlayerState::Climb || p.last_climb_move == -1)
         && touching_jump_thru(p, map)
+        && !jump_thru_boost_blocked_check(p, map)
     {
         move_axis_amount(p, map, false, JUMP_THRU_ASSIST_SPEED * p.frame_delta_time);
     }
@@ -5891,7 +5944,12 @@ fn climb_jump(p: &mut PlayerSnapshot, wall: i8) {
     p.var_jump_timer = VAR_JUMP_TIME;
 }
 
-fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
+fn climb_update(
+    p: &mut PlayerSnapshot,
+    input: InputState,
+    map: &Map,
+    climb_hop_solid: &mut Option<ClimbHopSolid>,
+) {
     let wall = if p.facing { 1 } else { -1 };
     // Player.ClimbUpdate checks jump and dash before letting go or checking
     // whether the one-pixel wall contact still exists. Ceiling pops rely on
@@ -5920,7 +5978,7 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     }
     if !touching_wall(p, map, wall) {
         if p.speed.y < 0.0 {
-            climb_hop(p, map, wall);
+            climb_hop(p, map, wall, climb_hop_solid);
         }
         enter_normal(p);
         return;
@@ -5941,7 +5999,7 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
                 target = 0.0;
                 try_slip = true;
             } else if slip_check(p, map, 0.0) {
-                climb_hop(p, map, wall);
+                climb_hop(p, map, wall, climb_hop_solid);
                 enter_normal(p);
                 return;
             }
@@ -7088,6 +7146,56 @@ fn jump_thru_outside(p: &PlayerSnapshot, map: &Map, offset: f32) -> bool {
     })
 }
 
+/// `Player.JumpThruBoostBlockedCheck` (`Player.cs:4179-4189`): the JumpThru
+/// Assist is skipped when any tracked `LedgeBlocker` reports a hit for the live
+/// collider two pixels above the player (`Celeste/LedgeBlocker.cs:33-44`). A
+/// spinner that is invisible or out of range is parked far off the map by
+/// `sync_spinner_entity`, which mirrors `Collidable = false`
+/// (`Celeste/CrystalStaticSpinner.cs:207`).
+fn jump_thru_boost_blocked_check(p: &PlayerSnapshot, map: &Map) -> bool {
+    let probe = current_player_rect(p, p.pos.x, p.pos.y - 2.0);
+    map.entities
+        .iter()
+        .any(|entity| ledge_blocker_collides(entity, probe))
+}
+
+/// Which entities carry a `LedgeBlocker` in vanilla 1.4.0.0.
+/// `Celeste/CrystalStaticSpinner.cs:156` and `Celeste/DustStaticSpinner.cs:24`
+/// add one with no block checker; `Celeste/Spikes.cs:50/57/61` add one for
+/// `Up`/`Left`/`Right` and `Spikes.cs:52-54` adds none for `Down`, which the
+/// decoder stores as `direction.y > 0`. `LedgeBlocker.Blocking` is only ever
+/// written for `ClimbBlocker` (`Celeste/WallBooster.cs:88`), so these always
+/// block. `EntityKind` has no DustStaticSpinner or TriggerSpikes variant.
+fn is_ledge_blocker(entity: &crate::Entity) -> bool {
+    match entity.kind {
+        EntityKind::CrystalStaticSpinner => true,
+        EntityKind::Spikes => entity.direction.y <= 0.0,
+        _ => false,
+    }
+}
+
+/// `LedgeBlocker.DashCorrectCheck`/`JumpThruBoostCheck` both end in
+/// `player.CollideCheck(base.Entity, ...)`, so the blocker's real collider is
+/// what matters. `Celeste/CrystalStaticSpinner.cs:152` installs
+/// `ColliderList(Circle(6f), Hitbox(16f, 4f, -8f, -3f))` around the spinner
+/// position; the decoded bounds are that union's 16x12 bounding box, so the
+/// rounded corners have to be tested separately. `Spikes.cs:49/56/60` install
+/// plain `Hitbox` colliders, whose decoded bounds are exact.
+fn ledge_blocker_collides(entity: &crate::Entity, rect: Rect) -> bool {
+    if !is_ledge_blocker(entity) {
+        return false;
+    }
+    if entity.kind == EntityKind::CrystalStaticSpinner {
+        let center = Vec2::new(
+            entity.bounds.x + entity.bounds.width * 0.5,
+            entity.bounds.y + entity.bounds.height * 0.5,
+        );
+        return circle_rect_intersects(center, 6.0, rect)
+            || Rect::new(center.x - 8.0, center.y - 3.0, 16.0, 4.0).intersects(rect);
+    }
+    entity.bounds.intersects(rect)
+}
+
 /// `Player.DashCorrectCheck(add)` (`Player.cs:4191-4209`): move the player by
 /// `add`, force the `hurtbox` collider (`normalHurtbox`, or `duckHurtbox` while
 /// `Ducking` - `Player.cs:1020-1025`), and ask every `LedgeBlocker`
@@ -7098,12 +7206,9 @@ fn jump_thru_outside(p: &PlayerSnapshot, map: &Map, offset: f32) -> bool {
 fn dash_correct_check(p: &PlayerSnapshot, map: &Map, offset_y: f32) -> bool {
     let hurt = current_player_hurt_rect(p);
     let hurt = Rect::new(hurt.x, hurt.y + offset_y, hurt.width, hurt.height);
-    map.entities.iter().any(|entity| {
-        matches!(
-            entity.kind,
-            EntityKind::Spikes | EntityKind::CrystalStaticSpinner
-        ) && entity.bounds.intersects(hurt)
-    })
+    map.entities
+        .iter()
+        .any(|entity| ledge_blocker_collides(entity, hurt))
 }
 
 fn player_hurt_rect(x: f32, y: f32) -> Rect {
@@ -7273,7 +7378,18 @@ fn slip_check(p: &PlayerSnapshot, map: &Map, add_y: f32) -> bool {
         && !map.solid_at(Rect::new(x, lower_y - 4.0 + add_y, 1.0, 1.0))
 }
 
-fn climb_hop(p: &mut PlayerSnapshot, map: &Map, wall: i8) {
+fn climb_hop(
+    p: &mut PlayerSnapshot,
+    map: &Map,
+    wall: i8,
+    climb_hop_solid: &mut Option<ClimbHopSolid>,
+) {
+    // `Player.ClimbHop` (`Player.cs:4122-4131`) stores
+    // `CollideFirst<Solid>(Position + UnitX * Facing)`. `Level.SolidTiles`
+    // never moves, so a tile hit leaves a reference that can never carry the
+    // player; the runtime map models tiles as rectangles rather than entities,
+    // and `None` reproduces that.
+    *climb_hop_solid = first_solid_at(p, map);
     if touching_wall(p, map, wall) {
         p.hop_wait_x = wall;
         p.hop_wait_x_speed = wall as f32 * CLIMB_HOP_X;
@@ -7543,6 +7659,74 @@ fn move_v_exact(p: &mut PlayerSnapshot, map: &Map, amount: i32) {
         remaining -= sign;
         p.pos.y += sign as f32;
     }
+}
+
+/// `Monocle.Actor.MoveHExact` (`Celeste/Actor.cs:210-236`): whole-pixel steps,
+/// each preceded by a `CollideFirst<Solid>` probe. A blocked step clears
+/// `movementCounter.X` and stops the walk; the fractional part of the amount
+/// does not exist because the caller already truncated it.
+fn move_h_exact(p: &mut PlayerSnapshot, map: &Map, amount: i32) {
+    let sign = amount.signum();
+    let mut remaining = amount;
+    while remaining != 0 {
+        let next = current_player_rect(p, p.pos.x + sign as f32, p.pos.y);
+        if map.solid_at(next) {
+            p.movement_remainder.x = 0.0;
+            return;
+        }
+        remaining -= sign;
+        p.pos.x += sign as f32;
+    }
+}
+
+/// Entity kinds the runtime map keeps as `Monocle.Solid` entities, mirroring
+/// `Map::non_dream_solid_at` plus `DreamBlock` (`Celeste/DreamBlock.cs`).
+/// `Level.SolidTiles` (`Celeste/SolidTiles.cs:8`) is the level's tile grid and
+/// is modelled as `Map::solids` instead, so tile walls never appear here.
+fn is_solid_entity(kind: EntityKind) -> bool {
+    matches!(
+        kind,
+        EntityKind::BounceBlock
+            | EntityKind::CassetteBlock
+            | EntityKind::DreamBlock
+            | EntityKind::ExitBlock
+            | EntityKind::FallingBlock
+            | EntityKind::InvisibleBarrier
+            | EntityKind::MoveBlock
+            | EntityKind::MovingSolid
+            | EntityKind::ZipMover
+            | EntityKind::TempleGate
+    )
+}
+
+/// `Entity.CollideFirst<Solid>(at)` (`Monocle/Entity.cs:687`) resolved to the
+/// runtime entity index, which is what `Player.ClimbHop` (`Player.cs:4124`)
+/// stores in `climbHopSolid`. A tile hit yields `None`: `Level.SolidTiles`
+/// (`Celeste/SolidTiles.cs:18`) never moves, so whichever tile Solid wins the
+/// probe the carry is inert, and the runtime map models tiles as rectangles
+/// rather than entities.
+fn first_solid_at(p: &PlayerSnapshot, map: &Map) -> Option<ClimbHopSolid> {
+    let facing = if p.facing { 1.0 } else { -1.0 };
+    let probe = current_player_rect(p, p.pos.x + facing, p.pos.y);
+    if map.static_solid_at(probe) {
+        return None;
+    }
+    map.entities
+        .iter()
+        .enumerate()
+        .find_map(|(index, entity)| {
+            (is_solid_entity(entity.kind) && entity.bounds.intersects(probe)).then(|| ClimbHopSolid {
+                entity: index,
+                position: Vec2::new(entity.bounds.x, entity.bounds.y),
+            })
+        })
+}
+
+/// `Entity.Collidable`. The runtime map parks a disabled Solid far outside the
+/// room (`park_entity`), which is how `ExitBlock`, `InvisibleBarrier`,
+/// `CassetteBlock` and `FallingBlock` model their collidable flags.
+fn solid_is_collidable(entity: &crate::Entity) -> bool {
+    entity.bounds.x != PARKED_ENTITY_POSITION || entity.bounds.y != PARKED_ENTITY_POSITION
 }
 
 fn interact(
@@ -13512,6 +13696,7 @@ mod tests {
             InputState::default(),
             &mut map,
             &mut attachments,
+            &mut None,
         )
         .unwrap();
         assert!(player.invisible_barriers[0].initialized);
@@ -14220,6 +14405,213 @@ mod tests {
         assert_eq!(trace.states[1].no_wind_timer, CLIMB_HOP_NO_WIND_TIME);
         assert!((trace.states[3].speed.x - 89.166_64).abs() < 0.001);
         assert_eq!(trace.states[3].hop_wait_x, 0);
+    }
+
+    #[test]
+    fn climb_hop_stores_the_grabbed_solid_for_the_carry() {
+        // `Player.ClimbHop` (`Player.cs:4124`) stores
+        // `CollideFirst<Solid>(Position + UnitX * Facing)`. The wall here is a
+        // moving Solid placed so that the player is beside its face but the
+        // `SlipCheck` probes at `Collider.Right` miss it (`Player.cs:4134`), so
+        // ClimbUpdate takes the slip branch at `Player.cs:4155`.
+        // `SlipCheck` probes at `Collider.Right`, so the Solid is a 2 px slab
+        // that only covers the middle of the player's body. It is held still
+        // here: this test pins the capture, and
+        // `climb_hop_solid_carry_uses_the_solids_whole_pixel_delta` pins the
+        // per-frame carry.
+        let map = Map {
+            entities: vec![crate::Entity {
+                kind: EntityKind::MovingSolid,
+                bounds: Rect::new(40.0, 114.0, 24.0, 2.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "celesteGymMovingSolid".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(36.0, 124.0),
+            speed: Vec2::new(0.0, -45.0),
+            state: PlayerState::Climb,
+            facing: true,
+            stamina: 100.0,
+            ..PlayerSnapshot::default()
+        };
+        assert!(touching_wall(&player, &map, 1));
+        assert!(slip_check(&player, &map, 0.0));
+        let mut simulator = Simulator::new(player, &map).unwrap();
+        simulator
+            .step(InputState {
+                move_y: -1,
+                grab_held: true,
+                ..InputState::default()
+            })
+            .unwrap();
+        assert_eq!(simulator.snapshot().state, PlayerState::Normal);
+        assert_eq!(simulator.snapshot().hop_wait_x, 1);
+        assert_eq!(
+            simulator.climb_hop_solid,
+            Some(ClimbHopSolid {
+                entity: 0,
+                position: Vec2::new(40.0, 114.0),
+            })
+        );
+    }
+
+    #[test]
+    fn climb_hop_solid_carry_uses_the_solids_whole_pixel_delta() {
+        // `Player.cs:1646-1652`: while the force-move window is open, the
+        // grabbed Solid's whole-pixel movement is replayed onto the player with
+        // `MoveHExact`/`MoveVExact`, which never touch `movementCounter` unless
+        // a pixel is blocked (`Actor.cs:220`/`249`).
+        let mut map = Map {
+            entities: vec![crate::Entity {
+                kind: EntityKind::MovingSolid,
+                bounds: Rect::new(60.0, 100.0, 16.0, 16.0),
+                direction: Vec2::new(0.0, -60.0),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "celesteGymMovingSolid".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let mut p = PlayerSnapshot {
+            // Frozen keeps the state callback inert so the carry is the only
+            // position write in the frame.
+            pos: Vec2::new(36.0, 116.0),
+            state: PlayerState::Frozen,
+            force_move_x_timer: CLIMB_HOP_FORCE_TIME,
+            movement_remainder: Vec2::new(0.0, 0.25),
+            ..PlayerSnapshot::default()
+        };
+        let mut attachments = Vec::new();
+        let mut carry = Some(ClimbHopSolid {
+            entity: 0,
+            position: Vec2::new(60.0, 100.0),
+        });
+        step(
+            &mut p,
+            InputState::default(),
+            &mut map,
+            &mut attachments,
+            &mut carry,
+        )
+        .unwrap();
+        // -60 px/s over one 1/60 second frame is exactly one whole pixel up.
+        assert_eq!(p.pos, Vec2::new(36.0, 115.0));
+        assert_eq!(p.movement_remainder, Vec2::new(0.0, 0.25));
+        assert_eq!(
+            carry,
+            Some(ClimbHopSolid {
+                entity: 0,
+                position: Vec2::new(60.0, 99.0),
+            })
+        );
+
+        // Once the force-move window closes, `Player.cs:1640` drops the
+        // reference and the Solid can no longer carry the player.
+        p.force_move_x_timer = 0.0;
+        step(
+            &mut p,
+            InputState::default(),
+            &mut map,
+            &mut attachments,
+            &mut carry,
+        )
+        .unwrap();
+        assert_eq!(carry, None);
+        assert_eq!(p.pos, Vec2::new(36.0, 115.0));
+    }
+
+    /// `Player.JumpThruBoostBlockedCheck` (`Player.cs:4179-4189`) and the
+    /// `LedgeBlocker` set it iterates (`Celeste/LedgeBlocker.cs:8`).
+    fn jump_thru_assist_map(blocker: Option<crate::Entity>) -> Map {
+        let mut entities = vec![crate::Entity {
+            kind: EntityKind::JumpThru,
+            bounds: Rect::new(32.0, 95.0, 32.0, 5.0),
+            direction: Vec2::default(),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "jumpThru".to_owned(),
+        }];
+        entities.extend(blocker);
+        Map {
+            entities,
+            ..Map::default()
+        }
+    }
+
+    #[test]
+    fn jump_thru_assist_runs_without_a_ledge_blocker() {
+        let map = jump_thru_assist_map(None);
+        let player = PlayerSnapshot {
+            pos: Vec2::new(36.0, 100.0),
+            state: PlayerState::Frozen,
+            ..PlayerSnapshot::default()
+        };
+        let after = simulate(player, &[InputState::default()], &map, 1).unwrap();
+        // MoveV(-40 * 1/60) rounds to a whole pixel up and keeps the fraction.
+        assert_eq!(after.pos.y, 99.0);
+        assert!((after.movement_remainder.y - 1.0 / 3.0).abs() < 0.0001);
+    }
+
+    #[test]
+    fn jump_thru_assist_is_skipped_when_a_ledge_blocker_blocks_the_probe() {
+        // `Spikes.cs:61` gives a right-facing spike strip a `LedgeBlocker`, and
+        // `LedgeBlocker.cs:33-44` probes two pixels above the live collider.
+        let map = jump_thru_assist_map(Some(crate::Entity {
+            kind: EntityKind::Spikes,
+            bounds: Rect::new(38.0, 90.0, 3.0, 8.0),
+            direction: Vec2::new(1.0, 0.0),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "spikesRight".to_owned(),
+        }));
+        let player = PlayerSnapshot {
+            pos: Vec2::new(36.0, 100.0),
+            state: PlayerState::Frozen,
+            ..PlayerSnapshot::default()
+        };
+        let after = simulate(player, &[InputState::default()], &map, 1).unwrap();
+        assert_eq!(after.pos.y, 100.0);
+        assert_eq!(after.movement_remainder.y, 0.0);
+    }
+
+    #[test]
+    fn ledge_blocker_probe_uses_the_spinner_circle_not_its_bounding_box() {
+        // `CrystalStaticSpinner.cs:152` is
+        // `ColliderList(Circle(6f), Hitbox(16f, 4f, -8f, -3f))`; the decoded
+        // bounds are only the union's bounding box, so a probe that touches a
+        // rounded corner must not register.
+        let spinner = crate::Entity {
+            kind: EntityKind::CrystalStaticSpinner,
+            bounds: Rect::new(40.0, 100.0, 16.0, 12.0),
+            direction: Vec2::default(),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "spinner".to_owned(),
+        };
+        // Bounding-box corner only: nearest point to the (48, 106) centre is
+        // (54, 110), distance sqrt(52) > 6, and the 4 px hitbox is at
+        // y 103..107.
+        assert!(!ledge_blocker_collides(&spinner, Rect::new(54.0, 110.0, 4.0, 2.0)));
+        // Inside the 16x4 hitbox.
+        assert!(ledge_blocker_collides(&spinner, Rect::new(44.0, 104.0, 2.0, 2.0)));
+        // Inside the circle.
+        assert!(ledge_blocker_collides(&spinner, Rect::new(48.0, 101.0, 2.0, 2.0)));
+        // Down-facing spikes carry no LedgeBlocker (`Spikes.cs:52-54`).
+        let down_spikes = crate::Entity {
+            kind: EntityKind::Spikes,
+            direction: Vec2::new(0.0, 1.0),
+            ..spinner
+        };
+        assert!(!ledge_blocker_collides(&down_spikes, Rect::new(44.0, 104.0, 2.0, 2.0)));
     }
 
     #[test]
@@ -17294,7 +17686,14 @@ mod tests {
         assert_eq!(p.cassette_blocks[1].position.y, -48.0);
         assert!(p.cassette_blocks[1].collidable);
 
-        step(&mut p, InputState::default(), &mut map, &mut attachments).unwrap();
+        step(
+            &mut p,
+            InputState::default(),
+            &mut map,
+            &mut attachments,
+            &mut None,
+        )
+        .unwrap();
         assert_eq!(p.cassette_manager.beat_index, 7);
         // The same scene frame now runs CassetteBlockManager.WillToggle:
         // inactive index 0 moves up one pixel, while active index 1 moves
