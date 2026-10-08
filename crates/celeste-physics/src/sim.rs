@@ -24,6 +24,16 @@ const VAR_JUMP_TIME: f32 = 0.2;
 const JUMP_THRU_ASSIST_SPEED: f32 = -40.0;
 const WALL_JUMP_H: f32 = 130.0;
 const WALL_JUMP_CHECK_DIST: f32 = 3.0;
+/// `Player.SuperWallJumpCheckDist` (`Player.cs:179`).
+const SUPER_WALL_JUMP_CHECK_DIST: f32 = 5.0;
+/// `Player.WallJumpForceTime` (`Player.cs:181`).
+const WALL_JUMP_FORCE_TIME: f32 = 0.16;
+/// `Player.GliderWallJumpForceTime` (`Player.cs:345`).
+const GLIDER_WALL_JUMP_FORCE_TIME: f32 = 0.26;
+/// `Player.LaunchedBoostCheckSpeedSq` (`Player.cs:659`).
+const LAUNCHED_BOOST_CHECK_SPEED_SQ: f32 = 10000.0;
+/// The 220^2 speed term of `Player.LaunchedBoostCheck` (`Player.cs:2355`).
+const LAUNCHED_SPEED_SQ: f32 = 48400.0;
 const WALL_SLIDE_START_MAX: f32 = 20.0;
 const WALL_SLIDE_TIME: f32 = 1.2;
 const DASH_SPEED: f32 = 240.0;
@@ -4900,6 +4910,11 @@ fn step(
         p.wall_slide_timer = (p.wall_slide_timer - p.frame_delta_time).max(0.0);
     }
     p.wall_slide_dir = 0;
+    // Player.cs:1560-1570 consumes the wall boost BEFORE the `onGround` block
+    // at Player.cs:1571-1576 resets Stamina. Landing on the exact boost frame
+    // must therefore end at 110, not 137.5: the previous order let the +27.5
+    // refund survive the ground reset.
+    update_wall_boost(p);
     if p.strawberry_collect_reset_timer > 0.0 {
         p.strawberry_collect_reset_timer =
             (p.strawberry_collect_reset_timer - p.frame_delta_time).max(0.0);
@@ -4927,7 +4942,6 @@ fn step(
     if p.state == PlayerState::Swim && !dash_refill_cooldown_active {
         p.dashes = p.dashes.max(1);
     }
-    update_wall_boost(p);
     p.move_x = if force_move_x_active {
         p.force_move_x
     } else {
@@ -4984,6 +4998,7 @@ fn step(
 
     let was_pickup = p.state == PlayerState::Pickup;
     let was_dream_dash = p.state == PlayerState::DreamDash;
+    let was_normal = p.state == PlayerState::Normal;
     match p.state {
         PlayerState::Normal => normal_update(p, input, map, was_on_ground),
         PlayerState::Dash => dash_update(p, input, map),
@@ -5018,6 +5033,15 @@ fn step(
             return Ok(());
         }
         other => return Err(SimulationError::UnsupportedState(other)),
+    }
+
+    // StateMachine runs the previous state's End before the new state's Begin
+    // as soon as the callback assigns State. Player.NormalEnd
+    // (Player.cs:3536-3541) therefore clears the wall-boost and wall-speed
+    // retention windows on the very frame the player leaves StNormal - a
+    // retained speed must not survive into a dash and fire several frames later.
+    if was_normal && p.state != PlayerState::Normal {
+        normal_end(p);
     }
 
     // StateMachine.Update applies DreamDashUpdate's returned state
@@ -5188,11 +5212,18 @@ fn update_wall_speed_retention(p: &mut PlayerSnapshot, map: &Map) {
     if p.wall_speed_retention_timer <= 0.0 {
         return;
     }
-    if p.speed.x.signum() == -p.wall_speed_retained.signum() {
+    // Player.cs:1669 compares `Math.Sign(Speed.X)` against
+    // `-Math.Sign(wallSpeedRetained)`. `Math.Sign(0f)` is 0, so a Speed.X that
+    // the wall collision zeroed on the previous frame (Player.cs:3219) is NOT
+    // "moving away from the retained direction": the retained speed is restored
+    // instead (Player.cs:1673-1676). Using `f32::signum` here treated the zero
+    // speed as +1 and cancelled the retention on every wall-jump chain, leaving
+    // the player with pure air-acceleration speed.
+    if math_sign(p.speed.x) == -math_sign(p.wall_speed_retained) {
         p.wall_speed_retention_timer = 0.0;
     } else if !map.solid_at(current_player_rect(
         p,
-        p.pos.x + p.wall_speed_retained.signum(),
+        p.pos.x + math_sign(p.wall_speed_retained),
         p.pos.y,
     )) {
         p.speed.x = p.wall_speed_retained;
@@ -5224,7 +5255,6 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
         return;
     }
 
-    let wall = wall_slide_dir(p, map);
     let facing_dir = if p.facing { 1 } else { -1 };
     if !holding_holdable(p)
         && input.grab_held
@@ -5339,21 +5369,40 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
         FAST_MAX_ACCEL * p.frame_delta_time,
     );
     let mut fall_target = p.max_fall;
-    // Player.cs:3749 gates the entire wall-slide block on
-    // `Input.MoveY.Value != 1`: holding down (a fast-fall) suppresses both the
-    // `wallSlideDir` assignment and the `Lerp(160, 20, wallSlideTimer / 1.2)`
-    // fall target, so a down-held fall beside a wall keeps the ordinary
-    // `maxFall` target instead of decelerating toward the 20 px/s wall-slide cap.
-    if !holding_holdable(p)
-        && wall != 0
-        && input.move_x == wall
+    // Player.cs:3749-3771. The whole wall-slide block is gated on the
+    // force-move-adjusted `moveX` pointing into Facing (or a neutral moveX while
+    // Grab is held) and on `Input.MoveY != 1` - holding down (a fast-fall)
+    // suppresses both the `wallSlideDir` assignment and the
+    // `Lerp(160, 20, wallSlideTimer / 1.2)` fall target, so a down-held fall
+    // beside a wall keeps the ordinary `maxFall` target instead of decelerating
+    // toward the 20 px/s wall-slide cap (W3 `586011d`). Inside that gate the
+    // assignment itself additionally needs a live `wallSlideTimer`, the
+    // Facing-side solid, a clear ClimbBlocker edge and `CanUnDuck`. The probe
+    // follows Facing - not whichever side happens to carry a wall.
+    if !p.on_ground
+        && !holding_holdable(p)
+        && (p.move_x == facing_dir || (p.move_x == 0 && input.grab_held))
         && input.move_y != 1
-        && p.speed.y >= 0.0
-        && !p.on_ground
     {
-        p.wall_slide_dir = wall;
-        fall_target = WALL_SLIDE_START_MAX
-            + (MAX_FALL - WALL_SLIDE_START_MAX) * (1.0 - p.wall_slide_timer / WALL_SLIDE_TIME);
+        if p.speed.y >= 0.0
+            && p.wall_slide_timer > 0.0
+            && can_unduck(p, map)
+            && wall_slide_at(p, map, facing_dir)
+        {
+            p.ducking = false;
+            p.wall_slide_dir = facing_dir;
+        }
+        if p.wall_slide_dir != 0 {
+            // Player.cs:3762-3765: a wall next to a ClimbBlocker only ever
+            // reaches the slowest quarter of the slide ramp.
+            if p.wall_slide_timer > 0.6
+                && climb_blocker_check(p, map, p.wall_slide_dir as f32, 0.0)
+            {
+                p.wall_slide_timer = 0.6;
+            }
+            fall_target = WALL_SLIDE_START_MAX
+                + (MAX_FALL - WALL_SLIDE_START_MAX) * (1.0 - p.wall_slide_timer / WALL_SLIDE_TIME);
+        }
     }
     let mut gravity_mult =
         if (input.jump_held || p.auto_jump) && p.speed.y.abs() < HALF_GRAV_THRESHOLD {
@@ -5419,29 +5468,25 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
                 }
                 return;
             }
-            if !holding_holdable(p) && input.grab_held && p.stamina > 0.0 && facing_dir == jump_wall
+            if !holding_holdable(p)
+                && input.grab_held
+                && p.stamina > 0.0
+                && facing_dir == jump_wall
+                // Player.cs:3807 / 3822: a blocking ClimbBlocker 3 px into the
+                // wall downgrades the ClimbJump to an ordinary WallJump.
+                && !climb_blocker_check(p, map, 3.0 * jump_wall as f32, 0.0)
             {
                 climb_jump(p, jump_wall);
-            } else if p.dash_attack_timer > 0.0 && p.dash_dir.x == 0.0 && p.dash_dir.y == -1.0 {
-                // Player.NormalUpdate still allows SuperWallJump after the
-                // Dash coroutine has returned to Normal. DashAttacking lasts
-                // 0.3 s, twice the ordinary Dash state's 0.15 s duration.
+            } else if dash_attacking(p) && super_wall_jump_angle_check(p) {
+                // Player.cs:3811 / 3826: `DashAttacking && SuperWallJumpAngleCheck`;
+                // DashAttacking lasts 0.3 s, twice the ordinary Dash state's
+                // 0.15 s duration, so this also fires after the dash returns
+                // to Normal.
                 super_wall_jump(p, -jump_wall);
             } else {
-                p.jump_buffer_timer = 0.0;
-                p.speed.x = -(jump_wall as f32) * WALL_JUMP_H;
-                p.speed.y = JUMP_SPEED;
-                add_lift_boost(p);
-                p.auto_jump = false;
-                p.dash_attack_timer = 0.0;
-                p.wall_slide_timer = WALL_SLIDE_TIME;
-                p.wall_boost_timer = 0.0;
-                if move_x != 0 {
-                    p.force_move_x = -jump_wall;
-                    p.force_move_x_timer = 0.16;
-                }
-                p.var_jump_speed = p.speed.y;
-                p.var_jump_timer = VAR_JUMP_TIME;
+                // Player.cs:3817 / 3832: WallJump(-1) launches to the left when
+                // WallJumpCheck(1) found the wall on the right.
+                wall_jump(p, -jump_wall);
             }
         }
     }
@@ -5481,6 +5526,73 @@ fn begin_dash(
     }
 }
 
+/// The buffered-jump block that every `Player.DashUpdate` frame runs
+/// (`Player.cs:4393-4441`). Returns `true` when the jump was consumed and the
+/// state machine must return to `StNormal` (state 0).
+///
+/// * `|DashDir.Y| < 0.1` with coyote time is a `SuperJump` (`Player.cs:4393-4397`).
+/// * `SuperWallJumpAngleCheck` (`|DashDir.X| <= 0.2 && DashDir.Y <= -0.75`,
+///   `Player.cs:1092-1102`) turns a wall jump into a `SuperWallJump`
+///   (`Player.cs:4399-4414`).
+/// * Otherwise `WallJumpCheck(1)`/`WallJumpCheck(-1)` launches a `ClimbJump`
+///   when Grab is held while Facing that wall, and a plain `WallJump` in every
+///   other case (`Player.cs:4415-4441`).
+///
+/// The simulator previously only modelled the two super variants, so a climb
+/// jump or wall jump buffered during a dash never fired: no 130/170 launch and
+/// no 27.5 stamina cost.
+fn dash_jump(p: &mut PlayerSnapshot, input: InputState, map: &Map) -> bool {
+    if !input.jump_pressed || !can_unduck(p, map) {
+        return false;
+    }
+    if p.dash_dir.y.abs() < 0.1 && p.jump_grace_timer > 0.0 {
+        super_jump(p);
+        enter_normal(p);
+        return true;
+    }
+    let jump_wall = if wall_jump_check(p, map, 1) {
+        1
+    } else if wall_jump_check(p, map, -1) {
+        -1
+    } else {
+        0
+    };
+    if p.dash_dir.x.abs() <= 0.2 && p.dash_dir.y <= -0.75 {
+        // Player.cs:4403-4412 requires a WallJumpCheck before SuperWallJump.
+        if jump_wall != 0 {
+            super_wall_jump(p, -jump_wall);
+            enter_normal(p);
+            return true;
+        }
+        return false;
+    }
+    if jump_wall == 0 {
+        return false;
+    }
+    let facing_dir: i8 = if p.facing { 1 } else { -1 };
+    if !holding_holdable(p)
+        && input.grab_held
+        && p.stamina > 0.0
+        && facing_dir == jump_wall
+        // Player.cs:4419 / 4431: the 3 px ClimbBlocker probe in front of
+        // Facing downgrades the ClimbJump to an ordinary WallJump.
+        && !climb_blocker_check(p, map, 3.0 * jump_wall as f32, 0.0)
+    {
+        // Player.cs:4419-4422 / 4431-4434: Facing into the wall plus Grab is a
+        // ClimbJump, which charges 27.5 stamina (`Player.cs:2646-2651`).
+        climb_jump(p, jump_wall);
+    } else {
+        wall_jump(p, -jump_wall);
+    }
+    // Player.DashUpdate returns state 0 (`StNormal`) from every jump branch
+    // (Player.cs:4396/4406/4411/4427/4439), and the setter only runs
+    // `begins[0]` when the state actually changes - so every one of these
+    // branches also carries NormalBegin's `maxFall = 160f`
+    // (Player.cs:3531-3534), which is what `enter_normal` applies.
+    enter_normal(p);
+    true
+}
+
 fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     // StateMachine starts DashCoroutine beside DashUpdate. Its initial yield
     // occupies the first unfrozen DashUpdate; when that yield resumes, the
@@ -5506,55 +5618,22 @@ fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     // `Monocle.StateMachine.Update` calls the state callback before it resumes
     // the coroutine (`Monocle/StateMachine.cs:168-183`), so every branch below
     // reads the DashDir the source callback would see - still Zero on the frame
-    // the coroutine publishes.
+    // the coroutine publishes (W1 `8aa41da`).
     // Player.cs:4384-4392 closes the player onto a JumpThru it already overlaps
     // (any overhang up to six pixels) with an exact move, before the dash jump
     // branches below.
     if p.dash_dir.y.abs() < 0.1 {
         close_dash_onto_jump_thru(p, map);
     }
-    if p.dash_dir.y.abs() < 0.1 && input.jump_pressed && p.jump_grace_timer > 0.0 {
-        // DashUpdate's SuperJump branch returns 0 (Player.cs:4393-4397), so the
-        // StateMachine leaves Dash for Normal and runs NormalBegin, which resets
-        // `maxFall` (Player.cs:3533). Every `super_jump`/`super_wall_jump` call
-        // below is the same `return 0` from Player.DashUpdate (Player.cs:4399-4411,
-        // 4415-4441) and therefore carries the same reset. The NormalUpdate jump
-        // branches (Player.cs:3805-3833) do not: there `StateMachine.State` is
-        // already Normal, so the setter's `state == value` guard skips NormalBegin.
-        super_jump(p);
-        enter_normal(p);
+    // Player.cs:4393-4441 is the whole buffered-jump block of DashUpdate: a
+    // SuperJump on a horizontal dash with coyote time (4393-4397), a
+    // SuperWallJump while SuperWallJumpAngleCheck holds (4399-4414), and
+    // otherwise a ClimbJump (grab held, facing the wall, stamina left, no
+    // blocking ClimbBlocker 3 px into it) or a plain WallJump (4415-4441).
+    // Every branch returns 0, so `dash_jump` finishes with `enter_normal`,
+    // which also applies NormalBegin's `maxFall = 160f` (Player.cs:3531-3534).
+    if dash_jump(p, input, map) {
         return;
-    }
-    if p.dash_dir.x.abs() <= 0.2 && p.dash_dir.y <= -0.75 && input.jump_pressed {
-        let wall = wall_dir(p, map);
-        if wall != 0 {
-            super_wall_jump(p, -wall);
-            return;
-        }
-    } else if input.jump_pressed && can_unduck(p, map) {
-        // Player.cs:4415-4441 is the non-SuperWallJumpAngleCheck jump branch of
-        // DashUpdate: a jump press during any other dash looks for a wall, and
-        // turns into a ClimbJump (grab held, facing the wall, stamina left) or a
-        // plain WallJump. DashUpdate returns 0, which StateMachine.Update applies
-        // as State = 0, so the player leaves the dash on this same frame.
-        for dir in [1i8, -1i8] {
-            if wall_jump_check(p, map, dir) {
-                if p.facing == (dir > 0)
-                    && input.grab_held
-                    && p.stamina > 0.0
-                    && !holding_holdable(p)
-                    && !climb_blocker_check(p, map, dir as f32 * WALL_JUMP_CHECK_DIST, 0.0)
-                {
-                    // Player.ClimbJump (`Player.cs:2644-2675`) pays
-                    // ClimbJumpCost and jumps away from the wall it faces.
-                    climb_jump(p, if p.facing { 1 } else { -1 });
-                } else {
-                    wall_jump(p, -dir);
-                }
-                p.state = PlayerState::Normal;
-                return;
-            }
-        }
     }
     p.state_timer = (p.state_timer - p.frame_delta_time).max(0.0);
     if (p.state_timer - DASH_TIME).abs() <= p.frame_delta_time * 0.5 {
@@ -5591,16 +5670,12 @@ fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
             p.speed.x *= 1.2;
             p.ducking = true;
         }
-        if p.dash_dir.y.abs() < 0.1 && input.jump_pressed && p.jump_grace_timer > 0.0 {
-            super_jump(p);
-            enter_normal(p);
-        } else if p.dash_dir.x.abs() <= 0.2 && p.dash_dir.y <= -0.75 && input.jump_pressed {
-            let wall = wall_dir(p, map);
-            if wall != 0 {
-                super_wall_jump(p, -wall);
-                enter_normal(p);
-            }
-        }
+        // DashUpdate has already run for this frame (`Monocle/StateMachine.cs:171-183`
+        // runs the state callback before the coroutine), so the freshly published
+        // DashDir/Speed must not be re-tested against the jump branches here: the
+        // next frame's DashUpdate sees them through the block at the top of this
+        // function. W1 `8aa41da` duplicated the SuperJump/SuperWallJump checks at
+        // this point; those are removed because they fired a frame early.
         return;
     }
     if p.state_timer > 0.0 {
@@ -5697,6 +5772,7 @@ fn super_jump(p: &mut PlayerSnapshot) {
     p.launched = true;
 }
 
+/// `Player.SuperWallJump(int dir)` (`Player.cs:2607-2622`).
 fn super_wall_jump(p: &mut PlayerSnapshot, dir: i8) {
     p.state = PlayerState::Normal;
     p.ducking = false;
@@ -5730,7 +5806,7 @@ fn enter_normal(p: &mut PlayerSnapshot) {
 /// than six pixels below the player's bottom pulls the player onto its top with
 /// `MoveVExact((int)(entity.Top - base.Bottom))`. Like every `MoveVExact` this
 /// is an exact move: it steps whole pixels and only clears
-/// `movementCounter.Y` when a pixel is blocked.
+/// `movementCounter.Y` when a pixel is blocked. (W1 `8aa41da`.)
 fn close_dash_onto_jump_thru(p: &mut PlayerSnapshot, map: &Map) {
     for entity in &map.entities {
         if !matches!(entity.kind, EntityKind::JumpThru | EntityKind::Cloud) {
@@ -5751,27 +5827,47 @@ fn close_dash_onto_jump_thru(p: &mut PlayerSnapshot, map: &Map) {
     }
 }
 
-/// `Player.WallJump(dir)` (`Player.cs:2548-2605`): the plain wall jump used by
-/// `DashUpdate` (`Player.cs:4425`, `Player.cs:4437`). It mirrors the
-/// `NormalUpdate` wall jump the simulator already models, plus the source's
-/// `Ducking = false` and `jumpGraceTimer = 0`.
+/// `Player.WallJump(dir)` (`Player.cs:2548-2582`): the plain wall jump used by
+/// `NormalUpdate` (`Player.cs:3817`, `3832`), `ClimbUpdate` (`Player.cs:3937`)
+/// and `DashUpdate` (`Player.cs:4425`, `4437`).
+///
+/// One definition only: W1 `8aa41da` landed the `Ducking = false` and
+/// `jumpGraceTimer = 0` resets, and this keeps them plus the two pieces the
+/// source has beyond them - `Holding.SlowFall`'s 0.26 s forceMoveX window
+/// (`Player.cs:2560-2564`) and `LaunchedBoostCheck` (`Player.cs:2582`).
 fn wall_jump(p: &mut PlayerSnapshot, dir: i8) {
-    p.ducking = false;
-    p.jump_buffer_timer = 0.0;
-    p.jump_grace_timer = 0.0;
-    p.var_jump_timer = VAR_JUMP_TIME;
-    p.auto_jump = false;
-    p.dash_attack_timer = 0.0;
-    p.wall_slide_timer = WALL_SLIDE_TIME;
-    p.wall_boost_timer = 0.0;
-    if p.move_x != 0 {
+    p.ducking = false; // Player.cs:2550
+    p.jump_buffer_timer = 0.0; // Player.cs:2551 Input.Jump.ConsumeBuffer()
+    p.jump_grace_timer = 0.0; // Player.cs:2552
+    p.var_jump_timer = VAR_JUMP_TIME; // Player.cs:2553 (0.2f)
+    p.auto_jump = false; // Player.cs:2554
+    p.dash_attack_timer = 0.0; // Player.cs:2555
+    p.wall_slide_timer = WALL_SLIDE_TIME; // Player.cs:2557
+    p.wall_boost_timer = 0.0; // Player.cs:2558
+    if holding_slow_fall(p) {
         p.force_move_x = dir;
-        p.force_move_x_timer = 0.16;
+        p.force_move_x_timer = GLIDER_WALL_JUMP_FORCE_TIME;
+    } else if p.move_x != 0 {
+        p.force_move_x = dir;
+        p.force_move_x_timer = WALL_JUMP_FORCE_TIME;
     }
-    p.speed.x = WALL_JUMP_H * dir as f32;
-    p.speed.y = JUMP_SPEED;
-    add_lift_boost(p);
-    p.var_jump_speed = p.speed.y;
+    p.speed.x = WALL_JUMP_H * dir as f32; // Player.cs:2578
+    p.speed.y = JUMP_SPEED; // Player.cs:2579
+    add_lift_boost(p); // Player.cs:2580
+    p.var_jump_speed = p.speed.y; // Player.cs:2581
+    // Player.cs:2582 runs LaunchedBoostCheck (`Player.cs:2353-2362`), which
+    // assigns `launched` from the post-lift-boost speed.
+    let boost = lift_boost(p);
+    p.launched = boost.x * boost.x + boost.y * boost.y >= LAUNCHED_BOOST_CHECK_SPEED_SQ
+        && p.speed.x * p.speed.x + p.speed.y * p.speed.y >= LAUNCHED_SPEED_SQ;
+}
+
+/// `Player.NormalEnd` (`Player.cs:3536-3541`), run by `StateMachine` whenever
+/// the player leaves `StNormal`.
+fn normal_end(p: &mut PlayerSnapshot) {
+    p.wall_boost_timer = 0.0;
+    p.wall_speed_retention_timer = 0.0;
+    p.hop_wait_x = 0;
 }
 
 fn climb_jump(p: &mut PlayerSnapshot, wall: i8) {
@@ -5803,17 +5899,9 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     if input.jump_pressed && (!p.ducking || can_unduck(p, map)) {
         enter_normal(p);
         if p.move_x == -wall {
-            p.jump_buffer_timer = 0.0;
-            p.jump_grace_timer = 0.0;
-            p.auto_jump = false;
-            p.dash_attack_timer = 0.0;
-            p.wall_slide_timer = WALL_SLIDE_TIME;
-            p.wall_boost_timer = 0.0;
-            p.ducking = false;
-            p.speed = Vec2::new(-(wall as f32) * WALL_JUMP_H, JUMP_SPEED);
-            add_lift_boost(p);
-            p.var_jump_speed = p.speed.y;
-            p.var_jump_timer = VAR_JUMP_TIME;
+            // Player.cs:3937 `WallJump(0 - Facing)`: the same WallJump as the
+            // NormalUpdate branch, including its 0.16 s forceMoveX window.
+            wall_jump(p, -wall);
         } else {
             climb_jump(p, wall);
         }
@@ -5871,16 +5959,23 @@ fn climb_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     } else {
         try_slip = true;
     }
-    p.last_climb_move = target.signum() as i8;
+    // Player.cs:4045 `lastClimbMove = Math.Sign(num)` uses the BCL sign, so a
+    // neutral climb (num == 0, or a `flag` branch that only sets `flag`) stores
+    // 0 - not Rust's +1. Player.cs:4405 also reads this field back for the
+    // JumpThru assist.
+    p.last_climb_move = math_sign(target) as i8;
     if try_slip && slip_check(p, map, 0.0) {
         target = CLIMB_SLIP_SPEED;
     }
     p.speed.y = approach(p.speed.y, target, CLIMB_ACCEL * p.frame_delta_time);
     p.speed.x = 0.0;
     if p.climb_no_move_timer <= 0.0 {
-        let cost = if target < 0.0 {
+        // Player.cs:4058-4079 drains stamina from `lastClimbMove`, not from the
+        // post-SlipCheck `num`: a slip (`num = 30f` at Player.cs:4048) still
+        // charges the 10/s "still" cost because lastClimbMove is 0.
+        let cost = if p.last_climb_move < 0 {
             CLIMB_UP_COST
-        } else if target == 0.0 {
+        } else if p.last_climb_move == 0 {
             CLIMB_STILL_COST
         } else {
             0.0
@@ -7124,13 +7219,39 @@ fn climb_hop_blocked_check(p: &PlayerSnapshot, map: &Map) -> bool {
 }
 
 fn wall_jump_check(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
+    // Player.cs:2523-2540. The probe is 3 px, except while DashAttacking with a
+    // straight up DashDir == (0, -1) where it becomes SuperWallJumpCheckDist
+    // (5 px) - unless a Spikes entity facing the player would be hit at that
+    // distance, in which case the 3 px probe stands.
+    let mut dist = WALL_JUMP_CHECK_DIST;
+    if dash_attacking(p) && p.dash_dir.x == 0.0 && p.dash_dir.y == -1.0 {
+        dist = SUPER_WALL_JUMP_CHECK_DIST;
+        let rect = current_player_rect(p, p.pos.x + dir as f32 * dist, p.pos.y);
+        let spike_in_the_way = map.entities.iter().any(|entity| {
+            entity.kind == EntityKind::Spikes
+                && if dir <= 0 {
+                    entity.direction.x > 0.0
+                } else {
+                    entity.direction.x < 0.0
+                }
+                && entity.bounds.intersects(rect)
+        });
+        if spike_in_the_way {
+            dist = WALL_JUMP_CHECK_DIST;
+        }
+    }
     climb_bounds_check(p, map, dir)
-        && !climb_blocker_edge_check(p, map, dir as f32 * WALL_JUMP_CHECK_DIST)
+        && !climb_blocker_edge_check(p, map, dir as f32 * dist)
         && map.solid_at(current_player_rect(
             p,
-            p.pos.x + dir as f32 * WALL_JUMP_CHECK_DIST,
+            p.pos.x + dir as f32 * dist,
             p.pos.y,
         ))
+}
+
+/// `Player.SuperWallJumpAngleCheck` (`Player.cs:1092-1102`).
+fn super_wall_jump_angle_check(p: &PlayerSnapshot) -> bool {
+    p.dash_dir.x.abs() <= 0.2 && p.dash_dir.y <= -0.75
 }
 
 fn climb_blocker_check(p: &PlayerSnapshot, map: &Map, x_add: f32, y_add: f32) -> bool {
@@ -7171,7 +7292,10 @@ fn update_climb_hop_wait(p: &mut PlayerSnapshot, map: &Map) {
     if p.hop_wait_x == 0 {
         return;
     }
-    if p.speed.x.signum() == -(p.hop_wait_x as f32) || p.speed.y > 0.0 {
+    // Player.cs:1685 tests `Math.Sign(Speed.X) == -hopWaitX`. `Math.Sign(0f)`
+    // is 0, so a stationary player keeps waiting for the ledge instead of
+    // dropping `hopWaitXSpeed` (Player.cs:1691-1692).
+    if math_sign(p.speed.x) == -(p.hop_wait_x as f32) || p.speed.y > 0.0 {
         p.hop_wait_x = 0;
         p.hop_wait_x_speed = 0.0;
     } else if !touching_wall(p, map, p.hop_wait_x) {
@@ -7191,14 +7315,13 @@ fn wall_dir(p: &PlayerSnapshot, map: &Map) -> i8 {
     }
 }
 
-fn wall_slide_dir(p: &PlayerSnapshot, map: &Map) -> i8 {
-    if touching_wall(p, map, -1) && !climb_blocker_edge_check(p, map, -1.0) {
-        -1
-    } else if touching_wall(p, map, 1) && !climb_blocker_edge_check(p, map, 1.0) {
-        1
-    } else {
-        0
-    }
+/// `Player.NormalUpdate`'s wall-slide probe (`Player.cs:3751`): a Facing-side
+/// solid the player is flush against, with no blocking ClimbBlocker edge.
+///
+/// The probe direction is Facing. The previous helper searched the left wall
+/// first and was unrelated to the direction the player actually faces.
+fn wall_slide_at(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
+    touching_wall(p, map, dir) && !climb_blocker_edge_check(p, map, dir as f32)
 }
 
 fn move_axis(p: &mut PlayerSnapshot, map: &Map, horizontal: bool) {
@@ -8644,6 +8767,21 @@ fn approach(value: f32, target: f32, max_move: f32) -> f32 {
         (value + max_move).min(target)
     } else {
         (value - max_move).max(target)
+    }
+}
+
+/// `Math.Sign(float)` from the BCL: -1, 0 or +1.
+///
+/// Rust's `f32::signum` returns +1 for +0.0 and -1 for -0.0 instead, so every
+/// `Player.cs` branch that compares `Math.Sign(x)` against another sign value
+/// must go through this helper.
+fn math_sign(value: f32) -> f32 {
+    if value > 0.0 {
+        1.0
+    } else if value < 0.0 {
+        -1.0
+    } else {
+        0.0
     }
 }
 
@@ -13305,7 +13443,9 @@ mod tests {
         assert!(touching_wall(&player, &map, 1));
         assert!(!climb_check(&player, &map, 1, 0.0));
         assert!(!wall_jump_check(&player, &map, 1));
-        assert_eq!(wall_slide_dir(&player, &map), 0);
+        // Player.cs:3751 probes the Facing side, so the same barrier that
+        // blocks the climb probes also blocks the wall slide to the right.
+        assert!(!wall_slide_at(&player, &map, 1));
     }
 
     #[test]
