@@ -11,19 +11,32 @@ pinned vanilla 202-berry TAS, the instrumented CelesteTAS dumps one record per e
 
 | trace | `ok` rooms | mismatch | unsupported | replayed frames | frame-exact |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `trace-202-v5` | **437** | 1,030 | 0 | **136,388** | **135,327** |
-| `trace-100pct-v5` | **285** | 633 | 0 | **81,683** | **81,033** |
+| `trace-202-v5` | **450** | 1,017 | 0 | **139,188** | **138,140** |
+| `trace-100pct-v5` | **298** | 620 | 0 | **84,483** | **83,846** |
 | `trace-1a-v5` | **16** | 4 | 0 | **2,129** | **2,125** |
 
-The latest step is **un-flooring `Stamina`** (`c0b9cda`), and it is the cheapest win so far: the
-simulator clamped both climb drains with `.max(0.0)` while `Player.cs:2648`, `4060` and `4078` are bare
-subtractions. That clamp is invisible to every `Stamina <= 0` test downstream, so it changed no
-behaviour - it only made the recorded value disagree with the game on each frame of a climb that ran
-past zero. It was the **entire** `stamina | anchor=StNormal` class (16 segments whose only mismatch was
-the value: sim `0`, game `-0.33` to `-10.83`). Measured `202 15 improved / 1453 identical / 0
-regressed` -> `426 -> 437` `ok` and `+1,600` replayed frames; `100pct 7 / 911 / 0`, `+726`; `1a`
-unchanged. It is worth re-reading every clamp in the simulator this way: a floor that no branch can
-observe still costs frames, because the gate compares the *value*.
+The latest step is the **dash-capacity witness** (`c0d8167`), and it is the second-largest single
+win so far. `observe_session_dashes` combined the trace's witness of the session's
+`PlayerInventory.Dashes` with the per-area table using `min`, which throws the witness away exactly
+when the chapter has *raised* its capacity mid-play: `PlayerInventory.Farewell` is 1 dash, and
+Farewell's own intro writes `Session.Inventory.Dashes = 2` directly
+(`CS10_Gravestone.cs:133-134`, `:144-145`) before `CS10_FinalRoom.cs:76` returns it to 1. So
+`min(2, 1)` restored a capacity of 1 and the simulator could never reach the 2 the game was using.
+The witness is sound as a floor (`RefillDash` writes `Dashes = MaxDashes`, `BadelineBoost` increments
+only up to `Inventory.Dashes`, and the pink `twoDash` diamond - the one refill that ignores
+`MaxDashes` - is already excluded by position), so the two are now combined with `max`: **202 37
+improved / 1431 identical / 0 regressed**, `437 -> 450` `ok`, `+2,800` frames; **100pct 37 / 881 / 0**,
+`285 -> 298`, `+2,800`; `1a` unchanged. The `sim=1 game=2` half of the dash-count class fell from 41
+segments to 8 and the class from 49/4,056 to 31/3,294.
+
+The step before it in the same round was **un-flooring `Stamina`** (`c0b9cda`): the simulator clamped
+both climb drains with `.max(0.0)` while `Player.cs:2648`, `4060` and `4078` are bare subtractions.
+That clamp is invisible to every `Stamina <= 0` test downstream, so it changed no behaviour - it only
+made the recorded value disagree with the game on each frame of a climb that ran past zero. It was the
+**entire** `stamina | anchor=StNormal` class (16 segments whose only mismatch was the value: sim `0`,
+game `-0.33` to `-10.83`): `202 15 / 1453 / 0`, `+1,600` frames; `100pct 7 / 911 / 0`, `+726`. Worth
+re-reading every clamp in the simulator this way: a floor no branch can observe still costs frames,
+because the gate compares the *value*.
 
 The latest step is **`CoreModeToggle` and `Level.CoreMode`** (`8c201f9`). The Core's
 ice/fire state was being read from the wrong field: `WallBooster.IceMode`
@@ -421,8 +434,8 @@ headline progress metric: an improved mechanic keeps more segments alive for lon
 | `trace-202-v5` | after `Level.InSpace` | 1,468 | **426** | 1,041 | 0 | **134,788** | **133,716** |
 | `trace-100pct-v5` | same build | 918 | **280** | 638 | 0 | **80,957** | **80,302** |
 | `trace-1a-v5` | same build | 20 | **16** | 4 | 0 | **2,129** | **2,125** |
-| `trace-202-v5` | after un-flooring `Stamina` | 1,468 | **437** | 1,030 | 0 | **136,388** | **135,327** |
-| `trace-100pct-v5` | same build | 918 | **285** | 633 | 0 | **81,683** | **81,033** |
+| `trace-202-v5` | after the dash-capacity witness | 1,468 | **450** | 1,017 | 0 | **139,188** | **138,140** |
+| `trace-100pct-v5` | same build | 918 | **298** | 620 | 0 | **84,483** | **83,846** |
 | `trace-1a-v5` | same build | 20 | **16** | 4 | 0 | **2,129** | **2,125** |
 
 The `v5` traces are `v4` plus one exported key, `levelCoreMode` (`Level.CoreMode`); replaying them
@@ -488,6 +501,11 @@ against this same gate:
   with a live `wallSlideTimer` (`Player.cs:3749-3771`); the climb drain reads `lastClimbMove`
   (`Player.cs:4045`, `4056-4079`); and the wall boost is consumed before the on-ground stamina reset
   (`Player.cs:1560-1576`).
+* **The dash-capacity witness now raises the area floor** (this round). `min` -> `max` in
+  `observe_session_dashes`: a chapter that raises `Session.Inventory.Dashes` mid-play (Farewell's
+  intro, `CS10_Gravestone.cs:133-134`) was being clamped back to the area's 1. `202 37/1431/0`,
+  `100pct 37/881/0`, `+2,800` frames on both, `1a` unchanged. The dash-count class fell from
+  `49 segments / 4,056 frames` to `31 / 3,294`, its `sim=1 game=2` half from 41 to 8.
 * **`Stamina` is not floored** (this round). `Player.cs:2648`, `4060`, `4078` subtract from a bare
   field, so a climb that outlasts the bar leaves a negative value; the simulator's `.max(0.0)` was
   invisible to every `Stamina <= 0` branch and still cost `+1,600` replayed frames because the gate
@@ -544,17 +562,16 @@ against this same gate:
   timer) stays visible to later reads of the same frame, where the game's `VirtualButton.Pressed`
   would report false (`VirtualButton.cs:153-157`). No read site depends on that yet, so this is
   recorded as a residual rather than a target.
-* **The dash-count class is the biggest single-reason class left: `dashes | anchor=StNormal`,
-  49 segments / 4,056 frames, every one a `(0,0)` position delta.** Two sub-cases: `sim=1 game=2` (41)
-  with `inventory.Dashes=2`, mostly Farewell (17) and 9-Core (8) - the game refilled a dash the
-  simulator did not; and `sim=1 game=0` (21) with `inventory.Dashes=1`, the one-dash areas, where the
-  simulator kept a dash the game spent. Some of both also disagree on `on_ground` at the same frame.
-  `Player.Update`'s ground refill (`Player.cs:1602-1612`) is narrower than the simulator's: it needs a
-  Solid or a JumpThru *outside* one pixel below **and** `!CollideCheck<Spikes>(Position)`, and the whole
-  `else if` is skipped on a frame where `dashRefillCooldownTimer > 0`. Check those before hunting
-  further; the other two refill sites are `Refill` collection and `BadelineBoost.cs:145-152`.
-  `on_ground` itself is not the cause: `grounded_at_offset` already mirrors
-  `CollideFirst<Solid>`-then-`CollideFirstOutside<JumpThru>` (`Player.cs:1504-1520`).
+* **The dash-count class is down to 31 segments / 3,294 frames, and its remaining half is
+  `sim=1 game=0` (21 of them).** Those are the one-dash areas: the game spent its dash and the
+  simulator still has it, i.e. the simulator did not *start* a dash the game started - a
+  `(0,0)` position delta is possible because `Player.DashBegin` calls `Celeste.Freeze(0.05f)`, so the
+  dash's motion begins several frames later. Start from the `CanDash` condition
+  (`Player.cs:1078`: `(CrouchDashPressed || DashPressed) && dashCooldownTimer <= 0 && Dashes > 0 &&
+  (TalkComponent.PlayerOver == null || !Talk.Pressed)`) rather than from the report. Also left:
+  `sim=2 game=0` (6) and `sim=2 game=1` (3). Capability side: `Player.Update`'s ground refill
+  (`Player.cs:1602-1612`) also needs `!CollideCheck<Spikes>(Position)`, which the simulator does not
+  check yet.
 * **`pos+speed+state | anchor=StSummitLaunch` has grown to 6 segments / 3,647 frames**, every one a
   `(0,-4)` delta: one state, one offset, and now the largest frames-per-segment target in the report.
 * **The `space` room's remaining causes are `dashes` and `SpaceController`.** With `InSpace` landed,
