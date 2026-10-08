@@ -31,7 +31,12 @@ const END_DASH_SPEED: f32 = 160.0;
 const DASH_TIME: f32 = 0.15;
 const DASH_COOLDOWN: f32 = 0.2;
 const DASH_ATTACK_TIME: f32 = 0.3;
+/// `Celeste.Freeze(0.05f)` in `Player.DashBegin` (`Player.cs:4282-4285`).
+const DASH_FREEZE_TIME: f32 = 0.05;
 const DASH_CORNER_CORRECTION: i32 = 4;
+/// `Player.cs:1791` probes `Position + Vector2.UnitY * 3f` for the dash's
+/// downward corner close.
+const DASH_CORRECT_DISTANCE: f32 = 3.0;
 const SUPER_JUMP_H: f32 = 260.0;
 const SUPER_BOUNCE_SPEED: f32 = -185.0;
 const BOUNCE_SPEED: f32 = -140.0;
@@ -5064,6 +5069,21 @@ fn step(
         move_axis_amount(p, map, false, JUMP_THRU_ASSIST_SPEED * p.frame_delta_time);
     }
 
+    // Player.cs:1791-1794 sits between JumpThru Assist and the ordinary
+    // MoveH/MoveV pass: a DashAttacking player whose DashDir is exactly
+    // horizontal snaps down onto a Solid or JumpThru within three pixels,
+    // unless the hurtbox would land on a LedgeBlocker (a "DashCorrect"
+    // corner). MoveVExact is an exact move, so a blocked pixel clears
+    // movementCounter.Y instead of leaving a fraction for this frame.
+    if !p.on_ground && p.dash_dir.y == 0.0 && dash_attacking(p) {
+        let ahead = current_player_rect(p, p.pos.x, p.pos.y + DASH_CORRECT_DISTANCE);
+        if (map.solid_at(ahead) || jump_thru_outside(p, map, DASH_CORRECT_DISTANCE))
+            && !dash_correct_check(p, map, DASH_CORRECT_DISTANCE)
+        {
+            move_v_exact(p, map, DASH_CORRECT_DISTANCE as i32);
+        }
+    }
+
     if p.state != PlayerState::DreamDash {
         move_axis(p, map, true);
     }
@@ -5450,7 +5470,7 @@ fn begin_dash(
     p.dash_attack_timer = DASH_ATTACK_TIME;
     p.dash_cooldown_timer = DASH_COOLDOWN;
     p.dash_refill_cooldown_timer = 0.1;
-    p.freeze_timer = 0.05;
+    p.freeze_timer = DASH_FREEZE_TIME;
     if consume_dash {
         p.dashes = p.dashes.saturating_sub(1);
     }
@@ -5483,7 +5503,17 @@ fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     // so a jump buffered on the frame immediately after DashBegin is a
     // SuperJump before lastAim is sampled. Ducking was already selected by
     // DashBegin from MoveY, which makes the same window an instant Hyper.
-    if p.dash_dir == Vec2::default() && input.jump_pressed && p.jump_grace_timer > 0.0 {
+    // `Monocle.StateMachine.Update` calls the state callback before it resumes
+    // the coroutine (`Monocle/StateMachine.cs:168-183`), so every branch below
+    // reads the DashDir the source callback would see - still Zero on the frame
+    // the coroutine publishes.
+    // Player.cs:4384-4392 closes the player onto a JumpThru it already overlaps
+    // (any overhang up to six pixels) with an exact move, before the dash jump
+    // branches below.
+    if p.dash_dir.y.abs() < 0.1 {
+        close_dash_onto_jump_thru(p, map);
+    }
+    if p.dash_dir.y.abs() < 0.1 && input.jump_pressed && p.jump_grace_timer > 0.0 {
         // DashUpdate's SuperJump branch returns 0 (Player.cs:4393-4397), so the
         // StateMachine leaves Dash for Normal and runs NormalBegin, which resets
         // `maxFall` (Player.cs:3533). Every `super_jump`/`super_wall_jump` call
@@ -5494,6 +5524,37 @@ fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         super_jump(p);
         enter_normal(p);
         return;
+    }
+    if p.dash_dir.x.abs() <= 0.2 && p.dash_dir.y <= -0.75 && input.jump_pressed {
+        let wall = wall_dir(p, map);
+        if wall != 0 {
+            super_wall_jump(p, -wall);
+            return;
+        }
+    } else if input.jump_pressed && can_unduck(p, map) {
+        // Player.cs:4415-4441 is the non-SuperWallJumpAngleCheck jump branch of
+        // DashUpdate: a jump press during any other dash looks for a wall, and
+        // turns into a ClimbJump (grab held, facing the wall, stamina left) or a
+        // plain WallJump. DashUpdate returns 0, which StateMachine.Update applies
+        // as State = 0, so the player leaves the dash on this same frame.
+        for dir in [1i8, -1i8] {
+            if wall_jump_check(p, map, dir) {
+                if p.facing == (dir > 0)
+                    && input.grab_held
+                    && p.stamina > 0.0
+                    && !holding_holdable(p)
+                    && !climb_blocker_check(p, map, dir as f32 * WALL_JUMP_CHECK_DIST, 0.0)
+                {
+                    // Player.ClimbJump (`Player.cs:2644-2675`) pays
+                    // ClimbJumpCost and jumps away from the wall it faces.
+                    climb_jump(p, if p.facing { 1 } else { -1 });
+                } else {
+                    wall_jump(p, -dir);
+                }
+                p.state = PlayerState::Normal;
+                return;
+            }
+        }
     }
     p.state_timer = (p.state_timer - p.frame_delta_time).max(0.0);
     if (p.state_timer - DASH_TIME).abs() <= p.frame_delta_time * 0.5 {
@@ -5542,19 +5603,6 @@ fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         }
         return;
     }
-    if p.dash_dir.y.abs() < 0.1 && input.jump_pressed && p.jump_grace_timer > 0.0 {
-        super_jump(p);
-        enter_normal(p);
-        return;
-    }
-    if p.dash_dir.x.abs() <= 0.2 && p.dash_dir.y <= -0.75 && input.jump_pressed {
-        let wall = wall_dir(p, map);
-        if wall != 0 {
-            super_wall_jump(p, -wall);
-            enter_normal(p);
-            return;
-        }
-    }
     if p.state_timer > 0.0 {
         return;
     }
@@ -5578,6 +5626,46 @@ fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         p.speed.y = p.dash_dir.y * END_DASH_SPEED;
         if p.speed.y < 0.0 {
             p.speed.y *= 0.75;
+        }
+    }
+}
+
+impl PlayerSnapshot {
+    /// Rebuild the simulator's dash clock (`state_timer`) from the source
+    /// `Player.dashAttackTimer` when a replay anchors in the middle of a dash.
+    ///
+    /// Celeste has no generic state timer: `Monocle.StateMachine` only carries
+    /// the current state id, and the dash is timed entirely by
+    /// `Player.DashCoroutine` (`Player.cs:4465-4567`). It starts with
+    /// `yield return null`, so the second `Player.Update` after `DashBegin`
+    /// publishes `Speed = speed` / `DashDir` (`Player.cs:4479-4489`), and
+    /// `yield return 0.15f` (`Player.cs:4551`) plus one more frame later it
+    /// writes `Speed = DashDir * 160f` and `StateMachine.State = 0`
+    /// (`Player.cs:4556-4566`). `DashBegin` sets `dashAttackTimer = 0.3f`
+    /// (`Player.cs:4296`) and `Player.Update` decrements it once per unfrozen
+    /// frame (`Player.cs:1577-1580`), so `dashAttackTimer` is an exact clock for
+    /// the number of dash frames already played. `state_timer` is the same clock
+    /// read as time remaining: `DASH_TIME + frame_delta_time` immediately after
+    /// `begin_dash`, one `frame_delta_time` less per following dash frame, which
+    /// puts the publish step exactly on `DASH_TIME` and zero exactly nine frames
+    /// later - the frame before the coroutine returns the player to StNormal.
+    ///
+    /// The `DashBegin` frame itself is the only anchor where `dashAttackTimer`
+    /// still holds the `0.3f` it was just assigned; `DashBegin`'s
+    /// `Celeste.Freeze(0.05f)` (`Player.cs:4282-4285`) is therefore still
+    /// pending, because `Monocle.Engine` drains `FreezeTimer` at the start of the
+    /// *next* frame. Freeze frames do not run `Player.Update`, so they do not
+    /// advance either clock and the relation above is unaffected by them.
+    pub fn restore_dash_phase(&mut self, frame_delta_time: f32) {
+        if self.state != PlayerState::Dash || !(frame_delta_time > 0.0) {
+            return;
+        }
+        let frames = ((DASH_ATTACK_TIME - self.dash_attack_timer) / frame_delta_time)
+            .round()
+            .max(0.0);
+        self.state_timer = (DASH_TIME + frame_delta_time - frames * frame_delta_time).max(0.0);
+        if frames == 0.0 && self.time_rate > 0.25 {
+            self.freeze_timer = DASH_FREEZE_TIME;
         }
     }
 }
@@ -5635,6 +5723,55 @@ fn super_wall_jump(p: &mut PlayerSnapshot, dir: i8) {
 fn enter_normal(p: &mut PlayerSnapshot) {
     p.state = PlayerState::Normal;
     p.max_fall = MAX_FALL;
+}
+
+/// `Player.DashUpdate`'s JumpThru close (`Player.cs:4384-4392`): while the dash
+/// is horizontal, every JumpThru the player already overlaps that is no more
+/// than six pixels below the player's bottom pulls the player onto its top with
+/// `MoveVExact((int)(entity.Top - base.Bottom))`. Like every `MoveVExact` this
+/// is an exact move: it steps whole pixels and only clears
+/// `movementCounter.Y` when a pixel is blocked.
+fn close_dash_onto_jump_thru(p: &mut PlayerSnapshot, map: &Map) {
+    for entity in &map.entities {
+        if !matches!(entity.kind, EntityKind::JumpThru | EntityKind::Cloud) {
+            continue;
+        }
+        let bottom = current_player_rect(p, p.pos.x, p.pos.y).bottom();
+        if !entity
+            .bounds
+            .intersects(current_player_rect(p, p.pos.x, p.pos.y))
+            || bottom - entity.bounds.y > 6.0
+        {
+            continue;
+        }
+        let amount = (entity.bounds.y - bottom) as i32;
+        if amount != 0 && !dash_correct_check(p, map, amount as f32) {
+            move_v_exact(p, map, amount);
+        }
+    }
+}
+
+/// `Player.WallJump(dir)` (`Player.cs:2548-2605`): the plain wall jump used by
+/// `DashUpdate` (`Player.cs:4425`, `Player.cs:4437`). It mirrors the
+/// `NormalUpdate` wall jump the simulator already models, plus the source's
+/// `Ducking = false` and `jumpGraceTimer = 0`.
+fn wall_jump(p: &mut PlayerSnapshot, dir: i8) {
+    p.ducking = false;
+    p.jump_buffer_timer = 0.0;
+    p.jump_grace_timer = 0.0;
+    p.var_jump_timer = VAR_JUMP_TIME;
+    p.auto_jump = false;
+    p.dash_attack_timer = 0.0;
+    p.wall_slide_timer = WALL_SLIDE_TIME;
+    p.wall_boost_timer = 0.0;
+    if p.move_x != 0 {
+        p.force_move_x = dir;
+        p.force_move_x_timer = 0.16;
+    }
+    p.speed.x = WALL_JUMP_H * dir as f32;
+    p.speed.y = JUMP_SPEED;
+    add_lift_boost(p);
+    p.var_jump_speed = p.speed.y;
 }
 
 fn climb_jump(p: &mut PlayerSnapshot, wall: i8) {
@@ -6836,6 +6973,44 @@ fn touching_jump_thru(p: &PlayerSnapshot, map: &Map) -> bool {
         .any(|entity| entity.kind == EntityKind::JumpThru && entity.bounds.intersects(player))
 }
 
+/// `Player.DashAttacking` (`Player.cs:1062-1072`): the dash-attack window is the
+/// 0.3 second `dashAttackTimer`, or the RedDash state once it has run out.
+fn dash_attacking(p: &PlayerSnapshot) -> bool {
+    p.dash_attack_timer > 0.0 || p.state == PlayerState::RedDash
+}
+
+/// `Monocle.Entity.CollideCheckOutside<JumpThru>(at)` (`Monocle/Entity.cs:648`,
+/// `Collide.Check(a, b, at)` = `!Collide.Check(a, b) && Collide.Check(a, b, at)`):
+/// a JumpThru (or its `Cloud` subclass) that does not touch the player where it
+/// stands but would at `offset`.
+fn jump_thru_outside(p: &PlayerSnapshot, map: &Map, offset: f32) -> bool {
+    let current = current_player_rect(p, p.pos.x, p.pos.y);
+    let probe = current_player_rect(p, p.pos.x, p.pos.y + offset);
+    map.entities.iter().any(|entity| {
+        matches!(entity.kind, EntityKind::JumpThru | EntityKind::Cloud)
+            && entity.bounds.intersects(probe)
+            && !entity.bounds.intersects(current)
+    })
+}
+
+/// `Player.DashCorrectCheck(add)` (`Player.cs:4191-4209`): move the player by
+/// `add`, force the `hurtbox` collider (`normalHurtbox`, or `duckHurtbox` while
+/// `Ducking` - `Player.cs:1020-1025`), and ask every `LedgeBlocker`
+/// (`Celeste/LedgeBlocker.cs:46`) whether it touches the player there. Vanilla
+/// `Spikes` (`Celeste/Spikes.cs:50`) and `CrystalStaticSpinner`
+/// (`Celeste/CrystalStaticSpinner.cs:156`) register a blocker with no custom
+/// `BlockChecker`, so a plain overlap blocks the dash close.
+fn dash_correct_check(p: &PlayerSnapshot, map: &Map, offset_y: f32) -> bool {
+    let hurt = current_player_hurt_rect(p);
+    let hurt = Rect::new(hurt.x, hurt.y + offset_y, hurt.width, hurt.height);
+    map.entities.iter().any(|entity| {
+        matches!(
+            entity.kind,
+            EntityKind::Spikes | EntityKind::CrystalStaticSpinner
+        ) && entity.bounds.intersects(hurt)
+    })
+}
+
 fn player_hurt_rect(x: f32, y: f32) -> Rect {
     Rect::new(x - 4.0, y - 11.0, 8.0, 9.0)
 }
@@ -7132,8 +7307,18 @@ fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount:
                 }
             } else {
                 if sign < 0 && p.state != PlayerState::StarFly && p.speed.y < 0.0 {
+                    // Player.cs:3358-3388: a rising ceiling collision slides the
+                    // player sideways onto the first free column one pixel up.
+                    // The search is four pixels wide, or five while
+                    // `DashAttacking && Math.Abs(Speed.X) < 0.01f`, which is what
+                    // lets an up-dash climb a five pixel ceiling lip.
+                    let correction_limit = if dash_attacking(p) && p.speed.x.abs() < 0.01 {
+                        5
+                    } else {
+                        DASH_CORNER_CORRECTION
+                    };
                     if p.speed.x <= 0.0 {
-                        for correction in 1..=4 {
+                        for correction in 1..=correction_limit {
                             let corrected =
                                 current_player_rect(p, p.pos.x - correction as f32, p.pos.y - 1.0);
                             if !map.solid_at(corrected) {
@@ -7145,7 +7330,7 @@ fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount:
                         }
                     }
                     if p.speed.x >= 0.0 {
-                        for correction in 1..=4 {
+                        for correction in 1..=correction_limit {
                             let corrected =
                                 current_player_rect(p, p.pos.x + correction as f32, p.pos.y - 1.0);
                             if !map.solid_at(corrected) {
@@ -7211,6 +7396,29 @@ fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount:
         }
         p.pos.x = next_x;
         p.pos.y = next_y;
+    }
+}
+
+/// `Monocle.Actor.MoveVExact` (`Celeste/Actor.cs:238-290`): whole-pixel steps,
+/// each preceded by a `CollideFirst<Solid>` probe and - only while moving down
+/// and while `IgnoreJumpThrus` is clear - a `CollideFirstOutside<JumpThru>`
+/// probe. A blocked step clears `movementCounter.Y`; the fractional remainder
+/// is never consumed, so this is not `MoveV`.
+fn move_v_exact(p: &mut PlayerSnapshot, map: &Map, amount: i32) {
+    let sign = amount.signum();
+    let mut remaining = amount;
+    while remaining != 0 {
+        let next = current_player_rect(p, p.pos.x, p.pos.y + sign as f32);
+        let blocked = map.solid_at(next)
+            || (sign > 0
+                && !p.ignore_jump_thrus
+                && map.jump_thru_at(next, current_player_rect(p, p.pos.x, p.pos.y).bottom()));
+        if blocked {
+            p.movement_remainder.y = 0.0;
+            return;
+        }
+        remaining -= sign;
+        p.pos.y += sign as f32;
     }
 }
 

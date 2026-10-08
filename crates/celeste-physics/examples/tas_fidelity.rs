@@ -311,6 +311,7 @@ const DERIVED_FIELDS: &[(&str, &str)] = &[
     ("time_rate", "top-level `timeRate` (`Engine.TimeRate`)."),
     ("player_on_ground_initialized", "set to true; the anchor row is a post-`Player.Update` capture, so the source-private `onGround` is authoritative."),
     ("frame_delta_time", "`#[serde(skip)]` on the wire type. `Simulator::step` recomputes it every frame as the supplied `rawDt` bits times `time_rate`."),
+    ("state_timer", "in the Dash state, `PlayerSnapshot::restore_dash_phase` rebuilds the simulator's dash clock from `p.dashAttackTimer`: Celeste times the dash with `DashCoroutine` (`Player.cs:4465-4567`), not a `StateMachine.Timer`, and `dashAttackTimer` (`Player.cs:4296`, decremented per unfrozen frame at `Player.cs:1577-1580`) counts exactly those frames."),
 ];
 
 /// Fields with no ground-truth source anywhere in the trace.
@@ -341,10 +342,6 @@ fn unrestored_fields() -> Vec<(&'static str, &'static str)> {
             "camera_initialized",
         ],
         NOT_DECLARED_ON_PLAYER,
-    );
-    push(
-        &["state_timer"],
-        "`Player.StateMachine` is a `StateMachine` object; the exporter skips non-primitive fields, so `StateMachine.Timer` is absent",
     );
     push(
         &[
@@ -613,6 +610,10 @@ struct SegmentReport {
     /// Present only with `--probe-remainder`; see `probe_remainder`.
     #[serde(skip_serializing_if = "Option::is_none")]
     remainder_probe: Option<Value>,
+    /// Present only with `--dump-segment`; one line per replayed frame with the
+    /// recovered per-frame `Actor.MoveH`/`MoveV` totals on both sides.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    dump: Vec<String>,
 }
 
 #[derive(Default, Serialize)]
@@ -967,6 +968,10 @@ struct ReplayOutcome {
     stalled_frames: u64,
     stall_offsets: Vec<u64>,
     unavailable: Vec<String>,
+    /// Present only with `--dump-segment`; one line per replayed frame with the
+    /// per-frame `Actor.MoveH`/`MoveV` total recovered as
+    /// `ΔPosition + ΔmovementCounter` on both sides. Diagnostic only.
+    dump: Vec<String>,
     /// Replayed frames where the simulator's own post-entity geometric
     /// `on_ground` disagrees with its source-private `player_on_ground`.
     geometric_ground_diff: u64,
@@ -990,6 +995,7 @@ fn replay(
     map: &Map,
     remainder_override: Option<Vec2>,
     frame_cap: Option<usize>,
+    dump: bool,
 ) -> ReplayOutcome {
     let row_count = segment.frames.len();
     let mut outcome = ReplayOutcome {
@@ -1100,6 +1106,12 @@ fn replay(
         .unwrap_or(true);
     snapshot.time_rate = anchor.time_rate.map_or(1.0, |value| value as f32);
     snapshot.player_on_ground_initialized = true;
+    // `Engine.DeltaTime` for the anchor frame: the same bits the simulator will
+    // recompute on the next `step`, needed to convert the dash's
+    // `dashAttackTimer` into the simulator's own `state_timer` (see
+    // `PlayerSnapshot::restore_dash_phase`).
+    let anchor_delta = anchor.raw_dt.unwrap_or(anchor.dt) as f32;
+    snapshot.restore_dash_phase(anchor_delta * snapshot.time_rate);
     if let Some(remainder) = remainder_override {
         snapshot.movement_remainder = remainder;
     }
@@ -1160,8 +1172,60 @@ fn replay(
         }
         let delta = frame.raw_dt.unwrap_or(frame.dt);
         let input = frame.input.to_input_state(bits_of(delta));
+        let before = simulator.snapshot().clone();
         match simulator.step(input) {
             Ok(actual) => {
+                if dump {
+                    // `Actor.MoveH`/`MoveV(amount)` leaves
+                    // `position += round(counter + amount)` and
+                    // `counter += amount - round(...)`, so the amount the frame
+                    // fed to the actor is `Δposition + ΔmovementCounter` on each
+                    // axis. Recovering it for both sides shows whether the
+                    // simulator performed the same actor moves as the game.
+                    let previous = if index > 0 {
+                        &truth[index - 1]
+                    } else {
+                        expected
+                    };
+                    let game_move = match (
+                        previous.position,
+                        expected.position,
+                        previous.movement_counter,
+                        expected.movement_counter,
+                    ) {
+                        (Some(a), Some(b), Some(c), Some(d)) => {
+                            format!(
+                                "({:.5},{:.5})",
+                                b[0] - a[0] + d[0] - c[0],
+                                b[1] - a[1] + d[1] - c[1]
+                            )
+                        }
+                        _ => "?".to_owned(),
+                    };
+                    let rust_move = format!(
+                        "({:.5},{:.5})",
+                        actual.pos.x - before.pos.x + actual.movement_remainder.x
+                            - before.movement_remainder.x,
+                        actual.pos.y - before.pos.y + actual.movement_remainder.y
+                            - before.movement_remainder.y
+                    );
+                    outcome.dump.push(format!(
+                        "row={} offset={offset} gamePos=({:.5},{:.5}) gameCounter=({:.5},{:.5}) gameMove={game_move} rustPos=({:.5},{:.5}) rustCounter=({:.5},{:.5}) rustMove={rust_move} gameState={:?} rustState={:?} stalled={} freeze={:.5}",
+                        frame.n,
+                        expected.position.map_or(f64::NAN, |p| p[0]),
+                        expected.position.map_or(f64::NAN, |p| p[1]),
+                        expected.movement_counter.map_or(f64::NAN, |p| p[0]),
+                        expected.movement_counter.map_or(f64::NAN, |p| p[1]),
+                        actual.pos.x,
+                        actual.pos.y,
+                        actual.movement_remainder.x,
+                        actual.movement_remainder.y,
+                        frame.state_name.as_deref().unwrap_or("?"),
+                        state_name(actual.state),
+                        stalled[index],
+                        before.freeze_timer,
+                    ));
+                }
                 if actual.on_ground != actual.player_on_ground {
                     geometric_ground_diff += 1;
                 }
@@ -1301,8 +1365,13 @@ struct SegmentOutcome {
     status: &'static str,
 }
 
-fn simulate_segment(segment: &Segment, map: &Map, area_file: Option<String>) -> SegmentOutcome {
-    let outcome = replay(segment, map, None, None);
+fn simulate_segment(
+    segment: &Segment,
+    map: &Map,
+    area_file: Option<String>,
+    dump: bool,
+) -> SegmentOutcome {
+    let outcome = replay(segment, map, None, None, dump);
     let report = SegmentReport {
         sid: segment.sid.clone(),
         mode: segment.mode,
@@ -1326,6 +1395,7 @@ fn simulate_segment(segment: &Segment, map: &Map, area_file: Option<String>) -> 
         freeze_disagreement_frames: outcome.freeze_disagreement_frames,
         first_freeze_disagreement_offset: outcome.first_freeze_disagreement,
         remainder_probe: None,
+        dump: outcome.dump,
     };
     SegmentOutcome {
         report,
@@ -1342,7 +1412,7 @@ fn simulate_segment(segment: &Segment, map: &Map, area_file: Option<String>) -> 
 /// pure `Actor.MoveH`/`MoveV` rounding rather than a physics discrepancy.
 fn probe_remainder(segment: &Segment, map: &Map, frame_cap: usize) -> Value {
     const STEPS: i32 = 32;
-    let baseline = replay(segment, map, None, Some(frame_cap));
+    let baseline = replay(segment, map, None, Some(frame_cap), false);
     let mut axes = Vec::new();
     for (axis, name) in [(0usize, "x"), (1usize, "y")] {
         let mut best: Option<(ReplayOutcome, f32)> = None;
@@ -1353,7 +1423,7 @@ fn probe_remainder(segment: &Segment, map: &Map, frame_cap: usize) -> Value {
             } else {
                 Vec2::new(0.0, value)
             };
-            let result = replay(segment, map, Some(remainder), Some(frame_cap));
+            let result = replay(segment, map, Some(remainder), Some(frame_cap), false);
             if best
                 .as_ref()
                 .is_none_or(|(current, _)| result.exact_prefix > current.exact_prefix)
@@ -1380,7 +1450,7 @@ fn probe_remainder(segment: &Segment, map: &Map, frame_cap: usize) -> Value {
         for y_step in -STEPS2D..=STEPS2D {
             let x = x_step as f32 / (2.0 * STEPS2D as f32);
             let y = y_step as f32 / (2.0 * STEPS2D as f32);
-            let result = replay(segment, map, Some(Vec2::new(x, y)), Some(frame_cap));
+            let result = replay(segment, map, Some(Vec2::new(x, y)), Some(frame_cap), false);
             if best2d
                 .as_ref()
                 .is_none_or(|(current, _, _)| result.exact_prefix > current.exact_prefix)
@@ -1429,6 +1499,8 @@ struct Args {
     probe_remainder: usize,
     /// Frame cap for each probe replay.
     probe_frames: usize,
+    /// `sid|mode|room|startRow` of one segment to dump frame by frame.
+    dump_segment: Option<String>,
 }
 
 fn parse_args() -> Result<Args, String> {
@@ -1442,6 +1514,7 @@ fn parse_args() -> Result<Args, String> {
     let mut dump_field_map = false;
     let mut probe_remainder = 0usize;
     let mut probe_frames = 200usize;
+    let mut dump_segment = None;
 
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
@@ -1490,11 +1563,13 @@ fn parse_args() -> Result<Args, String> {
                     .parse()
                     .map_err(|error| format!("--probe-frames: {error}"))?
             }
+            "--dump-segment" => dump_segment = Some(value("--dump-segment")?),
             "-h" | "--help" => {
                 println!(
                     "usage: tas_fidelity --trace <jsonl> --maps <dir> --out <report.json> \
                      [--min-frames 1] [--limit-segments N] [--max-frames N] [--rooms a,b] \
-                     [--probe-remainder N] [--probe-frames N] [--dump-field-map]"
+                     [--probe-remainder N] [--probe-frames N] [--dump-segment sid|mode|room|startRow] \
+                     [--dump-field-map]"
                 );
                 std::process::exit(0);
             }
@@ -1514,6 +1589,7 @@ fn parse_args() -> Result<Args, String> {
             dump_field_map,
             probe_remainder,
             probe_frames,
+            dump_segment,
         });
     }
 
@@ -1528,6 +1604,7 @@ fn parse_args() -> Result<Args, String> {
         dump_field_map,
         probe_remainder,
         probe_frames,
+        dump_segment,
     })
 }
 
@@ -1872,9 +1949,26 @@ fn finish_segment(
 
     let room_key = segment.key();
     let lookup = cache.get(&args.maps, &segment.sid, segment.mode, &segment.room);
+    let dump = args.dump_segment.as_deref().is_some_and(|wanted| {
+        let full = format!(
+            "{}|{}|{}|{}",
+            segment.sid, segment.mode, segment.room, segment.start_row
+        );
+        let short = format!(
+            "{}|{}|{}|{}",
+            segment.sid.trim_start_matches("Celeste/"),
+            segment.mode,
+            segment.room,
+            segment.start_row
+        );
+        wanted == full || wanted == short
+    });
     let outcome = match lookup {
         MapLookup::Ready(area_file, map) => {
-            let mut outcome = simulate_segment(&segment, &map, Some(area_file));
+            let mut outcome = simulate_segment(&segment, &map, Some(area_file), dump);
+            for line in &outcome.report.dump {
+                println!("{line}");
+            }
             if *probe_budget > 0 && outcome.status == "mismatch" {
                 *probe_budget -= 1;
                 outcome.report.remainder_probe =
@@ -1906,6 +2000,7 @@ fn finish_segment(
                 freeze_disagreement_frames: 0,
                 first_freeze_disagreement_offset: None,
                 remainder_probe: None,
+                dump: Vec::new(),
             },
             unsupported_state: None,
             status: "map_error",
