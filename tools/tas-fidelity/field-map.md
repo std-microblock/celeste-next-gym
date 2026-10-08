@@ -61,6 +61,8 @@
 | `dummy_friction` | `bool` | `p.DummyFriction` |
 | `dummy_maxspeed` | `bool` | `p.DummyMaxspeed` |
 | `launched` | `bool` | `p.launched` |
+| `was_ducking` | `bool` | `p.wasDucking` |
+| `hold_cannot_duck` | `bool` | `p.holdCannotDuck` |
 | `state` | derived | top-level `state` name (`PlayerStates.GetCurrentStateName`) mapped exhaustively onto `PlayerState`. |
 | `facing` | derived | `p.Facing` (`Facings` enum: -1 Left, 1 Right) compared against the boolean `facing`. |
 | `time_rate` | derived | top-level `timeRate` (`Engine.TimeRate`). |
@@ -75,6 +77,7 @@
 | `freeze_timer` | derived | top-level `freezeTimer` (`Monocle.Engine.FreezeTimer`, `Monocle/Engine.cs:28`). While positive `Engine.Update` only decrements it and skips `Scene.Update` entirely (`Engine.cs:266-269`); the exporter writes the post-decrement value, which is exactly the snapshot state `Simulator::step` reads at the top of the next frame. |
 | `can_dream_dash` | derived | top-level `inventory.DreamDash` (`Celeste.Session.Inventory`, `Session.cs:35`, `PlayerInventory.cs:24`). `Player.Inventory` forwards it (`Player.cs:956-966`) and the source reads it at `Player.cs:3420` and `4500`; restoring it removes the need to infer the flag from `dreamDashCanEndTimer`. |
 | `core_mode` | derived | top-level `coreMode` (`Celeste.Session.CoreMode`, `Session.cs:111`; `None = 0, Hot = 1, Cold = 2` per `Session.cs:22-27`). Session state, so the base-chain dump cannot see it; the Core's ice factor (`Player.cs:3681-3684`, `if (onGround && level.CoreMode == Cold) num2 *= 0.3f`) and the `CoreModeListener` entities read it. Without it every Core room replays as `CoreMode::None`. |
+| `wall_boosting` | derived | `Player.wallBoosting` (`Player.cs:3100`) is private, so `Celeste.Player`'s declared-field dump cannot see it. `Simulator::climb_update` derives it from the room's `WallBooster` set exactly as `Player.ClimbUpdate` does (`Player.cs:3154-3167` on, `3168-3170` off), and it is only read by the "climbed over the ledge" branch (`Player.cs:3140-3149`). |
 | `badeline_boost_active` | none | room-entity runtime state, not `Player` state; initialized by `Simulator::new` (`initialize_*`) from the decoded room |
 | `badeline_boost_collidable` | none | room-entity runtime state, not `Player` state; initialized by `Simulator::new` (`initialize_*`) from the decoded room |
 | `badeline_boost_current_position` | none | room-entity runtime state, not `Player` state; initialized by `Simulator::new` (`initialize_*`) from the decoded room |
@@ -103,7 +106,9 @@
 | `cassette_manager` | none | room-entity runtime state, not `Player` state; initialized by `Simulator::new` (`initialize_*`) from the decoded room |
 | `clouds` | none | room-entity runtime state, not `Player` state; initialized by `Simulator::new` (`initialize_*`) from the decoded room |
 | `crouch_dash_buffer_timer` | none | `VirtualButton` buffers live on the static `Celeste.Input` object, not on `Player`; `Simulator::step` rebuilds them from the press edges |
+| `crush_blocks` | none | room-entity runtime state, not `Player` state; initialized by `Simulator::new` (`initialize_*`) from the decoded room |
 | `current_room_bounds` | none | no equally-named `Player` field in the trace; left to the simulator (`Default` or `Simulator::new` initialize_*) |
+| `dash_blocks` | none | room-entity runtime state, not `Player` state; initialized by `Simulator::new` (`initialize_*`) from the decoded room |
 | `dash_buffer_timer` | none | `VirtualButton` buffers live on the static `Celeste.Input` object, not on `Player`; `Simulator::step` rebuilds them from the press edges |
 | `dash_end_pending` | none | no equally-named `Player` field in the trace; left to the simulator (`Default` or `Simulator::new` initialize_*) |
 | `death_freeze_pending` | none | no equally-named `Player` field in the trace; left to the simulator (`Default` or `Simulator::new` initialize_*) |
@@ -162,4 +167,4 @@
 | `transition_timer` | none | no equally-named `Player` field in the trace; left to the simulator (`Default` or `Simulator::new` initialize_*) |
 | `zip_movers` | none | room-entity runtime state, not `Player` state; initialized by `Simulator::new` (`initialize_*`) from the decoded room |
 
-Declared `PlayerSnapshot` fields: 160. Restored from a `p` key: 61. Derived: 14. Unrestored: 86. Missing from table: []. Stale table entries: [].
+Declared `PlayerSnapshot` fields: 165. Restored from a `p` key: 63. Derived: 15. Unrestored: 88. Missing from table: []. Stale table entries: [].

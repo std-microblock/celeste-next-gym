@@ -520,6 +520,7 @@ const DERIVED_FIELDS: &[(&str, &str)] = &[
     ("freeze_timer", "top-level `freezeTimer` (`Monocle.Engine.FreezeTimer`, `Monocle/Engine.cs:28`). While positive `Engine.Update` only decrements it and skips `Scene.Update` entirely (`Engine.cs:266-269`); the exporter writes the post-decrement value, which is exactly the snapshot state `Simulator::step` reads at the top of the next frame."),
     ("can_dream_dash", "top-level `inventory.DreamDash` (`Celeste.Session.Inventory`, `Session.cs:35`, `PlayerInventory.cs:24`). `Player.Inventory` forwards it (`Player.cs:956-966`) and the source reads it at `Player.cs:3420` and `4500`; restoring it removes the need to infer the flag from `dreamDashCanEndTimer`."),
     ("core_mode", "top-level `coreMode` (`Celeste.Session.CoreMode`, `Session.cs:111`; `None = 0, Hot = 1, Cold = 2` per `Session.cs:22-27`). Session state, so the base-chain dump cannot see it; the Core's ice factor (`Player.cs:3681-3684`, `if (onGround && level.CoreMode == Cold) num2 *= 0.3f`) and the `CoreModeListener` entities read it. Without it every Core room replays as `CoreMode::None`."),
+    ("wall_boosting", "`Player.wallBoosting` (`Player.cs:3100`) is private, so `Celeste.Player`'s declared-field dump cannot see it. `Simulator::climb_update` derives it from the room's `WallBooster` set exactly as `Player.ClimbUpdate` does (`Player.cs:3154-3167` on, `3168-3170` off), and it is only read by the \"climbed over the ledge\" branch (`Player.cs:3140-3149`)."),
 ];
 
 /// Fields with no ground-truth source anywhere in the trace.
