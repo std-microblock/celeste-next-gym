@@ -5300,7 +5300,15 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
         p.speed.y = boost.y;
     }
     if !holding_holdable(p) {
-        if input.grab_held && p.stamina >= 20.0 && !p.ducking && try_pickup_holdable(p) {
+        // Player.cs:3572-3582: `Input.GrabCheck && !IsTired && !Ducking`.
+        // `IsTired` is `CheckStamina < 20f`, and `CheckStamina`
+        // (`Player.cs:1048-1060`) adds the pending 27.5 wall-boost refund, so the
+        // raw `Stamina` field is the wrong quantity here.
+        if input.grab_held
+            && check_stamina(p) >= CLIMB_TIRED_THRESHOLD
+            && !p.ducking
+            && try_pickup_holdable(p)
+        {
             return;
         }
     } else if !input.grab_held && p.min_hold_timer <= 0.0 {
@@ -5672,7 +5680,10 @@ fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     if !dash_coroutine_initial_yield
         && !holding_holdable(p)
         && input.grab_held
-        && p.stamina >= 20.0
+        // Player.cs:4374: `Holding == null && DashDir != Zero && Input.GrabCheck
+        // && !IsTired && CanUnDuck`. `IsTired` reads `CheckStamina`, which
+        // includes the pending wall-boost refund (`Player.cs:1048-1060`).
+        && check_stamina(p) >= CLIMB_TIRED_THRESHOLD
         && can_unduck(p, map)
         && try_pickup_holdable(p)
     {
@@ -6150,11 +6161,73 @@ fn dream_dash_update(p: &mut PlayerSnapshot) {
     );
 }
 
+/// `Player.DreamDashedIntoSolid` (`Player.cs:5260-5285`).
+///
+/// `DreamDashUpdate` calls this only when `CollideFirst<DreamBlock>()` is null,
+/// i.e. when the dream dash has left the DreamBlock. If the player's collider
+/// then overlaps an ordinary `Solid`, the source walks every offset
+/// `(i * j, k * l)` for `i, k` in `1..=5` and `j, l` in `{-1, +1}` in that exact
+/// nesting order and takes the first one that is free. The first free offset is
+/// applied with `Position += vector` - a raw position write, so `movementCounter`
+/// is untouched - and `DreamDashedIntoSolid` returns `false`, which lets
+/// `DreamDashUpdate` fall through into the ordinary exit branch on the same
+/// frame. Returning `true` (no free offset within five pixels) makes the source
+/// call `Die(Vector2.Zero)` instead.
+enum DreamDashSolidEscape {
+    /// Not overlapping a Solid: the source returns `false` immediately.
+    Clear,
+    /// Overlapping a Solid, and the first free offset was applied.
+    Nudged(Vec2),
+    /// Overlapping a Solid with no free offset inside five pixels.
+    Trapped,
+}
+
+fn dream_dash_solid_escape(p: &PlayerSnapshot, map: &Map) -> DreamDashSolidEscape {
+    if !map.solid_at(current_player_rect(p, p.pos.x, p.pos.y)) {
+        return DreamDashSolidEscape::Clear;
+    }
+    for i in 1..=5 {
+        for j in [-1.0f32, 1.0] {
+            for k in 1..=5 {
+                for l in [-1.0f32, 1.0] {
+                    let offset = Vec2::new(i as f32 * j, k as f32 * l);
+                    if !map.solid_at(current_player_rect(
+                        p,
+                        p.pos.x + offset.x,
+                        p.pos.y + offset.y,
+                    )) {
+                        return DreamDashSolidEscape::Nudged(offset);
+                    }
+                }
+            }
+        }
+    }
+    DreamDashSolidEscape::Trapped
+}
+
 fn try_end_dream_dash(p: &mut PlayerSnapshot, map: &Map, input: InputState) {
     if p.state != PlayerState::DreamDash
         || map.dream_block_at(current_player_rect(p, p.pos.x, p.pos.y))
-        || p.dream_dash_can_end_timer > 0.0
     {
+        return;
+    }
+    // Player.cs:5196-5208 runs the "dashed into a solid" unstuck check before
+    // the `dreamDashCanEndTimer <= 0` gate, so a player who left the DreamBlock
+    // while the end timer is still running is still pushed out of a solid.
+    match dream_dash_solid_escape(p, map) {
+        DreamDashSolidEscape::Clear => {}
+        DreamDashSolidEscape::Nudged(offset) => {
+            p.pos.x += offset.x;
+            p.pos.y += offset.y;
+        }
+        // The source's `Die(Vector2.Zero)` branch is deliberately not modelled:
+        // `Player.Die` removes the Player entity from the scene, so every later
+        // engine frame is a stale capture the harness cannot replay. Returning
+        // here keeps the DreamDash state (the source returns 9 in that case)
+        // without inventing a death.
+        DreamDashSolidEscape::Trapped => return,
+    }
+    if p.dream_dash_can_end_timer > 0.0 {
         return;
     }
 
@@ -6320,8 +6393,14 @@ fn launch_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     }
     // Player.LaunchUpdate performs the Holdable scan even while already
     // holding an entity. This permits a Bumper launch to restart the pickup
-    // tween after its freeze ends when Grab remains held.
-    if input.grab_held && p.stamina >= 20.0 && !p.ducking && try_pickup_holdable(p) {
+    // tween after its freeze ends when Grab remains held. Player.cs:5017 gates
+    // it on `Input.GrabCheck && !IsTired && !Ducking`; `IsTired` is
+    // `CheckStamina < 20f` (`Player.cs:1048-1060`).
+    if input.grab_held
+        && check_stamina(p) >= CLIMB_TIRED_THRESHOLD
+        && !p.ducking
+        && try_pickup_holdable(p)
+    {
         return;
     }
     p.speed.y = approach(
