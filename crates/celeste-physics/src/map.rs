@@ -144,6 +144,14 @@ pub enum EntityKind {
     /// `direction.x` carries the map's `index` (only `index == 9` delays the takeover by 1.6 s,
     /// `:257-260`).
     SummitBackgroundManager,
+    /// Vanilla `Solid` subclasses that never move and are collidable from the moment the room
+    /// loads, so the raw rectangle (plus whatever the constructor applies to its collider) is the
+    /// whole physics model. Currently `BridgeFixed` (`BridgeFixed.cs:9-11`,
+    /// `Solid(data.Position + offset, data.Width, 8f, safe: true)`) and `Plateau`
+    /// (`Plateau.cs:12-15`, `Solid(e.Position + offset, 104f, 4f, safe: true)` with
+    /// `Collider.Left += 8f`). Keeping them apart from `EntityKind::MovingSolid` matters: the
+    /// simulator must never treat one as carried by the player.
+    StaticSolid,
     /// Simulator-native constant-velocity Solid used to exercise Monocle
     /// carrying, pushing, and Player LiftSpeed inheritance independently of a
     /// specific vanilla entity state machine.
@@ -1057,6 +1065,20 @@ pub(crate) fn encode_celeste_rooms(
                     ],
                     vec![],
                 )),
+                // Static solids round-trip under the name the decoder saw, so a fixture map keeps
+                // whichever of `plateau`/`bridgeFixed` it used.
+                EntityKind::StaticSolid => Some(element(
+                    &entity.name,
+                    [
+                        ("id", BinaryValue::Int(id)),
+                        ("originX", BinaryValue::Int(0)),
+                        ("originY", BinaryValue::Int(0)),
+                        ("width", BinaryValue::Int(width)),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![],
+                )),
                 EntityKind::Decoration | EntityKind::Unknown => None,
             };
             if let Some(encoded) = encoded {
@@ -1484,6 +1506,7 @@ fn map_from_binary_inner(
                 "wallBooster" => EntityKind::WallBooster,
                 "coreModeToggle" => EntityKind::CoreModeToggle,
                 "SummitBackgroundManager" => EntityKind::SummitBackgroundManager,
+                "plateau" | "bridgeFixed" => EntityKind::StaticSolid,
                 "celesteGymMovingSolid" => EntityKind::MovingSolid,
                 _ => registered.map_or(EntityKind::Unknown, |entry| entry.kind),
             };
@@ -1721,6 +1744,14 @@ fn map_from_binary_inner(
                             },
                         ),
                     ),
+                    // `Plateau(e, offset) : base(e.Position + offset, 104f, 4f, safe: true)`
+                    // (`Plateau.cs:12-14`) then `Collider.Left += 8f` (`:15`), i.e. the collider
+                    // slides eight pixels right of the entity position and keeps its 104 px width;
+                    // `BridgeFixed(data, offset) : base(data.Position + offset, data.Width, 8f,
+                    // safe: true)` (`BridgeFixed.cs:9-11`) takes the raw rectangle with a fixed 8 px
+                    // height. Neither has any state, so the rectangle is the whole model.
+                    "plateau" => (Rect::new(ex + 8.0, ey, 104.0, 4.0), Vec2::default()),
+                    "bridgeFixed" => (Rect::new(ex, ey, raw_width, 8.0), Vec2::default()),
                     // `AscendManager(EntityData data, Vector2 offset)` (`AscendManager.cs:228-233`)
                     // reads `index` and `intro_launch`; only `Position.Y` drives the takeover
                     // condition, and `index` into `direction.x`.

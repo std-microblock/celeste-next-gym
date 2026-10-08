@@ -8652,6 +8652,7 @@ fn is_solid_entity(kind: EntityKind) -> bool {
             | EntityKind::InvisibleBarrier
             | EntityKind::MoveBlock
             | EntityKind::MovingSolid
+            | EntityKind::StaticSolid
             | EntityKind::ZipMover
             | EntityKind::TempleGate
     )
