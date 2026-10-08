@@ -5481,6 +5481,7 @@ fn step(
     update_wall_speed_retention(p, map);
     update_climb_hop_wait(p, map);
     prepare_lookout_player(p);
+    ascend_manager_takeover(p, map);
     // The Lookout and Booster are room entities which update before Player.
     // During DummyWalkToExact, its Booster PlayerCollider therefore observes
     // the preceding player position, unlike ordinary player-side callbacks.
@@ -5663,6 +5664,28 @@ fn step(
 fn refill_dash(p: &mut PlayerSnapshot) {
     if p.dashes < p.max_dashes {
         p.dashes = p.max_dashes;
+    }
+}
+
+/// `AscendManager.Routine` (`AscendManager.cs:249-273`), the Summit's ascent takeover: the entity
+/// waits while `player.Y > base.Y` and then runs `player.Speed = Vector2.Zero;
+/// player.StateMachine.State = 11; player.DummyGravity = false;` in its own update. Both are
+/// entities at depth 0, and the takeover lands one frame after the player's `Y` first equals the
+/// manager's: measured on `7-Summit|0|b-09|110556`, where the player's row `Y` reaches -4059 at row
+/// 111325 and the state flips at 111326. Running this before the state dispatch, with the
+/// frame-start position, reproduces that exactly; `index == 9`'s 1.6-second delay
+/// (`AscendManager.cs:257-260`) is not modelled, and no room in the corpus uses it.
+fn ascend_manager_takeover(p: &mut PlayerSnapshot, map: &Map) {
+    for entity in map
+        .entities
+        .iter()
+        .filter(|entity| entity.kind == EntityKind::SummitBackgroundManager)
+    {
+        if p.pos.y <= entity.bounds.y {
+            p.speed = Vec2::default();
+            p.state = PlayerState::Dummy;
+            p.dummy_gravity = false;
+        }
     }
 }
 

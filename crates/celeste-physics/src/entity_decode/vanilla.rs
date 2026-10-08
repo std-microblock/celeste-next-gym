@@ -21,7 +21,6 @@ pub(crate) fn lookup(name: &str) -> Option<Registration> {
             | "playbackBillboard"
             | "cliffside_flag"
             | "cliffflag"
-            | "SummitBackgroundManager"
             | "fakeWall"
             | "fakeBlock"
     )

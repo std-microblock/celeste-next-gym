@@ -137,6 +137,13 @@ pub enum EntityKind {
     /// `persistent`, which decides whether the flip is also written back to `Session.CoreMode`
     /// (`:117-120`).
     CoreModeToggle,
+    /// Vanilla `Celeste.AscendManager : Entity` (`AscendManager.cs:9`), written by the map as
+    /// `SummitBackgroundManager`. Its `Routine` (`:249-273`) waits until the player's `Y` is no
+    /// greater than its own and then takes the player over as a dummy: `Speed = Vector2.Zero`,
+    /// `StateMachine.State = 11` (`StDummy`), `DummyGravity = false` (`:270-273`).
+    /// `direction.x` carries the map's `index` (only `index == 9` delays the takeover by 1.6 s,
+    /// `:257-260`).
+    SummitBackgroundManager,
     /// Simulator-native constant-velocity Solid used to exercise Monocle
     /// carrying, pushing, and Player LiftSpeed inheritance independently of a
     /// specific vanilla entity state machine.
@@ -1035,6 +1042,21 @@ pub(crate) fn encode_celeste_rooms(
                         vec![],
                     ))
                 }
+                // `AscendManager`'s only field the physics needs is `Position.Y`, and its map name
+                // is what a re-encode has to keep (`AscendManager.cs:228-233`).
+                EntityKind::SummitBackgroundManager => Some(element(
+                    "SummitBackgroundManager",
+                    [
+                        ("id", BinaryValue::Int(id)),
+                        ("index", BinaryValue::Int(entity.direction.x as i32)),
+                        ("intro_launch", BinaryValue::Bool(false)),
+                        ("originX", BinaryValue::Int(8)),
+                        ("originY", BinaryValue::Int(8)),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![],
+                )),
                 EntityKind::Decoration | EntityKind::Unknown => None,
             };
             if let Some(encoded) = encoded {
@@ -1461,6 +1483,7 @@ fn map_from_binary_inner(
                 "dashBlock" => EntityKind::DashBlock,
                 "wallBooster" => EntityKind::WallBooster,
                 "coreModeToggle" => EntityKind::CoreModeToggle,
+                "SummitBackgroundManager" => EntityKind::SummitBackgroundManager,
                 "celesteGymMovingSolid" => EntityKind::MovingSolid,
                 _ => registered.map_or(EntityKind::Unknown, |entry| entry.kind),
             };
@@ -1697,6 +1720,13 @@ fn map_from_binary_inner(
                                 0.0
                             },
                         ),
+                    ),
+                    // `AscendManager(EntityData data, Vector2 offset)` (`AscendManager.cs:228-233`)
+                    // reads `index` and `intro_launch`; only `Position.Y` drives the takeover
+                    // condition, and `index` into `direction.x`.
+                    "SummitBackgroundManager" => (
+                        Rect::new(ex, ey, raw_width, raw_height),
+                        Vec2::new(attr_f32(el, "index", 0.0), 0.0),
                     ),
                     // `CoreModeToggle(EntityData data, Vector2 offset) : this(data.Position + offset,
                     // data.Bool("onlyFire"), data.Bool("onlyIce"), data.Bool("persistent"))`
