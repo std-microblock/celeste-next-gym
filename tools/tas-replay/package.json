@@ -1,0 +1,18 @@
+{
+  "name": "celeste-tas-replay",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Exact, self-validating resolver that flattens a Celeste .tas file (Read/Repeat tree) into a canonical per-frame input stream.",
+  "main": "src/resolve.mjs",
+  "bin": {
+    "tas-resolve": "src/cli.mjs"
+  },
+  "scripts": {
+    "test": "node --test",
+    "cli": "node src/cli.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
