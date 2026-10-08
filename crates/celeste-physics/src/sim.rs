@@ -19788,7 +19788,7 @@ mod tests {
 
         // `input.grab_held == false` and no jump/dash press: the first branch
         // `ClimbUpdate` can take is the grab release.
-        climb_update(&mut p, InputState::default(), &map);
+        climb_update(&mut p, InputState::default(), &map, &mut None);
 
         assert_eq!(p.state, PlayerState::Normal);
         assert_eq!(p.speed.x, 121.083_748);
