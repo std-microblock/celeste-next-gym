@@ -5204,7 +5204,17 @@ fn normal_update(p: &mut PlayerSnapshot, input: InputState, map: &Map, was_on_gr
         FAST_MAX_ACCEL * p.frame_delta_time,
     );
     let mut fall_target = p.max_fall;
-    if !holding_holdable(p) && wall != 0 && input.move_x == wall && p.speed.y >= 0.0 && !p.on_ground
+    // Player.cs:3749 gates the entire wall-slide block on
+    // `Input.MoveY.Value != 1`: holding down (a fast-fall) suppresses both the
+    // `wallSlideDir` assignment and the `Lerp(160, 20, wallSlideTimer / 1.2)`
+    // fall target, so a down-held fall beside a wall keeps the ordinary
+    // `maxFall` target instead of decelerating toward the 20 px/s wall-slide cap.
+    if !holding_holdable(p)
+        && wall != 0
+        && input.move_x == wall
+        && input.move_y != 1
+        && p.speed.y >= 0.0
+        && !p.on_ground
     {
         p.wall_slide_dir = wall;
         fall_target = WALL_SLIDE_START_MAX
@@ -5359,7 +5369,15 @@ fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     // SuperJump before lastAim is sampled. Ducking was already selected by
     // DashBegin from MoveY, which makes the same window an instant Hyper.
     if p.dash_dir == Vec2::default() && input.jump_pressed && p.jump_grace_timer > 0.0 {
+        // DashUpdate's SuperJump branch returns 0 (Player.cs:4393-4397), so the
+        // StateMachine leaves Dash for Normal and runs NormalBegin, which resets
+        // `maxFall` (Player.cs:3533). Every `super_jump`/`super_wall_jump` call
+        // below is the same `return 0` from Player.DashUpdate (Player.cs:4399-4411,
+        // 4415-4441) and therefore carries the same reset. The NormalUpdate jump
+        // branches (Player.cs:3805-3833) do not: there `StateMachine.State` is
+        // already Normal, so the setter's `state == value` guard skips NormalBegin.
         super_jump(p);
+        enter_normal(p);
         return;
     }
     p.state_timer = (p.state_timer - p.frame_delta_time).max(0.0);
@@ -5399,22 +5417,26 @@ fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         }
         if p.dash_dir.y.abs() < 0.1 && input.jump_pressed && p.jump_grace_timer > 0.0 {
             super_jump(p);
+            enter_normal(p);
         } else if p.dash_dir.x.abs() <= 0.2 && p.dash_dir.y <= -0.75 && input.jump_pressed {
             let wall = wall_dir(p, map);
             if wall != 0 {
                 super_wall_jump(p, -wall);
+                enter_normal(p);
             }
         }
         return;
     }
     if p.dash_dir.y.abs() < 0.1 && input.jump_pressed && p.jump_grace_timer > 0.0 {
         super_jump(p);
+        enter_normal(p);
         return;
     }
     if p.dash_dir.x.abs() <= 0.2 && p.dash_dir.y <= -0.75 && input.jump_pressed {
         let wall = wall_dir(p, map);
         if wall != 0 {
             super_wall_jump(p, -wall);
+            enter_normal(p);
             return;
         }
     }
@@ -5426,7 +5448,15 @@ fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
         return;
     }
     p.dash_end_pending = false;
-    p.state = PlayerState::Normal;
+    // DashCoroutine ends with `StateMachine.State = 0` (Player.cs:4566). The
+    // StateMachine setter runs `begins[0]` = `Player.NormalBegin`, which resets
+    // `maxFall = 160f` (Player.cs:3531-3534). Entering Normal with the cap the
+    // dash inherited leaves the fast-fall ladder alive: a down-diagonal dash
+    // that returns to Normal while `maxFall > 160` then keeps falling past 160
+    // instead of clamping to the single `300f * Engine.DeltaTime` step that
+    // NormalUpdate's `Input.MoveY == 1 && Speed.Y >= num4` branch adds
+    // (Player.cs:3727-3729).
+    enter_normal(p);
     p.auto_jump = true;
     if p.dash_dir.y <= 0.0 {
         p.speed.x = p.dash_dir.x * END_DASH_SPEED;
@@ -5480,6 +5510,13 @@ fn super_wall_jump(p: &mut PlayerSnapshot, dir: i8) {
     p.launched = true;
 }
 
+/// The state machine's transition into `StNormal`, i.e. `StateMachine.State = 0`
+/// while another state is current: the setter runs `begins[0]`, which is
+/// `Player.NormalBegin` (`Player.cs:1146`) and resets `maxFall = 160f`
+/// (`Player.cs:3531-3534`). Any transition into Normal from a different state
+/// must go through here; a `return 0` from `NormalUpdate` itself must not,
+/// because the setter early-returns when `state == value`
+/// (`Monocle/StateMachine.cs:36-39`).
 fn enter_normal(p: &mut PlayerSnapshot) {
     p.state = PlayerState::Normal;
     p.max_fall = MAX_FALL;
@@ -12081,6 +12118,82 @@ mod tests {
         let p = simulate(p, &[input; 16], &Map::default(), 16).unwrap();
         assert_eq!(p.max_fall, FAST_MAX_FALL);
         assert_eq!(p.speed.y, FAST_MAX_FALL);
+    }
+    #[test]
+    fn holding_down_suppresses_the_wall_slide_fall_target() {
+        // Player.cs:3749 wraps the whole wall-slide block, including the
+        // `target2 = MathHelper.Lerp(160f, 20f, wallSlideTimer / 1.2f)` fall
+        // target (Player.cs:3766), in `Input.MoveY.Value != 1`: a held-down
+        // fast-fall beside a wall keeps the ordinary `maxFall` target.
+        let map = Map {
+            solids: vec![Rect::new(36.0, 0.0, 8.0, 200.0)],
+            ..Map::default()
+        };
+        let base = PlayerSnapshot {
+            pos: Vec2::new(32.0, 100.0),
+            speed: Vec2::new(0.0, 98.000_183),
+            max_fall: MAX_FALL,
+            ..PlayerSnapshot::default()
+        };
+        let down = simulate(
+            base.clone(),
+            &[InputState {
+                move_x: 1,
+                move_y: 1,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert_eq!(down.wall_slide_dir, 0);
+        // min(98.000183 + 900 * DT, maxFall) = 113.00021362304688.
+        assert_eq!(down.speed.y, 113.000_214);
+
+        // The same frame with MoveY neutral does wall-slide: the 20 px/s
+        // lerp target clamps the fall to 98.000183 - 900 * DT.
+        let neutral = simulate(
+            base,
+            &[InputState {
+                move_x: 1,
+                move_y: 0,
+                ..InputState::default()
+            }],
+            &map,
+            1,
+        )
+        .unwrap();
+        assert_eq!(neutral.wall_slide_dir, 1);
+        assert_eq!(neutral.speed.y, 83.000_153);
+    }
+    #[test]
+    fn leaving_the_dash_state_resets_max_fall() {
+        // `Player.DashCoroutine` ends with `StateMachine.State = 0`
+        // (Player.cs:4566). The StateMachine setter runs `begins[0]` =
+        // `Player.NormalBegin`, which resets `maxFall = 160f`
+        // (Player.cs:3531-3534), and `Player.NormalUpdate` does not run on that
+        // same frame. A down-diagonal dash that reached Normal with the cap the
+        // dash inherited therefore loses it before the next gravity step.
+        let p = PlayerSnapshot {
+            pos: Vec2::new(32.0, 32.0),
+            speed: Vec2::new(0.0, 169.705_63),
+            state: PlayerState::Dash,
+            dash_dir: Vec2::new(0.0, 1.0),
+            state_timer: 0.0,
+            dash_attack_timer: DASH_ATTACK_TIME,
+            max_fall: FAST_MAX_FALL,
+            ..PlayerSnapshot::default()
+        };
+        let input = InputState {
+            move_y: 1,
+            ..InputState::default()
+        };
+        // Frame 1 arms `dash_end_pending`; frame 2 runs the DashCoroutine tail.
+        let trace = simulate_trace(p, &[input; 2], &Map::default(), 2).unwrap();
+        let ended = trace.states.last().unwrap();
+        assert_eq!(ended.state, PlayerState::Normal);
+        assert_eq!(ended.max_fall, MAX_FALL);
+        assert_eq!(ended.speed.y, 169.705_63);
     }
     #[test]
     fn upward_corner_correction_moves_around_a_one_pixel_ceiling_overlap() {
