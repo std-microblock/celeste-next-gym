@@ -11,11 +11,21 @@ pinned vanilla 202-berry TAS, the instrumented CelesteTAS dumps one record per e
 
 | trace | `ok` rooms | mismatch | unsupported | replayed frames | frame-exact |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `trace-202-v5` | **470** | 997 | 0 | **144,020** | **142,992** |
-| `trace-100pct-v5` | **311** | 607 | 0 | **87,381** | **86,757** |
+| `trace-202-v5` | **470** | 997 | 0 | **144,684** | **143,656** |
+| `trace-100pct-v5` | **311** | 607 | 0 | **87,713** | **87,089** |
 | `trace-1a-v5` | **16** | 4 | 0 | **2,129** | **2,125** |
 
-The latest step is the **hurtbox for `PlayerCollider` entities** (`4090043`), and it is the largest
+The latest step is **`AscendManager`** (`753370f`), the Summit's ascent takeover.
+`SummitBackgroundManager` had been filed in the entity registry's decoration bucket ("visual/audio, no
+gameplay collider"), but it is `Celeste.AscendManager`, whose `Routine` (`AscendManager.cs:249-273`)
+waits while `player.Y > base.Y` and then takes the player over as a dummy: `Speed = Vector2.Zero`,
+`StateMachine.State = 11` (`StDummy`), `DummyGravity = false`. Six `StSummitLaunch` segments therefore
+kept climbing at -240 px/s after the game had stopped - `pos+speed+state | anchor=StSummitLaunch` was
+6 segments / 3,647 frames and is now **empty**. Measured `202 6 improved / 1462 identical / 0
+regressed`, `+664` frames; `100pct 3 / 915 / 0`, `+332`; `1a` unchanged. `7-Summit|0|b-09` replays 848
+frames instead of 730 and now stops on the ordinary one-pixel class.
+
+The step before that was the **hurtbox for `PlayerCollider` entities** (`4090043`), and it is the largest
 single win so far. `Player.Update` polls every `PlayerCollider` inside a block that swaps the player's
 collider to the live hurtbox (`Player.cs:1898-1909`), so no callback ever sees the taller hitbox.
 `interact` already did that for spikes, springs, boosters, spinners, killboxes, feathers, lava and the
@@ -449,8 +459,8 @@ headline progress metric: an improved mechanic keeps more segments alive for lon
 | `trace-202-v5` | after `Level.InSpace` | 1,468 | **426** | 1,041 | 0 | **134,788** | **133,716** |
 | `trace-100pct-v5` | same build | 918 | **280** | 638 | 0 | **80,957** | **80,302** |
 | `trace-1a-v5` | same build | 20 | **16** | 4 | 0 | **2,129** | **2,125** |
-| `trace-202-v5` | after the hurtbox fix | 1,468 | **470** | 997 | 0 | **144,020** | **142,992** |
-| `trace-100pct-v5` | same build | 918 | **311** | 607 | 0 | **87,381** | **86,757** |
+| `trace-202-v5` | after `AscendManager` | 1,468 | **470** | 997 | 0 | **144,684** | **143,656** |
+| `trace-100pct-v5` | same build | 918 | **311** | 607 | 0 | **87,713** | **87,089** |
 | `trace-1a-v5` | same build | 20 | **16** | 4 | 0 | **2,129** | **2,125** |
 
 The `v5` traces are `v4` plus one exported key, `levelCoreMode` (`Level.CoreMode`); replaying them
@@ -516,7 +526,12 @@ against this same gate:
   with a live `wallSlideTimer` (`Player.cs:3749-3771`); the climb drain reads `lastClimbMove`
   (`Player.cs:4045`, `4056-4079`); and the wall boost is consumed before the on-ground stamina reset
   (`Player.cs:1560-1576`).
-* **`PlayerCollider` entities are polled with the hurtbox** (this round). Four of them - `Refill`,
+* **`AscendManager` (map name `SummitBackgroundManager`) is modelled** (this round). It had been filed
+  as a decoration; it is the Summit's ascent takeover (`AscendManager.cs:249-273`), and modelling it
+  emptied the `pos+speed+state | anchor=StSummitLaunch` class (6 segments / 3,647 frames). `202
+  6/1462/0`, `100pct 3/915/0`, `+664` and `+332` frames, `1a` unchanged. `index == 9`'s 1.6 s delay is
+  not modelled; no corpus room uses it.
+* **`PlayerCollider` entities are polled with the hurtbox** (previous round). Four of them - `Refill`,
   `HeartGem`, `Puffer`, `Strawberry` - were still tested against the two-pixels-taller hitbox, which
   collects a crystal a frame early. `202 33/1435/0`, `100pct 21/897/0`, `+4,832` and `+2,898` frames.
   The lesson generalises: when a divergence is one frame and one pixel, check *which collider* the
@@ -591,8 +606,10 @@ against this same gate:
   `Celeste.Freeze(0.05f)` and `yield return null` before `player.UseRefill(twoDashes)`
   (`Refill.cs:178-190`); and `CanDash` (`Player.cs:1074-1088`) still lacks
   `(TalkComponent.PlayerOver == null || !Input.Talk.Pressed)`.
-* **`pos+speed+state | anchor=StSummitLaunch` has grown to 6 segments / 3,647 frames**, every one a
-  `(0,-4)` delta: one state, one offset, and now the largest frames-per-segment target in the report.
+* **`pos+speed+state | anchor=StSummitLaunch` is closed** - `AscendManager` was its cause, and the class
+  is empty. What the takeover exposes is the general shape of the remaining Summit work: after the
+  dummy hand-over the cutscene drives the player itself (`DummyWalkTo`, camera moves), so any further
+  Summit segment will need the cutscene's own script, not just the state machine.
 * **The `space` room's remaining causes are `dashes` and `SpaceController`.** With `InSpace` landed,
   its four segments (`9-Core|0|space` x2, `9-Core|1|space` x2) replay 13-19 frames and then stop on a
   dash-count divergence, with `onGround` disagreeing on two of them - so the next causes there are the
