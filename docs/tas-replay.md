@@ -11,18 +11,33 @@ pinned vanilla 202-berry TAS, the instrumented CelesteTAS dumps one record per e
 
 | trace | `ok` rooms | mismatch | unsupported | replayed frames | frame-exact |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `trace-202-v4` | **411** | 1,056 | 0 | **131,314** | **130,227** |
-| `trace-100pct-v4` | **272** | 646 | 0 | **79,199** | **78,536** |
+| `trace-202-v4` | **421** | 1,046 | 0 | **134,152** | **133,075** |
+| `trace-100pct-v4` | **277** | 641 | 0 | **80,608** | **79,950** |
 | `trace-1a-v4` | **16** | 4 | 0 | **2,129** | **2,125** |
 
-The latest step is the **input-press model** (`45b3070`, plus the effective-press commit): the
-harness was feeding the game's already-buffered `VirtualButton.Pressed` level into `Simulator`'s own
-`VirtualButton` buffer, so every press outlived the game's by four frames. Per-segment diff against
-the previous baselines: **1a 1 improved / 19 identical, 100pct 26 improved / 892 identical, 202 36
-improved / 1432 identical, zero regressions on all three**, for `+3 / +2,599 / +3,945` replayed
-frames and `+0 / +10 / +16` `ok` rooms. See "The harness double-counts Monocle's `VirtualButton`
-buffer" below for the ground-truth proof; that paragraph's original conclusion (that the fix has to
-be two-sided) was **superseded** - adopting the recorded `Pressed` level verbatim is enough.
+The latest step is the **Core conveyor** (`7806a25`): `wallBooster` decoded to
+`EntityKind::Unknown`, so `Player.ClimbUpdate`'s `WallBooster` branch
+(`Player.cs:3154-3167`) never ran and the simulator held the ordinary climb
+target while the game ramped `Speed.Y` toward -160 at 600/s. Per-segment diff
+against the previous baselines: **202 18 improved / 1,450 identical / 0
+regressed, 100pct 9 / 909 / 0, 1a 0 / 20 (no boosters in Forsaken City)**, for
+`+2,848` and `+1,414` frame-exact frames and `+10` / `+5` `ok` rooms. One part of
+the entity is deliberately **not** modelled yet and is recorded in
+`climb_blocker_check`: its ice-mode `ClimbBlocker` costs 526 frames and regresses
+two 9H-Core segments, which is a real `Level.CoreMode` vs traced
+`Session.CoreMode` discrepancy rather than a detail.
+
+The step before that was the **input-press model** (`45b3070`, plus the
+effective-press commit): the harness was feeding the game's already-buffered
+`VirtualButton.Pressed` level into `Simulator`'s own `VirtualButton` buffer, so
+every press outlived the game's by four frames. Per-segment diff against the
+previous baselines: **1a 1 improved / 19 identical, 100pct 26 improved / 892
+identical, 202 36 improved / 1432 identical, zero regressions on all three**,
+for `+3 / +2,599 / +3,945` replayed frames and `+0 / +10 / +16` `ok` rooms. See
+"The harness double-counts Monocle's `VirtualButton` buffer" below for the
+ground-truth proof; that paragraph's original conclusion (that the fix had to be
+two-sided) was **superseded** - adopting the recorded `Pressed` level verbatim is
+enough.
 
 Starting point was 45 `ok` rooms / 36,253 replayed frames / 87 `unsupported`. The three pending workstreams on the previous revision of this section (Resort clutter with per-`sid` `oshiro_clutter_cleared_*` threading, `CrushBlock`/`DashBlock` with `OnDashCollide`, and the `LevelData` 184 -> 180 clamp) are now **landed** as `f735c98`, `b862df8` and `a27c8b4`; combined they took the 202 trace from 355 to 395 `ok` rooms and 121,264 to 127,369 replayed frames, with 128 segments improved and exactly 3 documented trade-offs: `5-MirrorTemple|0|b-14` (a `permanent` `DashBlock` in `Session.DoNotLoad`, which a Player-only trace cannot express) and `9-Core|1|c-08` x2 (the clamp moves `Bounds.Bottom` 4 px into `Player.CameraTarget`, and the residual is the camera model, not the clamp). Every landed fix cites a
 `Player.cs`/`Monocle` line and was proved to be zero-regression with a per-segment diff keyed by
@@ -56,7 +71,7 @@ Starting point was 45 `ok` rooms / 36,253 replayed frames / 87 `unsupported`. Th
    (`oshiro_clutter_cleared_*`), or `Level.Frozen`.
 3. **86 of 162 `PlayerSnapshot` fields are never restored** — the checked-in
    `tools/tas-fidelity/field-map.md` is that list, regenerable with `--dump-field-map`.
-4. **166 vanilla entity names still decode to `EntityKind::Unknown`** — no solid, no diagnostic.
+4. **165 vanilla entity names still decode to `EntityKind::Unknown`** — no solid, no diagnostic.
    `map.rs` also does not decode the room `space` attribute (only `9-Core`/`9H-Core` are `true`).
 5. **The real game is not bit-reproducible.** Two runs of the *same* exporter differ in ~28k rows,
    always starting at `7-Summit|a-00-intro`'s `StDummy` dummy walk (whole-pixel offsets with
@@ -76,16 +91,17 @@ artifacts (never whole-file `JSON.parse` a trace), and the reproduce commands. N
 follow the established loop: pick a cluster from the gate report, cite the `Player.cs` line, prove
 zero per-segment regressions, commit in a worktree, integrate.
 
-**The input-press model was the biggest single lever found so far, and it is landed.** The harness
-was feeding the game's *buffered* press level (`*P0`) into `Simulator`'s own
-`VirtualButton`-equivalent buffer, so the simulator's effective press outlived the game's by four
-frames and it fired mechanics the game swallowed - with ground-truth proof and a three-way
-measurement. `InputState::presses_are_effective` makes the simulator adopt the recorded `Pressed`
-level verbatim instead: `+3 / +2,599 / +3,945` replayed frames on `1a / 100pct / 202` with **zero
-per-segment regressions** and `+0 / +10 / +16` `ok` rooms. Details, the superseded two-sided
-conclusion, and the trap that `frames - 1` divergences are structural rather than a clue, are in the
-paragraphs below. Next: re-run `tools/tas-fidelity/lib/worklist.mjs` on the
-`gate-eff-202-v4.json` report, because the class sizes have moved.
+**The two biggest single levers found so far are landed: the input-press model and the Core
+conveyor.** Both were found by taking one divergence, reading the matching `Player.cs` branch, and
+proving the fix per segment rather than by fitting the report. Concretely: the harness used to feed
+the game's *buffered* press level into `Simulator`'s own `VirtualButton` buffer, so every press
+outlived the game's by four frames (`InputState::presses_are_effective` now adopts the recorded level
+verbatim: `+3 / +2,599 / +3,945` frames on `1a / 100pct / 202`), and `wallBooster` decoded to
+`Unknown` so the Core conveyor never ran (`+0 / +1,414 / +2,848`). Both are documented below with the
+ground-truth proof and the superseded hypotheses. Next: re-run
+`tools/tas-fidelity/lib/worklist.mjs` on `gate-wb4-202-v4.json`, because the class sizes have moved
+again, and settle the `Level.CoreMode` vs `Session.CoreMode` question the conveyor uncovered - it
+affects the ice factor and the `CoreModeListener` entities too, not just the conveyor.
 
 **The dominant remaining mechanism is a 1-pixel rounding difference.** `tools/tas-fidelity/lib/worklist.mjs` groups every `mismatch` segment of a report into classes (run it as `node tools/tas-fidelity/lib/worklist.mjs <report.json> <out.md>`; it streams). On the `395 ok` master the two biggest classes are `pos|anchor=StNormal` (180 segments / 11,340 frames) and `pos|anchor=StDash` (131 / 8,777), and their position deltas are overwhelmingly **one pixel on one axis** - 142 of the 180 are `(0,+-1)` or `(+-1,0)`, and 82 of the 131 likewise. That is the signature of sub-pixel remainder drift that stays invisible while the gate ignores `movementCounter` and only surfaces when it flips a `Math.Round` step, so these two classes almost certainly share a single root cause in the pixel-move / collision boundary code rather than hundreds of independent bugs. `dashes|anchor=StNormal` (43 / 3,708) is different: every one of its deltas is `(0,0)`, i.e. the divergence is reachable only through the dash count, not through motion.
 
@@ -387,6 +403,9 @@ headline progress metric: an improved mechanic keeps more segments alive for lon
 | `trace-202-v4` | after the effective-press input model | 1,468 | **411** | 1,056 | 0 | **131,314** | **130,227** |
 | `trace-100pct-v4` | same build | 918 | **272** | 646 | 0 | **79,199** | **78,536** |
 | `trace-1a-v4` | same build | 20 | **16** | 4 | 0 | **2,129** | **2,125** |
+| `trace-202-v4` | after the Core `WallBooster` conveyor | 1,468 | **421** | 1,046 | 0 | **134,152** | **133,075** |
+| `trace-100pct-v4` | same build | 918 | **277** | 641 | 0 | **80,608** | **79,950** |
+| `trace-1a-v4` | same build | 20 | **16** | 4 | 0 | **2,129** | **2,125** |
 
 The `100%` row moved from 234 to **262** as the later waves landed, so always compare against a
 named report file, not against the number in an older revision of this table. The three current
@@ -447,6 +466,15 @@ against this same gate:
   with a live `wallSlideTimer` (`Player.cs:3749-3771`); the climb drain reads `lastClimbMove`
   (`Player.cs:4045`, `4056-4079`); and the wall boost is consumed before the on-ground stamina reset
   (`Player.cs:1560-1576`).
+* **The Core `WallBooster` conveyor** (this round). Entity decode plus
+  `Player.ClimbUpdate`'s booster branch: `Speed.Y` toward `WallBoosterSpeed`
+  (-160) at `WallBoosterAccel` (600), `LiftSpeed = UnitY * Max(Speed.Y, -80)`
+  (`Player.cs:3093-3099`, `3154-3167`), the `wallBoosting` release on the ledge
+  branch (`Player.cs:3140-3149`), and `ClimbBlocker.EdgeCheck` narrowed to
+  `InvisibleBarrier` because the booster's blocker is `edge: false`
+  (`ClimbBlocker.cs:40-50`, `WallBooster.cs:42`). `202 18/1450/0, 100pct 9/909/0,
+  1a 0/20/0` (improved/identical/regressed), `+2,848` and `+1,414` frame-exact
+  frames. Guarded by `wall_booster_ramps_climb_speed_and_publishes_lift_speed`.
 * **The input-press model** (this round). `InputState::presses_are_effective` (`types.rs`): the TAS
   fidelity harness exports `Monocle.VirtualButton.Pressed` itself (`*P0`, already zeroed wherever the
   game called `ConsumeBuffer`/`ConsumePress`), so `Simulator::step` must adopt that level verbatim
@@ -469,6 +497,20 @@ against this same gate:
 
 ### Known open gaps (measured, not guessed)
 
+* **`Level.CoreMode` is not the same quantity as the traced `Session.CoreMode`, and something in the
+  Core proves it.** `WallBooster` reads `Level.CoreMode` (`WallBooster.cs:77-82`) to decide `IceMode`,
+  in which its own `ClimbBlocker(edge: false)` is `Blocking` (`WallBooster.cs:42`, `:85-101`) and the
+  strip must refuse the grab. Wiring that in - it is decoded and ready as
+  `Entity.direction.y` - costs **526 replayed frames** and regresses `9-Core|1|b-03` and
+  `9-Core|0|d-03` by 6 frames each. In `9-Core|1|b-03` the trace reports `Session.CoreMode = Cold`
+  and the game still grabs a wall flush against a booster, which cannot happen while that booster
+  blocks. So either `Level.CoreMode` lags or leads `Session.CoreMode` in those rooms
+  (`Level.cs:302-323` setter, `:426` `CoreMode = Session.CoreMode` at load, `:1488`
+  `Session.CoreMode = CoreMode` at transition), or the overlap needs the exact `ClimbCheck` probe,
+  which uses `Position + UnitX * 2 * Facing` for the blocker but `dir * 2` for the solid. Resolving
+  it matters beyond the conveyor: `Player.cs:3681-3684`'s ice factor and the `CoreModeListener`
+  entities read `level.CoreMode` too, and the simulator currently feeds all of them the traced
+  `Session.CoreMode`.
 * **The simulator has no `VirtualButton.consumed` flag.** With `presses_are_effective` the press
   level each frame is now exactly the game's, which retired the four-frame offset; what remains is
   that a press the simulator consumes *inside* a frame (`wall_jump`/`jump`/`begin_dash` zero the
