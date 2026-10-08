@@ -1196,10 +1196,20 @@ fn area_inventory_no_refills(area: i64) -> bool {
 /// `CS10_FinalRoom.cs:76` returns it to 1, so no single per-area constant fits
 /// the chapter, and the second `LostLevels` pass (which never replays the intro)
 /// only ever refills to one dash.
+/// Taking the maximum of the witness and the area table is what the witness is
+/// for: `RefillDash()` only ever writes `Dashes = MaxDashes`, `BadelineBoost` only
+/// increments up to `Inventory.Dashes` (`BadelineBoost.cs:216-219`) and the two
+/// direct writes that are not refills - `CS10_Gravestone.cs:133-134`/`144-145`,
+/// which *raise* `Session.Inventory.Dashes` to 2 - are exactly the cases no
+/// per-area constant can cover. Farewell is why: the chapter's intro raises the
+/// inventory to 2 and `CS10_FinalRoom.cs:76` returns it to 1, so an area table can
+/// only ever be a floor. The previous `witnessed.min(area_dashes)` therefore threw
+/// the witness away whenever the capacity had been *raised* mid-chapter, which is
+/// the whole `sim=1 game=2` half of the dash-count class.
 fn observe_session_dashes(area: i64, witnessed: Option<i64>) -> u8 {
     let area_dashes = area_inventory_dashes(area);
     match witnessed.map(|value| value.clamp(0, u8::MAX as i64) as u8) {
-        Some(witnessed) if witnessed > 0 => witnessed.min(area_dashes),
+        Some(witnessed) if witnessed > 0 => witnessed.max(area_dashes),
         _ => area_dashes,
     }
 }
