@@ -2413,3 +2413,30 @@ player back to the bound after the move, with the movement counter carrying one 
 one-pixel `MoveHExact` corner correction. Room `roof07`'s bounds are the next thing to read - if the player
 is at the right edge, the comparison is `x + width` against `Bounds.Right`, and the trace's `collider` field
 gives the exact rectangle to compare.
+
+### `roof07`: the player is outside the room's left bound and `EnforceBounds` clamps it at +1/frame
+
+Room `roof07` in `3-CelestialResort` has bounds `x = 8232, width = 488`. The trace:
+
+| row | collider | vx | pos.x |
+| --- | --- | ---: | ---: |
+| 42494 | `[8231,-796,8,11]` | 323.333 | 8235 |
+| 42495 onward | `[8232,-796,8,11]` | 323.000 | 8236 |
+
+So the player's collider left edge ends up **exactly on the room's left bound (8232)** and stays there, while
+`vx` says `5.39 px/frame`. Rows 42489-42494 show it creeping right at exactly **+1 px/frame** from `x = 8230`,
+i.e. it is entering the room from outside and `Level.EnforceBounds` is pulling `player.Left` back to
+`Bounds.Left` every frame. The simulator advances 0 px there.
+
+The concrete suspicion to check next is in the simulator's own clamp:
+
+```rust
+let bounds = p.current_room_bounds.unwrap_or(map.bounds);
+```
+
+If `p.current_room_bounds` is not set to this room's bounds during that window, the clamp falls back to
+`map.bounds` - the bounds of the **whole map**, not the room - and the push is a completely different
+quantity (or none at all). `Player.EnforceBounds` in the source always uses `this.Bounds` of the current
+`Level`, i.e. the room. A one-line print of `p.current_room_bounds` and `map.bounds` on those frames decides
+it, and if that is the cause the fix is in whatever is supposed to populate `current_room_bounds`, not in the
+clamp itself.
