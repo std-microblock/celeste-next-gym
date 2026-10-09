@@ -1165,3 +1165,24 @@ Compare with `Entity`, which genuinely has ~31 `Entity { ... }` sites and is why
 there. So the parallel-vector route is a handful of lines in one file, and the remaining work
 (`doNotLoad` through `Record` -> `Frame` -> the anchor, then skipping entities in `Simulator::new`) uses
 the anchor path that `flags` already proved out.
+
+### `entity_ids`, attempt 2: the exact sites (attempt 1 is fully diagnosed)
+
+Attempt 1 failed harmlessly (the guards aborted the write on the first try; the second try compiled
+wrong and was reverted, tree rebuilt). Everything it got wrong is now known:
+
+- The decode push is **`map.entities.push(Entity {`** at `map.rs:2036` - the receiver is `map.entities`,
+  *not* a local `entities`; at `map.rs:2044` and around, the name `entities` is the `BinaryElement`
+  holding the map's entity list, which is why inserting `entities.push(...)` there failed with
+  `E0599: no method named push for &BinaryElement`. `el` **is** in scope at `:2036` (it is used at
+  `:2028` and `:2041`), and the loop binding is `for el in &entities.children` at `:1555`, inside
+  `fn map_from_binary_inner` (`:1510`).
+- There is a **second** push at `map.rs:2083` in the same function. The parallel vector must stay in
+  lockstep with `map.entities`, so either push an id there too or assert
+  `entity_ids.len() == entities.len()` after decoding - a desync would silently mis-attribute every
+  `doNotLoad` key after it.
+- `Map` literals outside `map.rs` also need the field (or `..Map::default()`): **`map_fixture.rs:155`**
+  and **`playground.rs:8`**. The two in `map.rs` at `:341` and `:2243` already use `..Map::default()`.
+- The struct field goes on `Map` (`pub struct Map {` at `:235`) and the default in the manual
+  `impl Default for Map` (`:284`, `Self { ... }` at `:286`) - adding it to `Entity` instead means
+  touching ~31 `Entity { ... }` sites, which is the trap this route avoids.
