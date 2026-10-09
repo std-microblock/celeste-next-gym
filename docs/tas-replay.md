@@ -1969,3 +1969,29 @@ what to look at, not the 926.
 The metric that does carry information is how many frames each segment replays before diverging - i.e. the
 `frames` column and the class analysis built on it - which is how the mechanisms in the notes above were
 found in the first place.
+
+### The skipped gravity step is a ground probe that disagrees with the game
+
+Found the site. `normal_update` applies gravity only when airborne:
+
+```rust
+if !p.on_ground {                                            // sim.rs:7462
+    p.speed.y = approach(p.speed.y, fall_target, GRAVITY * gravity_mult * p.frame_delta_time);
+}
+```
+
+with `gravity_mult` halved by the earlier branch at `:7454-7455`, which is why the observed step is
+`900 * 0.5 / 60 = 7.5`.
+
+The g-01 frame (row 135320) is therefore explained by the simulator believing it is **on the ground**: both
+sides have `speed.y = 7.5` entering the frame (so the `Speed.Y >= 0` half of the probe agrees), and
+`p.player_on_ground` is computed at `:6826` as `speed.y >= 0.0 && grounded(p, map)`. The only remaining term
+is `grounded(p, map)` - so the simulator found a solid beneath the player where the game found none, which
+is why it skipped the step and why its `vy` stays at 7.5 while the game's goes to 15.
+
+That points the search away from gravity and at the **map/geometry**: print `grounded(p, map)` and which
+rectangle `solid_at` returns on rows 135318-135321. It is worth checking the solid kinds added in the last
+few rounds (`TempleGate`, `FloatySpaceBlock`, `SwitchGate`/`TouchSwitch` dash switches) as the possible
+phantom: all of them measured zero per-segment regressions, which is a statement about segments that
+already diverged, not about collisions they might newly introduce. The same signature should be checked on
+the other segments in the `StDash -> StNormal` family before fixing anything.
