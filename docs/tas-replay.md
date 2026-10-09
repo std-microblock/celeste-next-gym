@@ -2586,3 +2586,29 @@ still be running the transition path, not the freeze return - which reinforces t
 
 One-line probe next: print `p.freeze_timer`, `p.transition_timer`, `p.death_freeze_pending` and `p.dead` at
 the top of `step` on rows 42488-42496, and compare `freeze_timer` against the trace's `freezeTimer` column.
+
+### roof07 root cause pinned: the simulator's `freeze_timer` sits at exactly DT and never decrements
+
+The gate's own dump prints the simulator's freeze timer per frame, so no new instrumentation was needed:
+
+```
+row=42491 gamePos=(8232,-785) gameMove=(1.00000,0.00000) rustPos=(8231,-785) rustMove=(0.00000,0.00000) stalled=true freeze=0.01667
+row=42492 gamePos=(8233,-785) gameMove=(1.00000,0.00000) rustPos=(8231,-785) rustMove=(0.00000,0.00000) stalled=true freeze=0.01667
+row=42493 gamePos=(8234,-785) gameMove=(1.00000,0.00000) rustPos=(8231,-785) rustMove=(0.00000,0.00000) stalled=true freeze=0.01667
+row=42494 gamePos=(8235,-785) gameMove=(1.00000,0.00000) rustPos=(8231,-785) rustMove=(0.00000,0.00000) stalled=true freeze=0.01667
+row=42495 gamePos=(8236,-785) gameMove=(0.58301,0.00000) rustPos=(8231,-785) rustMove=(0.00000,0.00000) stalled=true freeze=0.01667
+```
+
+The simulator's `freeze_timer` is **exactly DT (0.01667) on every frame and never decreases**, while the trace
+and the dump's own `stalled=true` say the game is in a transition with `freezeTimer = 0` and is advancing the
+player one pixel per frame. So the whole divergence is "the simulator holds a positive freeze timer".
+
+Two specific places to look, both already visible in the code:
+
+1. `sim.rs:499` - `self.snapshot.freeze_timer = self.snapshot.freeze_timer.max(DT);` - forces any
+   small-but-positive value back up to DT, so a timer that should reach zero is pinned at DT;
+2. the transition-nested decrement at `sim.rs:6306-6308` uses `raw_delta_time`, and the outer one at
+   `:6314-6316` uses `DT`; if the first is reached with `raw_delta_time == 0` the timer never moves.
+
+Either way the fix is small and the verification is binary: `--rooms roof07` should take that segment from
+`exact=0` to `exact=6`, and `stalled=true` frames elsewhere should start updating again.
