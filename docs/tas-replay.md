@@ -796,6 +796,14 @@ against this same gate:
   probe only consults the former - so a kind added to `is_solid_entity` alone (as `StaticSolid` was in
   round 11, and `CrumbleBlock` was here) is **inert**. Keep the two lists in step, or derive one from
   the other.
+
+  Implementation note for whoever takes the sequence, so it is not rediscovered: the state belongs on
+  `Simulator` (it clones for `fork` automatically) rather than in `PlayerSnapshot`, which keeps the
+  gate's `--dump-field-map` audit untouched; `Collidable = false` is the parked-bounds idiom
+  (`park_entity`/`PARKED_ENTITY_POSITION`) that `DashBlock` already uses; and the free `step`
+  function's signature has to carry the new state, because `advance_post_player_entities` is called
+  from three separate branches inside it - wiring only the obvious call site would advance the
+  coroutine up to three times in one frame.
 * **The simulator has no `VirtualButton.consumed` flag.** With `presses_are_effective` the press
   level each frame is now exactly the game's, which retired the four-frame offset; what remains is
   that a press the simulator consumes *inside* a frame (`wall_jump`/`jump`/`begin_dash` zero the
