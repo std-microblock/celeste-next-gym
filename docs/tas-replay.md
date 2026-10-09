@@ -2374,3 +2374,21 @@ Next check, cheap and decisive: print the player's bottom (`pos.y + collider hei
 `current_room_bounds.top()` and `map.bounds.top()` on those frames, and compare with the trace's own
 position - if the simulator's room bounds disagree with the level's, the wind guard flips for reasons that
 have nothing to do with wind.
+
+### The 23 "gap != 1" mismatches are explained - and one of them is a named, reproducible case
+
+Listing every `mismatch` whose `frames - exactPrefixFrames != 1`:
+
+- **21 have `gap = 2`**, and every one of them carries a large `stalledFrames` count (36, 343, 48, 45, 57,
+  45, 54, ...). A stalled frame does not compare fields (the player did not move), so the exact prefix skips
+  it - which is exactly a gap of 2. So these are an artefact of the stalled-frame accounting, not a separate
+  class of defect, and round 125's open question ("what are the 21 exceptions?") is closed.
+- **`3-CelestialResort|0|roof07|42489`** is the real outlier: `frames=6`, `exactPrefixFrames=0`,
+  `leading=1`, `stalled=57`, i.e. no exact frames at all. This is the case the round-45 recon already
+  measured: `gameMove = +1.0` per frame against `rustMove = 0.0` with the player in a frozen state - the game
+  keeps pushing the player one pixel per frame during a rooftop cutscene/freeze and the simulator does not.
+
+That last one is a named, reproducible defect with its own signature (`+1.0/frame`, frozen player,
+`roof07|42489`, 6 replay frames), and it is unrelated to the wind/gravity family pursued in the notes above.
+It is the better next target of the two: it is small, it is measured, and the mechanism is presumably a
+camera/bounds push that `Player.Update` performs even while `Engine.FreezeTimer` suppresses ordinary updates.
