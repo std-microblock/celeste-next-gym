@@ -940,6 +940,13 @@ batch mixes a real regression with inert additions and hides which is which.
 | `swapBlock` | 9 / 3 (net +184) | reverted; it moves, and the three losses are segments the player rides it (`5-MirrorTemple|0|a-01`, `b-10`, `7-Summit|0|f-10`) |
 | `lockBlock` | 0 / 1 | reverted; the TAS unlocks it with a key and passes through, so it needs its unlock state |
 
+The sweep is finished: every Solid subclass the audit found in the maps has now been measured one at a
+time, and the ones left are all the same shape - a kind whose *state* is what matters
+(switchGate's open, lockBlock's unlock, swapBlock's two-point motion,
+loatySpaceBlock's motion, crumbleWallOnRumble's rumble). Adding any of them as a plain solid
+measures a regression, so the next step on this line is a state machine per kind, starting with
+switchGate (+373 measured frames), exactly as CrumblePlatform was done. Do not re-run the sweep.
+
 `theoCrystalPedestal` starts `Collidable = false` (`TheoCrystalPedestal.cs:21`), so it is not a
 solid candidate at all.
 
