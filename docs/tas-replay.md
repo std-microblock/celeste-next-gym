@@ -684,9 +684,24 @@ against this same gate:
   `BadelineBoostLaunch` (`:4999`), and the launcher in the 9-Core C-side room `01` is a `Bumper`
   (`Bumper.cs:170` calls `player.ExplodeLaunch(Position, snapUp: false)`), which `interact`'s
   `EntityKind::Bumper` arm already calls as `explode_launch(p, input, target, false, false)`. The 688
-  frames are therefore a condition or ordering difference - the game polls `PlayerCollider`s before
-  its state callback while `interact` runs after the state update and the physics - not an absent
-  state.
+  frames are therefore a condition or ordering difference, not an absent state. **The specific
+  ordering claim made here last round was wrong and is withdrawn**: `Player.Update` runs
+  `base.Update()` (the state callback) at `Player.cs:1778`, the physics `MoveH`/`MoveV` at
+  `:1799-1805`, and only then the `PlayerCollider` pass at `:1898-1914` - which is the same position
+  the simulator's `interact` occupies relative to its physics. The pass itself also matches: it
+  iterates *every* `PlayerCollider` (no early exit on a hit; it only returns when the player dies) and
+  runs with the hurtbox installed.
+* **`Level.EnforceBounds` is not modelled.** `Player.Update` calls it at `Player.cs:1915-1918`,
+  immediately after the `PlayerCollider` pass, gated on
+  `InControl && !Dead && StateMachine.State != 9 && EnforceLevelBounds`. `Level.EnforceBounds`
+  (`Level.cs:2725-2790`) is not a simple clamp: it clamps `player.Left/Right/Top/Bottom` to
+  `Bounds`, calls `OnBoundsH`/`OnBoundsV` when it does, and - before clamping - calls
+  `Session.MapData.CanTransitionTo` and `NextLevel(...)` to hand off to the neighbouring room
+  (four directions, each with a `player.Center +/- 8`/`12` probe and a `Before*Transition` hook),
+  plus a `CameraLockModes.FinalBoss` variant (excluded) and a `TheoCrystal`-in-hand special case
+  that clamps `Right` to `bounds.Right - 1`. The simulator has its own bound clamping and its own
+  transition start, so this is a structural difference rather than a missing one-liner: whoever takes
+  it on should diff the two structures rather than bolt on a clamp.
 * **The simulator has no `VirtualButton.consumed` flag.** With `presses_are_effective` the press
   level each frame is now exactly the game's, which retired the four-frame offset; what remains is
   that a press the simulator consumes *inside* a frame (`wall_jump`/`jump`/`begin_dash` zero the
