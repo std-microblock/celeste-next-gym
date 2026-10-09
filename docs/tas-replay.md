@@ -11,11 +11,13 @@ pinned vanilla 202-berry TAS, the instrumented CelesteTAS dumps one record per e
 
 | trace | `ok` rooms | mismatch | unsupported | replayed frames | frame-exact |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `trace-202-v5` | **484** | 983 | 0 | **153,892** | **152,878** |
-| `trace-100pct-v5` | **318** | 600 | 0 | **92,428** | **91,811** |
+| `trace-202-v5` | **502** | 965 | 0 | **157,910** | **156,914** |
+| `trace-100pct-v5` | **328** | 590 | 0 | **94,656** | **94,049** |
 | `trace-1a-v5` | **16** | 4 | 0 | **2,129** | **2,125** |
 
-The latest step is the **landing frame's vertical move** (`b94ab72`): the landing branch of
+The latest step is **CrumblePlatform** (`0fc9e6d`): the floor under the divergence above is a `crumbleBlock`, and with its collapse sequence modelled (`CrumblePlatform.cs:94-169`) the corpus is clean where a plain solid measured six regressions: **202 38 improved / 1430 identical / 0 regressed**, `484 -> 502` `ok`, `+4,018` frames; **100pct 23 / 895 / 0**, `318 -> 328`, `+2,228`; `1a` unchanged. The coroutine state lives on `Simulator` (cloned by `fork`, invisible to the field-map audit), collapse uses the parked-bounds idiom, and the state had to be threaded through the free `step` because `advance_post_player_entities` is reached from three branches - the first attempt wired two of them and ran the coroutine twice a frame.
+
+The step before that was the **landing frame's vertical move** (`b94ab72`): the landing branch of
 `INTRO_PHASE_JUMP_FALL` zeroed `Speed.Y` before the frame's physics, so the simulator skipped that
 frame's move. The source's coroutine only stops *adding* gravity once `onGround` is true, and the
 accumulated fall speed still drives `MoveV(Speed.Y * dt)` into the floor - the blocked step zeroes
