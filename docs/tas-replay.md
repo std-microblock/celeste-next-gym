@@ -2117,3 +2117,35 @@ To finish this: the diverging frame's `scene_time_active` (from the trace) has t
 probe log. The inline-node attempt to read it failed on quote escaping - use a script file for that, as the
 other readers do, and match the key rather than the position. Until then, treat the "gravity step" family as
 **open**, not diagnosed.
+
+### UNIQUELY IDENTIFIED: `speed.y` is zeroed between the two `StNormal` frames
+
+The probe (at the ground check, i.e. before the state callback) prints both position and `vy`, and the
+frames are unique by `pos + state + vy`; the run is contiguous, so the sequence is unambiguous:
+
+```
+ST t=12.799979 pos=(26087,-19082) vy=0.0000 state=Dash
+ST t=12.816646 pos=(26084,-19082) vy=0.0000 state=Normal    <- first StNormal frame
+ST t=12.833312 pos=(26082,-19082) vy=0.0000 state=Normal    <- second StNormal frame, still 0
+```
+
+Combined with the gate dump's end-of-frame speeds (7.5 at the end of the first frame, 7.5 again at the end
+of the second, where the game has 15):
+
+| frame | vy at probe (frame start) | vy at frame end |
+| --- | ---: | ---: |
+| first `StNormal` | 0 | **7.5** (gravity applied) |
+| second `StNormal` | **0** (game has 7.5) | 7.5 |
+
+So gravity is not skipped at all: the value it steps is 0 because **the 7.5 written at the end of the first
+`StNormal` frame is gone before the second frame's ground check**. One write zeroes `speed.y` between the
+two frames - either late in the first frame's tail or early in the second, before `sim.rs:6826`.
+
+That also explains every earlier observation coherently: frame-start `vy = 0` -> y move 0 (the dump's
+`rustMove.y = 0`), and frame-end `0 + 7.5 = 7.5` instead of the game's `7.5 + 7.5 = 15`.
+
+Candidate sites, in the order worth checking: the `var_jump_timer` block (`sim.rs:7469-7475`, which runs
+right after the gravity step), a `DashEnd`/`NormalBegin` transition write, `tick_lift_speed`, and anything in
+the frame tail that treats a just-ended dash specially (`dash_attack_timer`/`end_dash`). The next probe
+should print `speed.y` at the *end* of `step` (or at the top of the next frame before the timer block) so the
+write is bracketed to one of those.
