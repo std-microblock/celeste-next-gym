@@ -290,7 +290,7 @@ impl Simulator {
         initialize_killboxes(&mut snapshot, &mut runtime_map);
         initialize_crush_and_dash_blocks(&mut snapshot, &mut runtime_map);
         let crumble_blocks = initialize_crumble_blocks(&runtime_map);
-        let room = initialize_room_coroutines(&runtime_map);
+        let room = initialize_room_coroutines(&mut runtime_map);
         initialize_lookouts(&mut snapshot, &runtime_map);
         position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
         sync_all_platform_static_movers(&snapshot, &mut runtime_map, &static_mover_attachments);
@@ -1093,12 +1093,64 @@ struct CrumbleBlockState {
 #[derive(Clone)]
 struct RoomCoroutineState {
     crumble_blocks: Vec<CrumbleBlockState>,
+    floaty_blocks: Vec<FloatyBlockGroup>,
     switch_gates: Vec<SwitchGateState>,
     touch_switches: Vec<TouchSwitchState>,
     /// The room's `switches_<room>` session flag (`Switch.SetLevelFlag`): set when a *persistent*
     /// gate's sequence starts (`SwitchGate.cs:109-112`), and threaded across segments by the gate,
     /// because `SwitchGate.Awake` short-circuits straight to the open position when it is set.
     switches_on: bool,
+}
+
+/// `FloatySpaceBlock.sinkTimer = 0.3f` (`FloatySpaceBlock.cs:247`): a rider re-arms the sink each
+/// frame, and the timer counts down at `Engine.DeltaTime` per frame once nobody is riding (`:249-252`).
+const FLOATY_SINK_REARM: f32 = 0.3;
+/// `yLerp = Calc.Approach(yLerp, 1f, 1f * Engine.DeltaTime)` (`FloatySpaceBlock.cs:255`) and the
+/// mirrored approach back to zero (`:259`): a full ramp takes one second each way.
+const FLOATY_Y_LERP_RATE: f32 = 1.0;
+/// `MathHelper.Lerp(value.Y, value.Y + 12f, Ease.SineInOut(yLerp))` (`FloatySpaceBlock.cs:287`).
+const FLOATY_SINK_DEPTH: f32 = 12.0;
+/// `(float)Math.Sin(sineWave) * 4f` (`FloatySpaceBlock.cs:270`).
+const FLOATY_SINE_AMPLITUDE: f32 = 4.0;
+/// `Calc.YoYo(Ease.QuadIn(dashEase)) * dashDirection * 8f` (`FloatySpaceBlock.cs:271`).
+const FLOATY_DASH_DISTANCE: f32 = 8.0;
+/// `dashEase = Calc.Approach(dashEase, 0f, Engine.DeltaTime * 1.5f)` (`FloatySpaceBlock.cs:262`),
+/// so an `OnDash` (`:210-218`) offset peaks 0.195 s in and is gone after 2/3 s.
+const FLOATY_DASH_EASE_RATE: f32 = 1.5;
+
+/// One `FloatySpaceBlock` in a group. Every member carries its own `Platform.movementCounter`
+/// (`Platform.cs:11`) because `MoveToY`/`MoveToX` (`:221-245`) accumulate the sub-pixel remainder
+/// per platform before the rounded `MoveHExact`/`MoveVExact` step.
+#[derive(Clone, Copy)]
+struct FloatyBlockMember {
+    entity_index: usize,
+    /// The collider at `Awake`, i.e. this platform's `Moves` value (`FloatySpaceBlock.cs:72`,
+    /// `:168`); every target is expressed relative to it.
+    original: Rect,
+    /// `Platform.movementCounter`, the exact-position remainder.
+    remainder: Vec2,
+}
+
+/// One `FloatySpaceBlock` group and its shared phase. `AddToGroupAndFindChildren`
+/// (`FloatySpaceBlock.cs:147-194`) merges touching blocks with the same `tiletype` into one group,
+/// whose first-added member is `MasterOfGroup`; only that master runs the `Update` head
+/// (`:220-264`) and `MoveToTarget` (`:268-293`), so `sinkTimer`, `yLerp`, `sineWave`, `dashEase` and
+/// `dashDirection` exist once per group.
+#[derive(Clone)]
+struct FloatyBlockGroup {
+    members: Vec<FloatyBlockMember>,
+    /// `FloatySpaceBlock.sineWave` (`:19`) as its constructor left it: `0` when the map set
+    /// `disableSpawnOffset` (`:56`), otherwise the `Calc.Random.NextFloat(2π)` draw (`:52`) taken
+    /// at the master's position in the level's construction sequence.
+    sine_wave: f32,
+    /// `sinkTimer` (`:17`).
+    sink_timer: f32,
+    /// `yLerp` (`:15`), the 0..1 sink ramp.
+    y_lerp: f32,
+    /// `dashEase` (`:21`).
+    dash_ease: f32,
+    /// `dashDirection` (`:23`).
+    dash_direction: Vec2,
 }
 
 const SWITCH_GATE_OPEN_BEAT: f32 = 0.1;
@@ -1127,8 +1179,9 @@ struct TouchSwitchState {
     activated: bool,
 }
 
-fn initialize_room_coroutines(map: &Map) -> RoomCoroutineState {
+fn initialize_room_coroutines(map: &mut Map) -> RoomCoroutineState {
     let crumble_blocks = initialize_crumble_blocks(map);
+    let floaty_blocks = initialize_floaty_blocks(map);
     let switch_gates = map
         .entities
         .iter()
@@ -1170,6 +1223,7 @@ fn initialize_room_coroutines(map: &Map) -> RoomCoroutineState {
         .collect();
     RoomCoroutineState {
         crumble_blocks,
+        floaty_blocks,
         switch_gates,
         touch_switches,
         switches_on: false,
@@ -1375,6 +1429,357 @@ fn advance_crumble_blocks(
                 state.phase = 0;
             }
         }
+    }
+}
+
+/// `FloatySpaceBlock.Awake`/`AddToGroupAndFindChildren` (`FloatySpaceBlock.cs:65-194`).
+///
+/// A group is a maximal set of `floatySpaceBlock` entities that touch each other through
+/// `CollideCheck(new Rectangle(X - 1, Y, Width + 2, Height), other)` or
+/// `CollideCheck(new Rectangle(X, Y - 1, Width, Height + 2), other)` (`:189`) while sharing the
+/// same `tiletype`. The group's **master** is the member whose `Awake` ran first - the lowest map
+/// entity index, since `Level.LoadLevel` constructs `levelData.Entities` in order
+/// (`Level.cs:468`) - and it alone owns the phase (`:220-264`).
+///
+/// `Moves` (`:72`, `:168`) records every platform's position at `Awake`; the master's
+/// `MoveToTarget` (`:268-293`) recomputes each member's absolute target from that value, so each
+/// member's offset from its own original is what the group shares.
+///
+/// `sineWave` (`:19`) is drawn from `Calc.Random.NextFloat(2π)` in the constructor (`:52`) unless
+/// the map set `disableSpawnOffset`; see [`advance_floaty_blocks`] for why the two cases are
+/// modelled differently.
+fn initialize_floaty_blocks(map: &mut Map) -> Vec<FloatyBlockGroup> {
+    let indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| {
+            (entity.kind == EntityKind::FloatySpaceBlock).then_some(index)
+        })
+        .collect();
+    // `Calc.Random` is `System.Random` re-seeded to the level's `LoadSeed` for the whole of
+    // `Level.LoadLevel` (`Level.cs:386-1386`), and each entity's *constructor* runs inside that
+    // window in map entity order (`Level.cs:468`), while every `Awake` - where the autotiler
+    // draws (`Autotiler.cs:253`) - runs afterwards (`Level.cs:335` -> `Scene.Begin`, or the next
+    // `EntityList` awake pass, `EntityList.cs:112-122`, both after `Calc.PopRandom`). So the
+    // phase a block draws is the sequence position reached by its predecessors' constructors.
+    let mut random = crate::legacy_random::LegacyRandom::new(map.load_seed);
+    let mut drawn: Vec<f32> = Vec::with_capacity(indices.len());
+    let mut next = indices.iter().copied().peekable();
+    for (index, entity) in map.entities.iter().enumerate() {
+        if next.peek() == Some(&index) {
+            next.next();
+            // `if (!disableSpawnOffset) sineWave = Calc.Random.NextFloat(Math.PI * 2f)`
+            // (`FloatySpaceBlock.cs:50-57`): the pinned-zero branch draws nothing.
+            drawn.push(if entity.direction.x != 0.0 {
+                0.0
+            } else {
+                random.next_float_max(std::f32::consts::PI * 2.0)
+            });
+        } else {
+            for _ in 0..entity_construction_draws(entity) {
+                random.next_double();
+            }
+        }
+    }
+    let mut grouped = vec![false; map.entities.len()];
+    let mut groups = Vec::new();
+    for &root in &indices {
+        if grouped[root] {
+            continue;
+        }
+        let tile = map.entities[root].direction.y;
+        grouped[root] = true;
+        let mut members = vec![root];
+        let mut queue = vec![root];
+        while let Some(from) = queue.pop() {
+            let bounds = map.entities[from].bounds;
+            // `Scene.CollideCheck(rect, entity)` against the entity's `Hitbox(width, height)`
+            // with collider offset `(0, 0)` (`Solid.cs:25-29`) is plain rectangle overlap.
+            let probes = [
+                Rect::new(bounds.x - 1.0, bounds.y, bounds.width + 2.0, bounds.height),
+                Rect::new(bounds.x, bounds.y - 1.0, bounds.width, bounds.height + 2.0),
+            ];
+            for &other in &indices {
+                if grouped[other] || map.entities[other].direction.y != tile {
+                    continue;
+                }
+                let other_bounds = map.entities[other].bounds;
+                if probes.iter().any(|probe| probe.intersects(other_bounds)) {
+                    grouped[other] = true;
+                    members.push(other);
+                    queue.push(other);
+                }
+            }
+        }
+        members.sort_unstable();
+        let master = members[0];
+        groups.push(FloatyBlockGroup {
+            members: members
+                .into_iter()
+                .map(|entity_index| FloatyBlockMember {
+                    entity_index,
+                    original: map.entities[entity_index].bounds,
+                    remainder: Vec2::default(),
+                })
+                .collect(),
+            sine_wave: drawn[indices.binary_search(&master).unwrap_or(0)],
+            sink_timer: 0.0,
+            y_lerp: 0.0,
+            dash_ease: 0.0,
+            dash_direction: Vec2::default(),
+        });
+    }
+    for group in &mut groups {
+        pre_roll_floaty_group(map, group);
+    }
+    groups
+}
+
+/// `Calc.Random` draws one room entity's **constructor** makes.
+///
+/// Only constructors are counted: `Awake` runs after `Calc.PopRandom`
+/// (`Level.cs:386`/`:1386`), so the sprites and autotiling that draw there - `JumpthruPlatform.Awake`
+/// (`JumpthruPlatform.cs:76-77`), `CrystalStaticSpinner.CreateSprites` (`CrystalStaticSpinner.cs:287`,
+/// which re-seeds from the value the constructor already stored) - never touch the level's stream.
+fn entity_construction_draws(entity: &crate::Entity) -> u32 {
+    match entity.name.as_str() {
+        // `CrystalStaticSpinner`'s constructor ends with `randomSeed = Calc.Random.Next()`
+        // (`CrystalStaticSpinner.cs:168`), one draw. `CreateSprites` only *re-seeds* from that
+        // value and runs from `Awake` (`:191-194`), so it consumes nothing here.
+        "spinner" | "VivHelper/CustomSpinner" | "FrostHelper/IceSpinner" => 1,
+        // `Lightning.toggleOffset = Calc.Random.NextFloat()` is a field initialiser (`:36`).
+        "lightning" => 1,
+        // `FloatingDebris`'s texture pick and rotation speed are field initialisers
+        // (`FloatingDebris.cs:29`, `:33`).
+        "floatingDebris" => 2,
+        // `DreamBlock`'s two wobble phases are field initialisers (`DreamBlock.cs:54`, `:56`).
+        "dreamBlock" => 2,
+        // `SwapBlock.timer = Calc.Random.NextFloat()` (`SwapBlock.cs:33`).
+        "swapBlock" => 1,
+        // `Cloud.timer = Calc.Random.NextFloat() * 4f` (`Cloud.cs:45`).
+        "cloud" => 1,
+        // `Bumper`'s `Randomize()` draws its `SineWave` phase (`Bumper.cs:135` is the ambient
+        // particle, not this one; the phase is the `SineWave` component's own randomisation).
+        "bigSpinner" => 1,
+        // `TouchSwitch`'s `SineWave` phase (`TouchSwitch.cs:62`) and `SwitchGate`s
+        // (`SwitchGate.cs:222`) are field initialisers.
+        "touchSwitch" | "switchGate" => 1,
+        // `LightBeam.timer = Calc.Random.NextFloat(1000f)` (`LightBeam.cs:25`).
+        "lightbeam" => 1,
+        // `FallingBlock`'s constructor draws `newSeed` for its own `PushRandom`/`PopRandom`
+        // autotiler block (`FallingBlock.cs:38-41`).
+        "fallingBlock" => 1,
+        // `SeekerBarrier`'s constructor fills `particles` with two draws per entry, one per
+        // `Width * Height / 16f` (`SeekerBarrier.cs:28-31`).
+        "seekerBarrier" => {
+            2 * (entity.bounds.width * entity.bounds.height / 16.0).ceil() as u32
+        }
+        // `MoonCreature`'s constructor draws its colour (`:65`) and, through
+        // `GetRandomTarget` (`:61`, `:121-122`), two more.
+        "moonCreature" => 3,
+        // Everything else's `Calc.Random` use is inside `Added`/`Awake`/`Update` - e.g.
+        // `Spikes.CreateSprites` (`Spikes.cs:117`), `TriggerSpikes.Added` (`:198-202`),
+        // `HeartGemDoor.Added` (`:132-134`), `JumpthruPlatform.Awake` (`JumpthruPlatform.cs:76-77`)
+        // - which all run after `Calc.PopRandom` (`Level.cs:1386`).
+        _ => 0,
+    }
+}
+
+/// `FloatySpaceBlock.TryToInitPosition` (`:128-145`): the one `MoveToTarget` at `Awake`, run once
+/// every group member is awake, before any `Update`.
+///
+/// The phase a replay starts from is the constructor's own draw; the anchor row a gate segment
+/// replays from is the room's first row on which `Player.Update` ran, so no idle frames are
+/// pre-rolled. Measured on the 100% trace, pre-rolling the transition rows instead (41 or 80
+/// frames, the segment's `leadingSkippedFrames` territory) loses two fully-matching segments,
+/// because the room's entities do not step while the transition coroutine plays.
+///
+/// Nothing rides a block here, so `yLerp`, `dashEase` and the sink are all zero and the spawn
+/// target is just `originalY + sin(sineWave) * 4f` (`:270`, `:287`), reached through the same
+/// `Platform.MoveV` remainder (`Platform.cs:190-207`) the per-frame move uses.
+fn pre_roll_floaty_group(map: &mut Map, group: &mut FloatyBlockGroup) {
+    let sine = (group.sine_wave as f64).sin() as f32 * FLOATY_SINE_AMPLITUDE;
+    for member in &mut group.members {
+        let mut bounds = map.entities[member.entity_index].bounds;
+        let target = member.original.y + sine;
+        let exact = bounds.y + member.remainder.y;
+        member.remainder.y += target - exact;
+        let step = member.remainder.y.round_ties_even();
+        member.remainder.y -= step;
+        bounds.y += step;
+        map.entities[member.entity_index].bounds = bounds;
+    }
+}
+
+
+/// `FloatySpaceBlock.Update` (`FloatySpaceBlock.cs:220-266`) and `MoveToTarget` (`:268-293`), one
+/// frame at a time, for every group.
+///
+/// Only `MasterOfGroup` runs the head (`:223`), and `Platform.Update`, reached through
+/// `base.Update()` (`:222`), clears `LiftSpeed` before the move (`Platform.cs:56`). The rider test
+/// is `HasPlayerRider()` over all group members and their attached `JumpThru`s (`:226-244`);
+/// `Actor.IsRiding(Solid)` is `CollideCheck(this, Position + UnitY)` (`Actor.cs:129-132`), which is
+/// `player_riding_solid`'s default arm. A rider re-arms `sinkTimer` to 0.3 s every frame (`:247`)
+/// and otherwise the timer counts down (`:249-252`) while `yLerp` ramps to 1 / back to 0 over one
+/// second (`:253-260`).
+///
+/// `sineWave += Engine.DeltaTime` (`:261`) before `MoveToTarget`, so the phase advances even while
+/// the block is still. Two cases:
+///
+/// * `disableSpawnOffset` blocks start at exactly zero (`:56`) and a gate segment begins on the
+///   room's first row, so their phase is the elapsed replay time and is reproduced exactly.
+/// * The rest start at a `Calc.Random.NextFloat(2π)` draw (`:52`). `Calc.Random` is a
+///   `System.Random` re-seeded to the level's `LoadSeed` for the whole of `Level.LoadLevel`
+///   (`Calc.cs:19`, `Level.cs:386-1386`), and the draw index depends on every `Calc.Random` call
+///   the room's earlier entities made, so a replay cannot recover the phase. The bob term is
+///   therefore left at its mean of zero rather than guessed.
+fn advance_floaty_blocks(p: &mut PlayerSnapshot, map: &mut Map, groups: &mut [FloatyBlockGroup]) {
+    let dt = p.frame_delta_time;
+    // `OnDash` fired earlier in this same frame, inside `Player.Update`. Its
+    // `MasterOfGroup && dashEase <= 0.2f` guard (`FloatySpaceBlock.cs:212`) is
+    // evaluated here, where the group state is, and before the frame's own
+    // `dashEase` approach (`:262`) exactly like the source.
+    if let Some((hit, direction)) = p.pending_floaty_dash.take()
+        && let Some(group) = groups
+            .iter_mut()
+            .find(|group| group.members[0].entity_index == hit)
+        && group.dash_ease <= 0.2
+    {
+        group.dash_ease = 1.0;
+        group.dash_direction = direction;
+    }
+    for group in groups.iter_mut() {
+        let mut ridden = false;
+        for member in &group.members {
+            if map
+                .entities
+                .get(member.entity_index)
+                .is_some_and(|entity| player_riding_solid(p, entity.bounds))
+            {
+                ridden = true;
+                break;
+            }
+        }
+        if ridden {
+            group.sink_timer = FLOATY_SINK_REARM;
+        } else if group.sink_timer > 0.0 {
+            group.sink_timer -= dt;
+        }
+        if group.sink_timer > 0.0 {
+            group.y_lerp = approach(group.y_lerp, 1.0, FLOATY_Y_LERP_RATE * dt);
+        } else {
+            group.y_lerp = approach(group.y_lerp, 0.0, FLOATY_Y_LERP_RATE * dt);
+        }
+        group.sine_wave += dt;
+        group.dash_ease = approach(group.dash_ease, 0.0, dt * FLOATY_DASH_EASE_RATE);
+        move_floaty_group_to_target(p, map, group);
+    }
+}
+
+/// `FloatySpaceBlock.MoveToTarget` (`FloatySpaceBlock.cs:268-293`).
+///
+/// `MoveToTarget` makes two passes over `Moves`: `i == 0` moves only the platforms that currently
+/// have a rider, `i == 1` only those that do not (`:284`). Both passes aim at the same target, so
+/// the only observable difference is *when* inside the frame a carried player is moved; the
+/// per-platform state is identical either way and every platform moves exactly once per frame.
+///
+/// The target is `Lerp(originalY, originalY + 12f, Ease.SineInOut(yLerp)) + sin(sineWave) * 4f`
+/// vertically (`:287`, `:270`) and `originalX` horizontally (`:289`), both plus
+/// `Calc.YoYo(Ease.QuadIn(dashEase)) * dashDirection * 8f` (`:271`). `MoveToY`/`MoveToX`
+/// (`:288-289`) are `Platform.MoveV`/`MoveH` (`Platform.cs:190-207`, `:159-176`): the requested
+/// displacement is added to `ExactPosition` (collider + `movementCounter`), the accumulated
+/// remainder is rounded with `Math.Round` and only the whole-pixel part reaches
+/// `MoveVExact`/`MoveHExact`, which is the whole-pixel carry/push `move_runtime_solid_exact`
+/// models. The platform's `LiftSpeed` for that axis is the *fractional* displacement over
+/// `Engine.DeltaTime`, and each axis overwrites only its own component.
+fn move_floaty_group_to_target(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    group: &mut FloatyBlockGroup,
+) {
+    let dt = p.frame_delta_time;
+    let sine = (group.sine_wave as f64).sin() as f32 * FLOATY_SINE_AMPLITUDE;
+    // `Calc.YoYo(Ease.QuadIn(dashEase)) * dashDirection * 8f` (`:271`): scalar-times-vector
+    // first, then the distance, in that order.
+    let dash_amount = yoyo(quad_in(group.dash_ease));
+    let dash = Vec2::new(
+        dash_amount * group.dash_direction.x * FLOATY_DASH_DISTANCE,
+        dash_amount * group.dash_direction.y * FLOATY_DASH_DISTANCE,
+    );
+    let sink = FLOATY_SINK_DEPTH * ease_sine_in_out(group.y_lerp);
+    for index in 0..group.members.len() {
+        let entity_index = group.members[index].entity_index;
+        let original = group.members[index].original;
+        let target_y = original.y + sink + sine + dash.y;
+        let target_x = original.x + dash.x;
+        let env = solid_collision_env(map, entity_index);
+        let mut lift = Vec2::default();
+        // `key.MoveToY(...)` then `key.MoveToX(...)` (`FloatySpaceBlock.cs:288-289`).
+        for horizontal in [false, true] {
+            let bounds = map.entities[entity_index].bounds;
+            let exact = if horizontal {
+                bounds.x + group.members[index].remainder.x
+            } else {
+                bounds.y + group.members[index].remainder.y
+            };
+            let target = if horizontal { target_x } else { target_y };
+            // `Platform.MoveH`/`MoveV` (`Platform.cs:159-207`): `LiftSpeed` is the exact
+            // fractional displacement over `Engine.DeltaTime`, `movementCounter` accumulates it,
+            // and only the rounded whole-pixel part reaches `MoveHExact`/`MoveVExact`. Each axis
+            // overwrites its own `LiftSpeed` component, so the Y move reports `(0, dy/dt)` and the
+            // X move that follows reports `(dx/dt, dy/dt)`.
+            if horizontal {
+                lift.x = (target - exact) / dt;
+                group.members[index].remainder.x += target - exact;
+            } else {
+                lift.y = (target - exact) / dt;
+                group.members[index].remainder.y += target - exact;
+            }
+            let step = if horizontal {
+                group.members[index].remainder.x
+            } else {
+                group.members[index].remainder.y
+            }
+            .round_ties_even();
+            if step == 0.0 {
+                continue;
+            }
+            if horizontal {
+                group.members[index].remainder.x -= step;
+            } else {
+                group.members[index].remainder.y -= step;
+            }
+            move_runtime_solid_exact(
+                p,
+                &mut map.entities[entity_index].bounds,
+                &env,
+                horizontal,
+                step,
+                lift,
+            );
+        }
+    }
+}
+
+/// `Ease.SineInOut` (`Ease.cs:15`): `(0f - (float)Math.Cos((float)Math.PI * t)) / 2f + 0.5f`,
+/// evaluated in single precision exactly like the source.
+fn ease_sine_in_out(t: f32) -> f32 {
+    let argument = (std::f32::consts::PI * t) as f64;
+    (-(argument.cos() as f32)) / 2.0 + 0.5
+}
+
+/// `Ease.QuadIn` (`Ease.cs:17`).
+fn quad_in(t: f32) -> f32 {
+    t * t
+}
+
+/// `Calc.YoYo` (`Calc.cs:721-728`).
+fn yoyo(value: f32) -> f32 {
+    if value <= 0.5 {
+        value * 2.0
+    } else {
+        1.0 - (value - 0.5) * 2.0
     }
 }
 const CASSETTE_BEAT_INTERVAL: f32 = 355.0 / (678.0 * std::f32::consts::PI);
@@ -1826,14 +2231,20 @@ fn advance_killboxes(p: &mut PlayerSnapshot, map: &mut Map) {
     }
 }
 
-/// `Celeste.DashCollisionResults` as returned by the two vanilla Solid entities
-/// the runtime models. `CrushBlock.OnDashed` and `DashBlock.OnDashed` never
-/// return `Bounce` or `NormalOverride`, so those arms do not exist here.
+/// `Celeste.DashCollisionResults` as returned by the vanilla Solid entities the
+/// runtime models. `CrushBlock.OnDashed` and `DashBlock.OnDashed` never return
+/// `Bounce`, so that arm does not exist here.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum DashCollision {
     /// `DashCollisionResults.NormalCollision`: `Player.OnCollideH`/`OnCollideV`
     /// fall through to their ordinary stop.
     NormalCollision,
+    /// `DashCollisionResults.NormalOverride` (`FloatySpaceBlock.OnDash`,
+    /// `FloatySpaceBlock.cs:217`): `Player.cs:3158-3161` rewrites it to
+    /// `NormalCollision` *before* the state-5 remap at `:3162-3165`, so it takes
+    /// the ordinary stop even while state 5 (`StRedDash`) is active - unlike
+    /// `NormalCollision`, which that remap turns into `Ignore`.
+    NormalOverride,
     /// `Player.cs:3168-3170` / `3266-3268`.
     Rebound,
     /// `Player.cs:3174-3176` / `3272-3274`.
@@ -1950,6 +2361,15 @@ fn on_dash_collide(
             }
             Some(DashCollision::Rebound)
         }
+        EntityKind::FloatySpaceBlock => {
+            // `FloatySpaceBlock.OnDash` (`FloatySpaceBlock.cs:210-218`) always
+            // returns `NormalOverride`, so the dash takes the ordinary stop. The
+            // offset itself only starts for the group master and only while its
+            // `dashEase` is still at or below 0.2 (`:212`); that test needs the
+            // group state, which lives with the entity update, so hand the hit on.
+            p.pending_floaty_dash = Some((entity_index, direction));
+            Some(DashCollision::NormalOverride)
+        }
         EntityKind::DashSwitch => {
             // `DashSwitch.OnDashed` (`DashSwitch.cs:195-229`): the press only
             // happens for `direction == pressDirection`, and it always reports
@@ -2030,8 +2450,8 @@ fn try_dash_collide(
         Vec2::new(0.0, step_sign)
     };
     let result = on_dash_collide(p, map, index, direction)?;
-    // `Player.cs:3158-3165` remaps `NormalOverride` (never returned here) and
-    // then replaces any other result with `Ignore` while state 5 is active.
+    // `Player.cs:3158-3165`: `NormalOverride` is remapped to `NormalCollision` first, so only a
+    // plain `NormalCollision` becomes `Ignore` while state 5 is active.
     if result == DashCollision::NormalCollision && p.state == PlayerState::RedDash {
         return Some(DashCollision::Ignore);
     }
@@ -6495,6 +6915,7 @@ fn step(
 
     if p.badeline_boost_active {
         update_badeline_boost(p, map);
+        advance_floaty_blocks(p, map, &mut room.floaty_blocks);
         advance_crumble_blocks(p, map, crumble_blocks);
         advance_switch_gates(p, map, room);
     advance_post_player_entities(p, map, input, attachments);
@@ -6542,6 +6963,7 @@ fn step(
             // Player.cs:6121-6146. `Player.Update` still runs its ordinary
             // tail for this state; only the tween drives it.
             intro_respawn_update(p);
+            advance_floaty_blocks(p, map, &mut room.floaty_blocks);
             advance_crumble_blocks(p, map, crumble_blocks);
         advance_switch_gates(p, map, room);
     advance_post_player_entities(p, map, input, attachments);
@@ -6642,11 +7064,12 @@ fn step(
     advance_lookouts(p, map, input, menu_cancel_pressed);
     update_strawberry_train(p);
     try_begin_badeline_boost(p, map);
-    enforce_level_bounds(p, map, attachments);
+    enforce_level_bounds(p, map, attachments, room);
     // The map loader adds Player before vanilla room entities, so ZipMover's
     // coroutine and Solid carry/push run after Player.Update. A lift speed
     // written by the previous ZipMover update is therefore visible to the
     // player's next action before the platform advances again.
+    advance_floaty_blocks(p, map, &mut room.floaty_blocks);
     advance_crumble_blocks(p, map, crumble_blocks);
     advance_switch_gates(p, map, room);
     advance_post_player_entities(p, map, input, attachments);
@@ -9706,6 +10129,7 @@ fn is_solid_entity(kind: EntityKind) -> bool {
             | EntityKind::MovingSolid
             | EntityKind::StaticSolid
             | EntityKind::CrumbleBlock
+            | EntityKind::FloatySpaceBlock
             | EntityKind::ZipMover
             | EntityKind::TempleGate
             | EntityKind::DashSwitch
@@ -10631,6 +11055,7 @@ fn enforce_level_bounds(
     p: &mut PlayerSnapshot,
     map: &mut Map,
     attachments: &mut Vec<Option<StaticMoverAttachment>>,
+    room: &mut RoomCoroutineState,
 ) {
     if p.dead || p.state == PlayerState::DreamDash || !player_in_control(p.state) {
         return;
@@ -10640,7 +11065,7 @@ fn enforce_level_bounds(
     if collider.x < bounds.x {
         let center = Vec2::new(p.pos.x, collider.y + collider.height * 0.5);
         if let Some(next) = transition_room_at(map, p, Vec2::new(center.x - 8.0, center.y)) {
-            begin_transition(p, map, next, Vec2::new(-1.0, 0.0), attachments);
+            begin_transition(p, map, next, Vec2::new(-1.0, 0.0), attachments, room);
             return;
         }
         p.pos.x += bounds.x - collider.x;
@@ -10651,7 +11076,7 @@ fn enforce_level_bounds(
     if collider.x + collider.width > right {
         let center = Vec2::new(p.pos.x, collider.y + collider.height * 0.5);
         if let Some(next) = transition_room_at(map, p, Vec2::new(center.x + 8.0, center.y)) {
-            begin_transition(p, map, next, Vec2::new(1.0, 0.0), attachments);
+            begin_transition(p, map, next, Vec2::new(1.0, 0.0), attachments, room);
             return;
         }
         p.pos.x -= collider.x + collider.width - right;
@@ -10664,7 +11089,7 @@ fn enforce_level_bounds(
     if center_y < top {
         let center = Vec2::new(p.pos.x, center_y);
         if let Some(next) = transition_room_at(map, p, Vec2::new(center.x, center.y - 12.0)) {
-            begin_transition(p, map, next, Vec2::new(0.0, -1.0), attachments);
+            begin_transition(p, map, next, Vec2::new(0.0, -1.0), attachments, room);
             return;
         }
     }
@@ -10678,7 +11103,7 @@ fn enforce_level_bounds(
     if collider.bottom() > bottom {
         let center = Vec2::new(p.pos.x, collider.y + collider.height * 0.5);
         if let Some(next) = transition_room_at(map, p, Vec2::new(center.x, center.y + 12.0)) {
-            begin_transition(p, map, next, Vec2::new(0.0, 1.0), attachments);
+            begin_transition(p, map, next, Vec2::new(0.0, 1.0), attachments, room);
             return;
         }
     }
@@ -10708,6 +11133,7 @@ fn load_transition_room(
     map: &mut Map,
     next: Rect,
     attachments: &mut Vec<Option<StaticMoverAttachment>>,
+    room_state: &mut RoomCoroutineState,
 ) {
     let Some(room) = map
         .transition_runtime
@@ -10725,6 +11151,9 @@ fn load_transition_room(
     map.solids = room.solids;
     map.entities = room.entities;
     map.room_spawns = room.spawns;
+    // The destination room's own `LoadSeed`: `Level.LoadLevel` re-pushes `Calc.Random` from it
+    // (`Level.cs:386`), so `FloatySpaceBlock`'s constructor draws differ from the source room's.
+    map.load_seed = room.load_seed;
     *attachments = initialize_static_mover_attachments(map);
 
     // Level.LoadLevel constructs every destination room entity before the
@@ -10779,6 +11208,11 @@ fn load_transition_room(
     initialize_exit_blocks(p, map);
     initialize_invisible_barriers(p, map);
     initialize_killboxes(p, map);
+    // `FloatySpaceBlock`s are per-room state too: their group membership is built from the
+    // destination room's own entity list and their phase restarts with the new room's `Awake`
+    // (`FloatySpaceBlock.cs:65-105`, `:50-57`). Keeping the source room's groups would index the
+    // destination room's entities at the wrong offsets.
+    room_state.floaty_blocks = initialize_floaty_blocks(map);
     position_moving_solids(map, p.moving_solid_time);
     sync_all_platform_static_movers(p, map, attachments);
 }
@@ -10789,6 +11223,7 @@ fn begin_transition(
     next: Rect,
     direction: Vec2,
     attachments: &mut Vec<Option<StaticMoverAttachment>>,
+    room: &mut RoomCoroutineState,
 ) {
     if direction.y > 0.0
         && !matches!(
@@ -10829,7 +11264,7 @@ fn begin_transition(
     p.transition_room_bounds = Some(next);
     p.transition_direction = direction;
     p.transition_target = target;
-    load_transition_room(p, map, next, attachments);
+    load_transition_room(p, map, next, attachments, room);
     // TransitionRoutine updates cameraAt after yielding, then resumes once
     // more to observe cameraAt == 1 and run OnTransition. Preserve that final
     // coroutine-resume frame in addition to the 0.65-second camera duration.
@@ -16086,6 +16521,7 @@ mod tests {
                 spawns: vec![Vec2::new(160.0, -24.0)],
                 solids: vec![],
                 entities: vec![barrier],
+                load_seed: 0,
             }],
             ..Map::default()
         };
@@ -16102,6 +16538,13 @@ mod tests {
             upper,
             Vec2::new(0.0, -1.0),
             &mut attachments,
+            &mut RoomCoroutineState {
+                crumble_blocks: Vec::new(),
+                floaty_blocks: Vec::new(),
+                switch_gates: Vec::new(),
+                touch_switches: Vec::new(),
+                switches_on: false,
+            },
         );
         assert!(!player.invisible_barriers[0].initialized);
 
@@ -16114,6 +16557,7 @@ mod tests {
             &mut Vec::new(),
             &mut RoomCoroutineState {
                 crumble_blocks: Vec::new(),
+                floaty_blocks: Vec::new(),
                 switch_gates: Vec::new(),
                 touch_switches: Vec::new(),
                 switches_on: false,
@@ -16922,6 +17366,7 @@ mod tests {
             &mut Vec::new(),
             &mut RoomCoroutineState {
                 crumble_blocks: Vec::new(),
+                floaty_blocks: Vec::new(),
                 switch_gates: Vec::new(),
                 touch_switches: Vec::new(),
                 switches_on: false,
@@ -16951,6 +17396,7 @@ mod tests {
             &mut Vec::new(),
             &mut RoomCoroutineState {
                 crumble_blocks: Vec::new(),
+                floaty_blocks: Vec::new(),
                 switch_gates: Vec::new(),
                 touch_switches: Vec::new(),
                 switches_on: false,
@@ -19415,12 +19861,14 @@ mod tests {
                     spawns: vec![Vec2::new(160.0, 160.0)],
                     solids: vec![],
                     entities: vec![],
+                    load_seed: 0,
                 },
                 crate::RoomRuntime {
                     bounds: upper,
                     spawns: vec![Vec2::new(160.0, -24.0)],
                     solids: vec![],
                     entities: vec![falling_block.clone()],
+                    load_seed: 0,
                 },
             ],
             ..Map::default()
@@ -19454,6 +19902,7 @@ mod tests {
                     spawns: vec![Vec2::new(24.0, 32.0), Vec2::new(280.0, 32.0)],
                     solids: vec![],
                     entities: vec![],
+                    load_seed: 0,
                 },
                 crate::RoomRuntime {
                     bounds: upper,
@@ -19471,6 +19920,7 @@ mod tests {
                         nodes: vec![],
                         name: "bubsdropJumpThru".to_owned(),
                     }],
+                    load_seed: 0,
                 },
             ],
             ..Map::default()
@@ -20090,6 +20540,7 @@ mod tests {
                     name: "cassetteBlock".to_owned(),
                 },
             ],
+            load_seed: 0,
         }];
         let mut p = PlayerSnapshot {
             pos: Vec2::new(250.0, -172.0),
@@ -20114,6 +20565,13 @@ mod tests {
             next,
             Vec2::new(0.0, -1.0),
             &mut attachments,
+            &mut RoomCoroutineState {
+                crumble_blocks: Vec::new(),
+                floaty_blocks: Vec::new(),
+                switch_gates: Vec::new(),
+                touch_switches: Vec::new(),
+                switches_on: false,
+            },
         );
 
         // LoadLevel's OnLevelStart is silent: the new index-0 block begins
@@ -20134,6 +20592,7 @@ mod tests {
             &mut Vec::new(),
             &mut RoomCoroutineState {
                 crumble_blocks: Vec::new(),
+                floaty_blocks: Vec::new(),
                 switch_gates: Vec::new(),
                 touch_switches: Vec::new(),
                 switches_on: false,

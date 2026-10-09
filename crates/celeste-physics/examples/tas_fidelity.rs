@@ -620,6 +620,7 @@ fn unrestored_fields() -> Vec<(&'static str, &'static str)> {
             "last_bounce_target",
             "bounce_reuse_timer",
             "pending_bounce_from_y",
+            "pending_floaty_dash",
             "temple_fall_landed",
             "temple_fall_wait_frames",
             "reflection_fall_phase",

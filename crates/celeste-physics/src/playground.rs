@@ -8,6 +8,7 @@ pub fn mechanics_playground() -> Map {
     Map {
         entity_ids: Vec::new(),
         bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
+        load_seed: crate::legacy_random::load_seed(PLAYGROUND_ROOM),
         transition_rooms: vec![Rect::new(0.0, -544.0, 960.0, 544.0)],
         transition_runtime: vec![],
         room_spawns: vec![Vec2::new(64.0, 496.0)],

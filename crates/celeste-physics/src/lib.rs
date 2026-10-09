@@ -6,6 +6,7 @@
 mod binary_packer;
 mod entity_decode;
 mod ffi;
+mod legacy_random;
 mod map;
 mod map_fixture;
 mod playground;

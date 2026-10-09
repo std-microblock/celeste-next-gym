@@ -788,6 +788,13 @@ pub struct PlayerSnapshot {
     /// Legacy portable snapshots may carry a deferred top-bounce. New
     /// FireBall callbacks resolve in the source's same Player.Update frame.
     pub pending_bounce_from_y: Option<f32>,
+    /// `FloatySpaceBlock.OnDash` (`FloatySpaceBlock.cs:210-218`) is invoked from inside
+    /// `Player.Update`, i.e. before the entity's own `Update` in the same frame (`Depth = -9000`,
+    /// `:47`), so the hit has to travel from `on_dash_collide` to `advance_floaty_blocks` through
+    /// the snapshot: the entity index `Solid.OnDashCollide` reported plus `Player.OnCollideH`/
+    /// `OnCollideV`'s `data.Direction`, a unit axis vector. The `MasterOfGroup && dashEase <= 0.2f`
+    /// half of the callback (`:212`) is evaluated by the entity update, which owns the group state.
+    pub pending_floaty_dash: Option<(usize, Vec2)>,
     pub explode_launch_boost_timer: f32,
     pub explode_launch_boost_speed: f32,
     pub badeline_boost_active: bool,
@@ -978,6 +985,7 @@ impl Default for PlayerSnapshot {
             last_bounce_target: Vec2::default(),
             bounce_reuse_timer: 0.0,
             pending_bounce_from_y: None,
+            pending_floaty_dash: None,
             explode_launch_boost_timer: 0.0,
             explode_launch_boost_speed: 0.0,
             badeline_boost_active: false,
