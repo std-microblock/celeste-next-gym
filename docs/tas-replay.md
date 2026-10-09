@@ -2229,3 +2229,33 @@ size `GRAVITY * 0.5 * dt = 7.5` exactly.
 The game's frame keeps `maxFall = 160` (its `vy` goes 7.5 -> 15), so the simulator takes a `windMovedUp`
 branch the game does not. That is now a named, testable defect: compare the simulator's condition for
 `windMovedUp` (and where it feeds `max_fall`) against `Player.cs:3116-3131` and `:3725`.
+
+### Complete chain: the updraft's 1-px step is blocked ABOVE, and the collide handler zeroes speed.y
+
+`apply_wind_movement`'s y branch (`sim.rs:11438-11448`) does exactly one thing:
+
+```rust
+let mut move_y = p.wind.y * WIND_MOVE_MULT * p.frame_delta_time;    // -400 * 0.1 * dt = -0.667 (up)
+if move_y != 0.0 && (p.speed.y < 0.0 || !grounded(p, map)) {
+    move_axis_amount(p, map, false, move_y);
+}
+```
+
+and `move_axis_amount` (`:9855`) adds the amount to the counter, rounds it (`round_ties_even(-0.667) = -1`,
+so it really attempts a 1-pixel step **up**), and on a blocked step clears the counter and runs the collide
+handler, which in `StNormal` zeroes `Speed.Y` - the standard ceiling response.
+
+The CHK probes measured **no position change** across `apply_wind_movement`, which is only possible if that
+1-px upward step was **blocked**. So the mechanism is: a solid sits 1 px above the player in the simulator's
+world, the updraft tries to move into it, and the ceiling response kills the fall speed (7.5 -> 0 in one
+frame), whereas the game keeps falling (7.5 -> 15).
+
+**Correction to an earlier round.** The round-128 probe concluded "no phantom solid" - but it probed
+*downwards* only (`grounded(p, map)` and `current_player_rect(p, pos.x, pos.y + 1.0)`). The blocker here is
+*above*, so that probe could not have seen it, and the conclusion should have been "no phantom solid below".
+That directional blind spot is worth remembering: a ground probe says nothing about ceilings.
+
+Next: print `map.non_dream_solid_at` for `pos.y - 1` (and which entity/kind overlaps that rect) on the same
+frames, and compare with the trace - if the sim has a solid above where the game does not, the culprit is
+one of the solid kinds (the recently added `TempleGate`/`FloatySpaceBlock`/`SwitchGate` are candidates given
+`7-Summit`), and the fix is in that kind's geometry rather than in the wind.
