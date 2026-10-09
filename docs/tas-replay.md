@@ -922,3 +922,21 @@ Read,0 - 202 Berries
 ```
 
 Paths in TAS command arguments use `/`, not `\` — `CommandLine.TryParse` treats `\` as an escape.
+
+## Undecoded solids, measured one kind at a time
+
+Every entry is a single-kind change measured against the previous report on all three traces; a
+batch mixes a real regression with inert additions and hides which is which.
+
+| kind | result (202) | verdict |
+| --- | --- | --- |
+| `dashSwitch` | 0 improved / 0 regressed | kept, inert |
+| `starJumpBlock` | 0 / 0 | kept, inert |
+| `crumbleWallOnRumble` | 3 / 0 | kept |
+| `seekerBarrier` | batch: 3 / 22 | reverted; a Solid for seekers, the player passes through it |
+| `switchGate` | 11 / 2 | reverted; needs `SwitchGate.Open`, the +373 frames are its value |
+| `floatySpaceBlock` | 7 / 1 (net +6) | reverted; one LostLevels segment loses a frame, so it needs its real motion |
+
+`theoCrystalPedestal` starts `Collidable = false` (`TheoCrystalPedestal.cs:21`), so it is not a
+solid candidate at all.
+
