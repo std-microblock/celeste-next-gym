@@ -3509,3 +3509,37 @@ read the actual Spring branch first (both call sites verbatim, and how `map` is 
 patching from the earlier partial reads - the loop that holds the `&Entity` is exactly where a `&mut Map` call
 needs the borrow to be released, so it may need the two values copied into locals and the entity borrow ended
 before the call, or the helper to be split so it does not need `&mut Map` for the vertical case.
+
+### spring fix: the exact call sites, and the borrow constraint that decides the shape of the fix
+
+Verbatim (`sim.rs:10649-10657`):
+
+```rust
+EntityKind::Spring if p.state != PlayerState::DreamDash => {
+    if entity.direction.y < 0.0 {
+        if p.speed.y >= 0.0 {
+            super_bounce(p, entity.bounds.y);
+        }
+    } else if entity.direction.x != 0.0 {
+        side_bounce(p, entity.direction.x.signum() as i8, entity.bounds);
+    }
+}
+```
+
+The previous attempt failed because I patched from guessed text: the `super_bounce` line happened to match,
+the `side_bounce` line did not, so it kept the old arity (`E0061`). Replace by **regex on the function name**
+instead - `super_bounce\(p, ([^)]*)\)` and `side_bounce\(p, ([^)]*)\)` -> `... (p, map, $1)` - which is
+whitespace- and argument-agnostic.
+
+The real constraint is the borrow. These arms live inside `match entity.kind`, and `entity` is a borrowed
+element of `map.entities`, so that immutable borrow of `map` is live for the whole match - passing `&mut map`
+into the helpers is a conflict (`E0308` in the failed attempt came from exactly this). The two moves only ever
+need **read-only** map access (`non_dream_solid_at`, `dream_block_at`), so the fix should either:
+
+1. add a read-only sibling of `move_axis_amount_inner` that takes `&Map` (the `&mut` is only needed for the
+   dream-dash branch, which a spring bounce never triggers), and have `super_bounce`/`side_bounce` call that;
+   or
+2. inline the counter arithmetic plus the whole-pixel probe loop inside the two helpers, which is what `bounce`
+   already does (it takes `&Map` precisely because of this).
+
+Option 2 is the smaller change and matches the existing `bounce` signature, so it is the one to take.
