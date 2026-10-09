@@ -286,6 +286,7 @@ impl Simulator {
         initialize_clouds(&mut snapshot, &mut runtime_map);
         initialize_camera(&mut snapshot, &runtime_map);
         initialize_seekers(&mut snapshot, &mut runtime_map);
+        initialize_puffers(&mut snapshot, &mut runtime_map);
         initialize_temple_gates(&mut snapshot, &mut runtime_map);
         initialize_core_mode_toggles(&mut snapshot, &runtime_map);
         initialize_cassette_blocks(&mut snapshot, &mut runtime_map);
@@ -4997,6 +4998,46 @@ fn move_theo_axis(
     }
 }
 
+/// `Puffer.Added` sets `cantExplodeTimer = 0.5f` (`Puffer.cs:167`) and the collide path refuses to
+/// explode while it is positive (`:552`), so a freshly loaded Puffer cannot launch for half a second.
+/// `Puffer.Update` ticks `cantExplodeTimer` down only while the Puffer is not `Gone` (`Puffer.cs:362-365`).
+fn advance_puffers(p: &mut PlayerSnapshot, map: &mut Map) {
+    let mut puffer_index = 0usize;
+    for entity in map.entities.iter() {
+        if entity.kind != EntityKind::Puffer {
+            continue;
+        }
+        if puffer_index >= p.puffers.len() {
+            break;
+        }
+        let puffer = &mut p.puffers[puffer_index];
+        if puffer.state != 2 && puffer.cant_explode_timer > 0.0 {
+            puffer.cant_explode_timer = (puffer.cant_explode_timer - p.frame_delta_time).max(0.0);
+        }
+        puffer_index += 1;
+    }
+}
+
+fn initialize_puffers(p: &mut PlayerSnapshot, map: &mut Map) {
+    let puffer_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::Puffer).then_some(index))
+        .collect();
+    p.puffers.truncate(puffer_indices.len());
+    for puffer_index in 0..puffer_indices.len() {
+        if puffer_index == p.puffers.len() {
+            let bounds = map.entities[puffer_indices[puffer_index]].bounds;
+            p.puffers.push(crate::PufferSnapshot {
+                state: 0,
+                cant_explode_timer: 0.5,
+                center: Vec2::new(bounds.x + bounds.width * 0.5, bounds.y + bounds.height * 0.5),
+            });
+        }
+    }
+}
+
 fn initialize_seekers(p: &mut PlayerSnapshot, map: &mut Map) {
     let seeker_indices: Vec<usize> = map
         .entities
@@ -6681,6 +6722,7 @@ fn advance_post_player_entities(
     advance_gliders(p, map);
     advance_clouds(p, map);
     advance_seekers(p, map);
+    advance_puffers(p, map);
     advance_temple_gates(p, map);
     // CassetteBlockManager writes Activated after Player.Update. The block
     // itself runs before the next Player update so its reform MoveV records
@@ -10723,7 +10765,17 @@ fn interact(
                         _ => 0.0,
                     };
                 } else if entity.kind == EntityKind::Puffer {
+                    // `Puffer.cs:552`: refuse to explode while the Puffer is `Gone` or within the 0.5 s
+                    // spawn cooldown (`:167`, ticked down at `:362-365`).
+                    let may_explode = p
+                        .puffers
+                        .iter()
+                        .find(|q| (q.center.x - target.x).abs() < 0.5 && (q.center.y - target.y).abs() < 0.5)
+                        .map(|q| q.state != 2 && q.cant_explode_timer <= 0.0)
+                        .unwrap_or(true);
+                    if may_explode {
                     explode_launch(p, input, target, false, true);
+                    }
                     p.last_bounce_target = target;
                     p.bounce_reuse_timer = 2.5;
                 } else {
@@ -11295,6 +11347,7 @@ fn load_transition_room(
     initialize_gliders(p, map);
     initialize_clouds(p, map);
     initialize_seekers(p, map);
+    initialize_puffers(p, map);
     initialize_temple_gates(p, map);
     initialize_core_mode_toggles(p, map);
     initialize_cassette_blocks(p, map);

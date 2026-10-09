@@ -48,4 +48,5 @@ pub use types::{
     KillboxSnapshot, LookoutSnapshot, MoveBlockSnapshot, PlayerSnapshot, PlayerState,
     RefillSnapshot, RisingLavaSnapshot, SandwichLavaSnapshot, SeekerSnapshot, SpinnerSnapshot,
     TempleGateSnapshot, TheoCrystalSnapshot, Vec2, ZipMoverSnapshot,
-};
+
+    PufferSnapshot,};

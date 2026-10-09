@@ -252,6 +252,19 @@ pub struct SeekerSnapshot {
     pub state_timer: f32,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+/// Per-entity Puffer state. `Puffer.cs` gates `Explode()` (`:224`) on `state != States.Gone`
+/// (`:552`) and on `cantExplodeTimer <= 0f`, a 0.5 s timer set on spawn (`:167`) that only
+/// ticks down while the Puffer is not `Gone` (`:362-365`).
+pub struct PufferSnapshot {
+    /// Vanilla `Puffer.States` index (Idle, Hit, Gone).
+    pub state: u8,
+    /// Entity centre, used to find this record from the interaction loop.
+    pub center: Vec2,
+    pub cant_explode_timer: f32,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct CassetteManagerSnapshot {
@@ -716,6 +729,8 @@ pub struct PlayerSnapshot {
     pub clouds: Vec<CloudSnapshot>,
     /// Per-entity Seeker Actor and StateMachine state, in map entity order.
     pub seekers: Vec<SeekerSnapshot>,
+    /// Per-entity Puffer state, in map entity order.
+    pub puffers: Vec<PufferSnapshot>,
     /// Per-entity CloseBehindPlayerAlways TempleGate state.
     pub temple_gates: Vec<TempleGateSnapshot>,
     /// `CoreModeToggle.cooldownTimer` (`CoreModeToggle.cs:12`, `:105`, `:124`, `:128-135`), one
@@ -944,6 +959,7 @@ impl Default for PlayerSnapshot {
             gliders: vec![],
             clouds: vec![],
             seekers: vec![],
+            puffers: Vec::new(),
             temple_gates: vec![],
             core_mode_toggle_cooldowns: vec![],
             refills: vec![],
