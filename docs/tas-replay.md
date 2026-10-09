@@ -973,3 +973,37 @@ printed swapBlock's 505 / 158,166); after rebuilding, the committed state reprod
 `theoCrystalPedestal` starts `Collidable = false` (`TheoCrystalPedestal.cs:21`), so it is not a
 solid candidate at all.
 
+
+
+## Round 45 recon results (four parallel subagents, all read-only)
+
+**Wind ordering: implemented, measured net-negative, reverted.** The recon found that
+`apply_wind_movement` (`sim.rs:5710`) runs before the `Player.Update` mirror while the source's
+`Player.WindMover` is a component added *after* `StateMachine` (`Player.cs:1172` vs `:1180`), so every
+`Player.WindMove` guard reads the previous frame's `State`/`Speed.Y`/`onGround`/`Ducking`. The evidence
+was exact: gaps of `wind * 0.1 * dt` on 12 + 2 + 6 segments across the three biggest classes
+(`pos|StNormal`, `pos|StDash`, `pos+speed|StNormal`). Moving the call to just after `tick_lift_speed`
+measured **58 improved / 22 regressed, 158,407 -> 156,123 frames** and lost an `ok` in
+`7-Summit|1|e-00`, concentrated in 7-Summit and 4-GoldenRidge - the windy chapters. **Reverted.** So the
+stale-guard reading is real but something else in the simulator's frame order compensates; the next
+attempt must be narrower than moving the application wholesale (e.g. evaluate the guards post-callback
+while keeping the move where it is, or find the compensating site), and it must be measured per
+chapter.
+
+**`dashSwitch` is a dead map name - the arm never matches.** The vanilla names are **`dashSwitchH`**
+and **`dashSwitchV`** (`Level.cs:608-610`); a byte scan of all 27 `.bin` files found the bare
+`dashSwitch` in none. So `map.rs`'s `"dashSwitch" => EntityKind::StaticSolid` is unreachable and every
+real dash switch arrives as `Unknown` - which also means the earlier "dashSwitch as a plain solid
+measured 0 / 0" entry was a **no-op artifact**, not evidence. The real collider is `16x8` (Up/Down) or
+`8x16` (Left/Right) chosen from `leftSide`/`ceiling` (`DashSwitch.cs:62-71`, `:109-121`), not the map
+rectangle, so the fix is a decode arm per name. This is the cheapest high-value item left: the switch's
+press is driven by the player's own dash collision (already modelled for `DashBlock`/`CrushBlock`) and
+only its *persistent* session flag is unrepresentable.
+
+**Session state worth exporting, ranked** (`Session.DoNotLoad` first - it is the only mechanism that
+suppresses entity construction outright, `Level.cs:472`/`:1188`, and it is the input to
+`conditionBlock condition:Key` and `ridgeGate`; then `Session.Cassette`, which makes the simulator
+*provably* wrong because `CassetteBlock` starts non-collidable and the manager is never built once the
+tape is taken; then `dashSwitch_<id>`, `oshiro_clutter_door_open`, `disable_lightning`). The exporter
+now emits `Session.Flags` as a top-level `flags` array (append-only tail, sorted, backward compatible),
+so the next game run gives the harness that input; nothing under `crates/` reads it yet.
