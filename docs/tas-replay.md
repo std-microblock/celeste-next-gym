@@ -1431,3 +1431,21 @@ publish again, measure the simulator's own freeze length for the same window - h
 `dash_update` for, and which frame it first moves on. If the simulator freezes for a different number of
 frames, the publish timing is a *symptom* of that, and the fix belongs in the freeze accounting, not in
 `dash_update`. A `--rooms d-01` slice with a per-frame counter print answers it in seconds.
+
+### The simulator's freeze accounting already matches the game - so stop editing the publish
+
+`sim.rs:6314-6317`: during a freeze the simulator decrements `freeze_timer` by `DT` and **returns early**,
+so the whole player update - `dash_update` included - is skipped for exactly as many frames as the timer
+lasts. `begin_dash` sets `DASH_FREEZE_TIME` (`sim.rs:7149`), 0.05 s, which is 0.05/DT = **three** skipped
+frames, and the measured game rows 303302-303304 are exactly three byte-identical frames with
+`dashAttackTimer` frozen at 0.3. The `DashBegin` frame itself runs the state transition (Monocle runs the
+new state's callback on the frame after the change), so the first `DashUpdate` - and therefore the
+publish - lands on the first frame after the freeze, which is what the game does.
+
+Consequence: the three failed edits were not fixing a publish-timing bug, because there is probably no
+publish-timing bug. What the recon saw (`rustMove = -1.33334` on the row it read as the begin frame)
+should be re-checked against the *row mapping* first: the gate compares its frame `j` with row
+`startRow + 41 + j`, and a one-row slip would put the publish on the "wrong" row without anything being
+wrong in `dash_update`. The cheap way is the recon's own suggestion - compare `movementCounter` at
+`{:.9}`, and print the row index alongside - across rows 303299-303306 on both sides. Only if the rows
+line up and the counters still disagree is the publish implicated.
