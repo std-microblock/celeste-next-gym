@@ -1112,3 +1112,18 @@ the `segment.frames.push(Frame {` construction (the anchor is a `&Frame`, not a 
 made the first attempt fail with `E0609`), and struct headers plus that `push` line are the only anchors
 that are unique: `collider:` exists on `Record` alone and `dt: record.dt,` also matches other
 construction sites.
+
+### Cross-trace diffs mix in the game's own +-1-frame variance
+
+`trace-202-v7.jsonl` (which adds `doNotLoad`/`keys`/`cassette`/`heartGem`) replays to
+`511 ok / 159,350 frames / 158,363 exact` against v6b's `511 / 159,351 / 158,363`:
+`improved=0, identical=1467, regressed=1`, the single difference being `7-Summit|0|d-11|120868` losing
+one frame (698 -> 697). **No code changed between those two runs** - same binary, different ground
+truth - so that frame is the real game's run-to-run variance, exactly as the v5-vs-v6b comparison
+showed one segment *gaining* a frame. The four new keys themselves are inert for the replay, which is
+what the check was for.
+
+The consequence for the usual discipline: `q-regress` labels are relative to the trace it was given,
+so a one-frame `regressed` entry that appears when the trace changes (rather than when the code does)
+is noise, not a regression. When a code change is measured, keep the trace fixed and swap only the
+binary; when the trace changes, expect about one frame of drift somewhere and do not chase it.
