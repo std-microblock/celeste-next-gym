@@ -2756,3 +2756,32 @@ afterwards" in one run.
 Note for sequencing: this family (`roof07`) has now consumed many rounds and is down to a single
 instrumented question. The queue also holds the `1.2` grounded-ultra proxy and the `LaunchSpeed` lead, both
 of which are one-liner candidates with existing tests to compare against.
+
+### ROOT CAUSE for roof07: the simulator's `transition_timer` is 0 while the trace says `transitioning = true`
+
+Entry probe at the top of `step`, every row of the window:
+
+```
+ENTRY pos=(8231,-785) freeze=0.01667 dead=false respawn=0 trans=0.0000 dfp=false state=Normal
+```
+
+Two conclusions, and the second is the answer:
+
+1. The freeze timer is a **red herring**. `skip_engine_frame()` runs on every stalled row - the harness reads
+   `simulator_frozen` *before* the step (`tas_fidelity.rs:1842`) and it is 0 there, so `!simulator_frozen` is
+   true, the skip fires, and it raises the timer to DT; the step then clears it. The DT the dump shows is a
+   read-point artefact, not a stuck timer.
+2. **`transition_timer` is 0.0000 while the trace's `transitioning` is true.** The simulator does not know it
+   is in a room transition, so its transition path never runs, the transition coroutine's player movement
+   never happens, and the player stands still while the game advances it one pixel per frame. That is the
+   whole of the `roof07` divergence.
+
+Why this matters beyond one segment: the harness already parses `transitioning` (`Record`/`Frame`, used at
+`:1829` for the diagnostic classification) but nothing feeds it into the simulator's transition state. Every
+segment with a high `stalledFrames` count and `transitioning = true` rows is therefore replaying those rows
+with no transition modelled - the `roof07` case is just the one where the harness's own accounting noticed
+(`exactPrefixFrames = 0`).
+
+Next: find how the simulator's transition state is meant to be established (the anchor restore or the
+harness's stall handling) and make a `transitioning` row set it, then verify with `--rooms roof07` (both
+segments should go `exact = 0` -> `6`).
