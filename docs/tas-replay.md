@@ -3124,3 +3124,24 @@ whether it earns a landing depends on its three-trace diff, not on the cluster s
 Also worth keeping: `--rooms` matches `segment.room`, which is a **room-local** string like `a-00` or `15` - not
 a chapter name. `--rooms "5-MirrorTemple"` selects nothing (`simulated=0`, `skipped=1468`), which is a silent
 no-op that looks like a passing slice.
+
+### +-280 follow-up: the Bumper trigger is equivalent, so the candidates narrow to Puffer and TempleBigEyeball
+
+Read both sides:
+
+| source `Bumper.cs:159-170` | simulator `sim.rs:10594-10605` |
+| --- | --- |
+| `else if (respawnTimer <= 0f)` (after the collide gate) | `if p.bumpers[index].respawn_timer <= 0.0` |
+| `respawnTimer = 0.6f` | `p.bumpers[index].respawn_timer = 0.6` |
+| `Vector2 vector2 = player.ExplodeLaunch(Position, snapUp: false)` | `explode_launch(p, input, target, false, false)` with `target` = the Bumper's centre |
+
+Same trigger condition, same flag (`snapUp = false`), same respawn constant, same direction source
+(`Position`). So the Bumper is **not** a frame-placement candidate for the +-280 cluster. That leaves:
+
+1. the **Puffer** path (`Puffer.cs:233`, `snapUp: false, sidesOnly: true`; `sim.rs:10726` already passes
+   `(false, true)`), where the remaining question is the same overlap-gate frame; and
+2. **`TempleBigEyeball`** (`TempleBigEyeball.cs:66`, the default `snapUp = true`), which the simulator does not
+   model at all.
+
+Given (1) is cheap to read and (2) is a new entity, the next step is to compare the Puffer's collide gate on
+both sides before considering (2).
