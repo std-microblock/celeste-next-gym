@@ -235,7 +235,7 @@ pub struct Simulator {
     /// Per-room entity coroutines (`CrumblePlatform`, `SwitchGate`, `TouchSwitch`).
     room: RoomCoroutineState,
     /// `Session.DoNotLoad`: `"<Level>:<ID>"` keys of entities the game never constructed.
-    do_not_load: Vec<String>,
+    do_not_load: Vec<i32>,
 }
 
 /// `Player.climbHopSolid` (`Player.cs:553`) and `climbHopSolidPosition`
@@ -320,7 +320,16 @@ impl Simulator {
     }
 
     /// Hand the anchor row's `Session.DoNotLoad` keys to the room build; the v7 trace carries them.
-    pub fn set_do_not_load(&mut self, keys: Vec<String>) {
+    pub fn set_do_not_load(&mut self, keys: Vec<i32>) {
+        // The game never constructed those entities (`Level.cs:472`, `:1188`), so park them - do NOT
+        // filter the vector: every room-coroutine index and `entity_ids` entry is positional.
+        let count = self.runtime_map.entity_ids.len().min(self.runtime_map.entities.len());
+        for index in 0..count {
+            let id = self.runtime_map.entity_ids[index];
+            if id >= 0 && keys.contains(&id) {
+                park_entity(&mut self.runtime_map.entities[index]);
+            }
+        }
         self.do_not_load = keys;
     }
 

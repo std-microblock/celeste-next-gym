@@ -1764,7 +1764,9 @@ fn replay(
         flags.iter().any(|flag| *flag == format!("switches_{}", segment.room))
     });
     if let Some(keys) = anchor.do_not_load.as_ref() {
-        simulator.set_do_not_load(keys.clone());
+        let prefix = format!("{}:", segment.room);
+        let ids: Vec<i32> = keys.iter().filter_map(|key| key.strip_prefix(&prefix)).filter_map(|id| id.parse::<i32>().ok()).collect();
+        simulator.set_do_not_load(ids);
     }
     simulator.set_clutter_cleared(trace_clutter.unwrap_or(carried_clutter));
     // `switches_<room>` (`Switch.cs`): per-room session state the trace cannot carry either.
