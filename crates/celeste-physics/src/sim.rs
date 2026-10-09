@@ -116,13 +116,13 @@ const LAUNCH_CANCEL_THRESHOLD: f32 = 220.0;
 const TRANSITION_TIME: f32 = 0.65;
 const TRANSITION_MOVE_SPEED: f32 = 60.0;
 /// `Level.TransitionRoutine`'s `dirPad = direction * 4f` for a side or upward transition
-/// (`Level.cs:1516`): the entry target is the bound being crossed, four pixels in.
+/// (`Level.cs:1516`) and `direction * 12f` for a downward one (`:1517-1520`).
 const TRANSITION_ENTRY_PAD: f32 = 4.0;
-/// ... and `direction * 12f` for a downward one (`Level.cs:1517-1520`).
 const TRANSITION_ENTRY_DOWN_PAD: f32 = 12.0;
-/// The upward counterpart of `TRANSITION_ENTRY_PAD`, in whole pixels: `playerTo` steps by one pixel
-/// per iteration, so the first `Y` below `Bounds.Bottom - 4f` is `Bounds.Bottom - 5f`.
-const TRANSITION_ENTRY_UP_PAD: f32 = 5.0;
+/// Safety cap for [`transition_entry_target`]'s copy of `Level.TransitionRoutine`'s unbounded
+/// `for (; !IsInBounds(playerTo, dirPad); playerTo += direction)`. Every real search terminates in a
+/// few hundred whole-pixel steps (a room is at most a few hundred pixels across).
+const TRANSITION_TARGET_MAX_STEPS: usize = 4096;
 
 // Player.cs story-intro callbacks. Every constant below is copied from the
 // callback that owns it; the `file:line` citations live on the phase bodies.
@@ -11459,34 +11459,64 @@ fn transition_entry_direction(p: &PlayerSnapshot, bounds: Rect) -> Vec2 {
 /// downward one (`Level.cs:1516-1520`); `playerTo` is the player's bottom-centre position, so
 /// `Bounds.Left + 4f` is the same statement as "the collider's left edge on the bound".
 fn transition_entry_target(from: Vec2, direction: Vec2, bounds: Rect) -> Vec2 {
-    if direction.x > 0.0 {
-        Vec2::new(bounds.x + TRANSITION_ENTRY_PAD, transition_entry_y(from, bounds))
-    } else if direction.x < 0.0 {
-        Vec2::new(
-            bounds.right() - TRANSITION_ENTRY_PAD,
-            transition_entry_y(from, bounds),
-        )
-    } else if direction.y > 0.0 {
-        Vec2::new(from.x, bounds.y + TRANSITION_ENTRY_DOWN_PAD)
-    } else if direction.y < 0.0 {
-        Vec2::new(from.x, bounds.bottom() - TRANSITION_ENTRY_UP_PAD)
-    } else {
+    if direction == Vec2::default() {
         // The collider is already inside the room, so the source's search returns `playerTo`
         // unchanged: the coroutine is in its parked phase, waiting only for its camera clock, and
         // `Player.Update` stays suspended where the player already is.
-        from
+        return from;
     }
+    // Seed the walk on the bound being entered instead of on the player's own position. Only the
+    // axis the transition travels along is constrained by `IsInBounds`; the other one is the
+    // player's and is kept as it was.
+    let mut target = if direction.x > 0.0 {
+        Vec2::new(bounds.x, from.y)
+    } else if direction.x < 0.0 {
+        Vec2::new(bounds.right(), from.y)
+    } else if direction.y > 0.0 {
+        Vec2::new(from.x, bounds.y)
+    } else {
+        Vec2::new(from.x, bounds.bottom())
+    };
+    // `Level.TransitionRoutine`'s pre-loop (`Level.cs:1522-1525`): before the walk, `playerTo.Y` is
+    // lifted back inside the room while it sits at or below `Bounds.Bottom`. One pixel per
+    // iteration, so it always terminates.
+    while direction.x != 0.0 && target.y >= bounds.bottom() {
+        target.y -= 1.0;
+    }
+    let dir_pad = if direction == Vec2::new(0.0, 1.0) {
+        Vec2::new(0.0, TRANSITION_ENTRY_DOWN_PAD)
+    } else {
+        Vec2::new(
+            direction.x * TRANSITION_ENTRY_PAD,
+            direction.y * TRANSITION_ENTRY_PAD,
+        )
+    };
+    let mut steps = 0usize;
+    while !transition_position_in_bounds(target, dir_pad, bounds) {
+        // The source's `for` has no bound; every real room terminates in a few hundred whole-pixel
+        // steps, so the cap only turns a malformed room into a parked transition instead of a hang.
+        if steps >= TRANSITION_TARGET_MAX_STEPS {
+            return from;
+        }
+        target.x += direction.x;
+        target.y += direction.y;
+        steps += 1;
+    }
+    target
 }
 
-/// The horizontal pre-loop of the same search (`Level.cs:1522-1525`): before the X walk,
-/// `playerTo.Y` is lifted back inside the room while it sits at or below `Bounds.Bottom`. Each
-/// iteration removes exactly one pixel, so the loop always terminates.
-fn transition_entry_y(from: Vec2, bounds: Rect) -> f32 {
-    let mut y = from.y;
-    while y >= bounds.bottom() {
-        y -= 1.0;
-    }
-    y
+/// `Level.IsInBounds(Vector2 position, Vector2 dirPad)` (`Level.cs:2850-2862`): the pad only widens
+/// the room on the side the transition travels away from, which is why a leftward entry stops at
+/// `Bounds.Right - 5f` while a rightward one stops at `Bounds.Left + 4f`.
+fn transition_position_in_bounds(position: Vec2, dir_pad: Vec2, bounds: Rect) -> bool {
+    let left = dir_pad.x.max(0.0);
+    let right = (-dir_pad.x).max(0.0);
+    let top = dir_pad.y.max(0.0);
+    let bottom = (-dir_pad.y).max(0.0);
+    position.x >= bounds.x + left
+        && position.y >= bounds.y + top
+        && position.x < bounds.right() - right
+        && position.y < bounds.bottom() - bottom
 }
 
 fn move_towards_x(p: &mut PlayerSnapshot, map: &mut Map, target_x: f32, max_move: f32) {
