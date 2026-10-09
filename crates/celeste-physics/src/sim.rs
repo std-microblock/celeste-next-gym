@@ -7690,7 +7690,13 @@ fn intro_jump_update(p: &mut PlayerSnapshot, _map: &Map) {
             // (Player.cs:6048-6051).
             p.pos = p.intro_start;
         }
-        p.speed.y = 0.0;
+        // `Speed.Y` is deliberately *not* zeroed here. The coroutine's loop simply stops
+        // while the landing frame still carries the accumulated fall speed, and the frame's
+        // own physics then attempts `MoveV(Speed.Y * dt)` into the floor: that blocked step
+        // zeroes `movementCounter.Y` and `Player.OnCollideV` zeroes `Speed.Y`. Measured on
+        // `7-Summit|1|g-00|209548` offset 45 - the game's counter goes 0.08337 -> 0 and its
+        // end-of-frame speed is 0, while zeroing the speed here skipped the move entirely and
+        // left a 0.08337 remainder that flipped a pixel 35 frames later.
         if summit {
             // Landing at the end of a Summit hand-off is not the end of the state:
             // `if (wasSummitJump) { ...particles...; yield return 0.35f; }` runs before
