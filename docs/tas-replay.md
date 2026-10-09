@@ -2961,3 +2961,39 @@ to `gate-tg2-1a.json`). The full 202 and 100pct runs were still in flight at the
 The general lesson: a boolean from the trace that describes a *level* state can lead the *player* state by a
 frame, because Monocle's coroutine resumption is deferred. Any replay logic keyed on such a bit needs the
 player-side witness alongside it - which is exactly what the harness's stalled accounting already computes.
+
+### LANDED: room transitions are replayed (master `e17738d`, branch tip `f33314e`)
+
+Verified on the merged tree against this document's baselines, all three traces `regressed=0`:
+
+| trace | improved / identical / regressed | ok | frames | exact |
+| --- | --- | ---: | ---: | ---: |
+| 202 | 2 / 1466 / **0** | 518 -> **520** | 161,253 -> **161,355** | 160,273 -> **160,387** |
+| 100pct | 1 / 917 / **0** | 339 -> **340** | 97,083 -> **97,134** | 96,487 -> **96,544** |
+| 1a | 0 / 20 / **0** | 16 | 2,129 | 2,125 |
+
+`cargo test --release -p celeste-physics --lib` is **356 passed / 0 failed** (one new test). Two mechanisms
+landed together:
+
+1. **`transitioning` gating ANDed with the stalled witness** - a level-level boolean leads the player by a
+   frame, because `Level.Transitioning` turns true on the frame `TransitionRoutine` is *created* while Monocle
+   resumes the coroutine only on the next `Update`. Using the bit alone cost every room-change segment its last
+   frame (15 segments `ok` -> `mismatch`); ANDing it with an unchanged
+   `Player.StrawberryCollectResetTimer` fixes that.
+2. **The anchor-side transition state** - a replayed window can start inside a transition, and neither
+   `transition_timer` nor `transition_target` is exported, so the state is synthesised. The target comes from
+   `Level.TransitionRoutine`'s walk seeded on the bound being entered, and the walk is **asymmetric**:
+   `Left + 4` travelling right, `Right - 5` travelling left, `Top + 12` down, `Bottom - 5` up - which
+   `begin_transition` already encodes and the seeded walk now reproduces term for term.
+
+Measured robustness note worth keeping: over `trace-202-v7.jsonl`, 2,874 of 438,001 level rows have a
+fractional `Player.Position` (all `StCassetteFly`-style tweens) and **none** of its 54,521 `transitioning`
+rows do - so a bound-derived target and a start-derived target agree on every replayed transition row. That is
+also why the target is invariant under whole-pixel offsets: `start + ceil(bound - start)` only carries the
+start's fractional part.
+
+Process notes: the preliminary verification of this work was done in a detached worktree at a checkpoint
+commit, because the workstream had gone quiet with its edits uncommitted; the first merge attempt failed at
+`cargo test` (the workstream's own new test contained a self-contradictory assertion) and master was reset to
+green rather than pushing a red tree - the landing script now gates on the test result as well as on
+`regressed`, which is what this document's earlier discipline was missing.
