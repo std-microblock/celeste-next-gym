@@ -1684,3 +1684,32 @@ frame. `-70` is neither the exported `wallSpeedRetained` (+165.6667) nor `hopWai
 in that room is `(0,-400)`, purely vertical, so it cannot supply an x component. The search therefore moves
 from the restore gate to **whatever writes -70 during a `StNormal` frame near a wall** - candidates are the
 wall-jump/hop family in `NormalUpdate` and any place that converts a retained value's sign.
+
+### The missing -59.1667 on row 206422: what the trace does and does not contain
+
+Full input/state sequence for `7-Summit|1|e-02` rows 206419-206423 (all `StNormal`, `mx=1`, `jump=true`):
+
+| row | retained | timer | end speed.x |
+| --- | ---: | ---: | ---: |
+| 206419 | 130.0000 | 0.0100 | 0 |
+| 206420 | **165.6667** (new) | 0.0600 | 0 |
+| 206421 | 165.6667 | 0.0433 | 0 |
+| **206422** | 165.6667 | 0.0267 | **+10.8334** |
+| 206423 | 165.6667 | 0.0000 | **+161.3333** |
+
+The simulator reproduces `retained` and `timer` exactly on every one of those rows, and it also lands the
+wall jump's horizontal `161.3333` on row 206423. What it does not reproduce is row 206422's **move**:
+`-0.98611` (in-frame speed about `-59.1667`) against the simulator's `+0.18056` (about `+10.833`). So on
+that single frame the game carries a *leftward* speed that the simulator does not have, and the frame's
+own end speed (`+10.8334`, identical on both sides) hides it - which is exactly the "one-frame writer
+placement" shape the recon described for the large `pos` classes.
+
+Two things are worth stating plainly. First, `-59.1667` is consistent with `-70 + 10.8333`, and **no
+exported field in that window equals either -70 or -59.1667** (`retained` is +165.6667 / +130,
+`hopWaitXSpeed` is 0, `speed.x` at row ends is 0 then +10.833), so the value is written and consumed
+inside the frame. Second, this is the second consecutive round spent *locating* rather than fixing: the
+wall-speed gate, the probe rectangle and the anchor restore have all been eliminated with numbers, and
+what remains is a frame-internal write. A cheaper way forward than another single-row hunt is to ask the
+question over a population - for every `pos`-class segment, dump the frame where the divergence starts and
+check whether the game's in-frame speed (recovered as `move / dt`) equals a value the trace never reports
+at a row boundary. If that is systematic, the missing writer is one code path, not one segment.
