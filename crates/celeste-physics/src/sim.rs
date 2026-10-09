@@ -135,6 +135,10 @@ const INTRO_JUMP_GRAVITY: f32 = 800.0;
 const INTRO_JUMP_REST: f32 = 0.1;
 const INTRO_JUMP_SUMMIT_REST: f32 = 0.2;
 const INTRO_JUMP_SUMMIT_RECOVER: f32 = 0.1;
+/// `IntroJumpCoroutine`'s post-landing rest for a Summit hand-off:
+/// `if (wasSummitJump) { ...; yield return 0.35f; }` before `StateMachine.State = 0`
+/// (`Player.cs:6055-6067`). The non-Summit path has no such rest.
+const INTRO_JUMP_SUMMIT_LAND_REST: f32 = 0.35;
 // `IntroWakeUpCoroutine` (Player.cs:6112-6119) plus the `wakeUp` animation it
 // awaits: `Content/Graphics/Sprites.xml:72`
 // `<Anim id="wakeUp" path="wakeUp/" delay=".1" frames="0-4,5*10,6-14"/>`,
@@ -165,6 +169,7 @@ const INTRO_PHASE_JUMP_REST: u8 = 7;
 const INTRO_PHASE_JUMP_FALL: u8 = 8;
 const INTRO_PHASE_JUMP_SUMMIT_REST: u8 = 9;
 const INTRO_PHASE_JUMP_SUMMIT_RECOVER: u8 = 10;
+const INTRO_PHASE_JUMP_SUMMIT_LAND_REST: u8 = 21;
 const INTRO_PHASE_WAKE_ASLEEP: u8 = 11;
 const INTRO_PHASE_WAKE_SPRITE: u8 = 12;
 const INTRO_PHASE_WAKE_POP: u8 = 13;
@@ -7669,6 +7674,27 @@ fn intro_jump_update(p: &mut PlayerSnapshot, _map: &Map) {
             p.pos = p.intro_start;
         }
         p.speed.y = 0.0;
+        if summit {
+            // Landing at the end of a Summit hand-off is not the end of the state:
+            // `if (wasSummitJump) { ...particles...; yield return 0.35f; }` runs before
+            // `StateMachine.State = 0` (Player.cs:6055-6067), so the game stays in
+            // `StIntroJump` for 0.35 s after touching the ground. Measured on
+            // `7-Summit|1|g-00|209548`, whose divergence is exactly the landing frame:
+            // the game's `movementCounter.Y` is zeroed by the landing collision and its
+            // state is still `StIntroJump` while the simulator had already returned to
+            // `StNormal`.
+            p.intro_phase = INTRO_PHASE_JUMP_SUMMIT_LAND_REST | INTRO_PHASE_SUMMIT_FLAG;
+            p.intro_timer = INTRO_JUMP_SUMMIT_LAND_REST;
+            return;
+        }
+        p.intro_phase = 0;
+        p.state = PlayerState::Normal;
+    }
+    if phase == INTRO_PHASE_JUMP_SUMMIT_LAND_REST {
+        if p.intro_timer > 0.0 {
+            p.intro_timer -= p.frame_delta_time;
+            return;
+        }
         p.intro_phase = 0;
         p.state = PlayerState::Normal;
     }
