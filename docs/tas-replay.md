@@ -2344,3 +2344,33 @@ context here (the player has just left a dash with `wallSpeedRetained` live) - i
 would return and the simulator would push the wind. The next probe should print `p.no_wind_timer` alongside
 the wind push on those frames; that is a one-line check and it discriminates between the two clauses
 directly.
+
+### `noWindTimer` is 0 on BOTH sides - refuted in one measurement; only `Bounds.Top` is left
+
+The one-line discriminator, printed on the same frames:
+
+```
+sim : pos=(26082,-19082) vy=7.5000 windy=-400.0 noWind=0.0000 state=Normal
+game: row=135320     state=StNormal noWind=0 vx=-138.333 vy=15.000 pos=(26080,-19082)
+```
+
+So `noWindTimer` is not the clause that stops the game's wind push. Walking `Player.WindMove`'s guards with
+the measured state (`StNormal`, `InControl`, not respawning):
+
+1. `JustRespawned` - no;
+2. `!(noWindTimer <= 0f)` - no, both are exactly 0;
+3. `!InControl` - no;
+4. `State == 4 || 2 || 10` - no, the state is `StNormal`;
+5. `move.X != 0f && State != 1` - the wind is `(0,-400)`, so the x half does not run;
+6. **y half**: `if (move.Y == 0f) return;` - no;
+7. **`if (!(base.Bottom > (float)level.Bounds.Top) || (!(Speed.Y < 0f) && OnGround())) return;`**
+
+Clause 7 is what remains. Its second half needs `OnGround()` true, and the simulator's equivalent probe is
+structurally identical to `Actor.OnGround` (previous note), so the first half is the better candidate: the
+player's bottom being at or above the **room's top bound** would make `!(Bottom > Bounds.Top)` true and the
+game would return before pushing.
+
+Next check, cheap and decisive: print the player's bottom (`pos.y + collider height`), the simulator's
+`current_room_bounds.top()` and `map.bounds.top()` on those frames, and compare with the trace's own
+position - if the simulator's room bounds disagree with the level's, the wind guard flips for reasons that
+have nothing to do with wind.
