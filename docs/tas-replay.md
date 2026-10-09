@@ -1093,3 +1093,22 @@ Attempting only steps 1 and 3 fails with `error[E0609]: no field flags on type &
 green. The two carries (`SWITCH_ROOM` at `:52-57`, `Y3_CHAPTER`/`Y3_CLUTTER` at `:60`) then become the
 v5 fallback only - keep them, but say so in the comment, because v5 traces have no `flags` key and must
 keep working.
+
+### Session state now comes from the trace's `flags` (`16ee600`)
+
+The anchor restore reads `switches_<room>` and `oshiro_clutter_cleared_0/1/2` out of the anchor row's
+`flags` array and only falls back to the hand-rolled `SWITCH_ROOM` / `Y3_CHAPTER` / `Y3_CLUTTER` carries
+when the key is absent (v5 traces). All three traces measured **regressed=0 and identical to the byte**:
+202 `0/1468/0` (511 ok, 159,351 frames, 158,364 exact), 100pct `0/918/0`, 1a `0/20/0`, with 339 tests
+green.
+
+That "no change at all" is itself the measurement: on this corpus the guessed carries agreed with the
+trace everywhere they mattered. What changes is what happens where they *could not* agree - the
+documented `2-OldSite|0|6` case, whose `switchGate` is `persistent=false` so the flag is never written,
+now reads "not set" from ground truth instead of from a guess.
+
+Two notes for the next editor: the field has to be added to **both** `Record` and `Frame` and copied in
+the `segment.frames.push(Frame {` construction (the anchor is a `&Frame`, not a `&Record` - that is what
+made the first attempt fail with `E0609`), and struct headers plus that `push` line are the only anchors
+that are unique: `collider:` exists on `Record` alone and `dt: record.dt,` also matches other
+construction sites.
