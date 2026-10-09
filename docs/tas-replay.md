@@ -937,6 +937,7 @@ batch mixes a real regression with inert additions and hides which is which.
 | `switchGate` | 11 / 2 | reverted; needs `SwitchGate.Open`, the +373 frames are its value |
 | `floatySpaceBlock` | 7 / 1 (net +6) | reverted; one LostLevels segment loses a frame, so it needs its real motion |
 | `resortRoofEnding` | 0 / 0 | kept, inert |
+| `lockBlock` | 0 / 1 | reverted; the TAS unlocks it with a key and passes through, so it needs its unlock state |
 
 `theoCrystalPedestal` starts `Collidable = false` (`TheoCrystalPedestal.cs:21`), so it is not a
 solid candidate at all.
