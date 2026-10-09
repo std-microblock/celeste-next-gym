@@ -1186,3 +1186,24 @@ wrong and was reverted, tree rebuilt). Everything it got wrong is now known:
 - The struct field goes on `Map` (`pub struct Map {` at `:235`) and the default in the manual
   `impl Default for Map` (`:284`, `Self { ... }` at `:286`) - adding it to `Entity` instead means
   touching ~31 `Entity { ... }` sites, which is the trap this route avoids.
+
+### `entity_ids`, attempt 3: one site has no `el`, and PowerShell anchors must match CRLF
+
+Attempts 2 and 3 both ended in the auto-revert guard (build failed -> `git checkout` -> rebuild), so the
+tree never stayed broken; total cost about two minutes each. What they learned:
+
+- The first push, `map.rs:2036`, is `map.entities.push(Entity {` and **does** have `el` in scope, so
+  `map.entity_ids.push(attr_f32(el, "id", -1.0) as i32);` in front of it compiles.
+- The second push, `map.rs:2083`, reaches the same `map.entities.push(Entity {` text but is in a branch
+  where **`el` is not bound** - a blanket `String.Replace` on that text hits both and fails with
+  `E0425: cannot find value el in this scope`. Either give that branch its own id expression, push a
+  sentinel there, or push ids from a single place after the loop; and then assert
+  `entity_ids.len() == entities.len()`, because a desync silently mis-attributes every later
+  `doNotLoad` key.
+- PowerShell `[char]10` anchors do **not** match this file: it is CRLF. Multi-line anchors built with
+  `[char]10` silently fail (the guard catches it), so either anchor on a single unique line - e.g.
+  `bounds: Rect::new(0.0, 0.0, 960.0, 544.0),` in `playground.rs` - or build the newline as
+  `[char]13 + [char]10`.
+- The other two files' literals are exhaustive: `map_fixture.rs:155` (`let map = Map {`) and
+  `playground.rs:8` (`Map {` under `pub fn mechanics_playground() -> Map {`) each need
+  `entity_ids: Vec::new(),` added; the two in `map.rs` already use `..Map::default()`.
