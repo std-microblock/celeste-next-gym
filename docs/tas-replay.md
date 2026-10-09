@@ -1790,3 +1790,24 @@ Each of those numbers is a `Speed` write the simulator lands on a different fram
 them to source writes - grep `Player.cs` for those constants in speed contexts, and for each one check
 which frame the simulator performs it on - instead of hunting a single segment at a time. The tool is
 `.tmp/recon3/in-frame-deltas.mjs` (report + trace, no build).
+
+### The `-169.5` cluster is `SuperWallJumpH = 170f` - the value is right, the frame is not
+
+Mapping the largest cluster of the corrected in-frame-speed tool (329 frames over the 40 largest
+`mismatch` segments) names the mechanism immediately:
+
+- source: `SuperWallJumpH = 170f` (`Player.cs:207`), written as `Speed.X = 170f * (float)dir;`
+  (`Player.cs:2619`, inside `SuperWallJump`);
+- simulator: `sim.rs:7843` - `p.speed = Vec2::new(170.0 * dir as f32, -160.0);` - with unit tests
+  asserting `(-170.0, -160.0)`.
+
+So the simulator already implements the *value*, which means the cluster is not a missing writer but a
+**frame-placement** difference: one side applies the super wall jump's horizontal speed on a frame where
+the other has not yet (or has already). That is exactly the shape the recon described, now attached to a
+named code path (`dash_jump`'s super-wall-jump branch, whose trigger is the
+`SuperWallJumpAngleCheck`-gated case at the top of `DashUpdate`).
+
+Next: take three or four of the 329 frames, dump them through the gate (the dump prints `gameSpeed` and
+`rustSpeed` per frame) and read which frame each side performs the write on - the branch conditions
+(`SuperWallJumpAngleCheck`, the buffered-jump window, the facing) are all in the simulator already, so the
+difference should be a single condition or a single frame of ordering.
