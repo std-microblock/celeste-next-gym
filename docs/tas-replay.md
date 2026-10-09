@@ -722,14 +722,15 @@ against this same gate:
     `Level.LoadLevel(Player.IntroTypes)` (overridable per cutscene). The simulator only ever
     *restores* the state at a segment anchor, so a room load that happens mid-segment is missed.
     Modelling that needs the chapter's `IntroType` table and the area available to the simulator.
-    `PlayerSnapshot` now carries `previous_state` and the gate fills it from the newest row before
-    the anchor that has a `state` (`d6d38e9`), but **that is not enough and the measurement says so**:
-    the rows immediately before an anchor are the stalled transition frames, and for a room that
-    *enters* in an intro state those rows already carry the intro state itself, so the walk-back finds
-    the anchor's own state and `previous_state` is never `SummitLaunch` in this corpus. Recovering it
-    needs the state from *before the segment's window* - thread the previous segment's last state
-    through `finish_segment`, or read further back in the trace - and only then does the 0.35 s rest
-    in `3b238de` become reachable. Both of those commits measured zero change for exactly this reason.
+    `previous_state` is now threaded too (`0264120`): the gate carries each segment's ending state
+    to the next one, keyed by `(sid, mode, room)`. **The key matters** - the first version carried it
+    unconditionally and regressed `1-ForsakenCity|0|1|273287` (`ok`/274 -> mismatch/75), because that
+    late 1A `StIntroJump` segment followed `7-Summit`'s `StSummitLaunch` and the simulator took the
+    Summit branch for a Prologue-style intro. With the same-chapter/different-room guard the corpus is
+    clean again, but the threading is still **inert** (0 improved / 1468 identical / 0 regressed), so
+    the Summit intro segments' missing piece is not `PreviousState` either. Stop inferring it from the
+    metric: print `intro_phase` at the divergence for one of them (`--rooms g-00`) and read which
+    phase the simulator actually chose.
 * **The simulator has no `VirtualButton.consumed` flag.** With `presses_are_effective` the press
   level each frame is now exactly the game's, which retired the four-frame offset; what remains is
   that a press the simulator consumes *inside* a frame (`wall_jump`/`jump`/`begin_dash` zero the
