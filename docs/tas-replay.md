@@ -1072,3 +1072,24 @@ against the v5 baseline's `511 / 159,350 / 158,363`: `improved=1, identical=1467
 one-frame difference is the game's own run-to-run variance, not the new key - the gate ignores unknown
 fields, so the added array cannot perturb it. The v6b traces therefore supersede v5 as ground truth, and
 they are the ones to read `flags` from.
+
+### Consuming `flags`: the exact three steps (one attempt failed here and was reverted)
+
+The v6 trace's `flags` array reaches the harness but the anchor restore cannot see it yet, because the
+field has to cross one more layer than it looks:
+
+1. `struct Record` (`examples/tas_fidelity.rs:185`) - the raw serde row. Add
+   `flags: Option<Vec<String>>` and nothing else is needed; the key deserializes by name.
+2. `struct Frame` (`:252`) - the parsed per-frame view that `segment.frames[..]` holds, and *that* is
+   what the anchor is (`let anchor = &segment.frames[window_start]`). Add `flags: Option<Vec<String>>`
+   here too, and copy it across wherever a `Frame` is built from a `Record`.
+3. The anchor restore (`:1739`/`:1743`) - replace `set_clutter_cleared(carried_clutter)` and
+   `set_switches_on(switch_room_flag(segment))` with the trace-derived values when the anchor row has
+   the key, falling back to the carries otherwise: `"switches_" + segment.room` and
+   `oshiro_clutter_cleared_0/1/2` are the two lookups.
+
+Attempting only steps 1 and 3 fails with `error[E0609]: no field flags on type &Frame` (plus two
+`E0282`s from the same site); the edit was reverted and the tree rebuilt, so the committed state stays
+green. The two carries (`SWITCH_ROOM` at `:52-57`, `Y3_CHAPTER`/`Y3_CLUTTER` at `:60`) then become the
+v5 fallback only - keep them, but say so in the comment, because v5 traces have no `flags` key and must
+keep working.
