@@ -1836,3 +1836,29 @@ previous frame's), or the half-gravity branch (`Speed.Y < 0 && jump held`) taken
 frame is reproducible with the single command above; the next step is to print the simulator's
 `speed.y`/`varJumpTimer`/jump-held state on the two frames around offset 831-832 and compare with the
 trace's own `p.*` values.
+
+### g-01: the game steps vy by +7.5 every frame; the simulator skips one step at the dash-end frame
+
+The game's own fields (trace rows 135314-135322, all `jumpHeld=false`, `varJumpTimer` ~0, `onGround=false`)
+show a clean sequence after the dash ends at row 135318:
+
+| row | state | vy |
+| --- | --- | ---: |
+| 135318 | StNormal (dash just ended) | 0 |
+| 135319 | StNormal | 7.5 |
+| 135320 | StNormal | 15.0 |
+| 135321 | StNormal | 22.5 |
+| 135322 | StNormal | 30.0 |
+
+So `+7.5` per frame is the ordinary gravity step in this context - not the jump-held half-gravity (the jump
+is not held and `varJumpTimer` is ~0). The simulator matches the first step (0 -> 7.5 on 135319) and then
+applies **0** on 135320 (its dump shows `rustSpeed.y = 7.50001` where the game has `15.00003`, and its y
+move is 0 where the game's is `+0.125 = 7.5 * dt`). It therefore **skips one gravity step**, and that is
+the divergence.
+
+The likely site is the simulator's entry into `StNormal` from the dash: the game reaches `StNormal` on row
+135318 and starts accelerating on the next row, so a one-frame suppression (a state-entry guard, a
+`was_on_ground`/`was_normal` branch, or a `varJump` reset) in `normal_update` is the shape to look for. The
+next check is a print of the simulator's vy and the gravity branch across rows 135318-135321, compared
+against the table above - and the same signature should appear in the other `StDash -> StNormal`
+transitions the classification counts (231 frames in the sampled 40 segments).
