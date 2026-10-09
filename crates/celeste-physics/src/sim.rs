@@ -234,6 +234,8 @@ pub struct Simulator {
     crumble_blocks: Vec<CrumbleBlockState>,
     /// Per-room entity coroutines (`CrumblePlatform`, `SwitchGate`, `TouchSwitch`).
     room: RoomCoroutineState,
+    /// `Session.DoNotLoad`: `"<Level>:<ID>"` keys of entities the game never constructed.
+    do_not_load: Vec<String>,
 }
 
 /// `Player.climbHopSolid` (`Player.cs:553`) and `climbHopSolidPosition`
@@ -300,6 +302,7 @@ impl Simulator {
             clutter_cleared,
             crumble_blocks,
             room,
+            do_not_load: Vec::new(),
         })
     }
 
@@ -314,6 +317,11 @@ impl Simulator {
     /// like the live session keeps it.
     pub fn clutter_cleared(&self) -> [bool; CLUTTER_COLORS] {
         self.clutter_cleared
+    }
+
+    /// Hand the anchor row's `Session.DoNotLoad` keys to the room build; the v7 trace carries them.
+    pub fn set_do_not_load(&mut self, keys: Vec<String>) {
+        self.do_not_load = keys;
     }
 
     /// The room's `switches_<room>` session flag, as `Switch.SetLevelFlag`/`CheckLevelFlag` read and

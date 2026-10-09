@@ -183,6 +183,9 @@ fn core_mode_from_int(value: i64) -> Option<CoreMode> {
 #[derive(Default, Deserialize)]
 #[serde(default)]
 struct Record {
+    /// `Session.DoNotLoad` (`Session.cs:43`) as `"<Level>:<ID>"` keys; the game never constructs
+    /// these entities (`Level.cs:472`, `:1188`). v7 traces carry it; older ones do not.
+    do_not_load: Option<Vec<String>>,
     /// `Celeste.Session.Flags` (`Session.cs:37`), exported from v6 on as a sorted array.
     flags: Option<Vec<String>>,
     n: u64,
@@ -252,6 +255,9 @@ struct Record {
 
 #[derive(Clone)]
 struct Frame {
+    /// `Session.DoNotLoad` (`Session.cs:43`) as `"<Level>:<ID>"` keys; the game never constructs
+    /// these entities (`Level.cs:472`, `:1188`). v7 traces carry it; older ones do not.
+    do_not_load: Option<Vec<String>>,
     /// `Celeste.Session.Flags` (`Session.cs:37`), exported from v6 on as a sorted array.
     flags: Option<Vec<String>>,
     n: u64,
@@ -1749,6 +1755,9 @@ fn replay(
     let trace_switches = trace_flags.map(|flags| {
         flags.iter().any(|flag| *flag == format!("switches_{}", segment.room))
     });
+    if let Some(keys) = anchor.do_not_load.as_ref() {
+        simulator.set_do_not_load(keys.clone());
+    }
     simulator.set_clutter_cleared(trace_clutter.unwrap_or(carried_clutter));
     // `switches_<room>` (`Switch.cs`): per-room session state the trace cannot carry either.
     // Carried while the trace stays in the same room, because `SwitchGate.Awake`
@@ -2623,6 +2632,7 @@ fn run() -> Result<(), String> {
             continue;
         }
         segment.frames.push(Frame {
+        do_not_load: record.do_not_load.clone(),
         flags: record.flags.clone(),
             n: record.n,
             f: record.f,
