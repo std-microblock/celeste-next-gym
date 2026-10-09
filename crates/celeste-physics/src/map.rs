@@ -152,6 +152,13 @@ pub enum EntityKind {
     /// `Collider.Left += 8f`). Keeping them apart from `EntityKind::MovingSolid` matters: the
     /// simulator must never treat one as carried by the player.
     StaticSolid,
+    /// Vanilla `Celeste.CrumblePlatform : Solid` (`CrumblePlatform.cs:8`, map name
+    /// `crumbleBlock`): `base(position, width, 8f, safe: false)` - the same eight-pixel height as
+    /// the raw rectangle, so no collider adjustment. Treated as a plain solid for now:
+    /// `CrumblePlatform.Sequence` (`:94-169`) collapses it 0.2 s after a player stands on top plus
+    /// up to 0.4 s of further standing, sets `Collidable = false`, waits 2 s and re-arms once
+    /// nothing overlaps it. Standing *on* one is the case that matters for the trace.
+    CrumbleBlock,
     /// Simulator-native constant-velocity Solid used to exercise Monocle
     /// carrying, pushing, and Player LiftSpeed inheritance independently of a
     /// specific vanilla entity state machine.
@@ -1067,6 +1074,18 @@ pub(crate) fn encode_celeste_rooms(
                 )),
                 // Static solids round-trip under the name the decoder saw, so a fixture map keeps
                 // whichever of `plateau`/`bridgeFixed` it used.
+                EntityKind::CrumbleBlock => Some(element(
+                    "crumbleBlock",
+                    [
+                        ("id", BinaryValue::Int(id)),
+                        ("originX", BinaryValue::Int(0)),
+                        ("originY", BinaryValue::Int(0)),
+                        ("width", BinaryValue::Int(width)),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![],
+                )),
                 EntityKind::StaticSolid => Some(element(
                     &entity.name,
                     [
@@ -1507,6 +1526,7 @@ fn map_from_binary_inner(
                 "coreModeToggle" => EntityKind::CoreModeToggle,
                 "SummitBackgroundManager" => EntityKind::SummitBackgroundManager,
                 "plateau" | "bridgeFixed" => EntityKind::StaticSolid,
+                "crumbleBlock" => EntityKind::CrumbleBlock,
                 "celesteGymMovingSolid" => EntityKind::MovingSolid,
                 _ => registered.map_or(EntityKind::Unknown, |entry| entry.kind),
             };
@@ -1752,6 +1772,9 @@ fn map_from_binary_inner(
                     // height. Neither has any state, so the rectangle is the whole model.
                     "plateau" => (Rect::new(ex + 8.0, ey, 104.0, 4.0), Vec2::default()),
                     "bridgeFixed" => (Rect::new(ex, ey, raw_width, 8.0), Vec2::default()),
+                    // `CrumblePlatform(EntityData, offset) : base(position, width, 8f, safe: false)`
+                    // (`CrumblePlatform.cs:8`): the raw rectangle is the collider, eight pixels high.
+                    "crumbleBlock" => (Rect::new(ex, ey, raw_width, 8.0), Vec2::default()),
                     // `AscendManager(EntityData data, Vector2 offset)` (`AscendManager.cs:228-233`)
                     // reads `index` and `intro_launch`; only `Position.Y` drives the takeover
                     // condition, and `index` into `direction.x`.

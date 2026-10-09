@@ -778,8 +778,24 @@ against this same gate:
   produces. So the coyote time was **zero on both sides**; what differs is the ground contact. The
   simulator's probe prints `pos=(12811.0,-11720.0) speed=(-275.17,0.00) state=Dash probed=false
   was=false grace=0.00000 duck=false` while the game's row has the player at **y = -11722** and
-  `onGround = true`. Two pixels of floor contact, not a timer: compare the room's tiles under
-  `(12816, -11722)` in `7H-Summit.bin` `g-00` next.
+  `onGround = true`. Two pixels of floor contact, not a timer.
+
+  **And that floor is a `crumbleBlock`.** `7H-Summit.bin` `g-00` holds
+  `entity { name: "crumbleBlock", bounds: [12792, -11720, 16, 8] }` - the player's feet rest on its
+  top - and the simulator decoded it as `Unknown`. `EntityKind::CrumbleBlock` now decodes it
+  (`map.rs`), deliberately **inert**: wiring it into the solid lists as a plain solid measures **38
+  improved / 6 regressed** on 202 (`484 -> 496` `ok`, `+2,977` frames, but `5-MirrorTemple|0|b-20`
+  loses an `ok`), and the six are the segments where the TAS lingers on a block long enough for
+  `CrumblePlatform.Sequence` (`CrumblePlatform.cs:94-169`) to collapse it: shake, `yield return 0.2f`
+  per step (1 step on top, 3 while climbing), a further up-to-0.4 s while the player stays on top,
+  then `Collidable = false`, `yield return 2f`, and re-arm once nothing overlaps. **That sequence is
+  the work item**; the decode alone is groundwork.
+
+  Also found by the same measurement and worth remembering: `Map::non_dream_solid_at` (`map.rs:2051`)
+  keeps its **own** copy of the solid-kind list, separate from `sim::is_solid_entity`, and the ground
+  probe only consults the former - so a kind added to `is_solid_entity` alone (as `StaticSolid` was in
+  round 11, and `CrumbleBlock` was here) is **inert**. Keep the two lists in step, or derive one from
+  the other.
 * **The simulator has no `VirtualButton.consumed` flag.** With `presses_are_effective` the press
   level each frame is now exactly the game's, which retired the four-frame offset; what remains is
   that a press the simulator consumes *inside* a frame (`wall_jump`/`jump`/`begin_dash` zero the
