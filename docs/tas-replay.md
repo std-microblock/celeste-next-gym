@@ -2149,3 +2149,31 @@ right after the gravity step), a `DashEnd`/`NormalBegin` transition write, `tick
 the frame tail that treats a just-ended dash specially (`dash_attack_timer`/`end_dash`). The next probe
 should print `speed.y` at the *end* of `step` (or at the top of the next frame before the timer block) so the
 write is bracketed to one of those.
+
+### BRACKETED to `step`'s early input/timer region: `speed.y` 7.5 -> 0 between two frames
+
+The end-of-`step` probe (anchored at the five `p.on_ground = grounded(p, map);` tails) prints
+
+```
+TAIL pos=(26084,-19082) vy=0.0000 state=Normal varJump=0.0000 dashAtk=0.1167   <- row 135318
+TAIL pos=(26082,-19082) vy=7.5000 state=Normal varJump=0.0000 dashAtk=0.1000   <- row 135319
+```
+
+and the frame-start probe (at the ground check, `sim.rs:6826`) for the *next* frame printed `vy=0.0000` on
+`pos=(26082,-19082)`. Both probes also match the gate dump's own numbers (offset 830 = 0, offset 831 =
+7.5), which validates the row-to-frame mapping used through this investigation.
+
+So the sequence is unambiguous:
+
+| frame ends at row | vy at frame start | vy at frame end |
+| --- | ---: | ---: |
+| 135318 | - | 0 |
+| 135319 | 0 | 7.5 |
+| 135320 | **0** (previous frame ended at 7.5) | 7.5 (game: 15) |
+
+The write that zeroes `speed.y` therefore happens **after the end of one frame and before the ground check
+of the next** - i.e. in the early part of `step`, in the input/timer region between `sim.rs:6637` and
+`:6826`, and *not* in `normal_update` and not in the physics tail. `var_jump_timer` and `dash_attack_timer`
+are both 0 / still counting at those frames, so neither block is obviously the culprit; the next probe
+should print `speed.y` at a few points inside that region (after the input buffers, after the force-move
+handling, after the wind controller) to name the write.
