@@ -2023,3 +2023,27 @@ Two things follow, and both change the search:
 Next: print `speed.y` at three points in the frame (before the state callback, after it, after the publish)
 on rows 135318-135321 and find which write takes it to 0, then compare that site with
 `vendor/celeste-fna/Celeste/Player.cs`'s `DashEnd`/`NormalBegin`.
+
+### Bracketed: on the second `StNormal` frame the callback adds no gravity at all
+
+Two probes (before the state callback at the wind call, after it at `tick_lift_speed`) on the `g-01` slice:
+
+```
+VY pre  pos=(26084,-19082) vy=0.0000 state=Normal
+VY post pos=(26084,-19082) vy=7.5000 state=Normal     <- first StNormal frame: gravity applied
+VY pre  pos=(26082,-19082) vy=7.5000 state=Normal
+VY post pos=(26082,-19082) vy=7.5000 state=Normal     <- second frame: nothing added
+```
+
+So the gravity block is **not executed** on the second `StNormal` frame - nothing writes and then resets it;
+the callback simply does not apply it. The gate is `if !p.on_ground` (`sim.rs:7462`), so `p.on_ground` must
+be true at that moment in the simulator while the trace says the game's player is airborne with
+`speed.y = 7.5 -> 15`.
+
+**Caveat on the previous note**: `pos` is not a unique key across frames, and the ground probe's
+`geo=false` lines may well have come from *other* frames that share the same coordinates - so "no phantom
+solid" should be treated as unproven until the probe prints `p.on_ground` as well and is matched by row
+rather than by position.
+
+Next probe (cheap): print `p.on_ground`, `p.player_on_ground`, `grounded(p, map)` and `p.speed.y` in the
+same line, and match by the *row* the gate reports (the dump gives the row index) instead of by position.
