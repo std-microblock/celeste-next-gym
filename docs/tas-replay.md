@@ -2852,3 +2852,32 @@ Two process notes worth keeping:
 - the workstream also flagged that `Copy-Item` preserves mtimes, so restoring a file with it does **not**
   retrigger cargo; it had to `touch` the file to get a real rebuild (hashes differed). That is the same
   stale-binary trap this document warns about, in a new disguise.
+
+### `roof07` / transition rows: state of play after the workstream stalled
+
+The `transition` workstream (worktree `wt-transition`, branch `transition`) ran a 202 baseline and then
+produced nothing further across several rounds - no code changes, no slice report - so it was stopped. Its
+worktree is clean, so nothing was lost, but the round spent on it produced no result.
+
+What the project already knows about the case, from measurements in these notes:
+
+- the replay treats the rows as stalled and the simulator's `transition_timer` is **0** while the trace says
+  `transitioning = true`, so the simulator never runs a transition model there (`eb1c63c`);
+- the game advances the player exactly **+1 px per frame** with `vx` constant (nothing writes `Speed`),
+  stopping when the collider's left edge lands exactly on the room's left bound (`roof07`: `Bounds.Left = 8232`,
+  collider `[8232,-796,8,11]`) - the shape of a per-frame push or exact move, not of ordinary physics;
+- `Level.EnforceBounds`'s own clamp is a **hard set** (`player.Left = bounds.Left`, `Level.cs:2746`), which
+  cannot by itself produce a one-pixel creep, so either the game's clamp runs *before* the move each frame or
+  the transition coroutine is what moves the player toward the room;
+- the trace carries only the boolean `transitioning` (`Frame.transitioning`, already parsed and used at
+  `tas_fidelity.rs:1829`), not the transition's target or duration - so the fix has to let the simulator's
+  own transition model run rather than replay the movement from the trace.
+
+Success is still binary and cheap: `--rooms roof07` should take both `roof07` segments from `exact = 0` to
+`exact = 6`. The baselines to compare against are now `ceilc-202.json` (518 ok / 161,253 frames / 160,273),
+`ceilc-100pct.json` (339 / 97,083 / 96,487) and `gate-tg2-1a.json` (16 / 2,129 / 2,125).
+
+Sequencing note: two workstreams have now stalled on this case (the first was my own multi-round
+investigation). It is well characterized but it is also demonstrably hard for a subagent briefed from
+documentation alone, so the next attempt should be either a very small in-session step (one dump, one
+decision, one edit) or a brief that starts from the two shapes and names the single command to run first.
