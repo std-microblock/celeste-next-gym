@@ -3340,3 +3340,29 @@ source moves call `MoveV`/`MoveH` **without** a collide callback, so a blocked w
 differently between the two sides, so the next step is to read `Player.SuperBounce`/`SideBounce` and the
 simulator's bounce path and compare which one clears the counter - the fix is likely the same
 `move_axis_amount_silent`-style split already landed for the wind.
+
+### The g-01 bounce: the source swaps in `normalHitbox` before a callback-less `MoveV`
+
+`Player.SuperBounce` (`Player.cs:2708-2739`):
+
+```csharp
+Collider collider = base.Collider;
+base.Collider = normalHitbox;        // tall 8x11 box, temporarily
+MoveV(fromY - base.Bottom);          // MoveV with the default onCollide = null
+...
+varJumpSpeed = (Speed.Y = -185f);
+```
+
+and `SideBounce` (`:2741-2766`) is the same shape: swap to `normalHitbox`, `MoveV(Calc.Clamp(fromY -
+base.Bottom, -4f, 4f))`, then optionally `MoveH`.
+
+This refines the previous note's reading. A **callback-less move still clears `movementCounter` when it is
+blocked** (`Actor.cs:249`, and the wind fix proved the simulator already models that), so the divergence at
+offset 1196 is not "who clears the counter" but **which of the two moves was blocked at all**: the game's was
+not (it carries `0.45838` out of the frame) and the simulator's was (its counter is exactly `0`). The likely
+reason is right there in the source - the move happens with `normalHitbox` swapped in, so any difference in
+which rectangle the simulator uses for that step (ducking box, hurt box, or the ordinary hitbox) decides
+whether the step collides. One pixel of position difference on the following frame is the consequence.
+
+Next: read the simulator's `bounce`/`reset_for_spring_bounce` path and check which rect it passes to the
+movement, then make the bounce swap to the normal hitbox exactly as the source does.
