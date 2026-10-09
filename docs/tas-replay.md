@@ -3025,3 +3025,25 @@ projectile launch) and check which of them the +-280 segments exercise - the odd
 difference lives. Note the stale line reference in the earlier note (`sim.rs:10764` is now
 `update_strawberry_train`): the launch moved to `10832`, so prefer name anchors over line numbers in this
 file.
+
+### `ExplodeLaunch`: the simulator implements two of the four player-facing callers
+
+Callers on both sides:
+
+| source | arguments | simulator |
+| --- | --- | --- |
+| `Bumper.cs:170` | `ExplodeLaunch(Position, snapUp: false)` | `sim.rs:10601` `(snap_up=false, sides_only=false)` |
+| `Puffer.cs:233` | `ExplodeLaunch(Position, snapUp: false, sidesOnly: true)` | `sim.rs:10726` `(false, true)` |
+| **`Seeker.cs:1042`** | `ExplodeLaunch(Position)` -> defaults, so **`snapUp = true`** | **missing** |
+| **`TempleBigEyeball.cs:66`** | `ExplodeLaunch(player.Center + UnitX * 20f)` -> **`snapUp = true`** | **missing** |
+| `Puffer.cs:238`, `Seeker.cs:1047` | `theoCrystal.ExplodeLaunch(...)` | separate (Theo) family |
+
+Two of the four player-facing callers are absent, and both are precisely the ones that take the **default
+`snapUp = true`** - which is the branch that snaps the direction to straight up `(0,-1)`, giving
+`Speed.Y = -280` and then the `Speed.Y <= 50f` clamp to **-150** with `AutoJump = true`. That signature is
+exactly what the +-280 cluster shows, so these two missing triggers are the best candidate for it.
+
+Next: check whether the segments in that cluster sit in rooms that contain a `Seeker` (MirrorTemple,
+Reflection) or a `TempleBigEyeball`, and whether the simulator has entity kinds for them at all - if it does
+not, the fix is a new trigger plus the entity's own behaviour, which is a larger piece of work than the
+one-liners landed so far.
