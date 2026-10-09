@@ -266,6 +266,21 @@ pub struct CassetteManagerSnapshot {
     pub current_index: u8,
     pub max_beat: u8,
     pub tempo_mult: f32,
+    /// `Celeste.Session.Cassette` (`Session.cs:90`) for an A-side chapter: the cassette tape has
+    /// been taken (`Cassette.CollectRoutine`, `Cassette.cs:176`). This is **chapter state, not room
+    /// state**: once it is true the manager is never constructed at all - `Level.ShouldCreateCassetteManager`
+    /// is `!Session.Cassette` for `AreaMode.Normal` (`Level.cs:278-288`) and gates both the
+    /// construction at `Level.cs:657` and `OnLevelStart` at `Level.cs:1355-1358` - so nothing ever
+    /// calls `CassetteBlock.SetActivatedSilently` (`CassetteBlock.cs:392-394`, whose only caller is
+    /// `CassetteBlockManager.SilentUpdateBlocks`, `CassetteBlockManager.cs:197-206`) and every
+    /// `CassetteBlock` keeps the `Collidable = false` its constructor set
+    /// (`CassetteBlock.cs:70-76`).
+    ///
+    /// It sits beside `initialized` rather than on `Simulator` because
+    /// `initialize_cassette_blocks` has to see it on the room-transition path
+    /// (`load_transition_room`, `sim.rs:10148`), where only the snapshot and the map are in hand,
+    /// and because it must survive that re-initialization.
+    pub tape_taken: bool,
 }
 
 impl Default for CassetteManagerSnapshot {
@@ -278,6 +293,7 @@ impl Default for CassetteManagerSnapshot {
             current_index: 0,
             max_beat: 0,
             tempo_mult: 1.0,
+            tape_taken: false,
         }
     }
 }

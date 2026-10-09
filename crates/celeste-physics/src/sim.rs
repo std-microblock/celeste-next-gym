@@ -372,6 +372,39 @@ impl Simulator {
         }
     }
 
+    /// `Celeste.Session.Cassette` (`Cassette.CollectRoutine` writes it, `Cassette.cs:176`): this
+    /// A-side chapter has already taken its cassette tape.
+    ///
+    /// Chapter state, not room state. Once it is true the game never constructs a
+    /// `CassetteBlockManager` for the rest of the chapter: `Level.ShouldCreateCassetteManager` is
+    /// `!Session.Cassette` for `AreaMode.Normal` (`Level.cs:278-288`), which gates both the
+    /// construction at `Level.cs:657` and `OnLevelStart` at `Level.cs:1355-1358`. So
+    /// `CassetteBlock.SetActivatedSilently` (`CassetteBlock.cs:392-394`, whose only caller is
+    /// `CassetteBlockManager.SilentUpdateBlocks`, `CassetteBlockManager.cs:197-206`) is never
+    /// reached and every block keeps the `Collidable = false` its constructor set
+    /// (`CassetteBlock.cs:70-76`).
+    ///
+    /// A trace without the key leaves this false, which reproduces the older behaviour exactly:
+    /// the manager is created and the blocks at the current index are collidable.
+    pub fn set_cassette_taken(&mut self, taken: bool) {
+        self.snapshot.cassette_manager.tape_taken = taken;
+        if !taken {
+            return;
+        }
+        // Run the same initializer the room loads use, so a flag set after `Simulator::new`
+        // leaves the blocks exactly where a room loaded with the tape already taken would be:
+        // parked, non-collidable, and with no manager for `advance_cassette_manager` to advance.
+        initialize_cassette_blocks(&mut self.snapshot, &mut self.runtime_map);
+        // `SetActivatedSilently` is also the only caller of `EnableStaticMovers`
+        // (`CassetteBlock.cs:392-398`), so a block that is never activated never enables the
+        // entities (spikes and the like) attached to it.
+        sync_all_platform_static_movers(
+            &self.snapshot,
+            &mut self.runtime_map,
+            &self.static_mover_attachments,
+        );
+    }
+
     pub fn snapshot(&self) -> &PlayerSnapshot {
         &self.snapshot
     }
@@ -1286,7 +1319,49 @@ fn initialize_cassette_blocks(p: &mut PlayerSnapshot, map: &mut Map) {
         .collect();
     p.cassette_blocks.truncate(block_indices.len());
     if block_indices.is_empty() {
-        p.cassette_manager = crate::CassetteManagerSnapshot::default();
+        p.cassette_manager = crate::CassetteManagerSnapshot {
+            tape_taken: p.cassette_manager.tape_taken,
+            ..crate::CassetteManagerSnapshot::default()
+        };
+        return;
+    }
+
+    // Chapter state, not room state: `Session.Cassette` (`Cassette.cs:176`) is true for the rest of
+    // an A-side once the tape is taken, and then the game constructs no manager at all -
+    // `Level.ShouldCreateCassetteManager` is `!Session.Cassette` for `AreaMode.Normal`
+    // (`Level.cs:278-288`) and gates the construction at `Level.cs:657` and `OnLevelStart` at
+    // `Level.cs:1355-1358`. So nothing ever calls `SetActivatedSilently`
+    // (`CassetteBlock.cs:392-394`, reached only from `CassetteBlockManager.SilentUpdateBlocks`,
+    // `CassetteBlockManager.cs:197-206`) and every block keeps the `Collidable = false` its
+    // constructor set (`CassetteBlock.cs:70-76`), here at its untouched map position.
+    if p.cassette_manager.tape_taken {
+        p.cassette_manager = crate::CassetteManagerSnapshot {
+            tape_taken: true,
+            ..crate::CassetteManagerSnapshot::default()
+        };
+        for (block_index, entity_index) in block_indices.into_iter().enumerate() {
+            let bounds = map.entities[entity_index].bounds;
+            let index = map.entities[entity_index]
+                .direction
+                .x
+                .round()
+                .clamp(0.0, 255.0) as u8;
+            let state = crate::CassetteBlockSnapshot {
+                position: Vec2::new(bounds.x, bounds.y),
+                start: Vec2::new(bounds.x, bounds.y),
+                width: bounds.width,
+                height: bounds.height,
+                index,
+                activated: false,
+                collidable: false,
+            };
+            if block_index == p.cassette_blocks.len() {
+                p.cassette_blocks.push(state);
+            } else {
+                p.cassette_blocks[block_index] = state;
+            }
+            park_entity(&mut map.entities[entity_index]);
+        }
         return;
     }
 
@@ -5214,7 +5289,11 @@ fn advance_cassette_manager(
     map: &mut Map,
     attachments: &[Option<StaticMoverAttachment>],
 ) {
-    if !p.cassette_manager.initialized || p.cassette_manager.max_beat == 0 {
+    // No manager exists once the tape is taken (`Level.cs:278-288`), so the beat clock never runs.
+    if p.cassette_manager.tape_taken
+        || !p.cassette_manager.initialized
+        || p.cassette_manager.max_beat == 0
+    {
         return;
     }
     if p.cassette_manager.startup_music_pending {
@@ -19105,6 +19184,7 @@ mod tests {
                 current_index: 1,
                 max_beat: 2,
                 tempo_mult: 1.0,
+                tape_taken: false,
             },
             ..PlayerSnapshot::default()
         };
@@ -19142,6 +19222,7 @@ mod tests {
                 current_index: 0,
                 max_beat: 2,
                 tempo_mult: 1.0,
+                tape_taken: false,
             },
             ..PlayerSnapshot::default()
         };
@@ -19423,6 +19504,7 @@ mod tests {
                 current_index: 1,
                 max_beat: 2,
                 tempo_mult: 1.0,
+                tape_taken: false,
             },
             ..PlayerSnapshot::default()
         };
@@ -19474,6 +19556,7 @@ mod tests {
                 current_index: 1,
                 max_beat: 2,
                 tempo_mult: 1.0,
+                tape_taken: false,
             },
             ..PlayerSnapshot::default()
         };
@@ -21760,5 +21843,64 @@ mod tests {
         assert!(solid_is_collidable(&simulator.runtime_entities()[0]));
         // Blocked with the 8 px collider's right face flush against x=80.
         assert_eq!(simulator.snapshot().pos.x, 76.0);
+    }
+
+    /// `Session.Cassette` (`Cassette.CollectRoutine`, `Cassette.cs:176`) is chapter state: once the
+    /// tape is taken in an A-side, `Level.ShouldCreateCassetteManager` (`Level.cs:278-288`) is false,
+    /// so the game constructs no `CassetteBlockManager` (`:657`, `:1355-1358`), its
+    /// `SilentUpdateBlocks` -> `SetActivatedSilently` (`CassetteBlockManager.cs:197-206`,
+    /// `CassetteBlock.cs:392-394`) never runs, and every block keeps the `Collidable = false` from
+    /// its constructor (`CassetteBlock.cs:70-76`) however long the room runs.
+    #[test]
+    fn cassette_tape_taken_leaves_no_manager_and_no_collidable_block() {
+        let map = cassette_map();
+        let snapshot = || PlayerSnapshot {
+            pos: Vec2::new(100.0, 60.0),
+            ..PlayerSnapshot::default()
+        };
+
+        // Without the flag nothing changes: the manager exists and the current index is solid.
+        let mut kept = Simulator::new(snapshot(), &map).unwrap();
+        assert!(kept.snapshot().cassette_manager.initialized);
+        assert!(
+            kept.snapshot()
+                .cassette_blocks
+                .iter()
+                .any(|state| state.collidable)
+        );
+        assert!(solid_is_collidable(&kept.runtime_entities()[1]));
+
+        let mut taken = Simulator::new(snapshot(), &map).unwrap();
+        taken.set_cassette_taken(true);
+        assert!(!taken.snapshot().cassette_manager.initialized);
+        assert_eq!(taken.snapshot().cassette_manager.max_beat, 0);
+        assert_eq!(taken.snapshot().cassette_manager.beat_index, 0);
+
+        // Four cassette beats, i.e. past the `(beat_index + 1) % 8 == 0` reform beat the untaken
+        // case raises a block on, and no block may become collidable on any of them.
+        for _ in 0..40 {
+            taken.step(InputState::default()).unwrap();
+            assert!(
+                taken
+                    .snapshot()
+                    .cassette_blocks
+                    .iter()
+                    .all(|state| !state.collidable)
+            );
+            assert_eq!(taken.snapshot().cassette_manager.beat_index, 0);
+        }
+        assert!(
+            taken
+                .snapshot()
+                .cassette_blocks
+                .iter()
+                .all(|state| !state.activated)
+        );
+        assert!(
+            taken
+                .runtime_entities()
+                .iter()
+                .all(|entity| !solid_is_collidable(entity))
+        );
     }
 }
