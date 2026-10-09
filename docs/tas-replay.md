@@ -764,6 +764,17 @@ against this same gate:
   hand-off is the next step, and it is worth checking the other `jumpGraceTimer` writers while there:
   `Player.cs:1584` (ground block, modelled), `:3007` (`StartJumpGraceTime`, whose only vanilla caller
   is `BounceBlock.cs:484`, modelled) and `:5169` (dream-dash exit, modelled).
+
+  **The `:2379` attribution in this entry was wrong and is withdrawn**: that line is inside
+  `Player.HiccupJump`, whose only caller is gated on `SaveData.Instance.Assists.Hiccups`
+  (`Player.cs:1438`), an assist option the TAS does not use. The timer rule itself is `Player.Update`'s
+  common block, `if (onGround) { dreamJump = false; jumpGraceTimer = 0.1f; } else if (jumpGraceTimer >
+  0f) jumpGraceTimer -= Engine.DeltaTime;` (`Player.cs:1581-1589`), and the simulator already mirrors it
+  in the common section of `step` (the same `if p.on_ground` that refreshes `jump_grace_timer`), with a
+  single `tick_timers` call per frame. So the divergence is **not** a missing timer writer: what is
+  left is the *frame* on which each side last saw ground, which the gate cannot compare directly -
+  instrument `player_on_ground` and `jump_grace_timer` per frame for the last twenty frames before the
+  divergence and line them up with the trace's `onGround` per row.
 * **The simulator has no `VirtualButton.consumed` flag.** With `presses_are_effective` the press
   level each frame is now exactly the game's, which retired the four-frame offset; what remains is
   that a press the simulator consumes *inside* a frame (`wall_jump`/`jump`/`begin_dash` zero the
