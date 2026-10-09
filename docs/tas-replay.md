@@ -2316,3 +2316,31 @@ probe**: the game considers the player grounded, the simulator does not. Celeste
 overrides `Actor.OnGround()` and does not simply test the full collider, so the probe rectangle is the prime
 suspect - and that is a read of `Player.OnGround`/`Actor.OnGround` in the vendored source, not another
 instrumented run.
+
+### Correction: the probes are equivalent, so `OnGround` is an unlikely culprit - `noWindTimer` is the better one
+
+Compared the two implementations:
+
+| | implementation |
+| --- | --- |
+| source `Actor.OnGround(downCheck = 1)` (`Actor.cs:134`) | `CollideCheck<Solid>(Position + UnitY * downCheck)`, else `CollideCheckOutside<JumpThru>(Position + UnitY * downCheck)` |
+| simulator `grounded_at_offset(p, map, 1.0)` | `map.solid_at(rect at +1)` or `map.jump_thru_at(that rect, current collider bottom)` |
+
+`Player` does **not** override `OnGround` (the earlier note assumed it did - there is no such method in
+`Player.cs`), and the simulator's version mirrors the source's structure: the same +1 offset, the same
+Solid-then-JumpThru order, and the JumpThru case passing the current bottom, which is what
+`CollideCheckOutside` means. So `OnGround` is a weak candidate for the disagreement, and round 139's
+inference ("the game considers the player grounded") should be treated as unproven.
+
+The better candidate is the guard's **first** clause, which the previous note skipped:
+
+```csharp
+if (JustRespawned || !(noWindTimer <= 0f) || !InControl
+    || StateMachine.State == 4 || StateMachine.State == 2 || StateMachine.State == 10) return;   // Player.cs:3085
+```
+
+`noWindTimer` is set by the wall-jump family, so a frame shortly after a wall jump - which is exactly the
+context here (the player has just left a dash with `wallSpeedRetained` live) - is precisely where the game
+would return and the simulator would push the wind. The next probe should print `p.no_wind_timer` alongside
+the wind push on those frames; that is a one-line check and it discriminates between the two clauses
+directly.
