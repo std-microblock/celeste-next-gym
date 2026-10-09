@@ -2612,3 +2612,41 @@ Two specific places to look, both already visible in the code:
 
 Either way the fix is small and the verification is binary: `--rooms roof07` should take that segment from
 `exact=0` to `exact=6`, and `stalled=true` frames elsewhere should start updating again.
+
+### The `stalled` witness conflates freeze with transition - the trace exports `transitioning` for exactly this
+
+`tas_fidelity.rs:1836` defines the flag the replay uses:
+
+```rust
+stalled[index] = <trace says the engine skipped this frame>
+    && stalled_row_mutates_player(&segment.frames, &truth, index);
+```
+
+and `:1855` acts on it:
+
+```rust
+if stalled[index] && !simulator_frozen { simulator.skip_engine_frame(); }
+```
+
+with `skip_engine_frame` documented as "a caller that replays a row the game skipped must not run a
+`Player.Update` the game never ran". The *intent* is sound and it is why the gate matches freezes at all, but
+the witness (a `Player.StrawberryCollectResetTimer` that did not move) is satisfied by **two** different
+situations:
+
+| situation | engine | player movement in the row |
+| --- | --- | --- |
+| `Celeste.Freeze` | `Scene.Update` skipped entirely | none - so skipping the simulator's update is right |
+| room **transition** | `Level.Update` runs its transition work and entities update | **real** - `roof07` rows 42489-42494 advance the player one pixel per frame |
+
+In the second case the flag fires and the simulator is told to skip, which is why its `freeze_timer` sits at
+DT forever and the player never moves while the game creeps. `roof07` is that case: `transitioning = true`,
+`freezeTimer = 0`, `stalled=true` in the same row.
+
+The fix therefore belongs at that guard, and the discriminator the trace already carries is
+`transitioning` (exported as a top-level key and used elsewhere in the harness). A transition row must not be
+treated as a skipped row; if plumbing that key into the comparison is more than a line, the simulator's own
+transition state is an equivalent signal, since the harness restores it.
+
+A first attempt at the guard (`&& !stalled_row_mutates_player(...)`) was wrong twice over: the predicate is
+already folded into `stalled` at `:1836`, and the call site's frame collection is `segment.frames`, not
+`frames`, so it did not compile. Reverted; tree rebuilt.
