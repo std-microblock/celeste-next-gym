@@ -1064,3 +1064,11 @@ Not yet done: the gate has not been run against the v6b traces. Expect per-segme
 baselines (the gate ignores unknown keys), but `crates/` has been owned by the `dashSwitchH/V` workstream
 since round 47, so the run is queued behind it - measuring then would only measure that half-finished
 tree.
+
+### The v6b trace is validated and now canonical
+
+`trace-202-v6b.jsonl` (which carries `flags`) replays to `511 ok / 159,351 frames / 158,364 exact`
+against the v5 baseline's `511 / 159,350 / 158,363`: `improved=1, identical=1467, regressed=0`. The
+one-frame difference is the game's own run-to-run variance, not the new key - the gate ignores unknown
+fields, so the added array cannot perturb it. The v6b traces therefore supersede v5 as ground truth, and
+they are the ones to read `flags` from.
