@@ -3198,3 +3198,20 @@ Fix sketch: give the Puffer per-entity state (`state` + `cant_explode_timer`, se
 down while not `Gone`), add the `state != Gone && cant_explode_timer <= 0` guard to both the collide path and
 the launch, and keep the existing `2.5` s gone timer as `bounce_reuse_timer`'s sibling. That is small: one
 field pair, one decrement site and one guard, all at an already-modelled entity.
+
+### Seeker work: inert on 202 by two independent implementations - not landing
+
+The `seeker` workstream's own after-run on `trace-202-v7.jsonl` is byte-identical to master's
+(`0 / 1468 / 0`, `520 / 161,355 / 160,387`), which matches what my discarded interim patch measured
+(`0 / 1468 / 0`). Two independent implementations of the Seeker regeneration push-away therefore agree that
+the path is inert on this corpus.
+
+Combined with round 184's entity-distribution measurement - Seekers exist only in `5-MirrorTemple` and
+`LostLevels`, `6-Reflection` has none, and in MirrorTemple no segment's first mismatch is a `StLaunch` - the
+work's motivating hypothesis is dead, and landing it would add an unverified timing approximation
+(the coroutine phase chain) for no measurable gain. The branch `seeker` keeps the work as a record
+(checkpoints `98c9968`, `33f0ef8`); `master` stays as is. The workstream has been stopped so the machine is
+free for the Puffer work, which is the live candidate.
+
+That is the third time in this session that a signature-based hypothesis was retired by counting entities or
+by measuring inertness rather than by landing a plausible-looking fix.
