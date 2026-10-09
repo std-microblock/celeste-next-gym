@@ -1228,3 +1228,44 @@ The following-line discriminator plus `\r?\n` is what makes it unique; plain str
 `[char]10` anchors both failed here. Everything else in the change was already proven to compile: the
 `Map` struct field, the manual `Default` (`:286`), and the two exhaustive literals in
 `map_fixture.rs:155` and `playground.rs:8`.
+
+### `dashSwitch_<room>:<id>` is now consumed, and it is inert on all three traces (measured)
+
+`persistent` was already decoded (`804cb39`, `map.rs:2058` carries it in `single_use`, and
+`celeste_dash_switches_decode_with_source_colliders` asserts the round-trip); what was missing was the
+consumer. `DashSwitch.Awake` (`DashSwitch.cs:124-149`) short-circuits when the session flag is set:
+`Position = pressedTarget - pressDirection * 2f`, `pressed = true`, `Collidable = false`. That is the
+state `OnDashed` itself leaves behind (`:203-205`), so the switch is simply *not a Solid* at the
+anchor, which is what `park_entity` models for every other collidable-flag Solid. The new
+`Simulator::set_pressed_dash_switches(ids)` (the harness filters `"dashSwitch_<room>:"` out of the
+anchor row's `flags`, the same way it already reads `switches_<room>` and
+`oshiro_clutter_cleared_*`) parks exactly the entities whose `map.entity_ids[i]` is named *and* whose
+`single_use` (i.e. `persistent`) is set.
+
+**Measured: `202 0 improved / 1468 identical / 0 regressed`, `100pct 0 / 918 / 0`, `1a 0 / 20 / 0`,
+with every total byte-identical to the baselines (`511 / 159,350 / 158,363`, `334 / 95,613 / 95,012`,
+`16 / 2,129 / 2,125`), 341 lib tests green.** The flags are real (9 distinct keys, 135,590 rows of
+`trace-202-v7`: `b-00:15`, `a-00:16`, `b-11:15`, `b-13:56`, `a-08:12`, `b-08:231`, `d-15:218`,
+`a-12:288`, `a-05:30`; 1a's v5 trace has no `flags` key at all), and the ids were checked against the
+real `.bin` attributes. The restore is *not* dead code: an env-gated print showed it firing on 9
+segments of the 202 trace (`a-12|60158`, `a-12|60680`, `a-08|60869`, `a-05|63301`, `b-13|68402`,
+`b-11|68493`, `b-11|68702`, `d-15|78627`, `d-15|78905`), and at `d-15` only id 218 of the room's
+218/219 pair is named by the flag. So the mechanism runs and moves nothing: in those windows the
+already-pressed button's old 8x16/16x8 box is never probed by the player's collision, and a press
+that happens *inside* a window was already handled by `on_dash_collide`. Landed as a faithful
+transcription plus two real unit tests, exactly like the `CanUnDuck` round.
+
+Two things it deliberately does not do, so nobody "adds" them later:
+
+* **The gate half of `Awake` is a no-op here, not a missing feature to invent.** `StartOpen`
+  (`TempleGate.cs:146-151`) is `SetHeight(0); open = true`, and `initialize_temple_gates` already
+  starts *every* gate at `current_height == 0` / `open == true`; the simulator's only gate transition
+  is `close_temple_gate`. `TempleGate.SwitchOpen`'s 0.4 s alarm before the collider collapses
+  (`:124-132`) is **not implemented at all**, so it is not claimed here - and `allGates` is not
+  decoded, because it only chooses *which* gates `Awake` opens. The real gap runs the other way: a
+  `NearestSwitch` gate that is still closed in the game is already open in the simulator, because the
+  gate `type` is not decoded either.
+* **A v5 trace has no anchor restore for a dash switch.** `flags` is the only witness of a press that
+  happened before the window, and nothing carries it the way `SWITCH_ROOM` carries
+  `switches_<room>` for v5. On the current gates that costs nothing (1a has no dash switch, and
+  202/100pct are v7).

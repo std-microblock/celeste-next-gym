@@ -352,6 +352,54 @@ impl Simulator {
         self.clutter_cleared = cleared;
     }
 
+    /// Restore the `dashSwitch_<room>:<id>` session flags (`DashSwitch.cs:255-258`) the anchor row
+    /// carries, for the *persistent* dash switches of the room now being replayed.
+    ///
+    /// `ids` are the `EntityID.ID`s (`EntityID.cs:18-30`) whose flag is already set. The room half
+    /// of the key stays with the caller because a [`Map`] carries no room name - and the flag is
+    /// per session, not per entity, so the trace's `flags` array is its only witness.
+    ///
+    /// `DashSwitch.Awake` (`DashSwitch.cs:124-149`) short-circuits on the flag: it plays the pushed
+    /// sprite, puts the switch at `pressedTarget - pressDirection * 2f` and sets `Collidable =
+    /// false`. That is the state `OnDashed` itself leaves behind (`:203-205`), so the whole
+    /// observable effect is "this Solid is not there", which is what `park_entity` models for
+    /// `ExitBlock`, `InvisibleBarrier`, `CassetteBlock` and `FallingBlock` - and what the
+    /// in-replay press already does for the same entity kind.
+    ///
+    /// The `TempleGate`s `Awake` would `StartOpen` (`:135-148`) need nothing here:
+    /// `initialize_temple_gates` already starts every gate at `current_height == 0` / `open ==
+    /// true`, which is exactly `StartOpen`'s `SetHeight(0); open = true` (`TempleGate.cs:146-151`),
+    /// and the simulator's only gate transition is `close_temple_gate`. `SwitchOpen`'s 0.4 s alarm
+    /// before the collider collapses (`TempleGate.cs:124-132`) is not modelled at all, so it is not
+    /// invented here either; `allGates` is therefore not decoded either - it only chooses *which*
+    /// gates `Awake` opens, and opening is a no-op.
+    pub fn set_pressed_dash_switches(&mut self, ids: &[i32]) {
+        if ids.is_empty() {
+            return;
+        }
+        let pressed: Vec<usize> = self
+            .runtime_map
+            .entities
+            .iter()
+            .enumerate()
+            .filter(|(index, entity)| {
+                // `persistent` (`DashSwitch.cs:106`) is the only switch flag a press can restore,
+                // and it is carried in `single_use` like `CoreModeToggle`'s.
+                entity.kind == EntityKind::DashSwitch
+                    && entity.single_use
+                    && self
+                        .runtime_map
+                        .entity_ids
+                        .get(*index)
+                        .is_some_and(|id| ids.contains(id))
+            })
+            .map(|(index, _)| index)
+            .collect();
+        for index in pressed {
+            park_entity(&mut self.runtime_map.entities[index]);
+        }
+    }
+
     /// `ClutterBlockBase.Deactivate` (`ClutterBlockBase.cs:46-51`) plus
     /// `ClutterSwitch.BePressed`'s ten-pixel drop (`ClutterSwitch.cs:86-87`).
     fn clear_clutter_color(&mut self, color: usize) {
@@ -21760,5 +21808,78 @@ mod tests {
         assert!(solid_is_collidable(&simulator.runtime_entities()[0]));
         // Blocked with the 8 px collider's right face flush against x=80.
         assert_eq!(simulator.snapshot().pos.x, 76.0);
+    }
+
+    /// A `dashSwitchH` with `persistent` (`DashSwitch.cs:106`) and the map `id` its session flag
+    /// would be keyed by (`EntityID.cs:18-30`).
+    fn persistent_dash_switch_map() -> Map {
+        let mut map = dash_switch_map(Vec2::new(1.0, 0.0));
+        map.entities[0].single_use = true;
+        map.entity_ids = vec![16];
+        map
+    }
+
+    /// `DashSwitch.Awake` (`DashSwitch.cs:124-149`): a persistent switch whose
+    /// `dashSwitch_<room>:<id>` flag is already set comes back pushed - `Position =
+    /// pressedTarget - pressDirection * 2f`, `Collidable = false` - so it is *not* a Solid when the
+    /// segment starts, and the same rightward dash that presses a fresh button runs straight
+    /// through this one.
+    #[test]
+    fn persistent_dash_switch_with_the_session_flag_set_starts_pressed() {
+        let map = persistent_dash_switch_map();
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 106.0),
+            on_ground: true,
+            dashes: 1,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = [InputState {
+            move_x: 1,
+            ..InputState::default()
+        }; 16];
+        inputs[0].dash_pressed = true;
+
+        let mut restored = Simulator::new(p.clone(), &map).unwrap();
+        restored.set_pressed_dash_switches(&[16]);
+        assert!(
+            !solid_is_collidable(&restored.runtime_entities()[0]),
+            "the flag's switch must start non-collidable"
+        );
+        for input in &inputs {
+            restored.step(*input).unwrap();
+        }
+        assert!(
+            restored.snapshot().pos.x > 88.0,
+            "the player must run through the already-pressed button, got x={}",
+            restored.snapshot().pos.x
+        );
+
+        // Without the flag the same setup is the ordinary collidable button.
+        let mut fresh = Simulator::new(p, &map).unwrap();
+        fresh.set_pressed_dash_switches(&[]);
+        assert!(solid_is_collidable(&fresh.runtime_entities()[0]));
+    }
+
+    /// The restore is keyed by `EntityID.ID`, and only a `persistent` switch can ever be named by a
+    /// `dashSwitch_*` flag (`DashSwitch.cs:223-226` writes it only under `persistent`), so neither a
+    /// non-persistent switch nor a persistent one with a different id may be pressed by the flag.
+    #[test]
+    fn dash_switch_flag_only_presses_the_persistent_switch_it_names() {
+        let mut non_persistent = dash_switch_map(Vec2::new(1.0, 0.0));
+        non_persistent.entity_ids = vec![16];
+        let mut simulator = Simulator::new(PlayerSnapshot::default(), &non_persistent).unwrap();
+        simulator.set_pressed_dash_switches(&[16]);
+        assert!(
+            solid_is_collidable(&simulator.runtime_entities()[0]),
+            "a non-persistent switch never writes a session flag"
+        );
+
+        let persistent = persistent_dash_switch_map();
+        let mut simulator = Simulator::new(PlayerSnapshot::default(), &persistent).unwrap();
+        simulator.set_pressed_dash_switches(&[15]);
+        assert!(
+            solid_is_collidable(&simulator.runtime_entities()[0]),
+            "a flag naming another id must not press this switch"
+        );
     }
 }
