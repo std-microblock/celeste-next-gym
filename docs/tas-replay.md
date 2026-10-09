@@ -770,11 +770,16 @@ against this same gate:
   (`Player.cs:1438`), an assist option the TAS does not use. The timer rule itself is `Player.Update`'s
   common block, `if (onGround) { dreamJump = false; jumpGraceTimer = 0.1f; } else if (jumpGraceTimer >
   0f) jumpGraceTimer -= Engine.DeltaTime;` (`Player.cs:1581-1589`), and the simulator already mirrors it
-  in the common section of `step` (the same `if p.on_ground` that refreshes `jump_grace_timer`), with a
-  single `tick_timers` call per frame. So the divergence is **not** a missing timer writer: what is
-  left is the *frame* on which each side last saw ground, which the gate cannot compare directly -
-  instrument `player_on_ground` and `jump_grace_timer` per frame for the last twenty frames before the
-  divergence and line them up with the trace's `onGround` per row.
+  in the common section of `step`.
+
+  **The trace exports `jumpGraceTimer`**, which settles the whole question and replaces the guesswork
+  above with data: on row 209880 the game has `onGround = true` and `jumpGraceTimer = 0` at the end of
+  the frame - exactly what the ground block setting 0.1 and then `SuperJump()` consuming and zeroing it
+  produces. So the coyote time was **zero on both sides**; what differs is the ground contact. The
+  simulator's probe prints `pos=(12811.0,-11720.0) speed=(-275.17,0.00) state=Dash probed=false
+  was=false grace=0.00000 duck=false` while the game's row has the player at **y = -11722** and
+  `onGround = true`. Two pixels of floor contact, not a timer: compare the room's tiles under
+  `(12816, -11722)` in `7H-Summit.bin` `g-00` next.
 * **The simulator has no `VirtualButton.consumed` flag.** With `presses_are_effective` the press
   level each frame is now exactly the game's, which retired the four-frame offset; what remains is
   that a press the simulator consumes *inside* a frame (`wall_jump`/`jump`/`begin_dash` zero the
