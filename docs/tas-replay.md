@@ -2650,3 +2650,25 @@ transition state is an equivalent signal, since the harness restores it.
 A first attempt at the guard (`&& !stalled_row_mutates_player(...)`) was wrong twice over: the predicate is
 already folded into `stalled` at `:1836`, and the call site's frame collection is `segment.frames`, not
 `frames`, so it did not compile. Reverted; tree rebuilt.
+
+### Correction: the skip guard already required `!simulator_frozen`, so the transition change is a no-op - and the timer is not decrementing
+
+Applied the transition discriminator to the guard (`engine_skipped = stalled[index] &&
+!matches!(frame.transitioning, Some(true))`) and re-ran the `--rooms roof07` slice: `exact` stayed 0 and
+`frames` stayed 6, i.e. **no change at all**. The reason is in the guard itself:
+
+```rust
+if stalled[index] && !simulator_frozen { simulator.skip_engine_frame(); }
+```
+
+`simulator_frozen` was already **true** on those frames (the dump shows `freeze=0.01667`), so the second
+conjunct was false and the call never fired. Adding the transition term could not change anything, and the
+simulator's stuck timer has a different source. The edit is reverted rather than committed - a measured no-op
+is not worth a commit even when the reasoning behind it is sound.
+
+The sharper fact is the one the dump already carried: the timer sits at **exactly DT and never decreases**.
+Its own freeze branch subtracts one `DT` per frame (`p.freeze_timer = (p.freeze_timer - DT).max(0.0)`), so
+0.01667 would reach 0 in a single frame - unless that branch is not reached, or the frame's
+`p.frame_delta_time` is 0, or the value is re-set every frame by something else. So the next probe belongs
+on the freeze branch itself: print `p.freeze_timer` immediately before and after the decrement (and
+`p.frame_delta_time`) for rows 42488-42496, and find out whether the branch runs and what it subtracts.
