@@ -2805,3 +2805,26 @@ The variant itself is documented well enough to rebuild if it turns out to be wa
 the 1.2x grounded-ultra branch (`sim.rs:7718`) needs to become a "downward move was blocked this frame" signal
 taken from the collision path, and the ceiling case in `Player.WindMove` needs the source's response rather
 than `move_axis_amount`'s.
+
+### FOUND, by the ceiling workstream: `WindMove`'s moves have a null collide callback
+
+The agent's own comment, from the checkpoint `0253a72` on branch `ceiling` (34 lines, `sim.rs` only):
+
+> `Player.WindMove` moves with `MoveH(move.X)` / `MoveV(move.Y)` (`Player.cs:3107`, `:3132`), both with the
+> default `onCollide = null` (`Actor.cs:186-208`). `MoveVExact`/`MoveHExact` still probe
+> `CollideFirst<Solid>` and still clear `movementCounter` on the blocked step (`Actor.cs:220`, `:249`), but
+> `onCollide?.Invoke(...)` is skipped, so `Player.OnCollideH`/`Player.OnCollideV` never run and `Speed` is
+> left untouched.
+
+That is the missing link in the updraft chain: an upward wind step that is blocked by a ceiling does **not**
+zero `Speed.Y` in the game, while `move_axis_amount` (which always runs the collide path) does zero it in the
+simulator - which is exactly the 7.5 -> 0 that started this investigation. The implementation adds
+`move_axis_amount_inner(..., collide: bool)` and a `move_axis_amount_silent` wrapper used by the wind.
+
+Its measurements before reverting were clean on two traces: 202 `7 / 1461 / 0` with frames
+`160,183 -> 161,253`, 100pct `5 / 913 / 0` with `96,228 -> 97,083`; the third trace (1a) had no report, and
+the agent reverted before committing. **The checkpoint `0253a72` preserves the work**, so the remaining step
+is just: run the three traces (1a included) on that branch and merge if all three are `regressed=0`.
+
+This is also the concrete instance of the checkpoint rule added above - the work would otherwise have been
+lost twice.
