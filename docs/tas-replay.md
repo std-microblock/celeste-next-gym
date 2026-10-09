@@ -3215,3 +3215,28 @@ free for the Puffer work, which is the live candidate.
 
 That is the third time in this session that a signature-based hypothesis was retired by counting entities or
 by measuring inertness rather than by landing a plausible-looking fix.
+
+### Puffer work: an unexplained `E0119`, and a claim in this log that needs re-checking
+
+Attempted the first half of the Puffer fix (add `PufferSnapshot`, a `puffers: Vec<...>` field and its manual
+`Default` entry to `types.rs`). The build failed with
+
+```
+error[E0119]: conflicting implementations of trait `Clone` for type `PufferSnapshot`
+error[E0119]: conflicting implementations of trait `Debug` for type `PufferSnapshot`
+error[E0119]: conflicting implementations of trait `StructuralPartialEq` for type `PufferSnapshot`
+error[E0119]: conflicting implementations of trait `PartialEq` for type `PufferSnapshot`
+```
+
+which is exactly the derive list my patch inserted - as if the type already existed. The revert ran, and a
+re-check of the *restored* file finds **no** `PufferSnapshot`, `puffers` or `cant_explode` anywhere in
+`types.rs` **or** `sim.rs`. So the failure is explained neither by a pre-existing definition nor by a double
+insertion in that patch (the replacement text contains the anchor once), and I am recording it as unexplained
+rather than guessing. The next attempt should grep for `PufferSnapshot` and insert only if it is absent, and
+should add the type **without** derives first, letting the compiler ask for what it needs.
+
+Related correction: the earlier note said "the simulator models **no** Puffer state, grep for `cant_explode`,
+`gone_timer`, `PufferSnapshot` in `sim.rs` and `types.rs` returns nothing". That grep in fact covered `sim.rs`
+only, and this round's re-check of both files still finds nothing - so the conclusion may well stand, but the
+claim was made from weaker evidence than it stated and should be re-verified before the fix is designed around
+it. Nothing in `crates/` is modified right now.
