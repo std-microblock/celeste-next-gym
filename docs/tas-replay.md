@@ -2177,3 +2177,30 @@ of the next** - i.e. in the early part of `step`, in the input/timer region betw
 are both 0 / still counting at those frames, so neither block is obviously the culprit; the next probe
 should print `speed.y` at a few points inside that region (after the input buffers, after the force-move
 handling, after the wind controller) to name the write.
+
+### Ordered HEAD/TAIL log: the 7.5 is lost between the frame tail and the next frame's ground check
+
+Both probes in **one** binary and one run (so the ordering is exact - the previous note compared two
+separate runs, which left the gap imprecise):
+
+```
+TAIL pos=(26084,-19082) vy=0.0000 state=Normal vj=0.0000 da=0.1167   <- end of row 135318's frame
+HEAD pos=(26084,-19082) vy=0.0000 state=Normal vj=0.0000 da=0.1000   <- start of the next frame
+TAIL pos=(26082,-19082) vy=7.5000 state=Normal vj=0.0000 da=0.1000   <- end: gravity applied, matches the game
+HEAD pos=(26082,-19082) vy=0.0000 state=Normal vj=0.0000 da=0.0833   <- start of the next frame: 0, not 7.5
+TAIL pos=(26080,-19082) vy=7.5000 state=Normal vj=0.0000 da=0.0833   <- end: 7.5 where the game has 15
+```
+
+The `TAIL` probe sits on the last statement of each `step` branch (`p.on_ground = grounded(p, map);`
+followed by `Ok(())`), so the loss is strictly inside `step`'s opening region, `sim.rs:6637-6826`, before
+the ground check. Within that region the only direct write to `p.speed` is the death/respawn path at
+`:6699` (`if p.dead { ... p.speed = Vec2::default(); ... }`), which does not apply here - so the value is
+lost **through a called function**, most plausibly an `end_dash`-style restore that writes `speed` from a
+snapshot (`before_dash_speed`) or a state-entry helper.
+
+Also noted, independently: `dash_attack_timer` decrements only on every second frame in this window
+(0.1167 -> 0.1000 -> 0.1000 -> 0.0833), which is odd in `StNormal` where the source only decrements it
+inside `DashUpdate`; that may be a second, separate frame-placement difference worth checking later.
+
+Next probe: print `p.speed.y` just before and just after the calls in that region (the input-buffer block
+ends at `:6691`, and the region ends at the ground check) so the losing call is named in one iteration.
