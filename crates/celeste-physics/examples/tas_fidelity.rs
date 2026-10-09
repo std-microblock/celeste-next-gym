@@ -1832,8 +1832,38 @@ fn replay(
                 _ => outcome.stall_frozen_entity_frames += 1,
             }
         }
-        let frozen_mutation =
-            stalled[index] && stalled_row_mutates_player(&segment.frames, &truth, index);
+        // `Level.Transitioning` is the one bit that separates the two mechanisms a
+        // stalled row can come from, and only the trace carries it: on a
+        // `Celeste.Freeze` row nothing moves at all, while a transition row is a
+        // frame the game *does* move the player on - `Level.Update` runs the
+        // transition coroutine, which calls `Player.TransitionTo`
+        // (`Level.cs:1569`) once per engine frame and never runs `Player.Update`.
+        // Such a row is therefore not an engine-skipped frame, and the simulator
+        // reproduces it with its own transition model
+        // (`Simulator::resume_transition` -> `update_transition`). Without the
+        // split the simulator is told to skip a row the game moved the player on
+        // and then stands still while the game creeps one pixel per frame
+        // (`3-CelestialResort|0|roof07|42489`, `|296596`).
+        //
+        // The stalled witness still has to hold: `Level.Transitioning` turns true
+        // on the frame `TransitionRoutine` is *created* - inside the
+        // `Player.Update` that ran `Level.EnforceBounds` - while Monocle only
+        // resumes a fresh coroutine on the next `Update`, so the transition's
+        // first row is an ordinary `Player.Update` row. It is also the last row of
+        // the segment for the room being left, which is why gating on the bit
+        // alone cost every room-change segment its final frame.
+        let trace_transition = stalled[index] && matches!(frame.transitioning, Some(true));
+        // A stalled transition row is *not* a row the simulator structurally
+        // cannot reproduce: it is exactly what `update_transition` models, so it
+        // is compared like any other row instead of being counted as a frozen
+        // mutation and skipped. Only rows with no transition running keep that
+        // exemption - `Player.StartCassetteFly` and the other
+        // `Tags.FrozenUpdate` writers (`Level.FrozenOrPaused`,
+        // `Level.cs:1837-1868`) still drive the player with no coroutine the
+        // simulator replays.
+        let frozen_mutation = stalled[index]
+            && !trace_transition
+            && stalled_row_mutates_player(&segment.frames, &truth, index);
         // The trace says `Player.Update` did not run on this engine frame
         // (`Level.Transitioning` transition coroutine or `Celeste.Freeze`).
         // The simulator must therefore skip its own player update this frame,
@@ -1846,13 +1876,23 @@ fn replay(
                 first_freeze_disagreement = Some(offset);
             }
         }
+        let delta = frame.raw_dt.unwrap_or(frame.dt);
+        if trace_transition {
+            simulator.resume_transition(delta as f32);
+        } else if matches!(frame.transitioning, Some(false)) {
+            // The game's coroutine is over. The simulator's own clock can still be
+            // running it (a transition armed mid-window starts later than the
+            // game's), and a live transition would make this frame take the
+            // transition branch instead of the `Player.Update` the game ran.
+            simulator.finish_transition();
+        }
         // `Engine.FreezeTimer` is not a `Player` field, so the trace cannot
         // export the freeze that started inside the anchor row (for example
         // `Player.DashBegin` -> `Celeste.Freeze(0.05f)`, or a collected
         // `Refill`). The stalled row is the only witness, and without this the
         // simulator runs a `Player.Update` the game skipped and then compares
         // its freshly computed fields against the game's frozen ones.
-        if stalled[index] && !simulator_frozen {
+        if !trace_transition && stalled[index] && !simulator_frozen {
             simulator.skip_engine_frame();
         }
         // A `ClutterSwitch` press inside a replayed frame: the ground truth
@@ -1861,7 +1901,6 @@ fn replay(
         if let Some(resting) = clutter_press_rect(frame) {
             simulator.press_clutter_switch(resting);
         }
-        let delta = frame.raw_dt.unwrap_or(frame.dt);
         let input = frame.input.to_input_state(bits_of(delta));
         let before = simulator.snapshot().clone();
         match simulator.step(input) {
