@@ -751,6 +751,19 @@ against this same gate:
     the Summit intro segments' missing piece is not `PreviousState` either. Stop inferring it from the
     metric: print `intro_phase` at the divergence for one of them (`--rooms g-00`) and read which
     phase the simulator actually chose.
+* **The next divergence behind the Summit intro is a missing coyote-time extension, and it is
+  identified down to the line.** `7-Summit|1|g-00|209548` now replays 328 frames (46 before the two
+  fixes above) and stops at a `SuperJump`: the trace's inputs there are `jump=true, jumpP0=true,
+  mx=+1` and the game's speed becomes `(260, -105)`, which is `Player.SuperJump`'s
+  `SUPER_JUMP_H`/`JumpSpeed` pair. An env-gated print inside `dash_jump` shows the simulator refusing
+  it with `jump=true unduck=true dashdir=(-1,0) grace=0.00000 wallR=false wallL=false` - so the only
+  thing missing was the coyote time. `Player.cs:2379` is where the game extends it:
+  `if (jumpGraceTimer > 0f) jumpGraceTimer = 0.6f;`, inside the `TransitionTo` interlude that also
+  sets `AutoJump`, `varJumpSpeed = -60f` and `varJumpTimer = 0.15f` for a room hand-off that carries a
+  jump intro. `update_transition` instead *zeroes* it (`p.jump_grace_timer = 0.0;`). Mirroring that
+  hand-off is the next step, and it is worth checking the other `jumpGraceTimer` writers while there:
+  `Player.cs:1584` (ground block, modelled), `:3007` (`StartJumpGraceTime`, whose only vanilla caller
+  is `BounceBlock.cs:484`, modelled) and `:5169` (dream-dash exit, modelled).
 * **The simulator has no `VirtualButton.consumed` flag.** With `presses_are_effective` the press
   level each frame is now exactly the game's, which retired the four-frame offset; what remains is
   that a press the simulator consumes *inside* a frame (`wall_jump`/`jump`/`begin_dash` zero the
