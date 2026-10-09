@@ -2459,3 +2459,30 @@ to be something that **re-applies one pixel every frame** - the shape of a per-f
 correction (`Player.cs:3288-3308` has such loops, though they are written for the dash states) or a
 per-frame bounds push. The trace's `collider` field is the right instrument: `[8231,...]` at row 42494 and
 `[8232,...]` from 42495 onward pins the transition to the frame where the left edge reaches the bound.
+
+### The source's clamp is a hard set, so the roof07 +1 is not `EnforceBounds` - and `vx` is frozen
+
+Read the left-bound branch (`Level.cs:2741-2748`):
+
+```csharp
+if (player.Top >= bounds.Top && player.Bottom < bounds.Bottom
+    && Session.MapData.CanTransitionTo(this, player.Center - UnitX * 8f)) { ... NextLevel ...; return; }
+player.Left = bounds.Left;      // hard set, no creep
+player.OnBoundsH();
+```
+
+So the clamp teleports the left edge onto the bound; it cannot produce a +1-per-frame creep, and round 145's
+attribution to `EnforceBounds` is withdrawn.
+
+The sharper observation is in the `vx` column itself: across rows 42489-42495 `vx` is **constant** at
+323.333 (then 323.000). A player actually running `NormalUpdate` would have its `vx` changed by friction or
+acceleration every frame, so the player is **not** being updated normally during those frames while its
+position still advances by exactly one pixel per frame - which is the shape of a **frozen/cutscene window**
+in which something else nudges the player, and where the stored state name (`StNormal`) says nothing about
+what is running. That also makes the segment's `leadingSkippedFrames=1` / `stalledFrames=57` less surprising:
+this window is special, not ordinary gameplay.
+
+So the next question is not about bounds at all: what advances a player by one pixel per frame while its
+speed is held constant in `3-CelestialResort`'s rooftop room? Candidates are the rooftop cutscene's camera
+pan with the player attached, a `DummyWalkTo`-style scripted walk, or a `Player.Update` early-out that still
+runs one exact move.
