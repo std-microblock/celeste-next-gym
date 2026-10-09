@@ -3307,3 +3307,36 @@ its **new** tail - offset 1196 / row 135684 has `gameCounter.y = 0.45838` agains
 positions still equal, and the following row has `pos.y` off by one (`-19385` vs `-19386`) with speeds in
 agreement. That is the cheapest next target: a vertical movement-counter difference in an updraft room, one
 frame before a one-pixel position difference.
+
+### g-01 new tail: a bounce whose vertical movementCounter the simulator clears and the game keeps
+
+Dump of `7-Summit|0|g-01|134447` around the new divergence:
+
+```
+offset=1195  gameCounter=(-0.43004, 0.37504)  rustCounter=(-0.43004, 0.37504)   identical
+offset=1196  gameCounter=( 0.29774, 0.45838)  rustCounter=( 0.29774, 0.00000)   y differs
+             gameMove   =( 1.72778,-1.91666)  rustMove   =( 1.72778,-2.37504)   differ by 0.45838
+             gameSpeed  =( 0.00000,-185.00000) rustSpeed =( 0.00000,-185.00000)  identical
+             gamePos    == rustPos            =(26363,-19382)                   identical
+offset=1197  gamePos=(26363,-19385)           rustPos=(26363,-19386)           1 px apart
+```
+
+Readings:
+
+- `-185` is `SuperBounce`'s speed, and both sides already agree on it at offset 1196, so a bounce happened
+  on that frame on both sides;
+- the positions agree too, but the **vertical movement counter** does not: the game carries a `0.45838`
+  fraction out of the frame while the simulator has cleared it, and the difference between the two `Move`
+  totals is exactly that same `0.45838`. So the simulator **zeroed a remainder the game kept** - the signature
+  of a blocked move whose collide path clears `movementCounter` (`Actor.cs:220`/`:249`), which is exactly what
+  `move_axis_amount` does when it reports `collided`;
+- one frame later that becomes a one-pixel position difference, and nothing else diverges.
+
+This is very likely the third instance of the class the wind workstream listed as deliberately untouched:
+"same class, NOT exercised by these traces" - `SuperBounce`/`SideBounce` `MoveV` (`sim.rs` around
+`11348/11367/11378`), the `JumpThru` assist (`:7032`) and `MoonLanding`. The wind fix showed the shape: those
+source moves call `MoveV`/`MoveH` **without** a collide callback, so a blocked whole-pixel step clears
+`movementCounter` but must **not** run the `OnCollide` response. Here the remainder is being cleared
+differently between the two sides, so the next step is to read `Player.SuperBounce`/`SideBounce` and the
+simulator's bounce path and compare which one clears the counter - the fix is likely the same
+`move_axis_amount_silent`-style split already landed for the wind.
