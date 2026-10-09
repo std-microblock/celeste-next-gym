@@ -3047,3 +3047,31 @@ Next: check whether the segments in that cluster sit in rooms that contain a `Se
 Reflection) or a `TempleBigEyeball`, and whether the simulator has entity kinds for them at all - if it does
 not, the fix is a new trigger plus the entity's own behaviour, which is a larger piece of work than the
 one-liners landed so far.
+
+### The missing `ExplodeLaunch` is `Seeker.RegenerateCoroutine`'s final push-away
+
+The source site (`Seeker.cs:1028-1048`):
+
+```csharp
+private IEnumerator RegenerateCoroutine() {
+    yield return 1f;                       // 1.00 s
+    shaker.On = true;
+    yield return 0.2f;                     // 0.20 s
+    sprite.Play("pulse");
+    yield return 0.5f;                     // 0.50 s
+    sprite.Play("recover");
+    RecoverBlast.Spawn(Position);
+    yield return 0.15f;                    // 0.15 s
+    base.Collider = pushRadius;
+    Player player = CollideFirst<Player>();
+    if (player != null && !base.Scene.CollideCheck<Solid>(Position, player.Center))
+        player.ExplodeLaunch(Position);    // snapUp defaults to true
+    ...
+}
+```
+
+So the missing trigger is a **regeneration coroutine**: after a Seeker is hit it enters state 4 (Stunned), regenerates over roughly 1.85 s of yields, and at the end - if the player is still inside its `pushRadius` and no solid sits between the Seeker and the player's centre - it launches the player away. The simulator's state-4 handling (`sim.rs:3194-3202`) only counts `state_timer` down and returns to state 0, so the whole coroutine is skipped and the launch never happens. That is why the +-280 signature appears in Seeker rooms (`5-MirrorTemple`, `6-Reflection`) and `ExplodeLaunch`'s `snapUp` default of true matters: the launch snaps to straight up, giving `Speed.Y = -280` clamped to `-150` with `AutoJump`.
+
+Implementation sketch: give `SeekerSnapshot` the coroutine phases (the 1.0 / 0.2 / 0.5 / 0.15 s yields are expressible in `state_timer` values, as other states already do), then at the final phase set `collider = pushRadius`, test the player overlap and the solid-between check, and call `explode_launch(p, input, seeker.position, true, false)` - i.e. with the source's default `snapUp = true`, which is precisely the branch the simulator has never exercised.
+
+`TempleBigEyeball` (`TempleBigEyeball.cs:66`) is the other `snapUp = true` caller and has **no** entity kind in the simulator at all, so it is a larger piece of work; the Seeker is the one to do first because the entity, its states, its stun and its bounce are already modelled.
