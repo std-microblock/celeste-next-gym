@@ -1660,3 +1660,27 @@ Two things stand out:
 
 Next: print the writer's assignment (the frame that sets `wall_speed_retained`) and the two rectangles
 (the helper's and the raw `Position + sign` one) on the same slice. Reverted the probe; tree rebuilt.
+
+### The wall-speed restore is innocent: the sim and the trace agree, and the missing thing is a -70 write
+
+Reading the trace's own fields (`p.wallSpeedRetained`, `p.wallSpeedRetentionTimer` - the field map has them
+at `p.*`, not top level) for `7-Summit|1|e-02` rows 206420-206423:
+
+| row | retained | timer | end-of-frame speed.x |
+| --- | ---: | ---: | ---: |
+| 206420 | 165.6667 | 0.0600 | 0 |
+| 206421 | 165.6667 | 0.0433 | 0 |
+| **206422** | 165.6667 | **0.0267** | **+10.8334** |
+| 206423 | 165.6667 | 0.0000 | +161.33 (a jump) |
+
+The simulator's own probe printed `retained=+165.6667`, `timer=0.06` then `0.0433`, `probe_solid=true` -
+i.e. **the same retained value, the same timer, and the same "blocked" branch the game takes** (the timer
+ticks down on both sides). So the anchor restore and the gate are both correct, and the earlier suspicion
+about the probe rectangle is moot.
+
+What differs is the *move*: at row 206422 the game moved `-0.98611`, i.e. its in-frame speed was
+`-59.1667`, while its end-of-frame speed is `+10.8334` - so a write of about `-70` happened during the
+frame. `-70` is neither the exported `wallSpeedRetained` (+165.6667) nor `hopWaitXSpeed` (0), and the wind
+in that room is `(0,-400)`, purely vertical, so it cannot supply an x component. The search therefore moves
+from the restore gate to **whatever writes -70 during a `StNormal` frame near a wall** - candidates are the
+wall-jump/hop family in `NormalUpdate` and any place that converts a retained value's sign.
