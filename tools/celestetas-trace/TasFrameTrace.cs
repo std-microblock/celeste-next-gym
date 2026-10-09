@@ -387,6 +387,9 @@ public static class TasFrameTrace {
         // by `(sid, mode)`. `Session.LevelFlags` (Session.cs:39) is a separate container holding room
         // *names* for `GetLevelFlag` (Session.cs:324-327) and is not part of `flags`.
         AppendSessionFlags(level);
+            AppendIdSet(level, level.Session.DoNotLoad, "doNotLoad");
+            AppendIdSet(level, level.Session.Keys, "keys");
+            AppendSessionBools(level);
 
         if (player == null) {
             return;
@@ -469,6 +472,38 @@ public static class TasFrameTrace {
     /// has no contractual enumeration order and a row that reshuffled its own array would defeat
     /// row-by-row diffing; the set is a handful of entries per chapter, so the array stays small.
     /// </summary>
+        /// <summary>
+    /// `Session.DoNotLoad` (`Session.cs:43`) and `Session.Keys` (`:45`): `EntityID.Key`
+    /// (`Level + ":" + ID`) strings, so each entry already embeds its room. `DoNotLoad` is the
+    /// engine's only mechanism for not constructing an entity at all (`Level.cs:472`, `:1188`)
+    /// and the deciding input for `conditionBlock` (`condition:Key`) and `ridgeGate`; `Keys` is
+    /// the chapter's key possession that `LockBlock.UnlockRoutine` consumes. Append-only.
+    /// </summary>
+    private static void AppendIdSet(Level level, HashSet<EntityID> set, string key) {
+        sessionFlags.Clear();
+        foreach (EntityID id in set) {
+            sessionFlags.Add(id.Key);
+        }
+        sessionFlags.Sort(StringComparer.Ordinal);
+        sb.Append(",\"").Append(key).Append("\":[");
+        for (int i = 0; i < sessionFlags.Count; i++) {
+            if (i > 0) {
+                sb.Append(',');
+            }
+            AppendString(sessionFlags[i]);
+        }
+        sb.Append(']');
+    }
+
+    /// <summary>
+    /// `Session.Cassette` (`:90`) and `Session.HeartGem` (`:93`): chapter-global booleans. Once the
+    /// tape is taken in an A-side, `ShouldCreateCassetteManager` is false (`Level.cs:278-288`) and
+    /// `CassetteBlock` never becomes collidable. Append-only.
+    /// </summary>
+    private static void AppendSessionBools(Level level) {
+        sb.Append(",\"cassette\":").Append(level.Session.Cassette ? "true" : "false");
+        sb.Append(",\"heartGem\":").Append(level.Session.HeartGem ? "true" : "false");
+    }
     private static void AppendSessionFlags(Level level) {
         sessionFlags.Clear();
         foreach (string flag in level.Session.Flags) {
