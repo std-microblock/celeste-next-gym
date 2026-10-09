@@ -1269,3 +1269,23 @@ Two things it deliberately does not do, so nobody "adds" them later:
   happened before the window, and nothing carries it the way `SWITCH_ROOM` carries
   `switches_<room>` for v5. On the current gates that costs nothing (1a has no dash switch, and
   202/100pct are v7).
+
+### The wind ordering is NOT the lever: three placements, all net-negative (measured)
+
+The recon behind this was strong - gaps of exactly `wind * 0.1 * dt` on 12 + 2 + 6 segments of the three
+largest mismatch classes, with the guards (`Ducking && onGround`, `speed.y < 0 || !grounded`,
+`state != Dash`) provably reading the previous frame's values. Three placements of
+`apply_wind_movement` have now been measured against a fixed trace:
+
+| placement | 202 result |
+| --- | --- |
+| before the `Player.Update` mirror (today) | baseline |
+| after the state callback (round 45) | 58 improved / 22 regressed, lost an `ok` in `7-Summit\|1\|e-00` |
+| after the ground probe, before the callback (round 91) | 4 improved / 11 regressed, lost the same `ok` |
+
+The third was the narrowest reading of the evidence - it fixes exactly the `Ducking && onGround` guard
+and leaves `State`/`Speed.Y` alone - and it still loses. So the stale guards are real but something else
+in the frame order compensates for them, and **moving the application is not the fix**. Do not try a
+fourth placement without first finding that compensating site; a profitable attack on these classes has
+to start from a segment where the wind term appears *and* the moved placement changes nothing, then ask
+what else consumed the difference.
