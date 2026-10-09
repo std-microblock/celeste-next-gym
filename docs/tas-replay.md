@@ -11,18 +11,24 @@ pinned vanilla 202-berry TAS, the instrumented CelesteTAS dumps one record per e
 
 | trace | `ok` rooms | mismatch | unsupported | replayed frames | frame-exact |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `trace-202-v5` | **484** | 983 | 0 | **151,456** | **150,442** |
-| `trace-100pct-v5` | **318** | 600 | 0 | **91,189** | **90,572** |
+| `trace-202-v5` | **484** | 983 | 0 | **153,892** | **152,878** |
+| `trace-100pct-v5` | **318** | 600 | 0 | **92,428** | **91,811** |
 | `trace-1a-v5` | **16** | 4 | 0 | **2,129** | **2,125** |
 
-The latest step is the **Summit intro flag** (`1fa7e8a`): `INTROJUMP`'s two phase writes that
-enter the fall phase (`INTRO_PHASE_JUMP_REST` and `INTRO_PHASE_JUMP_SUMMIT_RECOVER`) dropped
-`INTRO_PHASE_SUMMIT_FLAG`, while every other transition in the same function preserved it. With the
-flag gone the fall ran as a non-Summit fall, so landing took the non-Summit path - `Position = start`
-and `StateMachine.State = 0` on the landing frame - where the game's
-`if (wasSummitJump) { ...; yield return 0.35f; }` keeps it in `StIntroJump` for 0.35 s more
-(`Player.cs:6055-6067`). Measured **202 38 improved / 1430 identical / 0 regressed**, `470 -> 484`
-`ok`, `+6,772` frames; **100pct 19 / 899 / 0**, `311 -> 318`, `+3,476`; `1a` unchanged.
+The latest step is the **landing frame's vertical move** (`b94ab72`): the landing branch of
+`INTRO_PHASE_JUMP_FALL` zeroed `Speed.Y` before the frame's physics, so the simulator skipped that
+frame's move. The source's coroutine only stops *adding* gravity once `onGround` is true, and the
+accumulated fall speed still drives `MoveV(Speed.Y * dt)` into the floor - the blocked step zeroes
+`movementCounter.Y`, and `Player.OnCollideV` zeroes `Speed.Y`. Measured on
+`7-Summit|1|g-00|209548` offset 45: the game's counter goes `0.08337 -> 0` and its end-of-frame speed
+is 0, while the simulator kept the `0.08337` remainder, which flipped a pixel 35 frames later. **202 8
+improved / 1460 identical / 0 regressed**, `+2,436` frames; **100pct 4 / 914 / 0**, `+1,239`; `1a`
+unchanged.
+
+The step before it, in the same round, was the **Summit intro flag** (`1fa7e8a`), which is where the
+four inert rounds before it finally paid off: `3b238de` added the Summit landing rest and `0264120`
+threaded `StateMachine.PreviousState`, and neither could take effect while two phase writes dropped
+`INTRO_PHASE_SUMMIT_FLAG` on the way into the fall.
 
 This is also the round that shows why the two commits before it were inert: `3b238de` added exactly
 that 0.35 s rest and `0264120` threaded `StateMachine.PreviousState`, and **neither could take effect
@@ -30,7 +36,7 @@ while the phase chain never reached the Summit landing path**. Four rounds were 
 cause from the metric; an env-gated print of `intro_phase` at the divergence found it in one run. When
 a phase machine is involved, print the phase.
 
-The latest step is **`AscendManager`** (`753370f`), the Summit's ascent takeover.
+The step before that was **`AscendManager`** (`753370f`), the Summit's ascent takeover.
 `SummitBackgroundManager` had been filed in the entity registry's decoration bucket ("visual/audio, no
 gameplay collider"), but it is `Celeste.AscendManager`, whose `Routine` (`AscendManager.cs:249-273`)
 waits while `player.Y > base.Y` and then takes the player over as a dummy: `Speed = Vector2.Zero`,
