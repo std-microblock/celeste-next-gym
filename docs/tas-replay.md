@@ -722,6 +722,14 @@ against this same gate:
     `Level.LoadLevel(Player.IntroTypes)` (overridable per cutscene). The simulator only ever
     *restores* the state at a segment anchor, so a room load that happens mid-segment is missed.
     Modelling that needs the chapter's `IntroType` table and the area available to the simulator.
+    `PlayerSnapshot` now carries `previous_state` and the gate fills it from the newest row before
+    the anchor that has a `state` (`d6d38e9`), but **that is not enough and the measurement says so**:
+    the rows immediately before an anchor are the stalled transition frames, and for a room that
+    *enters* in an intro state those rows already carry the intro state itself, so the walk-back finds
+    the anchor's own state and `previous_state` is never `SummitLaunch` in this corpus. Recovering it
+    needs the state from *before the segment's window* - thread the previous segment's last state
+    through `finish_segment`, or read further back in the trace - and only then does the 0.35 s rest
+    in `3b238de` become reachable. Both of those commits measured zero change for exactly this reason.
 * **The simulator has no `VirtualButton.consumed` flag.** With `presses_are_effective` the press
   level each frame is now exactly the game's, which retired the four-frame offset; what remains is
   that a press the simulator consumes *inside* a frame (`wall_jump`/`jump`/`begin_dash` zero the
