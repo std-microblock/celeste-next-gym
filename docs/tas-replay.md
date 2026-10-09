@@ -1607,3 +1607,28 @@ Three mechanisms landed with zero per-segment regressions, in this order: `Switc
 516) and `FloatySpaceBlock` (real motion plus the derived `System.Random` phase; 518). `Session.DoNotLoad`
 parking, the persistent dash-switch flag and `Session.Cassette` are in as well and measure inert on this
 corpus, with the reasons recorded above.
+
+### The `Speed.X` restore hypothesis has a concrete frame and a concrete gate
+
+`7-Summit|1|e-02`, row 206422 (dump offset 1):
+
+| | move.x | pos.x | end-of-frame speed.x |
+| --- | ---: | ---: | ---: |
+| game | **-0.98611** | 9796 -> 9795 | +10.83335 |
+| simulator | **+0.18056** | 9796 (unmoved) | +10.83335 |
+
+The end speeds match exactly, which is why the gate reports only `pos`. The game's in-frame value must
+have been `-70 + 10.8333 = -59.1667`, i.e. it **restored `wallSpeedRetained = -70`** and then took one air
+friction step; the simulator's `+10.8333` is pure air acceleration, so it never restored.
+
+The gate is `sim.rs:7207-7218`, and the three branches are the reason it can skip: it drops the retention
+when `math_sign(speed.x) == -math_sign(wall_speed_retained)`, restores when the probe
+`map.solid_at(current_player_rect(p, pos.x + math_sign(wall_speed_retained), pos.y))` is **false**, and
+otherwise just ticks the timer down. So on this frame the simulator either believes a solid is one pixel
+in the retained direction or takes the "moving away" branch - while the game restored.
+
+Next step is one print on that frame: `math_sign(p.speed.x)` vs `-math_sign(p.wall_speed_retained)`, the
+retained value, the retention timer, and whether `map.solid_at(...)` is true, plus what the tile at that
+pixel is. That distinguishes "wrong probe" from "wrong retained sign/value", and the same three-branch
+block sits in every `pos|StNormal`/`pos+speed|StNormal` segment the recon sampled (`c-00` row 172768 is
+the same shape), so it is worth resolving once.
