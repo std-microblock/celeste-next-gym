@@ -2204,3 +2204,28 @@ inside `DashUpdate`; that may be a second, separate frame-placement difference w
 
 Next probe: print `p.speed.y` just before and just after the calls in that region (the input-buffer block
 ends at `:6691`, and the region ends at the ground check) so the losing call is named in one iteration.
+
+### NAMED: `apply_wind_movement` zeroes `speed.y` through the `windMovedUp` / `maxFall = 0` chain
+
+Three probes inside `step`'s opening region, in one binary and one run, ordered:
+
+```
+CHK after_moving_solids pos=(26082,-19082) vy=7.5000 state=Normal    <- still 7.5
+CHK after_wind          pos=(26082,-19082) vy=0.0000 state=Normal    <- apply_wind_movement zeroed it
+CHK after_tick_timers   pos=(26082,-19082) vy=0.0000 state=Normal    <- unchanged after
+```
+
+`tick_timers` is a pure timer decrement loop (`sim.rs:7123-7152`), so it was correctly ruled out. The
+position is **identical** across the first two probes, i.e. the wind move went into the movement counter
+(sub-pixel, no collision) - so this is not a blocked move calling an on-collide that zeroes the speed.
+
+The mechanism is the `windMovedUp` chain. The room's wind is an updraft (`wind = (0,-400)`), so
+`apply_wind_movement` sets `windMovedUp = true` (source: `Player.cs:3128-3131`). In `Player.NormalUpdate`
+the fall target becomes `0` while `windMovedUp` holds (the branch I read earlier at `:3725`:
+`windMovedUp && ... ? -32 : ... (!windMovedUp ? 40 : 0)`), so `approach(Speed.Y, 0, Gravity * dt * mult)`
+pulls `7.5` to exactly `0` in one step - which is what the probe shows, and it matches the observed step
+size `GRAVITY * 0.5 * dt = 7.5` exactly.
+
+The game's frame keeps `maxFall = 160` (its `vy` goes 7.5 -> 15), so the simulator takes a `windMovedUp`
+branch the game does not. That is now a named, testable defect: compare the simulator's condition for
+`windMovedUp` (and where it feeds `max_fall`) against `Player.cs:3116-3131` and `:3725`.
