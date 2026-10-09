@@ -115,6 +115,11 @@ const FALLING_BLOCK_PLATFORM_TICK: f32 = 0.1;
 const LAUNCH_CANCEL_THRESHOLD: f32 = 220.0;
 const TRANSITION_TIME: f32 = 0.65;
 const TRANSITION_MOVE_SPEED: f32 = 60.0;
+/// Safety cap for [`transition_entry_target`]'s copy of `Level.TransitionRoutine`'s unbounded
+/// `for (; !IsInBounds(playerTo, dirPad); playerTo += direction)`. Every real search terminates in a
+/// few hundred whole-pixel steps (a room is at most a few hundred pixels across); the cap only turns
+/// a malformed room into a parked transition instead of a hang.
+const TRANSITION_TARGET_MAX_STEPS: usize = 4096;
 
 // Player.cs story-intro callbacks. Every constant below is copied from the
 // callback that owns it; the `file:line` citations live on the phase bodies.
@@ -497,6 +502,64 @@ impl Simulator {
     /// frame; repeat it for each skipped row.
     pub fn skip_engine_frame(&mut self) {
         self.snapshot.freeze_timer = self.snapshot.freeze_timer.max(DT);
+    }
+
+    /// A replayed row whose `Level.Transitioning` is true (`Level.cs:221`).
+    ///
+    /// While a room transition runs, `Level.Update` takes the `Transitioning` branch
+    /// (`Level.cs:1869-1896`): `Player.Update` does not run at all, and the player is moved by the
+    /// transition coroutine instead. `Level.TransitionRoutine`'s movement loop is
+    /// `while (!player.TransitionTo(playerTo, direction) || cameraAt < 1f)` (`Level.cs:1569`), and
+    /// `Player.TransitionTo` (`Player.cs:1560-1580`) moves the exact position towards `playerTo` by
+    /// `60f * Engine.DeltaTime` per axis - one pixel per frame at 60 Hz, with `Speed` untouched and
+    /// rounded only on the frame `Position == target`. So a transition row is *not* an engine frame
+    /// the game skipped: it is a frame the simulator has to reproduce with its own transition model.
+    ///
+    /// The trace exports only the `transitioning` boolean, never `playerTo`, the coroutine's
+    /// duration or its speed, so this recomputes `playerTo` exactly as the coroutine did
+    /// (`Level.cs:1521-1528`, mirrored by [`transition_entry_target`]): `LoadLevel` has already
+    /// installed the destination room (`Level.cs:1509`), so the entry direction is the bound the
+    /// player's collider still crosses, and the target is the first `IsInBounds(playerTo, dirPad)`
+    /// position along it. Inside the loop the player only moves by whole pixels, so a row that is a
+    /// few creep frames into the transition derives the same target the coroutine computed on its
+    /// first frame.
+    ///
+    /// `raw_delta_time` is the row's own raw frame delta (the value the caller passes to
+    /// [`Simulator::step`]): `transition_timer` stands in for the coroutine's camera clock
+    /// (`NextTransitionDuration`, 0.65 s, `Level.cs:57`). Returns whether this call armed a
+    /// transition; a simulator that is already transitioning is left untouched, so this may be
+    /// called on every `transitioning` row.
+    pub fn resume_transition(&mut self, raw_delta_time: f32) -> bool {
+        if self.snapshot.transition_timer > 0.0 {
+            return false;
+        }
+        let bounds = self
+            .snapshot
+            .current_room_bounds
+            .unwrap_or(self.runtime_map.bounds);
+        let direction = transition_entry_direction(&self.snapshot, bounds);
+        let target = transition_entry_target(self.snapshot.pos, direction, bounds);
+        self.snapshot.transition_room_bounds = Some(bounds);
+        self.snapshot.transition_direction = direction;
+        self.snapshot.transition_target = target;
+        self.snapshot.transition_timer =
+            TRANSITION_TIME + raw_delta_time * self.snapshot.time_rate;
+        true
+    }
+
+    /// A replayed row whose `Level.Transitioning` is false again: the game's coroutine has left its
+    /// movement loop and run `player.OnTransition()` (`Level.cs:1624-1626`).
+    ///
+    /// The simulator's own clock can outlast the trace's: a transition the harness armed on a row in
+    /// the middle of the coroutine starts later than the game's, so its timer is still positive when
+    /// the game is already updating the player again. Ending it here makes this the transition's
+    /// last frame - the next [`Simulator::step`] still runs `update_transition`, which completes the
+    /// transfer (`Player.OnTransition`: `RefillDash`/`RefillStamina`) and returns, and the frame
+    /// after that takes the ordinary `Player.Update` path, exactly as the game did.
+    pub fn finish_transition(&mut self) {
+        if self.snapshot.transition_timer > 0.0 {
+            self.snapshot.transition_timer = f32::MIN_POSITIVE;
+        }
     }
 
     /// Current entity rectangles after all runtime movement, visibility, and
@@ -11340,6 +11403,86 @@ fn update_transition(p: &mut PlayerSnapshot, map: &mut Map) {
         p.current_room_bounds = next_room;
         p.transition_direction = Vec2::default();
     }
+}
+
+/// `Level.EnforceBounds`' transition clauses (`Level.cs:2738-2806`), read from the destination
+/// room's side: the player's collider still sticks out of the room it has just entered, and the
+/// bound it crosses is the direction the transition travels in. `Vector2.Zero` means the collider is
+/// already inside, i.e. the coroutine is in the parked phase of
+/// `while (!player.TransitionTo(...) || cameraAt < 1f)` - `Player.Update` is still suspended, but
+/// there is nothing left to move.
+fn transition_entry_direction(p: &PlayerSnapshot, bounds: Rect) -> Vec2 {
+    let collider = current_player_rect(p, p.pos.x, p.pos.y);
+    let center_y = collider.y + collider.height * 0.5;
+    if collider.x < bounds.x {
+        // `player.Left < bounds.Left` (`Level.cs:2738`): entered from the left, travelling right.
+        Vec2::new(1.0, 0.0)
+    } else if collider.x + collider.width > bounds.right() {
+        // `player.Right > bounds.Right` (`Level.cs:2759`).
+        Vec2::new(-1.0, 0.0)
+    } else if center_y < bounds.y {
+        // `player.CenterY < bounds.Top` (`Level.cs:2775`): the destination room is below, so the
+        // player starts above its top bound. `NextLevel(..., Vector2.UnitY)`.
+        Vec2::new(0.0, 1.0)
+    } else if center_y >= bounds.bottom() {
+        // `player.Bottom > bounds.Bottom` (`Level.cs:2801`): the destination room is above.
+        Vec2::new(0.0, -1.0)
+    } else {
+        Vec2::default()
+    }
+}
+
+/// `Level.TransitionRoutine`'s `playerTo` search (`Level.cs:1521-1528`), including the horizontal
+/// pre-loop that lifts `playerTo.Y` back into the room:
+///
+/// ```csharp
+/// Vector2 playerTo = player.Position;
+/// while (direction.X != 0f && playerTo.Y >= (float)Bounds.Bottom) playerTo.Y -= 1f;
+/// for (; !IsInBounds(playerTo, dirPad); playerTo += direction) { }
+/// ```
+///
+/// `dirPad` is `direction * 4f`, except for a downward transition where it is `direction * 12f`
+/// (`:1516-1520`); `IsInBounds(Vector2, Vector2)` pads only on the side the player travels towards
+/// (`Level.cs:2850-2862`). The source's `for` has no bound - a malformed room would spin forever -
+/// so the search is capped and falls back to the caller's position, which parks the player instead
+/// of hanging.
+fn transition_entry_target(from: Vec2, direction: Vec2, bounds: Rect) -> Vec2 {
+    let mut target = from;
+    let mut steps = 0usize;
+    while direction.x != 0.0 && target.y >= bounds.bottom() {
+        if steps >= TRANSITION_TARGET_MAX_STEPS {
+            return from;
+        }
+        target.y -= 1.0;
+        steps += 1;
+    }
+    let dir_pad = if direction == Vec2::new(0.0, 1.0) {
+        Vec2::new(0.0, 12.0)
+    } else {
+        Vec2::new(direction.x * 4.0, direction.y * 4.0)
+    };
+    while !transition_position_in_bounds(target, dir_pad, bounds) {
+        if steps >= TRANSITION_TARGET_MAX_STEPS {
+            return from;
+        }
+        target.x += direction.x;
+        target.y += direction.y;
+        steps += 1;
+    }
+    target
+}
+
+/// `Level.IsInBounds(Vector2 position, Vector2 dirPad)` (`Level.cs:2850-2862`): the pad only widens
+/// the room on the side the transition travels away from.
+fn transition_position_in_bounds(position: Vec2, dir_pad: Vec2, bounds: Rect) -> bool {
+    let left = dir_pad.x.max(0.0);
+    let right = (-dir_pad.x).max(0.0);
+    let top = dir_pad.y.max(0.0);
+    let bottom = (-dir_pad.y).max(0.0);
+    position.x >= bounds.x + left
+        && position.y >= bounds.y + top
+        && position.x < bounds.right() - right
+        && position.y < bounds.bottom() - bottom
 }
 
 fn move_towards_x(p: &mut PlayerSnapshot, map: &mut Map, target_x: f32, max_move: f32) {
