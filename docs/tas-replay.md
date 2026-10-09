@@ -1540,3 +1540,23 @@ the same set of segments, in the same direction.
 Next diagnostic, cheap: keep the undo and dump `7-Summit|0|g-01|134447` (833 -> 75, the sharpest drop)
 side by side with the trace, and read the frames where the undo fires - what the game's state and wind
 displacement are on each. The answer decides whether the fix belongs in the wind at all.
+
+### Measured: the `7-Summit|0|g-01` population is an updraft applied in `StNormal`, not a dash
+
+Rows 134555-134560 of `trace-202-v7` (`7-Summit|0|g-01`, segment start 134447, so these are replay frames
+~64-69): the player is `StNormal`, jumping, `spd=(0,-105)`, `wind=(0,-400)` and `windTarget=(0,-400)`.
+The per-frame y deltas are -2, -3, -2, -2, i.e. **2.417 px/frame = 105/60 (the jump) + 400*0.1*dt (the
+wind)**. The game is applying a vertical updraft to a normally-jumping player here.
+
+That matters because the undo variant only fires in `Dash`/`RedDash`/`Boost`/`SummitLaunch`. For it to
+damage this segment, the *simulator* must be in one of those four states on frames where the game is
+plain `StNormal` - or the guard's exclusion set must not be the game's. The baseline replays this segment
+for 833 frames, so the two state machines agree there in the baseline; therefore the interesting question
+is narrower: **which state does the simulator have on the frame the undo first fires, and what does the
+gate's own dump say `gameState`/`rustState` are on that frame?**
+
+The exact command (baseline binary, no change needed):
+`.\target\release\examples\tas_fidelity.exe --trace D:\celeste-research\.tmp\tasrun\trace-202-v7.jsonl --maps vendor\celeste-game\Content\Maps --out <report> --rooms g-01 --dump-segment "Celeste/7-Summit|0|g-01|134447"`
+and read the lines whose `rustState` is one of the four (Boost/Dash/RedDash/SummitLaunch) plus the rows
+around them. If `gameState == rustState` on those frames, then the simulator's guard set is simply not
+the game's, and `Player.WindMove`'s condition should be re-read from the source rather than assumed.
