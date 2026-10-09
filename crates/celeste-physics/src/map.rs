@@ -2067,6 +2067,7 @@ impl Map {
                         // Kept in step with `sim::is_solid_entity`: this list is what the
                         // ground probe consults, so a kind added only there is inert.
                         | EntityKind::CrumbleBlock
+                        | EntityKind::StaticSolid
                 ) && entity.bounds.intersects(rect)
             })
     }
