@@ -11,9 +11,24 @@ pinned vanilla 202-berry TAS, the instrumented CelesteTAS dumps one record per e
 
 | trace | `ok` rooms | mismatch | unsupported | replayed frames | frame-exact |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `trace-202-v5` | **470** | 997 | 0 | **144,684** | **143,656** |
-| `trace-100pct-v5` | **311** | 607 | 0 | **87,713** | **87,089** |
+| `trace-202-v5` | **484** | 983 | 0 | **151,456** | **150,442** |
+| `trace-100pct-v5` | **318** | 600 | 0 | **91,189** | **90,572** |
 | `trace-1a-v5` | **16** | 4 | 0 | **2,129** | **2,125** |
+
+The latest step is the **Summit intro flag** (`1fa7e8a`): `INTROJUMP`'s two phase writes that
+enter the fall phase (`INTRO_PHASE_JUMP_REST` and `INTRO_PHASE_JUMP_SUMMIT_RECOVER`) dropped
+`INTRO_PHASE_SUMMIT_FLAG`, while every other transition in the same function preserved it. With the
+flag gone the fall ran as a non-Summit fall, so landing took the non-Summit path - `Position = start`
+and `StateMachine.State = 0` on the landing frame - where the game's
+`if (wasSummitJump) { ...; yield return 0.35f; }` keeps it in `StIntroJump` for 0.35 s more
+(`Player.cs:6055-6067`). Measured **202 38 improved / 1430 identical / 0 regressed**, `470 -> 484`
+`ok`, `+6,772` frames; **100pct 19 / 899 / 0**, `311 -> 318`, `+3,476`; `1a` unchanged.
+
+This is also the round that shows why the two commits before it were inert: `3b238de` added exactly
+that 0.35 s rest and `0264120` threaded `StateMachine.PreviousState`, and **neither could take effect
+while the phase chain never reached the Summit landing path**. Four rounds were spent inferring the
+cause from the metric; an env-gated print of `intro_phase` at the divergence found it in one run. When
+a phase machine is involved, print the phase.
 
 The latest step is **`AscendManager`** (`753370f`), the Summit's ascent takeover.
 `SummitBackgroundManager` had been filed in the entity registry's decoration bucket ("visual/audio, no
@@ -702,9 +717,8 @@ against this same gate:
   that clamps `Right` to `bounds.Right - 1`. The simulator has its own bound clamping and its own
   transition start, so this is a structural difference rather than a missing one-liner: whoever takes
   it on should diff the two structures rather than bolt on a clamp.
-* **The intro states split into two problems, and only one of them is timing.** The `state |
-  anchor=StNormal` class is 1,454 frames, and dumping two of its segments shows they are different
-  bugs wearing the same reason:
+* **The intro states split into two problems, one of which is now fixed.** The `state |
+  anchor=StNormal` class was 1,454 frames; `1fa7e8a` fixed the Summit half.
 
   * `7-Summit|1|g-00|209548` diverges on the **landing frame** of the Summit hand-off (offset 45 of
     46): the game's `movementCounter.Y` is zeroed by the landing collision and its state is still
