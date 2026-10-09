@@ -1007,3 +1007,20 @@ suppresses entity construction outright, `Level.cs:472`/`:1188`, and it is the i
 tape is taken; then `dashSwitch_<id>`, `oshiro_clutter_door_open`, `disable_lightning`). The exporter
 now emits `Session.Flags` as a top-level `flags` array (append-only tail, sorted, backward compatible),
 so the next game run gives the harness that input; nothing under `crates/` reads it yet.
+## Round 46: the exporter rebuild path does not reproduce the working mod
+
+Adding `Session.Flags` to `tools/celestetas-trace/TasFrameTrace.cs` and rebuilding from scratch
+(`robocopy .tmp/tasrun/celestetas-src -> celestetas-trace` + `apply.mjs`) builds clean (0 errors, 6
+warnings) and installs, and the 1A TAS still completes (`status: success`, `AreaComplete`, 35.9 s) -
+but the trace file is **0 bytes**. The known-good exporter is the older `celestetas-trace-w8v5` tree,
+whose `TasFrameTrace.cs` has `levelCoreMode`/`AppendInventory` but no `AppendSessionFlags`, and whose
+DLL has been restored into `game-trace/Mods/CelesteTAS-EverestInterop/bin`.
+
+So `apply.mjs` plus the current `celestetas-src` does **not** reproduce the working v5 exporter: the
+`w8v5` tree carries something extra (a different upstream revision, or a manual patch `apply.mjs` does
+not re-apply). The next attempt must patch **`celestetas-trace-w8v5`'s** `TasFrameTrace.cs` directly and
+rebuild *that* tree, not re-derive it - and it must verify a non-zero trace before trusting a run.
+
+Two checks to run first, both cheap: diff `w8v5/.../TasFrameTrace.cs` against the freshly patched tree
+to see what is missing, and confirm whether the 0-byte trace is a dropped-row path (every row throwing
+inside `WriteFrame`) or the command never running at all.
