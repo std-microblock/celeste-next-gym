@@ -183,6 +183,8 @@ fn core_mode_from_int(value: i64) -> Option<CoreMode> {
 #[derive(Default, Deserialize)]
 #[serde(default)]
 struct Record {
+    /// `Celeste.Session.Flags` (`Session.cs:37`), exported from v6 on as a sorted array.
+    flags: Option<Vec<String>>,
     n: u64,
     f: i64,
     dt: f64,
@@ -250,6 +252,8 @@ struct Record {
 
 #[derive(Clone)]
 struct Frame {
+    /// `Celeste.Session.Flags` (`Session.cs:37`), exported from v6 on as a sorted array.
+    flags: Option<Vec<String>>,
     n: u64,
     f: i64,
     dt: f64,
@@ -1736,11 +1740,20 @@ fn replay(
     // `oshiro_clutter_cleared_*` is chapter state that the trace cannot carry
     // (`ClutterSwitch.cs:138`, `ClutterBlockGenerator.cs:78-81`); restore the
     // caller's carried value before the first replayed frame.
-    simulator.set_clutter_cleared(carried_clutter);
+    // v6 traces carry `Session.Flags`, which settles both of these directly; the per-chapter and
+    // per-room carries above are only the fallback for v5 traces, which have no such key.
+    let trace_flags = anchor.flags.as_deref();
+    let trace_clutter = trace_flags.map(|flags| {
+        [0usize, 1, 2].map(|color| flags.iter().any(|flag| *flag == format!("oshiro_clutter_cleared_{color}")))
+    });
+    let trace_switches = trace_flags.map(|flags| {
+        flags.iter().any(|flag| *flag == format!("switches_{}", segment.room))
+    });
+    simulator.set_clutter_cleared(trace_clutter.unwrap_or(carried_clutter));
     // `switches_<room>` (`Switch.cs`): per-room session state the trace cannot carry either.
     // Carried while the trace stays in the same room, because `SwitchGate.Awake`
     // (`SwitchGate.cs:68-82`) short-circuits the whole opening sequence when it is set.
-    simulator.set_switches_on(switch_room_flag(segment));
+    simulator.set_switches_on(trace_switches.unwrap_or_else(|| switch_room_flag(segment)));
 
     let mut exact_prefix = 0u64;
     let mut replayed = 0u64;
@@ -2610,6 +2623,7 @@ fn run() -> Result<(), String> {
             continue;
         }
         segment.frames.push(Frame {
+        flags: record.flags.clone(),
             n: record.n,
             f: record.f,
             dt: record.dt,
