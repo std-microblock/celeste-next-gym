@@ -702,6 +702,26 @@ against this same gate:
   that clamps `Right` to `bounds.Right - 1`. The simulator has its own bound clamping and its own
   transition start, so this is a structural difference rather than a missing one-liner: whoever takes
   it on should diff the two structures rather than bolt on a clamp.
+* **The intro states split into two problems, and only one of them is timing.** The `state |
+  anchor=StNormal` class is 1,454 frames, and dumping two of its segments shows they are different
+  bugs wearing the same reason:
+
+  * `7-Summit|1|g-00|209548` diverges on the **landing frame** of the Summit hand-off (offset 45 of
+    46): the game's `movementCounter.Y` is zeroed by the landing collision and its state is still
+    `StIntroJump`, while the simulator had already returned to `StNormal`. That is the missing
+    `if (wasSummitJump) { ...; yield return 0.35f; }` rest (`Player.cs:6055-6067`), which `3b238de`
+    adds - but the phase is unreachable today because the simulator *guesses* `wasSummitJump` from
+    the entry speed and position in `intro_resume` rather than reading
+    `StateMachine.PreviousState == 10` (`Player.cs:5998`), and `PlayerSnapshot` has no previous
+    state. **Plumbing the previous state (the gate can take it from the row before the anchor) is the
+    next step**, and it is what makes the rest observable.
+  * `6-Reflection|0|after-01|103119` (677 frames, the largest single segment in the class) diverges
+    on the **hand-off frame itself**: the game goes `StSummitLaunch` (-240) -> `StIntroJump` (-105)
+    while the simulator goes `StNormal`, i.e. it never *chooses* an intro state. The game picks it
+    when the new room loads, from `AreaData.IntroType` (`AreaData.cs`) via
+    `Level.LoadLevel(Player.IntroTypes)` (overridable per cutscene). The simulator only ever
+    *restores* the state at a segment anchor, so a room load that happens mid-segment is missed.
+    Modelling that needs the chapter's `IntroType` table and the area available to the simulator.
 * **The simulator has no `VirtualButton.consumed` flag.** With `presses_are_effective` the press
   level each frame is now exactly the game's, which retired the four-frame offset; what remains is
   that a press the simulator consumes *inside* a frame (`wall_jump`/`jump`/`begin_dash` zero the
