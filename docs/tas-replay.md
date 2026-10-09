@@ -2507,3 +2507,26 @@ Next check: name the solid overlapping the player's collider on rows 42489-42494
 used for the ceiling case, but with the player's own rect), and compare with the trace - if the game pushes
 out of a tile that the simulator does not even report as overlapping, the defect is in the collider/position
 bookkeeping, and if the simulator reports the overlap but does not push, it is in the push path.
+
+### roof07: `enforce_level_bounds` is never called in those frames - the simulator takes an early return
+
+The probe was placed unconditionally at the top of `enforce_level_bounds` (before its guard) and the
+`--rooms roof07` run produced **zero** probe lines in 12 replayed frames (`simulated=2`, `frames=12`,
+`exact=0`, `stalled=114`). So the function is never reached: on every one of those frames `step` takes an
+early return - the freeze path (`sim.rs:6314-6317`) or the stall path - and the simulator performs no player
+update at all, while the game nudges the player one pixel per frame.
+
+That is consistent with everything measured before: constant `vx` (nothing writes `Speed`), a monotone
+one-pixel creep (an exact move or a hard set, neither of which touches `Speed`), and a stop exactly when the
+collider is fully inside the room. And it names where the fix belongs: **the early-return path**, not the
+clamp and not the wind.
+
+The distinction to settle next is freeze versus stall, because they mean different things:
+
+- `Celeste.Freeze` skips `Scene.Update` entirely, so *nothing* should move - if the trace's rows in this
+  window are frozen engine frames yet the player moves, the window is not a freeze;
+- a **stall** (the room-transition shape the harness models: entities update, the Player does not) is the
+  natural home for a one-pixel nudge, because solids, springs and camera code all still run.
+
+So: read `step`'s freeze and stall early-return blocks (`sim.rs:6290-6320`) against the trace row's
+`transitioning` / freeze fields for row 42489 onward, and find out which one this window is.
