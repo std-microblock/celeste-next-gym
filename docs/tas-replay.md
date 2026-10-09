@@ -1289,3 +1289,24 @@ in the frame order compensates for them, and **moving the application is not the
 fourth placement without first finding that compensating site; a profitable attack on these classes has
 to start from a segment where the wind term appears *and* the moved placement changes nothing, then ask
 what else consumed the difference.
+
+### The `2-OldSite|0|6` one-frame divergence is NOT the gate slide timing
+
+Two source-grounded fixes to the `SwitchGate` phase machine were measured on that room and changed
+nothing (`135 frames / 134 exact` in all three runs):
+
+1. the slide's one-frame priming (`phase 3 -> 4` set `timer = dt`, which starts the tween a frame early
+   versus `Tween.Create(..., start: true)` being updated on the following frame) - removing it measured
+   identical;
+2. the four phase transitions falling through into the next phase's `timer -= dt` **in the same frame**,
+   which makes the whole sequence about four frames early (with `Ease.CubeOut` at ~1 px/frame early on,
+   that is exactly the "simulator has slid >= 4 px while the game is still at 0" the recon inferred) -
+   adding `continue;` to all four measured identical too.
+
+So the earlier claim in this document that the kept regression is a gate-slide timing difference is
+**not supported**: neither timing fix moves those two segments. The geometry that motivated it was
+inferred from the player's pose, not observed, and the divergence sits on the segment's last frame.
+What is established is that the room's `switchGate` is `persistent=false`, so its session flag is never
+written, and that both timing fixes are no-ops for the corpus. The next attempt should dump the gate's
+per-frame position *and* the player's collider side by side for that window instead of inferring one
+from the other.
