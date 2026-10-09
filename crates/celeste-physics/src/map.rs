@@ -1526,6 +1526,7 @@ fn map_from_binary_inner(
                 "coreModeToggle" => EntityKind::CoreModeToggle,
                 "SummitBackgroundManager" => EntityKind::SummitBackgroundManager,
                 "plateau" | "bridgeFixed" | "starJumpBlock" | "crumbleWallOnRumble" => EntityKind::StaticSolid,
+                "dashSwitch" => EntityKind::StaticSolid,
                 "crumbleBlock" => EntityKind::CrumbleBlock,
                 "celesteGymMovingSolid" => EntityKind::MovingSolid,
                 _ => registered.map_or(EntityKind::Unknown, |entry| entry.kind),
