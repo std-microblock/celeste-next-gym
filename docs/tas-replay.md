@@ -1885,3 +1885,22 @@ collision happens on a frame where the sim's `on_ground` probe is false. The fix
 means looking at how `dash_update`/the collision pass records a vertical block on the frame (the
 `DreamDashCheck` and corner-snap code around `:7716` is already in the neighbouring lines, so the same
 context is available). The `dream_block_below` term stays: it mirrors the `DreamDashCheck` arm at `:3311`.
+
+### The remaining delta clusters map to named source constants
+
+Mapping the corrected in-frame-speed clusters (40 largest `mismatch` segments) to `Player.cs`:
+
+| cluster | source constant | where |
+| --- | --- | --- |
+| `-169.5` (~329 frames) | `SuperWallJumpH = 170f` | `:207`, written `Speed.X = 170f * dir` at `:2619` |
+| `±280` | **`LaunchSpeed = 280f`** | `:289`, written `Speed = 280f * vector` at `:4941` |
+| `60` | `HiccupAirBoost = -60f` / `SwimUnderwaterMax = 60f` | `:321` / `:705` |
+| `-20` | `WallSlideStartMax = 20f` | `:185` |
+| `-160` | `SuperWallJumpSpeed` / `MaxFall` / `EndDashSpeed` / `WallBoosterSpeed` | `:201` / `:125` / `:211` / `:677` |
+| `130` | `WallJumpHSpeed` / `LiftYCap` | `:183` / `:293` |
+
+The `280` cluster cross-checks with the state-pair histogram the same tool prints - `StLaunch->StLaunch`
+(84 frames) and `StSummitLaunch->StSummitLaunch` (122) - so two independent views name the same mechanism.
+The simulator implements all of these values (e.g. `SuperWallJumpH` at `sim.rs:7843`), which is why the
+clusters are *frame placements*, not missing writes: the value is written, on a different frame than the
+game writes it. The next cluster worth taking after the three workstreams in flight is `LaunchSpeed`.
