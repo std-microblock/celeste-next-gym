@@ -2074,3 +2074,22 @@ per-run frame counter alongside, or dumping the segment with the gate and compar
 
 If it confirms, the search moves to the harness's input plumbing for `jump_held` (`tas_fidelity.rs`'s
 `InputRec` -> `InputState`), not to `normal_update`.
+
+### RETRACTION: `jump_held` is a straight copy of `in.jump` - the probe was misaligned again
+
+Checked the plumbing instead of chasing the probe: `tas_fidelity.rs:119` is `jump_held: self.jump`, and
+`InputRec.jump` is the trace's `in.jump` (`#[serde]` field `jump` in the struct at `:85`). So
+`input.jump_held` *is* the trace's held-jump flag - there is no input-pipeline bug, and the probe's
+`jumpHeld=false` on a frame whose trace row says `in.jump = true` was **another row-misalignment artefact**,
+not a finding. The "new suspect" in the previous note is withdrawn.
+
+This is the third time position-based matching has produced a wrong conclusion in this family (phantom
+solid, speed.y bracket, jump_held). The rule to keep: **a probe must print something that identifies the
+row uniquely** - the trace exports `sceneTimeActive` per player row, and the simulator's `p.scene_time_active`
+advances once per active frame, so printing both sides' value is a real key. Position, inputs, or a
+combination are not.
+
+What still stands from the last two notes is the *bracketed* fact, which did not depend on position
+matching: entering `StNormal` the callback applies gravity on the first frame (0 -> 7.5) and adds nothing on
+the second (7.5 -> 7.5) where the game goes to 15. That remains the thing to explain, and the next probe
+should carry `scene_time_active` so its frames can be tied to the gate's row numbers.
