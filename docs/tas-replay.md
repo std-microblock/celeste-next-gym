@@ -1407,3 +1407,27 @@ fields and print it at `{:.9}` (the dump's `{:.5}` throws away exactly the quant
 at the *sequence* of frames around one of the 36 `pos|StDash` DashBegin rows (e.g. `4-GoldenRidge|0|d-01`
 row 303301) on **both** sides: how many frames the game's freeze lasts, which frame first moves, and
 which frame the sim first moves. Only after that is it worth touching the publish again.
+
+### The game's dash frames, measured row by row (`4-GoldenRidge|0|d-01`, rows 303300-303305)
+
+| row | state | collider | dashAttackTimer |
+| --- | --- | --- | --- |
+| 303300 | StNormal | `[9713,-4400,8,11]` | 0 |
+| **303301** | **StDash** | `[9713,-4395,8,6]` | **0.3** |
+| 303302 | StDash | `[9713,-4395,8,6]` | 0.3 |
+| 303303 | StDash | `[9713,-4395,8,6]` | 0.3 |
+| 303304 | StDash | `[9713,-4395,8,6]` | 0.3 |
+| **303305** | StDash | `[9718,-4397,8,11]` | 0.28333 (= 0.3 - dt) |
+
+Read it precisely: row 303301 keeps the same collider *bottom* (-4400+11 = -4395+6 = -4389), so that
+frame only swaps to the ducking collider - the move is **zero** - and `DashBegin` has already set
+`dashAttackTimer = 0.3` and `DashDir`/`Speed` to zero. Rows 303302-303304 are byte-identical with the
+timer **frozen**: three frames of `Celeste.Freeze(0.05f)`. Row 303305 is the first frame that moves and
+the first on which the timer decrements, i.e. **the publish happens on the first DashUpdate that
+actually executes after the freeze**, not one frame after `DashBegin`.
+
+That means the three failed edits were all reasoning about the wrong frame count. Before touching the
+publish again, measure the simulator's own freeze length for the same window - how many frames it skips
+`dash_update` for, and which frame it first moves on. If the simulator freezes for a different number of
+frames, the publish timing is a *symptom* of that, and the fix belongs in the freeze accounting, not in
+`dash_update`. A `--rooms d-01` slice with a per-frame counter print answers it in seconds.
