@@ -1520,3 +1520,23 @@ Two mechanical details that are easy to get wrong:
 
 Verify against the same 11 segments plus the dash-begin row, and expect the frame counts of those 11 to
 stay at their baseline values.
+
+### The wind undo fires and works on the dash frames (36 improved) but wrecks the windy segments (17 regressed)
+
+Measured with the early apply kept and the delta undone after the dispatch when the new state is
+`Dash`/`RedDash`/`Boost`/`SummitLaunch`: **36 improved / 1415 identical / 17 regressed** (`516 -> 515` ok,
+`159,915 -> 156,345` frames). That is the first wind variant that fixes a real number of segments - the
+dash-begin population from the `d-01` row 303301 measurement is genuine - but the windy segments collapse
+(`7-Summit|0|g-01` 833 -> 75, `g-00` 581 -> 101, `7-Summit|1|e-00` loses its `ok`), and now `d-00`,
+`e-13` and `LostLevels|0|h-05` regress too.
+
+Both populations are therefore real and the condition as written does not separate them. The natural
+reading: in those segments the simulator is already in `StDash` on frames where the game still applies
+wind, i.e. the sim's **state transition** is ahead of the game's, and the undo then removes a push the
+game made. That would make the windy-segment problem a state-*timing* problem upstream of the wind rather
+than a wind-placement problem - which also fits the earlier variants: moving the whole call later changed
+the same set of segments, in the same direction.
+
+Next diagnostic, cheap: keep the undo and dump `7-Summit|0|g-01|134447` (833 -> 75, the sharpest drop)
+side by side with the trace, and read the frames where the undo fires - what the game's state and wind
+displacement are on each. The answer decides whether the fix belongs in the wind at all.
