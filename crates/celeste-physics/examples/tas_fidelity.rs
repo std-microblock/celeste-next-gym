@@ -1423,6 +1423,7 @@ fn replay(
     frame_cap: Option<usize>,
     dump: bool,
     carried_clutter: [bool; 3],
+    previous_state: Option<(String, i64, String, PlayerState)>,
 ) -> ReplayOutcome {
     let row_count = segment.frames.len();
     let mut outcome = ReplayOutcome {
@@ -1537,18 +1538,25 @@ fn replay(
     // transition frames, and the state before them is exactly what the game read when it
     // entered the anchor's state (`Player.IntroJumpCoroutine` is its one physics-relevant
     // reader, `Player.cs:5998`).
+    // A segment may only inherit the previous segment's ending state when the trace moved to a
+    // different room inside the same chapter: that is the hand-off whose `PreviousState` the game
+    // read. Carrying it across a chapter or an unrelated revisit is what produced a regression.
+    let threaded = previous_state.and_then(|(sid, mode, room, state)| {
+        (sid == segment.sid && mode == segment.mode && room != segment.room).then_some(state)
+    });
     if window_start > 0 {
         // Walk back to the most recent row that carries a `state`: the rows immediately before
         // an anchor are the stalled transition frames, and a Level frame without a Player entity
-        // has no `state` at all.
+        // has no `state` at all. A room that *enters* in an intro state has those stalled rows
+        // already carrying the intro state itself, so the walk can only find the anchor's own
+        // state; that is what `threaded` is the fallback for.
+        let mut found = None;
         for index in (0..window_start).rev() {
             let Some(previous_state_name) = segment.frames[index].state_name.as_deref() else {
                 continue;
             };
             match state_from_name(previous_state_name) {
-                Some(previous_state) => {
-                    snapshot.previous_state = previous_state;
-                }
+                Some(state) => found = Some(state),
                 None => {
                     outcome.status = "state_map_error";
                     outcome.error = Some(format!(
@@ -1560,6 +1568,12 @@ fn replay(
             }
             break;
         }
+        snapshot.previous_state = match found {
+            Some(state) if state != anchor_state => state,
+            _ => threaded.unwrap_or(PlayerState::Normal),
+        };
+    } else if let Some(state) = threaded {
+        snapshot.previous_state = state;
     }
     snapshot.facing = anchor_fields
         .get("Facing")
@@ -2074,6 +2088,7 @@ fn simulate_segment(
     map: &Map,
     area_file: Option<String>,
     dump: bool,
+    previous_state: Option<(String, i64, String, PlayerState)>,
 ) -> SegmentOutcome {
     // Carry `oshiro_clutter_cleared_*` across the segments of one chapter, and
     // reset it when the trace shows the chapter session restarted (its clock
@@ -2114,7 +2129,7 @@ fn simulate_segment(
         let chapter = Y3_CHAPTER.with(|c| c.borrow().clone());
         carry.borrow_mut().entry(chapter).or_default().cleared = next;
     });
-    let outcome = replay(segment, map, None, None, dump, carried);
+    let outcome = replay(segment, map, None, None, dump, carried, previous_state);
     let report = SegmentReport {
         sid: segment.sid.clone(),
         mode: segment.mode,
@@ -2169,7 +2184,7 @@ fn probe_remainder(
     carried: [bool; 3],
 ) -> Value {
     const STEPS: i32 = 32;
-    let baseline = replay(segment, map, None, Some(frame_cap), false, carried);
+    let baseline = replay(segment, map, None, Some(frame_cap), false, carried, None);
     let mut axes = Vec::new();
     for (axis, name) in [(0usize, "x"), (1usize, "y")] {
         let mut best: Option<(ReplayOutcome, f32)> = None;
@@ -2180,7 +2195,7 @@ fn probe_remainder(
             } else {
                 Vec2::new(0.0, value)
             };
-            let result = replay(segment, map, Some(remainder), Some(frame_cap), false, carried);
+            let result = replay(segment, map, Some(remainder), Some(frame_cap), false, carried, None);
             if best
                 .as_ref()
                 .is_none_or(|(current, _)| result.exact_prefix > current.exact_prefix)
@@ -2207,7 +2222,7 @@ fn probe_remainder(
         for y_step in -STEPS2D..=STEPS2D {
             let x = x_step as f32 / (2.0 * STEPS2D as f32);
             let y = y_step as f32 / (2.0 * STEPS2D as f32);
-            let result = replay(segment, map, Some(Vec2::new(x, y)), Some(frame_cap), false, carried);
+            let result = replay(segment, map, Some(Vec2::new(x, y)), Some(frame_cap), false, carried, None);
             if best2d
                 .as_ref()
                 .is_none_or(|(current, _, _)| result.exact_prefix > current.exact_prefix)
@@ -2437,6 +2452,11 @@ fn run() -> Result<(), String> {
     let mut cache = MapCache::default();
 
     let mut current: Option<Segment> = None;
+    // `Monocle.StateMachine.PreviousState` for the segment about to be replayed: the state its
+    // predecessor ended in (see the `finish_segment` call below).
+    // (sid, mode, room, state) of the previous segment, so a consumer can refuse to carry it
+    // across a chapter or room boundary.
+    let mut previous_state: Option<(String, i64, String, PlayerState)> = None;
     let mut previous_level_row: Option<(u64, Option<f64>)> = None;
     let mut processed = 0usize;
     let mut probe_budget = args.probe_remainder;
@@ -2485,8 +2505,27 @@ fn run() -> Result<(), String> {
         if !matches_current
             && let Some(segment) = current.take()
         {
+            // `Monocle.StateMachine.PreviousState` for the *next* segment: the state of this
+            // segment's last row, but only while the trace stays inside the same chapter *and*
+            // moves to a different room. `PreviousState` is only meaningful when the intro state
+            // has just begun, which is the room-change case; carrying it across a chapter change
+            // is actively wrong - it sent a late 1A `StIntroJump` segment down the Summit branch,
+            // because its predecessor was `7-Summit`'s last row, `StSummitLaunch`. Resetting at
+            // chapter and room boundaries keeps the value local to one hand-off.
+            let next_previous_state = segment
+                .frames
+                .last()
+                .and_then(|frame| frame.state_name.as_deref())
+                .and_then(state_from_name)
+                .map(|state| (
+                    segment.sid.clone(),
+                    segment.mode,
+                    segment.room.clone(),
+                    state,
+                ));
             finish_segment(
                 segment,
+                previous_state,
                 &args,
                 &mut cache,
                 &mut totals,
@@ -2496,6 +2535,7 @@ fn run() -> Result<(), String> {
                 &mut processed,
                 &mut probe_budget,
             );
+            previous_state = next_previous_state;
         }
 
         let Some((sid, mode, room)) = key else {
@@ -2570,6 +2610,7 @@ fn run() -> Result<(), String> {
     if let Some(segment) = current.take() {
         finish_segment(
             segment,
+            previous_state,
             &args,
             &mut cache,
             &mut totals,
@@ -2711,6 +2752,7 @@ fn run() -> Result<(), String> {
 #[allow(clippy::too_many_arguments)]
 fn finish_segment(
     segment: Segment,
+    previous_state: Option<(String, i64, String, PlayerState)>,
     args: &Args,
     cache: &mut MapCache,
     totals: &mut Totals,
@@ -2748,7 +2790,7 @@ fn finish_segment(
     });
     let outcome = match lookup {
         MapLookup::Ready(area_file, map) => {
-            let mut outcome = simulate_segment(&segment, &map, Some(area_file), dump);
+            let mut outcome = simulate_segment(&segment, &map, Some(area_file), dump, previous_state);
             for line in &outcome.report.dump {
                 println!("{line}");
             }
