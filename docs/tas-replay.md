@@ -1739,3 +1739,28 @@ extractable in bulk.
 The next step this enables is classification rather than another single-row hunt: for each flagged frame,
 record the state pair and the delta between implied and reported speed, then group. If the deltas cluster
 around friction (10.833), dash caps, or wall/hop values, the writer will name itself.
+
+### The population tool failed its validity check - and that points at the exporter
+
+`.tmp/recon3/in-frame-deltas.mjs` (report + trace, no build) classifies frames whose move-implied speed
+matches neither the previous nor the current row's `Speed`, over the 40 largest `mismatch` segments:
+
+```
+scanned frames: 20507  flagged: 9516      <- 46% flagged
+implied - previous speed, 5 px/s buckets:
+  +10 x845  -30 x709  -10 x657  +30 x625  +5 x461  -15 x433  -5 x413  -25 x368  +25 x347 ...
+  -170 x330                                <- the only cluster that looks like a signal
+```
+
+A 46% flag rate with a symmetric spread around small multiples of 5 is **quantisation noise**, not a
+mechanism: `dpos` between two rows is whole pixels and the fractional part lives in
+`Monocle.Actor.movementCounter`, which the trace does not carry. The only real cluster is `-170` (a
+wall-jump/Summit-sized value), and single-segment dumping stays the only exact instrument - which is
+exactly the slow route that has been eating rounds.
+
+So the cheap enabling change is in the **exporter**: add `movementCounter` (and `ExactPosition`, if it is
+cheap) to the player fields. Then every `pos`-class divergence can be classified quantitatively in one
+streaming pass - `move = dpos + dcounter` is exact, `move/dt` is the frame's true in-frame speed, and the
+delta against the row's `Speed` names the missing writer - instead of a per-segment dump. The exporter
+path is already proven twice (`flags` and the four session keys: build the `w8v5` tree, install, delete
+`Mods/Cache/CelesteTAS*`, re-run, and **assert the new key**).
