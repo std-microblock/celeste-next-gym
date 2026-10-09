@@ -1328,3 +1328,15 @@ made one of them exit `1` with **no output at all** - which reads like a crash a
 `--limit-segments 60` run of the same binary immediately succeeded. If a gate run dies silently, check
 for concurrent runs before suspecting the change. Sub-200-segment runs (`--rooms`, `--limit-segments`)
 are the right tool for a single hypothesis and cost ~20 s.
+
+### Builds contend too, not just gate runs
+
+The serialisation rule has a second half. Concurrent work (in this case two subagents working in their own
+worktrees) makes `cargo build` fail with `error: linking with link.exe failed: exit code: 1104` - the
+linker cannot replace the output while another link is in flight. The tree is fine and the binary on disk
+is simply the last one that linked, so the failure is *cosmetic but misleading*: a probe added at the same
+time then runs as the **old** binary and prints nothing, which reads exactly like "the code path never
+executes". That is how a gate probe appeared to show zero output this round.
+
+Practical rule: when several things are running, build when nothing else is; never interpret a silent
+diagnostic as evidence until a build has actually succeeded (`Finished` in the output, not just a return).
