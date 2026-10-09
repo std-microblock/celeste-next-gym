@@ -2553,3 +2553,36 @@ path omits; the room-entry positioning the source does when the new room's bound
 in the new room pushing the still-collidable player while `Player.Update` is suspended. Reading `sim.rs`'s
 stall branch against `Level.cs`'s transition coroutine is the cheap next step, and the verification is
 binary: `--rooms roof07` should take that segment from `exact=0` to `exact=6`.
+
+### New hypothesis: the simulator's own `freeze_timer` is > 0 while the game's is 0
+
+The stall early-return block (`sim.rs:6301-6317`) is:
+
+```rust
+if p.death_freeze_pending { ...; p.freeze_timer = 0.05; return Ok(()); }
+if p.freeze_timer > 0.0 { p.freeze_timer = (p.freeze_timer - raw_delta_time).max(0.0); }
+return Ok(());
+...
+if p.freeze_timer > 0.0 { p.freeze_timer = (p.freeze_timer - DT).max(0.0); return Ok(()); }
+```
+
+so a positive `p.freeze_timer` is exactly what makes `step` return before `enforce_level_bounds` and before
+any player update - which is what the zero probe lines showed. And the trace says `freezeTimer = 0` on every
+row of that window.
+
+Two readings, and the trace can tell them apart:
+
+- the simulator's restored `freeze_timer` is fine and something in the replay **set** it (a `Celeste.Freeze`
+  the game did not have, e.g. a dash-begin or death freeze modelled one frame off), leaving it positive for
+  several frames;
+- or the simulator's freeze *decrement* differs (it subtracts `DT` in one branch and `raw_delta_time` in
+  another), so a freeze that the game has already left is still live in the simulator.
+
+Note also that the trace row's `transitioning = true` means the game is in a room transition, and in the
+simulator that state is reached through the `p.transition_timer > 0.0` block near the top of `step`
+(`update_transition`, which does *not* return early). So if the simulator held `transition_timer > 0` it would
+still be running the transition path, not the freeze return - which reinforces that the early return here is
+`freeze_timer`, not a transition.
+
+One-line probe next: print `p.freeze_timer`, `p.transition_timer`, `p.death_freeze_pending` and `p.dead` at
+the top of `step` on rows 42488-42496, and compare `freeze_timer` against the trace's `freezeTimer` column.
