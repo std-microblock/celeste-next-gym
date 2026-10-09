@@ -1746,8 +1746,8 @@ fn crush_block_can_activate(
     false
 }
 
-/// `Solid.OnDashCollide` for the two vanilla Solids the runtime models.
-/// Returns `None` when the hit Solid has no callback, which leaves
+/// `Solid.OnDashCollide` for the vanilla Solids the runtime models. Returns
+/// `None` when the hit Solid has no callback, which leaves
 /// `Player.OnCollideH`/`OnCollideV` on their ordinary path.
 ///
 /// Not modelled: `CrushBlock`'s own `AttackSequence` travel (240 px/s toward the
@@ -1755,15 +1755,20 @@ fn crush_block_can_activate(
 /// squish kill) and `DashBlock.Break`'s debris. A crusher therefore stays where
 /// the room put it, and only its `OnDashCollide` decision and re-arm are
 /// reproduced.
+///
+/// Takes `&mut Map` because `DashSwitch.OnDashed` moves the switch's own
+/// collider and clears its `Collidable` flag (`DashSwitch.cs:203-204`) before
+/// the rest of the same frame runs.
 fn on_dash_collide(
     p: &mut PlayerSnapshot,
-    map: &Map,
+    map: &mut Map,
     entity_index: usize,
     direction: Vec2,
 ) -> Option<DashCollision> {
-    let entity = &map.entities[entity_index];
-    match entity.kind {
+    let kind = map.entities[entity_index].kind;
+    match kind {
         EntityKind::CrushBlock => {
+            let entity = &map.entities[entity_index];
             let index = kind_state_index(map, entity_index, EntityKind::CrushBlock)?;
             let state = *p.crush_blocks.get(index)?;
             // `CrushBlock.OnDashed` (`CrushBlock.cs:274-282`) passes
@@ -1780,7 +1785,7 @@ fn on_dash_collide(
         }
         EntityKind::DashBlock => {
             // `DashBlock.OnDashed` (`DashBlock.cs:131-139`).
-            let can_dash = entity.direction.x != 0.0;
+            let can_dash = map.entities[entity_index].direction.x != 0.0;
             if !can_dash && p.state != PlayerState::RedDash && p.state != PlayerState::SummitLaunch
             {
                 return Some(DashCollision::NormalCollision);
@@ -1796,6 +1801,26 @@ fn on_dash_collide(
             }
             Some(DashCollision::Rebound)
         }
+        EntityKind::DashSwitch => {
+            // `DashSwitch.OnDashed` (`DashSwitch.cs:195-229`): the press only
+            // happens for `direction == pressDirection`, and it always reports
+            // `NormalCollision` - the dash is neither rebound nor cancelled, the
+            // player just stops against the button.
+            if direction == map.entities[entity_index].direction {
+                // `MoveTo(pressedTarget)` (`:203`) is an exact whole-pixel move,
+                // `Collidable = false` (`:204`) and `Position -= pressDirection *
+                // 2f` (`:205`) leave the collider six pixels along the press
+                // direction - and unreachable, because the entity is no longer
+                // collidable. Vanilla's own `Awake` restore (`:132-134`) puts a
+                // persistent switch back at exactly that position with
+                // `Collidable = false` too, so the parked position is the whole
+                // observable effect (`park_entity` is how `ExitBlock`,
+                // `InvisibleBarrier`, `CassetteBlock` and `FallingBlock` model
+                // their own collidable flags).
+                park_entity(&mut map.entities[entity_index]);
+            }
+            Some(DashCollision::NormalCollision)
+        }
         _ => None,
     }
 }
@@ -1808,7 +1833,7 @@ fn on_dash_collide(
 /// does not apply and the caller keeps its ordinary stop.
 fn try_dash_collide(
     p: &mut PlayerSnapshot,
-    map: &Map,
+    map: &mut Map,
     rect: Rect,
     horizontal: bool,
     step_sign: f32,
@@ -7244,7 +7269,7 @@ fn dream_dash_exit_move_h_exact(p: &mut PlayerSnapshot, map: &Map, amount: i32) 
     }
 }
 
-fn boost_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
+fn boost_update(p: &mut PlayerSnapshot, input: InputState, map: &mut Map) {
     // StBoostUpdate moves ExactPosition toward boostTarget but does not reset
     // Speed. A concurrently yielded DummyWalkToExact therefore retains its
     // prior Approach result and can publish the next one after this callback.
@@ -7288,7 +7313,7 @@ fn begin_red_dash(p: &mut PlayerSnapshot, input: Option<InputState>, delayed_cor
     p.ducking = false;
 }
 
-fn red_dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
+fn red_dash_update(p: &mut PlayerSnapshot, input: InputState, map: &mut Map) {
     if (input.dash_pressed || input.crouch_dash_pressed)
         && p.dashes > 0
         && p.dash_cooldown_timer <= 0.0
@@ -7318,7 +7343,7 @@ fn hit_squash_update(p: &mut PlayerSnapshot) {
     }
 }
 
-fn launch_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
+fn launch_update(p: &mut PlayerSnapshot, input: InputState, map: &mut Map) {
     if let Some(target_x) = p.launch_approach_x {
         move_towards_x(p, map, target_x, 60.0 * p.frame_delta_time);
     }
@@ -7353,7 +7378,7 @@ fn launch_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     }
 }
 
-fn summit_launch_update(p: &mut PlayerSnapshot, map: &Map) {
+fn summit_launch_update(p: &mut PlayerSnapshot, map: &mut Map) {
     p.summit_launch_particle_timer -= p.frame_delta_time;
     p.facing = true;
     move_towards_x(p, map, p.summit_launch_target_x, 20.0 * p.frame_delta_time);
@@ -7810,7 +7835,7 @@ fn intro_default_spawn(map: &Map) -> Vec2 {
 /// Every phase that a post-`Player.Update` anchor can be in is identified from
 /// exported state (`PlayerSnapshot::pos`, `speed`, `player_on_ground`); the
 /// phase timers are primed with one frame already elapsed.
-fn intro_resume(p: &mut PlayerSnapshot, map: &Map) {
+fn intro_resume(p: &mut PlayerSnapshot, map: &mut Map) {
     p.intro_phase_ready = true;
     p.intro_start = intro_default_spawn(map);
     let dt = p.frame_delta_time;
@@ -7897,13 +7922,13 @@ fn intro_resume(p: &mut PlayerSnapshot, map: &Map) {
 }
 
 /// `Actor.MoveToX` (Actor.cs:304-307) is `MoveH(toX - ExactPosition.X)`.
-fn intro_move_to_x(p: &mut PlayerSnapshot, map: &Map, to_x: f32) {
+fn intro_move_to_x(p: &mut PlayerSnapshot, map: &mut Map, to_x: f32) {
     let exact_x = p.pos.x + p.movement_remainder.x;
     move_axis_amount(p, map, true, to_x - exact_x);
 }
 
 /// `IntroWalkCoroutine` (Player.cs:5969-5993).
-fn intro_walk_update(p: &mut PlayerSnapshot, map: &Map) {
+fn intro_walk_update(p: &mut PlayerSnapshot, map: &mut Map) {
     if p.intro_phase == INTRO_PHASE_WALK_WAIT {
         if p.intro_timer > 0.0 {
             p.intro_timer -= p.frame_delta_time;
@@ -8122,7 +8147,7 @@ fn intro_wake_up_update(p: &mut PlayerSnapshot) {
 }
 
 /// `IntroThinkForABitCoroutine` (Player.cs:6156-6174).
-fn intro_think_for_a_bit_update(p: &mut PlayerSnapshot, map: &Map) {
+fn intro_think_for_a_bit_update(p: &mut PlayerSnapshot, map: &mut Map) {
     if p.intro_phase == INTRO_PHASE_THINK_CAMERA {
         if p.intro_timer > 0.0 {
             p.intro_timer -= p.frame_delta_time;
@@ -8762,7 +8787,7 @@ fn wall_slide_at(p: &PlayerSnapshot, map: &Map, dir: i8) -> bool {
     touching_wall(p, map, dir) && !climb_blocker_edge_check(p, map, dir as f32)
 }
 
-fn move_axis(p: &mut PlayerSnapshot, map: &Map, horizontal: bool) {
+fn move_axis(p: &mut PlayerSnapshot, map: &mut Map, horizontal: bool) {
     let speed = if horizontal { p.speed.x } else { p.speed.y };
     move_axis_amount(p, map, horizontal, speed * p.frame_delta_time);
 }
@@ -8778,7 +8803,7 @@ fn naive_move(p: &mut PlayerSnapshot, amount: Vec2) {
     p.pos.y += move_y;
 }
 
-fn move_axis_amount(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount: f32) {
+fn move_axis_amount(p: &mut PlayerSnapshot, map: &mut Map, horizontal: bool, amount: f32) {
     let remainder = if horizontal {
         &mut p.movement_remainder.x
     } else {
@@ -9057,6 +9082,7 @@ fn is_solid_entity(kind: EntityKind) -> bool {
             | EntityKind::CrumbleBlock
             | EntityKind::ZipMover
             | EntityKind::TempleGate
+            | EntityKind::DashSwitch
     )
 }
 
@@ -9756,7 +9782,7 @@ fn bounce(p: &mut PlayerSnapshot, map: &Map, from_y: f32) {
     p.launched = false;
 }
 
-fn try_begin_badeline_boost(p: &mut PlayerSnapshot, map: &Map) -> bool {
+fn try_begin_badeline_boost(p: &mut PlayerSnapshot, map: &mut Map) -> bool {
     if !player_in_control(p.state) {
         return false;
     }
@@ -9860,7 +9886,7 @@ fn badeline_boost_entity<'a>(p: &PlayerSnapshot, map: &'a Map) -> Option<&'a cra
     })
 }
 
-fn update_badeline_boost(p: &mut PlayerSnapshot, map: &Map) {
+fn update_badeline_boost(p: &mut PlayerSnapshot, map: &mut Map) {
     let wait_frames = if p.badeline_boost_final { 12 } else { 6 };
     match p.badeline_boost_phase {
         0 if p.badeline_boost_frame < 11 => {
@@ -9900,7 +9926,7 @@ fn update_badeline_boost(p: &mut PlayerSnapshot, map: &Map) {
     }
 }
 
-fn begin_badeline_launch(p: &mut PlayerSnapshot, map: &Map) {
+fn begin_badeline_launch(p: &mut PlayerSnapshot, map: &mut Map) {
     p.badeline_boost_active = false;
     p.launch_approach_x = Some(p.last_badeline_boost_target.x);
     p.speed = Vec2::new(0.0, -330.0);
@@ -9939,7 +9965,7 @@ fn begin_badeline_summit_launch(p: &mut PlayerSnapshot) {
     p.state = PlayerState::SummitLaunch;
 }
 
-fn move_to_position(p: &mut PlayerSnapshot, map: &Map, target: Vec2) {
+fn move_to_position(p: &mut PlayerSnapshot, map: &mut Map, target: Vec2) {
     let exact_x = p.pos.x + p.movement_remainder.x;
     move_axis_amount(p, map, true, target.x - exact_x);
     let exact_y = p.pos.y + p.movement_remainder.y;
@@ -10255,13 +10281,13 @@ fn update_transition(p: &mut PlayerSnapshot, map: &mut Map) {
     }
 }
 
-fn move_towards_x(p: &mut PlayerSnapshot, map: &Map, target_x: f32, max_move: f32) {
+fn move_towards_x(p: &mut PlayerSnapshot, map: &mut Map, target_x: f32, max_move: f32) {
     let exact_x = p.pos.x + p.movement_remainder.x;
     let next_x = approach(exact_x, target_x, max_move);
     move_axis_amount(p, map, true, next_x - exact_x);
 }
 
-fn approach_exact_position(p: &mut PlayerSnapshot, map: &Map, target: Vec2, max_move: f32) {
+fn approach_exact_position(p: &mut PlayerSnapshot, map: &mut Map, target: Vec2, max_move: f32) {
     let exact = Vec2::new(
         p.pos.x + p.movement_remainder.x,
         p.pos.y + p.movement_remainder.y,
@@ -10281,7 +10307,7 @@ fn approach_exact_position(p: &mut PlayerSnapshot, map: &Map, target: Vec2, max_
     move_axis_amount(p, map, false, next.y - exact.y);
 }
 
-fn snap_to_boost_target(p: &mut PlayerSnapshot, map: &Map) {
+fn snap_to_boost_target(p: &mut PlayerSnapshot, map: &mut Map) {
     let center_offset_y = if p.ducking { 3.0 } else { 5.5 };
     let target = Vec2::new(
         p.boost_target.x.floor(),
@@ -10317,7 +10343,7 @@ fn advance_wind_controller(p: &mut PlayerSnapshot) {
     p.wind.y = approach(p.wind.y, p.wind_target.y, WIND_ACCEL * p.frame_delta_time);
 }
 
-fn apply_wind_movement(p: &mut PlayerSnapshot, map: &Map) {
+fn apply_wind_movement(p: &mut PlayerSnapshot, map: &mut Map) {
     if !player_in_control(p.state)
         || p.no_wind_timer > 0.0
         || matches!(
@@ -21401,7 +21427,7 @@ mod tests {
     fn ceiling_bonk_ends_the_variable_jump_window() {
         // `player_rect` puts the hitbox at `y - 11 .. y`; a ceiling ending at
         // y = 89 blocks the first pixel of an upward move from y = 100.
-        let map = Map {
+        let mut map = Map {
             solids: vec![Rect::new(0.0, 0.0, 320.0, 89.0)],
             ..Map::default()
         };
@@ -21414,7 +21440,7 @@ mod tests {
             ..PlayerSnapshot::default()
         };
         let amount = late.speed.y * DT;
-        move_axis_amount(&mut late, &map, false, amount);
+        move_axis_amount(&mut late, &mut map, false, amount);
         assert_eq!(late.speed.y, 0.0);
         assert_eq!(late.var_jump_timer, 0.0);
 
@@ -21428,7 +21454,7 @@ mod tests {
             ..PlayerSnapshot::default()
         };
         let amount = early.speed.y * DT;
-        move_axis_amount(&mut early, &map, false, amount);
+        move_axis_amount(&mut early, &mut map, false, amount);
         assert_eq!(early.speed.y, 0.0);
         assert_eq!(early.var_jump_timer, 0.166_666_6);
     }
@@ -21653,5 +21679,86 @@ mod tests {
         // by parking the collider out of the room on the next `Simulator::new`.
         let simulator = Simulator::new(rebound.clone(), &map).unwrap();
         assert!(!solid_is_collidable(&simulator.runtime_entities()[0]));
+    }
+
+    /// `Sides.Right` dash switch: 8x16 at the entity position with `pressDirection = UnitX`
+    /// (`DashSwitch.cs:68-70,87-90`).
+    fn dash_switch_map(press_direction: Vec2) -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 176.0),
+            entities: vec![crate::Entity {
+                kind: EntityKind::DashSwitch,
+                bounds: Rect::new(80.0, 96.0, 8.0, 16.0),
+                direction: press_direction,
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "dashSwitchH".to_owned(),
+            }],
+            ..Map::default()
+        }
+    }
+
+    /// `DashSwitch.OnDashed` (`DashSwitch.cs:195-229`): a dash along `pressDirection` presses the
+    /// button, which then sets `Collidable = false` (`:204`), so the player keeps going through
+    /// the space it occupied. The result is always `NormalCollision` (`:228`) - no rebound.
+    #[test]
+    fn dash_switch_presses_on_the_matching_dash_direction() {
+        let map = dash_switch_map(Vec2::new(1.0, 0.0));
+        // Feet at y=106 against a button spanning y=96..112: a ten pixel overlap, so the
+        // four-pixel dash corner correction cannot lift the player over it
+        // (`Player.cs` `OnCollideH`: `for (int i = 1; i <= DashCornerCorrection; i++)`).
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 106.0),
+            on_ground: true,
+            dashes: 1,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = [InputState {
+            move_x: 1,
+            ..InputState::default()
+        }; 16];
+        inputs[0].dash_pressed = true;
+        let mut simulator = Simulator::new(p, &map).unwrap();
+        for input in &inputs {
+            simulator.step(*input).unwrap();
+        }
+        assert!(
+            !solid_is_collidable(&simulator.runtime_entities()[0]),
+            "a pressed dash switch must stop being collidable"
+        );
+        // `NormalCollision` (`:228`) leaves the dash alive and the button gone, so the player
+        // runs past the right face at x=88 instead of rebounding out of the room.
+        assert!(
+            simulator.snapshot().pos.x > 88.0,
+            "the player must continue through the pressed button, got x={}",
+            simulator.snapshot().pos.x
+        );
+    }
+
+    /// The press is gated on `direction == pressDirection` (`DashSwitch.cs:197`), so the same
+    /// collider refuses a dash from the other side and stays a solid wall.
+    #[test]
+    fn dash_switch_ignores_a_dash_from_the_wrong_side() {
+        // `Sides.Left` (`:93-97`): `pressDirection = -UnitX`, pressed only by a leftward dash.
+        let map = dash_switch_map(Vec2::new(-1.0, 0.0));
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 106.0),
+            on_ground: true,
+            dashes: 1,
+            ..PlayerSnapshot::default()
+        };
+        let mut inputs = [InputState {
+            move_x: 1,
+            ..InputState::default()
+        }; 12];
+        inputs[0].dash_pressed = true;
+        let mut simulator = Simulator::new(p, &map).unwrap();
+        for input in &inputs {
+            simulator.step(*input).unwrap();
+        }
+        assert!(solid_is_collidable(&simulator.runtime_entities()[0]));
+        // Blocked with the 8 px collider's right face flush against x=80.
+        assert_eq!(simulator.snapshot().pos.x, 76.0);
     }
 }

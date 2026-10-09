@@ -171,6 +171,15 @@ pub enum EntityKind {
     /// (`TouchSwitch.cs:44-45`), so its activation box is 30x30 centred on the entity position, not
     /// the 8x8 map rectangle.
     TouchSwitch,
+    /// Vanilla `Celeste.DashSwitch : Solid` (map names `dashSwitchH`/`dashSwitchV`): the Mirror
+    /// Temple button that a dash presses. The constructor's `Solid(position, 0f, 0f, safe: true)`
+    /// is immediately resized to `16x8` for `Sides.Up`/`Down` and `8x16` for `Sides.Left`/`Right`
+    /// at the entity position, with collider offset `(0, 0)` (`DashSwitch.cs:52-71`), so *the map
+    /// rectangle is not the collider* - every vanilla element carries a 0-sized one. `direction`
+    /// is `pressDirection` (`DashSwitch.cs:72-99`: `UnitY`, `-UnitY`, `UnitX`, `-UnitX`) and
+    /// `single_use` carries `persistent`, which decides whether the press also writes the
+    /// `dashSwitch_<id>` session flag (`DashSwitch.cs:223-226`).
+    DashSwitch,
     /// Simulator-native constant-velocity Solid used to exercise Monocle
     /// carrying, pushing, and Player LiftSpeed inheritance independently of a
     /// specific vanilla entity state machine.
@@ -1145,6 +1154,35 @@ pub(crate) fn encode_celeste_rooms(
                         })
                         .collect(),
                 )),
+                // `dashSwitchH`/`dashSwitchV` round-trip under the name the decoder saw, exactly
+                // like `StaticSolid`, because the side lives in the name + one bool and the
+                // collider width/height are derived on decode rather than read from the map
+                // (`DashSwitch.cs:62-71`, `:103-122`). The `sprite` skin and `allGates` are
+                // presentation/gate wiring this simulator does not model, so they are not
+                // re-emitted.
+                EntityKind::DashSwitch => {
+                    let (left_side, ceiling) = match (entity.direction.x, entity.direction.y) {
+                        (-1.0, _) => (Some(true), None),
+                        (1.0, _) => (Some(false), None),
+                        (_, -1.0) => (None, Some(true)),
+                        _ => (None, Some(false)),
+                    };
+                    let mut attrs = vec![("id", BinaryValue::Int(id))];
+                    if let Some(left) = left_side {
+                        attrs.push(("leftSide", BinaryValue::Bool(left)));
+                    }
+                    if let Some(ceiling) = ceiling {
+                        attrs.push(("ceiling", BinaryValue::Bool(ceiling)));
+                    }
+                    attrs.push(("originX", BinaryValue::Int(0)));
+                    attrs.push(("originY", BinaryValue::Int(0)));
+                    attrs.push(("persistent", BinaryValue::Bool(entity.single_use)));
+                    attrs.push(("width", BinaryValue::Int(width)));
+                    attrs.push(("height", BinaryValue::Int(height)));
+                    attrs.push(("x", BinaryValue::Int(x)));
+                    attrs.push(("y", BinaryValue::Int(y)));
+                    Some(element_vec(&entity.name, attrs, vec![]))
+                }
                 EntityKind::Decoration | EntityKind::Unknown => None,
             };
             if let Some(encoded) = encoded {
@@ -1573,11 +1611,14 @@ fn map_from_binary_inner(
                 "coreModeToggle" => EntityKind::CoreModeToggle,
                 "SummitBackgroundManager" => EntityKind::SummitBackgroundManager,
                 "plateau" | "bridgeFixed" | "starJumpBlock" | "crumbleWallOnRumble" => EntityKind::StaticSolid,
-                "dashSwitch" => EntityKind::StaticSolid,
                 "resortRoofEnding" => EntityKind::StaticSolid,
                 "crumbleBlock" => EntityKind::CrumbleBlock,
                 "switchGate" => EntityKind::SwitchGate,
                 "touchSwitch" => EntityKind::TouchSwitch,
+                // `DashSwitch.Create` (`DashSwitch.cs:103-122`) dispatches on these two names
+                // alone; the bare `dashSwitch` this arm used to accept does not exist in any
+                // vanilla map, so every real dash switch used to arrive as `Unknown`.
+                "dashSwitchH" | "dashSwitchV" => EntityKind::DashSwitch,
                 "celesteGymMovingSolid" => EntityKind::MovingSolid,
                 _ => registered.map_or(EntityKind::Unknown, |entry| entry.kind),
             };
@@ -1845,6 +1886,29 @@ fn map_from_binary_inner(
                     // `TouchSwitch(data, offset) : this(data.Position + offset)` (`TouchSwitch.cs:86`)
                     // with a `Hitbox(30f, 30f, -15f, -15f)` (`:45`).
                     "touchSwitch" => (Rect::new(ex - 15.0, ey - 15.0, 30.0, 30.0), Vec2::default()),
+                    // `DashSwitch(position, side, ...) : base(position, 0f, 0f, safe: true)`
+                    // (`DashSwitch.cs:52-53`) then `Collider.Width = 16f; Height = 8f` for
+                    // `Sides.Up`/`Down` and `8f`/`16f` for `Sides.Left`/`Right` (`:62-71`). The
+                    // collider keeps offset `(0, 0)`, so it is `(position, 16, 8)` or
+                    // `(position, 8, 16)` - *not* the map rectangle, which is 0-sized in every
+                    // vanilla element. `direction` carries `pressDirection` (`:74-98`), which is
+                    // also what `OnDashed` compares the dash direction against (`:197`).
+                    "dashSwitchH" => (
+                        Rect::new(ex, ey, 8.0, 16.0),
+                        if attr_bool(el, "leftSide", false) {
+                            Vec2::new(-1.0, 0.0)
+                        } else {
+                            Vec2::new(1.0, 0.0)
+                        },
+                    ),
+                    "dashSwitchV" => (
+                        Rect::new(ex, ey, 16.0, 8.0),
+                        if attr_bool(el, "ceiling", false) {
+                            Vec2::new(0.0, -1.0)
+                        } else {
+                            Vec2::new(0.0, 1.0)
+                        },
+                    ),
                     // `AscendManager(EntityData data, Vector2 offset)` (`AscendManager.cs:228-233`)
                     // reads `index` and `intro_launch`; only `Position.Y` drives the takeover
                     // condition, and `index` into `direction.x`.
@@ -1979,6 +2043,10 @@ fn map_from_binary_inner(
                     EntityKind::RisingLava => attr_bool(el, "intro", false),
                     EntityKind::Refill => attr_bool(el, "oneUse", false),
                     EntityKind::CoreModeToggle => attr_bool(el, "persistent", false),
+                    // `DashSwitch.Create` reads `data.Bool("persistent")` (`DashSwitch.cs:106`);
+                    // only a persistent press writes `Session.SetFlag` (`:223-226`), which this
+                    // simulator cannot represent (no session flags in the trace).
+                    EntityKind::DashSwitch => attr_bool(el, "persistent", false),
                     _ => attr_bool(el, "singleUse", false),
                 },
                 nodes: el
@@ -2139,6 +2207,7 @@ impl Map {
                         | EntityKind::CrumbleBlock
                         | EntityKind::StaticSolid
                         | EntityKind::SwitchGate
+                        | EntityKind::DashSwitch
                 ) && entity.bounds.intersects(rect)
             })
     }
@@ -3194,5 +3263,89 @@ mod tests {
         let encoded = encode_celeste_map(&canvas, "CelesteGymTest", "axes").unwrap();
         let decoded = decode_map_room(&encoded, Some("axes")).unwrap();
         assert_eq!(decoded.entities[0].direction, Vec2::new(2.0, 1.0));
+    }
+
+    /// `DashSwitch.Create` (`DashSwitch.cs:103-122`) takes the side from the map name plus one
+    /// bool: `dashSwitchH` is `Left` with `leftSide` and `Right` otherwise, `dashSwitchV` is `Up`
+    /// with `ceiling` and `Down` otherwise. `base(position, 0f, 0f, safe: true)` (`:52-53`) is
+    /// immediately resized to 16x8 for `Up`/`Down` and 8x16 for `Left`/`Right` (`:62-71`) with
+    /// collider offset `(0, 0)`, so the collider sits at the entity position - not at the map
+    /// rectangle, which is 0-sized in every vanilla element.
+    #[test]
+    fn celeste_dash_switches_decode_with_source_colliders() {
+        let cases = [
+            // name, `pressDirection` (`:72-99`), collider
+            (
+                "dashSwitchH",
+                Vec2::new(-1.0, 0.0),
+                Rect::new(96.0, 64.0, 8.0, 16.0),
+            ),
+            (
+                "dashSwitchH",
+                Vec2::new(1.0, 0.0),
+                Rect::new(96.0, 64.0, 8.0, 16.0),
+            ),
+            (
+                "dashSwitchV",
+                Vec2::new(0.0, -1.0),
+                Rect::new(200.0, 120.0, 16.0, 8.0),
+            ),
+            (
+                "dashSwitchV",
+                Vec2::new(0.0, 1.0),
+                Rect::new(200.0, 120.0, 16.0, 8.0),
+            ),
+        ];
+        for (name, press_direction, collider) in cases {
+            let switch = Entity {
+                kind: EntityKind::DashSwitch,
+                bounds: collider,
+                direction: press_direction,
+                shielded: false,
+                // `persistent` (`DashSwitch.cs:106`), only observable through the
+                // unrepresentable `dashSwitch_<id>` session flag (`:223-226`).
+                single_use: true,
+                nodes: vec![],
+                name: name.to_owned(),
+            };
+            let map = Map {
+                bounds: Rect::new(0.0, 0.0, 320.0, 176.0),
+                entities: vec![switch],
+                ..Map::default()
+            };
+            let encoded = encode_celeste_map(&map, "CelesteGymTest", "switches").unwrap();
+            let decoded = decode_map_room(&encoded, Some("switches")).unwrap();
+            assert_eq!(decoded.entities[0].kind, EntityKind::DashSwitch, "{name}");
+            assert_eq!(decoded.entities[0].bounds, collider, "{name}");
+            assert_eq!(decoded.entities[0].direction, press_direction, "{name}");
+            assert_eq!(decoded.entities[0].name, name);
+            assert!(decoded.entities[0].single_use);
+            // The collider is what the player's own collision and the dash-collide
+            // probe consult, and it is live from the moment the room loads.
+            let inside = Rect::new(collider.x + 1.0, collider.y + 1.0, 2.0, 2.0);
+            assert!(decoded.non_dream_solid_at(inside), "{name}");
+        }
+
+        // Every vanilla element stores a 0-sized map rectangle (`Solid(position, 0f, 0f,
+        // safe: true)`, `DashSwitch.cs:53`), so the decode arm must derive the collider
+        // from the name plus one bool instead of reading `width`/`height` - which would
+        // leave the button with no collider at all, exactly as before this change.
+        let zero_rect = Entity {
+            kind: EntityKind::DashSwitch,
+            bounds: Rect::new(96.0, 64.0, 0.0, 0.0),
+            direction: Vec2::new(1.0, 0.0),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "dashSwitchH".to_owned(),
+        };
+        let map = Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 176.0),
+            entities: vec![zero_rect],
+            ..Map::default()
+        };
+        let encoded = encode_celeste_map(&map, "CelesteGymTest", "zero").unwrap();
+        let decoded = decode_map_room(&encoded, Some("zero")).unwrap();
+        assert_eq!(decoded.entities[0].bounds, Rect::new(96.0, 64.0, 8.0, 16.0));
     }
 }
