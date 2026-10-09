@@ -1024,3 +1024,20 @@ rebuild *that* tree, not re-derive it - and it must verify a non-zero trace befo
 Two checks to run first, both cheap: diff `w8v5/.../TasFrameTrace.cs` against the freshly patched tree
 to see what is missing, and confirm whether the 0-byte trace is a dropped-row path (every row throwing
 inside `WriteFrame`) or the command never running at all.
+
+## Round 51: the v6 traces were exported with the WRONG (pre-flags) DLL
+
+The 100% and 202 re-exports succeeded (1,044,809,413 B / 1:55 and 1,720,069,809 B / 3:35, both
+`status: success`) but a scan of the first 120,001 rows of `trace-202-v6.jsonl` finds **no `flags` key**,
+so those runs used the pre-flags exporter. Cause: round 46 restored the v5 DLL into
+`game-trace/Mods/CelesteTAS-EverestInterop/bin`, and the loader refreshed `Mods/Cache` from it. The v6
+DLL (built from `celestetas-trace-w8v5`, SHA256 DDAC7E16...33F4739, byte-identical to the DLL that
+produced a working `flags` trace at 18:04) is now installed over it.
+
+**Rule to keep: after exporting, assert the new key is present before believing the trace.** A build
+timestamp or a `status: success` is not evidence; the flag array is.
+
+Both `trace-100pct-v6.jsonl` and `trace-202-v6.jsonl` are valid *pre-flags* traces and remain usable -
+they are byte-for-byte the same field set as v5 - so nothing is lost, but the session-state work
+(`switches_<room>`, `Session.DoNotLoad`, `Session.Cassette`) still needs one more export pass with the
+v6 DLL installed.
