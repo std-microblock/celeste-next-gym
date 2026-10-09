@@ -2911,3 +2911,30 @@ verify with `--rooms roof07` (both segments should go from `exact = 0` to `exact
 
 This supersedes the two-shape guessing in the previous note: the dump already showed the game's collider
 landing exactly on `Bounds.Left`, and `TransitionTo` explains both the one-pixel rate and the stop.
+
+### roof07: the machinery exists - only the anchor-side transition state is missing
+
+Everything is already implemented:
+
+- `TRANSITION_MOVE_SPEED = 60.0` (`sim.rs:117`), matching `Player.TransitionTo`'s `60f * Engine.DeltaTime`
+  (`Player.cs:2295-2296`) - one pixel per frame;
+- `begin_transition` sets `p.transition_target = target` (`:11298`) and
+  `p.transition_timer = TRANSITION_TIME + p.frame_delta_time` (`:11303`);
+- `update_transition` (`:11306`) does the `approach(pos, target, 60*dt)` and the
+  remainder/speed-rounding at arrival.
+
+So the whole gap is that a replayed window which **starts inside a transition** has `transition_timer = 0`
+(the entry probe shows `trans=0.0000`) and never enters `update_transition`. Neither `transition_timer` nor
+`transition_target` is exported by the trace, but the trace *does* say `transitioning = true` on those rows -
+so the harness can synthesise the state at the anchor, exactly as it does for the other unexported session
+state.
+
+The target is derivable: `Level.EnforceBounds` calls `NextLevel(player.Center + UnitX * 8f, UnitX)` for a side
+transition (read in an earlier round), so the direction is readable from the anchor geometry (the player is
+outside the room on its left, so the transition is to the right) and the target is a function of that. One
+caveat to check while implementing: the measured stop is `x = 8236`, whereas `center + 8` from the anchor
+position (`x ~ 8230`, ducking collider 8 wide, so center `8234`) would be `8242` - a six-pixel difference, so
+`NextLevel` adjusts the target beyond that expression and the implementation should print the target it
+computes against the observed stop before trusting it.
+
+Verification stays binary: `--rooms roof07`, both segments `exact = 0` -> `exact = 6`.
