@@ -3176,3 +3176,25 @@ Next: read the simulator's Puffer branch and its state machine (`Gassed`/`Gone`/
 then move the launch to the explosion transition and re-measure. The gate itself needs the `pushRadius`
 circle and the segment check - the `segment_hits_solid` helper written for the Seeker work (branch `seeker`)
 is directly reusable if that branch lands; otherwise it is eight lines.
+
+### +-280: the Puffer has NO state in the simulator, and the source gates the explode twice
+
+`Explode()` is called from the collide handling of `States.Idle` (`Puffer.cs:394`) and `States.Hit` (`:422`),
+and two guards stand in front of it:
+
+- `:296` / the collide path: `if (num > 0f && state != States.Gone)` - a Puffer in `Gone` does not explode;
+- **`:552`: `if (state == States.Gone || !(cantExplodeTimer <= 0f)) return;`** - and `cantExplodeTimer` is set
+  to **0.5 s** at `:167` (on (re)spawn) and only ticks down while `state != States.Gone` (`:362-365`), with a
+  second copy of the same gate at `:506`.
+
+The simulator models **none** of this: grep for `cant_explode`, `gone_timer` or `PufferSnapshot` in `sim.rs`
+and `types.rs` returns nothing. Its only Puffer handling is the `else` branch of the stomp test
+(`sim.rs:10725-10728`), which calls `explode_launch(p, input, target, false, true)` unconditionally on a
+non-stomp collision and mirrors `goneTimer` only as `bounce_reuse_timer = 2.5`. So the simulator explodes a
+Puffer on collisions where the game refuses (a Puffer that has just respawned, or one in `Gone`), which is
+exactly a one-frame placement difference in the +-280 cluster.
+
+Fix sketch: give the Puffer per-entity state (`state` + `cant_explode_timer`, set to 0.5 on spawn, ticking
+down while not `Gone`), add the `state != Gone && cant_explode_timer <= 0` guard to both the collide path and
+the launch, and keep the existing `2.5` s gone timer as `bounce_reuse_timer`'s sibling. That is small: one
+field pair, one decrement site and one guard, all at an already-modelled entity.
