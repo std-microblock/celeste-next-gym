@@ -2440,3 +2440,22 @@ quantity (or none at all). `Player.EnforceBounds` in the source always uses `thi
 `Level`, i.e. the room. A one-line print of `p.current_room_bounds` and `map.bounds` on those frames decides
 it, and if that is the cause the fix is in whatever is supposed to populate `current_room_bounds`, not in the
 clamp itself.
+
+### `current_room_bounds` is not the roof07 cause - and the unexplained quantity is a per-frame +1
+
+Read rather than probed, which saved a round:
+
+- `p.current_room_bounds` is written in exactly **one** place, `sim.rs:11340` (`p.current_room_bounds =
+  next_room;`), i.e. during a room **transition**. It is not restored at a segment anchor.
+- That looks dangerous given `let bounds = p.current_room_bounds.unwrap_or(map.bounds);` in the clamp - but
+  the fallback is **correct**: the harness decodes the map **per room**, and `Map::bounds` is set from the
+  room's own rectangle (`map.rs`: `bounds: level_room_bounds(x, y, width, height)`). So `map.bounds` *is* the
+  room's bounds and the clamp uses the right rectangle.
+
+So the geometry source is not the defect. What remains unexplained is the creep itself: `vx = 323.333`
+(5.39 px/frame) producing exactly **+1 px per frame** for six frames, then zero. A one-off clamp
+(`player.Left = Bounds.Left`) would be a multi-pixel jump on the first frame and then nothing, so the +1 has
+to be something that **re-applies one pixel every frame** - the shape of a per-frame `MoveHExact(1)` corner
+correction (`Player.cs:3288-3308` has such loops, though they are written for the dash states) or a
+per-frame bounds push. The trace's `collider` field is the right instrument: `[8231,...]` at row 42494 and
+`[8232,...]` from 42495 onward pins the transition to the frame where the left edge reaches the bound.
