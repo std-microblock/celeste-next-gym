@@ -230,6 +230,8 @@ pub struct Simulator {
     /// `oshiro_clutter_cleared_<color>` (`Session.Flags`), see
     /// [`Simulator::clutter_cleared`].
     clutter_cleared: [bool; CLUTTER_COLORS],
+    /// Per-CrumblePlatform coroutine position, in map entity order.
+    crumble_blocks: Vec<CrumbleBlockState>,
 }
 
 /// `Player.climbHopSolid` (`Player.cs:553`) and `climbHopSolidPosition`
@@ -283,6 +285,7 @@ impl Simulator {
         initialize_invisible_barriers(&mut snapshot, &mut runtime_map);
         initialize_killboxes(&mut snapshot, &mut runtime_map);
         initialize_crush_and_dash_blocks(&mut snapshot, &mut runtime_map);
+        let crumble_blocks = initialize_crumble_blocks(&runtime_map);
         initialize_lookouts(&mut snapshot, &runtime_map);
         position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
         sync_all_platform_static_movers(&snapshot, &mut runtime_map, &static_mover_attachments);
@@ -292,6 +295,7 @@ impl Simulator {
             static_mover_attachments,
             climb_hop_solid: None,
             clutter_cleared,
+            crumble_blocks,
         })
     }
 
@@ -385,6 +389,7 @@ impl Simulator {
             &mut self.runtime_map,
             &mut self.static_mover_attachments,
             &mut self.climb_hop_solid,
+            &mut self.crumble_blocks,
         )?;
         Ok(&self.snapshot)
     }
@@ -927,6 +932,113 @@ fn initialize_clouds(p: &mut PlayerSnapshot, map: &mut Map) {
 }
 
 const PARKED_ENTITY_POSITION: f32 = -1_000_000.0;
+/// `CrumblePlatform.Sequence` (`CrumblePlatform.cs:94-169`) timings: `yield return 0.2f` per shake
+/// step (one step with the player on top, three while climbing), then up to `0.4 s` of further
+/// standing, then `Collidable = false` for `2 s`, then a wait for the space to clear.
+const CRUMBLE_SHAKE_STEP: f32 = 0.2;
+const CRUMBLE_STAND: f32 = 0.4;
+const CRUMBLE_RESPAWN: f32 = 2.0;
+
+/// One `CrumblePlatform`'s coroutine position. Held on the `Simulator` (which clones for `fork`)
+/// rather than in `PlayerSnapshot`, so the gate's `--dump-field-map` audit is untouched.
+#[derive(Clone, Copy)]
+struct CrumbleBlockState {
+    entity_index: usize,
+    original: Rect,
+    /// 0 waits for a player on top or climbing, 1 shakes, 2 stands, 3 is collapsed, 4 waits for
+    /// the space to clear before re-arming.
+    phase: u8,
+    timer: f32,
+    steps: u8,
+}
+
+fn initialize_crumble_blocks(map: &Map) -> Vec<CrumbleBlockState> {
+    map.entities
+        .iter()
+        .enumerate()
+        .filter(|(_, entity)| entity.kind == EntityKind::CrumbleBlock)
+        .map(|(entity_index, entity)| CrumbleBlockState {
+            entity_index,
+            original: entity.bounds,
+            phase: 0,
+            timer: 0.0,
+            steps: 0,
+        })
+        .collect()
+}
+
+/// `CrumblePlatform.Sequence` (`CrumblePlatform.cs:94-169`), one frame at a time.
+///
+/// `GetPlayerOnTop()` is `CollideFirst<Player>(Position - Vector2.UnitY)`, i.e. the player's
+/// collider overlapping the block's rectangle shifted up by one pixel - what standing on its top
+/// edge produces. Collapsing parks the entity's bounds, the simulator's idiom for
+/// `Collidable = false`; re-arming restores the original rectangle.
+fn advance_crumble_blocks(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    states: &mut [CrumbleBlockState],
+) {
+    let player = current_player_rect(p, p.pos.x, p.pos.y);
+    let dt = p.frame_delta_time;
+    for state in states.iter_mut() {
+        let Some(entity) = map.entities.get(state.entity_index) else {
+            continue;
+        };
+        let bounds = entity.bounds;
+        let on_top =
+            player.intersects(Rect::new(bounds.x, bounds.y - 1.0, bounds.width, bounds.height));
+        match state.phase {
+            0 => {
+                if on_top {
+                    state.steps = 1;
+                    state.timer = CRUMBLE_SHAKE_STEP;
+                    state.phase = 1;
+                }
+            }
+            1 => {
+                state.timer -= dt;
+                if state.timer > 0.0 {
+                    continue;
+                }
+                state.steps = state.steps.saturating_sub(1);
+                if state.steps > 0 {
+                    state.timer = CRUMBLE_SHAKE_STEP;
+                    continue;
+                }
+                state.phase = 2;
+                state.timer = CRUMBLE_STAND;
+            }
+            2 => {
+                // `while (timer > 0f && GetPlayerOnTop() != null)`: leaving the top ends the wait
+                // early, so the block collapses as soon as the player steps off.
+                if on_top {
+                    state.timer -= dt;
+                    if state.timer > 0.0 {
+                        continue;
+                    }
+                }
+                park_entity(&mut map.entities[state.entity_index]);
+                state.phase = 3;
+                state.timer = CRUMBLE_RESPAWN;
+            }
+            3 => {
+                state.timer -= dt;
+                if state.timer > 0.0 {
+                    continue;
+                }
+                state.phase = 4;
+            }
+            _ => {
+                // `while (CollideCheck<Actor>() || CollideCheck<Solid>()) yield return null;`
+                if player.intersects(state.original) || map.non_dream_solid_at(state.original) {
+                    continue;
+                }
+                map.entities[state.entity_index].bounds = state.original;
+                state.phase = 0;
+            }
+        }
+    }
+}
 const CASSETTE_BEAT_INTERVAL: f32 = 355.0 / (678.0 * std::f32::consts::PI);
 
 fn park_entity(entity: &mut crate::Entity) {
@@ -5228,6 +5340,7 @@ fn step(
     map: &mut Map,
     attachments: &mut Vec<Option<StaticMoverAttachment>>,
     climb_hop_solid: &mut Option<ClimbHopSolid>,
+    crumble_blocks: &mut Vec<CrumbleBlockState>,
 ) -> Result<(), SimulationError> {
     // Engine computes DeltaTime once at the beginning of the raw frame. A
     // HeartGem can write TimeRate during Scene.Update, but that write only
@@ -5498,7 +5611,8 @@ fn step(
 
     if p.badeline_boost_active {
         update_badeline_boost(p, map);
-        advance_post_player_entities(p, map, input, attachments);
+        advance_crumble_blocks(p, map, crumble_blocks);
+    advance_post_player_entities(p, map, input, attachments);
         p.on_ground = grounded(p, map);
         return Ok(());
     }
@@ -5543,7 +5657,8 @@ fn step(
             // Player.cs:6121-6146. `Player.Update` still runs its ordinary
             // tail for this state; only the tween drives it.
             intro_respawn_update(p);
-            advance_post_player_entities(p, map, input, attachments);
+            advance_crumble_blocks(p, map, crumble_blocks);
+    advance_post_player_entities(p, map, input, attachments);
             p.on_ground = grounded(p, map);
             return Ok(());
         }
@@ -5646,6 +5761,7 @@ fn step(
     // coroutine and Solid carry/push run after Player.Update. A lift speed
     // written by the previous ZipMover update is therefore visible to the
     // player's next action before the platform advances again.
+    advance_crumble_blocks(p, map, crumble_blocks);
     advance_post_player_entities(p, map, input, attachments);
     p.on_ground = grounded(p, map);
     Ok(())
@@ -8702,6 +8818,7 @@ fn is_solid_entity(kind: EntityKind) -> bool {
             | EntityKind::MoveBlock
             | EntityKind::MovingSolid
             | EntityKind::StaticSolid
+            | EntityKind::CrumbleBlock
             | EntityKind::ZipMover
             | EntityKind::TempleGate
     )
