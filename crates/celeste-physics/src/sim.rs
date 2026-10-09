@@ -15459,6 +15459,13 @@ mod tests {
             &mut map,
             &mut attachments,
             &mut None,
+            &mut Vec::new(),
+            &mut RoomCoroutineState {
+                crumble_blocks: Vec::new(),
+                switch_gates: Vec::new(),
+                touch_switches: Vec::new(),
+                switches_on: false,
+            },
         )
         .unwrap();
         assert!(player.invisible_barriers[0].initialized);
@@ -16260,6 +16267,13 @@ mod tests {
             &mut map,
             &mut attachments,
             &mut carry,
+            &mut Vec::new(),
+            &mut RoomCoroutineState {
+                crumble_blocks: Vec::new(),
+                switch_gates: Vec::new(),
+                touch_switches: Vec::new(),
+                switches_on: false,
+            },
         )
         .unwrap();
         // -60 px/s over one 1/60 second frame is exactly one whole pixel up.
@@ -16282,6 +16296,13 @@ mod tests {
             &mut map,
             &mut attachments,
             &mut carry,
+            &mut Vec::new(),
+            &mut RoomCoroutineState {
+                crumble_blocks: Vec::new(),
+                switch_gates: Vec::new(),
+                touch_switches: Vec::new(),
+                switches_on: false,
+            },
         )
         .unwrap();
         assert_eq!(carry, None);
@@ -19454,6 +19475,13 @@ mod tests {
             &mut map,
             &mut attachments,
             &mut None,
+            &mut Vec::new(),
+            &mut RoomCoroutineState {
+                crumble_blocks: Vec::new(),
+                switch_gates: Vec::new(),
+                touch_switches: Vec::new(),
+                switches_on: false,
+            },
         )
         .unwrap();
         assert_eq!(p.cassette_manager.beat_index, 7);
