@@ -1763,6 +1763,15 @@ fn replay(
     // Carried while the trace stays in the same room, because `SwitchGate.Awake`
     // (`SwitchGate.cs:68-82`) short-circuits the whole opening sequence when it is set.
     simulator.set_switches_on(trace_switches.unwrap_or_else(|| switch_room_flag(segment)));
+    // `dashSwitch_<room>:<id>` (`DashSwitch.cs:255-258`): a *persistent* switch whose flag is
+    // already set starts `Awake` pushed (`:124-149`) - non-collidable, six pixels along
+    // `pressDirection` - so the anchor row's `Session.Flags` decides whether the button is a Solid
+    // the player can be stopped by. `EntityID.Key` is `"<Level>:<ID>"` (`EntityID.cs:18-30`) and
+    // `Level` is the room the entity lives in, so only the ids belonging to *this* segment's room
+    // are handed over; the room half of the key is filtered out here because a `Map` carries no
+    // room name. A trace without a `flags` key (v5) hands over nothing, and the press is then only
+    // observable if it happens inside the replayed window.
+    simulator.set_pressed_dash_switches(&pressed_dash_switches(segment, anchor));
 
     let mut exact_prefix = 0u64;
     let mut replayed = 0u64;
@@ -2127,6 +2136,25 @@ fn switch_room_flag(segment: &Segment) -> bool {
         let carried = carried.borrow();
         carried.get(&key).copied().unwrap_or(false)
     })
+}
+
+/// The `EntityID.ID`s of this room's dash switches whose `dashSwitch_<room>:<id>` session flag
+/// (`DashSwitch.cs:255-258`) is set on the anchor row.
+///
+/// The flag is written only by a *persistent* switch's press (`:223-226`) and read back by `Awake`
+/// (`:127`), and the key's room half is `levelData.Name` - the same string the trace exports as
+/// `room`. Ids that belong to another room of the same chapter are dropped here: the flag outlives
+/// the room it was set in, but the entity it names does not.
+fn pressed_dash_switches(segment: &Segment, frame: &Frame) -> Vec<i32> {
+    let Some(flags) = frame.flags.as_deref() else {
+        return Vec::new();
+    };
+    let prefix = format!("dashSwitch_{}:", segment.room);
+    flags
+        .iter()
+        .filter_map(|flag| flag.strip_prefix(&prefix))
+        .filter_map(|id| id.parse::<i32>().ok())
+        .collect()
 }
 
 /// Remember the room's flag for later segments of the same room once it goes on; a later replay that

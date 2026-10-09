@@ -178,7 +178,8 @@ pub enum EntityKind {
     /// rectangle is not the collider* - every vanilla element carries a 0-sized one. `direction`
     /// is `pressDirection` (`DashSwitch.cs:72-99`: `UnitY`, `-UnitY`, `UnitX`, `-UnitX`) and
     /// `single_use` carries `persistent`, which decides whether the press also writes the
-    /// `dashSwitch_<id>` session flag (`DashSwitch.cs:223-226`).
+    /// `dashSwitch_<id>` session flag (`DashSwitch.cs:223-226`) and whether `Awake` (`:124-149`)
+    /// restores the pushed state at room load - see `Simulator::set_pressed_dash_switches`.
     DashSwitch,
     /// Simulator-native constant-velocity Solid used to exercise Monocle
     /// carrying, pushing, and Player LiftSpeed inheritance independently of a
@@ -2051,8 +2052,11 @@ fn map_from_binary_inner(
                     EntityKind::Refill => attr_bool(el, "oneUse", false),
                     EntityKind::CoreModeToggle => attr_bool(el, "persistent", false),
                     // `DashSwitch.Create` reads `data.Bool("persistent")` (`DashSwitch.cs:106`);
-                    // only a persistent press writes `Session.SetFlag` (`:223-226`), which this
-                    // simulator cannot represent (no session flags in the trace).
+                    // only a persistent press writes `Session.SetFlag` (`:223-226`), and only that
+                    // flag makes `Awake` (`:124-149`) start the switch already pushed - so this is
+                    // the one bit a replay needs. `allGates` is deliberately *not* decoded: it only
+                    // selects which gates `Awake` opens, and the simulator starts every gate open
+                    // (`Simulator::set_pressed_dash_switches`).
                     EntityKind::DashSwitch => attr_bool(el, "persistent", false),
                     _ => attr_bool(el, "singleUse", false),
                 },
