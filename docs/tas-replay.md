@@ -2259,3 +2259,30 @@ Next: print `map.non_dream_solid_at` for `pos.y - 1` (and which entity/kind over
 frames, and compare with the trace - if the sim has a solid above where the game does not, the culprit is
 one of the solid kinds (the recently added `TempleGate`/`FloatySpaceBlock`/`SwitchGate` are candidates given
 `7-Summit`), and the fix is in that kind's geometry rather than in the wind.
+
+### The blocker above is a `solids` rectangle, not an entity - and the game must not have it
+
+Probing **upwards** this time (`current_player_rect(p, pos.x, pos.y - 1.0)`, `map.non_dream_solid_at`, and
+every entity overlapping that rect):
+
+```
+UP pos=(26084,-19082) vy=0.0000 windy=-400.0 solidAbove=true ents=[]
+UP pos=(26082,-19082) vy=7.5000 windy=-400.0 solidAbove=true ents=[]
+```
+
+`solidAbove` is **true** while `ents` is **empty**, so the blocking geometry is a rectangle in
+`map.solids` - the level's static solid list - and **not** one of the entity kinds added in recent rounds
+(`TempleGate`, `FloatySpaceBlock`, `SwitchGate`, dash switches). That hypothesis is refuted.
+
+This creates a sharp contradiction, and it is the useful part:
+
+- the gate dump shows `gamePos == rustPos` on those frames, so both sides are at the same coordinates;
+- if the game's world had the same solid above, the game's own `MoveV(-0.667)` in `Player.WindMove` would
+  collide on its first whole-pixel step and `Player.OnCollideV` would zero `Speed.Y`;
+- yet the game's `vy` rises 7.5 -> 15 on exactly that frame.
+
+So **the game's world does not have that solid**, or its wind's upward move does not reach it. The next
+probe should name the offending rectangle (walk `map.solids`, print the one that intersects the probe rect
+with its coordinates) and compare it against the level data for `7-Summit` room `g-01` - a rect that the
+simulator carries and the game does not is a *map decode* difference, which would be a much broader defect
+than anything in the wind code.
