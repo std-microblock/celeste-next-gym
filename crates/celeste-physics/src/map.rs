@@ -1645,6 +1645,9 @@ fn map_from_binary_inner(
                 "bigSpinner" => EntityKind::Bumper,
                 "fireBall" if attr_bool(el, "notCoreMode", false) => EntityKind::IceBall,
                 "puffer" => EntityKind::Puffer,
+                "eyebomb" => EntityKind::Puffer,
+                // Vanilla names the Puffer `eyebomb` (`Level.cs:677-679`); every one of the 19
+                // `eyebomb` rooms is in Farewell, and none of the maps carry the literal `puffer`.
                 "oshiroBoss" => EntityKind::AngryOshiro,
                 "seeker" => EntityKind::Seeker,
                 "snowball" => EntityKind::Snowball,
