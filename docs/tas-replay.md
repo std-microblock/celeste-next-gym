@@ -1920,3 +1920,35 @@ As with the `SuperWallJumpH` cluster, the value is present on both sides, so thi
 one side writes `Speed` on a frame where the other has not (or has already). The surrounding block is the
 place to look - the `vector` snapping, the `-150` clamp with `AutoJump`, and the `explodeLaunchBoostTimer`
 reset are all candidates for a one-frame difference, and each has a test to compare against.
+
+### 926 of the 949 remaining mismatches diverge on the segment's LAST frame
+
+Quantifying the current report (`gate-fl2-202.json`) by the gap between `frames` and `exactPrefixFrames`:
+
+```
+segments 1468   ok 518   mismatch 949
+mismatch with exact == frames - 1 : 926 / 949      (97.6%)
+ok       with exact == frames - 1 :   0 / 518
+remaining mismatches              :  23            (21 with gap 2, 2 with gap 0)
+```
+
+Every one of the twelve largest mismatches is in that 926 (`5-MirrorTemple|0|void` 855/854,
+`7-Summit|0|b-09` 848/847, `7-Summit|0|g-01` 833/832, ...), and no `ok` segment has the shape. So the
+remaining gap is **not** 949 independent mechanisms: 97.6% of it is a single systematic difference on the
+last frame of a segment.
+
+Two candidate explanations, both cheap to check in the harness rather than in the physics:
+
+1. **The last compared row belongs to the next run.** Segments are maximal runs of `(sid, mode, room)`; if
+   the window's final row is the first row of the following run (a different room, or the transition
+   frame), then the comparison at that row is between the simulator's state in *this* room and the game's
+   state in the *next* one - a guaranteed mismatch that says nothing about fidelity. The harness's
+   `Segment` struct (`examples/tas_fidelity.rs:783`, `start_row` at `:789`, `frames` at `:795`) and the
+   loop that fills it decide this.
+2. **The last frame is the room transition itself**, which the harness deliberately does not replay (the
+   anchor/restore model works per segment). In that case the count is honest but the *metric* is
+   pessimistic, and the real per-frame fidelity is much higher than 518/1468 suggests.
+
+Either way this reframes the objective: before hunting more one-frame mechanisms, read the segment-filling
+loop and settle which of the two it is. If it is (1), excluding the boundary row is a harness fix that
+would reclassify the great majority of the 926 in one step - the single highest-leverage change left.
