@@ -307,6 +307,31 @@ pub struct TempleGateSnapshot {
     pub closed_height: f32,
     pub open: bool,
     pub triggered: bool,
+    /// `TempleGate.Types` (`TempleGate.cs:11-19`) as decoded from the map's `type` attribute
+    /// (`:72-74`), in the enum's own order: 0 `NearestSwitch`, 1 `CloseBehindPlayer`,
+    /// 2 `CloseBehindPlayerAlways`, 3 `HoldingTheo`, 4 `TouchSwitches`,
+    /// 5 `CloseBehindPlayerAndTheo`. It picks the `Awake` start state (`:77-112`), which
+    /// transition runs, and whether a `DashSwitch` may claim the gate (`DashSwitch.cs:237-238`).
+    pub gate_type: u8,
+    /// `SwitchOpen`'s / `CheckTouchSwitches`' alarm position (`TempleGate.cs:124-132`,
+    /// `:197-212`): 0 idle (or, for `TouchSwitches`, still waiting for `Switch.Check`),
+    /// 1 the first 0.2 s before the shake, 2 the second 0.2 s before `Open()`,
+    /// 3 the 0.5 s `sprite.Play("open")` beat, 4 the 0.2 s shake beat.
+    pub alarm_stage: u8,
+    pub alarm_timer: f32,
+    /// `TempleGate.ClaimedByASwitch` (`TempleGate.cs:35`): `DashSwitch.GetGate`
+    /// (`DashSwitch.cs:231-253`) marks the gate it picked so a second switch skips it.
+    pub claimed: bool,
+    /// `HoldingTheo`'s `holdingWaitTimer` (`TempleGate.cs:51`, 0.2 s after every `Open`/`Close`,
+    /// `:137`/`:156`), counted down before the proximity toggle is allowed to run (`:248-251`).
+    pub holding_wait: f32,
+    /// `drawHeight` / `drawHeightMoveSpeed` / `lockState` (`TempleGate.cs:45-53`). `drawHeight`
+    /// tracks `max(4, Collider.Height)` at 200 px/s while opening and 300 px/s while closing
+    /// (`:269`), and `lockState` is exactly `drawHeight != max(4, Collider.Height)` - it gates the
+    /// next frame's `HoldingTheo` toggle (`:252`, `:207-210`).
+    pub draw_height: f32,
+    pub draw_speed: f32,
+    pub lock_state: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
