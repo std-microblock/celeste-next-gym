@@ -1350,3 +1350,23 @@ zeroes `speed.x` on a clamp, and performs the four-direction transition hand-off
 `player.Center +/- 8` probe (`Level.cs:2725-2790`) via `transition_room_at` + `begin_transition`. So
 anyone reading the bullet above would re-implement something that already exists. Left as a correction
 rather than an edit so the original claim and its rebuttal stay visible.
+
+### The dash publish must be DELAYED one frame, not skipped (a failed fix, measured)
+
+The recon's instance is real in shape: on the DashBegin frame the trace shows `Speed=[0,0]`,
+`DashDir=[0,0]` and a byte-identical `Position`/`movementCounter` (the game is inside
+`Celeste.Freeze(0.05f)`, `Player.cs:4284`), while the simulator publishes `dash_dir = last_aim;
+speed = dash_dir * DASH_SPEED` on that same frame (`dash_update`'s publish block, guarded only by
+`(state_timer - DASH_TIME).abs() <= dt*0.5`). 36 of the 133 `pos|StDash` segments have that shape.
+
+But the obvious fix is wrong, and measurably so: adding `!dash_coroutine_initial_yield` to the publish
+guard (i.e. **skipping** the publish on the begin frame) measured **0 improved / 300 identical / 1168
+regressed**, `511 -> 40` ok, `159,350 -> 46,418` frames. The reason is mechanical: that guard is true
+only on the begin frame and the window (`|state_timer - DASH_TIME| <= dt*0.5`) is *also* only satisfied
+on that frame, because `begin_dash` sets `state_timer = DASH_TIME + dt` and `dash_update` subtracts one
+`dt` before the check. Skipping therefore drops the publish entirely and no dash ever starts.
+
+So the correct change is to **delay** the publish by one frame - keep the write, but make it happen on
+the frame after `DashBegin`, i.e. widen the window by one `dt` on the low side while keeping the
+initial-yield term out of the way - and to check `DashDir`/`Speed` against the trace on both frames
+rather than just the end of the begin frame. Reverted; tree rebuilt.
