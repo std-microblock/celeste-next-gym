@@ -153,6 +153,7 @@ pub fn encode_map_fixture(fixture: &CelesteMapFixture) -> Result<Vec<u8>, MapFix
         .map(|room| {
             let bounds = rect(room.bounds);
             let map = Map {
+                entity_ids: Vec::new(),
                 tile_grid: vec![],
                 entity_visuals: vec![],
                 bounds,

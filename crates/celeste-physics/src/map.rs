@@ -233,6 +233,11 @@ pub struct RoomRuntime {
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Map {
+    /// The `.bin` `id` attribute of each entity, in `entities` order. `Session.DoNotLoad` is
+    /// keyed by `"<Level>:<ID>"`, so this lets `Simulator::new` skip an entity the game never
+    /// constructed (`Level.cs:472`, `:1188`). `-1` means the map carried no id.
+    #[serde(default)]
+    pub entity_ids: Vec<i32>,
     pub bounds: Rect,
     /// Bounds of the other rooms in the same Celeste map. These are retained
     /// when decoding one room so Level.EnforceBounds can resolve transitions.
@@ -291,6 +296,7 @@ impl Default for Map {
             spawn: Vec2::new(24.0, 160.0),
             solids: vec![],
             entities: vec![],
+            entity_ids: vec![],
             source_package: None,
             tile_grid: vec![],
             entity_visuals: vec![],
@@ -2033,7 +2039,8 @@ fn map_from_binary_inner(
                     ..EntityVisual::default()
                 },
             };
-            map.entities.push(Entity {
+            map.entity_ids.push(attr_f32(el, "id", -1.0) as i32);
+                map.entities.push(Entity {
                 kind,
                 bounds,
                 direction,
@@ -2080,7 +2087,8 @@ fn map_from_binary_inner(
                 "Space" => Vec2::new(0.0, -600.0),
                 _ => Vec2::default(),
             };
-            map.entities.push(Entity {
+            map.entity_ids.push(attr_f32(trigger, "id", -1.0) as i32);
+                map.entities.push(Entity {
                 kind: EntityKind::Wind,
                 bounds: Rect::new(
                     x + attr_f32(trigger, "x", 0.0),
