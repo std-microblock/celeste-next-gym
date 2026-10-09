@@ -2286,3 +2286,33 @@ probe should name the offending rectangle (walk `map.solids`, print the one that
 with its coordinates) and compare it against the level data for `7-Summit` room `g-01` - a rect that the
 simulator carries and the game does not is a *map decode* difference, which would be a much broader defect
 than anything in the wind code.
+
+### The tile above is real; the divergence moves to the DOWNWARD probe (`OnGround`)
+
+Naming the rectangle:
+
+```
+RECT pos=(26084.0,-19082.0) up=(26080.0,-19089.0,8.0,6.0) solids=[rect(26080,-19096,8,8)]
+RECT pos=(26082.0,-19082.0) up=(26078.0,-19089.0,8.0,6.0) solids=[rect(26080,-19096,8,8)]
+```
+
+The solid is an honest 8x8 level tile at `(26080,-19096)`, its bottom at `-19088`; the probe rect shows the
+player is in the **ducking** collider (8x6, top at `-19089`), so they overlap by exactly one pixel. This is
+**not** a map-decode difference and not an entity: the tile is legitimately there, and both sides are at the
+same coordinates.
+
+What follows is sharper. If the game had performed that upward wind move, its ducking collider would overlap
+the same tile by the same pixel, `Player.OnCollideV` would zero `Speed.Y`, and its `vy` could not rise - but
+it does rise (7.5 -> 15). So the game **never executes the upward wind move** on that frame. The only clause
+in `Player.WindMove`'s y guard that can stop it while `Speed.Y = 7.5 > 0` is `OnGround()`:
+
+```
+if (!(base.Bottom > (float)level.Bounds.Top) || (!(Speed.Y < 0f) && OnGround())) return;   // Player.cs:3116
+```
+
+The simulator's equivalent, `p.speed.y < 0.0 || !grounded(p, map)`, passes because its `grounded` is
+**false** (measured in round 128's probe) on the very same frame. So the disagreement is in the **downward
+probe**: the game considers the player grounded, the simulator does not. Celeste's `Player.OnGround()`
+overrides `Actor.OnGround()` and does not simply test the full collider, so the probe rectangle is the prime
+suspect - and that is a read of `Player.OnGround`/`Actor.OnGround` in the vendored source, not another
+instrumented run.
