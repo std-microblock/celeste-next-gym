@@ -1207,3 +1207,24 @@ tree never stayed broken; total cost about two minutes each. What they learned:
 - The other two files' literals are exhaustive: `map_fixture.rs:155` (`let map = Map {`) and
   `playground.rs:8` (`Map {` under `pub fn mechanics_playground() -> Map {`) each need
   `entity_ids: Vec::new(),` added; the two in `map.rs` already use `..Map::default()`.
+
+### `entity_ids`, attempt 4: there are THREE `map.entities.push(Entity {` sites, not two
+
+`Select-String` reported pushes at 1189, 2036 and 2083; a "replace the first, then the next" strategy
+therefore patched 1189 and 2036 and failed with `E0425: cannot find value el` **and**
+`cannot find value trigger` in one build. `el` is bound only inside `map_from_binary_inner`'s entity
+loop (`for el in &entities.children`, `:1555`), and `trigger` only in the wind-trigger branch, so the
+1189 site has neither. The auto-revert guard ran again (build failed -> checkout -> rebuild in 1m39).
+
+The reliable shape for this edit is a regex that anchors on the **following line**, with `\r?\n` rather
+than a bare LF, because the file is CRLF:
+
+- site A (`:2036`, `el` in scope):
+  `map\.entities\.push\(Entity \{\r?\n(\s+)kind,` -> `map.entity_ids.push(attr_f32(el, "id", -1.0) as i32);\r\n$1map.entities.push(Entity {\r\n$1kind,`
+- site B (`:2083`, wind trigger, `trigger` in scope):
+  `map\.entities\.push\(Entity \{\r?\n(\s+)kind: EntityKind::Wind,` -> the same with `trigger`.
+
+The following-line discriminator plus `\r?\n` is what makes it unique; plain string replaces and
+`[char]10` anchors both failed here. Everything else in the change was already proven to compile: the
+`Map` struct field, the manual `Default` (`:286`), and the two exhaustive literals in
+`map_fixture.rs:155` and `playground.rs:8`.
