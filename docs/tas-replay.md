@@ -1449,3 +1449,25 @@ should be re-checked against the *row mapping* first: the gate compares its fram
 wrong in `dash_update`. The cheap way is the recon's own suggestion - compare `movementCounter` at
 `{:.9}`, and print the row index alongside - across rows 303299-303306 on both sides. Only if the rows
 line up and the counters still disagree is the publish implicated.
+
+### SOLVED: the pos|StDash DashBegin deltas ARE the wind, applied one guard-state too early
+
+The row-aligned dump settles it. `4-GoldenRidge|0|d-01` at the DashBegin row (303301, dump offset 1):
+game `gameMove=(0,0)`, `gameSpeed=(0,0)`, position unchanged; simulator `rustMove=(-1.33334, 0)` with the
+same end-of-frame `(0,0)` speed. The mapping is correct (`offset 0` is row 303300, matching the trace), so
+this is not an alignment artefact.
+
+`-1.33334 = -800 * 0.1 * dt` - that is the **wind** term, not the dash (a down-right dash would be about
+`314 * 0.707` per axis). The game does not push it because on that frame the state is already `StDash` and
+`Player.WindMove`'s guard excludes `StBoost`/`StDash`/`StSummitLaunch`; the simulator applies the wind
+**before** the state callback, so its guard still sees `StNormal` and the push lands. So the largest
+`pos|StDash` class and the wind-ordering lead from round 45 are **one root cause**, and the earlier
+"publish the dash velocity one frame early" reading was wrong: the extra movement is wind.
+
+What this changes for the fix: the round-45 experiment moved the whole `apply_wind_movement` call after
+the dispatch and measured 58 improved / 22 regressed - i.e. it fixed exactly this guard but broke the
+other two (`Ducking && onGround`, `speed.y < 0 || !grounded`). The next attempt must move the call and
+then verify **all three** guards against the trace, one at a time, on the specific rooms that regressed
+(7-Summit and 4-GoldenRidge): for each, the question is whether the game's value is the start-of-frame
+one (`onGround`, computed before `base.Update()` at `Player.cs:1504-1526`) or the post-callback one
+(`Speed.Y`, `Ducking`, `State`). Only the state guard demonstrably needs the later position.
