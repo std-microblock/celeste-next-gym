@@ -3272,3 +3272,38 @@ Two process notes for the record: the go/no-go script now gates on **both** the 
 three `regressed` counts (a missing test gate nearly pushed a red tree earlier), and every insertion in this
 file must use `\r?\n` regex anchors - `[char]10` anchors silently fail on this CRLF checkout, which cost an
 attempt this stretch.
+
+### Where the remaining mismatches live: the Summit updraft shaft, and a named residual there
+
+Ranking the 949 mismatching segments by room and total `stalledFrames` (from the current report, `puf-202.json`):
+
+| room | segments | frames | exactGap | stalled |
+| --- | ---: | ---: | ---: | ---: |
+| `7-Summit\|g-01` | 4 | 2,523 | 4 | **1,034** |
+| `6-Reflection\|02` | 4 | 276 | 4 | 706 |
+| `7-Summit\|g-03` | 4 | 152 | 4 | 615 |
+| `7-Summit\|g-02` | 4 | 888 | 4 | 558 |
+| `4-GoldenRidge\|c-03` | 2 | 288 | 2 | 528 |
+| `7-Summit\|g-00b` | 3 | 1,153 | 3 | 521 |
+| `7-Summit\|g-00` | 4 | 2,656 | 4 | 420 |
+| `7-Summit\|e-01` | 2 | 260 | 2 | 413 |
+| `9-Core\|space` | 4 | 72 | 4 | 406 |
+| `3-CelestialResort\|09-b` | 6 | 648 | 6 | 378 |
+| `5-MirrorTemple\|b-22` | 1 | 27 | 1 | 370 |
+
+Two readings:
+
+- `stalledFrames` routinely exceeds `frames` (most extreme: `b-22`, 370 against 27). That is the counter's
+  scope - it counts stalled rows across the segment's window, while `frames` counts replayed frames - not a
+  defect, and it means the column is a measure of *paused time near the segment*, useful for ranking but not
+  comparable to `frames`.
+- `exactGap == segment count` in nearly every row, i.e. one missing frame per segment, which is the harness
+  stopping at the first divergence - the tautology already documented. The informative part is the room
+  ranking, and it points at the **Summit updraft shaft** (`g-00`, `g-00b`, `g-01`, `g-02`, `g-03`), which is
+  the same family the wind fix came from.
+
+Concrete named lead, left by the wind workstream's own closing report: `7-Summit|0|g-01|134447` now diverges at
+its **new** tail - offset 1196 / row 135684 has `gameCounter.y = 0.45838` against the simulator's `0.0` with
+positions still equal, and the following row has `pos.y` off by one (`-19385` vs `-19386`) with speeds in
+agreement. That is the cheapest next target: a vertical movement-counter difference in an updraft room, one
+frame before a one-pixel position difference.
