@@ -934,7 +934,7 @@ batch mixes a real regression with inert additions and hides which is which.
 | `starJumpBlock` | 0 / 0 | kept, inert |
 | `crumbleWallOnRumble` | 3 / 0 | kept |
 | `seekerBarrier` | batch: 3 / 22 | reverted; a Solid for seekers, the player passes through it |
-| `switchGate` | 11 / 2 | reverted; needs `SwitchGate.Open`, the +373 frames are its value |
+| `switchGate` | 12 / 2 | **now modelled** (`2902082`): the sequence plus `switches_<room>` threading; the 2 are the unrepresentable flag gap below |
 | `floatySpaceBlock` | 7 / 1 (net +6) | reverted; one LostLevels segment loses a frame, so it needs its real motion |
 | `resortRoofEnding` | 0 / 0 | kept, inert |
 | `swapBlock` | 9 / 3 (net +184) | reverted; it moves, and the three losses are segments the player rides it (`5-MirrorTemple|0|a-01`, `b-10`, `7-Summit|0|f-10`) |
@@ -944,8 +944,24 @@ The sweep is finished: every Solid subclass the audit found in the maps has now 
 time, and the ones left are all the same shape - a kind whose *state* is what matters
 (switchGate's open, lockBlock's unlock, swapBlock's two-point motion,
 loatySpaceBlock's motion, crumbleWallOnRumble's rumble). Adding any of them as a plain solid
-measures a regression, so the next step on this line is a state machine per kind, starting with
-switchGate (+373 measured frames), exactly as CrumblePlatform was done. Do not re-run the sweep.
+measures a regression, so the next step on this line is a state machine per kind.
+
+`switchGate` was the first and is now done (`2902082`): a solid running `SwitchGate.Sequence`
+(`SwitchGate.cs:102-145`) - wait for every `Switch` in the room (`Switch.FinishedCheck`), `yield 0.1`, a
+0.5 s icon ramp, `yield 0.1`, a 2 s `Ease.CubeOut` tween of `MoveTo(nodes[0])` quantized by *truncation*
+the way `Solid.MoveTo` does, then `yield 1.8` - with `TouchSwitch` activating from its 30x30
+`PlayerCollider` box (`TouchSwitch.cs:44-45`) and the room's `switches_<room>` session flag carried
+across segments keyed by room.
+
+**It is also the first deliberately kept regression, and the proof is the point.** 202 measured 12
+improved / 2 regressed (the 100pct trace adds 7 / 1), and all three regressions are `2-OldSite|0|6`
+losing **one frame**: that room's `touchSwitch` sits at x=336 while the replayed windows never take the
+player there, so the game's gate is already open when the window starts (`SwitchGate.Awake`,
+`SwitchGate.cs:68-82`) and the simulator cannot know it - the flag is `"switches_" + Session.Level`
+(`Switch.cs`), the trace exports no session flags, and the triggering touch lies outside every window
+the trace replays. A regressing change may be kept only with that kind of proof, in the commit message.
+
+Do not re-run the sweep.
 
 **A reverted change needs a rebuild before any fresh measurement.** The one-command sweep above
 reverts the *source* when a kind regresses, but the example binary on disk keeps the reverted
