@@ -3240,3 +3240,35 @@ Related correction: the earlier note said "the simulator models **no** Puffer st
 only, and this round's re-check of both files still finds nothing - so the conclusion may well stand, but the
 claim was made from weaker evidence than it stated and should be re-verified before the fix is designed around
 it. Nothing in `crates/` is modified right now.
+
+### LANDED: the Puffer explode gates (master `27a6649`) - inert on this corpus, correct per the source
+
+`Puffer.cs` refuses to explode while the Puffer is `Gone` (`:296`, `:552`) or inside the 0.5 s spawn cooldown
+`cantExplodeTimer` (`:167`, ticked down at `:362-365`). The simulator modelled **no** Puffer state at all
+(verified by searching every field name in `types.rs` and `sim.rs`, not just one file), so it launched the
+player on any non-stomp collision. This lands:
+
+- `types.rs`: `PufferSnapshot { state, cant_explode_timer, center }`, a `puffers` vector and its manual
+  `Default` entry;
+- `lib.rs`: `PufferSnapshot` added to the explicit `pub use types::{...}` list - that list is explicit, which
+  is why the first build failed with "cannot find struct in the crate root";
+- `sim.rs`: `initialize_puffers` (spawn `state = 0`, `cant_explode_timer = 0.5`, centre from the entity
+  bounds) wired at both `initialize_seekers` call sites, `advance_puffers` (ticks the timer down while
+  `state != Gone`) called each frame next to `advance_seekers`, and the gate
+  `state != Gone && cant_explode_timer <= 0.0` on the launch, looked up by centre so no index has to be
+  threaded into the interaction loop.
+
+Measured verdict: **inert on all three traces** - `0 / 1468 / 0`, `0 / 918 / 0`, `0 / 20 / 0`, with ok,
+frames and exact unchanged (202 = 520 / 161,355 / 160,387; 100pct = 340 / 97,134 / 96,544; 1a = 16 / 2,129 /
+2,125) and 356 tests green. So the +-280 cluster does **not** come from this either, and `TempleBigEyeball`
+(which has no entity kind at all) is the remaining `snapUp = true` candidate, together with whatever else
+moves those rows.
+
+Landing an inert-but-correct change follows the `Session.DoNotLoad` precedent in this log (`822134a`, also
+measured `0 / 1468 / 0`): the mechanic is faithfully modelled, the corpus simply does not exercise it, and the
+alternative - leaving a known modelling gap in place - is worse for the next corpus.
+
+Two process notes for the record: the go/no-go script now gates on **both** the `test result` line and the
+three `regressed` counts (a missing test gate nearly pushed a red tree earlier), and every insertion in this
+file must use `\r?\n` regex anchors - `[char]10` anchors silently fail on this CRLF checkout, which cost an
+attempt this stretch.
