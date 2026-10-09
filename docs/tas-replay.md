@@ -2828,3 +2828,27 @@ is just: run the three traces (1a included) on that branch and merge if all thre
 
 This is also the concrete instance of the checkpoint rule added above - the work would otherwise have been
 lost twice.
+
+### LANDED: the wind's callback-less moves (master `b2d3887`)
+
+Independently verified on all three traces from the merged tree, reproducing the workstream's numbers exactly:
+
+| trace | improved / identical / regressed | ok | frames | exact |
+| --- | --- | ---: | ---: | ---: |
+| 202 | 7 / 1461 / **0** | 518 | 160,183 -> **161,253** | 159,203 -> **160,273** |
+| 100pct | 5 / 913 / **0** | 339 | 96,228 -> **97,083** | 95,632 -> **96,487** |
+| 1a | 0 / 20 / **0** | 16 | 2,129 unchanged | 2,125 unchanged |
+
+354 tests pass. `7-Summit|0|g-01|134447` goes from 833 to **1198** replayed frames (row 135320 now matches
+bit for bit), and the seven improved segments are all wind rooms (`4-GoldenRidge|0|a-09`, `c-04` x2,
+`7-Summit|0|g-00b` x2, `g-01`, `e-10`). `ok` is flat because each of those segments now diverges later for a
+different reason.
+
+Two process notes worth keeping:
+
+- the 1a baseline is `gate-tg2-1a.json` (or the workstream's `ceil-base-1a.json`); `gate-fl2-1a.json` does
+  not exist, and pointing `q-regress` at it fails with `ENOENT` after the run has already produced its
+  numbers - read the printed totals in that case, they were 16/2129/2125, unchanged.
+- the workstream also flagged that `Copy-Item` preserves mtimes, so restoring a file with it does **not**
+  retrigger cargo; it had to `touch` the file to get a real rebuild (hashes differed). That is the same
+  stale-binary trap this document warns about, in a new disguise.
