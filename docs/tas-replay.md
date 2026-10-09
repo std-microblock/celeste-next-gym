@@ -1713,3 +1713,29 @@ what remains is a frame-internal write. A cheaper way forward than another singl
 question over a population - for every `pos`-class segment, dump the frame where the divergence starts and
 check whether the game's in-frame speed (recovered as `move / dt`) equals a value the trace never reports
 at a row boundary. If that is systematic, the missing writer is one code path, not one segment.
+
+### Population check: "in-frame speed != row-boundary speed" is systematic
+
+New tool `.tmp/recon3/in-frame-speed.mjs` (report + trace, no build): it walks the largest `mismatch`
+segments and, for each frame, compares the game's move (`dpos / dt`) with the previous and the current
+row's exported `Speed`, flagging frames that match neither within 2 px/s. First run over the eight largest
+segments (`--rooms`-free, pure trace):
+
+```
+7-Summit|0|g-01  row=134575  prev=0.000    this=-170.000  dpos=-3  implied=-180.000
+7-Summit|0|g-01  row=134576  prev=-170.000 this=-165.667  dpos=-3  implied=-180.000
+7-Summit|0|g-00  row=131111  prev=0.000    this=-40.000   dpos=-1  implied=-60.000
+7-Summit|0|b-09  row=110598  prev=316.000  this=316.000   dpos=8   implied=480.000
+7-Summit|1|b-03  row=200810  prev=0.000    this=394.000   dpos=7   implied=420.000
+```
+
+Two caveats keep this indicative rather than exact: `dpos` alone is quantised to whole pixels (the
+`movementCounter` is not exported), and the "implied" value therefore sits on a 60 px/s grid. Even so the
+pattern is consistent - the frame's move corresponds to a speed one *writer step* away from the row
+speeds (`-180` then `-170`, a friction step of 10.833 apart; `480` vs `316`; `420` vs `394`) - which is
+the same "a `Speed` write lands on a different frame than in the game" shape the recon described, now
+extractable in bulk.
+
+The next step this enables is classification rather than another single-row hunt: for each flagged frame,
+record the state pair and the delta between implied and reported speed, then group. If the deltas cluster
+around friction (10.833), dash caps, or wall/hop values, the writer will name itself.
