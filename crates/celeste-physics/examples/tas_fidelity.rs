@@ -1532,6 +1532,35 @@ fn replay(
     snapshot.max_dashes = observe_session_dashes(segment.area, witnessed_session_dashes(map, &truth));
     snapshot.no_refills = area_inventory_no_refills(segment.area);
     snapshot.state = anchor_state;
+    // `Monocle.StateMachine.PreviousState`. The trace carries only the current state per
+    // row, so take it from the row before the anchor: the rows between are the stalled
+    // transition frames, and the state before them is exactly what the game read when it
+    // entered the anchor's state (`Player.IntroJumpCoroutine` is its one physics-relevant
+    // reader, `Player.cs:5998`).
+    if window_start > 0 {
+        // Walk back to the most recent row that carries a `state`: the rows immediately before
+        // an anchor are the stalled transition frames, and a Level frame without a Player entity
+        // has no `state` at all.
+        for index in (0..window_start).rev() {
+            let Some(previous_state_name) = segment.frames[index].state_name.as_deref() else {
+                continue;
+            };
+            match state_from_name(previous_state_name) {
+                Some(previous_state) => {
+                    snapshot.previous_state = previous_state;
+                }
+                None => {
+                    outcome.status = "state_map_error";
+                    outcome.error = Some(format!(
+                        "unknown state name {previous_state_name:?} on row {} before anchor {window_start}",
+                        segment.frames[index].n
+                    ));
+                    return outcome;
+                }
+            }
+            break;
+        }
+    }
     snapshot.facing = anchor_fields
         .get("Facing")
         .and_then(Value::as_i64)

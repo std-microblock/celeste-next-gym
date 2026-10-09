@@ -496,6 +496,14 @@ pub struct PlayerSnapshot {
     pub pos: Vec2,
     pub speed: Vec2,
     pub state: PlayerState,
+    /// `Monocle.StateMachine.PreviousState` (`Monocle/StateMachine.cs`): the state the
+    /// machine held when the current one began. The trace does not export it, so the gate
+    /// restores it from the row *before* the segment's anchor - which is also the state the
+    /// game read when it entered the intro state, since the rows between are the stalled
+    /// transition frames. `Player.IntroJumpCoroutine` is its one physics-relevant reader:
+    /// `bool wasSummitJump = StateMachine.PreviousState == 10;` (`Player.cs:5998`, and again
+    /// at `:6048`).
+    pub previous_state: PlayerState,
     pub facing: bool,
     pub dashes: u8,
     /// `Player.MaxDashes`, which is `PlayerInventory.Dashes` for the live
@@ -799,6 +807,7 @@ impl Default for PlayerSnapshot {
             pos: Vec2::default(),
             speed: Vec2::default(),
             state: PlayerState::Normal,
+            previous_state: PlayerState::Normal,
             facing: default_facing(),
             dashes: default_dashes(),
             max_dashes: default_dashes(),

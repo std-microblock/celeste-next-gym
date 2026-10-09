@@ -7487,10 +7487,21 @@ fn intro_resume(p: &mut PlayerSnapshot, map: &Map) {
             // from StSummitLaunch, keeps the launch speed and starts the rise
             // immediately at `start.Y = level.Bounds.Bottom - 24`.
             let settle_y = map.bounds.bottom() + INTRO_JUMP_BOTTOM_GAP;
+            // The source decides the whole chain from `wasSummitJump`
+            // (`Player.cs:5998`), and the flag has to survive into the later phases -
+            // the 0.2 s and 0.1 s rests after the deceleration (`:6028-6034`) and the
+            // 0.35 s rest after landing (`:6055-6061`) are Summit-only. So OR it into
+            // whichever phase the exported snapshot identifies; do not use it to *pick*
+            // a phase, or an anchor that is already falling would re-run the rise.
+            let summit_flag = if p.previous_state == PlayerState::SummitLaunch {
+                INTRO_PHASE_SUMMIT_FLAG
+            } else {
+                0
+            };
             if p.speed.y == 0.0
                 && (p.pos.y > map.bounds.bottom() || (p.pos.y - settle_y).abs() <= 2.0)
             {
-                p.intro_phase = INTRO_PHASE_JUMP_SETTLE;
+                p.intro_phase = INTRO_PHASE_JUMP_SETTLE | summit_flag;
                 p.intro_timer = INTRO_JUMP_SETTLE - dt;
             } else if p.speed.y < INTRO_JUMP_LAUNCH_SPEED {
                 // Residual speed below the coroutine's own -100 launch speed:
@@ -7503,9 +7514,9 @@ fn intro_resume(p: &mut PlayerSnapshot, map: &Map) {
                 intro_move_to_x(p, map, aligned_x);
                 p.intro_phase = INTRO_PHASE_JUMP_RISE | INTRO_PHASE_SUMMIT_FLAG;
             } else if p.speed.y < 0.0 {
-                p.intro_phase = INTRO_PHASE_JUMP_DECEL;
+                p.intro_phase = INTRO_PHASE_JUMP_DECEL | summit_flag;
             } else {
-                p.intro_phase = INTRO_PHASE_JUMP_RISE;
+                p.intro_phase = INTRO_PHASE_JUMP_RISE | summit_flag;
             }
         }
         PlayerState::IntroWakeUp => {
