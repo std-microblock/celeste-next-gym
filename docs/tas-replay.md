@@ -2486,3 +2486,24 @@ So the next question is not about bounds at all: what advances a player by one p
 speed is held constant in `3-CelestialResort`'s rooftop room? Candidates are the rooftop cutscene's camera
 pan with the player attached, a `DummyWalkTo`-style scripted walk, or a `Player.Update` early-out that still
 runs one exact move.
+
+### roof07: it behaves like a one-pixel-per-frame solid push, not a bounds clamp
+
+Re-reading the same rows with the frozen-`vx` fact in hand:
+
+- `vx` is **constant** at 323.333 across the six frames, which no `NormalUpdate` can produce (friction or
+  acceleration writes `Speed` every frame).
+- `pos.x` climbs **monotonically** 8230 -> 8236 and stops at exactly `room.Left + 4`, the +4 being the
+  hitbox's left offset, so the stop condition is "the collider is fully inside the room".
+- Neither `MoveHExact`-style moves nor a hard assignment (`player.Left = bounds.Left`, `Level.cs:2746`)
+  touch `Speed`, so a constant `Speed` with a changing position is exactly their signature.
+
+Both of those point at the **solid-push** family rather than at the bounds: an actor embedded in a solid is
+nudged out one pixel per frame. That mechanism already has precedent in this project (the early `X3` work on
+"solid push one pixel"). The left edge of `roof07` is where the room meets whatever is outside it, so a
+player entering from the left can genuinely start inside a tile.
+
+Next check: name the solid overlapping the player's collider on rows 42489-42494 (the same `map.solids` probe
+used for the ceiling case, but with the player's own rect), and compare with the trace - if the game pushes
+out of a tile that the simulator does not even report as overlapping, the defect is in the collider/position
+bookkeeping, and if the simulator reports the overlap but does not push, it is in the push path.
