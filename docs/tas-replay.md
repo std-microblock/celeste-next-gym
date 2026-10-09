@@ -2785,3 +2785,23 @@ with no transition modelled - the `roof07` case is just the one where the harnes
 Next: find how the simulator's transition state is meant to be established (the anchor restore or the
 harness's stall handling) and make a `transitioning` row set it, then verify with `--rooms roof07` (both
 segments should go `exact = 0` -> `6`).
+
+### Lost work and the lesson: checkpoint a long-running writer's worktree before it can revert
+
+The `ceiling` agent's final reports measured clean wins - 202: 7 improved / 1461 identical / **0 regressed**,
+`ok` 518 unchanged, frames **160,183 -> 161,253** (+1,070); 100pct: 5 / 913 / **0**, frames
+**96,228 -> 97,083** (+855) - and then its branch ended with **no commits at all** (`git -C wt-ceiling commit`
+reports "nothing to commit, working tree clean"; `git merge ceiling` says "Already up to date"). So the agent
+reverted its own change; presumably the third trace (`1a`, for which no report exists) or a re-measurement
+regressed, but the code is gone and only the two reports remain.
+
+That is a real loss of a +1,070-frame variant, and the cause is a process gap on my side: for `gate` I
+committed the agent's worktree to its branch **myself** before it could revert, which is the only reason that
++5-segment win survived. The rule to keep: when a writer subagent has uncommitted work that measures clean on
+any trace, commit it to its branch as a checkpoint - it costs nothing, the branch is not master, and a later
+`regressed != 0` on another trace can still be handled by not merging it.
+
+The variant itself is documented well enough to rebuild if it turns out to be wanted: the `on_ground` proxy on
+the 1.2x grounded-ultra branch (`sim.rs:7718`) needs to become a "downward move was blocked this frame" signal
+taken from the collision path, and the ceiling case in `Player.WindMove` needs the source's response rather
+than `move_axis_amount`'s.
