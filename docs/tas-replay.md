@@ -1148,3 +1148,20 @@ Two more things that belong to the same change: `conditionBlock condition:Key` a
 `conditionBlock` adds an `ExitBlock` only when the referenced key **is** in the set (`Level.cs:863` +
 `:868`), `ridgeGate` only when all its listed keys are (`:878-883`, `:1475-1482`). And the same
 parallel-vector trick applies to `Session.Keys` for `LockBlock` (`LockBlock.cs:88-98`).
+
+### Step 1 of `doNotLoad` is cheap: `Map` has three literal sites, not thirty-one
+
+A naive count of `Map {` in `map.rs` returns 31 and looks alarming, but it is a false positive - the
+pattern also matches `HashMap {`. The real sites are:
+
+- `impl Default for Map` at `:284` (so a new `#[serde(default)] pub entity_ids: Vec<i32>` needs a line
+  there, or comes free if the impl is derived),
+- `Map {` literals at `:341`, `:1535` and `:2243` (the last two are the ones to check for exhaustive
+  field lists),
+- the decode push at `:2036` (`entities.push(Entity {`), which is the single place the id attribute has
+  to be read.
+
+Compare with `Entity`, which genuinely has ~31 `Entity { ... }` sites and is why the field was not added
+there. So the parallel-vector route is a handful of lines in one file, and the remaining work
+(`doNotLoad` through `Record` -> `Frame` -> the anchor, then skipping entities in `Simulator::new`) uses
+the anchor path that `flags` already proved out.
