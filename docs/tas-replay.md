@@ -2881,3 +2881,33 @@ Sequencing note: two workstreams have now stalled on this case (the first was my
 investigation). It is well characterized but it is also demonstrably hard for a subagent briefed from
 documentation alone, so the next attempt should be either a very small in-session step (one dump, one
 decision, one edit) or a brief that starts from the two shapes and names the single command to run first.
+
+### FOUND the roof07 creep: `Player.TransitionTo` moves at exactly 60 px/s
+
+`Player.cs:2293-2308`:
+
+```csharp
+public bool TransitionTo(Vector2 target, Vector2 direction) {
+    MoveTowardsX(target.X, 60f * Engine.DeltaTime);
+    MoveTowardsY(target.Y, 60f * Engine.DeltaTime);
+    UpdateHair(applyGravity: false);
+    UpdateCarry();
+    if (Position == target) { ZeroRemainderX(); ZeroRemainderY(); Speed.X = (int)Math.Round(Speed.X); ... return true; }
+    return false;
+}
+```
+
+`60 * dt` is exactly **one pixel per frame**, which is the creep measured on rows 42489-42494 (+1 px, `vx`
+constant because `MoveTowards` never writes `Speed`), and the stop condition `Position == target` is why it
+halts at `x = 8236` and stays there. So the mechanism is the transition coroutine moving the player toward
+its target, and the simulator's `transition_timer` being 0 is why it does nothing at all.
+
+What the simulator still needs is the **target** (`Level.NextLevel` computes it from the destination room's
+entry and passes it to the transition routine); it is not in the trace, but the destination room is - it is
+the room of the following segment - and the harness already decodes every room's map, so the target is
+derivable rather than guessable. That is a small, self-contained piece of work now: implement
+`MoveTowards(target, 60 * dt)` in the transition path, aim it at the destination room's entry position, and
+verify with `--rooms roof07` (both segments should go from `exact = 0` to `exact = 6`).
+
+This supersedes the two-shape guessing in the previous note: the dump already showed the game's collider
+landing exactly on `Bounds.Left`, and `TransitionTo` explains both the one-pixel rate and the stop.
