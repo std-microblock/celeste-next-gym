@@ -1862,3 +1862,26 @@ The likely site is the simulator's entry into `StNormal` from the dash: the game
 next check is a print of the simulator's vy and the gravity branch across rows 135318-135321, compared
 against the table above - and the same signature should appear in the other `StDash -> StNormal`
 transitions the classification counts (231 frames in the sampled 40 segments).
+
+### Confirmed: the simulator gates the 1.2x grounded-ultra on `on_ground`, the source does not
+
+Recon lead (class-3 `LostLevels|0|f-00`) checked against the current tree - note the recon's line numbers
+(`sim.rs:8969`, `:6644`) are from an older revision and now point at unrelated code, so this was found by
+meaning rather than by line.
+
+- **Source**: `Player.cs:3318` - `if (DashDir.X != 0f && DashDir.Y > 0f && Speed.Y > 0f)` sets
+  `Speed.Y = 0f; Speed.X *= 1.2f; Ducking = true;` (`:3320-3325`), i.e. the grounded-ultra launch. It sits
+  inside the V-collision/landing block: outer guard `if (Speed.Y > 0f)` at `:3282`, preceded by the
+  `OnDashCollide` dispatch (`:3275-3280`) and the corner-snap loops (`:3286-3309`). **There is no
+  `onGround` condition.**
+- **Simulator**: `sim.rs:7718-7722` requires `p.on_ground && p.dash_dir.x != 0.0 && p.dash_dir.y > 0.0 &&
+  p.speed.y > 0.0 && !dream_block_below` - the `on_ground` term is an extra condition the source does not
+  have. (A second site, `sim.rs:10043-10046`, uses the source's exact triple without `on_ground`, so the
+  tree is inconsistent with itself as well.)
+
+So the recon's suspicion was right: the simulator misses the 1.2x conversion whenever the dash's downward
+collision happens on a frame where the sim's `on_ground` probe is false. The fix shape is to replace the
+`on_ground` proxy with the signal the source actually has - "this dash frame collided downward" - which
+means looking at how `dash_update`/the collision pass records a vertical block on the frame (the
+`DreamDashCheck` and corner-snap code around `:7716` is already in the neighbouring lines, so the same
+context is available). The `dream_block_below` term stays: it mirrors the `DreamDashCheck` arm at `:3311`.
