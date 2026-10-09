@@ -232,6 +232,8 @@ pub struct Simulator {
     clutter_cleared: [bool; CLUTTER_COLORS],
     /// Per-CrumblePlatform coroutine position, in map entity order.
     crumble_blocks: Vec<CrumbleBlockState>,
+    /// Per-room entity coroutines (`CrumblePlatform`, `SwitchGate`, `TouchSwitch`).
+    room: RoomCoroutineState,
 }
 
 /// `Player.climbHopSolid` (`Player.cs:553`) and `climbHopSolidPosition`
@@ -286,6 +288,7 @@ impl Simulator {
         initialize_killboxes(&mut snapshot, &mut runtime_map);
         initialize_crush_and_dash_blocks(&mut snapshot, &mut runtime_map);
         let crumble_blocks = initialize_crumble_blocks(&runtime_map);
+        let room = initialize_room_coroutines(&runtime_map);
         initialize_lookouts(&mut snapshot, &runtime_map);
         position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
         sync_all_platform_static_movers(&snapshot, &mut runtime_map, &static_mover_attachments);
@@ -296,6 +299,7 @@ impl Simulator {
             climb_hop_solid: None,
             clutter_cleared,
             crumble_blocks,
+            room,
         })
     }
 
@@ -310,6 +314,29 @@ impl Simulator {
     /// like the live session keeps it.
     pub fn clutter_cleared(&self) -> [bool; CLUTTER_COLORS] {
         self.clutter_cleared
+    }
+
+    /// The room's `switches_<room>` session flag, as `Switch.SetLevelFlag`/`CheckLevelFlag` read and
+    /// write it (`Switch.cs`). Per *room*, so the gate threads it keyed by room.
+    pub fn switches_on(&self) -> bool {
+        self.room.switches_on
+    }
+
+    /// Restore the room's `switches_<room>` flag before the first replayed frame: `SwitchGate.Awake`
+    /// (`SwitchGate.cs:68-82`) moves the gate straight onto its target when it is set, which is what
+    /// a revisit of the same room needs.
+    pub fn set_switches_on(&mut self, on: bool) {
+        if on && !self.room.switches_on {
+            for index in 0..self.room.switch_gates.len() {
+                let gate = self.room.switch_gates[index];
+                if let Some(entity) = self.runtime_map.entities.get_mut(gate.entity_index) {
+                    entity.bounds.x = gate.target.x;
+                    entity.bounds.y = gate.target.y;
+                }
+                self.room.switch_gates[index].phase = 6;
+            }
+        }
+        self.room.switches_on = on;
     }
 
     /// Restore the `oshiro_clutter_cleared_<color>` flags before the first
@@ -390,6 +417,8 @@ impl Simulator {
             &mut self.static_mover_attachments,
             &mut self.climb_hop_solid,
             &mut self.crumble_blocks,
+            &mut self.room,
+
         )?;
         Ok(&self.snapshot)
     }
@@ -950,6 +979,208 @@ struct CrumbleBlockState {
     phase: u8,
     timer: f32,
     steps: u8,
+}
+
+/// Per-room entity coroutine state, held on the `Simulator` (which clones for `fork`) rather than
+/// in `PlayerSnapshot`, so the gate's `--dump-field-map` audit stays untouched.
+#[derive(Clone)]
+struct RoomCoroutineState {
+    crumble_blocks: Vec<CrumbleBlockState>,
+    switch_gates: Vec<SwitchGateState>,
+    touch_switches: Vec<TouchSwitchState>,
+    /// The room's `switches_<room>` session flag (`Switch.SetLevelFlag`): set when a *persistent*
+    /// gate's sequence starts (`SwitchGate.cs:109-112`), and threaded across segments by the gate,
+    /// because `SwitchGate.Awake` short-circuits straight to the open position when it is set.
+    switches_on: bool,
+}
+
+const SWITCH_GATE_OPEN_BEAT: f32 = 0.1;
+const SWITCH_GATE_ICON_RAMP: f32 = 0.5;
+const SWITCH_GATE_SLIDE: f32 = 2.0;
+const SWITCH_GATE_SETTLE: f32 = 1.8;
+
+/// One `SwitchGate`'s `Sequence` position (`SwitchGate.cs:102-145`).
+#[derive(Clone, Copy)]
+struct SwitchGateState {
+    entity_index: usize,
+    /// The collider the sequence tweens from.
+    start: Rect,
+    /// `nodes[0]`: where an open gate slides to.
+    target: Rect,
+    /// 0 waits for the room's switches, 1 the 0.1 s beat, 2 the 0.5 s icon ramp, 3 the second
+    /// 0.1 s beat, 4 the 2 s `Ease.CubeOut` slide, 5 the closing 1.8 s, 6 finished.
+    phase: u8,
+    timer: f32,
+}
+
+/// One `TouchSwitch`'s `Switch` component: `Switch(groundReset: false)`, so it never deactivates.
+#[derive(Clone, Copy)]
+struct TouchSwitchState {
+    entity_index: usize,
+    activated: bool,
+}
+
+fn initialize_room_coroutines(map: &Map) -> RoomCoroutineState {
+    let crumble_blocks = initialize_crumble_blocks(map);
+    let switch_gates = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter(|(_, entity)| entity.kind == EntityKind::SwitchGate)
+        .map(|(entity_index, entity)| {
+            // `SwitchGate(data, offset)` (`SwitchGate.cs:63-64`) passes `data.Nodes[0] + offset`
+            // as the open target, and `Awake`/the sequence tween the whole collider onto it.
+            let target = entity
+                .nodes
+                .first()
+                .map(|node| {
+                    Rect::new(
+                        node.x,
+                        node.y,
+                        entity.bounds.width,
+                        entity.bounds.height,
+                    )
+                })
+                .unwrap_or(entity.bounds);
+            SwitchGateState {
+                entity_index,
+                start: entity.bounds,
+                target,
+                phase: 0,
+                timer: 0.0,
+            }
+        })
+        .collect();
+    let touch_switches = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter(|(_, entity)| entity.kind == EntityKind::TouchSwitch)
+        .map(|(entity_index, _)| TouchSwitchState {
+            entity_index,
+            activated: false,
+        })
+        .collect();
+    RoomCoroutineState {
+        crumble_blocks,
+        switch_gates,
+        touch_switches,
+        switches_on: false,
+    }
+}
+
+/// `SwitchGate.Sequence` (`SwitchGate.cs:102-145`) plus the `TouchSwitch` activations that gate it.
+///
+/// `TouchSwitch.OnPlayer` (`TouchSwitch.cs:104-110`) calls `Switch.Activate()`, and `Switch.Check`
+/// only reports true once **every** `Switch` component in the room has `Finish`ed
+/// (`Switch.FinishedCheck`, `Switch.cs:99-110`) - which is what the gate's
+/// `while (!Switch.Check(Scene))` loop waits for. The slide is `MoveTo(Lerp(start, node, Eased))`
+/// with `Ease.CubeOut`, and `Monocle.Solid.MoveTo` moves by whole pixels.
+fn advance_switch_gates(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    state: &mut RoomCoroutineState,
+
+) {
+    let dt = p.frame_delta_time;
+    // The gate's `while (!Switch.Check(Scene))` coroutine observes the activations as they stand
+    // when its own update runs, so `all_on` is sampled *before* this frame's `TouchSwitch`
+    // activations are applied.
+    let all_on = state.switches_on
+        || (!state.touch_switches.is_empty()
+            && state.touch_switches.iter().all(|switch| switch.activated));
+    // `TouchSwitch.OnPlayer` (`TouchSwitch.cs:104-110`) runs from the `PlayerCollider` pass, so it
+    // sees the live hurtbox; the 30x30 activation box is the switch's own decoded rectangle.
+    let hurtbox = current_player_hurt_rect(p);
+    for index in 0..state.touch_switches.len() {
+        let switch = state.touch_switches[index];
+        let Some(entity) = map.entities.get(switch.entity_index) else {
+            continue;
+        };
+        if !switch.activated && hurtbox.intersects(entity.bounds) {
+            state.touch_switches[index].activated = true;
+        }
+    }
+    for index in 0..state.switch_gates.len() {
+        let gate = state.switch_gates[index];
+        match gate.phase {
+            0 => {
+                if !all_on {
+                    continue;
+                }
+                if state.switches_on {
+                    // `Awake` (`SwitchGate.cs:68-82`): the room's `switches_<room>` flag is already
+                    // set, so the gate is simply at its target.
+                    if let Some(entity) = map.entities.get_mut(gate.entity_index) {
+                        entity.bounds.x = gate.target.x;
+                        entity.bounds.y = gate.target.y;
+                    }
+                    state.switch_gates[index].phase = 6;
+                    continue;
+                }
+                if map.entities[gate.entity_index].direction.x != 0.0 {
+                    state.switches_on = true;
+                }
+                state.switch_gates[index].phase = 1;
+                state.switch_gates[index].timer = SWITCH_GATE_OPEN_BEAT;
+            }
+            1 => {
+                state.switch_gates[index].timer -= dt;
+                if state.switch_gates[index].timer > 0.0 {
+                    continue;
+                }
+                state.switch_gates[index].phase = 2;
+                state.switch_gates[index].timer = SWITCH_GATE_ICON_RAMP;
+            }
+            2 => {
+                state.switch_gates[index].timer -= dt;
+                if state.switch_gates[index].timer > 0.0 {
+                    continue;
+                }
+                state.switch_gates[index].phase = 3;
+                state.switch_gates[index].timer = SWITCH_GATE_OPEN_BEAT;
+            }
+            3 => {
+                state.switch_gates[index].timer -= dt;
+                if state.switch_gates[index].timer > 0.0 {
+                    continue;
+                }
+                // `Tween.Create(..., start: true)` is added from inside the coroutine, so Monocle
+                // updates it on the following frame; priming the timer with one tick starts the
+                // slide on the same frame the game does. Starting it unprimed cost one frame on
+                // `2-OldSite|0|6`, where the player's head clipped the gate.
+                state.switch_gates[index].phase = 4;
+                state.switch_gates[index].timer = dt;
+            }
+            4 => {
+                state.switch_gates[index].timer += dt;
+                let t = (state.switch_gates[index].timer / SWITCH_GATE_SLIDE).min(1.0);
+                let eased = 1.0 - (1.0 - t) * (1.0 - t) * (1.0 - t);
+                if let Some(entity) = map.entities.get_mut(gate.entity_index) {
+                    // `Solid.MoveTo(position)` is `MoveHExact((int)(position.X - X))` with the same
+                    // on Y, so the tween's fractional target is quantized by *truncation toward
+                    // zero* against the collider's current position - not by rounding the
+                    // interpolated position. Rounding here cost one frame on two segments.
+                    let x_target = gate.start.x + (gate.target.x - gate.start.x) * eased;
+                    let y_target = gate.start.y + (gate.target.y - gate.start.y) * eased;
+                    entity.bounds.x += (x_target - entity.bounds.x) as i32 as f32;
+                    entity.bounds.y += (y_target - entity.bounds.y) as i32 as f32;
+                }
+                if t >= 1.0 {
+                    state.switch_gates[index].phase = 5;
+                    state.switch_gates[index].timer = SWITCH_GATE_SETTLE;
+                }
+            }
+            5 => {
+                state.switch_gates[index].timer -= dt;
+                if state.switch_gates[index].timer > 0.0 {
+                    continue;
+                }
+                state.switch_gates[index].phase = 6;
+            }
+            _ => {}
+        }
+    }
 }
 
 fn initialize_crumble_blocks(map: &Map) -> Vec<CrumbleBlockState> {
@@ -5341,6 +5572,8 @@ fn step(
     attachments: &mut Vec<Option<StaticMoverAttachment>>,
     climb_hop_solid: &mut Option<ClimbHopSolid>,
     crumble_blocks: &mut Vec<CrumbleBlockState>,
+    room: &mut RoomCoroutineState,
+
 ) -> Result<(), SimulationError> {
     // Engine computes DeltaTime once at the beginning of the raw frame. A
     // HeartGem can write TimeRate during Scene.Update, but that write only
@@ -5612,6 +5845,7 @@ fn step(
     if p.badeline_boost_active {
         update_badeline_boost(p, map);
         advance_crumble_blocks(p, map, crumble_blocks);
+        advance_switch_gates(p, map, room);
     advance_post_player_entities(p, map, input, attachments);
         p.on_ground = grounded(p, map);
         return Ok(());
@@ -5658,6 +5892,7 @@ fn step(
             // tail for this state; only the tween drives it.
             intro_respawn_update(p);
             advance_crumble_blocks(p, map, crumble_blocks);
+        advance_switch_gates(p, map, room);
     advance_post_player_entities(p, map, input, attachments);
             p.on_ground = grounded(p, map);
             return Ok(());
@@ -5762,6 +5997,7 @@ fn step(
     // written by the previous ZipMover update is therefore visible to the
     // player's next action before the platform advances again.
     advance_crumble_blocks(p, map, crumble_blocks);
+    advance_switch_gates(p, map, room);
     advance_post_player_entities(p, map, input, attachments);
     p.on_ground = grounded(p, map);
     Ok(())

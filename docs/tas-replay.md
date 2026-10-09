@@ -11,8 +11,8 @@ pinned vanilla 202-berry TAS, the instrumented CelesteTAS dumps one record per e
 
 | trace | `ok` rooms | mismatch | unsupported | replayed frames | frame-exact |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `trace-202-v5` | **503** | 964 | 0 | **157,982** | **156,987** |
-| `trace-100pct-v5` | **329** | 589 | 0 | **94,728** | **94,122** |
+| `trace-202-v5` | **503** | 964 | 0 | **158,407** | **157,412** |
+| `trace-100pct-v5` | **329** | 589 | 0 | **94,972** | **94,366** |
 | `trace-1a-v5` | **16** | 4 | 0 | **2,129** | **2,125** |
 
 The latest step is **CrumblePlatform** (`0fc9e6d`): the floor under the divergence above is a `crumbleBlock`, and with its collapse sequence modelled (`CrumblePlatform.cs:94-169`) the corpus is clean where a plain solid measured six regressions: **202 38 improved / 1430 identical / 0 regressed**, `484 -> 502` `ok`, `+4,018` frames; **100pct 23 / 895 / 0**, `318 -> 328`, `+2,228`; `1a` unchanged. The coroutine state lives on `Simulator` (cloned by `fork`, invisible to the field-map audit), collapse uses the parked-bounds idiom, and the state had to be threaded through the free `step` because `advance_post_player_entities` is reached from three branches - the first attempt wired two of them and ran the coroutine twice a frame.

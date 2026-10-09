@@ -159,6 +159,18 @@ pub enum EntityKind {
     /// up to 0.4 s of further standing, sets `Collidable = false`, waits 2 s and re-arms once
     /// nothing overlaps it. Standing *on* one is the case that matters for the trace.
     CrumbleBlock,
+    /// Vanilla `Celeste.SwitchGate : Solid` (map name `switchGate`): a solid gate that waits for
+    /// every `Switch` component in the room to finish (`Switch.FinishedCheck`, `Switch.cs:99-110`),
+    /// then runs `SwitchGate.Sequence` (`SwitchGate.cs:102-145`): `yield 0.1`, a 0.5 s icon ramp
+    /// (`icon.Rate += dt * 2`), `yield 0.1`, then a 2 s `Ease.CubeOut` tween of `MoveTo(nodes[0])`,
+    /// then `yield 1.8`. `Awake` (`:68-82`) jumps straight to the target when the room's
+    /// `switches_<room>` session flag is already set, which is why the flag is threaded.
+    SwitchGate,
+    /// Vanilla `Celeste.TouchSwitch : Entity` (map name `touchSwitch`): `Switch(groundReset: false)`
+    /// plus `PlayerCollider(OnPlayer, null, new Hitbox(30f, 30f, -15f, -15f))`
+    /// (`TouchSwitch.cs:44-45`), so its activation box is 30x30 centred on the entity position, not
+    /// the 8x8 map rectangle.
+    TouchSwitch,
     /// Simulator-native constant-velocity Solid used to exercise Monocle
     /// carrying, pushing, and Player LiftSpeed inheritance independently of a
     /// specific vanilla entity state machine.
@@ -1098,6 +1110,41 @@ pub(crate) fn encode_celeste_rooms(
                     ],
                     vec![],
                 )),
+                // `switchGate` carries `nodes[0]` (its open target) and `touchSwitch` does not, so
+                // the encoder round-trips the name and re-emits whatever nodes the decode kept, in
+                // the same shape `ZipMover` uses.
+                EntityKind::SwitchGate | EntityKind::TouchSwitch => Some(element(
+                    &entity.name,
+                    [
+                        ("id", BinaryValue::Int(id)),
+                        ("originX", BinaryValue::Int(0)),
+                        ("originY", BinaryValue::Int(0)),
+                        ("width", BinaryValue::Int(width)),
+                        ("height", BinaryValue::Int(height)),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    entity
+                        .nodes
+                        .iter()
+                        .map(|node| {
+                            element(
+                                "node",
+                                [
+                                    (
+                                        "x",
+                                        BinaryValue::Int((node.x - map.bounds.x).round() as i32),
+                                    ),
+                                    (
+                                        "y",
+                                        BinaryValue::Int((node.y - map.bounds.y).round() as i32),
+                                    ),
+                                ],
+                                vec![],
+                            )
+                        })
+                        .collect(),
+                )),
                 EntityKind::Decoration | EntityKind::Unknown => None,
             };
             if let Some(encoded) = encoded {
@@ -1529,6 +1576,8 @@ fn map_from_binary_inner(
                 "dashSwitch" => EntityKind::StaticSolid,
                 "resortRoofEnding" => EntityKind::StaticSolid,
                 "crumbleBlock" => EntityKind::CrumbleBlock,
+                "switchGate" => EntityKind::SwitchGate,
+                "touchSwitch" => EntityKind::TouchSwitch,
                 "celesteGymMovingSolid" => EntityKind::MovingSolid,
                 _ => registered.map_or(EntityKind::Unknown, |entry| entry.kind),
             };
@@ -1777,6 +1826,25 @@ fn map_from_binary_inner(
                     // `CrumblePlatform(EntityData, offset) : base(position, width, 8f, safe: false)`
                     // (`CrumblePlatform.cs:8`): the raw rectangle is the collider, eight pixels high.
                     "crumbleBlock" => (Rect::new(ex, ey, raw_width, 8.0), Vec2::default()),
+                    // `SwitchGate(data, offset) : base(data.Position + offset, data.Width,
+                    // data.Height, safe: false)` (`SwitchGate.cs:34-35`): the raw rectangle; its
+                    // `nodes[0]` target is decoded generically and `direction.x` carries
+                    // `data.Bool("persistent")`, which decides whether the sequence writes the
+                    // room's `switches_<room>` session flag (`SwitchGate.cs:109-112`).
+                    "switchGate" => (
+                        Rect::new(ex, ey, raw_width, raw_height),
+                        Vec2::new(
+                            if attr_bool(el, "persistent", false) {
+                                1.0
+                            } else {
+                                0.0
+                            },
+                            0.0,
+                        ),
+                    ),
+                    // `TouchSwitch(data, offset) : this(data.Position + offset)` (`TouchSwitch.cs:86`)
+                    // with a `Hitbox(30f, 30f, -15f, -15f)` (`:45`).
+                    "touchSwitch" => (Rect::new(ex - 15.0, ey - 15.0, 30.0, 30.0), Vec2::default()),
                     // `AscendManager(EntityData data, Vector2 offset)` (`AscendManager.cs:228-233`)
                     // reads `index` and `intro_launch`; only `Position.Y` drives the takeover
                     // condition, and `index` into `direction.x`.
@@ -2070,6 +2138,7 @@ impl Map {
                         // ground probe consults, so a kind added only there is inert.
                         | EntityKind::CrumbleBlock
                         | EntityKind::StaticSolid
+                        | EntityKind::SwitchGate
                 ) && entity.bounds.intersects(rect)
             })
     }

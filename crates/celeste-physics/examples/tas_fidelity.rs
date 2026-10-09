@@ -49,6 +49,12 @@ struct ClutterCarry {
 
 // The chapter whose segment is currently being replayed, and the carried flags.
 thread_local! {
+    /// The `switches_<room>` flags observed so far, keyed by `(sid, mode, room)`.
+    /// `Switch.SetLevelFlag` writes `"switches_" + Session.Level` (`Switch.cs`), so it is room
+    /// state; a single slot would forget a room whose switches were hit before an intervening room,
+    /// which is exactly how a revisit looks in the trace.
+    static SWITCH_ROOM: std::cell::RefCell<HashMap<(String, i64, String), bool>> =
+        std::cell::RefCell::new(HashMap::new());
     static Y3_CHAPTER: std::cell::RefCell<(String, i64)> =
         const { std::cell::RefCell::new((String::new(), 0)) };
     static Y3_CLUTTER: std::cell::RefCell<HashMap<(String, i64), ClutterCarry>> =
@@ -1375,6 +1381,9 @@ struct ReplayOutcome {
     stalled_frames: u64,
     stall_offsets: Vec<u64>,
     unavailable: Vec<String>,
+    /// The room's `switches_<room>` flag when the replay stopped, so the next segment of the same
+    /// room can restore it (`SwitchGate.Awake` short-circuits the opening sequence on it).
+    switches_on: bool,
     /// Present only with `--dump-segment`; one line per replayed frame with the
     /// per-frame `Actor.MoveH`/`MoveV` total recovered as
     /// `ΔPosition + ΔmovementCounter` on both sides. Diagnostic only.
@@ -1728,6 +1737,10 @@ fn replay(
     // (`ClutterSwitch.cs:138`, `ClutterBlockGenerator.cs:78-81`); restore the
     // caller's carried value before the first replayed frame.
     simulator.set_clutter_cleared(carried_clutter);
+    // `switches_<room>` (`Switch.cs`): per-room session state the trace cannot carry either.
+    // Carried while the trace stays in the same room, because `SwitchGate.Awake`
+    // (`SwitchGate.cs:68-82`) short-circuits the whole opening sequence when it is set.
+    simulator.set_switches_on(switch_room_flag(segment));
 
     let mut exact_prefix = 0u64;
     let mut replayed = 0u64;
@@ -2046,6 +2059,7 @@ fn replay(
     outcome.first_freeze_disagreement = first_freeze_disagreement;
     outcome.wind_disagreement_frames = wind_disagreement;
     outcome.ducking_disagreement_frames = ducking_disagreement;
+    outcome.switches_on = simulator.switches_on();
     outcome
 }
 
@@ -2081,6 +2095,27 @@ fn clutter_press_rect(frame: &Frame) -> Option<Rect> {
         collider[2] as f32,
         collider[3] as f32,
     ))
+}
+
+/// The `switches_<room>` flag this segment starts with: whatever an earlier replayed segment of the
+/// same room observed, or `false` for a room whose switches the trace has not replayed yet.
+fn switch_room_flag(segment: &Segment) -> bool {
+    SWITCH_ROOM.with(|carried| {
+        let key = (segment.sid.clone(), segment.mode, segment.room.clone());
+        let carried = carried.borrow();
+        carried.get(&key).copied().unwrap_or(false)
+    })
+}
+
+/// Remember the room's flag for later segments of the same room once it goes on; a later replay that
+/// stopped early must not clear it, because the trace cannot replay the switches again.
+fn remember_switch_room_flag(segment: &Segment, on: bool) {
+    SWITCH_ROOM.with(|carried| {
+        let key = (segment.sid.clone(), segment.mode, segment.room.clone());
+        let mut carried = carried.borrow_mut();
+        let entry = carried.entry(key).or_insert(false);
+        *entry = *entry || on;
+    });
 }
 
 fn simulate_segment(
@@ -2129,7 +2164,8 @@ fn simulate_segment(
         let chapter = Y3_CHAPTER.with(|c| c.borrow().clone());
         carry.borrow_mut().entry(chapter).or_default().cleared = next;
     });
-    let outcome = replay(segment, map, None, None, dump, carried, previous_state);
+    let mut outcome = replay(segment, map, None, None, dump, carried, previous_state);
+    remember_switch_room_flag(segment, outcome.switches_on);
     let report = SegmentReport {
         sid: segment.sid.clone(),
         mode: segment.mode,
