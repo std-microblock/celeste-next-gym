@@ -2530,3 +2530,26 @@ The distinction to settle next is freeze versus stall, because they mean differe
 
 So: read `step`'s freeze and stall early-return blocks (`sim.rs:6290-6320`) against the trace row's
 `transitioning` / freeze fields for row 42489 onward, and find out which one this window is.
+
+### roof07 is a TRANSITION (stall), not a freeze - `trans=true`, `freeze=0` on every row
+
+The trace's own fields settle the freeze-versus-stall question:
+
+```
+row=42489 trans=true freeze=0 col=[8226,-796,8,11] vx=323.333 pos=8230
+row=42494 trans=true freeze=0 col=[8231,-796,8,11] vx=323.333 pos=8235
+row=42495 trans=true freeze=0 col=[8232,-796,8,11] vx=323.000 pos=8236
+```
+
+`transitioning` is true and `freezeTimer` is 0 throughout, so this is a room **transition**: `Player.Update`
+is paused (which is exactly why `vx` stays constant at 323.333 - nothing writes `Speed`) while entities keep
+updating, and one of them advances the player by one pixel per frame until its collider is fully inside the
+room. The simulator takes the stall early return and does nothing.
+
+That closes the classification and re-points the fix: it is neither the clamp (`enforce_level_bounds` is not
+even called) nor the wind. Something in the **transition** moves the player one pixel per frame in the game.
+Candidates, in order: a `Level.TransitionRoutine`-style player write in the source that the simulator's stall
+path omits; the room-entry positioning the source does when the new room's bounds differ; or a solid/spring
+in the new room pushing the still-collidable player while `Player.Update` is suspended. Reading `sim.rs`'s
+stall branch against `Level.cs`'s transition coroutine is the cheap next step, and the verification is
+binary: `--rooms roof07` should take that segment from `exact=0` to `exact=6`.
