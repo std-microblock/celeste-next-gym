@@ -1340,3 +1340,13 @@ executes". That is how a gate probe appeared to show zero output this round.
 
 Practical rule: when several things are running, build when nothing else is; never interpret a silent
 diagnostic as evidence until a build has actually succeeded (`Finished` in the output, not just a return).
+
+### Correction: `Level.EnforceBounds` IS modelled (the bullet above is stale)
+
+The note above says `Level.EnforceBounds` is not modelled. It is: `sim.rs::enforce_level_bounds`
+(`sim.rs:10148`) gates on exactly the source's condition (`dead || DreamDash || !in control`, matching
+`Player.cs:1915-1918`), clamps the collider to `current_room_bounds` (falling back to `map.bounds`),
+zeroes `speed.x` on a clamp, and performs the four-direction transition hand-off with the same
+`player.Center +/- 8` probe (`Level.cs:2725-2790`) via `transition_room_at` + `begin_transition`. So
+anyone reading the bullet above would re-implement something that already exists. Left as a correction
+rather than an edit so the original claim and its rebuttal stay visible.
