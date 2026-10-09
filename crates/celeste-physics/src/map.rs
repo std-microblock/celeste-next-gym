@@ -895,7 +895,14 @@ pub(crate) fn encode_celeste_rooms(
                         ("sprite", BinaryValue::String("default".to_owned())),
                         (
                             "type",
-                            BinaryValue::String("CloseBehindPlayerAlways".to_owned()),
+                            BinaryValue::String(
+                                map.entity_visuals
+                                    .get(index)
+                                    .and_then(|visual| visual.variant.clone())
+                                    .unwrap_or_else(|| {
+                                        "CloseBehindPlayerAlways".to_owned()
+                                    }),
+                            ),
                         ),
                         ("x", BinaryValue::Int(x)),
                         ("y", BinaryValue::Int(y)),
@@ -1164,9 +1171,9 @@ pub(crate) fn encode_celeste_rooms(
                 // `dashSwitchH`/`dashSwitchV` round-trip under the name the decoder saw, exactly
                 // like `StaticSolid`, because the side lives in the name + one bool and the
                 // collider width/height are derived on decode rather than read from the map
-                // (`DashSwitch.cs:62-71`, `:103-122`). The `sprite` skin and `allGates` are
-                // presentation/gate wiring this simulator does not model, so they are not
-                // re-emitted.
+                // (`DashSwitch.cs:62-71`, `:103-122`). The `sprite` skin is presentation only and
+                // is not re-emitted; `persistent` and `allGates` are, because they are the two
+                // bits the simulator reads back (`single_use` and `shielded`).
                 EntityKind::DashSwitch => {
                     let (left_side, ceiling) = match (entity.direction.x, entity.direction.y) {
                         (-1.0, _) => (Some(true), None),
@@ -1175,6 +1182,7 @@ pub(crate) fn encode_celeste_rooms(
                         _ => (None, Some(false)),
                     };
                     let mut attrs = vec![("id", BinaryValue::Int(id))];
+                    attrs.push(("allGates", BinaryValue::Bool(entity.shielded)));
                     if let Some(left) = left_side {
                         attrs.push(("leftSide", BinaryValue::Bool(left)));
                     }
@@ -2017,6 +2025,17 @@ fn map_from_binary_inner(
                     variant: attr_text(el, "type").map(str::to_owned),
                     ..EntityVisual::default()
                 },
+                // `TempleGate(EntityData data, Vector2 offset, string levelID)` forwards
+                // `data.Enum("type", Types.NearestSwitch)` (`TempleGate.cs:72-74`). The whole
+                // behaviour of the gate hangs off that enum - `Awake` (`:77-112`) starts
+                // `NearestSwitch` gates *closed* and adds a different coroutine per other type, and
+                // `DashSwitch.GetGate` (`DashSwitch.cs:231-253`) only ever claims a
+                // `NearestSwitch` one - so it rides `variant` exactly like the colour switch's
+                // `ClutterBlock.Colors`.
+                "templeGate" => EntityVisual {
+                    variant: attr_text(el, "type").map(str::to_owned),
+                    ..EntityVisual::default()
+                },
                 _ => EntityVisual {
                     tile: match kind {
                         EntityKind::FallingBlock => Some(attr_char(el, "tiletype").unwrap_or('3')),
@@ -2045,18 +2064,23 @@ fn map_from_binary_inner(
                 kind,
                 bounds,
                 direction,
+                // `DashSwitch.Create` reads `data.Bool("persistent")` (`DashSwitch.cs:106`),
+                // `data.Bool("allGates")` (`:107`) and `data.Attr("sprite", "default")` (`:108`).
+                // `persistent` rides `single_use` (only a persistent press writes
+                // `Session.SetFlag`, `:223-226`, and only that flag makes `Awake` (`:124-149`)
+                // start the switch already pushed) and `allGates` rides `shielded`, the only
+                // other per-kind bool left on `Entity`; no other reader of `shielded` can see a
+                // `DashSwitch`, because both of them sit inside `Spikes`/`FlyFeather` match arms
+                // (`sim.rs`). `allGates` decides whether one press opens its claimed gate or
+                // *every* `NearestSwitch` gate of the room with the switch's own `LevelID`
+                // (`DashSwitch.cs:208-221`).
                 shielded: registered.is_some_and(|entry| entry.shielded)
-                    || attr_bool(el, "shielded", false),
+                    || attr_bool(el, "shielded", false)
+                    || (kind == EntityKind::DashSwitch && attr_bool(el, "allGates", false)),
                 single_use: match kind {
                     EntityKind::RisingLava => attr_bool(el, "intro", false),
                     EntityKind::Refill => attr_bool(el, "oneUse", false),
                     EntityKind::CoreModeToggle => attr_bool(el, "persistent", false),
-                    // `DashSwitch.Create` reads `data.Bool("persistent")` (`DashSwitch.cs:106`);
-                    // only a persistent press writes `Session.SetFlag` (`:223-226`), and only that
-                    // flag makes `Awake` (`:124-149`) start the switch already pushed - so this is
-                    // the one bit a replay needs. `allGates` is deliberately *not* decoded: it only
-                    // selects which gates `Awake` opens, and the simulator starts every gate open
-                    // (`Simulator::set_pressed_dash_switches`).
                     EntityKind::DashSwitch => attr_bool(el, "persistent", false),
                     _ => attr_bool(el, "singleUse", false),
                 },
@@ -2607,6 +2631,45 @@ mod tests {
         assert_eq!(entity.kind, EntityKind::TempleGate);
         assert_eq!(entity.bounds, Rect::new(352.0, -120.0, 8.0, 48.0));
         assert_eq!(entity.name, "templeGate");
+    }
+
+    /// `TempleGate`'s `type` attribute (`TempleGate.cs:72-74`) decides the whole gate, so it has to
+    /// survive the round trip the way the switch's two bools do.
+    #[test]
+    fn temple_gate_type_round_trips_through_celeste_binary() {
+        for gate_type in [
+            "NearestSwitch",
+            "CloseBehindPlayer",
+            "CloseBehindPlayerAlways",
+            "HoldingTheo",
+            "TouchSwitches",
+            "CloseBehindPlayerAndTheo",
+        ] {
+            let map = Map {
+                bounds: Rect::new(320.0, -240.0, 320.0, 184.0),
+                entities: vec![Entity {
+                    kind: EntityKind::TempleGate,
+                    bounds: Rect::new(352.0, -120.0, 8.0, 48.0),
+                    direction: Vec2::default(),
+                    shielded: false,
+                    single_use: false,
+                    nodes: vec![],
+                    name: "templeGate".to_owned(),
+                }],
+                entity_visuals: vec![EntityVisual {
+                    variant: Some(gate_type.to_owned()),
+                    ..EntityVisual::default()
+                }],
+                ..Map::default()
+            };
+            let encoded = encode_celeste_map(&map, "CelesteGymTest", "gate-type").unwrap();
+            let decoded = decode_map_room(&encoded, Some("gate-type")).unwrap();
+            assert_eq!(
+                decoded.entity_visuals[0].variant.as_deref(),
+                Some(gate_type),
+                "{gate_type}"
+            );
+        }
     }
 
     #[test]
@@ -3313,7 +3376,8 @@ mod tests {
                 kind: EntityKind::DashSwitch,
                 bounds: collider,
                 direction: press_direction,
-                shielded: false,
+                // `allGates` (`DashSwitch.cs:107`), carried in `shielded`.
+                shielded: true,
                 // `persistent` (`DashSwitch.cs:106`), only observable through the
                 // unrepresentable `dashSwitch_<id>` session flag (`:223-226`).
                 single_use: true,
@@ -3332,6 +3396,7 @@ mod tests {
             assert_eq!(decoded.entities[0].direction, press_direction, "{name}");
             assert_eq!(decoded.entities[0].name, name);
             assert!(decoded.entities[0].single_use);
+            assert!(decoded.entities[0].shielded, "{name} must keep allGates");
             // The collider is what the player's own collision and the dash-collide
             // probe consult, and it is live from the moment the room loads.
             let inside = Rect::new(collider.x + 1.0, collider.y + 1.0, 2.0, 2.0);

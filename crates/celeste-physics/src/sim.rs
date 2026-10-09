@@ -374,13 +374,10 @@ impl Simulator {
     /// `ExitBlock`, `InvisibleBarrier`, `CassetteBlock` and `FallingBlock` - and what the
     /// in-replay press already does for the same entity kind.
     ///
-    /// The `TempleGate`s `Awake` would `StartOpen` (`:135-148`) need nothing here:
-    /// `initialize_temple_gates` already starts every gate at `current_height == 0` / `open ==
-    /// true`, which is exactly `StartOpen`'s `SetHeight(0); open = true` (`TempleGate.cs:146-151`),
-    /// and the simulator's only gate transition is `close_temple_gate`. `SwitchOpen`'s 0.4 s alarm
-    /// before the collider collapses (`TempleGate.cs:124-132`) is not modelled at all, so it is not
-    /// invented here either; `allGates` is therefore not decoded either - it only chooses *which*
-    /// gates `Awake` opens, and opening is a no-op.
+    /// The same `Awake` then opens gates (`:135-148`): `allGates` runs `StartOpen` over every
+    /// `NearestSwitch` gate of the room, otherwise `GetGate()` claims and opens the nearest
+    /// unclaimed one. Both read the switch's *already pressed* position, which is why the fan-out
+    /// below passes `bounds + pressDirection * 6f` and not the parked rectangle.
     pub fn set_pressed_dash_switches(&mut self, ids: &[i32]) {
         if ids.is_empty() {
             return;
@@ -404,7 +401,19 @@ impl Simulator {
             .map(|(index, _)| index)
             .collect();
         for index in pressed {
+            let entity = &self.runtime_map.entities[index];
+            let pressed_position = Vec2::new(
+                entity.bounds.x + entity.direction.x * 6.0,
+                entity.bounds.y + entity.direction.y * 6.0,
+            );
             park_entity(&mut self.runtime_map.entities[index]);
+            dash_switch_open_gates(
+                &mut self.snapshot,
+                &mut self.runtime_map,
+                index,
+                pressed_position,
+                false,
+            );
         }
     }
 
@@ -1948,7 +1957,17 @@ fn on_dash_collide(
                 // observable effect (`park_entity` is how `ExitBlock`,
                 // `InvisibleBarrier`, `CassetteBlock` and `FallingBlock` model
                 // their own collidable flags).
+                //
+                // The gate fan-out that follows (`:208-221`) needs that pressed
+                // position for `GetGate`'s nearest-gate search, so it is read off
+                // the collider before the entity is parked.
+                let entity = &map.entities[entity_index];
+                let pressed_position = Vec2::new(
+                    entity.bounds.x + entity.direction.x * 6.0,
+                    entity.bounds.y + entity.direction.y * 6.0,
+                );
                 park_entity(&mut map.entities[entity_index]);
+                dash_switch_open_gates(p, map, entity_index, pressed_position, true);
             }
             Some(DashCollision::NormalCollision)
         }
@@ -2930,12 +2949,108 @@ fn move_glider_v_from_gate(
     p.gliders[glider_index] = glider;
 }
 
+/// `TempleGate.SwitchOpen` (`TempleGate.cs:124-132`): it only plays the `open` sprite and arms the
+/// first 0.2 s `Alarm`; the collider stays up until the second one fires, which
+/// `advance_temple_gate_alarms` owns.
+fn start_temple_gate_switch_open(p: &mut PlayerSnapshot, snapshot_index: usize) {
+    let gate = &mut p.temple_gates[snapshot_index];
+    gate.alarm_stage = 1;
+    gate.alarm_timer = TEMPLE_GATE_SWITCH_BEAT;
+}
+
+/// `TempleGate.StartOpen` (`TempleGate.cs:146-151`): `SetHeight(0); drawHeight = 4f; open = true`.
+/// The collider half is `Open`'s, but there is no animation to run - `Awake` ends with
+/// `drawHeight = Math.Max(4f, base.Height)` (`:111`), which the collapsed height makes 4, so
+/// `drawHeight == max(4, Height)` and `lockState` is false straight away.
+fn start_open_temple_gate(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    snapshot_index: usize,
+    entity_index: usize,
+) {
+    open_temple_gate(p, map, snapshot_index, entity_index);
+    let gate = &mut p.temple_gates[snapshot_index];
+    gate.draw_speed = 0.0;
+    gate.draw_height = 4.0;
+    gate.lock_state = false;
+}
+
+/// The gate half of `DashSwitch`: `OnDashed`'s `SwitchOpen` fan-out (`DashSwitch.cs:208-221`) when
+/// `alarm`, or `Awake`'s `StartOpen` one (`:135-148`) when not - the two differ only in which of
+/// the gate's two entrances they call.
+///
+/// `allGates` (decoded into `shielded`) walks every `TempleGate` whose `Type` is `NearestSwitch`
+/// and whose `LevelID` is the switch's `EntityID.Level` (`:139`, `:212`). `LevelID` is the level
+/// the gate was loaded with (`Level.LoadLevel` passes `Session.Level`, `TempleGate.cs:72-74`), so
+/// within one decoded room that comparison is always true. Otherwise `GetGate` (`:231-253`) picks
+/// the nearest unclaimed `NearestSwitch` gate by `Vector2.DistanceSquared` from the switch's
+/// position, ties going to the earlier entity, and marks it `ClaimedByASwitch` so no later switch
+/// can take it.
+fn dash_switch_open_gates(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    switch_index: usize,
+    switch_position: Vec2,
+    alarm: bool,
+) {
+    let gate_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::TempleGate).then_some(index))
+        .collect();
+    let mut chosen: Option<(usize, usize)> = None;
+    if map.entities[switch_index].shielded {
+        for (snapshot_index, entity_index) in gate_indices.into_iter().enumerate() {
+            if p.temple_gates[snapshot_index].gate_type != TEMPLE_GATE_NEAREST_SWITCH {
+                continue;
+            }
+            if alarm {
+                start_temple_gate_switch_open(p, snapshot_index);
+            } else {
+                start_open_temple_gate(p, map, snapshot_index, entity_index);
+            }
+        }
+        return;
+    }
+    let mut best = f32::INFINITY;
+    for (snapshot_index, entity_index) in gate_indices.into_iter().enumerate() {
+        let gate = &p.temple_gates[snapshot_index];
+        if gate.gate_type != TEMPLE_GATE_NEAREST_SWITCH || gate.claimed {
+            continue;
+        }
+        let dx = switch_position.x - gate.position.x;
+        let dy = switch_position.y - gate.position.y;
+        let distance = dx * dx + dy * dy;
+        if chosen.is_none() || distance < best {
+            best = distance;
+            chosen = Some((snapshot_index, entity_index));
+        }
+    }
+    let Some((snapshot_index, entity_index)) = chosen else {
+        return;
+    };
+    p.temple_gates[snapshot_index].claimed = true;
+    if alarm {
+        start_temple_gate_switch_open(p, snapshot_index);
+    } else {
+        start_open_temple_gate(p, map, snapshot_index, entity_index);
+    }
+}
+
 fn close_temple_gate(
     p: &mut PlayerSnapshot,
     map: &mut Map,
     gate_index: usize,
     gate: &mut crate::TempleGateSnapshot,
 ) {
+    // `TempleGate.Close` (`TempleGate.cs:153-163`): `holdingWaitTimer = 0.2f;
+    // drawHeightMoveSpeed = 300f; drawHeight = Math.Max(4f, base.Height)` - that last one read
+    // *before* `SetHeight(closedHeight)`, so a gate that was open animates 4 -> closedHeight at
+    // 300 px/s and `drawHeight != max(4, Height)` keeps `lockState` true until it arrives (`:265-274`).
+    gate.holding_wait = 0.2;
+    gate.draw_speed = 300.0;
+    gate.draw_height = gate.current_height.max(4.0);
     let old_height = gate.current_height as i32;
     let close_height = gate.closed_height as i32;
     let mut temporary_y = gate.position.y;
@@ -2947,7 +3062,12 @@ fn close_temple_gate(
     let old_bottom = temporary_y + temporary_height;
     let move_y = close_height - old_height;
     temporary_y += move_y as f32;
-    let moved_gate = Rect::new(gate.position.x, temporary_y, 8.0, temporary_height);
+    let moved_gate = Rect::new(
+        gate.position.x,
+        temporary_y,
+        temple_gate_width(gate.gate_type),
+        temporary_height,
+    );
     map.entities[gate_index].bounds = moved_gate;
 
     let player_rect = current_player_rect(p, p.pos.x, p.pos.y);
@@ -2979,10 +3099,151 @@ fn close_temple_gate(
     gate.current_height = gate.closed_height;
     gate.open = false;
     gate.triggered = true;
-    map.entities[gate_index].bounds =
-        Rect::new(gate.position.x, gate.position.y, 8.0, gate.closed_height);
+    map.entities[gate_index].bounds = Rect::new(
+        gate.position.x,
+        gate.position.y,
+        temple_gate_width(gate.gate_type),
+        gate.closed_height,
+    );
 }
 
+/// The three ways a gate's collider comes back up, plus the `HoldingTheo` proximity toggle - i.e.
+/// everything in `TempleGate`'s own `Update` that is not the close-behind coroutine.
+///
+/// The gate's `Update` runs *before* `Player.Update` (its depth is -9000, `TempleGate.cs:67`),
+/// which is why this is called before the state callback while `advance_temple_gates` - whose
+/// close check watches the player walk away many frames after the fact - is not.
+/// `DashSwitch.OnDashed` calls `SwitchOpen` (`:220`) from inside that same `Player.Update`, so a
+/// chain armed on frame N first ticks on frame N+1: `Monocle.Alarm.Update` subtracts
+/// `Engine.DeltaTime` once per frame and fires on the tick that reaches zero (`Alarm.cs:57-80`),
+/// and the second `Alarm` installed by the first one's `OnComplete` is added while
+/// `ComponentList` is locked, so it starts ticking on the frame *after* the first fired
+/// (`ComponentList.cs:199-210`). Two 0.2 s beats therefore collapse the collider 0.4 s after the
+/// press.
+///
+/// `CheckTouchSwitches` (`TempleGate.cs:197-212`) waits for `Switch.Check(Scene)` - which is
+/// `GetComponent<Switch>()?.Finished ?? false` (`Switch.cs:99-110`), false in a room with no
+/// `Switch` at all - and then plays `open` for 0.5 s before the 0.2 s shake beat and `Open()`.
+/// `TouchSwitch` is the only vanilla `Switch` carrier (`TouchSwitch.cs:104-110`) and it activates
+/// from a `PlayerCollider`, i.e. after `Player.Update`, so the activations sampled here are
+/// exactly the ones the gate's own pre-`Player` update observes.
+fn advance_temple_gate_alarms(p: &mut PlayerSnapshot, map: &mut Map, room: &RoomCoroutineState) {
+    let dt = p.frame_delta_time;
+    let all_switches_on = room.switches_on
+        || (!room.touch_switches.is_empty()
+            && room.touch_switches.iter().all(|switch| switch.activated));
+    let entity_indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::TempleGate).then_some(index))
+        .collect();
+    for (snapshot_index, entity_index) in entity_indices.into_iter().enumerate() {
+        let mut gate = p.temple_gates[snapshot_index].clone();
+        if gate.gate_type == TEMPLE_GATE_TOUCH_SWITCHES && gate.alarm_stage == 0 {
+            // `while (!Switch.Check(Scene)) yield return null;` (`TempleGate.cs:199-202`), then
+            // `sprite.Play("open")` and the 0.5 s beat before the shake.
+            if !all_switches_on {
+                continue;
+            }
+            gate.alarm_stage = 3;
+            gate.alarm_timer = TEMPLE_GATE_TOUCH_BEAT;
+            p.temple_gates[snapshot_index] = gate;
+            continue;
+        }
+        if gate.alarm_stage != 0 {
+            // The two mechanisms count differently. `Monocle.Alarm.Update` (`Alarm.cs:57-80`)
+            // subtracts and fires on the very tick the counter reaches zero; `Monocle.Coroutine`'s
+            // float `yield` (`Coroutine.cs:35-82`) only resumes on the *next* frame, because the
+            // frame that takes `waitTimer` to or below zero still takes the `waitTimer > 0f`
+            // branch and returns without advancing. A 0.2 s alarm is therefore 12 frames while a
+            // 0.5 s coroutine yield is 31.
+            let coroutine_wait = matches!(gate.alarm_stage, 3 | 4);
+            let fired = if coroutine_wait {
+                // `Coroutine` only resumes once the counter is already at or below zero when the
+                // frame starts; the frame that takes it there returns without advancing.
+                if gate.alarm_timer > 0.0 {
+                    gate.alarm_timer -= dt;
+                    false
+                } else {
+                    true
+                }
+            } else {
+                gate.alarm_timer -= dt;
+                gate.alarm_timer <= 0.0
+            };
+            if !fired {
+                p.temple_gates[snapshot_index] = gate;
+                continue;
+            }
+            match gate.alarm_stage {
+                // `SwitchOpen`'s first `Alarm.Set`: shake, then arm the second 0.2 s `Alarm`
+                // (`TempleGate.cs:127-131`).
+                1 => {
+                    gate.alarm_stage = 2;
+                    gate.alarm_timer = TEMPLE_GATE_SWITCH_BEAT;
+                }
+                // `CheckTouchSwitches`' shake beat, then `Open()`.
+                3 => {
+                    gate.alarm_stage = 4;
+                    gate.alarm_timer = TEMPLE_GATE_SWITCH_BEAT;
+                }
+                // `SwitchOpen`'s second `Alarm.Set(..., Open)` (`:130`) and the end of
+                // `CheckTouchSwitches` (`:211`).
+                _ => {
+                    gate.alarm_stage = 0;
+                    gate.alarm_timer = 0.0;
+                    // `Open` sets `drawHeightMoveSpeed = 200f; drawHeight = base.Height` before
+                    // `SetHeight(0)` (`TempleGate.cs:138-141`), and the animation tail below runs
+                    // in the same `Update`: `base.Update()` fires the alarm first (`:243-245`).
+                    gate.draw_speed = 200.0;
+                    gate.draw_height = gate.current_height;
+                    p.temple_gates[snapshot_index] = gate;
+                    open_temple_gate(p, map, snapshot_index, entity_index);
+                    gate = p.temple_gates[snapshot_index].clone();
+                }
+            }
+        }
+        // `if (Type == Types.HoldingTheo)` (`TempleGate.cs:246-264`): the gate follows Theo, not
+        // the player. A room with no live `TheoCrystal` counts as "nearby" (`:214-222` returns
+        // true), which is what keeps the vanilla `HoldingTheo` gate with no Theo in its room open.
+        if gate.gate_type == TEMPLE_GATE_HOLDING_THEO {
+            if gate.holding_wait > 0.0 {
+                gate.holding_wait -= dt;
+            } else if !gate.lock_state {
+                let nearby = theo_is_nearby(p, map, gate.position, gate.closed_height, gate.open);
+                if gate.open && !nearby {
+                    // `close_temple_gate` carries `Close`'s own `holdingWaitTimer`/animation fields.
+                    close_temple_gate(p, map, entity_index, &mut gate);
+                } else if !gate.open && nearby {
+                    gate.holding_wait = 0.2;
+                    gate.draw_speed = 200.0;
+                    gate.draw_height = gate.current_height;
+                    p.temple_gates[snapshot_index] = gate;
+                    open_temple_gate(p, map, snapshot_index, entity_index);
+                    gate = p.temple_gates[snapshot_index].clone();
+                }
+            }
+        }
+        // `float num = Math.Max(4f, base.Height); if (drawHeight != num) { lockState = true;
+        // drawHeight = Calc.Approach(drawHeight, num, drawHeightMoveSpeed * Engine.DeltaTime); }
+        // else lockState = false;` (`TempleGate.cs:265-274`). `Awake` leaves `drawHeight` at
+        // `Math.Max(4f, Height)` (`:111`), so a gate starts unlocked.
+        let num = gate.current_height.max(4.0);
+        if gate.draw_height != num {
+            gate.lock_state = true;
+            gate.draw_height = approach(gate.draw_height, num, gate.draw_speed * dt);
+        } else {
+            gate.lock_state = false;
+        }
+        p.temple_gates[snapshot_index] = gate;
+    }
+}
+
+/// The close-behind coroutines (`TempleGate.cs:165-195`). Only the three `CloseBehindPlayer*`
+/// types have one: a `NearestSwitch` gate a dash switch opened stays open, and a `TouchSwitches`
+/// gate a touch switch opened likewise. `HoldingTheo` closes on Theo's proximity instead, which
+/// `advance_temple_gate_alarms` owns.
 fn advance_temple_gates(p: &mut PlayerSnapshot, map: &mut Map) {
     let entity_indices: Vec<usize> = map
         .entities
@@ -2992,10 +3253,27 @@ fn advance_temple_gates(p: &mut PlayerSnapshot, map: &mut Map) {
         .collect();
     for (snapshot_index, entity_index) in entity_indices.into_iter().enumerate() {
         let mut gate = p.temple_gates[snapshot_index].clone();
-        let player_left = current_player_rect(p, p.pos.x, p.pos.y).x;
-        if gate.open && !gate.triggered && player_left > gate.position.x + 12.0 {
-            close_temple_gate(p, map, entity_index, &mut gate);
+        if !gate.open || gate.triggered {
+            continue;
         }
+        if !matches!(
+            gate.gate_type,
+            TEMPLE_GATE_CLOSE_BEHIND_PLAYER
+                | TEMPLE_GATE_CLOSE_BEHIND_PLAYER_ALWAYS
+                | TEMPLE_GATE_CLOSE_BEHIND_PLAYER_AND_THEO
+        ) {
+            continue;
+        }
+        let player_left = current_player_rect(p, p.pos.x, p.pos.y).x;
+        if player_left <= gate.position.x + 12.0 {
+            continue;
+        }
+        if gate.gate_type == TEMPLE_GATE_CLOSE_BEHIND_PLAYER_AND_THEO
+            && !theo_passed_gate(p, map, gate.position.x + 12.0)
+        {
+            continue;
+        }
+        close_temple_gate(p, map, entity_index, &mut gate);
         p.temple_gates[snapshot_index] = gate;
     }
 }
@@ -4249,6 +4527,143 @@ fn initialize_seekers(p: &mut PlayerSnapshot, map: &mut Map) {
     }
 }
 
+/// `TempleGate.Types` (`TempleGate.cs:11-19`), in the enum's own order, which is what
+/// `data.Enum("type", Types.NearestSwitch)` (`:72-74`) parses the map's `type` attribute into.
+const TEMPLE_GATE_NEAREST_SWITCH: u8 = 0;
+const TEMPLE_GATE_CLOSE_BEHIND_PLAYER: u8 = 1;
+const TEMPLE_GATE_CLOSE_BEHIND_PLAYER_ALWAYS: u8 = 2;
+const TEMPLE_GATE_HOLDING_THEO: u8 = 3;
+const TEMPLE_GATE_TOUCH_SWITCHES: u8 = 4;
+const TEMPLE_GATE_CLOSE_BEHIND_PLAYER_AND_THEO: u8 = 5;
+
+/// `TempleGate.SwitchOpen`'s two chained 0.2 s `Alarm`s (`TempleGate.cs:124-132`) and
+/// `CheckTouchSwitches`' `yield return 0.5f` + 0.2 s shake beat (`:203-206`).
+const TEMPLE_GATE_SWITCH_BEAT: f32 = 0.2;
+const TEMPLE_GATE_TOUCH_BEAT: f32 = 0.5;
+
+/// `TempleGate.Types` of one decoded `templeGate` (`TempleGate.cs:72-74`). `data.Enum` falls back
+/// to the declared default on an unknown name, so anything unrecognised is `NearestSwitch`.
+fn temple_gate_type(map: &Map, index: usize) -> u8 {
+    match map
+        .entity_visuals
+        .get(index)
+        .and_then(|visual| visual.variant.as_deref())
+    {
+        Some("CloseBehindPlayer") => TEMPLE_GATE_CLOSE_BEHIND_PLAYER,
+        Some("CloseBehindPlayerAlways") => TEMPLE_GATE_CLOSE_BEHIND_PLAYER_ALWAYS,
+        Some("HoldingTheo") => TEMPLE_GATE_HOLDING_THEO,
+        Some("TouchSwitches") => TEMPLE_GATE_TOUCH_SWITCHES,
+        Some("CloseBehindPlayerAndTheo") => TEMPLE_GATE_CLOSE_BEHIND_PLAYER_AND_THEO,
+        _ => TEMPLE_GATE_NEAREST_SWITCH,
+    }
+}
+
+/// `TempleGate`'s collider width: `Solid(position, 8f, height, safe: true)` (`TempleGate.cs:58`) is
+/// eight pixels wide, except that `Awake` widens a `HoldingTheo` gate's hitbox to 16 (`:105`) -
+/// which is what `CollideFirst<Player>(Position + new Vector2(8f, 0f))?.Die` (`:257`) probes when
+/// such a gate closes on a player standing in the column beside it.
+fn temple_gate_width(gate_type: u8) -> f32 {
+    if gate_type == TEMPLE_GATE_HOLDING_THEO {
+        16.0
+    } else {
+        8.0
+    }
+}
+
+/// `TempleGate.SetHeight(0)` (`TempleGate.cs:224-241`), the collider half of `StartOpen`
+/// (`:146-151`) and `Open` (`:134-144`): collapsing an 8 px `Solid` to zero height takes the
+/// `height < Collider.Height` arm, so the collider shrinks *in place* - no `MoveVExact`, and
+/// therefore nothing to push out of the way.
+fn open_temple_gate(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    snapshot_index: usize,
+    entity_index: usize,
+) {
+    let gate = &mut p.temple_gates[snapshot_index];
+    gate.current_height = 0.0;
+    gate.open = true;
+    map.entities[entity_index].bounds = Rect::new(
+        gate.position.x,
+        gate.position.y,
+        temple_gate_width(gate.gate_type),
+        0.0,
+    );
+}
+
+/// The room's first still-tracked `TheoCrystal`, as `(Entity.X, Entity.Center)`, or `None` when
+/// the room tracks none.
+///
+/// `TheoCrystal(Vector2 position)` puts `Hitbox(8f, 10f, -4f, -10f)` on that position
+/// (`TheoCrystal.cs:47-52`), and the decoded room stores the *hitbox* rectangle, so
+/// `TheoCrystalSnapshot::position` is `Entity.Position`: `Entity.X` is four pixels left of it and
+/// `Entity.Center` five pixels above it (`Monocle.Entity.CenterX/CenterY`, which add the
+/// collider's own offset-and-half-size centre).
+///
+/// A crystal the player is carrying is not at its decoded position: `TheoCrystal.Update` parks it
+/// at `Player.Position + (0, -12)` (`advance_theo_crystals`), and `initialize_theo_crystals` has
+/// not moved it there yet when the gates are initialized, so the held case is resolved here.
+fn theo_entity_x_and_center(p: &PlayerSnapshot, map: &Map) -> Option<(f32, Vec2)> {
+    let slot = map
+        .entities
+        .iter()
+        .filter(|entity| entity.kind == EntityKind::TheoCrystal)
+        .enumerate()
+        .find(|(slot, _)| {
+            p.theo_crystals
+                .get(*slot)
+                .is_some_and(|theo| !theo.dead)
+        })
+        .map(|(slot, _)| slot)?;
+    if p.holding_theo == Some(slot as u16) {
+        let position = Vec2::new(p.pos.x, p.pos.y - 12.0);
+        return Some((position.x - 4.0, Vec2::new(position.x, position.y - 5.0)));
+    }
+    let position = p.theo_crystals[slot].position;
+    Some((position.x - 4.0, Vec2::new(position.x, position.y - 5.0)))
+}
+
+/// `TempleGate.TheoIsNearby` (`TempleGate.cs:214-222`):
+///
+/// ```csharp
+/// TheoCrystal entity = base.Scene.Tracker.GetEntity<TheoCrystal>();
+/// if (entity != null && !(entity.X > base.X + 10f))
+///     return Vector2.DistanceSquared(holdingCheckFrom, entity.Center) < (open ? 6400f : 4096f);
+/// return true;
+/// ```
+///
+/// `holdingCheckFrom` is `Position + (Width / 2f, height / 2)` from the constructor (`:69`), i.e.
+/// four pixels right and *half the decoded height* down from the gate's top-left - the closed
+/// height, which `SetHeight` never changes.
+fn theo_is_nearby(
+    p: &PlayerSnapshot,
+    map: &Map,
+    gate_position: Vec2,
+    closed_height: f32,
+    open: bool,
+) -> bool {
+    let Some((theo_x, theo_center)) = theo_entity_x_and_center(p, map) else {
+        return true;
+    };
+    if theo_x > gate_position.x + 10.0 {
+        return false;
+    }
+    let check_x = gate_position.x + 4.0;
+    let check_y = gate_position.y + closed_height * 0.5;
+    let dx = check_x - theo_center.x;
+    let dy = check_y - theo_center.y;
+    let limit = if open { 6400.0 } else { 4096.0 };
+    dx * dx + dy * dy < limit
+}
+
+/// The `TheoCrystal` half of `TempleGate.CloseBehindPlayerAndTheo`'s break condition
+/// (`TempleGate.cs:179-195`): the coroutine only ever `break`s out of its loop when a live
+/// crystal is *also* past `base.Right + 4f`, and a removed one leaves the loop spinning forever -
+/// so a room without a live Theo never closes that gate.
+fn theo_passed_gate(p: &PlayerSnapshot, map: &Map, gate_right_plus_four: f32) -> bool {
+    theo_entity_x_and_center(p, map).is_some_and(|(theo_x, _)| theo_x > gate_right_plus_four)
+}
+
 fn initialize_temple_gates(p: &mut PlayerSnapshot, map: &mut Map) {
     let gate_indices: Vec<usize> = map
         .entities
@@ -4257,19 +4672,74 @@ fn initialize_temple_gates(p: &mut PlayerSnapshot, map: &mut Map) {
         .filter_map(|(index, entity)| (entity.kind == EntityKind::TempleGate).then_some(index))
         .collect();
     p.temple_gates.truncate(gate_indices.len());
+    // `Awake` (`TempleGate.cs:77-112`) is the only place a gate's start state is decided, and the
+    // two things it reads - the player's rectangle and Theo's proximity - are both in the anchor
+    // snapshot. A `NearestSwitch` or `TouchSwitches` gate just keeps its decoded height: only a
+    // `DashSwitch`'s `SwitchOpen` (`:124-132`) or the `CheckTouchSwitches` coroutine (`:197-212`)
+    // ever raises one, and both of those are transitions rather than start state.
+    let player = current_player_rect(p, p.pos.x, p.pos.y);
     for (gate_index, entity_index) in gate_indices.into_iter().enumerate() {
-        let entity = &mut map.entities[entity_index];
-        if gate_index == p.temple_gates.len() {
-            p.temple_gates.push(crate::TempleGateSnapshot {
-                position: Vec2::new(entity.bounds.x, entity.bounds.y),
-                current_height: 0.0,
-                closed_height: entity.bounds.height,
-                open: true,
-                triggered: false,
-            });
+        if gate_index != p.temple_gates.len() {
+            // The snapshot carries a gate this room already ran (`Simulator::fork`, or a room
+            // transition into a rebuilt level): `Awake` does not run again, so neither does the
+            // start state. Only the Solid is resynced from the carried height.
+            let gate = &p.temple_gates[gate_index];
+            map.entities[entity_index].bounds = Rect::new(
+                gate.position.x,
+                gate.position.y,
+                temple_gate_width(gate.gate_type),
+                gate.current_height,
+            );
+            continue;
         }
-        let gate = &p.temple_gates[gate_index];
-        entity.bounds = Rect::new(gate.position.x, gate.position.y, 8.0, gate.current_height);
+        let bounds = map.entities[entity_index].bounds;
+        let gate_type = temple_gate_type(map, entity_index);
+        let closed = Rect::new(bounds.x, bounds.y, 8.0, bounds.height);
+        let start_open = match gate_type {
+            // `Type == CloseBehindPlayerAlways` and `CloseBehindPlayerAndTheo` call `StartOpen()`
+            // unconditionally (`TempleGate.cs:89-98`).
+            TEMPLE_GATE_CLOSE_BEHIND_PLAYER_ALWAYS
+            | TEMPLE_GATE_CLOSE_BEHIND_PLAYER_AND_THEO => true,
+            // `entity != null && entity.Left < base.Right && entity.Bottom >= base.Top &&
+            // entity.Top <= base.Bottom` (`:83`); a gate the player is not in front of stays shut
+            // and no coroutine is ever added, so nothing can open it later either.
+            TEMPLE_GATE_CLOSE_BEHIND_PLAYER => {
+                player.x < closed.x + closed.width
+                    && player.y + player.height >= closed.y
+                    && player.y <= closed.y + closed.height
+            }
+            TEMPLE_GATE_HOLDING_THEO => {
+                theo_is_nearby(p, map, Vec2::new(closed.x, closed.y), closed.height, false)
+            }
+            _ => false,
+        };
+        p.temple_gates.push(crate::TempleGateSnapshot {
+            position: Vec2::new(bounds.x, bounds.y),
+            current_height: bounds.height,
+            closed_height: bounds.height,
+            open: false,
+            triggered: false,
+            gate_type,
+            alarm_stage: 0,
+            alarm_timer: 0.0,
+            claimed: false,
+            // `holdingWaitTimer = 0.2f` from the field initializer (`TempleGate.cs:51`).
+            holding_wait: 0.2,
+            draw_height: bounds.height.max(4.0),
+            draw_speed: 0.0,
+            lock_state: false,
+        });
+        if start_open {
+            // `StartOpen` + the `Awake` tail, exactly as above.
+            start_open_temple_gate(p, map, gate_index, entity_index);
+        } else {
+            map.entities[entity_index].bounds = Rect::new(
+                bounds.x,
+                bounds.y,
+                temple_gate_width(gate_type),
+                bounds.height,
+            );
+        }
     }
 }
 
@@ -5846,6 +6316,18 @@ fn step(
     // before either Player.Update or the transition coroutine moves Player.
     advance_invisible_barriers(p, map);
     advance_crush_and_dash_blocks(p, map);
+    // `TempleGate`'s depth is -9000 (`TempleGate.cs:67`), so its own `Update` - the alarms, the
+    // `HoldingTheo` proximity toggle and the `drawHeight` animation - runs before `Player.Update`,
+    // and a gate it opens this frame is already passable for this frame's movement.
+    //
+    // `Level.Update` only runs `base.Update()` - every entity that is not `Tags.TransitionUpdate`,
+    // and `TempleGate` is not - in the `else if (!Transitioning)` arm (`Level.cs:1869-1896`), so
+    // the alarm must not tick on a transition frame either. The death, `Celeste.Freeze` and
+    // `BadelineBoost`/`IntroRespawn` frame shapes bail out above this point and therefore do not
+    // advance it; those are frames the trace cannot replay as an ordinary `Player.Update` anyway.
+    if p.transition_timer <= 0.0 {
+        advance_temple_gate_alarms(p, map, room);
+    }
     if p.transition_timer > 0.0 {
         update_transition(p, map);
         advance_sandwich_lavas(p, map);
@@ -20632,6 +21114,16 @@ mod tests {
                     name: "theoCrystal".to_owned(),
                 },
             ],
+            // The fixture stands in for the vanilla gate the encoder round-trips, which is the
+            // `CloseBehindPlayerAlways` one (`CloseBehindPlayer` is the type that starts shut
+            // unless the player is already in front of it).
+            entity_visuals: vec![
+                crate::map::EntityVisual {
+                    variant: Some("CloseBehindPlayerAlways".to_owned()),
+                    ..crate::map::EntityVisual::default()
+                },
+                crate::map::EntityVisual::default(),
+            ],
             ..Map::default()
         }
     }
@@ -20710,6 +21202,418 @@ mod tests {
         assert!(p.theo_crystals[0].dead);
         assert!(p.dead);
         assert!(p.gliders[0].removed);
+    }
+
+    /// One `templeGate` at (100, 100) with the vanilla 8x48 collider, decoded from a map whose
+    /// `type` attribute is `gate_type` (`TempleGate.cs:72-74`).
+    fn typed_temple_gate_map(gate_type: &str) -> Map {
+        Map {
+            bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
+            entities: vec![crate::Entity {
+                kind: EntityKind::TempleGate,
+                bounds: Rect::new(100.0, 100.0, 8.0, 48.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "templeGate".to_owned(),
+            }],
+            entity_visuals: vec![crate::map::EntityVisual {
+                variant: Some(gate_type.to_owned()),
+                ..crate::map::EntityVisual::default()
+            }],
+            ..Map::default()
+        }
+    }
+
+    /// `TempleGate.Awake` (`TempleGate.cs:77-112`) decides the start state per type, and only
+    /// `NearestSwitch`/`TouchSwitches` gates start at their decoded height.
+    #[test]
+    fn awake_decides_each_temple_gate_types_start_state() {
+        // `NearestSwitch`, `TouchSwitches`, and any unknown name (`data.Enum`'s fallback).
+        for gate_type in ["NearestSwitch", "TouchSwitches", "not-a-type"] {
+            let mut map = typed_temple_gate_map(gate_type);
+            let mut p = PlayerSnapshot {
+                pos: Vec2::new(80.0, 140.0),
+                ..PlayerSnapshot::default()
+            };
+            initialize_temple_gates(&mut p, &mut map);
+            assert!(!p.temple_gates[0].open, "{gate_type} must start shut");
+            assert_eq!(p.temple_gates[0].current_height, 48.0, "{gate_type}");
+            assert_eq!(
+                map.entities[0].bounds,
+                Rect::new(100.0, 100.0, 8.0, 48.0),
+                "{gate_type} must stay a Solid"
+            );
+        }
+        // `CloseBehindPlayerAlways` and `CloseBehindPlayerAndTheo` call `StartOpen` (`:89-98`).
+        for gate_type in ["CloseBehindPlayerAlways", "CloseBehindPlayerAndTheo"] {
+            let mut map = typed_temple_gate_map(gate_type);
+            let mut p = PlayerSnapshot {
+                pos: Vec2::new(220.0, 140.0),
+                ..PlayerSnapshot::default()
+            };
+            initialize_temple_gates(&mut p, &mut map);
+            assert!(p.temple_gates[0].open, "{gate_type} must start open");
+            assert_eq!(p.temple_gates[0].draw_height, 4.0, "{gate_type}");
+            assert_eq!(map.entities[0].bounds.height, 0.0, "{gate_type}");
+        }
+        // `CloseBehindPlayer` opens only when the player is already in front of the gate (`:83`):
+        // `entity.Left < base.Right && entity.Bottom >= base.Top && entity.Top <= base.Bottom`.
+        let mut map = typed_temple_gate_map("CloseBehindPlayer");
+        let mut in_front = PlayerSnapshot {
+            pos: Vec2::new(80.0, 140.0),
+            ..PlayerSnapshot::default()
+        };
+        initialize_temple_gates(&mut in_front, &mut map);
+        assert!(in_front.temple_gates[0].open);
+
+        let mut map = typed_temple_gate_map("CloseBehindPlayer");
+        let mut behind = PlayerSnapshot {
+            pos: Vec2::new(220.0, 140.0),
+            ..PlayerSnapshot::default()
+        };
+        initialize_temple_gates(&mut behind, &mut map);
+        assert!(
+            !behind.temple_gates[0].open,
+            "no coroutine is added for a gate the player is past, so nothing can open it"
+        );
+
+        let mut map = typed_temple_gate_map("CloseBehindPlayer");
+        let mut above = PlayerSnapshot {
+            pos: Vec2::new(80.0, 60.0),
+            ..PlayerSnapshot::default()
+        };
+        initialize_temple_gates(&mut above, &mut map);
+        assert!(
+            !above.temple_gates[0].open,
+            "the vertical overlap half of the Awake test"
+        );
+    }
+
+    /// A `Sides.Right` dash switch at (80, 116) and a `NearestSwitch` gate at (100, 100).
+    fn dash_switch_and_gate_map(all_gates: bool) -> Map {
+        let mut map = typed_temple_gate_map("NearestSwitch");
+        map.entities.push(crate::Entity {
+            kind: EntityKind::DashSwitch,
+            bounds: Rect::new(80.0, 116.0, 8.0, 16.0),
+            direction: Vec2::new(1.0, 0.0),
+            shielded: all_gates,
+            single_use: false,
+            nodes: vec![],
+            name: "dashSwitchH".to_owned(),
+        });
+        map.entity_visuals.push(crate::map::EntityVisual::default());
+        map
+    }
+
+    /// A further-away `NearestSwitch` gate, so `GetGate`'s nearest search has a choice.
+    fn push_far_nearest_switch_gate(map: &mut Map) {
+        map.entities.push(crate::Entity {
+            kind: EntityKind::TempleGate,
+            bounds: Rect::new(220.0, 100.0, 8.0, 48.0),
+            direction: Vec2::default(),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "templeGate".to_owned(),
+        });
+        map.entity_visuals.push(crate::map::EntityVisual {
+            variant: Some("NearestSwitch".to_owned()),
+            ..crate::map::EntityVisual::default()
+        });
+    }
+
+    /// `TempleGate.SwitchOpen` (`TempleGate.cs:124-132`) is two chained 0.2 s `Alarm`s, so the
+    /// collider stays up for 24 frames after the press and comes down on the 24th.
+    #[test]
+    fn switch_open_collapses_the_gate_on_the_second_alarm() {
+        let mut map = dash_switch_and_gate_map(false);
+        let mut p = PlayerSnapshot {
+            frame_delta_time: DT,
+            ..PlayerSnapshot::default()
+        };
+        initialize_temple_gates(&mut p, &mut map);
+        assert!(!p.temple_gates[0].open);
+        // `DashSwitch.OnDashed` moves the switch to `bounds + pressDirection * 6f` first
+        // (`DashSwitch.cs:203-205`), then runs the gate fan-out.
+        dash_switch_open_gates(&mut p, &mut map, 1, Vec2::new(86.0, 124.0), true);
+        assert_eq!(p.temple_gates[0].alarm_stage, 1);
+        assert_eq!(p.temple_gates[0].alarm_timer, TEMPLE_GATE_SWITCH_BEAT);
+        assert!(p.temple_gates[0].claimed, "GetGate marks the gate it took");
+
+        let mut room = initialize_room_coroutines(&map);
+        for _ in 0..23 {
+            advance_temple_gate_alarms(&mut p, &mut map, &mut room);
+        }
+        assert!(
+            !p.temple_gates[0].open,
+            "the collider is still up on the 23rd frame after the press"
+        );
+        assert_eq!(map.entities[0].bounds.height, 48.0);
+        advance_temple_gate_alarms(&mut p, &mut map, &mut room);
+        assert!(p.temple_gates[0].open);
+        assert_eq!(p.temple_gates[0].current_height, 0.0);
+        assert_eq!(p.temple_gates[0].alarm_stage, 0);
+        assert_eq!(map.entities[0].bounds.height, 0.0);
+    }
+
+    /// `allGates` (`DashSwitch.cs:208-217`) opens *every* `NearestSwitch` gate of the room and
+    /// claims none of them.
+    #[test]
+    fn an_all_gates_switch_opens_every_nearest_switch_gate() {
+        let mut map = dash_switch_and_gate_map(true);
+        push_far_nearest_switch_gate(&mut map);
+        map.entities.push(crate::Entity {
+            kind: EntityKind::TempleGate,
+            bounds: Rect::new(260.0, 100.0, 8.0, 48.0),
+            direction: Vec2::default(),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "templeGate".to_owned(),
+        });
+        map.entity_visuals.push(crate::map::EntityVisual {
+            variant: Some("TouchSwitches".to_owned()),
+            ..crate::map::EntityVisual::default()
+        });
+
+        let mut p = PlayerSnapshot {
+            frame_delta_time: DT,
+            ..PlayerSnapshot::default()
+        };
+        initialize_temple_gates(&mut p, &mut map);
+        dash_switch_open_gates(&mut p, &mut map, 1, Vec2::new(86.0, 124.0), true);
+        assert_eq!(p.temple_gates[0].alarm_stage, 1);
+        assert_eq!(p.temple_gates[1].alarm_stage, 1);
+        assert_eq!(
+            p.temple_gates[2].alarm_stage, 0,
+            "a TouchSwitches gate is not a NearestSwitch gate"
+        );
+        assert!(p.temple_gates.iter().all(|gate| !gate.claimed));
+    }
+
+    /// Without `allGates` the press takes the *nearest unclaimed* `NearestSwitch` gate
+    /// (`DashSwitch.GetGate`, `DashSwitch.cs:231-253`) and a second press can only take another.
+    #[test]
+    fn a_press_claims_only_the_nearest_unclaimed_nearest_switch_gate() {
+        let mut map = dash_switch_and_gate_map(false);
+        push_far_nearest_switch_gate(&mut map);
+        let mut p = PlayerSnapshot {
+            frame_delta_time: DT,
+            ..PlayerSnapshot::default()
+        };
+        initialize_temple_gates(&mut p, &mut map);
+        dash_switch_open_gates(&mut p, &mut map, 1, Vec2::new(86.0, 124.0), true);
+        assert!(p.temple_gates[0].claimed);
+        assert_eq!(p.temple_gates[0].alarm_stage, 1);
+        assert!(!p.temple_gates[1].claimed);
+        assert_eq!(p.temple_gates[1].alarm_stage, 0);
+
+        dash_switch_open_gates(&mut p, &mut map, 1, Vec2::new(86.0, 124.0), true);
+        assert_eq!(p.temple_gates[1].alarm_stage, 1);
+    }
+
+    /// `CheckTouchSwitches` (`TempleGate.cs:197-212`): `Switch.Check` needs *every* switch in the
+    /// room, then a 0.5 s `yield` and a 0.2 s one - 31 + 13 frames, since `Monocle.Coroutine`
+    /// resumes on the frame *after* the counter reaches zero (`Coroutine.cs:35-42`).
+    #[test]
+    fn a_touch_switches_gate_waits_for_every_switch_and_the_two_coroutine_beats() {
+        let mut map = typed_temple_gate_map("TouchSwitches");
+        for x in [160.0, 200.0] {
+            map.entities.push(crate::Entity {
+                kind: EntityKind::TouchSwitch,
+                bounds: Rect::new(x - 15.0, 125.0, 30.0, 30.0),
+                direction: Vec2::default(),
+                shielded: false,
+                single_use: false,
+                nodes: vec![],
+                name: "touchSwitch".to_owned(),
+            });
+            map.entity_visuals.push(crate::map::EntityVisual::default());
+        }
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(40.0, 140.0),
+            frame_delta_time: DT,
+            ..PlayerSnapshot::default()
+        };
+        initialize_temple_gates(&mut p, &mut map);
+        let mut room = initialize_room_coroutines(&map);
+        assert_eq!(room.touch_switches.len(), 2);
+        for _ in 0..80 {
+            advance_temple_gate_alarms(&mut p, &mut map, &mut room);
+        }
+        assert!(!p.temple_gates[0].open, "no switch has been hit yet");
+
+        // `Switch.FinishedCheck` (`Switch.cs:104-118`) marks the *last* arrival as the one that
+        // finishes every component, so one activation is not enough.
+        room.touch_switches[1].activated = true;
+        for _ in 0..80 {
+            advance_temple_gate_alarms(&mut p, &mut map, &mut room);
+        }
+        assert!(!p.temple_gates[0].open, "one of the two switches is still off");
+
+        room.touch_switches[0].activated = true;
+        for _ in 0..44 {
+            advance_temple_gate_alarms(&mut p, &mut map, &mut room);
+        }
+        assert!(
+            !p.temple_gates[0].open,
+            "0.5 s + 0.2 s of coroutine waits is 44 frames after the check sees every switch"
+        );
+        advance_temple_gate_alarms(&mut p, &mut map, &mut room);
+        assert!(p.temple_gates[0].open);
+        assert_eq!(map.entities[0].bounds.height, 0.0);
+    }
+
+    /// Only the `CloseBehindPlayer*` types carry a close coroutine (`TempleGate.cs:77-98`): a gate
+    /// a dash switch opened stays open for good.
+    #[test]
+    fn a_press_opened_nearest_switch_gate_never_closes_behind_the_player() {
+        let mut map = dash_switch_and_gate_map(false);
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 140.0),
+            frame_delta_time: DT,
+            ..PlayerSnapshot::default()
+        };
+        initialize_temple_gates(&mut p, &mut map);
+        dash_switch_open_gates(&mut p, &mut map, 1, Vec2::new(86.0, 124.0), true);
+        let mut room = initialize_room_coroutines(&map);
+        for _ in 0..24 {
+            advance_temple_gate_alarms(&mut p, &mut map, &mut room);
+        }
+        assert!(p.temple_gates[0].open);
+        advance_temple_gates(&mut p, &mut map);
+        p.pos = Vec2::new(220.0, 140.0);
+        advance_temple_gates(&mut p, &mut map);
+        assert!(
+            p.temple_gates[0].open && !p.temple_gates[0].triggered,
+            "a NearestSwitch gate has no close-behind coroutine"
+        );
+    }
+
+    /// `CloseBehindPlayerAndTheo` only breaks its loop once a live `TheoCrystal` is past the gate
+    /// too, and a room without one never closes it (`TempleGate.cs:179-195`).
+    #[test]
+    fn close_behind_player_and_theo_waits_for_the_crystal() {
+        let mut map = typed_temple_gate_map("CloseBehindPlayerAndTheo");
+        map.entities.push(crate::Entity {
+            kind: EntityKind::TheoCrystal,
+            bounds: Rect::new(96.0, 130.0, 8.0, 10.0),
+            direction: Vec2::default(),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "theoCrystal".to_owned(),
+        });
+        map.entity_visuals.push(crate::map::EntityVisual::default());
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(80.0, 140.0),
+            frame_delta_time: DT,
+            ..PlayerSnapshot::default()
+        };
+        initialize_theo_crystals(&mut p, &mut map);
+        initialize_temple_gates(&mut p, &mut map);
+        assert!(p.temple_gates[0].open);
+
+        // The player walks past; Theo is still on the near side.
+        p.pos = Vec2::new(220.0, 140.0);
+        advance_temple_gates(&mut p, &mut map);
+        assert!(
+            p.temple_gates[0].open,
+            "Theo has not passed base.Right + 4f yet"
+        );
+
+        p.theo_crystals[0].position = Vec2::new(200.0, 140.0);
+        advance_temple_gates(&mut p, &mut map);
+        assert!(!p.temple_gates[0].open);
+        assert_eq!(p.temple_gates[0].current_height, 48.0);
+    }
+
+    /// `HoldingTheo` gates follow the crystal, and `holdingWaitTimer`/`lockState`
+    /// (`TempleGate.cs:246-274`) gate the toggle.
+    #[test]
+    fn a_holding_theo_gate_follows_the_crystal() {
+        let mut map = typed_temple_gate_map("HoldingTheo");
+        map.entities.push(crate::Entity {
+            kind: EntityKind::TheoCrystal,
+            bounds: Rect::new(296.0, 130.0, 8.0, 10.0),
+            direction: Vec2::default(),
+            shielded: false,
+            single_use: false,
+            nodes: vec![],
+            name: "theoCrystal".to_owned(),
+        });
+        map.entity_visuals.push(crate::map::EntityVisual::default());
+        let mut p = PlayerSnapshot {
+            pos: Vec2::new(40.0, 140.0),
+            frame_delta_time: DT,
+            ..PlayerSnapshot::default()
+        };
+        initialize_theo_crystals(&mut p, &mut map);
+        initialize_temple_gates(&mut p, &mut map);
+        assert!(
+            !p.temple_gates[0].open,
+            "Theo starts 190 px from the gate's holding point"
+        );
+        assert_eq!(
+            map.entities[0].bounds.width, 16.0,
+            "`Awake` widens a HoldingTheo gate's hitbox to 16 (`TempleGate.cs:105`)"
+        );
+
+        let mut room = initialize_room_coroutines(&map);
+        // `holdingCheckFrom` is `Position + (4, height / 2)` = (104, 124) and the closed-state
+        // radius is 64 px (`4096`).
+        p.theo_crystals[0].position = Vec2::new(104.0, 138.0);
+        for _ in 0..12 {
+            advance_temple_gate_alarms(&mut p, &mut map, &mut room);
+        }
+        assert!(
+            !p.temple_gates[0].open,
+            "holdingWaitTimer holds the toggle off for 0.2 s"
+        );
+        advance_temple_gate_alarms(&mut p, &mut map, &mut room);
+        assert!(p.temple_gates[0].open);
+
+        // Theo leaves: the wait has to expire *and* the 200 px/s draw animation has to release
+        // `lockState` before the toggle may close the gate again.
+        p.theo_crystals[0].position = Vec2::new(300.0, 140.0);
+        for _ in 0..12 {
+            advance_temple_gate_alarms(&mut p, &mut map, &mut room);
+        }
+        assert!(
+            p.temple_gates[0].open,
+            "the drawHeight animation still locks the toggle"
+        );
+        for _ in 0..5 {
+            advance_temple_gate_alarms(&mut p, &mut map, &mut room);
+        }
+        assert!(!p.temple_gates[0].open);
+        assert_eq!(map.entities[0].bounds.height, 48.0);
+    }
+
+    /// `DashSwitch.Awake`'s gate half (`DashSwitch.cs:135-148`): the restored persistent switch
+    /// opens the gate `GetGate` claims, and a foreign id leaves both alone.
+    #[test]
+    fn a_restored_persistent_switch_opens_the_gate_it_claims() {
+        let mut map = dash_switch_and_gate_map(false);
+        map.entities[1].single_use = true;
+        map.entity_ids = vec![-1, 16];
+        let p = PlayerSnapshot {
+            pos: Vec2::new(60.0, 140.0),
+            ..PlayerSnapshot::default()
+        };
+        let mut restored = Simulator::new(p.clone(), &map).unwrap();
+        assert_eq!(restored.snapshot().temple_gates[0].current_height, 48.0);
+        restored.set_pressed_dash_switches(&[16]);
+        assert!(restored.snapshot().temple_gates[0].open);
+        assert!(restored.snapshot().temple_gates[0].claimed);
+        assert_eq!(restored.runtime_entities()[0].bounds.height, 0.0);
+
+        let mut foreign = Simulator::new(p, &map).unwrap();
+        foreign.set_pressed_dash_switches(&[15]);
+        assert!(!foreign.snapshot().temple_gates[0].open);
+        assert_eq!(foreign.runtime_entities()[0].bounds.height, 48.0);
     }
 
     #[test]

@@ -1771,6 +1771,18 @@ fn replay(
     // Carried while the trace stays in the same room, because `SwitchGate.Awake`
     // (`SwitchGate.cs:68-82`) short-circuits the whole opening sequence when it is set.
     simulator.set_switches_on(trace_switches.unwrap_or_else(|| switch_room_flag(segment)));
+    // `dashSwitch_<room>:<id>` (`DashSwitch.cs:255-258`): a *persistent* switch whose flag is
+    // already set starts `Awake` pushed (`:124-149`) - non-collidable, six pixels along
+    // `pressDirection` - so the anchor row's `Session.Flags` decides whether the button is a Solid
+    // the player can be stopped by. The same `Awake` opens the gate that switch claims
+    // (`:135-148`), which is why this has to run before the first replayed frame. `EntityID.Key` is
+    // `"<Level>:<ID>"` (`EntityID.cs:18-30`) and `Level` is the room the entity lives in, so only
+    // the ids belonging to *this* segment's room are handed over; the room half of the key is
+    // filtered out here because a `Map` carries no room name. A trace without a `flags` key (v5)
+    // hands over nothing, and the press is then only observable if it happens inside the window.
+    // (`698a8f5` added this line; the `cassette` merge dropped it again while keeping the
+    // `pressed_dash_switches` helper, so it was dead code and the restore never ran.)
+    simulator.set_pressed_dash_switches(&pressed_dash_switches(segment, anchor));
     // `Celeste.Session.Cassette` (`Cassette.CollectRoutine`, `Cassette.cs:176`) is chapter state,
     // not room state, and the v7 exporter writes it on every Level row. Once the tape is taken the
     // game constructs no `CassetteBlockManager` (`Level.cs:278-288` gates the construction at
