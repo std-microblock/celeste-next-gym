@@ -188,6 +188,9 @@ struct Record {
     do_not_load: Option<Vec<String>>,
     /// `Celeste.Session.Flags` (`Session.cs:37`), exported from v6 on as a sorted array.
     flags: Option<Vec<String>>,
+    /// `Celeste.Session.Cassette` (`Session.cs:90`), exported from v7 on. Chapter-global, so unlike
+    /// `switches_<room>` it needs no carry between segments: the row itself has the chapter's value.
+    cassette: Option<bool>,
     n: u64,
     f: i64,
     dt: f64,
@@ -260,6 +263,11 @@ struct Frame {
     do_not_load: Option<Vec<String>>,
     /// `Celeste.Session.Flags` (`Session.cs:37`), exported from v6 on as a sorted array.
     flags: Option<Vec<String>>,
+    /// `Celeste.Session.Cassette` (`Session.cs:90`) at the end of this engine frame, exported from
+    /// v7 on. Chapter state, not room state: once it is true the game builds no
+    /// `CassetteBlockManager` at all (`Level.cs:278-288`, gating `:657` and `:1355-1358`) and its
+    /// cassette blocks are never collidable (`CassetteBlock.cs:70-76`, `:392-394`).
+    cassette: Option<bool>,
     n: u64,
     f: i64,
     dt: f64,
@@ -1763,15 +1771,15 @@ fn replay(
     // Carried while the trace stays in the same room, because `SwitchGate.Awake`
     // (`SwitchGate.cs:68-82`) short-circuits the whole opening sequence when it is set.
     simulator.set_switches_on(trace_switches.unwrap_or_else(|| switch_room_flag(segment)));
-    // `dashSwitch_<room>:<id>` (`DashSwitch.cs:255-258`): a *persistent* switch whose flag is
-    // already set starts `Awake` pushed (`:124-149`) - non-collidable, six pixels along
-    // `pressDirection` - so the anchor row's `Session.Flags` decides whether the button is a Solid
-    // the player can be stopped by. `EntityID.Key` is `"<Level>:<ID>"` (`EntityID.cs:18-30`) and
-    // `Level` is the room the entity lives in, so only the ids belonging to *this* segment's room
-    // are handed over; the room half of the key is filtered out here because a `Map` carries no
-    // room name. A trace without a `flags` key (v5) hands over nothing, and the press is then only
-    // observable if it happens inside the replayed window.
-    simulator.set_pressed_dash_switches(&pressed_dash_switches(segment, anchor));
+    // `Celeste.Session.Cassette` (`Cassette.CollectRoutine`, `Cassette.cs:176`) is chapter state,
+    // not room state, and the v7 exporter writes it on every Level row. Once the tape is taken the
+    // game constructs no `CassetteBlockManager` (`Level.cs:278-288` gates the construction at
+    // `:657` and `OnLevelStart` at `:1355-1358`), so nothing calls `SetActivatedSilently`
+    // (`CassetteBlock.cs:392-394`, reached only from `CassetteBlockManager.cs:197-206`) and every
+    // cassette block keeps the `Collidable = false` its constructor set (`CassetteBlock.cs:70-76`).
+    // A trace without the key falls back to `false` (the manager exists), which is the pre-v7
+    // behaviour.
+    simulator.set_cassette_taken(anchor.cassette.unwrap_or(false));
 
     let mut exact_prefix = 0u64;
     let mut replayed = 0u64;
@@ -2662,6 +2670,7 @@ fn run() -> Result<(), String> {
         segment.frames.push(Frame {
         do_not_load: record.do_not_load.clone(),
         flags: record.flags.clone(),
+            cassette: record.cassette,
             n: record.n,
             f: record.f,
             dt: record.dt,
