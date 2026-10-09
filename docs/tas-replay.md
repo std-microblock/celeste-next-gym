@@ -2392,3 +2392,24 @@ That last one is a named, reproducible defect with its own signature (`+1.0/fram
 `roof07|42489`, 6 replay frames), and it is unrelated to the wind/gravity family pursued in the notes above.
 It is the better next target of the two: it is small, it is measured, and the mechanism is presumably a
 camera/bounds push that `Player.Update` performs even while `Engine.FreezeTimer` suppresses ordinary updates.
+
+### Correction on `roof07`: not a frozen camera push - a blocked player creeping +1/frame
+
+The trace rows for `3-CelestialResort|0|roof07|42489` (the segment with `exactPrefixFrames = 0`):
+
+| rows | x | vx |
+| --- | ---: | ---: |
+| 42489-42494 | 8230 -> 8235 (**+1 per frame**) | 323.333 |
+| 42495 onward | 8236 (frozen) | 323.000 |
+
+So the player is not frozen by a cutscene: it is moving with `vx = 323.333`, which is `5.39 px/frame`, yet
+the position advances by exactly **one pixel per frame** for six frames and then stops entirely. That is a
+blocked-player-at-a-boundary shape, not a camera push, and it corrects the previous note (which read the
+round-45 recon's "frozen" label literally).
+
+The simulator advances **0** px on those frames, so it is the more conservative of the two. The +1 creep is
+the interesting quantity: it is small enough to be a `Level.EnforceBounds` interaction (the clamp writing the
+player back to the bound after the move, with the movement counter carrying one pixel through), or a
+one-pixel `MoveHExact` corner correction. Room `roof07`'s bounds are the next thing to read - if the player
+is at the right edge, the comparison is `x + width` against `Bounds.Right`, and the trace's `collider` field
+gives the exact rectangle to compare.
