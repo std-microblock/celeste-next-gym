@@ -3075,3 +3075,26 @@ So the missing trigger is a **regeneration coroutine**: after a Seeker is hit it
 Implementation sketch: give `SeekerSnapshot` the coroutine phases (the 1.0 / 0.2 / 0.5 / 0.15 s yields are expressible in `state_timer` values, as other states already do), then at the final phase set `collider = pushRadius`, test the player overlap and the solid-between check, and call `explode_launch(p, input, seeker.position, true, false)` - i.e. with the source's default `snapUp = true`, which is precisely the branch the simulator has never exercised.
 
 `TempleBigEyeball` (`TempleBigEyeball.cs:66`) is the other `snapUp = true` caller and has **no** entity kind in the simulator at all, so it is a larger piece of work; the Seeker is the one to do first because the entity, its states, its stun and its bounce are already modelled.
+
+### Seeker launch: the last facts needed to implement it mechanically
+
+`SeekerSnapshot` and the stun/bounce model already exist; what the regeneration launch needs is:
+
+- **`pushRadius = new Circle(40f)`** (`Seeker.cs:265`) - a **circle** of radius 40 centred on the Seeker, not a
+  rect, and at the coroutine's end the Seeker's `Collider` is set to it, so `CollideFirst<Player>()` is a
+  circle-versus-player-hitbox test. The simulator's existing `seeker_attack_rect` (`sim.rs:3088`) and
+  `seeker_bounce_rect` (`:3092`) mirror `attackHitbox = (12,8,-6,-2)` and `bounceHitbox = (16,6,-8,-8)`, so a
+  `seeker_push_overlaps(position, player_rect)` helper belongs beside them.
+- **`!Scene.CollideCheck<Solid>(Position, player.Center)`** (`Seeker.cs:1040`) - a solid test along the
+  *segment* from the Seeker to the player's centre. The simulator has **no** such helper (grep finds no
+  `line_of_sight`/`collide_check_between`), so this is the one genuinely new piece: walk the segment against
+  `map.solids` (and, if the codebase's Badeline/Puffer paths do something equivalent, match their approach).
+- **The phases** are the four yields `1.0 / 0.2 / 0.5 / 0.15` s (`Seeker.cs:1030-1037`), which `state_timer`
+  can carry the way other timed states in `sim.rs` already do; the launch belongs to the last phase, after
+  `base.Collider = pushRadius`.
+- **The call is `explode_launch(p, input, seeker.position, true, false)`** - `snapUp = true` is the source's
+  default and is the branch the simulator has never exercised, which is why the +-280 signature shows up in
+  Seeker rooms.
+
+Workstream status: branch `seeker` still has zero changes after three rounds; nothing is lost (worktree
+clean), and the task is now specified to the point where it is a mechanical edit rather than a diagnosis.
