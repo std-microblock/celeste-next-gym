@@ -10942,7 +10942,13 @@ fn bounce(p: &mut PlayerSnapshot, map: &Map, from_y: f32) {
     // Player.Bounce temporarily assigns normalHitbox before MoveVExact, so
     // the correction uses Madeline's ordinary 8x11 body even when a feather
     // or crouched collider entered the callback.
-    let move_y = (from_y - p.pos.y) as i32;
+    // `Actor.MoveV(amount)` accumulates the amount into `movementCounter` and moves
+    // `round(counter + amount)` whole pixels, so a fractional amount must be carried rather than
+    // truncated: `Player.SuperBounce`/`SideBounce` move exactly this way (`Player.cs:2717`, `:2749`),
+    // with the default null collide callback.
+    p.movement_remainder.y += from_y - p.pos.y;
+    let move_y = p.movement_remainder.y.round_ties_even() as i32;
+    p.movement_remainder.y -= move_y as f32;
     let sign = move_y.signum();
     for _ in 0..move_y.unsigned_abs() {
         let next_y = p.pos.y + sign as f32;
