@@ -1391,3 +1391,19 @@ So the shape that can work is an explicit pending flag: on the begin frame set "
 write, on the next frame publish and clear. That is a `PlayerSnapshot` field the trace does not export
 (derived, like `previous_state`), so it also needs an entry in the field-coverage table - which is
 exactly what the `--dump-field-map` audit has been warning about.
+
+### Third dash attempt: even delaying only the two publish lines breaks 310 segments
+
+The `dash_publish_pending` shape - set the flag on the begin frame, write `dash_dir`/`speed` on the next,
+leaving everything else in place (the before-dash carry and the water multiplier are no-ops while
+`speed` is zero) - measured **ok 516 -> 206** on 202. So the boundary is tighter than "the two lines":
+some other part of the same frame's dash accounting is load-bearing in a way the trace's per-row view
+does not show.
+
+Three measured failures now bracket this (skipping: 1168 regressed; whole-block delay: 1205; two-line
+delay: 310), and the third says the next step is **not** another edit to the publish but a per-frame
+comparison. Concretely: the recon's own suggestion - put `movementCounter` into the gate's compared
+fields and print it at `{:.9}` (the dump's `{:.5}` throws away exactly the quantity at issue) - then look
+at the *sequence* of frames around one of the 36 `pos|StDash` DashBegin rows (e.g. `4-GoldenRidge|0|d-01`
+row 303301) on **both** sides: how many frames the game's freeze lasts, which frame first moves, and
+which frame the sim first moves. Only after that is it worth touching the publish again.
