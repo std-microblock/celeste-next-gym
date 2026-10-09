@@ -1492,3 +1492,31 @@ apply the guard only for the state (compute the wind displacement early but publ
 dispatch, which is the "pending" shape that the dash experiments already showed is delicate); or apply the
 wind early and reverse it after the dispatch when the new state is one of the three. The first is the
 cheapest to reason about; whichever is chosen, it has to be measured against the same 11 segments.
+
+### The wind fix, determined: apply early, undo when the callback ends in an excluded state
+
+Put together with `sim.rs:10972` (`apply_wind_movement`), the shape is now fully specified.
+
+The function's own guard (`!player_in_control || no_wind_timer > 0 || matches!(state, Boost | Dash |
+SummitLaunch)`) is evaluated **before** the state callback, which is the defect: on a dash-begin frame the
+game's callback has already set `StDash`, so `Player.WindMove` returns without pushing, while the simulator
+pushes `wind * 0.1 * dt` (measured: `-800 * 0.1 * dt = -1.33334` on `4-GoldenRidge|0|d-01` row 303301).
+But the *move* must stay where it is, because the wind-chapter segments (`4-GoldenRidge` `a-02`/`c-00`/
+`c-05`, `7-Summit` `e-05`/`g-00b`/`g-00`/`e-00`) diverge **earlier** when it is moved later.
+
+So: keep the early call, and after the dispatch undo it exactly when the new state is one of the three.
+Two mechanical details that are easy to get wrong:
+
+1. **Do not restore an absolute `(pos, movement_remainder)` snapshot.** Between the wind call and the
+   dispatch the state callback can move the player itself, and an absolute restore would throw that away.
+   Return the *applied* amounts from `apply_wind_movement` (`-> (f32, f32)`, `(0.0, 0.0)` on every early
+   return) and, if the post-dispatch state is `Dash`/`RedDash`/`Boost`/`SummitLaunch`, call
+   `move_axis_amount(p, map, true, -move_x)` and `move_axis_amount(p, map, false, -move_y)`. The wind was
+   applied into space the player just came from, so the inverse move cannot collide and the counter
+   restores with it.
+2. **The two other guards stay as they are.** The code's own comment already records why
+   `p.ducking && p.player_on_ground` uses `player_on_ground` (the previous frame's probe) rather than the
+   geometric `on_ground` - that one was fixed deliberately and must not be "corrected" while doing this.
+
+Verify against the same 11 segments plus the dash-begin row, and expect the frame counts of those 11 to
+stay at their baseline values.
