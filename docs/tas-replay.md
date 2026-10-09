@@ -1127,3 +1127,24 @@ The consequence for the usual discipline: `q-regress` labels are relative to the
 so a one-frame `regressed` entry that appears when the trace changes (rather than when the code does)
 is noise, not a regression. When a code change is measured, keep the trace fixed and swap only the
 binary; when the trace changes, expect about one frame of drift somewhere and do not chase it.
+
+### `doNotLoad` needs the map id: use a parallel vector, not a new `Entity` field
+
+`Session.DoNotLoad` holds `EntityID.Key` strings (`"<Level>:<ID>"`), so consuming it means matching the
+map's `id` attribute - and `pub struct Entity` (`crates/celeste-physics/src/map.rs:191`) does **not**
+carry it. The obvious fix is a new field, but that is a trap: `map.rs` has **31 `Entity { ... }`
+construction sites**, so every one of them would have to be touched, in a file where a single missed
+literal is a compile error and my last attempt at a multi-site edit had to be reverted.
+
+The cheap route: keep `Entity` untouched and add a **parallel `Vec<i32>` on `Map`** (e.g.
+`entity_ids`), filled in the same push order as `entities`, from `attr_f32(el, "id", <current
+synthesis>)` at the one decode push site - the encoder already synthesises `index + spawns.len()`, so
+that stays the default and no existing behaviour changes. Then `doNotLoad` membership is
+`entity_ids[i]` formatted as `"<level>:<id>"`, and `Simulator::new` can skip those entities (which is
+what `Level.cs:472`/`:1188` do - the engine's only construction-suppression point).
+
+Two more things that belong to the same change: `conditionBlock condition:Key` and `ridgeGate` are
+*conditional solids* whose existence is decided by `DoNotLoad` membership, and in opposite directions -
+`conditionBlock` adds an `ExitBlock` only when the referenced key **is** in the set (`Level.cs:863` +
+`:868`), `ridgeGate` only when all its listed keys are (`:878-883`, `:1475-1482`). And the same
+parallel-vector trick applies to `Session.Keys` for `LockBlock` (`LockBlock.cs:88-98`).
