@@ -1844,7 +1844,15 @@ fn replay(
         // split the simulator is told to skip a row the game moved the player on
         // and then stands still while the game creeps one pixel per frame
         // (`3-CelestialResort|0|roof07|42489`, `|296596`).
-        let trace_transition = matches!(frame.transitioning, Some(true));
+        //
+        // The stalled witness still has to hold: `Level.Transitioning` turns true
+        // on the frame `TransitionRoutine` is *created* - inside the
+        // `Player.Update` that ran `Level.EnforceBounds` - while Monocle only
+        // resumes a fresh coroutine on the next `Update`, so the transition's
+        // first row is an ordinary `Player.Update` row. It is also the last row of
+        // the segment for the room being left, which is why gating on the bit
+        // alone cost every room-change segment its final frame.
+        let trace_transition = stalled[index] && matches!(frame.transitioning, Some(true));
         // A stalled transition row is *not* a row the simulator structurally
         // cannot reproduce: it is exactly what `update_transition` models, so it
         // is compared like any other row instead of being counted as a frozen
