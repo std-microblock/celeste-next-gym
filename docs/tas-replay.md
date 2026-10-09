@@ -1904,3 +1904,19 @@ The `280` cluster cross-checks with the state-pair histogram the same tool print
 The simulator implements all of these values (e.g. `SuperWallJumpH` at `sim.rs:7843`), which is why the
 clusters are *frame placements*, not missing writes: the value is written, on a different frame than the
 game writes it. The next cluster worth taking after the three workstreams in flight is `LaunchSpeed`.
+
+### Next queued lead: `LaunchSpeed = 280` (both sides located)
+
+The `+-280` cluster (state pairs `StLaunch->StLaunch` 84 frames, `StSummitLaunch->StSummitLaunch` 122)
+corresponds to the launch write:
+
+- source `Player.cs:4941` - `Speed = 280f * vector;` - followed by `Speed.Y <= 50f` -> `Speed.Y =
+  Math.Min(-150f, Speed.Y); AutoJump = true;` (`:4942-4946`), the `explodeLaunchBoostTimer` reset
+  (`:4947-4951`), and the direction snapping above it (`:4926-4940`);
+- simulator `sim.rs:10764` - `p.speed = scale(direction, 280.0);` - with a unit test asserting
+  `Vec2::new(-280.0, -150.0)` (`:14508`), so both the speed and the clamp are implemented.
+
+As with the `SuperWallJumpH` cluster, the value is present on both sides, so this is a frame placement:
+one side writes `Speed` on a frame where the other has not (or has already). The surrounding block is the
+place to look - the `vector` snapping, the `-150` clamp with `AutoJump`, and the `explodeLaunchBoostTimer`
+reset are all candidates for a one-frame difference, and each has a test to compare against.
