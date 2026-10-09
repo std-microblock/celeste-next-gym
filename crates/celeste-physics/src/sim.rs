@@ -12156,7 +12156,7 @@ mod tests {
     }
     #[test]
     fn moving_solid_carries_its_rider_and_records_lift_speed() {
-        let map = moving_solid_map(Vec2::new(60.0, -120.0));
+        let mut map = moving_solid_map(Vec2::new(60.0, -120.0));
         let p = simulate(grounded_player(), &[InputState::default()], &map, 1).unwrap();
 
         assert_eq!(p.pos, Vec2::new(33.0, 98.0));
@@ -12167,7 +12167,7 @@ mod tests {
     }
     #[test]
     fn moving_solid_jump_combines_carrying_with_same_frame_lift_boost() {
-        let map = moving_solid_map(Vec2::new(60.0, -120.0));
+        let mut map = moving_solid_map(Vec2::new(60.0, -120.0));
         let input = InputState {
             jump_pressed: true,
             jump_held: true,
@@ -12181,7 +12181,7 @@ mod tests {
     }
     #[test]
     fn moving_solid_clock_keeps_split_simulation_composable() {
-        let map = moving_solid_map(Vec2::new(60.0, 0.0));
+        let mut map = moving_solid_map(Vec2::new(60.0, 0.0));
         let inputs = [InputState::default(); 2];
         let direct = simulate(grounded_player(), &inputs, &map, 2).unwrap();
         let first = simulate(grounded_player(), &inputs[..1], &map, 1).unwrap();
@@ -12192,7 +12192,7 @@ mod tests {
     }
     #[test]
     fn moving_solid_moves_attached_spikes_and_restores_them_from_snapshot() {
-        let map = Map {
+        let mut map = Map {
             entities: vec![
                 crate::Entity {
                     kind: EntityKind::MovingSolid,
@@ -12235,7 +12235,7 @@ mod tests {
     }
     #[test]
     fn move_block_moves_its_attached_top_spikes() {
-        let map = Map {
+        let mut map = Map {
             entities: vec![
                 crate::Entity {
                     kind: EntityKind::MoveBlock,
@@ -12284,7 +12284,7 @@ mod tests {
     }
     #[test]
     fn move_block_moves_its_attached_spring() {
-        let map = Map {
+        let mut map = Map {
             entities: vec![
                 crate::Entity {
                     kind: EntityKind::MoveBlock,
@@ -12333,7 +12333,7 @@ mod tests {
     }
     #[test]
     fn moving_solid_pushes_an_actor_without_granting_rider_lift_speed() {
-        let map = Map {
+        let mut map = Map {
             entities: vec![crate::Entity {
                 kind: EntityKind::MovingSolid,
                 bounds: Rect::new(20.0, 70.0, 8.0, 40.0),
@@ -12356,7 +12356,7 @@ mod tests {
     }
     #[test]
     fn downward_solid_push_uses_player_squish_target_to_clip_through_jump_thru() {
-        let map = Map {
+        let mut map = Map {
             entities: vec![
                 crate::Entity {
                     kind: EntityKind::BounceBlock,
@@ -12416,7 +12416,7 @@ mod tests {
 
     #[test]
     fn zip_mover_runtime_invokes_target_position_jump_thru_clip() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
             entities: vec![
                 crate::Entity {
@@ -12464,7 +12464,7 @@ mod tests {
 
     #[test]
     fn zip_mover_departure_and_return_pushes_player_through_jump_thru() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 800.0, 600.0),
             entities: vec![
                 crate::Entity {
@@ -12528,7 +12528,7 @@ mod tests {
     }
     #[test]
     fn ordinary_downward_solid_push_moves_the_actor_without_squish() {
-        let map = Map {
+        let mut map = Map {
             entities: vec![crate::Entity {
                 kind: EntityKind::BounceBlock,
                 bounds: Rect::new(40.0, 20.0, 32.0, 16.0),
@@ -12722,7 +12722,7 @@ mod tests {
 
     #[test]
     fn stationary_left_facing_player_can_grab_with_either_signed_zero() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 240.0),
             solids: vec![Rect::new(64.0, 160.0, 32.0, 16.0)],
             ..Map::default()
@@ -12894,7 +12894,7 @@ mod tests {
 
     #[test]
     fn core_block_moves_disabled_spikes_before_the_reform_alarm_reenables_them() {
-        let map = bounce_block_spikes_map();
+        let mut map = bounce_block_spikes_map();
         let mut initial = simulate(
             PlayerSnapshot {
                 pos: Vec2::new(240.0, 120.0),
@@ -12946,7 +12946,7 @@ mod tests {
 
     #[test]
     fn core_block_candidate_clears_source_body_before_reform_blocked_check() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
             solids: vec![
                 Rect::new(0.0, 496.0, 960.0, 48.0),
@@ -13573,7 +13573,7 @@ mod tests {
 
     #[test]
     fn holdable_laddering_regrabs_with_glider_source_pickup_collider() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 544.0),
             solids: vec![Rect::new(0.0, 496.0, 320.0, 48.0)],
             entities: vec![
@@ -13773,7 +13773,7 @@ mod tests {
 
     #[test]
     fn glider_spring_no_gravity_keeps_its_final_source_frame() {
-        let map = glider_map();
+        let mut map = glider_map();
         let p = PlayerSnapshot {
             pos: Vec2::new(200.0, 100.0),
             gliders: vec![crate::GliderSnapshot {
@@ -13793,7 +13793,7 @@ mod tests {
 
     #[test]
     fn springboost_cancel_reverses_into_the_rising_glider_for_regrab() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 544.0),
             solids: vec![Rect::new(0.0, 496.0, 320.0, 48.0)],
             entities: vec![
@@ -14041,7 +14041,7 @@ mod tests {
 
     #[test]
     fn held_theo_turns_grabbed_wall_jump_into_a_normal_neutral() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 160.0, 180.0),
             solids: vec![Rect::new(64.0, 0.0, 16.0, 180.0)],
             entities: vec![crate::Entity {
@@ -14252,7 +14252,7 @@ mod tests {
 
     #[test]
     fn neutral_drop_climb_jump_regrabs_theo_after_the_lockout() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 160.0, 180.0),
             solids: vec![
                 Rect::new(0.0, 176.0, 160.0, 4.0),
@@ -14440,7 +14440,7 @@ mod tests {
 
     #[test]
     fn bumper_smuggle_releases_down_after_buffered_diagonal_dash_to_regrab_theo() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 544.0),
             solids: vec![Rect::new(0.0, 496.0, 320.0, 48.0)],
             entities: vec![
@@ -14702,7 +14702,7 @@ mod tests {
 
     #[test]
     fn holdable_core_hyper_releases_during_grace_then_regrabs_after_cannot_hold() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
             entities: vec![crate::Entity {
                 kind: EntityKind::TheoCrystal,
@@ -14789,7 +14789,7 @@ mod tests {
 
     #[test]
     fn heart_gem_collect_yields_then_freezes_before_setting_half_time_rate() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
             entities: vec![crate::Entity {
                 kind: EntityKind::HeartGem,
@@ -14856,7 +14856,7 @@ mod tests {
 
     #[test]
     fn heart_gem_point_bounces_a_non_dash_attacking_player() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
             entities: vec![crate::Entity {
                 kind: EntityKind::HeartGem,
@@ -14907,7 +14907,7 @@ mod tests {
 
     #[test]
     fn sandwich_lava_waiting_core_mode_and_transition_lifecycle_match_source() {
-        let map = lava_map(EntityKind::SandwichLava, 100.0);
+        let mut map = lava_map(EntityKind::SandwichLava, 100.0);
         let cold = PlayerSnapshot {
             pos: Vec2::new(200.0, 250.0),
             state: PlayerState::Frozen,
@@ -14947,7 +14947,7 @@ mod tests {
 
     #[test]
     fn lava_player_collider_preserves_the_one_pixel_safe_lip() {
-        let map = lava_map(EntityKind::RisingLava, 0.0);
+        let mut map = lava_map(EntityKind::RisingLava, 0.0);
         let lava = crate::RisingLavaSnapshot {
             position: Vec2::new(0.0, 100.0),
             initialized: true,
@@ -15173,7 +15173,7 @@ mod tests {
     }
     #[test]
     fn delayed_climb_wall_jump_uses_retained_lift_speed() {
-        let map = Map {
+        let mut map = Map {
             solids: vec![Rect::new(36.0, 0.0, 8.0, 180.0)],
             ..Map::default()
         };
@@ -15201,7 +15201,7 @@ mod tests {
     }
     #[test]
     fn coyote_jump_consumes_source_grace_window_after_leaving_a_ledge() {
-        let map = Map {
+        let mut map = Map {
             solids: vec![Rect::new(0.0, 100.0, 36.0, 80.0)],
             ..Map::default()
         };
@@ -15524,7 +15524,7 @@ mod tests {
     /// the `Stamina <= 0` tests could see.
     #[test]
     fn climb_drain_lets_stamina_go_negative_like_the_source() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
             solids: vec![Rect::new(40.0, 0.0, 8.0, 184.0)],
             ..Map::default()
@@ -15556,7 +15556,7 @@ mod tests {
     /// (`2954-2955`) by `SpacePhysicsMult = 0.6f`.
     #[test]
     fn space_rooms_scale_run_target_fall_caps_and_gravity() {
-        let map = floor_map();
+        let mut map = floor_map();
         let grounded = PlayerSnapshot {
             in_space: true,
             ..grounded_player()
@@ -16000,7 +16000,7 @@ mod tests {
     }
     #[test]
     fn wallbounce_sets_super_wall_jump_speed_and_var_window() {
-        let map = Map {
+        let mut map = Map {
             solids: vec![Rect::new(40.0, 0.0, 8.0, 180.0)],
             ..Map::default()
         };
@@ -16031,7 +16031,7 @@ mod tests {
     }
     #[test]
     fn spiked_wallbounce_is_safe_on_the_entry_frame_but_dies_one_frame_late() {
-        let map = Map {
+        let mut map = Map {
             solids: vec![Rect::new(100.0, 0.0, 8.0, 180.0)],
             entities: vec![crate::Entity {
                 kind: EntityKind::Spikes,
@@ -16108,7 +16108,7 @@ mod tests {
         // `target2 = MathHelper.Lerp(160f, 20f, wallSlideTimer / 1.2f)` fall
         // target (Player.cs:3766), in `Input.MoveY.Value != 1`: a held-down
         // fast-fall beside a wall keeps the ordinary `maxFall` target.
-        let map = Map {
+        let mut map = Map {
             solids: vec![Rect::new(36.0, 0.0, 8.0, 200.0)],
             ..Map::default()
         };
@@ -16180,7 +16180,7 @@ mod tests {
     }
     #[test]
     fn upward_corner_correction_moves_around_a_one_pixel_ceiling_overlap() {
-        let map = Map {
+        let mut map = Map {
             solids: vec![Rect::new(40.0, 40.0, 32.0, 8.0)],
             ..Map::default()
         };
@@ -16195,7 +16195,7 @@ mod tests {
     }
     #[test]
     fn horizontal_dash_corner_correction_moves_over_a_two_pixel_ledge_overlap() {
-        let map = Map {
+        let mut map = Map {
             solids: vec![Rect::new(40.0, 80.0, 40.0, 80.0)],
             ..Map::default()
         };
@@ -16213,7 +16213,7 @@ mod tests {
     }
     #[test]
     fn downward_dash_corner_correction_moves_left_around_a_one_pixel_floor_overlap() {
-        let map = Map {
+        let mut map = Map {
             solids: vec![Rect::new(40.0, 80.0, 40.0, 80.0)],
             ..Map::default()
         };
@@ -16232,7 +16232,7 @@ mod tests {
     }
     #[test]
     fn downward_dash_corner_correction_follows_horizontal_speed_direction() {
-        let map = Map {
+        let mut map = Map {
             solids: vec![Rect::new(0.0, 80.0, 40.0, 80.0)],
             ..Map::default()
         };
@@ -16251,7 +16251,7 @@ mod tests {
     }
     #[test]
     fn downward_dash_started_on_ground_does_not_corner_correct() {
-        let map = Map {
+        let mut map = Map {
             solids: vec![Rect::new(40.0, 80.0, 40.0, 80.0)],
             ..Map::default()
         };
@@ -16271,7 +16271,7 @@ mod tests {
     }
     #[test]
     fn dash_attack_survives_dash_end_and_breaks_a_late_feather_shield() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
             entities: vec![crate::Entity {
                 kind: EntityKind::FlyFeather,
@@ -16318,7 +16318,7 @@ mod tests {
     }
     #[test]
     fn directional_spikes_only_kill_motion_into_their_points() {
-        let map = Map {
+        let mut map = Map {
             entities: vec![crate::Entity {
                 kind: EntityKind::Spikes,
                 bounds: Rect::new(40.0, 80.0, 3.0, 16.0),
@@ -16389,7 +16389,7 @@ mod tests {
 
     #[test]
     fn exit_block_runtime_is_split_simulation_composable() {
-        let map = Map {
+        let mut map = Map {
             entities: vec![crate::Entity {
                 kind: EntityKind::ExitBlock,
                 bounds: Rect::new(40.0, 80.0, 16.0, 32.0),
@@ -16405,7 +16405,7 @@ mod tests {
             pos: Vec2::new(44.0, 92.0),
             ..PlayerSnapshot::default()
         };
-        let mut first = Simulator::new(inside, &map).unwrap();
+        let mut first = Simulator::new(inside, &mut map).unwrap();
         first.step(InputState::default()).unwrap();
         let mut saved = first.into_snapshot();
         assert!(!saved.exit_blocks[0].collidable);
@@ -16414,7 +16414,7 @@ mod tests {
         let closed = simulate(saved, &[InputState::default()], &map, 1).unwrap();
         assert!(closed.exit_blocks[0].collidable);
 
-        let resumed = Simulator::new(closed, &map).unwrap();
+        let resumed = Simulator::new(closed, &mut map).unwrap();
         assert_eq!(resumed.runtime_entities()[0].bounds, map.entities[0].bounds);
     }
 
@@ -16483,19 +16483,19 @@ mod tests {
 
     #[test]
     fn invisible_barrier_runtime_is_split_simulation_composable() {
-        let map = invisible_barrier_map();
+        let mut map = invisible_barrier_map();
         let inside = PlayerSnapshot {
             pos: Vec2::new(44.0, 92.0),
             ..PlayerSnapshot::default()
         };
-        let mut first = Simulator::new(inside, &map).unwrap();
+        let mut first = Simulator::new(inside, &mut map).unwrap();
         first.step(InputState::default()).unwrap();
         let mut saved = first.into_snapshot();
         assert!(saved.invisible_barriers[0].initialized);
         assert!(!saved.invisible_barriers[0].collidable);
 
         saved.pos.x = 80.0;
-        let resumed = Simulator::new(saved, &map).unwrap();
+        let resumed = Simulator::new(saved, &mut map).unwrap();
         assert_ne!(resumed.runtime_entities()[0].bounds, map.entities[0].bounds);
         assert!(!resumed.snapshot().invisible_barriers[0].collidable);
     }
@@ -16631,23 +16631,23 @@ mod tests {
 
     #[test]
     fn killbox_runtime_is_split_simulation_composable() {
-        let map = killbox_map();
+        let mut map = killbox_map();
         let above = PlayerSnapshot {
             pos: Vec2::new(80.0, 100.0),
             ..PlayerSnapshot::default()
         };
-        let mut first = Simulator::new(above, &map).unwrap();
+        let mut first = Simulator::new(above, &mut map).unwrap();
         first.step(InputState::default()).unwrap();
         let saved = first.into_snapshot();
         assert!(saved.killboxes[0].collidable);
 
-        let resumed = Simulator::new(saved, &map).unwrap();
+        let resumed = Simulator::new(saved, &mut map).unwrap();
         assert_eq!(resumed.runtime_entities()[0].bounds, map.entities[0].bounds);
     }
 
     #[test]
     fn default_dash_through_spikes_ignore_live_and_lingering_dash_attacks() {
-        let map = Map {
+        let mut map = Map {
             entities: vec![crate::Entity {
                 kind: EntityKind::Spikes,
                 bounds: Rect::new(40.0, 80.0, 3.0, 16.0),
@@ -16688,7 +16688,7 @@ mod tests {
     }
     #[test]
     fn upward_motion_flush_with_directional_spikes_applies_gravity_on_frame_one() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 512.0),
             solids: vec![Rect::new(0.0, 496.0, 960.0, 24.0)],
             entities: vec![crate::Entity {
@@ -16859,7 +16859,7 @@ mod tests {
     }
     #[test]
     fn demodash_passes_a_six_pixel_gap_that_blocks_a_normal_dash() {
-        let map = Map {
+        let mut map = Map {
             solids: vec![
                 Rect::new(0.0, 100.0, 160.0, 80.0),
                 Rect::new(40.0, 0.0, 80.0, 94.0),
@@ -16914,7 +16914,7 @@ mod tests {
 
     #[test]
     fn neutral_climb_jump_converts_to_wallboost_and_refunds_stamina() {
-        let map = Map {
+        let mut map = Map {
             solids: vec![Rect::new(40.0, 0.0, 8.0, 100.0)],
             ..Map::default()
         };
@@ -16954,7 +16954,7 @@ mod tests {
 
     #[test]
     fn half_stamina_climbing_chains_wallboost_into_close_wall_climb_jump() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
             solids: vec![Rect::new(40.0, 0.0, 8.0, 184.0)],
             ..Map::default()
@@ -17005,7 +17005,7 @@ mod tests {
 
     #[test]
     fn neutral_wall_jumps_return_for_a_second_stamina_free_jump() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 300.0),
             solids: vec![Rect::new(40.0, 0.0, 8.0, 300.0)],
             ..Map::default()
@@ -17059,7 +17059,7 @@ mod tests {
 
     #[test]
     fn cornerkick_uses_the_three_pixel_probe_on_the_last_corner_pixel() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
             solids: vec![Rect::new(40.0, 0.0, 8.0, 40.0)],
             ..Map::default()
@@ -17128,7 +17128,7 @@ mod tests {
 
     #[test]
     fn ceiling_pop_climb_jumps_before_the_lost_wall_check() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
             solids: vec![Rect::new(40.0, 0.0, 40.0, 40.0)],
             ..Map::default()
@@ -17182,7 +17182,7 @@ mod tests {
 
     #[test]
     fn wallboost_neutral_returns_to_the_wall_for_a_second_stamina_free_cycle() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 300.0),
             solids: vec![Rect::new(40.0, 0.0, 8.0, 300.0)],
             ..Map::default()
@@ -17219,7 +17219,7 @@ mod tests {
 
     #[test]
     fn climb_begin_at_a_ledge_uses_slip_speed_during_the_no_move_window() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 300.0),
             solids: vec![Rect::new(40.0, 100.0, 8.0, 200.0)],
             ..Map::default()
@@ -17243,7 +17243,7 @@ mod tests {
 
     #[test]
     fn climbhop_waits_for_the_body_to_clear_the_ledge_before_horizontal_launch() {
-        let map = Map {
+        let mut map = Map {
             solids: vec![Rect::new(40.0, 80.0, 8.0, 100.0)],
             ..Map::default()
         };
@@ -17284,7 +17284,7 @@ mod tests {
         // here: this test pins the capture, and
         // `climb_hop_solid_carry_uses_the_solids_whole_pixel_delta` pins the
         // per-frame carry.
-        let map = Map {
+        let mut map = Map {
             entities: vec![crate::Entity {
                 kind: EntityKind::MovingSolid,
                 bounds: Rect::new(40.0, 114.0, 24.0, 2.0),
@@ -17306,7 +17306,7 @@ mod tests {
         };
         assert!(touching_wall(&player, &map, 1));
         assert!(slip_check(&player, &map, 0.0));
-        let mut simulator = Simulator::new(player, &map).unwrap();
+        let mut simulator = Simulator::new(player, &mut map).unwrap();
         simulator
             .step(InputState {
                 move_y: -1,
@@ -17428,7 +17428,7 @@ mod tests {
 
     #[test]
     fn jump_thru_assist_runs_without_a_ledge_blocker() {
-        let map = jump_thru_assist_map(None);
+        let mut map = jump_thru_assist_map(None);
         let player = PlayerSnapshot {
             pos: Vec2::new(36.0, 100.0),
             state: PlayerState::Frozen,
@@ -17444,7 +17444,7 @@ mod tests {
     fn jump_thru_assist_is_skipped_when_a_ledge_blocker_blocks_the_probe() {
         // `Spikes.cs:61` gives a right-facing spike strip a `LedgeBlocker`, and
         // `LedgeBlocker.cs:33-44` probes two pixels above the live collider.
-        let map = jump_thru_assist_map(Some(crate::Entity {
+        let mut map = jump_thru_assist_map(Some(crate::Entity {
             kind: EntityKind::Spikes,
             bounds: Rect::new(38.0, 90.0, 3.0, 8.0),
             direction: Vec2::new(1.0, 0.0),
@@ -17497,7 +17497,7 @@ mod tests {
 
     #[test]
     fn climb_jump_keeps_priority_over_climbhop_on_the_lost_wall_frame() {
-        let map = Map {
+        let mut map = Map {
             solids: vec![Rect::new(40.0, 0.0, 8.0, 40.0)],
             ..Map::default()
         };
@@ -17532,7 +17532,7 @@ mod tests {
 
     #[test]
     fn grounded_wall_grab_can_start_climbing_at_wall_root() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 220.0),
             solids: vec![
                 Rect::new(40.0, 80.0, 8.0, 140.0),
@@ -17561,7 +17561,7 @@ mod tests {
 
     #[test]
     fn blocked_climbhop_keeps_grabbing_the_wall_at_the_top() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 220.0),
             solids: vec![
                 Rect::new(40.0, 80.0, 8.0, 140.0),
@@ -17590,7 +17590,7 @@ mod tests {
 
     #[test]
     fn stamina_cancel_regrabs_to_reset_the_no_move_cost_window() {
-        let map = Map {
+        let mut map = Map {
             solids: vec![Rect::new(40.0, 0.0, 8.0, 100.0)],
             ..Map::default()
         };
@@ -17624,7 +17624,7 @@ mod tests {
 
     #[test]
     fn climbing_down_does_not_pay_the_stationary_stamina_cost() {
-        let map = Map {
+        let mut map = Map {
             solids: vec![Rect::new(40.0, 0.0, 8.0, 100.0)],
             ..Map::default()
         };
@@ -17666,7 +17666,7 @@ mod tests {
 
     #[test]
     fn cornerboost_restores_retained_speed_after_clearing_wall_top() {
-        let map = Map {
+        let mut map = Map {
             solids: vec![Rect::new(40.0, 40.0, 8.0, 60.0)],
             ..Map::default()
         };
@@ -17695,7 +17695,7 @@ mod tests {
 
     #[test]
     fn cornerboost_climb_jump_stores_jump_boost_before_clearing_wall_top() {
-        let map = Map {
+        let mut map = Map {
             solids: vec![Rect::new(40.0, 40.0, 8.0, 60.0)],
             ..Map::default()
         };
@@ -17751,7 +17751,7 @@ mod tests {
 
     #[test]
     fn downward_cornerboost_uses_wall_jump_probe_without_entering_climb() {
-        let map = Map {
+        let mut map = Map {
             solids: vec![Rect::new(40.0, 40.0, 8.0, 60.0)],
             ..Map::default()
         };
@@ -17808,7 +17808,7 @@ mod tests {
 
     #[test]
     fn five_jump_chains_neutral_and_lip_climb_jumps_across_five_tiles() {
-        let map = Map {
+        let mut map = Map {
             solids: vec![
                 Rect::new(0.0, 40.0, 40.0, 80.0),
                 Rect::new(80.0, 40.0, 40.0, 8.0),
@@ -17845,7 +17845,7 @@ mod tests {
 
     #[test]
     fn six_jump_uses_a_full_speed_cornerboost_to_reach_six_tile_landing() {
-        let map = Map {
+        let mut map = Map {
             solids: vec![
                 Rect::new(40.0, 40.0, 8.0, 80.0),
                 Rect::new(88.0, 48.0, 40.0, 8.0),
@@ -17881,7 +17881,7 @@ mod tests {
 
     #[test]
     fn double_cornerboost_uses_two_consecutive_climb_jumps_from_a_grounded_setup() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
             solids: vec![
                 Rect::new(80.0, 152.0, 128.0, 32.0),
@@ -17930,7 +17930,7 @@ mod tests {
     fn seven_jump_lands_on_a_target_seven_tiles_from_the_double_cornerboost_wall() {
         let wall_x = 80.0;
         let target_x = wall_x + 7.0 * 8.0;
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
             solids: vec![
                 Rect::new(0.0, 120.0, wall_x, 64.0),
@@ -17976,7 +17976,7 @@ mod tests {
     fn eight_jump_lands_on_a_target_eight_tiles_from_the_cornerboost_wall() {
         let wall_x = 80.0;
         let target_x = wall_x + 8.0 * 8.0;
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
             solids: vec![
                 Rect::new(0.0, 120.0, wall_x, 64.0),
@@ -18017,7 +18017,7 @@ mod tests {
     fn nine_jump_lands_nine_tiles_away_only_with_the_favorable_timing() {
         let wall_x = 80.0;
         let target_x = wall_x + 9.0 * 8.0;
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
             solids: vec![
                 Rect::new(0.0, 120.0, wall_x, 64.0),
@@ -18075,7 +18075,7 @@ mod tests {
         let next_room = Rect::new(320.0, 0.0, 320.0, 184.0);
         let wall_x = 328.0;
         let target_x = wall_x + 11.0 * 8.0;
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
             transition_rooms: vec![next_room],
             solids: vec![
@@ -18124,7 +18124,7 @@ mod tests {
 
     #[test]
     fn reverse_cornerboost_preserves_forward_momentum_minus_backward_jump_boost() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
             solids: vec![Rect::new(104.0, 120.0, 8.0, 64.0)],
             ..Map::default()
@@ -18160,7 +18160,7 @@ mod tests {
 
     #[test]
     fn neutral_reverse_cornerboost_keeps_speed_then_converts_within_wallboost_window() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
             solids: vec![Rect::new(104.0, 120.0, 8.0, 64.0)],
             ..Map::default()
@@ -18213,7 +18213,7 @@ mod tests {
             nodes: vec![],
             name: "spikesUp".to_owned(),
         };
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
             solids: vec![Rect::new(40.0, 40.0, 8.0, 64.0)],
             entities: vec![spikes],
@@ -18263,7 +18263,7 @@ mod tests {
             nodes: vec![],
             name: "spikesLeft".to_owned(),
         };
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
             solids: vec![Rect::new(64.0, 40.0, 8.0, 144.0)],
             entities: vec![spikes],
@@ -18296,7 +18296,7 @@ mod tests {
 
     #[test]
     fn narrow_spiked_climb_alternates_away_facing_wall_jumps() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
             solids: vec![
                 Rect::new(40.0, 24.0, 8.0, 160.0),
@@ -18380,7 +18380,7 @@ mod tests {
             nodes: vec![],
             name: "spikesUp".to_owned(),
         };
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
             entities: vec![spikes],
             ..Map::default()
@@ -18421,7 +18421,7 @@ mod tests {
 
     #[test]
     fn spike_jump_uses_the_frame_after_zip_carry_bypasses_player_colliders() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
             entities: vec![
                 crate::Entity {
@@ -18479,7 +18479,7 @@ mod tests {
 
     #[test]
     fn cornerboost_wallboost_overwrites_retained_speed_with_wallkick_speed() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
             solids: vec![Rect::new(40.0, 40.0, 8.0, 64.0)],
             ..Map::default()
@@ -18532,7 +18532,7 @@ mod tests {
             nodes: vec![],
             name: "dreamBlock".to_owned(),
         };
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
             entities: vec![dream_block],
             ..Map::default()
@@ -18804,7 +18804,7 @@ mod tests {
 
     #[test]
     fn archie_preserves_the_source_two_and_a_half_pixel_center_offset() {
-        let map = booster_map();
+        let mut map = booster_map();
         let standing = PlayerSnapshot {
             pos: Vec2::new(160.0, 400.0),
             ..PlayerSnapshot::default()
@@ -18958,7 +18958,7 @@ mod tests {
 
     #[test]
     fn boost_approach_uses_the_normal_collider_half_pixel_center() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
             entities: vec![crate::Entity {
                 kind: EntityKind::Booster,
@@ -19017,7 +19017,7 @@ mod tests {
 
     #[test]
     fn dream_dash_enters_a_dream_block() {
-        let map = Map {
+        let mut map = Map {
             entities: vec![crate::Entity {
                 kind: EntityKind::DreamBlock,
                 bounds: Rect::new(40.0, 40.0, 32.0, 40.0),
@@ -19073,7 +19073,7 @@ mod tests {
         // `Player.cs:3420`), but a `dreamDashCanEndTimer` that has already been spent down
         // to its negative residue (`Player.cs:5189-5192`) can only exist after a
         // `DreamDashBegin` (`Player.cs:5144`), i.e. after the inventory was granted.
-        let map = Map {
+        let mut map = Map {
             entities: vec![crate::Entity {
                 kind: EntityKind::DreamBlock,
                 bounds: Rect::new(40.0, 40.0, 32.0, 40.0),
@@ -19109,7 +19109,7 @@ mod tests {
         // The mirror cutscene has not run yet (`PlayerInventory.OldSite` is
         // `dreamDash: false`, `PlayerInventory.cs:12`): the timer is still at the C#
         // default `0f` (`Player.cs:551`) and the dream block must stay a wall.
-        let map = Map {
+        let mut map = Map {
             entities: vec![crate::Entity {
                 kind: EntityKind::DreamBlock,
                 bounds: Rect::new(40.0, 40.0, 32.0, 40.0),
@@ -19139,7 +19139,7 @@ mod tests {
 
     #[test]
     fn grounded_down_diagonal_dash_enters_the_dream_block_below() {
-        let map = Map {
+        let mut map = Map {
             entities: vec![crate::Entity {
                 kind: EntityKind::DreamBlock,
                 bounds: Rect::new(40.0, 40.0, 32.0, 40.0),
@@ -19173,7 +19173,7 @@ mod tests {
 
     #[test]
     fn dream_dash_check_uses_lingering_attack_and_then_moves_naively() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, -100.0, 960.0, 280.0),
             entities: vec![crate::Entity {
                 kind: EntityKind::DreamBlock,
@@ -19253,7 +19253,7 @@ mod tests {
 
     #[test]
     fn grounded_diagonal_dream_exit_keeps_duck_collider_for_ordinary_movement() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
             solids: vec![Rect::new(0.0, 80.0, 320.0, 100.0)],
             entities: vec![crate::Entity {
@@ -19332,7 +19332,7 @@ mod tests {
                 ..InputState::default()
             },
         ];
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, -100.0, 960.0, 280.0),
             ..Map::default()
         };
@@ -19380,7 +19380,7 @@ mod tests {
 
     #[test]
     fn dream_grab_uses_v14_five_pixel_static_solid_correction() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
             solids: vec![Rect::new(67.0, 40.0, 1.0, 40.0)],
             entities: vec![crate::Entity {
@@ -19419,7 +19419,7 @@ mod tests {
 
     #[test]
     fn dream_smuggle_keeps_theo_through_pickup_and_lingering_attack_entry() {
-        let map = dream_smuggle_map();
+        let mut map = dream_smuggle_map();
         let initial = PlayerSnapshot {
             pos: Vec2::new(60.0, 100.0),
             speed: Vec2::new(240.0, 0.0),
@@ -19463,7 +19463,7 @@ mod tests {
 
     #[test]
     fn holdable_dream_hyper_throw_cannot_hold_hyper_and_regrab_are_split_composable() {
-        let map = dream_smuggle_map();
+        let mut map = dream_smuggle_map();
         let initial = PlayerSnapshot {
             pos: Vec2::new(180.0, 88.0),
             speed: Vec2::new(0.0, 0.0),
@@ -19557,7 +19557,7 @@ mod tests {
 
     #[test]
     fn holdable_dream_hyper_regrabs_on_frame_169_after_theo_release_curve() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
             solids: vec![Rect::new(0.0, 496.0, 960.0, 48.0)],
             entities: vec![
@@ -19639,7 +19639,7 @@ mod tests {
 
     #[test]
     fn holdable_grabless_dream_hyper_uses_exit_grace_without_a_climb_state() {
-        let map = dream_smuggle_map();
+        let mut map = dream_smuggle_map();
         let initial = PlayerSnapshot {
             pos: Vec2::new(176.0, 64.0),
             speed: Vec2::new(240.0, 0.0),
@@ -19810,7 +19810,7 @@ mod tests {
     }
     #[test]
     fn upward_screen_transition_applies_source_launch_and_completion_refills() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
             transition_rooms: vec![Rect::new(0.0, -184.0, 320.0, 184.0)],
             ..Map::default()
@@ -19852,7 +19852,7 @@ mod tests {
             nodes: vec![],
             name: "fallingBlock".to_owned(),
         };
-        let map = Map {
+        let mut map = Map {
             bounds: lower,
             transition_rooms: vec![upper],
             transition_runtime: vec![
@@ -19893,7 +19893,7 @@ mod tests {
     fn bubsdrop_wall_jump_misses_upper_jumpthru_and_restores_old_room_spawn_set() {
         let lower = Rect::new(0.0, 0.0, 320.0, 184.0);
         let upper = Rect::new(0.0, -184.0, 320.0, 184.0);
-        let map = Map {
+        let mut map = Map {
             bounds: lower,
             transition_rooms: vec![upper],
             transition_runtime: vec![
@@ -19964,7 +19964,7 @@ mod tests {
     #[test]
     fn climb_jump_buffer_uses_the_real_five_frame_transition_boundary() {
         let upper = Rect::new(0.0, -184.0, 320.0, 184.0);
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
             transition_rooms: vec![upper],
             solids: vec![Rect::new(168.0, -16.0, 8.0, 16.0)],
@@ -20010,7 +20010,7 @@ mod tests {
     #[test]
     fn kermit_dash_preserves_attack_and_direction_through_vertical_transition() {
         let upper = Rect::new(0.0, -184.0, 320.0, 184.0);
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
             transition_rooms: vec![upper],
             entities: vec![crate::Entity {
@@ -20065,7 +20065,7 @@ mod tests {
 
     #[test]
     fn downward_screen_transition_clamps_upward_speed_before_transfer() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 184.0),
             transition_rooms: vec![Rect::new(0.0, 184.0, 320.0, 184.0)],
             ..Map::default()
@@ -20239,7 +20239,7 @@ mod tests {
         // 27 hits the initially-active index 1 wall, manager activation then
         // disables it, input 28's pre-Player entity phase clears it, and the
         // following Player.Update restores the retained 90-speed run.
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
             solids: vec![Rect::new(0.0, 496.0, 960.0, 48.0)],
             entities: vec![
@@ -20412,7 +20412,7 @@ mod tests {
         // three, beat 8 writes Activated on input 27 and CassetteBlock.Update
         // reforms during input 28, after Player.Update. That movement writes
         // LiftSpeed, which the grounded StarFly Jump consumes next frame.
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
             solids: vec![Rect::new(0.0, 496.0, 960.0, 48.0)],
             entities: vec![
@@ -20646,7 +20646,7 @@ mod tests {
 
     #[test]
     fn intro_respawn_tween_returns_control_after_source_point_six_seconds() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
             spawn: Vec2::new(32.0, 152.0),
             solids: vec![Rect::new(0.0, 152.0, 320.0, 28.0)],
@@ -20734,7 +20734,7 @@ mod tests {
         // `IntroJumpCoroutine` (Player.cs:5995-6068): the non-Summit branch
         // writes `Y = level.Bounds.Bottom + 16` and waits 0.5 s, then rises at
         // -120 px/s until `start.Y - 8`.
-        let map = intro_jump_map();
+        let mut map = intro_jump_map();
         let anchor = PlayerSnapshot {
             pos: Vec2::new(24.0, 200.0),
             state: PlayerState::IntroJump,
@@ -20775,7 +20775,7 @@ mod tests {
         // `IntroWalkCoroutine` (Player.cs:5969-5993) teleports X to
         // `Bounds.Left - 16`, waits 0.3 s, walks toward the captured `start`
         // at 64 px/s, then restores `Position = start` and waits 0.2 s.
-        let map = intro_walk_map();
+        let mut map = intro_walk_map();
         let anchor = PlayerSnapshot {
             pos: Vec2::new(-16.0, 152.0),
             state: PlayerState::IntroWalk,
@@ -20808,7 +20808,7 @@ mod tests {
         // animation as 24 frames at 0.1 s, and `Monocle.Sprite.Update`
         // advances one frame per 0.1 s, so the routine clears after
         // 24 * 6 = 144 updates.
-        let map = intro_walk_map();
+        let mut map = intro_walk_map();
         let anchor = PlayerSnapshot {
             pos: Vec2::new(24.0, 152.0),
             state: PlayerState::IntroWakeUp,
@@ -20824,7 +20824,7 @@ mod tests {
     fn intro_think_for_a_bit_walks_eight_pixels_and_faces_both_ways() {
         // `IntroThinkForABitCoroutine` (Player.cs:6156-6174) nudges the camera,
         // waits 0.1 s, walks `X + 8` at 32 px/s, then alternates facing.
-        let map = intro_walk_map();
+        let mut map = intro_walk_map();
         let anchor = PlayerSnapshot {
             pos: Vec2::new(24.0, 152.0),
             state: PlayerState::IntroThinkForABit,
@@ -20905,7 +20905,7 @@ mod tests {
 
     #[test]
     fn star_fly_wall_collision_uses_half_speed_bounce() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
             solids: vec![Rect::new(100.0, 0.0, 8.0, 180.0)],
             ..Map::default()
@@ -21047,7 +21047,7 @@ mod tests {
             stamina: 5.0,
             ..PlayerSnapshot::default()
         };
-        let map = refill_map(false, false);
+        let mut map = refill_map(false, false);
         let trace = simulate_trace(p, &[InputState::default(); 200], &map, 200).unwrap();
         // Frame 1 collects: dashes 0 -> 1, stamina 5 -> 110, 0.05s freeze.
         assert_eq!(trace.states[1].dashes, 1);
@@ -21066,7 +21066,7 @@ mod tests {
 
     #[test]
     fn pink_refill_sets_two_dashes_while_full_refill_does_not_collect() {
-        let map = refill_map(true, false);
+        let mut map = refill_map(true, false);
         let p = PlayerSnapshot {
             // The hurtbox is what `Refill`'s `PlayerCollider` sees
             // (`Hitbox(8, 9, -4, -11)`, two pixels shorter than the hitbox), so the
@@ -21082,7 +21082,7 @@ mod tests {
 
         // A full player touching a regular refill gains nothing and the
         // refill stays collidable for a later depleted pass.
-        let map = refill_map(false, false);
+        let mut map = refill_map(false, false);
         let p = PlayerSnapshot {
             // The hurtbox is what `Refill`'s `PlayerCollider` sees
             // (`Hitbox(8, 9, -4, -11)`, two pixels shorter than the hitbox), so the
@@ -21110,7 +21110,7 @@ mod tests {
             stamina: 5.0,
             ..PlayerSnapshot::default()
         };
-        let map = refill_map(false, true);
+        let mut map = refill_map(false, true);
         let trace = simulate_trace(p, &[InputState::default(); 20], &map, 20).unwrap();
         assert!(trace.states[1].refills[0].removed);
         assert!(!trace.states[1].refills[0].collidable);
@@ -21124,7 +21124,7 @@ mod tests {
             on_ground: true,
             ..PlayerSnapshot::default()
         };
-        let map = falling_block_map(true, 100.0);
+        let mut map = falling_block_map(true, 100.0);
         let trace = simulate_trace(p, &[InputState::default(); 140], &map, 140).unwrap();
         // Phase timeline: 1 shake (0.2s), 2 player-wait (0.4s), 3 falling.
         assert_eq!(trace.states[1].falling_blocks[0].phase, 1);
@@ -21152,7 +21152,7 @@ mod tests {
             on_ground: true,
             ..PlayerSnapshot::default()
         };
-        let map = falling_block_map(true, 100.0);
+        let mut map = falling_block_map(true, 100.0);
         // Stand through the 0.2s shake, then jump on the shake-end step.
         // The shake resume's loop-head check sees the airborne player and the
         // block drops that same frame; without the early exit it would wait
@@ -21176,7 +21176,7 @@ mod tests {
             on_ground: true,
             ..PlayerSnapshot::default()
         };
-        let map = falling_block_map(false, 100.0);
+        let mut map = falling_block_map(false, 100.0);
         let trace = simulate_trace(p, &[InputState::default(); 50], &map, 50).unwrap();
         assert_eq!(trace.states[1].falling_blocks[0].phase, 1);
         assert_eq!(trace.states[37].falling_blocks[0].phase, 3);
@@ -21314,7 +21314,7 @@ mod tests {
             dash_attack_timer: DASH_ATTACK_TIME,
             ..PlayerSnapshot::default()
         };
-        let map = ice_ball_map();
+        let mut map = ice_ball_map();
         interact(&mut bounced, &map, InputState::default(), None);
         assert_eq!(bounced.state, PlayerState::Normal);
         assert_eq!(bounced.pending_bounce_from_y, None);
@@ -21358,7 +21358,7 @@ mod tests {
                 ..InputState::default()
             })
             .collect();
-        let map = crate::mechanics_playground();
+        let mut map = crate::mechanics_playground();
         let trace = simulate_trace(initial.clone(), &inputs[..6], &map, 6).unwrap();
         assert_eq!(trace.states[5].state, PlayerState::Dash);
         assert_eq!(trace.states[5].speed, Vec2::new(169.705_63, 169.705_63));
@@ -21389,7 +21389,7 @@ mod tests {
                 dash_attack_timer: DASH_ATTACK_TIME,
                 ..PlayerSnapshot::default()
             };
-            let map = bounce_actor_map(kind.clone());
+            let mut map = bounce_actor_map(kind.clone());
             interact(&mut p, &map, InputState::default(), None);
             assert_eq!(p.state, PlayerState::Normal, "kind={kind:?}");
             assert_eq!(p.speed, Vec2::new(240.0, BOUNCE_SPEED), "kind={kind:?}");
@@ -21402,7 +21402,7 @@ mod tests {
 
     #[test]
     fn seeker_attack_wall_collision_enters_stunned_with_source_speeds_and_timer() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 200.0, 180.0),
             solids: vec![Rect::new(104.0, 0.0, 16.0, 180.0)],
             entities: vec![crate::Entity {
@@ -21440,7 +21440,7 @@ mod tests {
 
     #[test]
     fn seeker_stunned_coroutine_returns_idle_and_split_simulation_is_composable() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
             solids: vec![Rect::new(0.0, 160.0, 320.0, 20.0)],
             entities: vec![crate::Entity {
@@ -21598,7 +21598,7 @@ mod tests {
 
     #[test]
     fn close_behind_player_gate_uses_target_position_fallback_to_clip_theo() {
-        let map = temple_gate_map(1.0);
+        let mut map = temple_gate_map(1.0);
         let p = PlayerSnapshot {
             pos: Vec2::new(120.0, 160.0),
             theo_crystals: vec![crate::TheoCrystalSnapshot {
@@ -21810,7 +21810,7 @@ mod tests {
         assert_eq!(p.temple_gates[0].alarm_timer, TEMPLE_GATE_SWITCH_BEAT);
         assert!(p.temple_gates[0].claimed, "GetGate marks the gate it took");
 
-        let mut room = initialize_room_coroutines(&map);
+        let mut room = initialize_room_coroutines(&mut map);
         for _ in 0..23 {
             advance_temple_gate_alarms(&mut p, &mut map, &mut room);
         }
@@ -21906,7 +21906,7 @@ mod tests {
             ..PlayerSnapshot::default()
         };
         initialize_temple_gates(&mut p, &mut map);
-        let mut room = initialize_room_coroutines(&map);
+        let mut room = initialize_room_coroutines(&mut map);
         assert_eq!(room.touch_switches.len(), 2);
         for _ in 0..80 {
             advance_temple_gate_alarms(&mut p, &mut map, &mut room);
@@ -21946,7 +21946,7 @@ mod tests {
         };
         initialize_temple_gates(&mut p, &mut map);
         dash_switch_open_gates(&mut p, &mut map, 1, Vec2::new(86.0, 124.0), true);
-        let mut room = initialize_room_coroutines(&map);
+        let mut room = initialize_room_coroutines(&mut map);
         for _ in 0..24 {
             advance_temple_gate_alarms(&mut p, &mut map, &mut room);
         }
@@ -22029,7 +22029,7 @@ mod tests {
             "`Awake` widens a HoldingTheo gate's hitbox to 16 (`TempleGate.cs:105`)"
         );
 
-        let mut room = initialize_room_coroutines(&map);
+        let mut room = initialize_room_coroutines(&mut map);
         // `holdingCheckFrom` is `Position + (4, height / 2)` = (104, 124) and the closed-state
         // radius is 64 px (`4096`).
         p.theo_crystals[0].position = Vec2::new(104.0, 138.0);
@@ -22078,7 +22078,7 @@ mod tests {
         assert!(restored.snapshot().temple_gates[0].claimed);
         assert_eq!(restored.runtime_entities()[0].bounds.height, 0.0);
 
-        let mut foreign = Simulator::new(p, &map).unwrap();
+        let mut foreign = Simulator::new(p, &mut map).unwrap();
         foreign.set_pressed_dash_switches(&[15]);
         assert!(!foreign.snapshot().temple_gates[0].open);
         assert_eq!(foreign.runtime_entities()[0].bounds.height, 48.0);
@@ -22124,7 +22124,7 @@ mod tests {
             ..PlayerSnapshot::default()
         };
         let inputs = [InputState::default(); 70];
-        let map = cloud_map(false);
+        let mut map = cloud_map(false);
         let whole = simulate(initial.clone(), &inputs, &map, 70).unwrap();
         let first = simulate(initial, &inputs[..35], &map, 35).unwrap();
         let split = simulate(first, &inputs[35..], &map, 35).unwrap();
@@ -22139,7 +22139,7 @@ mod tests {
             star_fly_timer: 1.0,
             ..PlayerSnapshot::default()
         };
-        let map = ice_ball_map();
+        let mut map = ice_ball_map();
         interact(&mut bounced, &map, InputState::default(), None);
         assert_eq!(bounced.state, PlayerState::Normal);
         assert!(bounced.star_fly_hitbox_preserved);
@@ -22162,7 +22162,7 @@ mod tests {
             star_fly_hitbox_preserved: true,
             ..PlayerSnapshot::default()
         };
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 180.0),
             ..Map::default()
         };
@@ -22312,7 +22312,7 @@ mod tests {
 
     #[test]
     fn ducking_uses_the_source_six_pixel_collider_under_low_ceilings() {
-        let map = Map {
+        let mut map = Map {
             solids: vec![Rect::new(0.0, 90.0, 64.0, 4.0)],
             ..Map::default()
         };
@@ -22364,7 +22364,7 @@ mod tests {
 
     #[test]
     fn temple_fall_matches_the_landing_and_one_second_wait_frames() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
             solids: vec![Rect::new(0.0, 400.0, 960.0, 144.0)],
             ..Map::default()
@@ -22417,7 +22417,7 @@ mod tests {
 
     #[test]
     fn summit_launch_uses_the_source_upward_corner_correction() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
             solids: vec![Rect::new(480.0, 240.0, 96.0, 24.0)],
             ..Map::default()
@@ -22721,7 +22721,7 @@ mod tests {
 
     #[test]
     fn bino_extensions_follow_nodes_and_run_long_distance_exit_wipe() {
-        let map = lookout_map(vec![Vec2::new(960.0, 90.0)], true, false);
+        let mut map = lookout_map(vec![Vec2::new(960.0, 90.0)], true, false);
         let player = PlayerSnapshot {
             pos: Vec2::new(160.0, 160.0),
             state: PlayerState::Dummy,
@@ -22777,7 +22777,7 @@ mod tests {
 
     #[test]
     fn cloud_hyper_bunnyhop_fixture_leaves_the_platform_side_before_apex_landing() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
             solids: vec![
                 Rect::new(0.0, 496.0, 960.0, 48.0),
@@ -22851,7 +22851,7 @@ mod tests {
 
     #[test]
     fn roboboost_fixture_restores_climb_jump_speed_before_reversing_input() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 960.0, 544.0),
             solids: vec![
                 Rect::new(0.0, 496.0, 960.0, 48.0),
@@ -22910,7 +22910,7 @@ mod tests {
     /// the `StClimb` zero.
     #[test]
     fn climb_release_adds_lift_boost() {
-        let map = floor_map();
+        let mut map = floor_map();
         let mut p = PlayerSnapshot {
             pos: Vec2::new(32.0, 100.0),
             state: PlayerState::Climb,
@@ -22976,7 +22976,7 @@ mod tests {
     /// 240 px/s fast-fall cap.
     #[test]
     fn dream_dash_exit_runs_normal_begin() {
-        let map = Map {
+        let mut map = Map {
             bounds: Rect::new(0.0, 0.0, 320.0, 240.0),
             ..Map::default()
         };
@@ -23001,7 +23001,7 @@ mod tests {
     /// the 400 px/s `Calc.Approach` step to 120 px/s.
     #[test]
     fn core_ice_mode_scales_the_ground_run_approach() {
-        let map = floor_map();
+        let mut map = floor_map();
         let grounded = |core_mode| PlayerSnapshot {
             pos: Vec2::new(32.0, 100.0),
             on_ground: true,
@@ -23055,7 +23055,7 @@ mod tests {
     #[test]
     fn crush_block_rebounds_a_horizontal_dash() {
         // `axes = Both` (0), `chillout = false`.
-        let map = dash_collide_block_map(
+        let mut map = dash_collide_block_map(
             EntityKind::CrushBlock,
             Rect::new(80.0, 96.0, 32.0, 32.0),
             Vec2::new(0.0, 0.0),
@@ -23094,7 +23094,7 @@ mod tests {
     #[test]
     fn vertical_only_crush_block_does_not_rebound_a_horizontal_dash() {
         // `axes = Vertical` (2).
-        let map = dash_collide_block_map(
+        let mut map = dash_collide_block_map(
             EntityKind::CrushBlock,
             Rect::new(80.0, 96.0, 32.0, 32.0),
             Vec2::new(2.0, 0.0),
@@ -23130,7 +23130,7 @@ mod tests {
     /// `Player.cs:3178-3219`'s ordinary stop in place.
     #[test]
     fn non_dashable_dash_block_stops_a_normal_dash() {
-        let map = dash_collide_block_map(
+        let mut map = dash_collide_block_map(
             EntityKind::DashBlock,
             Rect::new(80.0, 88.0, 16.0, 16.0),
             // `canDash = false`, `permanent = true`.
@@ -23161,7 +23161,7 @@ mod tests {
     /// (`DashBlock.cs:131-139`), which also removes the Solid for good.
     #[test]
     fn dashable_dash_block_breaks_and_rebounds() {
-        let map = dash_collide_block_map(
+        let mut map = dash_collide_block_map(
             EntityKind::DashBlock,
             Rect::new(80.0, 88.0, 16.0, 16.0),
             // `canDash = true`, `permanent = true`.
@@ -23215,7 +23215,7 @@ mod tests {
     /// the space it occupied. The result is always `NormalCollision` (`:228`) - no rebound.
     #[test]
     fn dash_switch_presses_on_the_matching_dash_direction() {
-        let map = dash_switch_map(Vec2::new(1.0, 0.0));
+        let mut map = dash_switch_map(Vec2::new(1.0, 0.0));
         // Feet at y=106 against a button spanning y=96..112: a ten pixel overlap, so the
         // four-pixel dash corner correction cannot lift the player over it
         // (`Player.cs` `OnCollideH`: `for (int i = 1; i <= DashCornerCorrection; i++)`).
@@ -23230,7 +23230,7 @@ mod tests {
             ..InputState::default()
         }; 16];
         inputs[0].dash_pressed = true;
-        let mut simulator = Simulator::new(p, &map).unwrap();
+        let mut simulator = Simulator::new(p, &mut map).unwrap();
         for input in &inputs {
             simulator.step(*input).unwrap();
         }
@@ -23252,7 +23252,7 @@ mod tests {
     #[test]
     fn dash_switch_ignores_a_dash_from_the_wrong_side() {
         // `Sides.Left` (`:93-97`): `pressDirection = -UnitX`, pressed only by a leftward dash.
-        let map = dash_switch_map(Vec2::new(-1.0, 0.0));
+        let mut map = dash_switch_map(Vec2::new(-1.0, 0.0));
         let p = PlayerSnapshot {
             pos: Vec2::new(60.0, 106.0),
             on_ground: true,
@@ -23264,7 +23264,7 @@ mod tests {
             ..InputState::default()
         }; 12];
         inputs[0].dash_pressed = true;
-        let mut simulator = Simulator::new(p, &map).unwrap();
+        let mut simulator = Simulator::new(p, &mut map).unwrap();
         for input in &inputs {
             simulator.step(*input).unwrap();
         }
@@ -23289,7 +23289,7 @@ mod tests {
     /// through this one.
     #[test]
     fn persistent_dash_switch_with_the_session_flag_set_starts_pressed() {
-        let map = persistent_dash_switch_map();
+        let mut map = persistent_dash_switch_map();
         let p = PlayerSnapshot {
             pos: Vec2::new(60.0, 106.0),
             on_ground: true,
@@ -23318,7 +23318,7 @@ mod tests {
         );
 
         // Without the flag the same setup is the ordinary collidable button.
-        let mut fresh = Simulator::new(p, &map).unwrap();
+        let mut fresh = Simulator::new(p, &mut map).unwrap();
         fresh.set_pressed_dash_switches(&[]);
         assert!(solid_is_collidable(&fresh.runtime_entities()[0]));
     }
@@ -23353,7 +23353,7 @@ mod tests {
     /// its constructor (`CassetteBlock.cs:70-76`) however long the room runs.
     #[test]
     fn cassette_tape_taken_leaves_no_manager_and_no_collidable_block() {
-        let map = cassette_map();
+        let mut map = cassette_map();
         let snapshot = || PlayerSnapshot {
             pos: Vec2::new(100.0, 60.0),
             ..PlayerSnapshot::default()
