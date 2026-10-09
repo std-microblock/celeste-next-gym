@@ -9853,6 +9853,32 @@ fn naive_move(p: &mut PlayerSnapshot, amount: Vec2) {
 }
 
 fn move_axis_amount(p: &mut PlayerSnapshot, map: &mut Map, horizontal: bool, amount: f32) {
+    move_axis_amount_inner(p, map, horizontal, amount, true);
+}
+
+/// `Actor.MoveH`/`MoveV` called with a **null** collision callback, which is how
+/// `Player.WindMove` moves: `Player.cs:3107` is `MoveH(move.X);` and
+/// `Player.cs:3132` is `MoveV(move.Y);`, both with the default `onCollide = null`
+/// (`Actor.cs:186-208`). `MoveVExact`/`MoveHExact` still probe
+/// `CollideFirst<Solid>` and still clear `movementCounter` on the blocked step
+/// (`Actor.cs:220`, `Actor.cs:249`), but `onCollide?.Invoke(...)` is skipped, so
+/// `Player.OnCollideH`/`OnCollideV` never run and `Speed` is left untouched.
+///
+/// This matters for an updraft against a ceiling: the wind's whole-pixel step is
+/// blocked, yet the source keeps `Speed.Y` (including a positive, falling
+/// `Speed.Y` that would have taken `OnCollideV`'s landing branch and its
+/// unconditional `Speed.Y = 0f` at `Player.cs:3408`).
+fn move_axis_amount_silent(p: &mut PlayerSnapshot, map: &mut Map, horizontal: bool, amount: f32) {
+    move_axis_amount_inner(p, map, horizontal, amount, false);
+}
+
+fn move_axis_amount_inner(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    horizontal: bool,
+    amount: f32,
+    collide_callback: bool,
+) {
     let remainder = if horizontal {
         &mut p.movement_remainder.x
     } else {
@@ -9885,6 +9911,12 @@ fn move_axis_amount(p: &mut PlayerSnapshot, map: &mut Map, horizontal: bool, amo
                 p.movement_remainder.x = 0.0;
             } else {
                 p.movement_remainder.y = 0.0;
+            }
+            if !collide_callback {
+                // The probe and the counter clear above are all `MoveVExact`/
+                // `MoveHExact` do when `onCollide` is null; the walk stops and no
+                // `Player.OnCollideH`/`OnCollideV` response may run.
+                return;
             }
             if dream_block
                 && p.can_dream_dash
@@ -11431,7 +11463,7 @@ fn apply_wind_movement(p: &mut PlayerSnapshot, map: &mut Map) {
             if p.ducking && p.player_on_ground {
                 move_x = 0.0;
             }
-            move_axis_amount(p, map, true, move_x);
+            move_axis_amount_silent(p, map, true, move_x);
         }
     }
 
@@ -11444,7 +11476,7 @@ fn apply_wind_movement(p: &mut PlayerSnapshot, map: &mut Map) {
                 return;
             }
         }
-        move_axis_amount(p, map, false, move_y);
+        move_axis_amount_silent(p, map, false, move_y);
     }
 }
 
