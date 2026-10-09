@@ -75,6 +75,15 @@ Paths in TAS command arguments must use `/`, not `\` — `CommandLine.TryParse` 
   pixel on the very first frame.
 * non-`Level` scenes still produce a row with `scene` naming them (`Overworld OuiChapterPanel`,
   `LevelEnter`, `AreaComplete`, …), so the trace can be aligned frame by frame
+* the `Level`-branch tail is append-only and written after every pre-existing key: `wind`,
+  `windSine`, `windSineTimer`, `transitioning`, `freezeTimer`, `windTarget`, `windPattern`,
+  `inSpace`, `coreMode`, `levelCoreMode`, `inventory`, `flags`, then `ducking` / `collider` when a
+  `Player` exists. `flags` is `Celeste.Session.Flags` (`HashSet<string>`, `Session.cs:37`) as an
+  ordinally sorted JSON array: session state a replay window cannot rebuild from the map, e.g.
+  `switches_<room>` written by `Switch.SetLevelFlag` (`Switch.cs:125-128`) and read back by
+  `Switch.CheckLevelFlag` (`Switch.cs:120-123`), which decides whether a persistent `SwitchGate`
+  (`SwitchGate.cs:109-112`) starts already open. Key it per `(sid, mode, room)` — the flags embed
+  the room name, so it is per room, not per chapter. `Session.LevelFlags` is *not* exported.
 
 ## Caveats
 

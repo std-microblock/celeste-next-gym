@@ -75,6 +75,9 @@ public static class TasFrameTrace {
     private static int flushEvery = 512;
     private static readonly StringBuilder sb = new(8192);
     private static readonly List<FieldInfo> playerFields = new();
+    // Scratch buffer for `AppendSessionFlags`: `Session.Flags` is a `HashSet<string>`, whose
+    // enumeration order is not contractual, and sorting it per frame must not allocate.
+    private static readonly List<string> sessionFlags = new();
     private static Type? fieldsType;
     // `Celeste.Level.windController` (Level.cs:101) and the WindController's own
     // `targetSpeed`/`pattern` (WindController.cs:45-47) are all private fields, so
@@ -366,6 +369,25 @@ public static class TasFrameTrace {
         // their own keys above (`room`, `deaths`).
         AppendInventory(level);
 
+        // Celeste.Session.Flags: `HashSet<string>` (Session.cs:37), written by `Session.SetFlag`
+        // (Session.cs:266-276) and read back by `GetFlag` (Session.cs:261-264). `flags` is the only
+        // key this revision adds; every pre-existing key keeps its name, meaning and position
+        // (`ducking`/`collider` still follow it), so consumers that ignore unknown keys are
+        // unaffected. The file carries no numeric version marker; by the `docs/tas-replay.md`
+        // artifact convention this key makes the output `v6` (`v5` was `v4` + `levelCoreMode`).
+        //
+        // Why it matters: a persistent `SwitchGate` calls `Switch.SetLevelFlag` (SwitchGate.cs:109-112),
+        // which writes `"switches_" + Session.Level` (Switch.cs:125-128); `Switch.CheckLevelFlag`
+        // (Switch.cs:120-123) reads that back, so the gate can already be open when a replay window
+        // starts - the map alone rebuilds it closed. Key the set per `Session.Level`, i.e. per room
+        // and not per chapter: the entries that change gameplay embed the room name (`switches_<room>`
+        // above, `"ignore_darkness_" + Session.Level` in EventTrigger.cs:89), so cache them under
+        // `(sid, mode, room)` - the tuple the fidelity gate's `SWITCH_ROOM` map already uses - while
+        // the genuinely chapter-scoped entries (`oshiro_clutter_cleared_*`, ClutterSwitch.cs:138) key
+        // by `(sid, mode)`. `Session.LevelFlags` (Session.cs:39) is a separate container holding room
+        // *names* for `GetLevelFlag` (Session.cs:324-327) and is not part of `flags`.
+        AppendSessionFlags(level);
+
         if (player == null) {
             return;
         }
@@ -439,6 +461,31 @@ public static class TasFrameTrace {
         AppendBoolField("Backpack", inventory.Backpack);
         AppendBoolField("NoRefills", inventory.NoRefills);
         sb.Append('}');
+    }
+
+    /// <summary>
+    /// `Celeste.Session.Flags` (`HashSet<string>`, Session.cs:37) as a JSON array of the flag
+    /// strings, escaped by <see cref="AppendString"/>. Emitted sorted ordinal because a `HashSet`
+    /// has no contractual enumeration order and a row that reshuffled its own array would defeat
+    /// row-by-row diffing; the set is a handful of entries per chapter, so the array stays small.
+    /// </summary>
+    private static void AppendSessionFlags(Level level) {
+        sessionFlags.Clear();
+        foreach (string flag in level.Session.Flags) {
+            sessionFlags.Add(flag);
+        }
+
+        sessionFlags.Sort(static (a, b) => string.CompareOrdinal(a, b));
+        sb.Append(",\"flags\":[");
+        for (int i = 0; i < sessionFlags.Count; i++) {
+            if (i > 0) {
+                sb.Append(',');
+            }
+
+            AppendString(sessionFlags[i]);
+        }
+
+        sb.Append(']');
     }
 
     private static void AppendCollider(Collider? collider) {
