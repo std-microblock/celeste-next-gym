@@ -3424,3 +3424,25 @@ assigns it, only `GotoIdle`'s `Gone` branch arms the 0.5 s - so "0.5 s on spawn"
 This is the fourth time in this session that a plausible mechanism was retired by measurement rather than
 landed (phantom solid, Seeker, Puffer gate, and now the Puffer entity name). The pattern to keep is the one the
 workstream used: count the entities and search the assets before believing a signature.
+
+### State after the eyebomb mapping: master already has a gated Puffer; the residual is `gone_timer`/`GotoIdle`
+
+The `"eyebomb" => EntityKind::Puffer` mapping (`map.rs`) landed on its own and is **inert** on all three traces
+(`0 / 1468 / 0`, `0 / 918 / 0`, `0 / 20 / 0`, totals unchanged) - so the entity is now constructed from vanilla
+rooms and the 19 Farewell rooms' first divergences all sit before any Puffer interaction. `master` is `72b9e48`.
+
+Combined with what is already on master this closes the Puffer question for now:
+
+- the gate landed earlier (`27a6649`): `PufferSnapshot { state, cant_explode_timer, center }`, `initialize_puffers`,
+  `advance_puffers`, and the launch gated on `state != Gone && cant_explode_timer <= 0.0` - so the run measured
+  above is the **mapping + gate** combination, and it is neutral;
+- the `puffer` workstream's branch (based on `577a0de`, before that landing) is therefore mostly redundant, but
+  its extras are real: `gone_timer` with `GotoIdle` re-arming the 0.5 s, the `PUFFER_*` constants, and a unit test
+  `puffer_explode_gate_follows_the_source_state_and_timers` (357 tests there vs 356 here);
+- the residual gap in the landed version is that `advance_puffers` has no `gone_timer`/`GotoIdle`, so a Puffer
+  that explodes stays `Gone` forever instead of respawning after 2.5 s; and the **stomp** branch is still
+  ungated even though `Puffer.cs:552` blocks it too.
+
+Cheapest path to close both: cherry-pick the branch's code hunks (`sim.rs`, `types.rs`, `lib.rs`, nothing in
+`tas_fidelity.rs` beyond a field-coverage entry) - its own report says they do not collide with master and that
+only `docs/tas-replay.md` conflicts. That is a small, self-contained follow-up rather than a new investigation.
