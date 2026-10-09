@@ -947,6 +947,13 @@ time, and the ones left are all the same shape - a kind whose *state* is what ma
 measures a regression, so the next step on this line is a state machine per kind, starting with
 switchGate (+373 measured frames), exactly as CrumblePlatform was done. Do not re-run the sweep.
 
+**A reverted change needs a rebuild before any fresh measurement.** The one-command sweep above
+reverts the *source* when a kind regresses, but the example binary on disk keeps the reverted
+behaviour until the next cargo build - so a fresh gate run can report the reverted kind's numbers
+and look like a verification of the committed state. Round 39 hit exactly that (the fresh 202 run
+printed swapBlock's 505 / 158,166); after rebuilding, the committed state reproduces
+503 / 157,982 / 156,987 per segment exactly.
+
 `theoCrystalPedestal` starts `Collidable = false` (`TheoCrystalPedestal.cs:21`), so it is not a
 solid candidate at all.
 
