@@ -1560,3 +1560,20 @@ The exact command (baseline binary, no change needed):
 and read the lines whose `rustState` is one of the four (Boost/Dash/RedDash/SummitLaunch) plus the rows
 around them. If `gameState == rustState` on those frames, then the simulator's guard set is simply not
 the game's, and `Player.WindMove`'s condition should be re-read from the source rather than assumed.
+
+### The exact guard set changes nothing - the undo is not the windy segments' problem
+
+Re-running the wind undo with the game's *precise* exclusion set - `StDash`(2) | `StBoost`(4) |
+`StSummitLaunch`(10), read from `Player.cs:3085` and the constants at `:349-399`, so `StRedDash`(5) is
+correctly **not** excluded - measured the same `36 improved / 15 identical-ish / 17 regressed` with the
+same segments and the same frame counts as the variant that also excluded `RedDash`. So `RedDash` was not
+the cause, and on those frames the simulator is in `Dash`/`Boost`/`SummitLaunch` exactly where the game's
+guard also excludes wind, yet the game's movement there includes a wind term (measured on
+`7-Summit|0|g-01`: 2.417 px/frame = jump 1.75 + wind 0.667 in `StNormal`).
+
+That is a contradiction only if the two state machines agree at the frames in question, and the baseline
+replaying 833 frames of that segment says they do at the *end* of each frame. The remaining possibility is
+that they disagree *within* the frame - the callback's state at the moment `WindMover` would run - which
+the gate's end-of-frame `gameState`/`rustState` cannot show. Settling it needs the wind decision printed
+per frame (state at the wind call, after the dispatch, and the delta) on a slice of `g-01`, not another
+global edit.
