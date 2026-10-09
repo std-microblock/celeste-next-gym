@@ -2700,3 +2700,33 @@ So the fix is not in `skip_engine_frame` and not in the freeze branch: it is in 
 takes one bit of information (the trace's `stalled` witness) where two are needed - *was this an engine
 freeze, or a transition in which the player still moves* (`transitioning`, already parsed into `Frame`, and
 already used for the diagnostic classification at `:1829`).
+
+### The loop DOES step after skipping - so the pinned timer means an earlier return (the respawn block)
+
+Control flow confirmed by reading the loop:
+
+```
+1856:  simulator.skip_engine_frame();     // sets freeze_timer = max(freeze_timer, DT)
+1867:  match simulator.step(input) {      // still runs, every row
+1868:      Ok(actual) => { ... }           // and the dump's `freeze=` column is printed here, i.e. after the step
+```
+
+So both happen on a stalled row, and the printed `freeze = 0.01667` is the **post-step** value. The main
+freeze branch (`sim.rs:6734`) subtracts one `DT` and would leave 0, so `step` must be returning **before**
+that branch - which leaves the respawn block:
+
+```rust
+6721:  if p.death_freeze_pending { p.death_freeze_pending = false; p.freeze_timer = 0.05; return Ok(()); }
+6726:  if p.freeze_timer > 0.0 { p.freeze_timer = (p.freeze_timer - raw_delta_time).max(0.0); }
+6729:  return Ok(());
+```
+
+That block is unconditional once entered (it ends in `return Ok(())`), and its decrement uses
+`raw_delta_time` rather than `DT`. If the trace row's `dt` is 0, `(0.01667 - 0.0).max(0.0)` stays `0.01667`
+forever - pinned exactly as observed, with the player never updated.
+
+Two values decide it, and both are cheap to print at the top of `step` for rows 42488-42496:
+`p.respawn_frames` / `p.dead` (is the respawn block even entered?) and the row's `raw_delta_time`
+(the harness feeds it from the trace's `dt`, so a zero there is the smoking gun). If it is the respawn
+block, the fix is that a stalled row must not enter it; if it is a zero `raw_delta_time`, the fix is in how
+the harness supplies the frame delta.
