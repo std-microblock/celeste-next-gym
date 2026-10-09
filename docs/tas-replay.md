@@ -1471,3 +1471,24 @@ then verify **all three** guards against the trace, one at a time, on the specif
 (7-Summit and 4-GoldenRidge): for each, the question is whether the game's value is the start-of-frame
 one (`onGround`, computed before `base.Update()` at `Player.cs:1504-1526`) or the post-callback one
 (`Speed.Y`, `Ducking`, `State`). Only the state guard demonstrably needs the later position.
+
+### The wind has two populations: a global move cannot work, the guard has to be per frame
+
+Moving `apply_wind_movement` after the state callback measured **4 improved / 11 regressed** again, and
+the regressing set is *the same* as the round-91 attempt and a subset of round 45's: `4-GoldenRidge`
+`a-02`, `c-00`, `c-05` and `7-Summit` `e-05`, `g-00b`, `g-00`, `e-00` - the windy chapters, exactly. Their
+frame counts *drop* (`g-00b` 289 -> 93, `g-00` 581 -> 299), i.e. they now diverge **earlier**, so for them
+the early placement was the closer one.
+
+Read together with the proven case (the dash-begin frame, where the game's state guard sees `StDash` and
+skips the wind while the simulator pushes `-800*0.1*dt`), that means the two are different populations:
+a global move of the call fixes one and breaks the other. What is needed is the *move* staying where it is
+(the early placement is what those windy segments want) with the **state guard evaluated against the state
+the callback ends the frame in** - i.e. a per-frame decision, not a re-ordering.
+
+Three ways to get that, in increasing ugliness: pre-compute whether this frame's callback enters
+`StDash`/`StBoost`/`StSummitLaunch` from the input and the dash conditions (exact but duplicates them);
+apply the guard only for the state (compute the wind displacement early but publish it after the
+dispatch, which is the "pending" shape that the dash experiments already showed is delicate); or apply the
+wind early and reverse it after the dispatch when the new state is one of the three. The first is the
+cheapest to reason about; whichever is chosen, it has to be measured against the same 11 segments.
