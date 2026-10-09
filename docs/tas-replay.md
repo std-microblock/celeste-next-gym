@@ -3392,3 +3392,35 @@ Separately worth fixing on its own: the `as i32` truncation is not what the sour
 adds the amount to the counter and moves `round(counter + amount)` whole pixels, so a fractional amount must
 still be accumulated rather than dropped. That is a modelling difference even where it does not (yet) show in
 the traces.
+
+### ROOT CAUSE for the +-280 dead ends: no vanilla map ever produces `EntityKind::Puffer` - it is named `eyebomb`
+
+The `puffer` workstream measured this, and it invalidates the last two rounds of +-280 reasoning:
+
+- vanilla Celeste's Puffer is the map entity named **`eyebomb`** (`Level.cs:677-679` -> `Add(new Puffer(...))`),
+  but `map.rs:1647` maps only the literal name `"puffer"` (plus the playground fixture);
+- byte-searching all 27 `.bin` files under `vendor/celeste-game/Content/Maps` for `puffer`/`pufferFish` hits
+  only `Sprites.xml`, never a map;
+- all 19 `eyebomb` rooms are Farewell (`LostLevels` `b-*`, `e-*`, `j-*`, `end-golden`) and every one is
+  visited by the traces;
+- `decode_probe room LostLevels.bin j-07` prints `name="eyebomb" kind=Unknown` for all 11 puffers and zero
+  `kind=Puffer`.
+
+So the simulator's Puffer branch - including the unconditional `explode_launch` at the old
+`sim.rs:10725-10728` that this log described as "explodes a Puffer when the game refuses" - **has never
+executed on the corpus**. That claim described unreachable code, and the +-280 cluster cannot be the Puffer.
+Two consequences:
+
+1. The Puffer gate landed inert (`0 / 1468 / 0`, `0 / 918 / 0`, `0 / 20 / 0`) for a reason deeper than "the
+   corpus does not exercise it": the entity kind is never constructed at all. The work is still faithful and
+   unit-tested (357 lib tests on its branch) and harmless for `"puffer"`-named maps, but it moves nothing here.
+2. The right fix is an **entity mapping**: map `eyebomb` -> `EntityKind::Puffer`, then model the `Idle` sine,
+   the `Hit` drift, the `Gone` return curve and the `PufferCollider` order. All 19 Farewell rooms stand to
+   move at once, which is a far better target than the gate.
+
+Also corrected: a fresh level load constructs a Puffer with `cantExplodeTimer = 0` - the constructor never
+assigns it, only `GotoIdle`'s `Gone` branch arms the 0.5 s - so "0.5 s on spawn" is true only for a respawn.
+
+This is the fourth time in this session that a plausible mechanism was retired by measurement rather than
+landed (phantom solid, Seeker, Puffer gate, and now the Puffer entity name). The pattern to keep is the one the
+workstream used: count the entities and search the assets before believing a signature.
