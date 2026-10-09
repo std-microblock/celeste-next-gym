@@ -2093,3 +2093,27 @@ What still stands from the last two notes is the *bracketed* fact, which did not
 matching: entering `StNormal` the callback applies gravity on the first frame (0 -> 7.5) and adds nothing on
 the second (7.5 -> 7.5) where the game goes to 15. That remains the thing to explain, and the next probe
 should carry `scene_time_active` so its frames can be tied to the gate's row numbers.
+
+### With the unique key in place: gravity steps normally, and the earlier "skipped step" is unconfirmed
+
+Re-ran the probe carrying `p.scene_time_active` (the trace exports `sceneTimeActive` per player row, and the
+simulator advances `p.scene_time_active` once per active frame, so the two are a real key - unlike position).
+Filtering the log for `state=Normal` frames near the target:
+
+```
+t=8.000052 vy=7.5000 geo=false og=false
+t=8.016719 vy=15.0000 geo=false og=false     <- next frame: gravity applied
+t=4.450006 vy=7.5003 geo=false og=false
+t=4.466672 vy=15.0003 geo=false og=false     <- applied again
+t=5.833357 vy=7.5001 geo=true  og=true       <- grounded frame, skipping gravity is correct
+```
+
+So the simulator does step `7.5 -> 15` on ordinary airborne frames, and the one frame that skips it has
+`og = true` legitimately. That makes the round-129 bracket ("the callback adds nothing on the second frame")
+**unconfirmed**: it was most likely taken on a grounded frame, which is correct behaviour, not a bug. The
+earlier note stays withdrawn until the probe line for the *specific* diverging frame is identified.
+
+To finish this: the diverging frame's `scene_time_active` (from the trace) has to be matched against the
+probe log. The inline-node attempt to read it failed on quote escaping - use a script file for that, as the
+other readers do, and match the key rather than the position. Until then, treat the "gravity step" family as
+**open**, not diagnosed.
