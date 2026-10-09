@@ -1632,3 +1632,31 @@ retained value, the retention timer, and whether `map.solid_at(...)` is true, pl
 pixel is. That distinguishes "wrong probe" from "wrong retained sign/value", and the same three-branch
 block sits in every `pos|StNormal`/`pos+speed|StNormal` segment the recon sampled (`c-00` row 172768 is
 the same shape), so it is worth resolving once.
+
+### The wall-speed restore: the sim's retained value and probe both differ (frame-level measurement)
+
+Printing the gate's inputs on the `7-Summit|1|e-02` slice (the print fires only while the timer is live,
+so it fired on four frames):
+
+```
+pos=(9796,-8227) speedx=0.0000 retained=+165.6667 timer=0.0600 sign_speed=0 sign_ret=1 probe_solid=true
+pos=(9796,-8230) speedx=0.0000 retained=+165.6667 timer=0.0433 sign_speed=0 sign_ret=1 probe_solid=true
+pos=(9796,-8227) speedx=0.0000 retained=+207.6665 timer=0.0600 sign_speed=0 sign_ret=1 probe_solid=true
+pos=(9796,-8230) speedx=0.0000 retained=+207.6665 timer=0.0433 sign_speed=0 sign_ret=1 probe_solid=true
+```
+
+Two things stand out:
+
+1. **The retained value is positive** (+165.67 / +207.67, i.e. rightward) on frames where the game's
+   in-frame speed arithmetic (`-70 + 10.8333 = -59.1667`) implies a **leftward** restore. So the sim's
+   `wall_speed_retained` is not the game's, and the defect is **upstream of the gate** - in whatever wrote
+   it (the wall-jump/retention writer, `Player.cs:1660-1676` region) or in how it decays.
+2. **The probe says "solid" on all four frames**, so the sim never restores while the game does. Worth
+   checking whether `current_player_rect(p, pos.x + sign, pos.y)` is the same rectangle the game's
+   `CollideCheck<Solid>(Position + UnitX * sign)` tests - the source translates **`Position`** (the actor's
+   top-left) whereas the helper may build the *hurtbox*, which is a different rect near a wall.
+3. Also note `speedx = 0.0000` with `sign_speed = 0`: `math_sign(0)` is 0, so the first branch cannot fire
+   here; the decision is entirely the probe.
+
+Next: print the writer's assignment (the frame that sets `wall_speed_retained`) and the two rectangles
+(the helper's and the raw `Position + sign` one) on the same slice. Reverted the probe; tree rebuilt.
