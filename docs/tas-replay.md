@@ -2730,3 +2730,29 @@ Two values decide it, and both are cheap to print at the top of `step` for rows 
 (the harness feeds it from the trace's `dt`, so a zero there is the smoking gun). If it is the respawn
 block, the fix is that a stalled row must not enter it; if it is a zero `raw_delta_time`, the fix is in how
 the harness supplies the frame delta.
+
+### `dt` is not zero - so the pinned timer is not the respawn block either
+
+The trace rows 42488-42496 all carry `dt = rawDt = 0.0166667` (non-zero). That kills the previous note's
+hypothesis: the respawn block's `(freeze_timer - raw_delta_time).max(0.0)` would clear the timer, so the
+simulator is not sitting in that block either.
+
+Putting the known facts together:
+
+- the loop calls `skip_engine_frame()` and then `step()` on every row (`tas_fidelity.rs:1856`, `:1867`);
+- `skip_engine_frame` only raises the timer (never lowers it);
+- the main freeze branch (`sim.rs:6734`) subtracts `DT` and the respawn block subtracts `raw_delta_time`,
+  and `dt` is non-zero - so **any** reached decrement would clear a timer holding exactly DT;
+- the dump's `freeze = 0.01667` is printed after the step, and the trace's own `freezeTimer` is 0.
+
+So either the step returns **before both** branches (something earlier in the 6637-6720 region), or the
+timer is being set again after the step by something not yet found. One probe settles it and should be the
+last one in this family: at the very top of `step`, print `p.freeze_timer`, `p.dead`, `p.respawn_frames`,
+`p.transition_timer`, `p.death_freeze_pending` and `raw_delta_time` **on entry**, and the same
+`p.freeze_timer` **on exit** (a single `eprintln!` before the first `return` path is enough if placed at the
+end of the function next to a second print at the top). That distinguishes "returns early" from "re-set
+afterwards" in one run.
+
+Note for sequencing: this family (`roof07`) has now consumed many rounds and is down to a single
+instrumented question. The queue also holds the `1.2` grounded-ultra proxy and the `LaunchSpeed` lead, both
+of which are one-liner candidates with existing tests to compare against.
