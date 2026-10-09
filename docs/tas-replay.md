@@ -1764,3 +1764,29 @@ streaming pass - `move = dpos + dcounter` is exact, `move/dt` is the frame's tru
 delta against the row's `Speed` names the missing writer - instead of a per-segment dump. The exporter
 path is already proven twice (`flags` and the four session keys: build the `w8v5` tree, install, delete
 `Mods/Cache/CelesteTAS*`, re-run, and **assert the new key**).
+
+### `movementCounter` IS in the trace - and with it the in-frame speed tool becomes exact
+
+My round-114 note ("the trace cannot carry the counter, so the exporter has to") was **wrong**: the
+exporter walks the player's base chain, and `p.movementCounter` is already there next to
+`p.dashTrailCounter` (row 299 has 126 player keys, and `movementCounter = [0,0]`). No exporter change was
+needed; only the analysis was wrong.
+
+Switching the tool to `move = dpos + dcounter` (and dropping the 5 px/s buckets for 0.5 px/s) turns it
+from a noise detector into a signal extractor: the flag rate falls from 46% (9516/20507 frames) to **8.2%**
+(1679/20507) over the 40 largest `mismatch` segments, and the deltas cluster on real constants:
+
+```
+implied - previous row's Speed:
+  -169.5 x329   60 x165   -20 x133   -280 x65   -60 x45   -65 x44
+  -209.5 x44   -21.5 x42   20 x40     25 x35    280 x33   21.5 x30
+state pairs:
+  StNormal->StNormal x573   StDash->StDash x392   StDummy->StDummy x274
+  StSummitLaunch->StSummitLaunch x122   StLaunch->StLaunch x84   ...
+```
+
+Each of those numbers is a `Speed` write the simulator lands on a different frame than the game
+(`-170` and `-210` are jump/wall family values, `60`/`20`/`280` smaller ones). The next step is to map
+them to source writes - grep `Player.cs` for those constants in speed contexts, and for each one check
+which frame the simulator performs it on - instead of hunting a single segment at a time. The tool is
+`.tmp/recon3/in-frame-deltas.mjs` (report + trace, no build).
