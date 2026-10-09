@@ -2997,3 +2997,31 @@ commit, because the workstream had gone quiet with its edits uncommitted; the fi
 `cargo test` (the workstream's own new test contained a self-contradictory assertion) and master was reset to
 green rather than pushing a red tree - the landing script now gates on the test result as well as on
 `regressed`, which is what this document's earlier discipline was missing.
+
+### `LaunchSpeed` (±280): the simulator's `explode_launch` matches the source term for term
+
+Read both sides (`Player.ExplodeLaunch`, `Player.cs:4919-4955`; `sim.rs` `explode_launch`, `10832-10879`):
+
+| source | simulator |
+| --- | --- |
+| `Celeste.Freeze(0.1f)` | `p.freeze_timer = 0.1` |
+| `launchApproachX = null` | `p.launch_approach_x = None` |
+| `(Center - from).SafeNormalize(-UnitY)` | `normalize(delta)`, `(0,-1)` when `delta == 0` |
+| `snapUp && num <= -0.7` -> `(0,-1)` | same |
+| `num <= 0.65 && num >= -0.55` -> `(sign(x),0)` | `(-0.55..=0.65)` range |
+| `sidesOnly && x != 0` -> `(sign(x),0)` | same |
+| `Speed = 280f * vector` | `scale(direction, 280.0)` (+ unit test asserting `(-280,-150)`) |
+| `Speed.Y <= 50f` -> `Math.Min(-150f, ...)` + `AutoJump` | `min(-150.0)` + `auto_jump` |
+| `Speed.X != 0f` -> 1.2x / `explodeLaunchBoostTimer` split | same, both branches |
+| `if (!Inventory.NoRefills) RefillDash()` + `Stamina = 110` | same |
+
+So the whole value path is correct and the +-280 cluster is a **frame-placement** question, exactly as the
+round-124 note concluded - but now the numeric path is excluded term by term rather than assumed.
+
+The remaining question is the **trigger frame**, i.e. the callers. The simulator calls `explode_launch` from
+two places (`sim.rs:10601` with `snap_up=false, sides_only=false`; `:10726` with `sides_only=true`), so the
+next step is to list the source's callers of `ExplodeLaunch` (lava, the `Bumper`-family, `Badeline`'s
+projectile launch) and check which of them the +-280 segments exercise - the odd one out is where the frame
+difference lives. Note the stale line reference in the earlier note (`sim.rs:10764` is now
+`update_strawberry_train`): the launch moved to `10832`, so prefer name anchors over line numbers in this
+file.
