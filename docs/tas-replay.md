@@ -1592,3 +1592,18 @@ the `&`-prefixed form, so the exact lines have to be read from the compiler befo
 rolled back rather than committed with a failing test build; the branch is untouched and can be merged
 again as soon as those four sites are updated. Recorded so the next attempt starts from the error list
 rather than from a regex.
+
+## Baselines after `TempleGate` + `FloatySpaceBlock` (rounds 97-108)
+
+| trace | ok | mismatch | frames | exact |
+| --- | ---: | ---: | ---: | ---: |
+| `trace-202-v7` | **518** | 950 | **160,183** | **159,203** |
+| `trace-100pct-v7` | **339** | 579 | **96,228** | **95,632** |
+| `trace-1a-v5` | 16 | 4 | 2,129 | 2,125 |
+
+Three mechanisms landed with zero per-segment regressions, in this order: `SwitchGate` + `TouchSwitch`
+(12 improved, plus the documented 1-frame exception), `dashSwitchH`/`dashSwitchV` under their real names
+(+943 frames), then `TempleGate` (type, `Awake` start state, the `SwitchOpen` alarm and switch claiming;
+516) and `FloatySpaceBlock` (real motion plus the derived `System.Random` phase; 518). `Session.DoNotLoad`
+parking, the persistent dash-switch flag and `Session.Cassette` are in as well and measure inert on this
+corpus, with the reasons recorded above.
