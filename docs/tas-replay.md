@@ -3486,3 +3486,26 @@ threading it into the two helpers is a two-signature change.
 Note this supersedes part of the previous note: `bounce` accumulating the amount was necessary but not
 sufficient - the real defect for g-01 is in `super_bounce`/`side_bounce`, which are what the Spring interaction
 calls.
+
+### spring fix attempt: both bounce bodies are patched, the call sites are not what I assumed
+
+Attempted the `super_bounce`/`side_bounce` counter fix. Both function bodies and both signatures matched
+uniquely and were rewritten (to `move_axis_amount_silent`), but the build failed with:
+
+```
+error[E0308]: mismatched types
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+```
+
+for two reasons, and the second is the informative one:
+
+1. `super_bounce`'s call site matched, but `map` there is presumably a `&Map` (the enclosing loop borrows
+   `map.entities`), so passing it to a `&mut Map` helper is a type error - `E0308`;
+2. `side_bounce`'s call site did **not** match the text I guessed (the pattern count was 0), so it kept the old
+   3-argument form - `E0061`.
+
+Reverted in the same step and the tree is clean. The fix is still the right one, but the next attempt must
+read the actual Spring branch first (both call sites verbatim, and how `map` is borrowed there) rather than
+patching from the earlier partial reads - the loop that holds the `&Entity` is exactly where a `&mut Map` call
+needs the borrow to be released, so it may need the two values copied into locals and the entity borrow ended
+before the call, or the helper to be split so it does not need `&mut Map` for the vertical case.
