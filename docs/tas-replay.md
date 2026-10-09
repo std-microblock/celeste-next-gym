@@ -1995,3 +1995,31 @@ few rounds (`TempleGate`, `FloatySpaceBlock`, `SwitchGate`/`TouchSwitch` dash sw
 phantom: all of them measured zero per-segment regressions, which is a statement about segments that
 already diverged, not about collisions they might newly introduce. The same signature should be checked on
 the other segments in the `StDash -> StNormal` family before fixing anything.
+
+### The skipped gravity step is not the ground probe: `speed.y` is reset instead
+
+Instrumented the probe at `sim.rs:6826` (printing `grounded(p, map)`, the pre-gravity `speed.y`, and every
+entity whose bounds intersect the probe rectangle) and ran the `g-01` slice. Result:
+
+```
+GROUND pos=(26076,-19084) vy=0.000 geo=false entities=[]
+GROUND pos=(26077,-19082) vy=0.000 geo=false entities=[]
+GROUND pos=(26081,-19082) vy=0.000 geo=false entities=[]
+GROUND pos=(26082,-19082) vy=0.000 geo=false entities=[]
+```
+
+Two things follow, and both change the search:
+
+1. **No phantom solid.** `geo` is `false` on every probed frame near the divergence and no entity overlaps
+   the probe rectangle, so the previous note's hypothesis (a newly added solid kind making the simulator
+   think it is grounded) is **refuted**. The `TempleGate`/`FloatySpaceBlock`/`SwitchGate` additions are not
+   implicated here.
+2. **The simulator's pre-gravity `speed.y` is 0** on those frames while the game's is 7.5 then 15. The
+   gravity gate `if !p.on_ground` (`:7462`) is therefore satisfied and gravity *is* applied - the value
+   being stepped is simply the wrong one, because something reset `speed.y` to 0 earlier in the frame. The
+   bug is a **`speed.y` reset**, not a ground probe: candidates are the dash-end path (`DashEnd`'s
+   `Speed.Y` handling), the publish block, or a `var_jump`/`varJump` write.
+
+Next: print `speed.y` at three points in the frame (before the state callback, after it, after the publish)
+on rows 135318-135321 and find which write takes it to 0, then compare that site with
+`vendor/celeste-fna/Celeste/Player.cs`'s `DashEnd`/`NormalBegin`.
