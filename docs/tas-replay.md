@@ -2785,3 +2785,79 @@ with no transition modelled - the `roof07` case is just the one where the harnes
 Next: find how the simulator's transition state is meant to be established (the anchor restore or the
 harness's stall handling) and make a `transitioning` row set it, then verify with `--rooms roof07` (both
 segments should go `exact = 0` -> `6`).
+
+### FIXED: a stalled `transitioning` row is replayed by the simulator's own transition model
+
+The two shapes the last round left open are now decided by measurement, not by reading. The dump
+(`--rooms roof07 --dump-segment "Celeste/3-CelestialResort|0|roof07|42489"`) tail, before the fix:
+
+```
+row=42491 gameMove=(1.00000,0.00000) gameCounter=(0.41699,0.00000) rustMove=(0.00000,0.00000) stalled=true freeze=0.01667
+...
+row=42495 gamePos=(8236.0,-785.0) gameCounter=(0.,0.) gameMove=(0.58301,0.) gameSpeed=(323.,-60.) rustPos=(8231.,-785.) rustMove=(0.,0.)
+```
+
+So the game moves by **exactly one whole pixel per frame with the movement counter frozen** and no
+speed write, and stops on `bounds.Left + 4` (`8232 + 4 = 8236`). That is not the clamp shape:
+`Level.EnforceBounds` returns immediately while `transition != null` (`Level.cs:2729-2732`), and its
+side clause is a hard `player.Left = bounds.Left` plus `OnBoundsH` (`:2746-2747`), which would be a
+multi-pixel jump and would write `Speed.X = 0`. It is
+
+* the coroutine's entry target: `for (; !IsInBounds(playerTo, dirPad); playerTo += direction) { }`
+  from `player.Position` (`Level.cs:1521-1528`) with `dirPad = direction * 4f`, i.e. the first
+  position with `X >= bounds.Left + 4` (`IsInBounds(Vector2, Vector2)`, `:2850-2862`);
+* and its mover: `Player.TransitionTo` = `MoveTowardsX(target.X, 60f * Engine.DeltaTime)`
+  (`Player.cs:1560-1580`), which is 60 * 0.0166667 = exactly one pixel per frame at 60 Hz and
+  rounds `Speed` on the frame `Position == target` - the trace's `323.333 -> 323.000` at row 42495.
+
+The fix, in two places:
+
+* `crates/celeste-physics/src/sim.rs` - `Simulator::resume_transition` arms the transition from the
+  replayed row (`transition_entry_direction` mirrors `EnforceBounds`' clauses;
+  `transition_entry_target` derives `playerTo` from the room being entered, since the coroutine's own
+  start row belongs to the segment for the room being left and can never be read back), and
+  `Simulator::finish_transition` ends it when the trace says `transitioning` is over. The trace
+  carries no target, duration or speed, so the simulator's own model runs. The room-derived target is
+  exact on every replayed transition row: 2874 of `trace-202-v7.jsonl`'s 438,001 level rows carry a
+  fractional `Player.Position` (`StCassetteFly` tweens it directly) and **none** of its 54,521
+  `transitioning` rows does, so the adjusted bound (`bounds.Left + 4f` for a rightward entry,
+  `Level.cs:2850-2862`) is the number the engine lands on.
+* `crates/celeste-physics/examples/tas_fidelity.rs` - the replay loop splits the stalled rows:
+  `trace_transition = stalled[index] && frame.transitioning == Some(true)` calls `resume_transition`
+  instead of `skip_engine_frame`, and a stalled transition row is compared rather than skipped as a
+  `frozenMutation` (it is no longer a row the simulator structurally cannot reproduce).
+
+The stalled witness must stay in the conjunction. `Level.Transitioning` turns true on the frame
+`TransitionRoutine` is *created* - inside the `Player.Update` that ran `EnforceBounds` - while
+Monocle only resumes a fresh coroutine on the next `Update`, so the transition's first row is an
+ordinary `Player.Update` row. It is also the last row of the segment for the room being left, so
+gating on the bit alone cost every room-change segment its final frame (measured: 15 of 1a's 20
+segments flipped `ok` -> `mismatch` with `frames` unchanged and `exact` -1 each).
+
+Result: `--rooms roof07` is `ok=2 mismatch=0 frames=114 exact=114` (was `ok=0 mismatch=2 frames=12
+exact=0`); both segments replay to the end of the room, 57 exact frames each, with `rustPos ==
+gamePos` on every row.
+
+Why it is exactly these three segments (and not the ~40-row transition window of every room change):
+a transition window is normally *leading*-skipped, because `Player.StrawberryCollectResetTimer` is
+frozen for the whole window and the first live row is the one after it, so the simulator never sees
+transition rows at all. Here the witness breaks *inside* the window: a strawberry is collected while
+the transition runs (`Strawberry.OnCollect` writes `obj.StrawberryCollectResetTimer = 2.5f`,
+`Strawberry.cs:339`, and `CollectRoutine`'s `base.Tag = Tags.TransitionUpdate`, `:383`, is why the
+entity keeps updating), so the row where the timer jumps is both non-stalled and mid-transition, and
+it becomes the segment's anchor with the transition live around it. That is the reproducible shape:
+`leading = 1`, `stalled = 57`, `frozenMutation = 5`, `stallTransition = 6`.
+
+Full runs, diffed with `classes/q-regress.mjs` against a baseline built from the same commit
+(`gate-fl2-202`/`gate-fl2-100pct`/`gate-tg2-1a` numbers reproduced exactly: `518 / 160,183 /
+159,203`, `339 / 96,228 / 95,632`, `16 / 2,129 / 2,125`):
+
+| trace | improved | identical | regressed | frames | exact | ok |
+| --- | ---: | ---: | ---: | --- | --- | --- |
+| `trace-202-v7.jsonl` | 2 | 1466 | **0** | 160,183 -> 160,285 | 159,203 -> 159,317 | 518 -> 520 |
+| `trace-100pct-v7.jsonl` | 1 | 917 | **0** | 96,228 -> 96,279 | 95,632 -> 95,689 | 339 -> 340 |
+| `trace-1a-v5.jsonl` | 0 | 20 | **0** | 2,129 | 2,125 | 16 |
+
+Every changed segment is `3-CelestialResort|0|roof07` (`42489`, `296596`, `43582`), each
+`mismatch/6/0` -> `ok/57/57`; no other segment in any trace changes `frames`, `status` or
+`exactPrefixFrames`.
