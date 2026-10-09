@@ -2672,3 +2672,31 @@ Its own freeze branch subtracts one `DT` per frame (`p.freeze_timer = (p.freeze_
 `p.frame_delta_time` is 0, or the value is re-set every frame by something else. So the next probe belongs
 on the freeze branch itself: print `p.freeze_timer` immediately before and after the decrement (and
 `p.frame_delta_time`) for rows 42488-42496, and find out whether the branch runs and what it subtracts.
+
+### The pinned DT means `step` is never called on those frames - the loop and the guard trap each other
+
+Read the current freeze structure:
+
+```rust
+6726:  if p.freeze_timer > 0.0 { p.freeze_timer = (p.freeze_timer - raw_delta_time).max(0.0); }  // respawn block
+6729:  return Ok(());
+...
+6734:  if p.freeze_timer > 0.0 { p.freeze_timer = (p.freeze_timer - DT).max(0.0); return Ok(()); }
+```
+
+The main freeze branch **does** subtract one `DT` and return, so a timer holding `0.01667` would reach `0` in
+one call. The dump shows it pinned at exactly DT for every frame of the window, so `step` is not reaching
+that branch at all - the gate's replay loop must be calling `skip_engine_frame()` **instead of** stepping on
+those rows.
+
+That closes a loop: the guard at `:1855` is `stalled[index] && !simulator_frozen`. On the first stalled row
+the simulator is not yet frozen, so `skip_engine_frame()` runs and sets `freeze_timer = DT` - and from then
+on `simulator_frozen` is true, so the guard's second conjunct is false and the call never fires again. If the
+loop also does not step on those rows, nothing ever decrements the timer and the simulator stands still for
+the rest of the window while the game advances the player. The counterexample is `roof07`, where the game's
+`freezeTimer` is 0 and `transitioning` is true, so there is no freeze to model in the first place.
+
+So the fix is not in `skip_engine_frame` and not in the freeze branch: it is in the loop's decision, which
+takes one bit of information (the trace's `stalled` witness) where two are needed - *was this an engine
+freeze, or a transition in which the player still moves* (`transitioning`, already parsed into `Frame`, and
+already used for the diagnostic classification at `:1829`).
