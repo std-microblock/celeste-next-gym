@@ -1577,3 +1577,18 @@ that they disagree *within* the frame - the callback's state at the moment `Wind
 the gate's end-of-frame `gameState`/`rustState` cannot show. Settling it needs the wind decision printed
 per frame (state at the wind call, after the dispatch, and the delta) on a slice of `g-01`, not another
 global edit.
+
+### Merging `floaty` needs four test call sites updated (`Simulator::new` now takes `&mut Map`)
+
+The `floaty` branch (`187c7b9`, 7 improved / 0 regressed on both v7 traces, ok 511 -> 513 and 334 -> 336,
+344 tests) changes `Simulator::new` to take `&mut Map`, because its `Awake` pre-roll moves the blocks
+before the first update. Merging it onto current `master` therefore breaks the *test* build with four
+`E0308` mismatched types (expected `&mut map::Map`, found `&map::Map`) plus two `E0596` "cannot borrow
+`map` as mutable" in the tests added by the `gate`/`dashflag`/`cassette` branches.
+
+A first mechanical pass fixed the `&ident` forms (`Simulator::new(x, &map)` -> `&mut map`) and added `mut`
+to the bindings the compiler named, which cleared the `E0596`s, but four sites remain - they do **not** use
+the `&`-prefixed form, so the exact lines have to be read from the compiler before patching. The merge was
+rolled back rather than committed with a failing test build; the branch is untouched and can be merged
+again as soon as those four sites are updated. Recorded so the next attempt starts from the error list
+rather than from a regex.
