@@ -1041,3 +1041,26 @@ Both `trace-100pct-v6.jsonl` and `trace-202-v6.jsonl` are valid *pre-flags* trac
 they are byte-for-byte the same field set as v5 - so nothing is lost, but the session-state work
 (`switches_<room>`, `Session.DoNotLoad`, `Session.Cassette`) still needs one more export pass with the
 v6 DLL installed.
+
+## Round 52-54: the flags-carrying traces exist, and how to export them
+
+`trace-202-v6b.jsonl` (1,798,002,573 B) and `trace-100pct-v6b.jsonl` (1,101,479,186 B) were exported with
+the v6 exporter and **asserted**: the first 40,000 rows of the 202 file contain 36,739 with a `flags`
+array (`"flags":["CelesteTAS_TAS_Was_Run"]` immediately after `inventory`, in the append-only tail).
+
+Recipe, including the two traps that cost a round each:
+
+1. install the v6 DLL (from `celestetas-trace-w8v5`, SHA256 `DDAC7E16...33F4739`) over
+   `game-trace/Mods/CelesteTAS-EverestInterop/bin`, then **delete `game-trace/Mods/Cache/CelesteTAS*`**
+   so Everest rebuilds the merged cache from the new DLL - otherwise the loader keeps serving the old one
+   and the run reports `status: success` with a pre-flags trace;
+2. pass the **plain** TAS as `-TasFile` (`0 - 100%.tas`, `0 - 202 Berries.tas`), never the `_trace-*.tas`
+   helpers: those carry their own `TasFrameTrace` line, and the second command's `Begin()` flushes the
+   first (empty) writer to 0 bytes and redirects every row to the *other* file;
+3. **assert the new key before believing the trace** - size, wall time and `status: success` were all
+   normal on the export that turned out to carry no `flags` at all.
+
+Not yet done: the gate has not been run against the v6b traces. Expect per-segment identity with the v5
+baselines (the gate ignores unknown keys), but `crates/` has been owned by the `dashSwitchH/V` workstream
+since round 47, so the run is queued behind it - measuring then would only measure that half-finished
+tree.
