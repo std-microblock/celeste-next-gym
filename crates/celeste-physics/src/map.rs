@@ -159,6 +159,17 @@ pub enum EntityKind {
     /// up to 0.4 s of further standing, sets `Collidable = false`, waits 2 s and re-arms once
     /// nothing overlaps it. Standing *on* one is the case that matters for the trace.
     CrumbleBlock,
+    /// Vanilla `Celeste.FloatySpaceBlock : Solid` (`FloatySpaceBlock.cs:9`, map name
+    /// `floatySpaceBlock`): the bobbing Farewell block. `base(position, width, height, safe: true)`
+    /// (`:44`) takes the raw map rectangle as the collider, and `Depth = -9000` (`:47`) puts its
+    /// update *after* `Player.Update`. Each frame the group master recomputes a target
+    /// `Lerp(originalY, originalY + 12, Ease.SineInOut(yLerp)) + sin(sineWave) * 4` plus a dash
+    /// offset and moves every group member there through `MoveToY`/`MoveToX` (`:288-289`), i.e.
+    /// whole-pixel `MoveHExact`/`MoveVExact` that carries riders. `direction` carries the two
+    /// constructor inputs a replay needs: `x` is `data.Bool("disableSpawnOffset")` (which selects
+    /// `sineWave = 0` instead of the random spawn draw, `:50-57`) and `y` is the `tiletype` char
+    /// code, which groups touching blocks (`:189`).
+    FloatySpaceBlock,
     /// Vanilla `Celeste.SwitchGate : Solid` (map name `switchGate`): a solid gate that waits for
     /// every `Switch` component in the room to finish (`Switch.FinishedCheck`, `Switch.cs:99-110`),
     /// then runs `SwitchGate.Sequence` (`SwitchGate.cs:102-145`): `yield 0.1`, a 0.5 s icon ramp
@@ -231,6 +242,10 @@ pub struct RoomRuntime {
     pub solids: Vec<Rect>,
     #[serde(default)]
     pub entities: Vec<Entity>,
+    /// This room's own `LevelData.LoadSeed`: a transition into it re-runs `Level.LoadLevel`
+    /// (`Level.cs:1509`) and therefore re-seeds `Calc.Random` (`:386`) from *its* name.
+    #[serde(default)]
+    pub load_seed: i32,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Map {
@@ -270,6 +285,12 @@ pub struct Map {
     /// Visual/skin metadata aligned by index with entities.
     #[serde(default)]
     pub entity_visuals: Vec<EntityVisual>,
+    /// `LevelData.LoadSeed` (`LevelData.cs:99-111`): the sum of the level name's char codes with
+    /// the first four (`lvl_`) stripped. `Level.LoadLevel` pushes `Calc.Random` onto a
+    /// `System.Random` seeded with it for the whole room build (`Level.cs:386-1386`), which is what
+    /// `FloatySpaceBlock`'s constructor draws its `sineWave` from (`FloatySpaceBlock.cs:50-57`).
+    #[serde(default)]
+    pub load_seed: i32,
 }
 
 /// Raw per-room contents used by offline compatibility scanners. Unlike
@@ -301,6 +322,7 @@ impl Default for Map {
             source_package: None,
             tile_grid: vec![],
             entity_visuals: vec![],
+            load_seed: 0,
         }
     }
 }
@@ -1114,6 +1136,33 @@ pub(crate) fn encode_celeste_rooms(
                     ],
                     vec![],
                 )),
+                // `floatySpaceBlock` round-trips its raw rectangle plus the two constructor
+                // inputs `EntityKind::FloatySpaceBlock` keeps in `direction` (`FloatySpaceBlock.cs:60-63`).
+                EntityKind::FloatySpaceBlock => Some(element(
+                    "floatySpaceBlock",
+                    [
+                        (
+                            "disableSpawnOffset",
+                            BinaryValue::Bool(entity.direction.x != 0.0),
+                        ),
+                        ("height", BinaryValue::Int(height)),
+                        ("id", BinaryValue::Int(id)),
+                        ("originX", BinaryValue::Int(0)),
+                        ("originY", BinaryValue::Int(0)),
+                        (
+                            "tiletype",
+                            BinaryValue::String(
+                                char::from_u32(entity.direction.y as u32)
+                                    .unwrap_or('3')
+                                    .to_string(),
+                            ),
+                        ),
+                        ("width", BinaryValue::Int(width)),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    vec![],
+                )),
                 EntityKind::StaticSolid => Some(element(
                     &entity.name,
                     [
@@ -1541,6 +1590,9 @@ fn map_from_binary_inner(
     let height = attr_f32(level, "height", 180.0);
     let mut map = Map {
         bounds: level_room_bounds(x, y, width, height),
+        // `Level.LoadLevel`'s `Calc.PushRandom(Session.LevelData.LoadSeed)` (`Level.cs:386`) is
+        // what makes `FloatySpaceBlock`'s constructor draw reproducible (`FloatySpaceBlock.cs:52`).
+        load_seed: crate::legacy_random::load_seed(&attr_text(level, "name").unwrap_or_default()),
         transition_rooms: levels
             .children
             .iter()
@@ -1620,6 +1672,7 @@ fn map_from_binary_inner(
                 "plateau" | "bridgeFixed" | "starJumpBlock" | "crumbleWallOnRumble" => EntityKind::StaticSolid,
                 "resortRoofEnding" => EntityKind::StaticSolid,
                 "crumbleBlock" => EntityKind::CrumbleBlock,
+                "floatySpaceBlock" => EntityKind::FloatySpaceBlock,
                 "switchGate" => EntityKind::SwitchGate,
                 "touchSwitch" => EntityKind::TouchSwitch,
                 // `DashSwitch.Create` (`DashSwitch.cs:103-122`) dispatches on these two names
@@ -1874,6 +1927,25 @@ fn map_from_binary_inner(
                     // `CrumblePlatform(EntityData, offset) : base(position, width, 8f, safe: false)`
                     // (`CrumblePlatform.cs:8`): the raw rectangle is the collider, eight pixels high.
                     "crumbleBlock" => (Rect::new(ex, ey, raw_width, 8.0), Vec2::default()),
+                    // `FloatySpaceBlock(EntityData data, Vector2 offset) : this(data.Position +
+                    // offset, data.Width, data.Height, data.Char("tiletype", '3'),
+                    // data.Bool("disableSpawnOffset"))` (`FloatySpaceBlock.cs:60-63`) forwards the
+                    // raw rectangle to `Solid(position, width, height, safe: true)` (`:44`), whose
+                    // `Collider = new Hitbox(width, height)` keeps offset `(0, 0)` - so the map
+                    // rectangle *is* the collider. `direction.x` is `disableSpawnOffset`
+                    // (`:50-57`) and `direction.y` the `tiletype` char code, the two constructor
+                    // inputs `sim::initialize_floaty_blocks` needs.
+                    "floatySpaceBlock" => (
+                        Rect::new(ex, ey, raw_width, raw_height),
+                        Vec2::new(
+                            if attr_bool(el, "disableSpawnOffset", false) {
+                                1.0
+                            } else {
+                                0.0
+                            },
+                            attr_char(el, "tiletype").unwrap_or('3') as u32 as f32,
+                        ),
+                    ),
                     // `SwitchGate(data, offset) : base(data.Position + offset, data.Width,
                     // data.Height, safe: false)` (`SwitchGate.cs:34-35`): the raw rectangle; its
                     // `nodes[0]` target is decoded generically and `direction.x` carries
@@ -2026,6 +2098,12 @@ fn map_from_binary_inner(
                         // `FGAutotiler.GenerateBox/GenerateOverlay`
                         // (`DashBlock.cs:56-68`).
                         EntityKind::DashBlock => Some(attr_char(el, "tiletype").unwrap_or('3')),
+                        // `FloatySpaceBlock` takes `data.Char("tiletype", '3')`
+                        // (`FloatySpaceBlock.cs:61`) and feeds it to the autotiler and to the
+                        // same-`tiletype` group test (`:189`).
+                        EntityKind::FloatySpaceBlock => {
+                            Some(attr_char(el, "tiletype").unwrap_or('3'))
+                        }
                         _ => None,
                     },
                     // `DashBlock.blendin` is presentation only, so it is kept with
@@ -2134,6 +2212,7 @@ fn map_from_binary_inner(
                     },
                     solids: decoded.solids,
                     entities: decoded.entities,
+                    load_seed: decoded.load_seed,
                 })
             })
             .collect::<Result<Vec<_>, MapError>>()?;
@@ -2217,6 +2296,7 @@ impl Map {
                         // Kept in step with `sim::is_solid_entity`: this list is what the
                         // ground probe consults, so a kind added only there is inert.
                         | EntityKind::CrumbleBlock
+                        | EntityKind::FloatySpaceBlock
                         | EntityKind::StaticSolid
                         | EntityKind::SwitchGate
                         | EntityKind::DashSwitch
