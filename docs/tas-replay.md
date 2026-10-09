@@ -1310,3 +1310,21 @@ What is established is that the room's `switchGate` is `persistent=false`, so it
 written, and that both timing fixes are no-ops for the corpus. The next attempt should dump the gate's
 per-frame position *and* the player's collider side by side for that window instead of inferring one
 from the other.
+
+### Two things off the critical path (recorded so they are not re-litigated)
+
+**The `DoNotLoad` workstream is corpus-inert, and so are its conditional solids.** Parking the entities
+`Session.DoNotLoad` names measured `0 improved / 1468 identical / 0 regressed` on 202 (commit `822134a`),
+and the two *conditional solids* it decides are the same story: `Level.cs:853-871` builds an `ExitBlock`
+for a `conditionBlock` only when its `conditionID` (`"Level:ID"`, `:857-859`) satisfies the condition -
+`Session.DoNotLoad.Contains(id)` for `Key` (`:863`, the default), `Session.GetFlag(DashSwitch.GetFlagName(id))`
+for `Button` (`:862`) - and `ridgeGate` (`:878-883`) is built only when `GotCollectables` holds. Both
+conditions are now knowable in the simulator (the do-not-load set and the pressed-switch flags are both
+carried), but `conditionBlock` appears in exactly one map, so this is not where the remaining 956
+mismatches live. Left unimplemented on purpose.
+
+**Heavy gate runs must be serialised.** Three concurrent 202 gate runs (each reading the 1.8 GB trace)
+made one of them exit `1` with **no output at all** - which reads like a crash and is not one: a
+`--limit-segments 60` run of the same binary immediately succeeded. If a gate run dies silently, check
+for concurrent runs before suspecting the change. Sub-200-segment runs (`--rooms`, `--limit-segments`)
+are the right tool for a single hypothesis and cost ~20 s.
