@@ -3366,3 +3366,29 @@ whether the step collides. One pixel of position difference on the following fra
 
 Next: read the simulator's `bounce`/`reset_for_spring_bounce` path and check which rect it passes to the
 movement, then make the bounce swap to the normal hitbox exactly as the source does.
+
+### The bounce rect is right; the arithmetic says something ELSE cleared the simulator's counter
+
+`player_rect` (`sim.rs:9543`) is `Rect::new(x - 4.0, y - 11.0, 8.0, 11.0)` - the ordinary 8x11 body - and
+`bounce` probes with exactly that (`:10949`), matching the source's temporary `normalHitbox` swap. So the
+round-200 hypothesis ("the simulator uses a different rectangle for the bounce step") is **refuted**.
+
+The numbers do give the real arithmetic, though. Writing `amount` for the source's `MoveV(fromY - Bottom)`:
+
+| | counter in | amount | result |
+| --- | ---: | ---: | --- |
+| game | 0.37504 | 0.08334 | `round(0.37504 + 0.08334) = round(0.45838) = 0` pixels, counter carries **0.45838** |
+| simulator | 0.37504 | 0.08334 | `(0.08334) as i32 = 0` pixels, counter observed **0.0** |
+
+The game's column reproduces the trace exactly, which confirms the mechanisms involved (`MoveV` goes through
+`movementCounter`; a fractional amount can round to zero whole pixels). But the simulator's `as i32` cast
+yields `0`, so its whole-pixel loop does not execute at all - which means the clearing at `:10952` cannot have
+fired either. Its counter being `0.0` therefore came from **some other write** to `movement_remainder.y` on
+that frame, and that write is what to find next: candidates are the physics move
+(`move_axis_amount`/`move_axis_amount_inner`'s `collided` branch, which clears the counter), a state-entry
+helper, or the bounce caller.
+
+Separately worth fixing on its own: the `as i32` truncation is not what the source's `MoveV` does - the source
+adds the amount to the counter and moves `round(counter + amount)` whole pixels, so a fractional amount must
+still be accumulated rather than dropped. That is a modelling difference even where it does not (yet) show in
+the traces.
