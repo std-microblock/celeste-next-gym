@@ -2047,3 +2047,30 @@ rather than by position.
 
 Next probe (cheap): print `p.on_ground`, `p.player_on_ground`, `grounded(p, map)` and `p.speed.y` in the
 same line, and match by the *row* the gate reports (the dump gives the row index) instead of by position.
+
+### New suspect: the simulator's `jump_held` is false where the trace holds jump
+
+The same-line probe (`p.on_ground`, `p.player_on_ground`, `grounded(p, map)`, `p.speed.y`, state and the
+frame's inputs) on the `g-01` slice:
+
+```
+OG pos=(26084,-19082) vy=0.0000 state=Normal geo=false pog=false og=false in=(1,0,false,false)
+OG pos=(26082,-19082) vy=0.0000 state=Normal geo=false pog=false og=false in=(1,0,false,false)
+```
+
+Two readings:
+
+1. `geo`, `player_on_ground` and `on_ground` are **all false** on the probed frames, so the "phantom solid"
+   suspicion does not hold on this path (this time the four values come from the same line, which is
+   stronger evidence than the earlier position-matched log).
+2. **`jumpHeld=false`** - while the trace says `in.jump = true` on rows 135319-135323 (`mx=1`, `my=0`, which
+   do match). The simulator is not seeing the held jump on those frames, and `jump_held` is exactly the
+   input the variable-jump half-gravity branch reads (`sim.rs:7454-7455` for the multiplier, `:7469-7475`
+   for `var_jump_timer`), which is the context the missing gravity step lives in.
+
+Caveat kept from the previous note: `pos` (and even `pos + inputs`) is not a guaranteed unique key across a
+frame, so this needs to be confirmed by matching on something that carries a row index - e.g. printing a
+per-run frame counter alongside, or dumping the segment with the gate and comparing the row the gate names.
+
+If it confirms, the search moves to the harness's input plumbing for `jump_held` (`tas_fidelity.rs`'s
+`InputRec` -> `InputState`), not to `normal_update`.
