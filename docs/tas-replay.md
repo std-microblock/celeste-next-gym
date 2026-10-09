@@ -3145,3 +3145,34 @@ Same trigger condition, same flag (`snapUp = false`), same respawn constant, sam
 
 Given (1) is cheap to read and (2) is a new entity, the next step is to compare the Puffer's collide gate on
 both sides before considering (2).
+
+### +-280 candidate: the Puffer's launch lives in `Explode()`, the simulator fires it on overlap
+
+Source (`Puffer.cs:224-233`):
+
+```csharp
+private void Explode() {
+    Collider collider = base.Collider;
+    base.Collider = pushRadius;                      // circle, same shape as the Seeker's
+    ...
+    Player player = CollideFirst<Player>();
+    if (player != null && !base.Scene.CollideCheck<Solid>(Position, player.Center))
+        player.ExplodeLaunch(Position, snapUp: false, sidesOnly: true);
+}
+```
+
+So the Puffer's launch is **not** an overlap interaction: it happens inside `Explode()`, i.e. when the Puffer
+transitions into its exploding/gone state (after being hit and running its own state machine), and it is gated
+on the `pushRadius` circle plus the no-solid-between segment check - the same shape as the Seeker's
+`RegenerateCoroutine` tail.
+
+The simulator calls `explode_launch(p, input, target, false, true)` from a per-entity interaction switch
+(`sim.rs:10726`, the same level as the Bumper's `:10601`), which is an **overlap-time** trigger. That is a
+frame-placement difference of exactly the kind the +-280 cluster shows, and unlike `TempleBigEyeball` the
+Puffer entity, its states and its motion are already modelled - so this is the cheapest remaining candidate.
+
+Next: read the simulator's Puffer branch and its state machine (`Gassed`/`Gone`/`goneTimer`, `Puffer.cs`
+`Update`) to see whether the explosion is already modelled elsewhere and merely fires the launch too early,
+then move the launch to the explosion transition and re-measure. The gate itself needs the `pushRadius`
+circle and the segment check - the `segment_hits_solid` helper written for the Seeker work (branch `seeker`)
+is directly reusable if that branch lands; otherwise it is eight lines.
