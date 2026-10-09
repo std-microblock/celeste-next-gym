@@ -1811,3 +1811,28 @@ Next: take three or four of the 329 frames, dump them through the gate (the dump
 `rustSpeed` per frame) and read which frame each side performs the write on - the branch conditions
 (`SuperWallJumpAngleCheck`, the buffered-jump window, the facing) are all in the simulator already, so the
 difference should be a single condition or a single frame of ordering.
+
+### The `-170` cluster and a second, different frame: what the tail dumps actually show
+
+Two things learned from dumping `7-Summit|0|g-01|134447` (833 frames) and `7-Summit|0|g-01|356101`:
+
+1. **`--dump-segment` prints from the segment's first replayed frame, not the tail** - the divergence is at
+   the end, so `-Last 4` is what to read. (Earlier rounds read the first lines of very short segments and
+   were correct by accident.)
+2. The g-01 divergence frame (row 135320, offset 832) is **not** the super-wall-jump write: both sides are
+   `StNormal`, `gameMove = (-2.30556, +0.12500)` with `gameSpeed = (-138.33328, +15.00003)` against the
+   simulator's `rustMove = (-2.30556, 0.00000)` with `rustSpeed = (-138.33328, +7.50001)`. So on that frame
+   the game applied a second `+7.5` of vertical speed (0 -> 7.5 -> 15, i.e. gravity 900/60 = 15 in two
+   half steps) and moved `+0.125 = 7.5 * dt` in y, while the simulator applied only one `+7.5` and moved 0
+   in y. The counter moved identically on both sides (`+0.125`), so the sim's absent y move came from a
+   `MoveV` it performed with a different speed (or not at all), not from the counter.
+3. Also worth knowing for reading dumps: `rustMove` is the simulator's own recorded move total while
+   `gameMove` is `dpos + dcounter`; they are the same quantity only when the counter moves the same way on
+   both sides - which is why c-00's earlier reading looked contradictory.
+
+Candidate readings for the y difference, both one-frame placements: gravity/variable-jump-height applied
+one frame later in the simulator (the game's move uses the freshly stepped speed, the simulator's uses the
+previous frame's), or the half-gravity branch (`Speed.Y < 0 && jump held`) taken one frame longer. The
+frame is reproducible with the single command above; the next step is to print the simulator's
+`speed.y`/`varJumpTimer`/jump-held state on the two frames around offset 831-832 and compare with the
+trace's own `p.*` values.
