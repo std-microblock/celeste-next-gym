@@ -1370,3 +1370,24 @@ So the correct change is to **delay** the publish by one frame - keep the write,
 the frame after `DashBegin`, i.e. widen the window by one `dt` on the low side while keeping the
 initial-yield term out of the way - and to check `DashDir`/`Speed` against the trace on both frames
 rather than just the end of the begin frame. Reverted; tree rebuilt.
+
+### The dash publish needs a one-frame pending flag, not a moved window (second failed fix)
+
+Delaying the whole publish block by one frame - `if p.state_timer <= DASH_TIME - dt*0.5` in place of the
+symmetric window - measured **2 improved / 261 identical / 1205 regressed** (`516 -> 37` ok,
+`159,915 -> 43,395` frames). Together with the previous attempt (skipping the publish: 0/300/1168) that
+brackets the defect precisely:
+
+- the block *after* the guard is not just the publish - it carries the dash's own bookkeeping, which must
+  keep running on the `DashBegin` frame (moving it breaks every dash);
+- the publish itself (`dash_dir = last_aim; speed = dash_dir * DASH_SPEED`, plus the before-dash-speed
+  carry and the water multiplier) must happen on the frame *after* `DashBegin`, when `DashCoroutine`'s
+  initial `yield return null` resumes;
+- skipping it entirely never publishes, because the guard `|state_timer - DASH_TIME| <= dt*0.5` is
+  satisfied only on the begin frame (`begin_dash` sets `state_timer = DASH_TIME + dt` and one `dt` is
+  subtracted before the check).
+
+So the shape that can work is an explicit pending flag: on the begin frame set "publish due" and do not
+write, on the next frame publish and clear. That is a `PlayerSnapshot` field the trace does not export
+(derived, like `previous_state`), so it also needs an entry in the field-coverage table - which is
+exactly what the `--dump-field-map` audit has been warning about.
