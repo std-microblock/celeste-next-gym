@@ -3446,3 +3446,43 @@ Combined with what is already on master this closes the Puffer question for now:
 Cheapest path to close both: cherry-pick the branch's code hunks (`sim.rs`, `types.rs`, `lib.rs`, nothing in
 `tas_fidelity.rs` beyond a field-coverage entry) - its own report says they do not collide with master and that
 only `docs/tas-replay.md` conflicts. That is a small, self-contained follow-up rather than a new investigation.
+
+### ROOT CAUSE for the g-01 tail: the bounce helpers hard-set the position instead of moving by counter
+
+`sim.rs`:
+
+```rust
+10854: fn super_bounce(p: &mut PlayerSnapshot, from_y: f32) {
+10857:     p.pos.y = from_y;                        // hard set
+10858:     p.movement_remainder.y = 0.0;            // and the counter is thrown away
+...
+10865: fn side_bounce(p: &mut PlayerSnapshot, dir: i8, spring: Rect) {
+10869:     p.pos.y += (from_y - p.pos.y).clamp(-4.0, 4.0);
+10875:     p.movement_remainder = Vec2::default();  // both axes dropped
+```
+
+while the source (`Player.cs:2717`, `:2749`) does:
+
+```csharp
+base.Collider = normalHitbox;
+MoveV(fromY - base.Bottom);                            // counter-based whole-pixel move
+...
+MoveV(Calc.Clamp(fromY - base.Bottom, -4f, 4f));        // SideBounce
+MoveH(fromX - base.Left);                               // and a horizontal one
+```
+
+This matches the g-01 measurement exactly: at offset 1196 both sides had the same position (the bounce moved
+zero whole pixels on both) but the game carried `movement_remainder.y = 0.45838` out of the frame while the
+simulator had `0.0` - because the simulator discarded the fraction (`as i32` truncation in `bounce`, which is
+now fixed to accumulate, and a hard clear in `super_bounce`/`side_bounce`, which is not). The one-pixel
+position difference appears on the following frame.
+
+The fix is the same shape as the wind and the `bounce` change already landed: make these helpers move by
+`movementCounter` rather than assigning the position - `move_axis_amount_silent` is the existing helper that
+does exactly that (counter accumulation, whole-pixel steps, counter cleared only on a blocked step, no
+`OnCollide`), and both call sites (`sim.rs:10652`/`:10655`, the Spring branch) already have `map` in scope, so
+threading it into the two helpers is a two-signature change.
+
+Note this supersedes part of the previous note: `bounce` accumulating the amount was necessary but not
+sufficient - the real defect for g-01 is in `super_bounce`/`side_bounce`, which are what the Spring interaction
+calls.
