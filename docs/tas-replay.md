@@ -3098,3 +3098,29 @@ Implementation sketch: give `SeekerSnapshot` the coroutine phases (the 1.0 / 0.2
 
 Workstream status: branch `seeker` still has zero changes after three rounds; nothing is lost (worktree
 clean), and the task is now specified to the point where it is a mechanical edit rather than a diagnosis.
+
+### Correction: the +-280 cluster is NOT the Seeker - measured entity distribution
+
+The `seeker` workstream checked every room the 202 trace visits with `inspect_map` and found that in this map
+set Seekers live **only** in `Celeste/5-MirrorTemple` (rooms `c-*`, `d-*`, `e-*`, `void`) and
+`Celeste/LostLevels` (Farewell: `c-00`, `c-alt-00`, `d-00`, `e-02/04/06/08`, `j-*`, `end-golden`).
+**`6-Reflection` contains no Seeker entity at all**, and neither do `9-Core` or `LostLevels e-00`. Every
+first-mismatch row of the +-280 cluster that lives in Reflection (`a-05`, `15`, `b-03`, `a-04`, `10a`,
+`b-02`), Core (`c-00b`, `c-03`, `01`) or LostLevels `e-00` therefore **cannot** be a Seeker push-away, and in
+MirrorTemple no segment's first mismatch is a `StLaunch` at all.
+
+So the previous note's inference - "the signature matches, so it is the Seeker" - is wrong. The cluster points
+at the **other `snapUp = true` caller, `TempleBigEyeball`** (`TempleBigEyeball.cs:66`), or at the existing
+Puffer/Bumper trigger **frame placement** - not at the Seeker. That is the second time in this investigation
+that a plausible signature-based inference had to be retired in favour of counting the entities (the first was
+the phantom-solid reading, which a downward-only probe could not see).
+
+Independently measured while testing an interim Seeker patch of my own (since discarded): the Seeker
+stun-exit change is **inert on all three traces** - `0 / 1468 / 0`, `0 / 918 / 0`, `0 / 20 / 0` with frames and
+`exact` unchanged - so the Seeker stun-exit path is not what the corpus is missing either. The workstream's own
+version (`98c9968` on branch `seeker`) models the whole `RegenerateCoroutine` phase chain and is unit-tested;
+whether it earns a landing depends on its three-trace diff, not on the cluster story.
+
+Also worth keeping: `--rooms` matches `segment.room`, which is a **room-local** string like `a-00` or `15` - not
+a chapter name. `--rooms "5-MirrorTemple"` selects nothing (`simulated=0`, `skipped=1468`), which is a silent
+no-op that looks like a passing slice.
