@@ -1952,3 +1952,20 @@ Two candidate explanations, both cheap to check in the harness rather than in th
 Either way this reframes the objective: before hunting more one-frame mechanisms, read the segment-filling
 loop and settle which of the two it is. If it is (1), excluding the boundary row is a harness fix that
 would reclassify the great majority of the 926 in one step - the single highest-leverage change left.
+
+### RETRACTION: `exact == frames - 1` is a tautology, not a boundary artefact
+
+The previous note claimed that 926 of 949 mismatches sharing `exactPrefixFrames == frames - 1` was a
+systematic last-frame boundary artefact. **That is wrong, and the statistic carries no information**: the
+harness replays a segment until the first diverging frame and stops, so the divergence is *by construction*
+on the last frame it replayed (`exact == frames - 1`), while an `ok` segment - having no divergence - ends
+with `exact == frames`. The `0/518` for `ok` segments is the same fact seen from the other side.
+
+The only real signal in that table is the **23 exceptions**: 21 segments with a gap of 2 and 2 with a gap of
+0. A gap of 2 means the harness did not stop at the first frame whose fields differed (a stalled or
+non-mutating row is involved), and a gap of 0 means a segment with no exact prefix at all. Those 21+2 are
+what to look at, not the 926.
+
+The metric that does carry information is how many frames each segment replays before diverging - i.e. the
+`frames` column and the class analysis built on it - which is how the mechanisms in the notes above were
+found in the first place.
