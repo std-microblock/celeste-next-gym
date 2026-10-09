@@ -7651,7 +7651,11 @@ fn intro_jump_update(p: &mut PlayerSnapshot, _map: &Map) {
             return;
         }
         phase = INTRO_PHASE_JUMP_FALL;
-        p.intro_phase = phase;
+        // `wasSummitJump` has to survive into the fall and the landing: the Summit path's
+        // post-landing `yield return 0.35f` (`Player.cs:6055-6061`) and the `Position = start`
+        // skip (`:6048`) both depend on it. Writing the bare phase here dropped the flag, so the
+        // fall ran with `summit == false` and the state ended on the landing frame.
+        p.intro_phase = phase | (p.intro_phase & INTRO_PHASE_SUMMIT_FLAG);
     }
     if phase == INTRO_PHASE_JUMP_SUMMIT_REST {
         if p.intro_timer > 0.0 {
@@ -7670,7 +7674,9 @@ fn intro_jump_update(p: &mut PlayerSnapshot, _map: &Map) {
             return;
         }
         phase = INTRO_PHASE_JUMP_FALL;
-        p.intro_phase = phase;
+        // Same flag preservation as `INTRO_PHASE_JUMP_REST` above: the Summit fall must stay
+        // flagged or the landing takes the non-Summit path.
+        p.intro_phase = phase | (p.intro_phase & INTRO_PHASE_SUMMIT_FLAG);
     }
     if phase == INTRO_PHASE_JUMP_FALL {
         // `while (!onGround) Speed.Y += Engine.DeltaTime * 800f;`
