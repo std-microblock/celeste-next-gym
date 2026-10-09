@@ -2938,3 +2938,26 @@ position (`x ~ 8230`, ducking collider 8 wide, so center `8234`) would be `8242`
 computes against the observed stop before trusting it.
 
 Verification stays binary: `--rooms roof07`, both segments `exact = 0` -> `exact = 6`.
+
+### The transition bit must be ANDed with the stalled witness (the trap that cost 15 segments their last frame)
+
+From the `transition` workstream, and it is the same trap for any future transition work:
+
+> `Level.Transitioning` becomes true on the frame the `TransitionRoutine` is **created** - inside the
+> `Player.Update` that ran `Level.EnforceBounds` - while Monocle only resumes a fresh coroutine on the
+> **next** `Update`. So the transition's first row is an ordinary `Player.Update` row, and it is the **last
+> row of the segment for the room being left**.
+
+Gating on the trace's `transitioning` bit alone therefore cost **every room-change segment its final frame**:
+15 segments went `ok` -> `mismatch` with frames unchanged and `exact` one lower each. The fix is to treat a row
+as a transition frame only when `transitioning` **and** the harness's own stalled witness (an unchanged
+`Player.StrawberryCollectResetTimer`) both hold - i.e. the bit says a transition exists, the witness says the
+player was not updated by the game this frame.
+
+With that: `--rooms roof07` is `ok=2 mismatch=0 frames=114 exact=114` (from `ok=0 mismatch=2 frames=12
+exact=0`), and the 1a diff against a same-code baseline is `0 / 20 / 0` (2,129 frames, 2,125 exact, identical
+to `gate-tg2-1a.json`). The full 202 and 100pct runs were still in flight at the time of writing.
+
+The general lesson: a boolean from the trace that describes a *level* state can lead the *player* state by a
+frame, because Monocle's coroutine resumption is deferred. Any replay logic keyed on such a bit needs the
+player-side witness alongside it - which is exactly what the harness's stalled accounting already computes.
