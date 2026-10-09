@@ -936,6 +936,7 @@ batch mixes a real regression with inert additions and hides which is which.
 | `seekerBarrier` | batch: 3 / 22 | reverted; a Solid for seekers, the player passes through it |
 | `switchGate` | 11 / 2 | reverted; needs `SwitchGate.Open`, the +373 frames are its value |
 | `floatySpaceBlock` | 7 / 1 (net +6) | reverted; one LostLevels segment loses a frame, so it needs its real motion |
+| `resortRoofEnding` | 0 / 0 | kept, inert |
 
 `theoCrystalPedestal` starts `Collidable = false` (`TheoCrystalPedestal.cs:21`), so it is not a
 solid candidate at all.
