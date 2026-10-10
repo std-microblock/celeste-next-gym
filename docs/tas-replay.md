@@ -4587,3 +4587,34 @@ something else in that window.
 This is the second time an arithmetic inference from the A2/A3 totals has been retired by one direct
 measurement, which is the same lesson as the four base/derived misreadings: measure the intermediate value, do
 not infer it from the endpoints.
+
+### SOLVED (localised): the x move is correct; the *vertical* move changes x by 4 - that is the dash corner correction
+
+Probe immediately after `move_axis(p, map, true)` on the divergence frame:
+
+```
+A2 (before either move)   pos=(27328.00,-19637.00) rem=(0.126499,0.321927) sx=-169.70563
+XM (after the x move)     pos=(27325.00,-19637.00) rem=(0.298066,0.321927) sx=-169.70563
+A3 (after the y move)     pos=(27321.00,-19638.00)
+dump at offset 1966       game=(27325,-19637); rustCounter.x = 0.29807, rustMove.x = -6.82843
+```
+
+Three readings:
+
+1. The x move is **exactly right**: `27328 -> 27325` is the game's -3 px, and the resulting remainder
+   `0.298066` matches the dump's `rustCounter.x = 0.29807` to the digit. Nothing is wrong with the horizontal
+   move.
+2. The remaining discrepancy appears **between XM and A3** - i.e. during `move_axis(p, map, false)`, the
+   **vertical** move - which leaves x at 27321 instead of 27325. A vertical move changed x by 4.
+3. The only construct that does that is the dash corner correction inside
+   `move_axis_amount_inner`'s **vertical** branch: its loop body is `p.pos.y += offset; p.pos.x += sign;`, i.e.
+   one correction moves **both** axes - the exact shape and magnitude of the residual.
+
+This also explains why the earlier corner-correction probes appeared not to fire: I read the log with `-Last 8`,
+and the divergence frame's line was almost certainly truncated away rather than absent. The lesson already in
+this log ("do not infer from endpoints") applies to log windows too - read the whole file or filter by the frame
+key, never by the tail.
+
+Next: read the vertical branch's correction loop in `move_axis_amount_inner` (the two loops other than the
+horizontal one) and compare its conditions with the source's dash correction, now with the frame known:
+`7-Summit|0|g-01|134447` offset 1966, where the game does **not** correct and the simulator does.
