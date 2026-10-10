@@ -7801,7 +7801,13 @@ fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     }
     p.state_timer = (p.state_timer - p.frame_delta_time).max(0.0);
     if (p.state_timer - DASH_TIME).abs() <= p.frame_delta_time * 0.5 {
-        p.dash_dir = p.last_aim;
+        p.dash_dir = p.last_aim;
+        // `Player.DashCoroutine` (`Player.cs:4491-4493`): once `DashDir` is published from the aim,
+        // `if (DashDir.X != 0f) Facing = (Facings)Math.Sign(DashDir.X);`. The red-dash path already
+        // does this; the ordinary dash path did not, so the facing landed a frame late.
+        if p.dash_dir.x != 0.0 {
+            p.facing = p.dash_dir.x > 0.0;
+        }
         p.speed = Vec2::new(p.dash_dir.x * DASH_SPEED, p.dash_dir.y * DASH_SPEED);
         // C# Math.Sign(0f) is 0, unlike Rust f32::signum(), which produces
         // +1 for zero. A vertical dash must therefore not retain pre-dash
@@ -8480,7 +8486,13 @@ fn red_dash_update(p: &mut PlayerSnapshot, input: InputState, map: &mut Map) {
     if p.dash_dir == Vec2::default() {
         p.state_timer = (p.state_timer - p.frame_delta_time).max(0.0);
         if p.state_timer <= 0.0 {
-            p.dash_dir = p.last_aim;
+            p.dash_dir = p.last_aim;
+        // `Player.DashCoroutine` (`Player.cs:4491-4493`): once `DashDir` is published from the aim,
+        // `if (DashDir.X != 0f) Facing = (Facings)Math.Sign(DashDir.X);`. The red-dash path already
+        // does this; the ordinary dash path did not, so the facing landed a frame late.
+        if p.dash_dir.x != 0.0 {
+            p.facing = p.dash_dir.x > 0.0;
+        }
             p.speed = Vec2::new(p.dash_dir.x * DASH_SPEED, p.dash_dir.y * DASH_SPEED);
             if p.dash_dir.x != 0.0 {
                 p.facing = p.dash_dir.x > 0.0;
