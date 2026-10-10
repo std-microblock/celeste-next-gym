@@ -4383,3 +4383,24 @@ the game moves -3 px in x and the simulator -7):
 Next, one edit at a time: first restrict the loop to `JumpThru` and measure `--rooms g-01` (expect the `134447`
 segment to pass offset 1966 if this is the cause); if it does not move, inspect `dash_correct_check`'s signature
 and its use of the scalar against the source's vector form.
+
+### Reverted: `Cloud` IS a `JumpThru` subclass, so the simulator's `| Cloud` was correct all along
+
+Restricting `close_dash_onto_jump_thru`'s loop to `EntityKind::JumpThru` - which looked like a faithful reading of
+`Player.cs:4386`'s `Tracker.GetEntities<JumpThru>()` - collapsed the `g-01` segments from 1967/1960 frames to
+**117** and the room total from 4,088 to 795. The reason is that Monocle's generic tracker query returns
+**subclasses**, and Celeste's `Cloud` derives from `JumpThru`. So the game does close the player onto a cloud, the
+simulator's `matches!(kind, JumpThru | Cloud)` was the faithful transcription, and my "divergence 1" was wrong -
+a reading error about the semantics of a generic query, not about the code.
+
+Reverted immediately (the build succeeded, so the usual build-failure auto-revert did not fire - reverting a
+measured regression is on me, not on the harness). The guard is back to the two-kind form and `crates/` is clean.
+
+Lesson for the log: a source construct that names a base type may implicitly include derived ones
+(`GetEntities<T>()`, `CollideCheck<T>()`, `x is T`), and the simulator has to spell the closure out. Before
+"fixing" such a list, check whether the missing entry is a subclass - or better, measure it, which is what
+caught this in one slice.
+
+That leaves divergence 2 from the previous note unmeasured: the `DashCorrectCheck` argument shape (source passes
+`Vector2.UnitY * (Top - Bottom)`, the simulator a scalar). That is the remaining candidate for offset 1966, and it
+should be checked by reading `dash_correct_check`'s signature and body before any edit.
