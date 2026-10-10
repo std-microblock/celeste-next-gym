@@ -4455,3 +4455,20 @@ depend on my enumeration being complete is a **position audit of the frame**: pr
 after the state callback, after the physics move, and at the end of `step`, so that any position change shows up
 as a delta between two labelled phases regardless of which function produced it. That is the systematic version of
 what has been done piecemeal for several rounds.
+
+### The four-phase position audit failed on placement - auto-reverted, and the rule is once more "one probe at a time"
+
+The audit patch inserted four labelled probes (top of `step`, after `tick_lift_speed`, after the second
+`move_axis`, and at the entry of `enforce_level_bounds`) in a single pass using `IndexOf` arithmetic. The build
+failed with `cannot find value p in this scope` four times - i.e. **all four** landed somewhere `p` is not
+bound - and the build-failure auto-revert restored the tree and rebuilt it green (356 tests).
+
+That the same class of failure has now happened four times in this log (probe in a different function than
+intended; probe inside a guard that cannot be reached; probe inside a `match` scrutinee line; and now four
+misplaced probes at once) points at one rule rather than four mistakes: **insert one probe, then build** - and
+when the anchor is computed from indices, print the line above and below the insertion point before building, so
+the placement is evidence rather than hope. The `tick_lift_speed`/`move_axis` anchors were almost certainly fine
+individually; batching them with two index-derived anchors is what made the failure unattributable.
+
+The audit itself remains the right next step for offset 1966, because it does not depend on my enumeration of
+movers being complete - which is exactly what has failed to find the extra 4 px so far.
