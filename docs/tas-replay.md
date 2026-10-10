@@ -3991,3 +3991,22 @@ the simulator corrected around something by four pixels and carried on. The next
 corner-correction site (grep `corner`/`correct` in `sim.rs`) and compare its conditions against the source's
 dash correction - in particular whether it probes with the right collider and whether it is allowed at all when
 the vertical move is blocked, which is the case that looks wrong here.
+
+### Corner correction: the simulator has one constant, the source has three (one of them 5 for upward dashes)
+
+| simulator | source of record |
+| --- | --- |
+| `const DASH_CORNER_CORRECTION: i32 = 4;` (`sim.rs:55`) | `DashCornerCorrection = 4` (`Player.cs:225`) |
+| - | `UpwardCornerCorrection = 4` (`:171`) |
+| - | **`DashingUpwardCornerCorrection = 5`** (`:173`) |
+| one loop, `for correction in 1..=DASH_CORNER_CORRECTION` (`sim.rs:10071`) | three `for (int i = 1; i <= 4; i++)` loops (`:3187`, `:3300`, `:3455`), and `DashingUpwardCornerCorrection` is used somewhere else again |
+
+The measured divergence at `7-Summit|0|g-01|134447` offset 1966 is an **upward diagonal dash** (speed
+`(-169.70563,-169.70563)`) where the game's vertical speed was zeroed by a ceiling hit and its x move stayed at
+`-2.82843`, while the simulator moved `-6.82843` - exactly 4 px of horizontal correction - and kept its vertical
+speed. A single 4-px constant applied to every dash state is a plausible cause: the source distinguishes the
+dash's direction, and for a dash going up it uses a **5-px** range in its own branch.
+
+Next: read the three source loops (`:3187`, `:3300`, `:3455`) and wherever `DashingUpwardCornerCorrection` is
+consumed, and map each to the conditions that select it; then compare with `sim.rs:10056-10090` to see which
+state/direction combinations the single loop is being applied to that it should not be.
