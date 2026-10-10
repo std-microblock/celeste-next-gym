@@ -4404,3 +4404,29 @@ caught this in one slice.
 That leaves divergence 2 from the previous note unmeasured: the `DashCorrectCheck` argument shape (source passes
 `Vector2.UnitY * (Top - Bottom)`, the simulator a scalar). That is the remaining candidate for offset 1966, and it
 should be checked by reading `dash_correct_check`'s signature and body before any edit.
+
+### `dash_correct_check`: the veto uses the wrong collider (and cannot move x at all)
+
+| source (`Player.cs:4191-4209`) | simulator (`sim.rs:9670-9676`) |
+| --- | --- |
+| `DashCorrectCheck(Vector2 add)` - a full vector, both axes | `dash_correct_check(p, map, offset_y: f32)` - y only |
+| `base.Collider = hurtbox` - **forced to the standard hurtbox** | `current_player_hurt_rect(p)` - **state-dependent**: ducking `8x4`, `StarFly` `6x6`, else `8x9` |
+| `Position += add`, then every `GetComponents<LedgeBlocker>()` | shifts that rect by `offset_y`, then `ledge_blocker_collides` |
+
+Two conclusions:
+
+1. The scalar-versus-vector difference is **benign at this call site**: `close_dash_onto_jump_thru` passes a
+   vertical amount, and the helper only ever shifts y, so it cannot produce the 4 px of horizontal travel. That
+   retires my "divergence 2" as a cause of the x difference.
+2. The **collider** difference is real and consequential in the other direction: the veto is evaluated against a
+   different rectangle depending on the player's state, while the source always evaluates it against the plain
+   `hurtbox`. A veto that fires in one and not the other decides whether the close happens at all - and the close
+   is a `MoveVExact` onto the JumpThru/Cloud, i.e. a **y** move. The measured residual has **1 px of extra y**
+   alongside the 4 px of x, which fits: a y shift of one pixel changes what the subsequent horizontal probe hits,
+   which cascades into the x difference.
+
+Next (one line): make the veto use the standard hurtbox rather than the state-dependent rect, i.e. mirror
+`base.Collider = hurtbox`, and measure the `g-01` slice. Candidate rect to use: `player_hurt_rect(p.pos.x,
+p.pos.y)` (`sim.rs:9678`), which is the `8x9` the source's `hurtbox` field holds for a normal player - but check
+first whether the source's `hurtbox` is stateful too (it is a field set in the collider table), because that is
+exactly the kind of base/derived assumption that was wrong one round ago about `Cloud`.
