@@ -4119,3 +4119,26 @@ in `try_dash_collide(p, map, next, true, sign as f32)`'s `Rebound`/`Ignore` arms
 So the geometry probe belongs immediately **before `try_dash_collide`**, printing `next` (the rect being
 probed), the player rect, `non_dream_solid_at(next)`, and any overlapping `solids` and entities - that is where
 the two sides can be shown to disagree about the world rather than about the response to it.
+
+### Geometry probe results: `solidNext=true` on every dash collide, and an `Unknown` entity
+
+The probe placed immediately before `try_dash_collide` ran 33 times on the `g-01` slice, and every line has the
+same shape - the rect one pixel ahead of the player is **solid**:
+
+```
+TC pos=(25452.00,-18919.00) me=(25448.0,-18930.0,8.0,11.0) next=(25449.0,-18930.0,8.0,11.0) solidNext=true ents=[CrystalStaticSpinner@(25456,-18926,16,12)] solids=[(25456,-18920,152,8)]
+TC pos=(25564.00,-18967.00) me=(25560.0,-18978.0,8.0,11.0) next=(25561.0,-18978.0,8.0,11.0) solidNext=true ents=[Unknown@(25560,-18968,8,8)] solids=[(25568,-18984,136,8) (25568,-18976,216,8) (25568,-18968,656,8)]
+TC pos=(26076.00,-19109.00) ... solidNext=true ents=[] solids=[(26080,-19120,16,8) (26080,-19112,16,8)]
+```
+
+Two things to take from this:
+
+1. **An `Unknown` entity sits exactly on the probe rect** in at least one case (`(25560,-18968,8,8)`, with the
+   player's `next` rect `(25561,-18978,8,11)` overlapping its lower half). Unmapped entity names have already
+   cost this project once - the Puffer is named `eyebomb` in every vanilla map and was therefore never
+   constructed - so an `Unknown` entity in a solid-probing path is worth naming: if the simulator treats unknown
+   kinds as solid, that is a phantom solid, and this is the same signature the wind work chased.
+2. The divergence frame at `(27325,-19637)` is **not** in the list, so on that frame the simulator never reached
+   `try_dash_collide`. Combined with the earlier finding (`beforeH` fired, `afterH` did not), the early return
+   happens between the horizontal branch's entry and this call - which is a narrower place to look than the
+   collision response itself.
