@@ -3653,3 +3653,45 @@ The dash state on both sides had already matched through three freeze frames (0.
 exit frame's position, counters, move, speeds and state all matched to the printed precision, so the remaining
 work is to read `Player.DashUpdate`/the dash coroutine against the simulator's `dash_update` and find where the
 facing assignment lands a frame early or late.
+
+### The `facing` divergence: the source writes it in `DashBegin`, the simulator only in the deferred red-dash path
+
+`Player.cs:4478-4500` is the body of `DashBegin` (it assigns `Speed`, then `gliderBoostDir = (DashDir =
+value)`, then):
+
+```csharp
+4491: if (DashDir.X != 0f)
+4493:     Facing = (Facings)Math.Sign(DashDir.X);
+```
+
+On the simulator side the only dash-related facing write found by grepping `p.facing =` is
+`sim.rs:8486`, inside `red_dash_update`'s **deferred** block (`if p.dash_dir == Vec2::default()`, after
+`state_timer` expires, where it re-derives `dash_dir` from `last_aim`). `begin_dash` does not appear to write
+facing at all. So the dash's facing is set a frame late (or not by the same trigger), which matches the
+measured divergence exactly: at `7-Summit|0|g-01|134447` offset 1872 every printed field agrees and only
+`facing` differs, on the first frame after the dash freeze, with a diagonal dash (`DashDir.X = 1`).
+
+Fix shape: in `begin_dash`, after `p.dash_dir` is set, mirror `:4491-4493` - `if p.dash_dir.x != 0.0 {
+p.facing = p.dash_dir.x > 0.0; }` - and check whether the deferred write in `red_dash_update` is then
+redundant (the source's `:4493` also guards on `DashDir.X != 0`, so keeping both is harmless if the values
+agree).
+
+### Five residual gaps handed over by the spring workstream
+
+Its branch replicated the landed fix byte-for-byte behaviourally (segment-for-segment equal on all three traces)
+and listed these, all pre-existing:
+
+1. `Player.SideBounce`'s early-out `if (Math.Abs(Speed.X) > 240f && Math.Sign(Speed.X) == dir) return false;`
+   (`Player.cs:2743-2746`) and `Spring.OnCollide`'s use of that bool to gate `BounceAnimate`
+   (`Spring.cs:140-152`) are not modelled - `side_bounce` always applies the bounce. **Cheapest of the five**:
+   it is a missing guard in the function just fixed.
+2. `MoveVExact`'s downward `CollideFirstOutside<JumpThru>` probe (`Actor.cs:264-284`) is absent from
+   `spring_move` (and from the pre-existing `bounce` helper); reachable only when the correction steps down a
+   whole pixel.
+3. `gliderBoostTimer = 0f` (`Player.cs:2729`, `:2769`) has no snapshot field.
+4. A spring hit while in `StarFly` reaches `reset_for_spring_bounce`, which sets state Normal **without**
+   running `StarFlyEnd`, unlike `bounce` (`sim.rs:10973`). Also cheap.
+5. The `facing` residual above.
+
+Also confirmed by an attribution control on its side: an unpatched binary at `d6233b5` reproduces the old
+totals exactly (`0` delta), so the entire +76/+44/+3 improvement is the spring patch.
