@@ -4010,3 +4010,36 @@ dash's direction, and for a dash going up it uses a **5-px** range in its own br
 Next: read the three source loops (`:3187`, `:3300`, `:3455`) and wherever `DashingUpwardCornerCorrection` is
 consumed, and map each to the conditions that select it; then compare with `sim.rs:10056-10090` to see which
 state/direction combinations the single loop is being applied to that it should not be.
+
+### Correction: the upward constants are dead too; the g-01 offset-1966 difference is WHEN `speed.y` becomes zero
+
+Two findings, one of which retires the previous note's hypothesis.
+
+**1. `DashingUpwardCornerCorrection = 5` and `UpwardCornerCorrection = 4` have no consumers** in the source of
+record - like `DuckCorrectCheck`/`DuckCorrectSlide`, they appear only at their declarations (`Player.cs:171`,
+`:173`). So "the source uses 5 px for an upward dash" is **withdrawn**; the traced build does not appear to use
+those constants at all. That is the third time in this log that a lead sourced from a copy of the source rather
+than `vendor/celeste-fna/Celeste/Player.cs` had to be retired.
+
+**2. The simulator's horizontal correction is gated on `speed.y == 0`.** `sim.rs:10067-10088`:
+
+```rust
+if matches!(p.state, PlayerState::Dash | PlayerState::RedDash)
+    && p.speed.y == 0.0
+    && p.speed.x != 0.0
+{
+    for correction in 1..=DASH_CORNER_CORRECTION { ... p.pos.y += offset; p.pos.x += sign as f32; return; }
+}
+```
+
+and the measured divergence matches that loop exactly: the simulator's x move is 4.0 px larger while the game's
+`speed.y` is `0.0` and the simulator's is still `-169.70563`. So the correction probably fired in the simulator
+because `speed.y` was still non-zero at the point the move was attempted, or because it was zero at that point in
+the game but not in the simulator - i.e. the two sides disagree about **when** the vertical speed reaches zero
+within the frame, not about the correction's range. The game's zero is the ceiling response; the simulator keeps
+dashing upward.
+
+Next: trace the order inside the frame on both sides - where the game's `OnCollideV` sets `Speed.Y = 0`
+(`Player.cs`, the dash's vertical move) and where the simulator sets `speed.y` during the dash - and check
+whether the simulator's dash move can run with a stale non-zero `speed.y`. A probe on that frame that prints
+`speed.y` before and after the horizontal move would settle it in one run.
