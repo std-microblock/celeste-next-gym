@@ -4689,3 +4689,25 @@ investigation has gone from "4 unexplained pixels anywhere in the frame" to "one
 
 Logged for the next session: the frame key is `7-Summit|0|g-01|134447` offset 1966 (row 136454), the game moves
 x by -3 and y by -1, the simulator by -7 and -2, and the discrepancy is in the vertical move.
+
+### The commit-line probe was refused by its own uniqueness guard - here is how to disambiguate it
+
+The literal `        p.pos.x = next_x;` occurs **three** times in `sim.rs`, so the guarded patch exited before
+touching anything (the tree is clean). That is the guard working as designed, and it is the same phenomenon as the
+45 `if horizontal {` sites: the same line is duplicated across the movers, so a line literal cannot identify a
+call site.
+
+Disambiguation recipe for the next attempt, in the order that costs least:
+
+1. find the **enclosing function** (each of the three `p.pos.x = next_x;` sites belongs to a different mover; the
+   one wanted is inside `move_axis_amount_inner`), then insert relative to an offset **inside that function's
+   span** - `IndexOf('fn move_axis_amount_inner(')`, then `IndexOf('p.pos.x = next_x;', that offset)`, which is a
+   single well-defined position;
+2. or use a **two-line literal** (the preceding line plus the commit) if the pair is unique;
+3. and in all cases print the two lines above and below the insertion point **before** building, which is the rule
+   that has caught every placement error since it was adopted.
+
+The frame key for the check remains `7-Summit|0|g-01|134447` offset 1966 (row 136454): the x move lands on the
+game's `(27325,-19637)` with remainder `0.298066`, and the vertical move then leaves x at 27321. The probe wanted
+prints `horizontal`, `pos`, `next_x`/`next_y`, `sign` and the speeds immediately before the commit, which is the
+last unexamined line in the frame's path.
