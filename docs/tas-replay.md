@@ -4184,3 +4184,27 @@ Next: instrument the *other* movers on that frame rather than the dash collide p
 publish - printing `pos` before and after each, and find which one produces 6.83 px instead of 2.83. That is a
 narrower search than it has been for several rounds, and it starts from the fact that the collide/correction
 path is provably not involved.
+
+### Third narrowing: no corner-correction loop fires on the divergence frame either
+
+Probes inserted before each of the three `for correction in 1..=DASH_CORNER_CORRECTION` loops (labelled A, B, C)
+ran on the `g-01` slice. The closest any of them came to the divergence was `(25972,-19246)`; the divergence is
+at `(27325,-19637)`, and none of the three printed for it. Together with the earlier result that the frame never
+reaches the horizontal `try_dash_collide`, this rules out the whole collide-and-correct path:
+
+- not the collision response (`try_dash_collide` is not reached, and the game's `speed.y` zeroing has no
+  counterpart on the simulator's side of that frame),
+- not any of the corner corrections (none fires),
+- so the extra 4 px of horizontal travel comes from the **plain move** - the transform of speed into position -
+  or from a second move in the same frame.
+
+The next measurement is therefore the decisive one and is small: probe `move_axis` (the ordinary physics move at
+`sim.rs:9959`) at entry and exit, printing `pos` and `speed` both times, on the divergence frame, and compare the
+observed delta with `speed.x * dt`. `speed.x` is `-169.70563`, so the expected horizontal delta is `-2.82843`;
+the simulator produced `-6.82843`. Exactly 4 px of unexplained travel is not an accumulation artefact, so either
+`move_axis` is called twice with a stale or duplicated speed, or something publishes a `movementCounter` of 4 px
+into x before the frame's move.
+
+Also recording the methodological point: the `if horizontal {` grep found **45** sites, and my earlier
+`beforeH`-versus-`TC` "contradiction" was an artefact of anchoring two probes in different functions. Probing by
+function name beats probing by branch text, and this log has now paid for that lesson twice.
