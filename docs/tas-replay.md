@@ -4663,3 +4663,29 @@ the displacement has to be a different construct in the same branch.
 Next: read `fn rebound` in the simulator and `Player.Rebound` in the source of record, compare their conditions
 and their displacement, and check why the simulator takes the `Rebound` arm here at all - the game evidently does
 not rebound on this frame, since its x follows the ordinary move.
+
+### `rebound` excluded too - the x change is inside the vertical move's own per-pixel commit
+
+`fn rebound` (`sim.rs:2535-2552`) never touches the position: it sets `speed = (direction * 120.0, -120.0)`, the
+var-jump/auto-jump/wall-slide timers, and calls `enter_normal` when the state is not `Normal`. So if the y move's
+`try_dash_collide(p, map, next, false, sign)` had returned `Rebound`, the frame's speed would read `(+/-120,-120)`
+at A3 - but A3 measured `sx = -169.70563, sy = -169.70563`, unchanged. `Rebound` is therefore excluded as well.
+
+What the entry probe established, and what remains:
+
+- the frame performs exactly **two** moves (`h=true` then `h=false`), both with `amount = -2.82843`, and **no move
+  anywhere carries a 4-scale amount**;
+- after the x move the position is `(27325,-19637)` with remainder `0.298066` - the game's values, to the digit;
+- the frame ends at x = 27321, so the horizontal change happens **inside the vertical move**;
+- every named construct in that branch is now excluded: the three corner-correction loops (guards), `Rebound`
+  (does not touch position), `move_exact`/`move_v_exact` (vertical only), `naive_move` (dream dash only), and
+  `EnforceBounds` (runs later, player far inside the room).
+
+That leaves the vertical move's own body - specifically its per-pixel commit, where the tail of
+`move_axis_amount_inner` writes `p.pos.x = next_x; p.pos.y = next_y;` - or a construct between the collide branch
+and that commit. The next probe belongs there: print `pos`, `next_x`/`next_y`, `sign` and `horizontal` immediately
+before that assignment, on the same frame. That is now the only unexamined line in the frame's path, and the
+investigation has gone from "4 unexplained pixels anywhere in the frame" to "one assignment".
+
+Logged for the next session: the frame key is `7-Summit|0|g-01|134447` offset 1966 (row 136454), the game moves
+x by -3 and y by -1, the simulator by -7 and -2, and the discrepancy is in the vertical move.
