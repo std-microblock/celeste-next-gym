@@ -3752,3 +3752,28 @@ Two attempts were needed and the first was a measured no-op worth remembering: a
 `sim.rs:7665-7667`), so the guard could never pass. The coroutine-resume site (the publish block) is the right
 one, and the g-01 slice moved immediately: `134447` 1873 -> **1967** and `356101` 1466 -> **1560**, +94 frames
 each. The next divergence on `134447` is now offset 1966.
+
+### LANDED: `SideBounce` refuses a fast same-direction player (master `afd1288`) - +2 ok, +1,703 frames
+
+`Player.SideBounce` has an early-out (`Player.cs:2743-2746`): `if (Math.Abs(Speed.X) > 240f &&
+Math.Sign(Speed.X) == dir) return false;` - a spring will not bounce a player already moving that way quickly
+(and `Spring.OnCollide` uses that `false` to skip `BounceAnimate`, `Spring.cs:140-152`, which is cosmetic and
+still unmodelled). The simulator always applied the bounce. Landing the guard as an early `return` in
+`side_bounce` is enough for the observable behaviour.
+
+Measured against the post-facing baselines (`face-*`), `regressed=0`, 356 tests green:
+
+| trace | improved / identical / regressed | ok | frames | exact |
+| --- | --- | ---: | ---: | ---: |
+| 202 | 7 / 1461 / 0 | 568 -> **570** | 175,975 -> **177,678** | 175,055 -> **176,760** |
+| 100pct | 3 / 915 / 0 | 366 -> **367** | 105,167 -> **105,958** | 104,603 -> **105,395** |
+| 1a | 0 / 20 / 0 | 18 | 2,343 | 2,341 |
+
+Worth noting for future slices: the `--rooms g-01` slice showed **zero** change, so this looked inert until the
+full traces ran - the guard fires in other rooms. A slice proves a change *can* matter; it never proves it is
+inert. (The reverse also holds, and both directions have now been seen in this log: the round-197 `eyebomb`
+mapping was neutral on whole traces, and this one was neutral on the slice but not on the traces.)
+
+This stretch's cadence, all from the one defect class found with the spring fix: spring counter move (+39 ok),
+dash facing publish (+9 ok), `SideBounce` early-out (+2 ok) - 202 went from 520 to **570** ok and 161,355 to
+**177,678** frames.
