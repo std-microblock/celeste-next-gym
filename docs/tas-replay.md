@@ -4736,3 +4736,45 @@ greps. The next probe belongs at the **top of the vertical branch's collide hand
 simply: print `pos` at the entry and at every exit of the branch, and the exit whose delta is 4 names it.
 
 Frame key unchanged: `7-Summit|0|g-01|134447` offset 1966 (row 136454); game x -3 / y -1, simulator x -7 / y -2.
+
+### FOUND, exactly: the rising-ceiling sideways slide writes both axes, and the simulator takes it where the game does not
+
+`sim.rs:10119-10153`, in the **vertical** branch's collide handling:
+
+```rust
+if sign < 0 && p.state != PlayerState::StarFly && p.speed.y < 0.0 {
+    // Player.cs:3358-3388: a rising ceiling collision slides the player sideways onto the first free
+    // column one pixel up. Four pixels wide, or five while `DashAttacking && |Speed.X| < 0.01f`.
+    let correction_limit = if dash_attacking(p) && p.speed.x.abs() < 0.01 { 5 } else { DASH_CORNER_CORRECTION };
+    if p.speed.x <= 0.0 {
+        for correction in 1..=correction_limit {
+            let corrected = current_player_rect(p, p.pos.x - correction as f32, p.pos.y - 1.0);
+            if !map.solid_at(corrected) {
+                p.pos.x -= correction as f32;      // x by up to 4
+                p.pos.y -= 1.0;                    // and y by 1
+                p.movement_remainder.y = 0.0;
+                return;                            // early return, no per-pixel commit
+            }
+        }
+    }
+    if p.speed.x >= 0.0 { /* the mirrored loop */ }
+```
+
+Every part of the measurement now has an explanation:
+
+| observation (XM -> A3 on offset 1966) | this loop |
+| --- | --- |
+| x `27325 -> 27321`, exactly **-4** | `p.pos.x -= correction` with `correction = 4` |
+| y `-19637 -> -19638`, exactly **-1** | `p.pos.y -= 1.0` |
+| the per-pixel commit is never reached | `return` inside the loop |
+| guard passes | `sign < 0` (upward move) and `p.speed.y < 0.0` (dash upward) |
+
+So the mechanism exists in the source (`Player.cs:3358-3388`, whose comment also documents the four/five-pixel
+search), and the failure is in **whether it should fire at all** - specifically whether the probe
+`!map.solid_at(current_player_rect(p, p.pos.x - correction, p.pos.y - 1.0))` finds a free column. The game does not
+slide (its x is only the ordinary -3), so on the simulator a column reads free that the game finds blocked, or the
+game's slide is gated by something this code does not test.
+
+Next: probe that probe - print, for each `correction` in the loop, the rect tested and `map.solid_at` for it, on
+this frame, and compare against the game's geometry. That is the "print geometry, do not reason about it" method
+that identified the wind's ceiling, and this is now a single, named loop with a known frame.
