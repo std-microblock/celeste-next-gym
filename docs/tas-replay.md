@@ -4711,3 +4711,28 @@ The frame key for the check remains `7-Summit|0|g-01|134447` offset 1966 (row 13
 game's `(27325,-19637)` with remainder `0.298066`, and the vertical move then leaves x at 27321. The probe wanted
 prints `horizontal`, `pos`, `next_x`/`next_y`, `sign` and the speeds immediately before the commit, which is the
 last unexamined line in the frame's path.
+
+### The vertical move never commits at the divergence frame - it returns early, and the x change is in that path
+
+The commit-line probe (inserted inside `move_axis_amount_inner`'s span, before `p.pos.x = next_x;`) ran over the
+`g-01` slice. Every `h=false` commit in the log sits at earlier frames (`y` between -19584 and -19570); there is
+**no** `h=false` commit at the divergence frame, whose entry was witnessed as
+`MAI h=false amount=-2.82843 sign=-1 pos=(27325.00,-19637.00) sx=-169.70563`.
+
+So on that frame the vertical move **returns before the per-pixel commit**, yet the frame ends at x = 27321. The
+4 px is therefore written inside one of the early-return paths of the vertical branch. That is a short list, and
+everything already excluded narrows it further:
+
+- the two floor-snap correction loops (`10172`, `10183`): excluded by their own guards (`sign > 0`, and
+  `p.speed.y > 0.0` - the dash is upward);
+- `Rebound`: excluded, it does not touch the position and would have changed the speeds;
+- `rebound()`'s siblings in the same `match` (`Ignore` returns without writing) and the `HitSquash` write (state
+  only);
+- `move_v_exact`/`move_h_exact` and `naive_move`: not reachable from this path.
+
+What remains in that branch's early returns is a position write that is not one of the named helpers - which is
+consistent with the last several rounds' pattern of the culprit being a construct whose name never appeared in my
+greps. The next probe belongs at the **top of the vertical branch's collide handling** and at each `return`, or
+simply: print `pos` at the entry and at every exit of the branch, and the exit whose delta is 4 names it.
+
+Frame key unchanged: `7-Summit|0|g-01|134447` offset 1966 (row 136454); game x -3 / y -1, simulator x -7 / y -2.
