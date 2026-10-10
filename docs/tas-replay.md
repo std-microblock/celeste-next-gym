@@ -3943,3 +3943,27 @@ variant and a map-name mapping - the same check that caught `eyebomb`)? (b) what
 (`DoFlingBird`/`FinishFlingBird` are invoked from the entity's own update, which may itself be unmodelled);
 (c) does anything in the simulator ever set state 24 today? If the entity is missing, this grows from a small
 `MoveTowards` change into a new-entity piece, and the frequency table says it is worth 635 rows of the corpus.
+
+### `StFlingBird` verdict: the entity is missing too, and the work is bounded to the Farewell bird section
+
+The three checks from the previous note, all read-only:
+
+1. **No entity kind.** `FlingBird` appears in `types.rs` only as the *player state* enum variant
+   (`:46`, `FlingBird = 24`). There is no `EntityKind::FlingBird`, and `map.rs` has no name mapping for it, so
+   the entity is not decoded at all - the "new entity" case, not the "small state" case.
+2. **No simulator references.** A grep for `FlingBird` in `sim.rs` returns nothing: nothing reads the state,
+   nothing sets it.
+3. **Bounded blast radius.** Every one of the 635 `StFlingBird` rows is in `Celeste/LostLevels`, across nine
+   rooms - `j-03` 127, `j-06` 97, `j-05` 96, `j-02` 95, `j-01` 63, `j-08` 63, `j-04` 33, `j-10` 31, `j-07` 30.
+   That is the Farewell bird sequence and nothing else.
+
+So this is a new-entity piece rather than a one-function state: decode the entity, model when it calls
+`DoFlingBird`/`FinishFlingBird`, and add the carried-by-bird state whose movement is `MoveTowards(bird, 250 *
+dt)` - the already-solved counter-move shape - plus `FlingBirdBegin`'s dash/stamina refill and
+`FinishFlingBird`'s hand-back (`Speed = FlingBird.FlingSpeed`, auto-jump, 0.2 s force-move right).
+
+Cost estimate and comparison: one new entity plus one state, affecting nine rooms; by the corpus frequency
+table that is 635 rows, against `StCassetteFly` 562, `StTempleFall` 414, `StBoost` 304 and `StSwim` 250 - all
+of which are *smaller* and may each be a state the simulator already half-models. Worth doing, but it should be
+scheduled as a piece of work rather than squeezed into a single step, and the measured divergence at
+`7-Summit|0|g-01|134447` offset 1966 remains the cheaper target for the next step.
