@@ -4238,3 +4238,30 @@ second, state-specific move inside `dash_update`.
 
 Next: list the call sites of `move_exact` and check which of them can run during `StDash` with a 4-pixel
 argument; that is now a short list rather than a search.
+
+### move_exact is excluded too; naive_move is the remaining suspect for the exact -4 px
+
+`move_exact` (`sim.rs:11705`) has exactly two call sites - `:10339` and `:10363` - and both are
+`move_exact(p, map, false, 1)` / `(..., false, -1)`: vertical, one pixel, so neither can produce a horizontal
+move of 4. Excluded.
+
+That leaves `naive_move` (`:9963-9972`), the simulator's `Actor.NaiveMove`, which adds an arbitrary `Vec2` to the
+movement remainder and commits the rounded whole pixels:
+
+```rust
+fn naive_move(p: &mut PlayerSnapshot, amount: Vec2) {
+    p.movement_remainder.x += amount.x;   p.movement_remainder.y += amount.y;
+    let move_x = p.movement_remainder.x.round_ties_even();
+    let move_y = p.movement_remainder.y.round_ties_even();
+    p.movement_remainder.x -= move_x;     p.movement_remainder.y -= move_y;
+    p.pos.x += move_x;                    p.pos.y += move_y;
+}
+```
+
+A 4-pixel x amount through this path would produce exactly the observed `dpos.x = -7` (the -3 from the ordinary
+move plus -4 from here). Its call sites are the next thing to list, together with any other move inside
+`dash_update` - at this point the search is a handful of callers rather than a code path.
+
+Summary of the elimination for offset 1966, all measured: the collide response is never reached; none of the
+three corner-correction loops fires; `move_axis` moves by `speed * dt` and produces the game's -3 on its own;
+`move_exact` is vertical-only. The unexplained quantity is one exact 4-pixel horizontal move.
