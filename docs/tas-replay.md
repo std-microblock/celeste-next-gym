@@ -4534,3 +4534,31 @@ that replay 18-30 frames today), all 635 `StFlingBird` rows carry `timeRate = 0.
 belongs to the old state's `NormalUpdate` with `DoFlingBird`/`FlingBirdBegin` running after the movement pass, and
 contact is a `Circle(16)` test rather than the decoded 8x8 rect. Stage 2 is authorised and will be gated on a
 `--rooms j-02,j-03,j-05` slice before any full trace.
+
+### The audit arithmetic: something adds roughly -4 to `movement_remainder.x` before the frame's move
+
+The audit put A2 after `tick_lift_speed` (`7113`) and A3 after `move_axis(p, map, false)` (`7161`), with the two
+`move_axis` calls at `7158` (x) and `7161` (y) in between. So A2 -> A3 is the **whole frame's** displacement, and
+it measured `(-7,-1)` where `speed.x * dt = -2.82843` alone would give -3 - which is exactly what the game moved.
+
+Working backwards from that: for the simulator to move -7 whole pixels, its `movement_remainder.x` entering the
+move must have been about -4.126:
+
+```
+-4.126 + (-2.82843) = -6.954  ->  round_ties_even = -7      (observed dpos.x = -7)
+remainder after      = -6.954 - (-7) = +0.046               (observed dcounter.x ~ +0.17, same order)
+```
+
+So something adds roughly **-4 to the x remainder before the frame's move**, and the frame's move then commits
+it. The structural list of movers with a 4-scale amount is short: `move_axis_amount` is called with
+`to_x - exact_x`-style differences at `9095`, `11229`, `11670`, `11689` and `11700`, all in state-specific paths.
+
+The next probe is therefore a single number: print `movement_remainder` at A2 (`7-Summit|0|g-01|134447`, offset
+1966). Whatever it reads answers both "how much" and, together with the call sites, "who" - and it is the last
+measurement needed before a fix, because the total displacement is already known to be in `move_axis` and the
+remainder is the only input that can inflate it.
+
+Note also for the record: my earlier `beforeH` probe and the `TC` probe cannot both be right (the code between
+their anchors is comments only), and since `TC` was anchored on the structural call
+`try_dash_collide(p, map, next, true, sign as f32)`, `TC` is the trustworthy one - the horizontal collide branch
+is not reached on that frame, which is consistent with the remainder explanation.
