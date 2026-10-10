@@ -4502,3 +4502,35 @@ three correction loops (measured not to fire) **and** direct whole-pixel positio
 
 Next: read the collide branch of `move_axis_amount_inner` around those write sites and compare each against its
 source counterpart, since one of them is applying a 4-pixel step the game does not.
+
+### CORRECTION: `DuckCorrect*` and `MoonLanding` are LIVE - my name-grep was the wrong instrument
+
+The moveclass workstream checked the vendored file properly and my round-223/224 verdict was wrong. In
+`vendor/celeste-fna/Celeste/Player.cs`:
+
+- `DuckCorrectCheck = 4` (`:151`) and `DuckCorrectSlide = 50f` (`:153`) are used at `:3613-3638` with the values
+  **inlined**: `:3622 else if (Speed.X == 0f)`, `:3624 for (int num = 4; num > 0; num--)`,
+  `:3626 if (CanUnDuckAt(Position + Vector2.UnitX * num))`, `:3628 MoveH(50f * Engine.DeltaTime)`, and the
+  mirrored `-num` / `-50f` at `:3631`/`:3633`;
+- `MoonLanding` is live: `:6082 public IEnumerator MoonLanding(Vector2 groundPosition)`, called at `:6078`
+  (`yield return MoonLanding(start);`), containing `:6090 MoveV(-200f * Engine.DeltaTime)`.
+
+My check was `Select-String -Pattern 'DuckCorrect'` and it found only the declarations, from which I concluded the
+constants were dead and even told the workstream twice not to implement them. The instrument was wrong: **the
+call sites spell the values inline**, so a name search cannot see the use. Both mechanics exist in the traced
+build and are fair game, and `DuckCorrect*` stays the most promising out-of-class lead - a ducked crawl under a
+low ceiling cannot creep sideways in the simulator today.
+
+The rule this adds to the log is narrow and useful: **when a constant looks unused, search for its value in the
+surrounding function bodies before concluding anything.** This is the fourth base/derived-style misreading of the
+session (`Cloud` as a `JumpThru`, `hurtbox` as fixed, `docs/Player.cs` as the source of record, and now values
+inlined at call sites) - and the one thing all four have in common is that the evidence was a *pattern match*
+rather than a measurement of behaviour.
+
+Status from that workstream: stage 1 of the `FlingBird` work is landed on its branch and verified neutral
+(`4f25496`, 42 insertions in `map.rs`, all three traces `0 regressed`, 356 tests). Its recon is detailed - the
+bird is the *first* mismatch in exactly three rooms (`j-02`, `j-03`, `j-05`, rows 261936/262656/263755, segments
+that replay 18-30 frames today), all 635 `StFlingBird` rows carry `timeRate = 0.8`, the trigger frame's movement
+belongs to the old state's `NormalUpdate` with `DoFlingBird`/`FlingBirdBegin` running after the movement pass, and
+contact is a `Circle(16)` test rather than the decoded 8x8 rect. Stage 2 is authorised and will be gated on a
+`--rooms j-02,j-03,j-05` slice before any full trace.
