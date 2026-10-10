@@ -3725,3 +3725,30 @@ which is the pattern to copy; the ordinary dash path does not.
 So: add `if p.dash_dir.x != 0.0 { p.facing = p.dash_dir.x > 0.0; }` immediately after the publish's
 `p.dash_dir = p.last_aim;` in `dash_update`, then verify with `--rooms g-01` (expect the `134447` segment to
 pass offset 1872).
+
+### LANDED: the dash facing publish (master `a967db1`) - +9 ok segments and +3,374 frames on 202
+
+`dash_update`'s publish block set `dash_dir` and `speed` from the aim but never published the **facing**, which
+`Player.DashCoroutine` does immediately afterwards (`Player.cs:4491-4493`, `if (DashDir.X != 0f) Facing =
+(Facings)Math.Sign(DashDir.X);`). The red-dash path already had that write (`red_dash_update`), the ordinary
+dash path did not, so facing landed a frame late - exactly the residual measured at `7-Summit|0|g-01|134447`
+offset 1872, where every other printed field agreed.
+
+Verified against the post-spring baselines, `regressed=0`, 356 tests green:
+
+| trace | improved / identical / regressed | ok | frames | exact |
+| --- | --- | ---: | ---: | ---: |
+| 202 | 22 / 1446 / 0 | 559 -> **568** | 172,601 -> **175,975** | 171,672 -> **175,055** |
+| 100pct | 12 / 906 / 0 | 362 -> **366** | 103,154 -> **105,167** | 102,586 -> **104,603** |
+| 1a | 0 (vs the post-spring baseline) | 18 | 2,343 | 2,341 |
+
+Note on the 1a row in the landing output: it was diffed against `gate-tg2-1a.json` (the **pre-spring** 1a
+baseline) rather than `spr-1a.json`, so its `improved=3` double-counts the spring patch. The post-fix totals
+(18 / 2,343 / 2,341) are identical to the post-spring ones, i.e. this change is neutral on 1a. Baselines must
+move with every landing - this log now uses `spr-*` for spring and `face-*` for facing.
+
+Two attempts were needed and the first was a measured no-op worth remembering: adding the write to
+`begin_dash` changed nothing, because `DashBegin` clears `DashDir` (the simulator's own comment says so,
+`sim.rs:7665-7667`), so the guard could never pass. The coroutine-resume site (the publish block) is the right
+one, and the g-01 slice moved immediately: `134447` 1873 -> **1967** and `356101` 1466 -> **1560**, +94 frames
+each. The next divergence on `134447` is now offset 1966.
