@@ -4778,3 +4778,80 @@ game's slide is gated by something this code does not test.
 Next: probe that probe - print, for each `correction` in the loop, the rect tested and `map.solid_at` for it, on
 this frame, and compare against the game's geometry. That is the "print geometry, do not reason about it" method
 that identified the wind's ceiling, and this is now a single, named loop with a known frame.
+
+# HANDOFF (end of the 256-round block)
+
+## Where the metric stands
+
+| trace | ok segments | replayed frames | exact frames |
+| --- | ---: | ---: | ---: |
+| 202 | **570** (of 1468) | **177,678** | **176,760** |
+| 100pct | **367** (of 918) | **105,958** | **105,395** |
+| 1a | **18** (of 20) | **2,343** | **2,341** |
+
+Measured progress across this block: 202 went from **503 to 570** ok segments and from 158,407 to **177,678**
+frames; 100pct from 334 to **367** and 94,972 to **105,958**. Everything landed with `regressed=0` on all three
+traces and 356 tests green.
+
+## Landed in this block (all on master)
+
+- `SwitchGate`/`TouchSwitch`, `dashSwitchH`/`dashSwitchV`, `TempleGate`, `FloatySpaceBlock` (with the derived
+  `System.Random` phase), `Session.DoNotLoad` parking, persistent dash-switch flags, `Session.Cassette`;
+- **the wind's callback-less moves** (`1529e6b`) - `Player.WindMove` calls `MoveH`/`MoveV` with the default null
+  collide callback, so a blocked updraft step must not zero `Speed`. Worth +76 improved segments and +11,246
+  frames on 202 alone, and the largest single gain of the block;
+- **room-transition replay** (`e17738d`, `ff6f7ae`) - a level-level boolean leads the player by a frame, so
+  `transitioning` must be ANDed with the stalled witness, and the transition's entry target is seeded from the
+  room bound with the source's asymmetric walk (`+4 / -5 / +12 / -5`);
+- **the spring counter move** (`1529e6b`) - `super_bounce`/`side_bounce` assigned the position where the source
+  moves through `movementCounter`;
+- the dash `facing` publish (`a967db1`), the `SideBounce` early-out (`afd1288`), the Puffer explode gates
+  (`27a6649`, inert but source-faithful), `bounce`'s counter accumulation (`9eceb09`, inert), and the `eyebomb`
+  -> `EntityKind::Puffer` mapping (`72b9e48`, neutral but fixes entity identification).
+
+## The one open lead with a single line left to examine
+
+`7-Summit|0|g-01|134447`, **offset 1966** (row **136454**): the game moves x -3 / y -1, the simulator -7 / -2.
+Localised by probes to `sim.rs:10119-10153`, the **rising-ceiling sideways slide** in the vertical branch:
+
+```rust
+if sign < 0 && p.state != PlayerState::StarFly && p.speed.y < 0.0 {
+    let correction_limit = if dash_attacking(p) && p.speed.x.abs() < 0.01 { 5 } else { DASH_CORNER_CORRECTION };
+    if p.speed.x <= 0.0 {
+        for correction in 1..=correction_limit {
+            let corrected = current_player_rect(p, p.pos.x - correction as f32, p.pos.y - 1.0);
+            if !map.solid_at(corrected) {
+                p.pos.x -= correction as f32;   // -4
+                p.pos.y -= 1.0;                 // -1
+                return;
+            }
+        }
+    }
+```
+
+The double write matches the observed `(-4,-1)` exactly, and the `return` explains why the per-pixel commit is
+never reached. The source has the same mechanism (`Player.cs:3358-3388`), so the question is **whether it should
+fire**: print the rect tested and `map.solid_at` for each `correction` on that frame and compare with the game's
+geometry - the "print geometry, do not reason" method that found the wind's ceiling.
+
+Other queued work, in value order: `FlingBird` stage 2 (stage 1 landed neutral as `4f25496`; the bird is the
+*first* mismatch in `j-02`/`j-03`/`j-05`, rows 261936/262656/263755, which replay 18-30 frames today); the
+`DuckCorrect*` crawl (live at `Player.cs:3613-3638` with the values inlined at `:3624`/`:3628` - my earlier
+"dead constants" verdict was wrong); `MoonLanding` (`:6082`, `MoveV(-200f*dt)` at `:6090`); and the state
+frequency table for prioritising (StFlingBird 635, StCassetteFly 562, StTempleFall 414, StBoost 304, StSwim 250).
+
+## Traps this block paid for, worth not repeating
+
+1. **Measure before editing.** Four base/derived-style misreadings were caught that way (`Cloud` is a `JumpThru`
+   subclass so `GetEntities<JumpThru>()` includes it; `hurtbox` is stateful; `docs/Player.cs` is not the source of
+   record; `DuckCorrect*`'s values are inlined at the call sites so a name grep cannot see them).
+2. **Anchor on structure, never on remembered prose or indentation.** `if horizontal {` occurs 45 times and
+   `p.pos.x = next_x;` three; a function-name or call-signature anchor, or a function-span `IndexOf`, is required.
+   Print the lines around the insertion point before building.
+3. **One probe at a time**, and **filter logs by the frame key, never by the tail** - a `-Last 8` window produced
+   a wrong "the correction never fires" conclusion for several rounds.
+4. **`--rooms` takes room-local names** (`g-01`, `09-b`); a chapter name silently selects nothing.
+5. **Every landing must gate on `cargo test` as well as on `regressed`** - one merge was reverted after a red
+   test, and one big win was reverted by that gate before being re-landed with two test call sites fixed.
+6. **Keep `sim.rs` at LF** (`.gitattributes` rule from `ecbc03a`); the earlier CRLF blob would have made every
+   workstream merge a whole-file conflict.
