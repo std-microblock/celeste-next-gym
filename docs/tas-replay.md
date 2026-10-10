@@ -4142,3 +4142,22 @@ Two things to take from this:
    `try_dash_collide`. Combined with the earlier finding (`beforeH` fired, `afterH` did not), the early return
    happens between the horizontal branch's entry and this call - which is a narrower place to look than the
    collision response itself.
+
+### The `Unknown` entity is `summitcheckpoint`, and `Unknown` is not solid - no phantom here
+
+Decoding `7-Summit.bin` room `g-01` for the entity the probe reported at `(25560,-18968,8,8)` gives its name
+immediately: **`summitcheckpoint`**, `kind=Unknown`. The room's distinct entity names are `badelineBoost`,
+`cloud`, `jumpThru`, `killbox`, `player`, `refill`, `spinner`, `spring`, `strawberry`, **`summitcheckpoint`**,
+`switchGate`, `touchSwitch`, `wallSpringLeft`, `wallSpringRight` - so it is the only unmapped one there.
+
+But the solid-probing question is settled by an explicit whitelist, `is_solid_entity` (`sim.rs:10268-10288`),
+which lists `BounceBlock`, `CassetteBlock`, `CrushBlock`, `DashBlock`, `DreamBlock`, `ExitBlock`,
+`FallingBlock`, `InvisibleBarrier`, `MoveBlock`, `MovingSolid`, `StaticSolid`, `CrumbleBlock`,
+`FloatySpaceBlock`, `ZipMover`, `TempleGate` and `DashSwitch` - and **not `Unknown`**. So an unmapped entity is
+not a phantom solid, and the `solidNext=true` in the probe output came from the `solids` list (tiles), not from
+the overlapping `Unknown`. The `eyebomb` lesson does not repeat here, and my probe's entity listing (which
+prints *all* overlapping entities, not only solids) is what made it look otherwise.
+
+What `summitcheckpoint` being unmapped does cost is different and not geometric: a checkpoint trigger that
+never fires, i.e. session state rather than collision - the same category as the flags and cassette work, and
+worth checking when a corpus segment depends on a respawn point rather than on a wall.
