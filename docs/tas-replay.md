@@ -4472,3 +4472,33 @@ individually; batching them with two index-derived anchors is what made the fail
 
 The audit itself remains the right next step for offset 1966, because it does not depend on my enumeration of
 movers being complete - which is exactly what has failed to find the extra 4 px so far.
+
+### The audit localised the extra travel: it happens inside `move_axis`, i.e. in `move_axis_amount_inner`
+
+Two literal-anchored probes - after `tick_lift_speed(p);` (call it A2, post-callback) and after
+`move_axis(p, map, false);` (A3, post-move) - produced this window around the divergence:
+
+```
+A2 postcallback pos=(27329.00,-19564.00) sx=90.00000   sy=224.99995     <- frame ending at 1965
+A3 postmove     pos=(27328.00,-19637.00) sx=-169.70563 sy=-169.70563    <- matches the game's 1966 start
+A2 postcallback pos=(27328.00,-19637.00) sx=-169.70563 sy=-169.70563    <- frame ending at 1966, before the move
+A3 postmove     pos=(27321.00,-19638.00) sx=-169.70563 sy=-169.70563    <- after the move: wrong
+```
+
+So between A2 and A3 the position changes by `(-7,-1)` while the speed is `(-169.70563,-169.70563)`, which
+should give `(-2.82843,-2.82843)`. The 4 px therefore appear **inside `move_axis`** - and this retires my earlier
+"move_axis is innocent" conclusion, which was drawn from reading the wrapper only:
+
+```rust
+fn move_axis(p, map, horizontal) {
+    let speed = if horizontal { p.speed.x } else { p.speed.y };
+    move_axis_amount(p, map, horizontal, speed * p.frame_delta_time);
+}
+```
+
+The wrapper is indeed innocent; the work happens in `move_axis_amount_inner`, whose collide branch contains the
+three correction loops (measured not to fire) **and** direct whole-pixel position writes (the survey's table lists
+`10206/10207` and `10230/10248` in this region as `MoveHExact`/`MoveVExact` steps). Those are now the target.
+
+Next: read the collide branch of `move_axis_amount_inner` around those write sites and compare each against its
+source counterpart, since one of them is applying a 4-pixel step the game does not.
