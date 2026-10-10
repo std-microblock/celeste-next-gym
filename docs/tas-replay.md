@@ -3633,3 +3633,23 @@ that happens one frame earlier or later, rather than for a missing write.
 
 Also worth noting for future dumps: this case shows the dump's field set is the limiting factor when the
 divergence is in an unprinted field, and the harness's `reasons` list is what identifies it.
+
+### g-01 offset 1872 (`facing`): the two corresponding writes are `Player.cs:4493` and `sim.rs:8486`
+
+| source | simulator |
+| --- | --- |
+| `Facing = (Facings)Math.Sign(DashDir.X);` (`Player.cs:4493`) | `p.facing = p.dash_dir.x > 0.0;` (`sim.rs:8486`) |
+
+Both derive the facing from the dash direction, so this is a timing question rather than a missing write:
+`Player.cs:4493` sits late in the file, which points at `DashUpdate`/the dash coroutine rather than `DashBegin`,
+i.e. the write may happen on a different frame on the two sides.
+
+One corner to keep in mind while comparing: the source's `(Facings)Math.Sign(DashDir.X)` produces the enum
+value `0` when `DashDir.X == 0`, whereas `p.dash_dir.x > 0.0` yields `false` (Left) in that case. If the trace
+exports facing as "is Right" the two agree, so this is probably not the diverging case - and it is not this
+frame's case anyway: the exit frame's move is `(2.82843,-2.82843)`, i.e. a diagonal dash with `DashDir.X = 1`.
+
+The dash state on both sides had already matched through three freeze frames (0.05 / 0.0333 / 0.0167), and the
+exit frame's position, counters, move, speeds and state all matched to the printed precision, so the remaining
+work is to read `Player.DashUpdate`/the dash coroutine against the simulator's `dash_update` and find where the
+facing assignment lands a frame early or late.
