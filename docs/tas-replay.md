@@ -4265,3 +4265,32 @@ move plus -4 from here). Its call sites are the next thing to list, together wit
 Summary of the elimination for offset 1966, all measured: the collide response is never reached; none of the
 three corner-correction loops fires; `move_axis` moves by `speed * dt` and produces the game's -3 on its own;
 `move_exact` is vertical-only. The unexplained quantity is one exact 4-pixel horizontal move.
+
+### The last mover is excluded too - so the extra 4 px is a direct position write, and EnforceBounds is the candidate
+
+`naive_move` has exactly one call site, `sim.rs:8277`, inside `dream_dash_update` (`:8275-8284`). The divergence is
+in `StDash`, so the dream-dash mover cannot be responsible. With that, every mover in the frame has been
+excluded by measurement:
+
+| eliminated | how |
+| --- | --- |
+| dash collide response (`try_dash_collide`) | never reached on that frame (probe fired 33 times elsewhere) |
+| three `for correction in 1..=DASH_CORNER_CORRECTION` loops | none fires (labelled probes A/B/C) |
+| `move_axis` | moves by `speed * dt`, which gives the game's -3, and runs once per axis |
+| `move_exact` | two call sites, both vertical 1-px |
+| `naive_move` | one call site, inside `dream_dash_update` only |
+
+So the unexplained -4 px is not produced by any move; it is a **direct position write**. The survey's table lists
+several of those as legitimate *mechanisms* - `OnSquish` probe/restore, `TrySquishWiggle`, `Solid.MoveHExact`
+carry, `CassetteBlock.TryActorWiggleUp`, `DreamDashedIntoSolid`, `Respawn`, the intro coroutines - and the one
+that can jump a player several pixels without any move is `Level.EnforceBounds`' direct setters
+(`sim.rs:11258/11269/11284`, mirroring `player.Left/Right/Top` in `Level.cs:2746`, `:2785`).
+
+A clamp is "legit" as a mechanism and can still fire on the wrong frame: it teleports the player to a bound
+whenever the collider is outside it, and during a dash that is exactly the situation where 4 px of horizontal
+difference would appear. The same code produced the `roof07` investigation earlier in this log, where the game's
+clamp and the simulator's disagreed about when to apply.
+
+Next: probe `enforce_level_bounds` on the divergence frame - print the player rect, `map.bounds`,
+`current_room_bounds`, and whether any of the three setters fires - and compare with the game's position on the
+same frame. That is one probe and it is the last structural candidate.
