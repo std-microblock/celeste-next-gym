@@ -4638,3 +4638,28 @@ Next probe: the entry of `move_axis_amount_inner`, printing `horizontal`, `amoun
 horizontal flag and a 4-scale amount will name the culprit directly. This is the last probe this investigation
 needs: the total displacement is known to happen between XM and A3, all three correction loops are excluded, and
 the remainder entering the frame was normal.
+
+### Narrowed to one call: the frame has exactly two moves, so the vertical move's `Rebound` did it
+
+The `move_axis_amount_inner` entry probe lists **every** move the frame performs. On `7-Summit|0|g-01|134447`
+offset 1966 there are exactly two, and no move anywhere carries a 4-scale amount:
+
+```
+MAI h=true  amount=-2.82843 sign=-1 pos=(27328.00,-19637.00) sx=-169.70563 rem=(0.126499,0.488594)
+MAI h=false amount=-2.82843 sign=-1 pos=(27325.00,-19637.00) sx=-169.70563 rem=(0.298066,0.488594)
+```
+
+The x move starts at 27328 and leaves 27325 - the game's value, and matching `rustCounter.x`. The **y** move then
+starts at 27325 and the frame ends at x = 27321. So the horizontal change happens inside the **vertical** move's
+collide branch, and the only construct there that moves the player horizontally is that branch's own
+`try_dash_collide(p, map, next, false, sign)` (`sim.rs:10111`) returning `Rebound`, whose arm calls
+`rebound(...)`.
+
+That matches `Player.Rebound`, which in the source displaces the player horizontally by a few pixels - the exact
+shape and the exact magnitude of the 4 px that has been chased for many rounds. It also fits the guard analysis
+that preceded it: the three corner-correction loops are all excluded by their own conditions on this frame, so
+the displacement has to be a different construct in the same branch.
+
+Next: read `fn rebound` in the simulator and `Player.Rebound` in the source of record, compare their conditions
+and their displacement, and check why the simulator takes the `Rebound` arm here at all - the game evidently does
+not rebound on this frame, since its x follows the ordinary move.
