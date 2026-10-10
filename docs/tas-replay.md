@@ -3967,3 +3967,27 @@ table that is 635 rows, against `StCassetteFly` 562, `StTempleFall` 414, `StBoos
 of which are *smaller* and may each be a state the simulator already half-models. Worth doing, but it should be
 scheduled as a piece of work rather than squeezed into a single step, and the measured divergence at
 `7-Summit|0|g-01|134447` offset 1966 remains the cheaper target for the next step.
+
+### g-01 offset 1966: a dash where the game hits a ceiling and the simulator corners around it by 4 px
+
+```
+offset=1965  game == rust: pos=(27328,-19637) counter=(0.12650,0.48859) move=(-2.82843,-2.82843) speed=(-169.70563,-169.70563)
+offset=1966  game: pos=(27325,-19637) counter=(0.29807, 0.00000) move=(-2.82843,-0.48859) speed=(-169.70563,  0.00000)
+             rust: pos=(27321,-19638) counter=(0.29807, 0.00000) move=(-6.82843,-1.48859) speed=(-169.70563,-169.70563)
+```
+
+Three readings:
+
+1. The simulator's x move is exactly **4.0 px larger** than the game's (`-6.82843 = -2.82843 - 4.0`), and 4 is
+   the range of Celeste's dash **corner correction** (the `for (int i = 1; i <= 4; i++)` `MoveHExact` loops noted
+   in an earlier round).
+2. The game's `speed.y` becomes **0** while the simulator's stays `-169.70563`: the game hit a **ceiling** and
+   took the collide response. Note this is the opposite of the wind case - the dash's own movement passes a
+   callback, so `OnCollideV` **does** run here.
+3. The consequences are a position difference in both axes and a speed difference in y, on the same frame.
+
+So the two sides disagree about whether that step was blocked: the game stopped vertically and stayed put in x,
+the simulator corrected around something by four pixels and carried on. The next step is to find the simulator's
+corner-correction site (grep `corner`/`correct` in `sim.rs`) and compare its conditions against the source's
+dash correction - in particular whether it probes with the right collider and whether it is allowed at all when
+the vertical move is blocked, which is the case that looks wrong here.
