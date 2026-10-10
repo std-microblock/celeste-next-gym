@@ -4043,3 +4043,31 @@ Next: trace the order inside the frame on both sides - where the game's `OnColli
 (`Player.cs`, the dash's vertical move) and where the simulator sets `speed.y` during the dash - and check
 whether the simulator's dash move can run with a stale non-zero `speed.y`. A probe on that frame that prints
 `speed.y` before and after the horizontal move would settle it in one run.
+
+### g-01 offset 1966: not the corner correction - the simulator blocks a horizontal pixel the game does not
+
+A frame-internal probe (`speed.y` printed on entry to the horizontal collide branch and after the correction
+block) ran on the `g-01` slice and produced exactly two lines, both:
+
+```
+SY beforeH pos=(27325.00,-19637.00) sy=-169.70563 sx=-169.70563
+```
+
+Readings:
+
+1. `(27325,-19637)` is precisely the position the dump attributes to **both** sides at offset 1966, so the probe
+   landed on the divergence frame.
+2. On entry the simulator's `speed.y` is still `-169.70563`, so the correction loop's guard (`speed.y == 0.0`,
+   `sim.rs:10068`) is **false** and the four-pixel correction never runs there. The previous note's "the
+   correction fired when it should not" is therefore **withdrawn** - the second retreat of a corner-correction
+   hypothesis in two rounds.
+3. `afterH` never printed, so the code returned before reaching it - i.e. through `try_dash_collide`'s
+   `Rebound`/`Ignore` early returns (`sim.rs:10060-10064`). Meanwhile the game's `speed.x` is unchanged
+   (`-169.70563`), so the game's horizontal move was *not* blocked.
+
+So the two sides disagree about **geometry**, at the same position: the simulator's horizontal pixel probe hits a
+solid the game's does not, and it happens on the first pixel (both lines are identical, and the horizontal move
+runs per pixel). The next step is to compare the probe rectangle and the solids at `(27325,-19637)` on both sides
+for that frame - the same kind of check that found the wind's ceiling (`current_player_rect` vs the game's
+collider), and the same discipline applies: print the rect and the overlapping solids rather than reasoning about
+which collider "should" be in play.
