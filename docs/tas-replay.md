@@ -4208,3 +4208,33 @@ into x before the frame's move.
 Also recording the methodological point: the `if horizontal {` grep found **45** sites, and my earlier
 `beforeH`-versus-`TC` "contradiction" was an artefact of anchoring two probes in different functions. Probing by
 function name beats probing by branch text, and this log has now paid for that lesson twice.
+
+### The extra travel is an exact -4 px move in x, by something other than move_axis, the collide path or the CC loops
+
+Decomposing the dump (which reports `move = dpos + dcounter`) for the divergence frame:
+
+| | x counter at 1965 | at 1966 | dcounter.x | move.x | => dpos.x |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| game | 0.12650 | 0.29807 | +0.17157 | -2.82843 | **-3** |
+| simulator | 0.12650 | 0.29807 | +0.17157 | -6.82843 | **-7** |
+
+So the simulator moved 7 whole pixels left where the game moved 3 - a difference of exactly **4 whole pixels**,
+not a fractional accumulation. And `move_axis` (`sim.rs:9958-9961`) is innocent by inspection:
+
+```rust
+fn move_axis(p: &mut PlayerSnapshot, map: &mut Map, horizontal: bool) {
+    let speed = if horizontal { p.speed.x } else { p.speed.y };
+    move_axis_amount(p, map, horizontal, speed * p.frame_delta_time);
+}
+```
+
+`speed.x * dt = -2.828`, which rounds to the game's -3, and it is called once per axis (`:7158`, `:7161`). So a
+**fourth mover** performs an exact 4-pixel horizontal move on that frame - the shape of `MoveHExact(-4)`.
+
+That rules out, in order of the measurements taken: the dash collide response (never reached), the three
+`for correction in 1..=DASH_CORNER_CORRECTION` loops (none fires), and now the ordinary physics move. The
+candidate list is down to the exact-move helper `move_exact` (`sim.rs:11706`) and whatever calls it, or a
+second, state-specific move inside `dash_update`.
+
+Next: list the call sites of `move_exact` and check which of them can run during `StDash` with a 4-pixel
+argument; that is now a short list rather than a search.
