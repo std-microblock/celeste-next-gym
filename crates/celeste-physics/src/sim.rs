@@ -299,7 +299,8 @@ impl Simulator {
         initialize_killboxes(&mut snapshot, &mut runtime_map);
         initialize_crush_and_dash_blocks(&mut snapshot, &mut runtime_map);
         let crumble_blocks = initialize_crumble_blocks(&runtime_map);
-        let room = initialize_room_coroutines(&mut runtime_map);
+        let mut room = initialize_room_coroutines(&mut runtime_map);
+        initialize_fling_birds(&snapshot, &mut runtime_map, &mut room);
         initialize_lookouts(&mut snapshot, &runtime_map);
         position_moving_solids(&mut runtime_map, snapshot.moving_solid_time);
         sync_all_platform_static_movers(&snapshot, &mut runtime_map, &static_mover_attachments);
@@ -1133,6 +1134,224 @@ fn initialize_clouds(p: &mut PlayerSnapshot, map: &mut Map) {
     }
 }
 
+/// `EntityData.NodesWithPosition(offset)` (`FlingBird.cs:81`): `nodes[0]` is the entity's own
+/// position and the decoded `node` children follow it in map order.
+fn fling_bird_nodes(entity: &crate::Entity) -> Vec<Vec2> {
+    let mut nodes = Vec::with_capacity(entity.nodes.len() + 1);
+    nodes.push(Vec2::new(entity.bounds.x, entity.bounds.y));
+    nodes.extend(entity.nodes.iter().copied());
+    nodes
+}
+
+/// `FlingBird.Awake` (`FlingBird.cs:86-117`). Every `flingBird` of the room is folded into the one
+/// with the smallest X (`list.Sort((a, b) => Math.Sign(a.X - b.X))`, `:97`), which appends the
+/// others' `NodeSegments[0]`/`SegmentsWaiting[0]` and removes them; a bird the player has already
+/// passed removes itself (`entity.X > base.X`, `:112-116`), which is why a room whose leftmost bird
+/// sits behind the player's anchor position can never fling. Removed entities are parked rather than
+/// deleted so every room-coroutine index stays positional.
+fn initialize_fling_birds(p: &PlayerSnapshot, map: &mut Map, room: &mut RoomCoroutineState) {
+    room.fling_birds.clear();
+    let mut indices: Vec<usize> = map
+        .entities
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entity)| (entity.kind == EntityKind::FlingBird).then_some(index))
+        .collect();
+    indices.sort_by(|left, right| {
+        map.entities[*left]
+            .bounds
+            .x
+            .partial_cmp(&map.entities[*right].bounds.x)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    let Some(&first) = indices.first() else {
+        return;
+    };
+    let mut state = FlingBirdState {
+        entity_index: first,
+        state: FLING_BIRD_WAIT,
+        position: Vec2::new(map.entities[first].bounds.x, map.entities[first].bounds.y),
+        fling_speed: Vec2::default(),
+        fling_target_speed: Vec2::default(),
+        fling_accel: 0.0,
+        node_segments: vec![fling_bird_nodes(&map.entities[first])],
+        segment_index: 0,
+        routine_phase: 0,
+        routine_timer: 0.0,
+        carrying: false,
+    };
+    for &index in &indices[1..] {
+        state.node_segments.push(fling_bird_nodes(&map.entities[index]));
+        park_entity(&mut map.entities[index]);
+    }
+    if p.pos.x > state.position.x {
+        park_entity(&mut map.entities[first]);
+        return;
+    }
+    room.fling_birds.push(state);
+}
+
+/// The bird's own `Update` (`FlingBird.cs:140-186`) together with the `DoFlingRoutine` coroutine that
+/// lives on it (`:188-221`). `FlingBird.Depth = -1` (`:55`) sorts above the player's 0, so this runs
+/// before `Player.Update` - which is what makes the routine's `Celeste.Freeze(0.05f)` and
+/// `Engine.TimeRate = 0.8f` land on the frames the trace shows them.
+fn advance_fling_birds(p: &mut PlayerSnapshot, map: &mut Map, room: &mut RoomCoroutineState) {
+    let delta = p.frame_delta_time;
+    for bird in room.fling_birds.iter_mut() {
+        // `base.Update()` - every component, `DoFlingRoutine` included - runs before the state switch
+        // (`FlingBird.cs:142-147`).
+        match bird.routine_phase {
+            0 => {}
+            1 => {
+                // `while (flingSpeed != Vector2.Zero) yield return null;` (`:198-201`)
+                if bird.fling_speed == Vec2::default() {
+                    bird.fling_speed = Vec2::new(-140.0, 140.0);
+                    bird.fling_target_speed = Vec2::default();
+                    bird.fling_accel = 1400.0;
+                    bird.routine_phase = 2;
+                    bird.routine_timer = 0.1;
+                }
+            }
+            2 => {
+                if bird.routine_timer > 0.0 {
+                    bird.routine_timer -= delta;
+                } else {
+                    // `Celeste.Freeze(0.05f)` (`:208`), then the throw ramp onto `FlingSpeed`.
+                    p.freeze_timer = p.freeze_timer.max(0.05);
+                    bird.fling_target_speed = FLING_BIRD_SPEED;
+                    bird.fling_accel = 6000.0;
+                    bird.routine_phase = 3;
+                    bird.routine_timer = 0.1;
+                }
+            }
+            3 => {
+                if bird.routine_timer > 0.0 {
+                    bird.routine_timer -= delta;
+                } else {
+                    // `Engine.TimeRate = 1f; ... player.FinishFlingBird();` (`:213-216`)
+                    p.time_rate = 1.0;
+                    finish_fling_bird(p);
+                    bird.carrying = false;
+                    bird.fling_target_speed = Vec2::default();
+                    bird.fling_accel = 4000.0;
+                    bird.routine_phase = 4;
+                    bird.routine_timer = 0.3;
+                }
+            }
+            4 => {
+                if bird.routine_timer > 0.0 {
+                    bird.routine_timer -= delta;
+                } else {
+                    // `yield return 0.3f; Add(new Coroutine(MoveRoutine()))` (`:219-220`). The curve
+                    // flight itself is not modelled yet, so the bird simply stops here.
+                    bird.routine_phase = 5;
+                }
+            }
+            _ => {}
+        }
+        match bird.state {
+            FLING_BIRD_WAIT => {
+                // `entity.X - base.X >= 100f` (`:152`): the player has run past the bird, so it skips
+                // straight to `MoveRoutine` and can never fling.
+                if p.pos.x - bird.position.x >= FLING_BIRD_SKIP_DIST {
+                    bird.state = FLING_BIRD_MOVE;
+                }
+            }
+            FLING_BIRD_FLING => {
+                // `States.Fling` (`:168-174`).
+                if bird.fling_accel > 0.0 {
+                    bird.fling_speed = approach_vec(
+                        bird.fling_speed,
+                        bird.fling_target_speed,
+                        bird.fling_accel * delta,
+                    );
+                }
+                bird.position = Vec2::new(
+                    bird.position.x + bird.fling_speed.x * delta,
+                    bird.position.y + bird.fling_speed.y * delta,
+                );
+            }
+            _ => {}
+        }
+    }
+    for bird in &room.fling_birds {
+        if let Some(entity) = map.entities.get_mut(bird.entity_index) {
+            entity.bounds.x = bird.position.x;
+            entity.bounds.y = bird.position.y;
+        }
+    }
+}
+
+/// `Player.FinishFlingBird` (`Player.cs:5556-5566`): the coroutine hands control back to `StNormal`
+/// with the bird's throw velocity, a 0.2 s rightward force-move and a fresh variable-jump window.
+fn finish_fling_bird(p: &mut PlayerSnapshot) {
+    enter_normal(p);
+    p.auto_jump = true;
+    p.force_move_x = 1;
+    p.force_move_x_timer = 0.2;
+    p.speed = FLING_BIRD_SPEED;
+    p.var_jump_timer = VAR_JUMP_TIME;
+    p.var_jump_speed = p.speed.y;
+    p.launched = true;
+}
+
+/// `Actor.MoveTowardsX`/`MoveTowardsY` (`Actor.cs:292-302`): approach `ExactPosition` toward the
+/// target by at most `maxAmount` and commit the difference through `MoveH`/`MoveV`, i.e. the
+/// whole-pixel `movementCounter` path, with the **default null collide callback**.
+fn move_towards_axis_silent(
+    p: &mut PlayerSnapshot,
+    map: &mut Map,
+    horizontal: bool,
+    target: f32,
+    max_move: f32,
+) {
+    let exact = if horizontal {
+        p.pos.x + p.movement_remainder.x
+    } else {
+        p.pos.y + p.movement_remainder.y
+    };
+    let next = approach(exact, target, max_move);
+    move_axis_amount_silent(p, map, horizontal, next - exact);
+}
+
+/// `Player.FlingBirdUpdate` (`Player.cs:5578-5583`): while `StFlingBird`, the carrier moves the
+/// player's exact position toward `flingBird.X` and `flingBird.Y + 8f + Collider.Height` at 250 px/s
+/// through two `Actor.MoveTowards` calls - X first, then Y.
+fn fling_bird_update(p: &mut PlayerSnapshot, map: &mut Map, fling_birds: &[FlingBirdState]) {
+    let Some(bird) = fling_birds.iter().find(|bird| bird.carrying) else {
+        return;
+    };
+    let target = Vec2::new(
+        bird.position.x,
+        bird.position.y + 8.0 + current_player_rect(p, p.pos.x, p.pos.y).height,
+    );
+    let max_move = FLING_BIRD_TETHER_SPEED * p.frame_delta_time;
+    move_towards_axis_silent(p, map, true, target.x, max_move);
+    move_towards_axis_silent(p, map, false, target.y, max_move);
+}
+
+/// `PlayerCollider`'s contact test for a `FlingBird`: `Add(new PlayerCollider(OnPlayer))` with
+/// `Collider = new Circle(16f)` (`FlingBird.cs:64-65`). `Player.Update` polls `PlayerCollider`
+/// components with the live hurtbox (`Player.cs:1898-1909`), so the test is the hurtbox against the
+/// circle centred on the bird's `Position` - never the decoded 8x8 entity rectangle.
+fn fling_bird_contact(
+    p: &PlayerSnapshot,
+    fling_birds: &[FlingBirdState],
+    entity_index: usize,
+) -> bool {
+    fling_birds
+        .iter()
+        .find(|bird| bird.entity_index == entity_index)
+        .is_some_and(|bird| {
+            bird.state == FLING_BIRD_WAIT
+                && circle_rect_intersects(
+                    bird.position,
+                    FLING_BIRD_RADIUS,
+                    current_player_hurt_rect(p),
+                )
+        })
+}
+
 const PARKED_ENTITY_POSITION: f32 = -1_000_000.0;
 /// `CrumblePlatform.Sequence` (`CrumblePlatform.cs:94-169`) timings: `yield return 0.2f` per shake
 /// step (one step with the player on top, three while climbing), then up to `0.4 s` of further
@@ -1154,6 +1373,60 @@ struct CrumbleBlockState {
     steps: u8,
 }
 
+/// `FlingBird.States` (`FlingBird.cs:11-18`).
+const FLING_BIRD_WAIT: u8 = 0;
+const FLING_BIRD_FLING: u8 = 1;
+const FLING_BIRD_MOVE: u8 = 2;
+
+/// `FlingBird.SkipDist = 100f` (`FlingBird.cs:22`): a waiting bird the player has run this far past
+/// skips straight to `MoveRoutine`.
+const FLING_BIRD_SKIP_DIST: f32 = 100.0;
+/// `FlingBird`'s `Circle(16f)` collider (`FlingBird.cs:64`).
+const FLING_BIRD_RADIUS: f32 = 16.0;
+/// `FlingBird.FlingSpeed` (`FlingBird.cs:24`), the throw velocity `FinishFlingBird` applies.
+const FLING_BIRD_SPEED: Vec2 = Vec2 {
+    x: 380.0,
+    y: -100.0,
+};
+/// `Player.FlingBirdUpdate`'s `MoveTowardsX`/`MoveTowardsY` rate (`Player.cs:5580-5581`).
+const FLING_BIRD_TETHER_SPEED: f32 = 250.0;
+
+/// One `Celeste.FlingBird`'s runtime state (`FlingBird.cs`), the Farewell final-run carrier. Held on
+/// the `Simulator` (which clones for `fork`) rather than in `PlayerSnapshot`, exactly like
+/// [`CrumbleBlockState`]: the bird is rebuilt from the room's decoded entities at load, the way
+/// `FlingBird.Awake` does, so the gate's `--dump-field-map` audit is untouched.
+#[derive(Clone)]
+struct FlingBirdState {
+    /// Map entity this bird keeps its position in. The other `flingBird` entities of the room are
+    /// parked by [`initialize_fling_birds`] after `Awake` folded them into this one.
+    entity_index: usize,
+    /// `FlingBird.state`, one of the `FLING_BIRD_*` constants.
+    state: u8,
+    /// `Entity.Position`: the `Circle(16)` centre used for contact and as the player's tether.
+    position: Vec2,
+    /// `FlingBird.flingSpeed` (`:32`).
+    fling_speed: Vec2,
+    /// `FlingBird.flingTargetSpeed` (`:34`).
+    fling_target_speed: Vec2,
+    /// `FlingBird.flingAccel` (`:36`): `States.Fling` only runs `Calc.Approach` while it is positive.
+    fling_accel: f32,
+    /// `FlingBird.NodeSegments` (`:46`) after `Awake` merged every same-room bird into this one, so
+    /// `node_segments[segment_index][0]` is the bird's wait position for the next fling.
+    node_segments: Vec<Vec<Vec2>>,
+    /// `FlingBird.segmentIndex` (`:44`).
+    segment_index: usize,
+    /// `DoFlingRoutine` (`:188-221`) phase: 0 is idle (no routine), 1 waits for `flingSpeed` to reach
+    /// zero, 2 is the first throw ramp, 3 the freeze/final ramp that calls `FinishFlingBird`, 4 the
+    /// trailing 0.3 s, 5 done.
+    routine_phase: u8,
+    /// The routine's `yield return 0.1f`/`0.3f` float timer, with `Monocle.Coroutine` semantics
+    /// (`Coroutine.cs:38-42`): decremented by `Engine.DeltaTime`, and the body resumes only on the
+    /// update where it was already non-positive.
+    routine_timer: f32,
+    /// `Player.flingBird == this`, i.e. this bird is the one `StFlingBird` tethers the player to.
+    carrying: bool,
+}
+
 /// Per-room entity coroutine state, held on the `Simulator` (which clones for `fork`) rather than
 /// in `PlayerSnapshot`, so the gate's `--dump-field-map` audit stays untouched.
 #[derive(Clone)]
@@ -1166,6 +1439,9 @@ struct RoomCoroutineState {
     /// gate's sequence starts (`SwitchGate.cs:109-112`), and threaded across segments by the gate,
     /// because `SwitchGate.Awake` short-circuits straight to the open position when it is set.
     switches_on: bool,
+    /// Per-room `Celeste.FlingBird` carrier state, in `Awake` order (see
+    /// [`initialize_fling_birds`]).
+    fling_birds: Vec<FlingBirdState>,
 }
 
 /// `FloatySpaceBlock.sinkTimer = 0.3f` (`FloatySpaceBlock.cs:247`): a rider re-arms the sink each
@@ -1293,6 +1569,7 @@ fn initialize_room_coroutines(map: &mut Map) -> RoomCoroutineState {
         switch_gates,
         touch_switches,
         switches_on: false,
+        fling_birds: Vec::new(),
     }
 }
 
@@ -6876,6 +7153,9 @@ fn step(
         p.on_ground = grounded(p, map);
         return Ok(());
     }
+    // `FlingBird.Depth = -1` (`FlingBird.cs:55`) sorts above `Player`'s, so the bird's own update and
+    // its `DoFlingRoutine` run before `Player.Update`.
+    advance_fling_birds(p, map, room);
     // Killbox has no TransitionUpdate tag. On ordinary frames its room-entity
     // Update runs before Player.Update and applies the source 32 px hysteresis
     // thresholds before its PlayerCollider can fire later in the frame.
@@ -7056,6 +7336,7 @@ fn step(
         PlayerState::StarFly => star_fly_update(p, input, map),
         PlayerState::Dummy => dummy_update(p, input, map),
         PlayerState::Frozen => {}
+        PlayerState::FlingBird => fling_bird_update(p, map, &room.fling_birds),
         PlayerState::TempleFall => temple_fall_update(p, map),
         PlayerState::ReflectionFall => reflection_fall_update(p, map),
         // Player.cs:5969-5993 / 5995-6068 / 6112-6119 / 6156-6174. These
@@ -7166,7 +7447,7 @@ fn step(
     // portable collider callbacks, after Player has completed its movement.
     advance_bumpers(p, map);
     advance_refills(p, map);
-    interact(p, map, input, lookout_booster_box);
+    interact(p, map, input, lookout_booster_box, &mut room.fling_birds);
     try_begin_lookout(p, map, input);
     advance_lookouts(p, map, input, menu_cancel_pressed);
     update_strawberry_train(p);
@@ -10322,6 +10603,7 @@ fn interact(
     map: &Map,
     input: InputState,
     lookout_booster_box: Option<Rect>,
+    fling_birds: &mut [FlingBirdState],
 ) {
     if let Some(from_y) = p.pending_bounce_from_y.take() {
         // Backward compatibility for portable snapshots produced before
@@ -10531,12 +10813,47 @@ fn interact(
                             || Rect::new(lava.position.x, lava.position.y - 280.0, 340.0, 120.0)
                                 .intersects(player_box))
                 }),
+            EntityKind::FlingBird => fling_bird_contact(p, fling_birds, entity_index),
             _ => entity.bounds.intersects(player_box),
         };
         if !intersects {
             continue;
         }
         match entity.kind {
+            // `FlingBird.OnPlayer` (`FlingBird.cs:125-138`) -> `Player.DoFlingBird`
+            // (`Player.cs:5541-5554`) and `FlingBirdBegin` (`:5568-5572`). The bird only accepts a
+            // rider from `States.Wait`, and `DoFlingBird` refuses a dead player or one already in
+            // `StFlingBird`.
+            EntityKind::FlingBird => {
+                if let Some(bird) = fling_birds
+                    .iter_mut()
+                    .find(|bird| bird.entity_index == entity_index)
+                {
+                    if bird.state == FLING_BIRD_WAIT
+                        && !p.dead
+                        && p.state != PlayerState::FlingBird
+                    {
+                        // `flingSpeed = player.Speed * 0.4f; flingSpeed.Y = 120f;`
+                        bird.fling_speed = Vec2::new(p.speed.x * 0.4, 120.0);
+                        bird.fling_target_speed = Vec2::default();
+                        bird.fling_accel = 1000.0;
+                        bird.state = FLING_BIRD_FLING;
+                        bird.routine_phase = 1;
+                        bird.routine_timer = 0.0;
+                        bird.carrying = true;
+                        p.state = PlayerState::FlingBird;
+                        refill_dash(p);
+                        p.stamina = 110.0;
+                        // `player.Speed = Vector2.Zero;` (`:133`)
+                        p.speed = Vec2::default();
+                        // `Engine.TimeRate = 0.8f` is `DoFlingRoutine`'s first statement (`:196`).
+                        // This frame's `frame_delta_time` was computed before the update ran, so the
+                        // new rate only reaches movement on the next frame - which is exactly the
+                        // split the trace shows between the trigger row and the row after it.
+                        p.time_rate = 0.8;
+                    }
+                }
+            }
             EntityKind::Spikes
                 if (!entity.shielded || !dash_through_spikes_pass(p))
                     && spike_is_lethal(p, entity.direction, entity.bounds) =>
@@ -11423,6 +11740,9 @@ fn load_transition_room(
     // (`FloatySpaceBlock.cs:65-105`, `:50-57`). Keeping the source room's groups would index the
     // destination room's entities at the wrong offsets.
     room_state.floaty_blocks = initialize_floaty_blocks(map);
+    // `FlingBird.Awake` runs with the destination room's own entity list, and its merge/cull depends
+    // on the player's position at load, so the carrier state is rebuilt here too.
+    initialize_fling_birds(p, map, room_state);
     position_moving_solids(map, p.moving_solid_time);
     sync_all_platform_static_movers(p, map, attachments);
 }
@@ -16866,6 +17186,7 @@ mod tests {
                 switch_gates: Vec::new(),
                 touch_switches: Vec::new(),
                 switches_on: false,
+                fling_birds: Vec::new(),
             },
         );
         assert!(!player.invisible_barriers[0].initialized);
@@ -16883,6 +17204,7 @@ mod tests {
                 switch_gates: Vec::new(),
                 touch_switches: Vec::new(),
                 switches_on: false,
+                fling_birds: Vec::new(),
             },
         )
         .unwrap();
@@ -16925,7 +17247,7 @@ mod tests {
         assert_eq!(map.entities[0].bounds, source.entities[0].bounds);
 
         player.pos.y = 170.0;
-        interact(&mut player, &map, InputState::default(), None);
+        interact(&mut player, &map, InputState::default(), None, &mut []);
         assert!(player.dead);
     }
 
@@ -16988,24 +17310,24 @@ mod tests {
         };
 
         let mut ordinary = into.clone();
-        interact(&mut ordinary, &map, InputState::default(), None);
+        interact(&mut ordinary, &map, InputState::default(), None, &mut []);
         assert!(ordinary.dead);
 
         let mut dash = into.clone();
         dash.state = PlayerState::Dash;
         dash.dash_dir = Vec2::new(1.0, 0.0);
-        interact(&mut dash, &map, InputState::default(), None);
+        interact(&mut dash, &map, InputState::default(), None, &mut []);
         assert!(!dash.dead);
 
         let mut lingering = into.clone();
         lingering.dash_dir = Vec2::new(1.0, 0.0);
         lingering.dash_attack_timer = 0.02;
-        interact(&mut lingering, &map, InputState::default(), None);
+        interact(&mut lingering, &map, InputState::default(), None, &mut []);
         assert!(!lingering.dead);
 
         let mut zero_direction = into;
         zero_direction.state = PlayerState::Dash;
-        interact(&mut zero_direction, &map, InputState::default(), None);
+        interact(&mut zero_direction, &map, InputState::default(), None, &mut []);
         assert!(zero_direction.dead);
     }
     #[test]
@@ -17692,6 +18014,7 @@ mod tests {
                 switch_gates: Vec::new(),
                 touch_switches: Vec::new(),
                 switches_on: false,
+                fling_birds: Vec::new(),
             },
         )
         .unwrap();
@@ -17722,6 +18045,7 @@ mod tests {
                 switch_gates: Vec::new(),
                 touch_switches: Vec::new(),
                 switches_on: false,
+                fling_birds: Vec::new(),
             },
         )
         .unwrap();
@@ -21002,6 +21326,7 @@ mod tests {
                 switch_gates: Vec::new(),
                 touch_switches: Vec::new(),
                 switches_on: false,
+                fling_birds: Vec::new(),
             },
         );
 
@@ -21027,6 +21352,7 @@ mod tests {
                 switch_gates: Vec::new(),
                 touch_switches: Vec::new(),
                 switches_on: false,
+                fling_birds: Vec::new(),
             },
         )
         .unwrap();
@@ -21746,7 +22072,7 @@ mod tests {
             ..PlayerSnapshot::default()
         };
         let mut map = ice_ball_map();
-        interact(&mut bounced, &map, InputState::default(), None);
+        interact(&mut bounced, &map, InputState::default(), None, &mut []);
         assert_eq!(bounced.state, PlayerState::Normal);
         assert_eq!(bounced.pending_bounce_from_y, None);
         assert_eq!(bounced.pos, Vec2::new(96.0, 98.0));
@@ -21821,7 +22147,7 @@ mod tests {
                 ..PlayerSnapshot::default()
             };
             let mut map = bounce_actor_map(kind.clone());
-            interact(&mut p, &map, InputState::default(), None);
+            interact(&mut p, &map, InputState::default(), None, &mut []);
             assert_eq!(p.state, PlayerState::Normal, "kind={kind:?}");
             assert_eq!(p.speed, Vec2::new(240.0, BOUNCE_SPEED), "kind={kind:?}");
             assert_eq!(p.dashes, 1, "kind={kind:?}");
@@ -22571,7 +22897,7 @@ mod tests {
             ..PlayerSnapshot::default()
         };
         let mut map = ice_ball_map();
-        interact(&mut bounced, &map, InputState::default(), None);
+        interact(&mut bounced, &map, InputState::default(), None, &mut []);
         assert_eq!(bounced.state, PlayerState::Normal);
         assert!(bounced.star_fly_hitbox_preserved);
         assert!(!bounced.ducking);
@@ -23833,5 +24159,61 @@ mod tests {
                 .iter()
                 .all(|entity| !solid_is_collidable(entity))
         );
+    }
+
+    /// The Farewell carrier end to end on two frames: `FlingBird.OnPlayer` (`FlingBird.cs:125-138`)
+    /// fires from the `Circle(16)` contact while the bird is in `States.Wait`, `Player.DoFlingBird`
+    /// (`Player.cs:5541-5554`) puts the player in `StFlingBird` and `FlingBirdBegin` (`:5568-5572`)
+    /// refills dash and stamina, the routine's `Engine.TimeRate = 0.8f` (`FlingBird.cs:196`) applies
+    /// from the *next* frame, and `Player.FlingBirdUpdate` (`:5578-5583`) then tethers the player.
+    #[test]
+    fn fling_bird_contact_enters_st_fling_bird_and_tethers_the_player() {
+        let map = Map {
+            entities: vec![crate::Entity {
+                kind: EntityKind::FlingBird,
+                bounds: Rect::new(64.0, 100.0, 8.0, 8.0),
+                direction: Vec2::default(),
+                shielded: false,
+                // `waiting` (`FlingBird.cs:81`) rides `single_use`; false in every `LostLevels` room.
+                single_use: false,
+                nodes: vec![Vec2::new(200.0, 100.0)],
+                name: "flingBird".to_owned(),
+            }],
+            ..Map::default()
+        };
+        let player = PlayerSnapshot {
+            pos: Vec2::new(60.0, 100.0),
+            speed: Vec2::new(300.0, 0.0),
+            dashes: 0,
+            max_dashes: 1,
+            ..PlayerSnapshot::default()
+        };
+        let mut simulator = Simulator::new(player, &map).unwrap();
+        simulator.step(InputState::default()).unwrap();
+        let first = simulator.snapshot().clone();
+        assert_eq!(first.state, PlayerState::FlingBird);
+        assert_eq!(first.dashes, 1, "FlingBirdBegin refills the dash");
+        assert_eq!(first.stamina, 110.0);
+        assert_eq!(first.speed, Vec2::default());
+        assert_eq!(first.time_rate, 0.8);
+
+        let bird = simulator.room.fling_birds.first().expect("one carrier");
+        assert_eq!(bird.state, FLING_BIRD_FLING);
+        assert!(bird.carrying);
+        // `flingSpeed = player.Speed * 0.4f; flingSpeed.Y = 120f;` (`FlingBird.cs:129-130`): the Y
+        // component is forced, the X one is the player's pre-trigger speed scaled by 0.4.
+        assert!(bird.fling_speed.x > 0.0 && bird.fling_speed.x <= 300.0 * 0.4);
+        assert_eq!(bird.fling_speed.y, 120.0);
+        let bird_position = bird.position;
+
+        // The second frame is the first with the 0.8-scaled delta: the bird integrates its fling
+        // speed and the state-24 arm tethers the player toward `bird.Y + 8 + Collider.Height`.
+        simulator.step(InputState::default()).unwrap();
+        let second = simulator.snapshot().clone();
+        // The player is already within a pixel of the bird's X after the trigger frame, so the X
+        // tether may commit nothing; the Y one lands the player on `bird.Y + 8 + 11`.
+        assert!(second.pos.x >= first.pos.x, "the tether never drags the player left");
+        assert!(second.pos.y > first.pos.y, "the player settles onto the tether point");
+        assert!(simulator.room.fling_birds[0].position.y > bird_position.y);
     }
 }
