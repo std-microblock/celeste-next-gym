@@ -196,6 +196,14 @@ pub enum EntityKind {
     /// carrying, pushing, and Player LiftSpeed inheritance independently of a
     /// specific vanilla entity state machine.
     MovingSolid,
+    /// Vanilla `Celeste.FlingBird : Entity` (map name `flingBird`, `FlingBird.cs:9`), the Farewell
+    /// final-run bird. `FlingBird(Vector2[] nodes, bool skippable) : base(nodes[0])` (`:52-53`) makes
+    /// the map position `nodes[0]` and the `node` child list the rest of the flight path;
+    /// `Collider = new Circle(16f)` (`:64`) plus `Add(new PlayerCollider(OnPlayer))` (`:65`) are the
+    /// whole contact surface, so the decoded rectangle is *not* a collider - only the circle matters.
+    /// `direction` is unused and the constructor's `skippable` rides `single_use`
+    /// (`data.Bool("waiting")`, `:80-84`), the only per-kind bool the decoder leaves free.
+    FlingBird,
     Unknown,
 }
 
@@ -882,6 +890,33 @@ pub(crate) fn encode_celeste_rooms(
                         )],
                     ))
                 }
+                EntityKind::FlingBird => Some(element(
+                    "flingBird",
+                    [
+                        ("height", BinaryValue::Int(height)),
+                        ("id", BinaryValue::Int(id)),
+                        ("originX", BinaryValue::Int(0)),
+                        ("originY", BinaryValue::Int(0)),
+                        ("waiting", BinaryValue::Bool(entity.single_use)),
+                        ("width", BinaryValue::Int(width)),
+                        ("x", BinaryValue::Int(x)),
+                        ("y", BinaryValue::Int(y)),
+                    ],
+                    entity
+                        .nodes
+                        .iter()
+                        .map(|node| {
+                            element(
+                                "node",
+                                [
+                                    ("x", BinaryValue::Int((node.x - map.bounds.x).round() as i32)),
+                                    ("y", BinaryValue::Int((node.y - map.bounds.y).round() as i32)),
+                                ],
+                                vec![],
+                            )
+                        })
+                        .collect(),
+                )),
                 EntityKind::MoveBlock => {
                     let direction = if entity.direction.x < 0.0 {
                         "Left"
@@ -1691,6 +1726,9 @@ fn map_from_binary_inner(
                 // vanilla map, so every real dash switch used to arrive as `Unknown`.
                 "dashSwitchH" | "dashSwitchV" => EntityKind::DashSwitch,
                 "celesteGymMovingSolid" => EntityKind::MovingSolid,
+                // The Farewell final-run bird. Kept out of `Unknown` so `sim.rs` can model its
+                // contact and the `StFlingBird` carry instead of the entity being invisible.
+                "flingBird" => EntityKind::FlingBird,
                 _ => registered.map_or(EntityKind::Unknown, |entry| entry.kind),
             };
             let default_w = registered.map_or_else(
@@ -2163,6 +2201,10 @@ fn map_from_binary_inner(
                     EntityKind::Refill => attr_bool(el, "oneUse", false),
                     EntityKind::CoreModeToggle => attr_bool(el, "persistent", false),
                     EntityKind::DashSwitch => attr_bool(el, "persistent", false),
+                    // `FlingBird(EntityData data, Vector2 offset)` forwards
+                    // `data.Bool("waiting")` as the constructor's `skippable` (`FlingBird.cs:80-84`),
+                    // which lands in `SegmentsWaiting`; it is the only per-kind bool left.
+                    EntityKind::FlingBird => attr_bool(el, "waiting", false),
                     _ => attr_bool(el, "singleUse", false),
                 },
                 nodes: el
