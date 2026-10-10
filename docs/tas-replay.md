@@ -3848,3 +3848,23 @@ Rule to apply to the other two leads before any implementation: `Player.FlingBir
 `vendor/celeste-fna/Celeste/Player.cs`** and shown to be reachable from the traced states. `docs/Player.cs` is
 useful as a cross-reference but cannot be the basis for a change, and this log has now twice been misled by a
 reference to a copy rather than the source of record (the other being the round-192 line numbers).
+
+### Lead verification against the source of record: `FlingBird` is real, `MoonLanding` is not
+
+Applying the rule from the previous note to the survey's remaining two leads, in
+`vendor/celeste-fna/Celeste/Player.cs`:
+
+- **`FlingBird` is legitimate.** `StFlingBird = 24` (`:397`), the state is registered at `:1170`
+  (`StateMachine.SetCallbacks(24, FlingBirdUpdate, FlingBirdCoroutine, FlingBirdBegin, FlingBirdEnd)`),
+  `DoFlingBird` at `:5541`, `FinishFlingBird` at `:5556`, and the state functions at `:5568-5578`. The
+  simulator has only the enum variant (`types.rs:46`, `FlingBird = 24`) and no implementation, so this is a
+  genuinely missing mechanic rather than a copy artefact.
+- **`MoonLanding` does not exist** in the source of record - no matches at all - so that lead is dead, like
+  `DuckCorrectCheck`/`DuckCorrectSlide`.
+
+Before implementing `FlingBird`, one more cheap check decides whether it is worth anything: whether any row the
+202 trace actually visits is in `StFlingBird` (state 24). The trace exports the state name per player row, and
+the class worklist's anchor states are read from those rows - `StFlingBird` appears in none of the top classes,
+which is suggestive but not conclusive. If the state never occurs in the corpus, implementing it would be a
+third inert-but-correct item in a row, and the better target is the measured divergence at
+`7-Summit|0|g-01|134447` offset 1966, which comes from the trace itself and depends on no copy of the source.
