@@ -3868,3 +3868,34 @@ the class worklist's anchor states are read from those rows - `StFlingBird` appe
 which is suggestive but not conclusive. If the state never occurs in the corpus, implementing it would be a
 third inert-but-correct item in a row, and the better target is the measured divergence at
 `7-Summit|0|g-01|134447` offset 1966, which comes from the trace itself and depends on no copy of the source.
+
+### Corpus state distribution, and the `FlingBird` verdict: 635 rows, real and unmodelled
+
+A one-script scan of `trace-202-v7.jsonl` (counted straight off the `"state"` field, 22 distinct states) gives
+the frequency table to prioritise state work by:
+
+| state | rows | | state | rows |
+| --- | ---: | --- | --- | ---: |
+| `StNormal` | 250,547 | | `StSummitLaunch` | 4,248 |
+| `StDash` | 116,203 | | `StIntroJump` | 3,899 |
+| `StDummy` | 16,241 | | `StIntroWakeUp` | 2,151 |
+| `StStarFly` | 10,460 | | `StIntroWalk` | 1,864 |
+| `StLaunch` | 8,311 | | `StPickup` | 1,830 |
+| `StDreamDash` | 6,950 | | `StAttract` | 1,578 |
+| `StRedDash` | 6,058 | | `StIntroRespawn` | 920 |
+| `StClimb` | 4,454 | | **`StFlingBird`** | **635** |
+| | | | `StCassetteFly` | 562 |
+| | | | `StTempleFall` | 414 |
+| | | | `StBoost` | 304 |
+| | | | `StSwim` | 250 |
+| | | | `StIntroThinkForABit` | 97 |
+| | | | `StHitSquash` | 25 |
+
+So the survey's third lead is the good one: `StFlingBird` occurs 635 times in the 202 trace, the state is
+registered in the source of record (`Player.cs:1170`), and the simulator has only the enum variant
+(`types.rs:46`) - those rows are certainly simulated wrong today. Unlike `DuckCorrect*` and `MoonLanding`, this
+one is both real and exercised, so implementing it can actually move segments.
+
+Also worth using the table for: `StCassetteFly` (562), `StTempleFall` (414), `StBoost` (304) and `StSwim` (250)
+are small but non-zero, and `StHitSquash` (25) is the kind of state that would be invisible in aggregate
+metrics but decisive for a handful of segments.
