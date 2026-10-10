@@ -4161,3 +4161,26 @@ prints *all* overlapping entities, not only solids) is what made it look otherwi
 What `summitcheckpoint` being unmapped does cost is different and not geometric: a checkpoint trigger that
 never fires, i.e. session state rather than collision - the same category as the flags and cassette work, and
 worth checking when a corpus segment depends on a respawn point rather than on a wall.
+
+### The 4 px at g-01 offset 1966 does not come from the dash collide path at all
+
+Two facts, and together they invalidate the probe pairing I had been reasoning from:
+
+- `if horizontal {` occurs **45 times** in `sim.rs` (`move_axis:9959`, `move_axis_amount_inner:10052`, and 43
+  others), so the earlier `beforeH` probe - anchored on a comment plus `if horizontal` - was not necessarily
+  inside `move_axis_amount_inner`. That resolves the apparent contradiction: `beforeH` fired on the divergence
+  position while `TC` did not, because the two probes were in **different functions**.
+- The `try_dash_collide` call sites are only two: `10057` with `true` (horizontal) and `10111` with `false`
+  (vertical). The `TC` probe was anchored on the horizontal one, so it is the right witness - and it did **not**
+  fire on the divergence frame.
+
+So the simulator never enters `move_axis_amount_inner`'s horizontal branch on that frame, and the 4 px of extra
+horizontal travel must come from a different mover. Candidates, in order: the dash's own published move
+(`dash_update`'s publish block, where `dash_dir` and `speed` are set - and which is the block the facing fix
+touched), `move_axis` (`:9959`, the ordinary physics move), or a state-specific mover such as `move_exact`
+(`:11706`) used by climb/dream paths.
+
+Next: instrument the *other* movers on that frame rather than the dash collide path - `move_axis` and the dash
+publish - printing `pos` before and after each, and find which one produces 6.83 px instead of 2.83. That is a
+narrower search than it has been for several rounds, and it starts from the fact that the collide/correction
+path is provably not involved.
