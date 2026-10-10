@@ -3899,3 +3899,47 @@ one is both real and exercised, so implementing it can actually move segments.
 Also worth using the table for: `StCassetteFly` (562), `StTempleFall` (414), `StBoost` (304) and `StSwim` (250)
 are small but non-zero, and `StHitSquash` (25) is the kind of state that would be invisible in aggregate
 metrics but decisive for a handful of segments.
+
+### `StFlingBird` (state 24): a small, fully-specified mechanic the simulator does not have
+
+All of it is four functions in the source of record (`Player.cs:5541-5588`):
+
+```csharp
+public bool DoFlingBird(FlingBird bird) {          // called by the FlingBird entity
+    if (!Dead && StateMachine.State != 24) {
+        flingBird = bird;  StateMachine.State = 24;
+        if (Holding != null) Drop();
+        return true;
+    }
+    return false;
+}
+public void FinishFlingBird() {                    // called when the flight ends
+    StateMachine.State = 0;  AutoJump = true;
+    forceMoveX = 1;  forceMoveXTimer = 0.2f;
+    Speed = FlingBird.FlingSpeed;  varJumpTimer = 0.2f;  varJumpSpeed = Speed.Y;  launched = true;
+}
+private void FlingBirdBegin() { RefillDash(); RefillStamina(); }
+private void FlingBirdEnd() { }
+private int FlingBirdUpdate() {
+    MoveTowardsX(flingBird.X, 250f * Engine.DeltaTime);
+    MoveTowardsY(flingBird.Y + 8f + base.Collider.Height, 250f * Engine.DeltaTime);
+    return 24;
+}
+private IEnumerator FlingBirdCoroutine() { yield break; }
+```
+
+So `StFlingBird` is "carried by the bird": each frame the player is moved toward the bird at 250 px/s with
+`MoveTowards` - the **same counter-based `MoveH`/`MoveV` family** as the wind and the spring fixes, so the
+movement itself is the already-solved shape. `FlingBirdBegin` refills dash and stamina, and `FinishFlingBird`
+hands control back with `Speed = FlingBird.FlingSpeed`, auto-jump and a 0.2 s force-move to the right.
+
+The simulator has the enum variant (`types.rs:46`) and **nothing else** - a grep for `fling` in `sim.rs`
+returns nothing. That also explains the 635 `StFlingBird` rows in the 202 trace: the trace records the *game's*
+state on those rows while the simulator is in whatever state it thinks it is, so the row comparison fails there
+by construction.
+
+Implementation checklist before writing code: (a) is the `FlingBird` **entity** decoded at all (an `EntityKind`
+variant and a map-name mapping - the same check that caught `eyebomb`)? (b) what does the entity call, and when
+(`DoFlingBird`/`FinishFlingBird` are invoked from the entity's own update, which may itself be unmodelled);
+(c) does anything in the simulator ever set state 24 today? If the entity is missing, this grows from a small
+`MoveTowards` change into a new-entity piece, and the frequency table says it is worth 635 rows of the corpus.
