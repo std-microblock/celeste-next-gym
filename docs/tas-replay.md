@@ -4618,3 +4618,23 @@ key, never by the tail.
 Next: read the vertical branch's correction loop in `move_axis_amount_inner` (the two loops other than the
 horizontal one) and compare its conditions with the source's dash correction, now with the frame known:
 `7-Summit|0|g-01|134447` offset 1966, where the game does **not** correct and the simulator does.
+
+### All three correction loops are excluded by their own guards - witness the calls instead
+
+The three `for correction in 1..=DASH_CORNER_CORRECTION` loops and their guards (`sim.rs`):
+
+| loop | guard | this frame |
+| --- | --- | --- |
+| `10069` (horizontal; body does `p.pos.y += offset; p.pos.x += sign`) | `matches!(state, Dash \| RedDash) && p.speed.y == 0.0 && p.speed.x != 0.0` | during the x move `speed.y = -169.70563`, so the guard is **false** - consistent with XM showing the correct -3 |
+| `10172` (downward floor snap; body does `p.pos = (pos.x ∓ correction, pos.y + 1.0)`) | `sign > 0 && p.speed.y > 0.0 && matches!(state, Dash \| RedDash) && !p.dash_started_on_ground` | the dash is upward: `amount = speed.y * dt = -2.828`, so `sign = -1` and the guard is **false** |
+| `10183` | mirror of `10172` | same |
+
+So the only construct whose body moves x by up to 4 during a **vertical** move is the floor snap at `10172`/`10183`
+- and it cannot fire on this frame because the player is rising. That means the -4 is applied by something that is
+not one of these three loops at all, and the cheapest witness for "something" is the call itself.
+
+Next probe: the entry of `move_axis_amount_inner`, printing `horizontal`, `amount`, and `sign`, plus `speed.x` and
+`speed.y`. On that frame it will list **every** move the simulator performs, and the one with a non-zero
+horizontal flag and a 4-scale amount will name the culprit directly. This is the last probe this investigation
+needs: the total displacement is known to happen between XM and A3, all three correction loops are excluded, and
+the remainder entering the frame was normal.
