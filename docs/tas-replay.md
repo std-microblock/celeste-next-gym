@@ -3579,3 +3579,31 @@ reason is `facing` - a different, later defect.
 (`3361`, `6821`, `8421`, `10018/10020`, `10088`, `10125/10137`, `10165/10176`, `10197`, `10226`, `10244`,
 `11056`, `11439`) is now a checklist. Any site that *assigns* a position or clears the remainder where the
 source calls `MoveV`/`MoveH` is the same bug as this one; the +11,246-frame gain says it is worth auditing each.
+
+### Spring-class audit, first pass: the "clear" half is clean; the "assign the position" half is a 30-site survey
+
+The spring fix (`1529e6b`, +76 improved segments on 202) came from one instance of a class: a helper that
+**assigned the player's position** where the source moves through `movementCounter` (`MoveV`/`MoveH`). Auditing
+the class needs two lists, and only the first is finished.
+
+**Cleared-counter sites (`movement_remainder` writers).** After the spring fix the list is `3361`, `6821`,
+`8421`, `9952-9957` (the legitimate accumulation inside `move_axis_amount`), `10018/10020`, `10088`,
+`10125/10137`, `10165/10176`, `10197`, `10226`, `10244` (all inside the `move_axis_amount_inner` collide
+branches, i.e. blocked-step semantics), `10860/10862` + `10981-10990` (the new `spring_move` and `bounce`),
+`11088`, `11471`. Checked the two unaudited full clears:
+- `11088` in `try_begin_badeline_boost`, right after `move_to_position` - arrival semantics;
+- `11471` in `update_transition`, documented against `Player.TransitionTo`, which really does
+  `ZeroRemainderX/Y` + speed rounding on reaching the target (`Player.cs`, read earlier).
+Both faithful, so this half has no remaining defects. Note also `7130`'s comment ("MoveV, so its fractional
+displacement must share movement_remainder.y") - a deliberate modelling note, not a bug.
+
+**Direct `p.pos` assignments (30+ sites).** These are the other half: a site that assigns the position does not
+touch `movement_remainder` at all, so the previous list cannot see it. The grep
+`^\s*p\.pos(\.(x|y))?\s*(=|\+=|-=)` yields roughly thirty, and the ones that look like they could be the same
+defect are `3004/3012` (moving-solid carry), `5683` (assign from an entity position), `6204-6226` (static-mover
+carry), `6315` (`p.pos.y -= amount`), `7385`, `7405` (`+= facing_dir`) and `8336/8337`; the `3312/3316`,
+`3335`, `3974/3978`, `4001` group is a probe-and-restore pattern and looks legitimate, as do the whole-pixel
+`p.pos.x += sign` loops at `4050/4052`, `4085/4087`.
+
+Each needs a source check against `Player.cs` before it can be called a defect, which makes this a survey
+rather than a fix - and the +11,246-frame payoff from the first instance says it is worth doing properly.
