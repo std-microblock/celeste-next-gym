@@ -4562,3 +4562,28 @@ Note also for the record: my earlier `beforeH` probe and the `TC` probe cannot b
 their anchors is comments only), and since `TC` was anchored on the structural call
 `try_dash_collide(p, map, next, true, sign as f32)`, `TC` is the trustworthy one - the horizontal collide branch
 is not reached on that frame, which is consistent with the remainder explanation.
+
+### Withdrawn: the remainder was normal at A2 - the extra -4 happens *inside* the x move
+
+The probe printing `movement_remainder` after `tick_lift_speed` (A2) gave, on the divergence frame:
+
+```
+REM pos=(27328.00,-19637.00) rem=(0.126499, 0.321927) sx=-169.70563 sy=-169.70563
+```
+
+`0.126499` is the ordinary value - it matches the dump's `rustCounter.x = 0.12650` at offset 1965 exactly. So the
+previous note's arithmetic ("the x remainder must have been about -4.126 entering the move") is **wrong and
+withdrawn**: with `0.126499 + (-2.82843) = -2.70193`, `round_ties_even` gives **-3**, which is precisely the
+game's move. `move_axis` should have moved -3.
+
+So the extra 4 px is applied **during** the move and **not** through the remainder. That is a narrow statement
+with a narrow consequence: `move_axis_amount_inner`'s per-pixel loop can run at most `|amount| = 3` steps, so the
+4 px cannot come from the x `move_axis` call alone. The A2/A3 window contains exactly two moves - `move_axis(p,
+map, true)` at `7158` and `move_axis(p, map, false)` at `7161` - so the next probe goes between them, anchored on
+the literal line `move_axis(p, map, true);`, where the x move's own result will be visible on its own: either it
+moves -7 (and the loop is not bounded the way I read it), or it moves -3 and the remaining -4 comes from
+something else in that window.
+
+This is the second time an arithmetic inference from the A2/A3 totals has been retired by one direct
+measurement, which is the same lesson as the four base/derived misreadings: measure the intermediate value, do
+not infer it from the endpoints.
