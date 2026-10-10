@@ -4094,3 +4094,28 @@ player rect, the rect one pixel ahead, `non_dream_solid_at` for that rect, and a
 entities - the same "print geometry, do not reason about it" method that found the wind's ceiling. It just needs
 to be inserted relative to the known-present loop marker (`for correction in 1..=DASH_CORNER_CORRECTION`) or
 found by reading the branch first.
+
+### Correction: the simulator has three corner-correction loops, not one - and where the geometry probe belongs
+
+Two corrections and one placement insight.
+
+**1. Three loops, not one.** The round-229 note said the simulator has a single `DASH_CORNER_CORRECTION` loop
+against the source's three. That is wrong: `for correction in 1..=DASH_CORNER_CORRECTION` occurs three times in
+`sim.rs` (`:10069`, `:10172`, `:10183`), and all three live inside `move_axis_amount_inner` - the same three as
+the source's `Player.cs:3187`, `:3300`, `:3455`. So the "one constant versus three" observation reduces to the
+sim having **one shared constant value** where the source declares three (two of which, `UpwardCornerCorrection`
+and `DashingUpwardCornerCorrection`, are dead in the source of record anyway). The corner-correction hypothesis
+for the offset-1966 divergence is therefore weak on both sides, and the earlier measurements already rule it
+out: on that frame the simulator enters the horizontal collide branch with `speed.y = -169.70563`, so the
+correction's own guard (`speed.y == 0.0`) is false.
+
+**2. Where the probe has to go.** The geometry probe inserted this round produced no output, and the reason is
+structural rather than incidental: it was placed as a sibling of the `for correction` loop, i.e. inside
+`if matches!(p.state, PlayerState::Dash | PlayerState::RedDash) && p.speed.y == 0.0 && p.speed.x != 0.0`. On the
+divergence frame that guard is false, so the probe could not fire - which is the same fact that rules the
+correction out. The early return that skipped the previous round's `afterH` probe happens **before** that guard,
+in `try_dash_collide(p, map, next, true, sign as f32)`'s `Rebound`/`Ignore` arms.
+
+So the geometry probe belongs immediately **before `try_dash_collide`**, printing `next` (the rect being
+probed), the player rect, `non_dream_solid_at(next)`, and any overlapping `solids` and entities - that is where
+the two sides can be shown to disagree about the world rather than about the response to it.
