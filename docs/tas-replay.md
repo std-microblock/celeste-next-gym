@@ -3801,3 +3801,28 @@ Two lessons, both already foreshadowed in this log:
    `.gitattributes` rule now normalizes on staging, which makes that hazard harmless for this path - but the
    same pattern applied to any other source file would repeat the incident there, so the attributes should be
    widened (or the edits done with a tool that does not rewrite the whole file).
+
+### StarFly spring end: verified inert, and not in master (recorded, not landed)
+
+The two-step edit (thread `map` into `reset_for_spring_bounce`, then run `end_star_fly` before assigning
+`PlayerState::Normal`, matching `bounce` at `sim.rs:10964`) built and passed the 356 tests, and the full traces
+measured `0 / 1468 / 0`, `0 / 918 / 0`, `0 / 20 / 0` against the current `side-*` baselines - i.e. **inert** on
+all three. The landing job then reported "nothing added to commit" and "Everything up-to-date", so the edit had
+already been reverted out of the working tree; it is **not** in master.
+
+Recording it rather than re-applying: the change is inert on the corpus (no trace hits a spring while in
+`StarFly`), it is faithful but low-value, and re-measuring it costs three full traces. The recipe is above if a
+future corpus needs it - and the same "inert-but-correct" judgement already covers several landed items
+(`Session.DoNotLoad`, the Puffer gate, the `bounce` counter), so the difference here is only that this one was
+not worth the second measurement.
+
+**What to do instead, from the moveclass survey's out-of-class leads - these are missing mechanics with real
+win potential, not stylistic fixes:**
+
+1. **`DuckCorrectCheck` / `DuckCorrectSlide`** (`Player.cs:2840-2855`): inside `NormalUpdate`'s duck block, when
+   `Speed.X == 0` the source runs `MoveH(+-50f * Engine.DeltaTime)` - a **counter-based move** that creeps a
+   ducked player sideways. `sim.rs`'s duck block (~7423-7431) only has the `CanUnDuck -> Ducking = false`
+   branch, so the crawl is **not modelled at all**. Same family as the spring fix, and a missing mechanic rather
+   than a wrong one.
+2. **`Player.FlingBirdUpdate`** (`StFlingBird`, state 24) - no implementation at all.
+3. **`Player.MoonLanding`**'s `MoveV(-200f * Engine.DeltaTime)` - unimplemented.
