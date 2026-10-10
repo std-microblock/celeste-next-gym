@@ -10907,6 +10907,11 @@ fn super_bounce(p: &mut PlayerSnapshot, map: &Map, from_y: f32) {
 }
 
 fn side_bounce(p: &mut PlayerSnapshot, map: &Map, dir: i8, spring: Rect) {
+    // `Player.SideBounce` (`Player.cs:2743-2746`): `if (Math.Abs(Speed.X) > 240f && Math.Sign(Speed.X) == dir)
+    // return false;` - the spring refuses to bounce a player already moving that way quickly.
+    if p.speed.x.abs() > 240.0 && p.speed.x.signum() as i8 == dir {
+        return;
+    }
     // SideBounce aligns the normal collider to the spring face and only
     // corrects vertically by at most four pixels.
     let from_y = spring.y + spring.height * 0.5;
