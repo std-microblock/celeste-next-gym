@@ -4355,3 +4355,31 @@ precise guard decides whether it fires at all.
 Next: read `close_dash_onto_jump_thru` (`sim.rs:7980`) against `Player.cs:4384-4392`, and if the guard differs,
 that is the fix; the frame for the check is `7-Summit|0|g-01|134447` offset 1966, where the game moves -3 px and
 the simulator -7.
+
+### `close_dash_onto_jump_thru`: the simulator also closes onto `Cloud`, and passes a scalar where the source passes a vector
+
+Side by side:
+
+| source (`Player.cs:4384-4392`) | simulator (`sim.rs:7980-7998`) |
+| --- | --- |
+| `foreach (JumpThru entity in Tracker.GetEntities<JumpThru>())` - **JumpThru only** | `matches!(entity.kind, EntityKind::JumpThru \| EntityKind::Cloud)` - **Cloud included** |
+| `CollideCheck(entity)` | `entity.bounds.intersects(current_player_rect(...))` |
+| `base.Bottom - entity.Top <= 6f` | `bottom - entity.bounds.y > 6.0 -> continue` (equivalent) |
+| `!DashCorrectCheck(Vector2.UnitY * (entity.Top - base.Bottom))` - argument is a **Vector2** | `!dash_correct_check(p, map, amount as f32)` - argument is a **scalar** |
+| `MoveVExact((int)(entity.Top - base.Bottom))` | `move_v_exact(p, map, amount)` with `amount = (bounds.y - bottom) as i32` |
+
+Two concrete divergences, both worth testing on the known frame (`7-Summit|0|g-01|134447` offset 1966, where
+the game moves -3 px in x and the simulator -7):
+
+1. **`Cloud` is not a `JumpThru`.** The source's loop only walks `Tracker.GetEntities<JumpThru>()`. Summit's
+   `g-01` is full of clouds (the decoded entity list for the room includes `cloud`), so the simulator will close
+   the player onto a cloud where the game does not. Note the observed residual is *diagonal* (4 px in x and 1 px
+   in y), so this alone may not be the whole story - but it is a genuine, source-backed defect.
+2. **The `DashCorrectCheck` argument shape differs.** The source passes the correction offset as a `Vector2`
+   (`UnitY * (Top - Bottom)`); the simulator passes a scalar float. If the helper interprets its argument as a
+   direction or an offset rather than a magnitude, the check that is supposed to veto the close can invert - and
+   that veto is exactly what decides whether this exact move happens at all.
+
+Next, one edit at a time: first restrict the loop to `JumpThru` and measure `--rooms g-01` (expect the `134447`
+segment to pass offset 1966 if this is the cause); if it does not move, inspect `dash_correct_check`'s signature
+and its use of the scalar against the source's vector form.
