@@ -3777,3 +3777,27 @@ mapping was neutral on whole traces, and this one was neutral on the slice but n
 This stretch's cadence, all from the one defect class found with the spring fix: spring counter move (+39 ok),
 dash facing publish (+9 ok), `SideBounce` early-out (+2 ok) - 202 went from 520 to **570** ok and 161,355 to
 **177,678** frames.
+
+### Incident: my dash-facing commit stored `sim.rs` as CRLF and would have blocked every workstream merge
+
+`a967db1` (the dash facing publish) committed `crates/celeste-physics/src/sim.rs` with **CRLF** line endings -
+the moveclass workstream measured the blob as `crlf=23824, lf=2` where every earlier commit had `crlf=0`. Cause:
+my own tooling. The patch pattern used all stretch long is `Set-Content -Path $src -Value $s -Encoding utf8
+-NoNewline` after string surgery with backtick-`r`-backtick-`n`, and that rewrites the whole file with CRLF in
+the working tree; with `core.autocrlf=true` the staging step then stored CRLF in the blob. Any branch based on an
+older LF commit consequently conflicts over the entire file - the workstream hit a single 47,729-line conflict
+region even with `merge.renormalize=true`.
+
+Fixed on master in `ecbc03a`: added `crates/celeste-physics/src/sim.rs text eol=lf` to `.gitattributes` (next to
+the pre-existing `fixtures/e2e/*.json` rule) and `git add --renormalize`d the file. Verified by counting bytes of
+the committed blob (`git cat-file blob <rev>:<path>` then `[IO.File]::ReadAllBytes`): **cr=2, lf=23836** - two
+stray CRLF lines remain at the `p.dash_dir = p.last_aim;` sites, which is a two-line diff, not a whole-file one.
+
+Two lessons, both already foreshadowed in this log:
+
+1. **Do not verify line endings through a PowerShell pipeline.** `git show HEAD:path | Out-String` converted
+   LF to CRLF in my first check and made the fixed blob look broken; only the byte count is trustworthy.
+2. **The patch helper itself is the hazard.** Every `Set-Content` rewrite risks re-encoding the file; the
+   `.gitattributes` rule now normalizes on staging, which makes that hazard harmless for this path - but the
+   same pattern applied to any other source file would repeat the incident there, so the attributes should be
+   widened (or the edits done with a tool that does not rewrite the whole file).
