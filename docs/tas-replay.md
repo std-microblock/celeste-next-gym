@@ -4320,3 +4320,38 @@ Next: probe `pos` at the entry and exit of `dash_update` on that frame, and if t
 function's own calls. That is the first probe aimed at a *function* rather than at a code path, which is where
 this should have started several rounds ago - the movers were enumerated from a grep over `movement_remainder`
 and `p.pos`, and `dash_update` reached position through neither.
+
+### FOUND: `close_dash_onto_jump_thru` is the exact-move that produces the unexplained -4 px
+
+`dash_update` (`sim.rs:7757-7876`) has exactly one position-changing call, and its guard is true on the very
+frame the divergence appears:
+
+```rust
+7763: let dash_coroutine_initial_yield =
+7764:     p.dash_dir == Vec2::default() && p.state_timer > DASH_TIME + p.frame_delta_time * 0.5;
+...
+7786: // Player.cs:4384-4392 closes the player onto a JumpThru it already overlaps
+7787: // (any overhang up to six pixels) with an exact move, before the dash jump branches below.
+7789: if p.dash_dir.y.abs() < 0.1 {
+7790:     close_dash_onto_jump_thru(p, map);
+7791: }
+...
+7803: if (p.state_timer - DASH_TIME).abs() <= p.frame_delta_time * 0.5 {
+7804:     p.dash_dir = p.last_aim;              // DashDir is published *here*, after the close
+7805-7811:  facing, p.speed = dash_dir * DASH_SPEED
+```
+
+On the frame the coroutine publishes `DashDir`, the close runs **before** the publish, so `dash_dir` is still
+`Vec2::default()` and `p.dash_dir.y.abs() < 0.1` is `0 < 0.1` - **true**. The helper performs an exact move onto
+a JumpThru the player already overlaps, with an overhang of up to six pixels: exactly the shape and magnitude of
+the unexplained 4 px, and the only candidate left after every mover, correction, collide path, clamp and
+`move_exact`/`naive_move` site was excluded by measurement.
+
+The source has the same step (`Player.cs:4384-4392`), so the defect is not the mechanism but the **condition or
+the amount**: which JumpThru counts as "already overlapped", how far the overhang may be, and which direction it
+closes in. Note also that this is the same *class* as `DuckCorrect`-style nudges - an exact corrective move whose
+precise guard decides whether it fires at all.
+
+Next: read `close_dash_onto_jump_thru` (`sim.rs:7980`) against `Player.cs:4384-4392`, and if the guard differs,
+that is the fix; the frame for the check is `7-Summit|0|g-01|134447` offset 1966, where the game moves -3 px and
+the simulator -7.
