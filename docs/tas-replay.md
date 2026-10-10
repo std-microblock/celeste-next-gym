@@ -3607,3 +3607,29 @@ carry), `6315` (`p.pos.y -= amount`), `7385`, `7405` (`+= facing_dir`) and `8336
 
 Each needs a source check against `Player.cs` before it can be called a defect, which makes this a survey
 rather than a fix - and the +11,246-frame payoff from the first instance says it is worth doing properly.
+
+### g-01 offset 1872: the divergence is `facing` alone, on the frame a dash freeze ends
+
+Fresh dump of `7-Summit|0|g-01|134447` (now replaying to 1873 frames after the spring fix):
+
+```
+offset=1869 row=136357 StDash pos=(27410,-19548) counter=(0.43331,0.25815) move=(0,0) speed=(0,0) stalled=true freeze=0.05000
+offset=1870 row=136358 StDash ... identical ... stalled=true freeze=0.03333
+offset=1871 row=136359 StDash ... identical ... stalled=true freeze=0.01667
+offset=1872 row=136360 StDash pos=(27413,-19551) counter=(0.26174,0.42972) move=(2.82843,-2.82843) speed=(169.70563,-169.70563) game==rust freeze=0.00000
+```
+
+At offset 1872 **every field the dump prints agrees** - position, both counters, both move components, both
+speed components, the state and the freeze timer - and the harness still records a divergence, whose reason is
+`facing`. So the only difference is in a field the dump does not carry: the player's facing direction, on the
+first un-frozen frame after the three-frame dash freeze (`freeze` counting 0.05 -> 0.0333 -> 0.0167, which is
+`DASH_FREEZE_TIME`).
+
+That is a much narrower lead than the previous ones: the state is `StDash`, the dash's freeze accounting already
+matches, and the velocity produced on the exit frame matches to the printed precision - only the direction the
+player is turned differs. The next step is to compare the `facing` writes on both sides for the dash path
+(`Player.DashUpdate`/`DashBegin` versus the simulator's `dash_update`/`dash_begin`), looking for an assignment
+that happens one frame earlier or later, rather than for a missing write.
+
+Also worth noting for future dumps: this case shows the dump's field set is the limiting factor when the
+divergence is in an unprinted field, and the harness's `reasons` list is what identifies it.
