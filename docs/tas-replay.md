@@ -3826,3 +3826,25 @@ win potential, not stylistic fixes:**
    than a wrong one.
 2. **`Player.FlingBirdUpdate`** (`StFlingBird`, state 24) - no implementation at all.
 3. **`Player.MoonLanding`**'s `MoveV(-200f * Engine.DeltaTime)` - unimplemented.
+
+### The `DuckCorrect*` lead is suspect: the constants are dead in the vendored source
+
+The moveclass survey listed `DuckCorrectCheck`/`DuckCorrectSlide` as an unmodelled mechanic, citing
+`docs/Player.cs:2840-2855`. Two checks say otherwise:
+
+- in the **vendored** source (`vendor/celeste-fna/Celeste/Player.cs`) those names appear **only** at their
+  declarations - `private const int DuckCorrectCheck = 4;` (`:151`) and `private const float DuckCorrectSlide =
+  50f;` (`:153`) - with **no use site anywhere in the file**. They are dead constants there;
+- the simulator's duck block (`sim.rs:7423-7431`) does contain only the enter/exit logic, which matches a game
+  that never nudges: `if p.ducking { if on_ground && move_y != 1 && can_unduck { ducking = false } } else if
+  on_ground && move_y == 1 && speed.y >= 0.0 { ... }`.
+
+So the survey's citation points at `docs/Player.cs`, which is a **different copy of the source** - not the
+authority for what the traced game ran. Implementing a slide the traced build does not have would *introduce* a
+divergence rather than remove one.
+
+Rule to apply to the other two leads before any implementation: `Player.FlingBirdUpdate` (`StFlingBird`, state
+24) and `Player.MoonLanding`'s `MoveV(-200f * Engine.DeltaTime)` must be located **in
+`vendor/celeste-fna/Celeste/Player.cs`** and shown to be reachable from the traced states. `docs/Player.cs` is
+useful as a cross-reference but cannot be the basis for a change, and this log has now twice been misled by a
+reference to a copy rather than the source of record (the other being the round-192 line numbers).
