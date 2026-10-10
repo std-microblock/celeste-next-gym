@@ -4430,3 +4430,28 @@ Next (one line): make the veto use the standard hurtbox rather than the state-de
 p.pos.y)` (`sim.rs:9678`), which is the `8x9` the source's `hurtbox` field holds for a normal player - but check
 first whether the source's `hurtbox` is stateful too (it is a field set in the collider table), because that is
 exactly the kind of base/derived assumption that was wrong one round ago about `Cloud`.
+
+### Third refutation in the same vein: the source's `hurtbox` IS stateful, so the simulator's veto rect is faithful
+
+Before editing anything, I checked whether `Player.hurtbox` (`Player.cs:481`) is a fixed rect. It is not:
+
+| source assignment | value | simulator `current_player_hurt_rect` |
+| --- | --- | --- |
+| `:1020` `hurtbox = duckHurtbox` | `8x4 @ (-4,-6)` | ducking -> `8x4 @ (-4,-6)` |
+| `:1025`, `:1142`, `:5353` `= normalHurtbox` | `8x9 @ (-4,-11)` | otherwise -> `8x9 @ (-4,-11)` |
+| `:5321` `= starFlyHurtbox` | `6x6 @ (-3,-9)` | `StarFly` -> `6x6 @ (-3,-9)` |
+
+So `DashCorrectCheck`'s collider in the simulator is the faithful one, and the "consequential difference" claimed
+in the previous note is withdrawn - it would have been a bad change, caught only because the verification step
+came before the edit. That is the third base/derived-style misreading in this log (`Cloud` as a `JumpThru`,
+`DuckCorrect*`/`MoonLanding` as live constants and functions, and now `hurtbox` as fixed), and the difference
+each time was a measurement taken before the edit rather than after.
+
+Where that leaves `7-Summit|0|g-01|134447` offset 1966: every mechanism I have been able to enumerate is
+excluded by measurement - the collide response, the three corner-correction loops, `move_axis`, `move_exact`,
+`naive_move`, `Level.EnforceBounds`, and now both halves of the dash jump-thru close. Yet the simulator still
+moves 4 px further in x and 1 px in y on that frame than the game does. The remaining approach that does not
+depend on my enumeration being complete is a **position audit of the frame**: print `pos` at the top of `step`,
+after the state callback, after the physics move, and at the end of `step`, so that any position change shows up
+as a delta between two labelled phases regardless of which function produced it. That is the systematic version of
+what has been done piecemeal for several rounds.
