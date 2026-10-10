@@ -4071,3 +4071,26 @@ runs per pixel). The next step is to compare the probe rectangle and the solids 
 for that frame - the same kind of check that found the wind's ceiling (`current_player_rect` vs the game's
 collider), and the same discipline applies: print the rect and the overlapping solids rather than reasoning about
 which collider "should" be in play.
+
+### Anchoring lesson (third time): match structure, not remembered prose
+
+Two probe insertions failed in a row on the `g-01` geometry check, both for the same reason: I wrote the anchor
+from memory instead of from the file. The first attempt searched for a comment line without the backticks the
+file actually has; the second searched for `OnDashCollide branch runs before the`, and the only `OnDashCollide`
+occurrence in `sim.rs` is inside the doc comment of `first_solid_entity_at`
+(`/// `OnDashCollide`. Callers exclude static tile solids before using this.`) - not the comment I thought I
+remembered at the dash collide branch.
+
+The rule, now demonstrated three ways in this log (stale line numbers from a copy; a comment text from memory
+here; and earlier a call-site argument list from memory), is:
+
+- anchor on a **structural** string that must exist - a constant name (`DASH_CORNER_CORRECTION`), a function
+  signature, a distinctive expression - never on remembered prose, indentation, or argument text;
+- when the anchor fails, **read the file and print the surrounding lines** before retrying rather than
+  re-guessing; both failures this round cost a call each and neither touched the build.
+
+The probe itself is ready and unchanged in intent: print, on the horizontal collide branch of the dash, the
+player rect, the rect one pixel ahead, `non_dream_solid_at` for that rect, and any overlapping `solids` and
+entities - the same "print geometry, do not reason about it" method that found the wind's ceiling. It just needs
+to be inserted relative to the known-present loop marker (`for correction in 1..=DASH_CORNER_CORRECTION`) or
+found by reading the branch first.
