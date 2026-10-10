@@ -3695,3 +3695,33 @@ and listed these, all pre-existing:
 
 Also confirmed by an attribution control on its side: an unpatched binary at `d6233b5` reproduces the old
 totals exactly (`0` delta), so the entire +76/+44/+3 improvement is the spring patch.
+
+### Correction: the facing write belongs to the dash *coroutine*, not `DashBegin` - and the target is `dash_update`'s publish block
+
+My previous note placed the source's facing write (`Player.cs:4491-4493`) in `DashBegin`. Reading
+`begin_dash` (`sim.rs:7656-7688`) shows that is wrong, and the simulator's own comment says why:
+
+```rust
+7665: // DashBegin clears DashDir. DashCoroutine does not sample lastAim until it
+7666: // resumes after its initial yield (and any Celeste.Freeze frames).
+7667: p.dash_dir = Vec2::default();
+```
+
+So `DashBegin` **clears** `DashDir`; the source lines 4478-4500 - which assign `Speed`, then
+`gliderBoostDir = (DashDir = value)` and then `Facing = Math.Sign(DashDir.X)` under `if (DashDir.X != 0f)` -
+are the body of **`DashCoroutine` after its initial yield**, which is also why a dash freeze (three frames of
+`DASH_FREEZE_TIME`) sits between the clear and the write. That matches the measurement: the `facing`
+divergence appears on the first un-frozen frame.
+
+An attempt to add the write to `begin_dash` was a **measured no-op** (g-01 slice unchanged) because `dash_dir`
+is zero there, and it was reverted - correctly, since the guard `dash_dir.x != 0.0` can never pass at that
+point.
+
+The correct target is the **publish block in `dash_update`** - the same place already studied for the
+`dash_dir = last_aim` / `speed = (dir * DASH_SPEED)` publish, which mirrors the coroutine's resume. The red-dash
+path already has the write (`red_dash_update:8486`, `if p.dash_dir.x != 0.0 { p.facing = p.dash_dir.x > 0.0; }`),
+which is the pattern to copy; the ordinary dash path does not.
+
+So: add `if p.dash_dir.x != 0.0 { p.facing = p.dash_dir.x > 0.0; }` immediately after the publish's
+`p.dash_dir = p.last_aim;` in `dash_update`, then verify with `--rooms g-01` (expect the `134447` segment to
+pass offset 1872).
