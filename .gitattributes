@@ -1,1 +1,2 @@
 fixtures/e2e/*.json text eol=lf
+crates/celeste-physics/src/sim.rs text eol=lf

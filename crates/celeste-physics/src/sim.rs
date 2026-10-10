@@ -7801,7 +7801,7 @@ fn dash_update(p: &mut PlayerSnapshot, input: InputState, map: &Map) {
     }
     p.state_timer = (p.state_timer - p.frame_delta_time).max(0.0);
     if (p.state_timer - DASH_TIME).abs() <= p.frame_delta_time * 0.5 {
-        p.dash_dir = p.last_aim;
+        p.dash_dir = p.last_aim;
         // `Player.DashCoroutine` (`Player.cs:4491-4493`): once `DashDir` is published from the aim,
         // `if (DashDir.X != 0f) Facing = (Facings)Math.Sign(DashDir.X);`. The red-dash path already
         // does this; the ordinary dash path did not, so the facing landed a frame late.
@@ -8486,7 +8486,7 @@ fn red_dash_update(p: &mut PlayerSnapshot, input: InputState, map: &mut Map) {
     if p.dash_dir == Vec2::default() {
         p.state_timer = (p.state_timer - p.frame_delta_time).max(0.0);
         if p.state_timer <= 0.0 {
-            p.dash_dir = p.last_aim;
+            p.dash_dir = p.last_aim;
         // `Player.DashCoroutine` (`Player.cs:4491-4493`): once `DashDir` is published from the aim,
         // `if (DashDir.X != 0f) Facing = (Facings)Math.Sign(DashDir.X);`. The red-dash path already
         // does this; the ordinary dash path did not, so the facing landed a frame late.
@@ -10842,7 +10842,7 @@ fn update_strawberry_train(p: &mut PlayerSnapshot) {
     }
 }
 
-fn reset_for_spring_bounce(p: &mut PlayerSnapshot) {
+fn reset_for_spring_bounce(p: &mut PlayerSnapshot, map: &Map) {
     // `Player.SuperBounce` (`Player.cs:2708-2722`) and `Player.SideBounce`
     // (`:2741-2762`) both wrap the dash refill in `if (!Inventory.NoRefills)`, unlike
     // `Player.Bounce` (`:2677-2691`, which guards it too) and `Player.PointBounce`
@@ -10852,6 +10852,11 @@ fn reset_for_spring_bounce(p: &mut PlayerSnapshot) {
         refill_dash(p);
     }
     p.stamina = 110.0;
+    if p.state == PlayerState::StarFly {
+        // Same as `bounce`: assigning state Normal runs StarFlyEnd first (the cached collider is
+        // restored only after that callback returns).
+        end_star_fly(p, map);
+    }
     p.state = PlayerState::Normal;
     p.jump_grace_timer = 0.0;
     p.var_jump_timer = VAR_JUMP_TIME;
@@ -10900,7 +10905,7 @@ fn super_bounce(p: &mut PlayerSnapshot, map: &Map, from_y: f32) {
     // Player.SuperBounce temporarily uses the normal collider and moves the
     // player's bottom onto the spring before applying the launch.
     spring_move(p, map, false, from_y - p.pos.y);
-    reset_for_spring_bounce(p);
+    reset_for_spring_bounce(p, map);
     p.speed.x = 0.0;
     p.speed.y = SUPER_BOUNCE_SPEED;
     p.var_jump_speed = p.speed.y;
@@ -10922,7 +10927,7 @@ fn side_bounce(p: &mut PlayerSnapshot, map: &Map, dir: i8, spring: Rect) {
         spring.x - 4.0
     };
     spring_move(p, map, true, target_x - p.pos.x);
-    reset_for_spring_bounce(p);
+    reset_for_spring_bounce(p, map);
     p.force_move_x = dir;
     p.force_move_x_timer = SIDE_BOUNCE_FORCE_MOVE_X_TIME;
     p.speed.x = SIDE_BOUNCE_SPEED * dir as f32;
