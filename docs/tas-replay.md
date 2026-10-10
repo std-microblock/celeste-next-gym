@@ -4294,3 +4294,29 @@ clamp and the simulator's disagreed about when to apply.
 Next: probe `enforce_level_bounds` on the divergence frame - print the player rect, `map.bounds`,
 `current_room_bounds`, and whether any of the three setters fires - and compare with the game's position on the
 same frame. That is one probe and it is the last structural candidate.
+
+### EnforceBounds excluded as well: every structural candidate is now out, so the dash has its own mover
+
+The `enforce_level_bounds` entry probe fired on the divergence frame, and the answer is in its first line:
+
+```
+ELB pos=(27328.00,-19637.00) me=(27324.0,-19648.0,8.0,11.0) room=(25016,-21768,2560,3256) state=Dash   <- offset 1965
+ELB pos=(27321.00,-19638.00) me=(27317.0,-19649.0,8.0,11.0) room=(25016,-21768,2560,3256) state=Dash   <- offset 1966
+```
+
+Two things follow:
+
+1. The clamp runs, but it runs **after** the position is already wrong - `(27321,-19638)` is the simulator's
+   post-move position on 1966 while the game's is `(27325,-19637)`. So the 4 px is not a clamp.
+2. It could not have clamped anyway: the room's bounds are `y` from `-21768` to `-18512`, and the player is at
+   `-19638`, deep inside. The bounds are nowhere near the player on this frame.
+
+So the eliminations now cover the entire frame: collide response, the three corner-correction loops, `move_axis`,
+`move_exact`, `naive_move`, and `Level.EnforceBounds`. The only remaining possibility is that the dash's
+horizontal travel does **not** go through `move_axis` at all - there is a dash-specific mover (or a position
+write inside `dash_update`) that the enumeration did not include.
+
+Next: probe `pos` at the entry and exit of `dash_update` on that frame, and if the -4 appears inside it, walk the
+function's own calls. That is the first probe aimed at a *function* rather than at a code path, which is where
+this should have started several rounds ago - the movers were enumerated from a grep over `movement_remainder`
+and `p.pos`, and `dash_update` reached position through neither.
