@@ -3543,3 +3543,39 @@ need **read-only** map access (`non_dream_solid_at`, `dream_block_at`), so the f
    already does (it takes `&Map` precisely because of this).
 
 Option 2 is the smaller change and matches the existing `bounce` signature, so it is the one to take.
+
+### LANDED: spring bounces move by movementCounter (master `1529e6b`) - +39 segments, +11,246 frames on 202
+
+`super_bounce`/`side_bounce` assigned the position and cleared the counter where the source moves through
+`Actor.MoveV`/`MoveH` (`Player.cs:2717`, `:2749`) after swapping in `normalHitbox`. Replaced with a read-only
+`spring_move(p, map: &Map, horizontal, amount)` helper (counter accumulation, `round_ties_even` whole-pixel
+steps, counter cleared only on a blocked step, probing with `player_rect`), which is also why the helpers can
+take `&Map` and be called from inside `match entity.kind` without a borrow conflict.
+
+Verified on all three traces against the pre-fix reports, `regressed=0` everywhere, 356 tests green:
+
+| trace | improved / identical / regressed | ok | frames | exact |
+| --- | --- | ---: | ---: | ---: |
+| 202 | **76 / 1392 / 0** | 520 -> **559** | 161,355 -> **172,601** | 160,387 -> **171,672** |
+| 100pct | **44 / 874 / 0** | 340 -> **362** | 97,134 -> **103,154** | 96,544 -> **102,586** |
+| 1a | **3 / 17 / 0** | 16 -> **18** | 2,129 -> **2,343** | 2,125 -> **2,341** |
+
+Two process notes worth as much as the fix:
+
+- **Attribution control.** The workstream built an unpatched binary at `d6233b5` and ran 202 with it:
+  `0 / 1468 / 0` (520 / 161,355 / 160,387 exactly), so the entire gain is this patch - notably the earlier
+  `bounce` counter commit (`9eceb09`) contributes **nothing** on 202 and was landed only as a faithful
+  modelling fix. Any future multi-commit stretch should do this: measure the base, not just the tip.
+- **The test gate caught a real problem and cost a revert.** My first landing attempt measured the same 76/1392/0
+  but the two in-file unit tests still called the old signatures, so `cargo test` failed to compile and the
+  script reverted the whole change - correct behaviour, and the fix was simply to update those two call sites to
+  `&Map::default()`. A gate that reverts a big win is still worth having; the alternative was pushing a red tree.
+
+Residual on the same segment: `7-Summit|0|g-01|134447` now diverges at offset 1872, where the game's and the
+simulator's `movementRemainder` are **bit-identical** (`[0.26174449920654297, 0.4297199249267578]`) and the new
+reason is `facing` - a different, later defect.
+
+**Next sweep, from the same defect class:** the enumeration of `movement_remainder` writers in `sim.rs`
+(`3361`, `6821`, `8421`, `10018/10020`, `10088`, `10125/10137`, `10165/10176`, `10197`, `10226`, `10244`,
+`11056`, `11439`) is now a checklist. Any site that *assigns* a position or clears the remainder where the
+source calls `MoveV`/`MoveH` is the same bug as this one; the +11,246-frame gain says it is worth auditing each.
