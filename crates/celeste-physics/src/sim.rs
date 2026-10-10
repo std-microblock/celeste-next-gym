@@ -10649,10 +10649,10 @@ fn interact(
             EntityKind::Spring if p.state != PlayerState::DreamDash => {
                 if entity.direction.y < 0.0 {
                     if p.speed.y >= 0.0 {
-                        super_bounce(p, entity.bounds.y);
+                        super_bounce(p, map, entity.bounds.y);
                     }
                 } else if entity.direction.x != 0.0 {
-                    side_bounce(p, entity.direction.x.signum() as i8, entity.bounds);
+                    side_bounce(p, map, entity.direction.x.signum() as i8, entity.bounds);
                 }
             }
             EntityKind::Strawberry if entity_index < u64::BITS as usize => {
@@ -10851,28 +10851,60 @@ fn reset_for_spring_bounce(p: &mut PlayerSnapshot) {
     p.launched = false;
 }
 
-fn super_bounce(p: &mut PlayerSnapshot, from_y: f32) {
+/// `Actor.MoveV`/`MoveH(amount)` accumulate into `movementCounter` and move
+/// `round(counter + amount)` whole pixels, clearing the counter only on a blocked step, with the
+/// default null collide callback. `Player.SuperBounce`/`SideBounce` move exactly this way after
+/// swapping in `normalHitbox` (`Player.cs:2717`, `:2749`), so probe with `player_rect`.
+fn spring_move(p: &mut PlayerSnapshot, map: &Map, horizontal: bool, amount: f32) {
+    let remainder = if horizontal {
+        &mut p.movement_remainder.x
+    } else {
+        &mut p.movement_remainder.y
+    };
+    *remainder += amount;
+    let mut steps = remainder.round_ties_even() as i32;
+    *remainder -= steps as f32;
+    let sign = steps.signum();
+    while steps != 0 {
+        let next = if horizontal {
+            player_rect(p.pos.x + sign as f32, p.pos.y)
+        } else {
+            player_rect(p.pos.x, p.pos.y + sign as f32)
+        };
+        if map.non_dream_solid_at(next) || map.dream_block_at(next) {
+            *remainder = 0.0;
+            break;
+        }
+        if horizontal {
+            p.pos.x += sign as f32;
+        } else {
+            p.pos.y += sign as f32;
+        }
+        steps -= sign;
+    }
+}
+
+fn super_bounce(p: &mut PlayerSnapshot, map: &Map, from_y: f32) {
     // Player.SuperBounce temporarily uses the normal collider and moves the
     // player's bottom onto the spring before applying the launch.
-    p.pos.y = from_y;
-    p.movement_remainder.y = 0.0;
+    spring_move(p, map, false, from_y - p.pos.y);
     reset_for_spring_bounce(p);
     p.speed.x = 0.0;
     p.speed.y = SUPER_BOUNCE_SPEED;
     p.var_jump_speed = p.speed.y;
 }
 
-fn side_bounce(p: &mut PlayerSnapshot, dir: i8, spring: Rect) {
+fn side_bounce(p: &mut PlayerSnapshot, map: &Map, dir: i8, spring: Rect) {
     // SideBounce aligns the normal collider to the spring face and only
     // corrects vertically by at most four pixels.
     let from_y = spring.y + spring.height * 0.5;
-    p.pos.y += (from_y - p.pos.y).clamp(-4.0, 4.0);
-    p.pos.x = if dir > 0 {
+    spring_move(p, map, false, (from_y - p.pos.y).clamp(-4.0, 4.0));
+    let target_x = if dir > 0 {
         spring.right() + 4.0
     } else {
         spring.x - 4.0
     };
-    p.movement_remainder = Vec2::default();
+    spring_move(p, map, true, target_x - p.pos.x);
     reset_for_spring_bounce(p);
     p.force_move_x = dir;
     p.force_move_x_timer = SIDE_BOUNCE_FORCE_MOVE_X_TIME;
@@ -15765,7 +15797,7 @@ mod tests {
                 no_refills,
                 ..PlayerSnapshot::default()
             };
-            super_bounce(&mut p, 100.0);
+            super_bounce(&mut p, &Map::default(), 100.0);
             p
         };
         assert_eq!(bounced(false).dashes, 2);
@@ -15780,7 +15812,7 @@ mod tests {
                 no_refills,
                 ..PlayerSnapshot::default()
             };
-            side_bounce(&mut p, 1, Rect::new(40.0, 60.0, 6.0, 16.0));
+            side_bounce(&mut p, &Map::default(), 1, Rect::new(40.0, 60.0, 6.0, 16.0));
             p
         };
         assert_eq!(side(false).dashes, 2);
